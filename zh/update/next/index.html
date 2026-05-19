@@ -18,7 +18,7 @@
         <link rel="prev" href="../../wiki/08-reference/changelog/">
       
       
-        <link rel="next" href="../v0.3.5/">
+        <link rel="next" href="../v0.4.0/">
       
       
         
@@ -1777,6 +1777,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../v0.4.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.4.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../v0.3.5/" class="md-nav__link">
         
   
@@ -2345,62 +2373,11 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Diagnostic log at <code>.godotmaker/log_agent_tool_debug.log</code> that records every phase of <code>log_agent_tool.py</code> so the next failure mode is localizable from artifacts.</li>
-<li><code>tools/publish.py</code> accepts <code>--agent claude-code|codex</code> and publishes the framework into the selected agent's project-local layout (<code>.claude/</code> or <code>.agents/</code>) instead of exporting both at once.</li>
-<li>Each gm-* skill commits its stage outputs in When Done; new Stop hook <code>check_clean_workspace.py</code> reminds the agent once when the working tree is dirty at end of a skill.</li>
-<li><code>tools/seal_tag.py</code> — three subcommands (<code>archive</code> / <code>reset</code> / <code>bundle</code>) replacing the per-call fs/git work in <code>/gm-finalize</code> Steps 4/5/7/8.</li>
-<li><code>tools/run_verify.py</code> — wraps <code>/gm-verify</code>'s four mechanical checks (build / unit tests / lint / static check) into a single JSON-emitting command so the SKILL agent validates and reports instead of orchestrating four bash invocations.</li>
-<li><code>hooks/log_compaction.py</code> — PreCompact hook that records <code>compaction</code> events to <code>metrics.jsonl</code> with <code>session_id</code>, <code>trigger</code> (manual/auto), and current pipeline role, so AAR analysis no longer has to scrape Claude Code's native session jsonl to know whether compaction fired.</li>
-<li><code>tools/check_doc_i18n.py</code> and git/CI integration now require user-facing English docs to change with their Chinese mirrors.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Asset generation and visual QA now use explicit model selectors in <code>.godotmaker/config.yaml</code>: <code>vqa_model</code>, <code>vqa_fallback_model</code>, <code>asset_image_model</code>, and <code>asset_video_model</code>.</li>
-<li>Projects can configure <code>asset_image_model: codex</code> when Codex should provide native image generation explicitly.</li>
-<li>Runtime-native image generation is now documented as a runtime-mapping capability: <code>native</code> uses the active runtime, while <code>codex</code> explicitly selects Codex image generation.</li>
-<li>Verifier and worker docs no longer prescribe authoring or running e2e — <code>/gm-evaluate</code> is the single source of truth for <code>e2e/</code>.</li>
-<li>gecs gotcha G20: <code>@export var x: Node</code> fails on Component (extends Resource) — store Node refs as runtime <code>var</code> instead of <code>@export</code>.</li>
-<li>UI reviewer gotcha G11: Control under CanvasLayer needs explicit <code>layout_mode = 1</code> — anchor presets are silently ignored when <code>layout_mode</code> defaults to 0.</li>
-<li><code>visual-qa</code> SKILL now lists each mode's exact argv shape in a decision table and rejects ambiguous shapes (e.g. <code>--screenshot ... --requirements ...</code>) instead of degrading to Question mode.</li>
-<li><code>/gm-evaluate</code> Phase 4 must populate <code>phase4_review</code> with at least one <code>{category, verdict}</code> entry (categories picked per game) so the gameplay-reasoning step can no longer be silently skipped; <code>gameplay_issues</code> remains as a flat mirror for <code>/gm-fixgap</code>.</li>
-<li><code>SCENES.md</code> template carries a per-scene <code>Acceptance criteria</code> block; the decomposer populates it from PLAN tag mechanics and <code>/gm-evaluate</code> pastes it verbatim into the visual-qa <code>Verify:</code> field.</li>
-<li><code>/gm-evaluate</code> and <code>visual-qa</code> now tell VQA to avoid prior-history inference for deterministic setup screenshots.</li>
-<li>gecs <code>patterns.md</code> documents the pure-static helper convention (<code>*_math.gd</code> / <code>*_logic.gd</code> next to a System) and the <code>simulate_*</code> static seam on Systems — both used as the shared entry point for unit tests and e2e drivers.</li>
-<li><code>worker-dispatch.md</code> "When to parallelize" now includes a batch design rule: inspect every pending task's Affected files and group disjoint sets up to 3-wide, rather than dispatching task-by-task.</li>
-<li><code>gdunit-driver</code> SKILL adds a "Stub design" rule: a unit-test stub class must expose every property and method the system-under-test reads or calls on it, with a NodeRef-style WRONG/RIGHT example and a grep-before-submit check.</li>
-<li><code>decomposer</code> Step 5 patches <code>project.godot</code> for pixel-art games (detected from GDD §4): 480×270 viewport, 1920×1080 window override, integer stretch, Nearest filter, snap-to-pixel.</li>
-<li><code>/gm-gdd</code> initial mode now starts with a freeform user concept intake before structured GDD confirmation, so the interview can skip already-answered questions.</li>
-<li><code>/gm-gdd</code> now decomposes in two phases so PLAN is finalized before architecture and scene/asset packages read its task and mechanic mappings.</li>
-<li><code>check_project.py --build</code> now fails when <code>godot_path</code> is missing because headless parse is part of the scaffold build gate.</li>
-<li>Godot verification tools now prefer Godot's Windows console sibling for headless runs.</li>
-<li>GdUnit verification commands now use the official <code>res://addons/gdUnit4/bin/GdUnitCmdTool.gd --add res://test/</code> form and ignore generated <code>reports/</code>.</li>
-<li>Generated projects now include <code>.gitattributes</code> rules that normalize text line endings and keep Windows scripts on CRLF.</li>
-<li>Generated projects now register the <code>godot-e2e</code> <code>AutomationServer</code> autoload, and <code>check_project.py --build</code> verifies it.</li>
-<li>Codex runtime mapping now explicitly maps shared <code>.claude/godotmaker.yaml</code> config reads to <code>.agents/godotmaker.yaml</code>.</li>
-<li>Verifier dispatch now passes the configured Godot executable path into Godot commands.</li>
-</ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Rewire Agent prompt/output trace capture to <code>PreToolUse</code>/<code>PostToolUse</code> because the <code>SubagentStart</code> payload has no <code>prompt</code> field and silently wrote 0-byte traces.</li>
-<li><code>tools/run_verify.py</code> now trusts gdUnit XML reports instead of the first per-suite stdout summary, so unit-test failures and counts stay consistent with the generated report.</li>
-<li><code>tools/seal_tag.py bundle</code> now counts unit tests under the generated project's <code>test/</code> directory.</li>
-<li><code>/gm-finalize</code> now explicitly reconciles working docs against the final code before archiving a tag.</li>
-<li>CI can now collect asset-generation configuration tests without requiring image and 3D backend SDKs to be installed.</li>
-<li>Drop the SubagentStop hook's e2e content requirement on worker reports, since <code>check_file_permissions</code> already forbids workers from writing <code>e2e/</code>.</li>
-<li>Move <code>project.godot.run/main_scene</code> retargeting from decomposer to <code>/gm-build</code>'s dispatching agent so headless runs between <code>/gm-gdd</code> and the entry-scene worker no longer flood logs with <code>Cannot open file</code>.</li>
-<li>Parallel workers under <code>isolation: "worktree"</code> are now actually isolated — briefs use cwd-relative paths, dispatching agent pre-commits, workers commit before reporting.</li>
-<li>fix the issue that <code>/gm-asset</code> exits early when every art row in <code>ASSETS.md</code> is <code>provided</code> but <code>references/scene_*.png</code> is still missing</li>
-<li><code>godot-e2e</code> SKILL Critical Rules now flag <code>wait_process_frames</code> as a frame budget not wall-clock, and the Quick Start conftest reminds you to swap <code>/root/Main</code> for your project's entry-scene root</li>
-<li>Scaffold and godot-e2e conftest templates now pass configured <code>godot_path</code> into <code>GodotE2E.launch</code>.</li>
-<li>Generated project <code>.gitignore</code> files now ignore Python bytecode so running <code>tools/*.py</code> does not stage <code>tools/__pycache__/*.pyc</code>.</li>
-<li><code>/gm-finalize</code> writes <code>final_report.json</code> and commits the tag archive before <code>git tag &lt;Tag&gt;</code>, so the tag points at a committed state including the final report (previously the tag landed on an uncommitted working tree).</li>
-<li><code>/gm-finalize</code> partial-failure retries between Steps 4 and 8 now re-enter the skill instead of being misclassified as already-finalized.</li>
-<li><code>tools/publish.py</code> registers <code>Bash(&lt;godot_path&gt;:*)</code> in <code>.claude/settings.json</code> so headless godot invocations no longer prompt for permission, including in sub-agent worktrees (the user-level <code>settings.local.json</code> is gitignored and doesn't propagate).</li>
-<li>worker.md and the parallel merge procedure run <code>godot --headless --import</code> (not <code>--quit</code>) after new <code>class_name</code> declarations so the class cache stays consistent across worker worktrees and main.</li>
-<li><code>/gm-evaluate</code> halts with a <code>critical_issue</code> instead of degrading to Question mode when <code>references/scene_*.png</code> is missing.</li>
-<li><code>/gm-evaluate</code> records every visual-qa call in <code>visual_checks.&lt;scene&gt;.vqa_calls[]</code>; any agent-side override of the recorded verdict lands in <code>.notes</code> so the chain from initial call to final <code>result</code> stays auditable.</li>
-<li><code>visual-qa</code>, <code>/gm-evaluate</code>, and <code>/gm-fixgap</code> no longer turn style-only reference mismatches into blocking visual tasks when the acceptance criteria already pass.</li>
-<li><code>visual_qa.py</code> now reads prompt templates as UTF-8 on Windows.</li>
-<li><code>/gm-evaluate</code> now writes VQA debug logs under <code>e2e/screenshots/</code> while <code>visual-qa</code> keeps its standalone default log path.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 

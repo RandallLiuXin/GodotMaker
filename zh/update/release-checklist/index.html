@@ -1675,6 +1675,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../v0.4.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.4.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../v0.3.5/" class="md-nav__link">
         
   
@@ -2340,12 +2368,27 @@
 <li><code>pyproject.toml</code> — update <code>version = "X.Y.Z"</code>. Python package metadata only; not consumed by the publish pipeline, but kept in sync so PyPI/SDK consumers see the same number.</li>
 <li><code>CHANGELOG.md</code> — add a new <code>## [X.Y.Z] — YYYY-MM-DD</code> section with entries from the archived <code>next.md</code></li>
 <li>
-<p><strong><code>LICENSE</code> Change Date</strong> — in the <code>Change Date</code> field, pin this release's concrete Change Date: the calendar date equal to this release's publication date plus four years (a release published 2026-06-01 records <code>2030-06-01</code>). The field states the relative rule; the tagged release must also record the absolute date so the "version" and its "first publicly available distribution" cannot be disputed later. BUSL converts each version on its own date — never reuse a previous release's date.</p>
+<p><strong><code>LICENSE</code> Change Date</strong> — in the <code>Change Date</code> field, pin this release's concrete Change Date: the calendar date equal to this release's publication date plus four years (a release published 2026-06-01 records <code>2030-06-01</code>). BUSL treats <code>Change Date</code> as a license parameter, so the tagged release's <code>LICENSE</code> should contain only the concrete value, followed directly by <code>Change License</code>.
+     <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Change Date:
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>2030-06-01.
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Change License:
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Apache License, Version 2.0.
+</code></pre></div>
+     Do not leave the rolling-main explanatory text under <code>Change Date</code> in a tagged release:
+     <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>For each specific version of the Licensed Work, the fourth anniversary of the
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>first publicly available distribution of that version under this License. For
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>this purpose, a &quot;version&quot; of the Licensed Work means a release published under a
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Semantic Versioning tag (for example, v0.4.0). The LICENSE file included in each
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>such tagged release records that version&#39;s Change Date as a specific calendar
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>date.
+</code></pre></div>
+     Keep that rule in this checklist/docs instead. BUSL converts each version on its own date — never reuse a previous release's date.</p>
 </li>
 <li>
 <p><strong>Run all tests locally</strong>
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pytest<span class="w"> </span>--tb<span class="o">=</span>short
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>gitleaks<span class="w"> </span>detect<span class="w"> </span>--source<span class="w"> </span>.<span class="w"> </span>--config<span class="w"> </span>.gitleaks.toml
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pytest<span class="w"> </span>--tb<span class="o">=</span>short
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>gitleaks<span class="w"> </span>detect<span class="w"> </span>--source<span class="w"> </span>.<span class="w"> </span>--config<span class="w"> </span>.gitleaks.toml
 </code></pre></div></p>
 </li>
 <li>
@@ -2380,17 +2423,17 @@
 </li>
 <li>
 <p><strong>Commit and push</strong>
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>add<span class="w"> </span>-A
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;chore: prepare release vX.Y.Z&quot;</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>main
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>add<span class="w"> </span>-A
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;chore: prepare release vX.Y.Z&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>main
 </code></pre></div></p>
 </li>
 </ol>
 <h2 id="publish">Publish<a class="headerlink" href="#publish" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Create a git tag and push</strong>
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div>
    This triggers the <code>release.yml</code> workflow, which automatically:</li>
 <li>Reads release notes from <code>docs/update/vX.Y.Z.md</code></li>
