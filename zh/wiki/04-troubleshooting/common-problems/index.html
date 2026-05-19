@@ -1,0 +1,3192 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="ECS-native text-to-game framework for Godot">
+      
+      
+        <meta name="author" content="RandallLiuXin">
+      
+      
+        <link rel="canonical" href="https://RandallLiuXin.github.io/GodotMaker/zh/wiki/04-troubleshooting/common-problems/">
+      
+      
+        <link rel="prev" href="../../03-skills/reviewer-skills/">
+      
+      
+        <link rel="next" href="../recovery-and-resume/">
+      
+      
+        
+          <link rel="alternate" href="../../../../wiki/04-troubleshooting/common-problems/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>常见问题 - GodotMaker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../../" title="GodotMaker" class="md-header__button md-logo" aria-label="GodotMaker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GodotMaker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              常见问题
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../../../wiki/04-troubleshooting/common-problems/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RandallLiuXin/GodotMaker" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RandallLiuXin/GodotMaker
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../" title="GodotMaker" class="md-nav__button md-logo" aria-label="GodotMaker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    GodotMaker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RandallLiuXin/GodotMaker" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RandallLiuXin/GodotMaker
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    首页
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    快速开始
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    安装
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-getting-started/first-game/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一款游戏
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-getting-started/project-layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    项目结构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    核心概念
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-concepts/how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    工作原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-concepts/the-9-roles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 个角色
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-concepts/ecs-in-plain-english/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    大白话讲 ECS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-concepts/why-this-approach/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    为什么这么设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    技能
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    技能
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-skills/skill-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    技能体系
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-skills/core-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心技能
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-skills/reviewer-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    评审技能
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    故障排查
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    故障排查
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    常见问题
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    常见问题
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        环境配置问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="环境配置问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#api-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API key 未设置
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#godot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Godot 找不到，或版本太旧
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code 找不到
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker-git" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worker 提交代码失败——Git 身份未配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        流水线阶段校验问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="流水线阶段校验问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Role 'gdd' has not completed yet — run /gm-gdd first"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#role-evaluate-has-not-completed-yet-run-gm-evaluate-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Role 'evaluate' has not completed yet — run /gm-evaluate first"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-already-completed-for-the-current-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Build already completed for the current tag..."
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evaluate-already-ran-recommended-next-gm-accept-or-gm-fixgap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Evaluate already ran... Recommended next: /gm-accept or /gm-fixgap"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cannot-finish-build-role-diligence-issues-dispatched-n-workers-but-0-verifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Cannot finish 'build' role — diligence issues: Dispatched N workers but 0 verifiers"
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        构建问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="构建问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        无头构建因 class_name 冲突失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worker 看起来成功了，但测试结果一直没出来
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reviewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reviewer 因为会话结束被跳过了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worker 在任务中途挂了
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        美术资源问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="美术资源问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        图片生成失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        生成的美术效果不对
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        想用自己的美术资源
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        评估问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="评估问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        游戏在评估期间崩溃了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        评分太低，无法通过验收
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        发布和版本问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="发布和版本问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#major-upgrade-requires-force" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "MAJOR upgrade requires --force"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        降级被阻止了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        迁移脚本在中途失败了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applied_migrationsjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        applied_migrations.json 损坏了
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recovery-and-resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    恢复与续跑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    工具
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    工具
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/publish/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publish 工具
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/check-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    环境检查
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/check-project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    项目检查
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/asset-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    资源工具
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    配置
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    配置
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-configuration/project-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    项目配置
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-configuration/godotmaker-yaml/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    godotmaker.yaml
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-configuration/addon-versions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    插件版本
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    贡献指南
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    贡献指南
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-contributing/development-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    开发环境
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-contributing/codebase-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    代码导览
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-contributing/writing-a-skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    编写 Skill
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-contributing/writing-a-hook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    编写 Hook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-contributing/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    测试
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-contributing/release-process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    发布流程
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    参考资料
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    参考资料
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-reference/glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    术语表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-reference/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    常见疑问
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-reference/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    更新日志
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    发布说明
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    发布说明
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/next/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    最新
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.2.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.2.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.2.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.2.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.2.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/release-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    发布清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    项目文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    项目文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    版本管理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    小贴士
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-notice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    用户须知
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        环境配置问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="环境配置问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#api-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API key 未设置
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#godot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Godot 找不到，或版本太旧
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code 找不到
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker-git" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worker 提交代码失败——Git 身份未配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        流水线阶段校验问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="流水线阶段校验问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Role 'gdd' has not completed yet — run /gm-gdd first"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#role-evaluate-has-not-completed-yet-run-gm-evaluate-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Role 'evaluate' has not completed yet — run /gm-evaluate first"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-already-completed-for-the-current-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Build already completed for the current tag..."
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evaluate-already-ran-recommended-next-gm-accept-or-gm-fixgap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Evaluate already ran... Recommended next: /gm-accept or /gm-fixgap"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cannot-finish-build-role-diligence-issues-dispatched-n-workers-but-0-verifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Cannot finish 'build' role — diligence issues: Dispatched N workers but 0 verifiers"
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        构建问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="构建问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        无头构建因 class_name 冲突失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worker 看起来成功了，但测试结果一直没出来
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reviewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reviewer 因为会话结束被跳过了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worker 在任务中途挂了
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        美术资源问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="美术资源问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        图片生成失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        生成的美术效果不对
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        想用自己的美术资源
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        评估问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="评估问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        游戏在评估期间崩溃了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        评分太低，无法通过验收
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        发布和版本问题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="发布和版本问题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#major-upgrade-requires-force" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "MAJOR upgrade requires --force"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        降级被阻止了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        迁移脚本在中途失败了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applied_migrationsjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        applied_migrations.json 损坏了
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="_1">常见问题<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<p>快速查阅：症状、原因、解决办法。如果你遇到的是会话崩溃或中途中断的情况，请看 <a href="../recovery-and-resume/">恢复与继续</a>。</p>
+<hr />
+<h2 id="_2">环境配置问题<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<h3 id="api-key">API key 未设置<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h3>
+<p><strong>症状</strong>（来自 <code>check_env.py</code>）：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>[FAIL] GOOGLE_API_KEY not set but config uses a Gemini model.
+</code></pre></div>
+<p><strong>原因：</strong> <code>.godotmaker/config.yaml</code> 选择了 API 后端模型，但当前终端会话里没有对应环境变量。</p>
+<p><strong>解决办法：</strong> 设置当前选择器需要的 key，或者在运行时支持时把选择器改成 <code>native</code>。</p>
+<table>
+<thead>
+<tr>
+<th>Selector</th>
+<th>Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gemini:&lt;model&gt;</code></td>
+<td><code>GOOGLE_API_KEY</code> 或 <code>GEMINI_API_KEY</code></td>
+</tr>
+<tr>
+<td><code>openai:&lt;model&gt;</code></td>
+<td><code>OPENAI_API_KEY</code></td>
+</tr>
+<tr>
+<td><code>grok:&lt;model&gt;</code></td>
+<td><code>XAI_API_KEY</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># macOS / Linux</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span>your-key-here
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span>your-key-here
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">XAI_API_KEY</span><span class="o">=</span>your-key-here
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># Windows (PowerShell)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nv">$env</span>:GOOGLE_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="nv">$env</span>:OPENAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nv">$env</span>:XAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
+</code></pre></div>
+<p>如果想永久生效，把变量写入 shell 配置文件（<code>~/.bashrc</code>、<code>~/.zshrc</code>），或者写入 Windows 用户环境变量。</p>
+<hr />
+<h3 id="godot">Godot 找不到，或版本太旧<a class="headerlink" href="#godot" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[WARN] Godot not found on PATH. Provide the full path when running publish,
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>       or add it to PATH.
+</code></pre></div>
+<p>或者：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>[FAIL] Godot 4.3.x too old (&gt;= 4.4 required)
+</code></pre></div>
+<p><strong>原因：</strong> Godot 4.4 或更高版本没有安装，或者安装目录不在系统 PATH 里。</p>
+<p><strong>解决办法：</strong></p>
+<ol>
+<li>从 https://godotengine.org/download 下载 Godot 4.4+</li>
+<li>要么把它的目录加进 PATH，要么打开你游戏项目里的 <code>.claude/godotmaker.yaml</code>，把 <code>godot_path</code> 字段设为 Godot 可执行文件的完整路径。</li>
+</ol>
+<p>验证是否正常：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>tools/check_env.py
+</code></pre></div>
+<hr />
+<h3 id="claude-code">Claude Code 找不到<a class="headerlink" href="#claude-code" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>[FAIL] Claude Code not found. Install: npm install -g @anthropic-ai/claude-code
+</code></pre></div>
+<p><strong>原因：</strong> <code>claude</code> 命令不在 PATH 里。Claude Code 是一个 Node.js 包。</p>
+<p><strong>解决办法：</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>@anthropic-ai/claude-code
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>claude<span class="w"> </span>--version<span class="w">   </span><span class="c1"># should print a version number</span>
+</code></pre></div>
+<p>如果连 <code>npm</code> 都没有，先去 https://nodejs.org 安装 Node.js 18+。</p>
+<hr />
+<h3 id="worker-git">Worker 提交代码失败——Git 身份未配置<a class="headerlink" href="#worker-git" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> Worker 子 Agent 报错，提示 <code>Author identity unknown</code> 或 <code>git commit</code> 拒绝执行。</p>
+<p><strong>原因：</strong> Git 创建提交记录时必须知道 <code>user.name</code> 和 <code>user.email</code>。Worker 子 Agent 会代替你提交代码。</p>
+<p><strong>解决办法：</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;Your Name&quot;</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;you@example.com&quot;</span>
+</code></pre></div>
+<p>配完之后跑一下 <code>python tools/check_env.py</code>，两项都应该显示 <code>[PASS]</code>。</p>
+<hr />
+<h2 id="_3">流水线阶段校验问题<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>这些报错会在你跳步执行 <code>/gm-*</code> 命令时出现。每个角色在启动前都会检查前置角色是否已经完成。</p>
+<hr />
+<h3 id="role-gdd-has-not-completed-yet-run-gm-gdd-first">"Role 'gdd' has not completed yet — run /gm-gdd first"<a class="headerlink" href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> 你运行了 <code>/gm-build</code>，结果被 hook 拦下来，提示 <code>gdd</code> 角色未完成。</p>
+<p><strong>原因：</strong> <code>/gm-build</code> 需要一份完整的游戏设计文档才知道要构建什么。它会检查 <code>.godotmaker/stage.jsonl</code> 里有没有 <code>gdd</code> 的完成记录，以及 <code>GDD.md</code>、<code>PLAN.md</code> 等输出文件是否存在。</p>
+<p><strong>解决办法：</strong> 先运行 <code>/gm-gdd</code> 并等它跑完，再运行 <code>/gm-build</code>。</p>
+<hr />
+<h3 id="role-evaluate-has-not-completed-yet-run-gm-evaluate-first">"Role 'evaluate' has not completed yet — run /gm-evaluate first"<a class="headerlink" href="#role-evaluate-has-not-completed-yet-run-gm-evaluate-first" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> 你运行了 <code>/gm-fixgap</code>，被 hook 拦下来。</p>
+<p><strong>原因：</strong> <code>/gm-fixgap</code> 需要评估结果才知道要修什么。它会检查 <code>evaluate</code> 的完成记录以及 <code>.godotmaker/evaluation.json</code> 是否存在。</p>
+<p><strong>解决办法：</strong> 先运行 <code>/gm-evaluate</code> 等它跑完，然后再运行 <code>/gm-fixgap</code>。</p>
+<hr />
+<h3 id="build-already-completed-for-the-current-tag">"Build already completed for the current tag..."<a class="headerlink" href="#build-already-completed-for-the-current-tag" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Build already completed for the current tag at &lt;timestamp&gt;. Recommended next: /gm-verify.
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>If you need to redo this step or have other plans, just tell me.
+</code></pre></div>
+<p><strong>原因：</strong> <code>PLAN.md</code> 里的所有任务都已经是 <code>verified</code> 状态，没有剩余工作了。</p>
+<p><strong>解决办法：</strong> 如果你确实想继续，告诉 Claude Code "continue to /gm-verify" 或者直接运行 <code>/gm-verify</code>。如果你觉得还有东西没做完，打开 <code>PLAN.md</code> 看看——有些应该是 <code>pending</code> 的任务可能被提前标记成 <code>verified</code> 了。</p>
+<hr />
+<h3 id="evaluate-already-ran-recommended-next-gm-accept-or-gm-fixgap">"Evaluate already ran... Recommended next: /gm-accept or /gm-fixgap"<a class="headerlink" href="#evaluate-already-ran-recommended-next-gm-accept-or-gm-fixgap" title="Permanent link">&para;</a></h3>
+<p><strong>原因：</strong> <code>.godotmaker/evaluation.json</code> 已经存在，而且上次 <code>/gm-verify</code> 之后游戏代码没有变化。评估器不会重复跑。</p>
+<p><strong>解决办法：</strong> 决定下一步方向：运行 <code>/gm-accept</code> 查看结果并确认，或者运行 <code>/gm-fixgap</code> 修复问题。如果你确实需要重新评估（比如手动改了代码），告诉 Claude Code "redo the evaluation"，它就会重新跑。</p>
+<hr />
+<h3 id="cannot-finish-build-role-diligence-issues-dispatched-n-workers-but-0-verifiers">"Cannot finish 'build' role — diligence issues: Dispatched N workers but 0 verifiers"<a class="headerlink" href="#cannot-finish-build-role-diligence-issues-dispatched-n-workers-but-0-verifiers" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> 会话被阻止结束，提示缺少 verifier 或 reviewer。</p>
+<p><strong>原因：</strong> <code>/gm-build</code> 派发了 Worker 子 Agent，但会话在跑完 verifier 和 reviewer 之前就想结束了。<code>check_completion.py</code> hook 会强制执行这个检查——只有 Worker 完成还不算做完。</p>
+<p><strong>解决办法：</strong> 告诉 Claude Code 继续："run the verifier and reviewer now"。它会派发它们，等它们完成后阻拦就会解除。不要手动关掉会话，等验证这轮跑完。</p>
+<hr />
+<h2 id="_4">构建问题<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h3 id="class_name">无头构建因 class_name 冲突失败<a class="headerlink" href="#class_name" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> Godot 无头构建时报错，提示 <code>Duplicate class name</code> 或 <code>Class name already exists</code>。</p>
+<p><strong>原因：</strong> 两个 <code>.gd</code> 文件声明了相同的 <code>class_name</code>。Godot 要求 class name 在整个项目里唯一。</p>
+<p><strong>解决办法：</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>tools/check_classname.py<span class="w"> </span>&lt;path-to-game&gt;
+</code></pre></div>
+<p>这个命令会列出项目里所有 <code>class_name</code> 并标出重复的。把冲突的类改个名字（<code>.gd</code> 文件里和所有引用它的地方都要改）。</p>
+<hr />
+<h3 id="worker">Worker 看起来成功了，但测试结果一直没出来<a class="headerlink" href="#worker" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> 构建完成了，但没有任何测试报告，或者 hook 把某个 Worker 报告标记为"内容过于简单"。</p>
+<p><strong>原因：</strong> <code>check_worker_report.py</code> 会验证 Worker 和 verifier 的报告里是否包含真实的测试输出，不能只写"测试通过"这种没有证据的话。这种报告会被拦截。</p>
+<p><strong>解决办法：</strong> 大多数情况下 hook 会自动触发重试。如果一直循环，告诉 Claude Code "the worker report is incomplete; retry the verifier"。也可以看一下最近的指标日志：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cat<span class="w"> </span>.godotmaker/metrics_*.jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>HOOK_BLOCK
+</code></pre></div>
+<hr />
+<h3 id="reviewer">Reviewer 因为会话结束被跳过了<a class="headerlink" href="#reviewer" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> <code>check_completion.py</code> 在下次会话启动时报阻，或者你发现指标里从没有派发过 reviewer。</p>
+<p><strong>原因：</strong> Reviewer 那轮还没跑，会话就关闭了。Hook 会在会话恢复时提醒技能补上这一步。</p>
+<p><strong>解决办法：</strong> 开一个新的 Claude Code 会话，重新运行 <code>/gm-build</code>。Resume Check 会发现任务处于 <code>completed</code>（而不是 <code>verified</code>）状态，然后自动派发 reviewer 轮来收尾。</p>
+<hr />
+<h3 id="worker_1">Worker 在任务中途挂了<a class="headerlink" href="#worker_1" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> 某个 Worker 子 Agent 超时或报错。它的任务在 <code>PLAN.md</code> 里一直卡在 <code>in_progress</code>。</p>
+<p><strong>原因：</strong> 子 Agent 可能因为代码生成耗时太长、网络问题或上下文长度限制而失败。</p>
+<p><strong>解决办法：</strong> 打开 <code>PLAN.md</code>，把那个卡住的任务状态从 <code>in_progress</code> 手动改回 <code>pending</code>，然后重新运行 <code>/gm-build</code>——它会识别 pending 的任务并重新派发。</p>
+<hr />
+<h2 id="_5">美术资源问题<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<h3 id="_6">图片生成失败<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> <code>/gm-asset</code> 报错，比如 <code>API quota exceeded</code>、<code>invalid API key</code>，或者图片生成时网络超时。</p>
+<p><strong>原因和对应处理：</strong></p>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>原因</th>
+<th>解决办法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>invalid API key</code></td>
+<td><code>GOOGLE_API_KEY</code> 填错了或已过期</td>
+<td>去 https://aistudio.google.com/apikey 重新获取</td>
+</tr>
+<tr>
+<td><code>quota exceeded</code></td>
+<td>触发了速率限制</td>
+<td>等几分钟再重新运行 <code>/gm-asset</code></td>
+</tr>
+<tr>
+<td>网络超时</td>
+<td>网络连接有问题</td>
+<td>检查网络，然后重新运行 <code>/gm-asset</code></td>
+</tr>
+</tbody>
+</table>
+<p>也可以直接运行生成器单独测试：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>tools/asset_gen.py
+</code></pre></div>
+<hr />
+<h3 id="_7">生成的美术效果不对<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
+<p><strong>原因：</strong> AI 图片生成本身就有随机性，每次跑出来的结果可能不一样。</p>
+<p><strong>解决办法：</strong> 重新运行 <code>/gm-asset</code>。每次只会重新生成缺失的或你明确标记要重新生成的资源。或者，你也可以把自己的图片直接放进 <code>assets/</code> 文件夹（文件名要和 <code>ASSETS.md</code> 里列出的一致），然后再运行 <code>/gm-asset</code>——分析子 Agent 会检测到你的文件，并跳过这些条目的生成。</p>
+<hr />
+<h3 id="_8">想用自己的美术资源<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h3>
+<p><strong>解决办法：</strong> 把你的图片文件放进 <code>assets/</code> 文件夹，文件名要和 <code>ASSETS.md</code> 里列出的一致。然后运行 <code>/gm-asset</code>——分析子 Agent 会检查每个文件的尺寸和格式，并在 <code>ASSETS.md</code> 里把这些条目标记为"已提供"。不需要删除任何文件，已经存在的资源不会被覆盖。</p>
+<hr />
+<h2 id="_9">评估问题<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
+<h3 id="_10">游戏在评估期间崩溃了<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
+<p><strong>原因：</strong> 代码有 bug 导致 Godot 崩溃。<code>/gm-evaluate</code> 会把崩溃前观察到的内容（包括截图和部分测试结果）记录到 <code>.godotmaker/evaluation.json</code>。</p>
+<p><strong>解决办法：</strong> 评估器会自动给出低分，并写明失败原因。运行 <code>/gm-fixgap</code>——它会读取 <code>evaluation.json</code> 并派发 Worker 处理崩溃问题。如果多轮修复后还是崩溃，打开 <code>evaluation.json</code> 看 <code>issues</code> 数组里的具体报错信息来手动诊断。</p>
+<hr />
+<h3 id="_11">评分太低，无法通过验收<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> <code>/gm-evaluate</code> 跑完了，但分数低于验收门槛，<code>/gm-accept</code> 显示"拒绝"建议。</p>
+<p><strong>解决办法：</strong> 运行 <code>/gm-fixgap</code> 修复评估里列出的问题。fixgap 完成后，再依次运行 <code>/gm-verify</code> 和 <code>/gm-evaluate</code>。这个循环可以重复多次。分数达到要求后，运行 <code>/gm-accept</code> 确认通过。</p>
+<hr />
+<h2 id="_12">发布和版本问题<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
+<h3 id="major-upgrade-requires-force">"MAJOR upgrade requires --force"<a class="headerlink" href="#major-upgrade-requires-force" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> 运行 <code>python tools/publish.py &lt;target&gt;</code> 时停住了，提示需要处理 MAJOR 版本升级。</p>
+<p><strong>原因：</strong> GodotMaker 仓库版本和游戏项目里已安装版本的主版本号不一致。主版本升级可能包含破坏性变更。</p>
+<p><strong>解决办法：</strong> 先读 <code>CHANGELOG.md</code> 了解有什么变化，确认没问题后加上 force 参数运行：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>&lt;target&gt;
+</code></pre></div>
+<p>注意对 Claude Code 目标，<code>--force</code> 会覆盖游戏项目里的 <code>.claude/settings.json</code>。如果你对它做过自定义修改，先备份一下。</p>
+<hr />
+<h3 id="_13">降级被阻止了<a class="headerlink" href="#_13" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> <code>publish.py</code> 拒绝把旧版本的 GodotMaker 安装到已有新版本的项目上。</p>
+<p><strong>原因：</strong> 用旧版本覆盖新版本会让 hook 脚本和 skill 倒退，这可能破坏项目的 <code>.godotmaker/stage.jsonl</code> 时间线里已经写入的假设。</p>
+<p><strong>解决办法：</strong> 这是有意为之的设计。如果确实需要回退，请从游戏项目的 git 快照里恢复。<code>publish.py</code> 不支持降级操作。</p>
+<hr />
+<h3 id="_14">迁移脚本在中途失败了<a class="headerlink" href="#_14" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> 某个迁移脚本打印了报错并在任何非 MAJOR 的 publish（PATCH / MINOR / SAME 版本重新发布）执行 pending 迁移时中途停下来了。</p>
+<p><strong>解决办法：</strong> 看报错信息，修复根本原因（通常是文件缺失或路径不对），然后重新跑：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>tools/migrate.py<span class="w"> </span>&lt;target&gt;
+</code></pre></div>
+<p>迁移脚本设计上支持重复执行——已完成的步骤会被记录在 <code>.godotmaker/applied_migrations.json</code> 里，下次重跑会自动跳过。如果不确定哪一步失败了，运行 <code>python tools/check_project.py &lt;target&gt;</code> 查看必要文件的当前状态。</p>
+<hr />
+<h3 id="applied_migrationsjson"><code>applied_migrations.json</code> 损坏了<a class="headerlink" href="#applied_migrationsjson" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> publish 或 <code>migrate.py</code> 抛出 <code>TrackerCorruptionError: ... cannot parse JSON</code> 或 <code>... missing required field</code> 或 <code>... source must be one of ...</code>。</p>
+<p><strong>解决办法：</strong> applied-tracker 文件（<code>&lt;target&gt;/.godotmaker/applied_migrations.json</code>）无法解析或 schema 不对。三种恢复方式：</p>
+<ol>
+<li><strong>从版本控制恢复</strong>（如果用户主动追踪了它）：<code>git checkout &lt;target&gt;/.godotmaker/applied_migrations.json</code>。注意 GodotMaker 默认的 <code>.gitignore</code> 排除了这个文件，只有用户主动覆盖才会进 VCS。</li>
+<li><strong>从当前状态重新开始追踪</strong>：<code>python tools/migrate.py &lt;target&gt; --baseline</code>。把当前所有 <code>migrations/&lt;YYYYMMDDhhmmss&gt;_&lt;slug&gt;.py</code> 标记为已应用、不实际执行——适合"实际项目状态已经是最新格式"的情况。</li>
+<li><strong>删除该文件</strong>：<code>rm &lt;target&gt;/.godotmaker/applied_migrations.json</code>。下次 publish 会把它当作 legacy target —— <code>migrate.py</code> 自动创建一个空 tracker，然后通过正常路径执行所有 pending 迁移。如果你在 legacy 版本上手动跑过其中某些迁移，它们会再跑一次；如果担心这种情况，请选方案 2（<code>--baseline</code>）。</li>
+</ol>
+<p>系统在此处显式报错（而不是静默把 tracker 视为空），是因为静默回退会导致下次 publish 重跑全部历史迁移——可能破坏项目状态。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

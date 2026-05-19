@@ -1,0 +1,3058 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="ECS-native text-to-game framework for Godot">
+      
+      
+        <meta name="author" content="RandallLiuXin">
+      
+      
+        <link rel="canonical" href="https://RandallLiuXin.github.io/GodotMaker/zh/wiki/07-contributing/codebase-guide/">
+      
+      
+        <link rel="prev" href="../development-setup/">
+      
+      
+        <link rel="next" href="../writing-a-skill/">
+      
+      
+        
+          <link rel="alternate" href="../../../../wiki/07-contributing/codebase-guide/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>代码导览 - GodotMaker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../../" title="GodotMaker" class="md-header__button md-logo" aria-label="GodotMaker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GodotMaker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              代码导览
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../../../wiki/07-contributing/codebase-guide/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RandallLiuXin/GodotMaker" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RandallLiuXin/GodotMaker
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../" title="GodotMaker" class="md-nav__button md-logo" aria-label="GodotMaker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    GodotMaker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RandallLiuXin/GodotMaker" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RandallLiuXin/GodotMaker
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    首页
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    快速开始
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    安装
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-getting-started/first-game/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一款游戏
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-getting-started/project-layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    项目结构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    核心概念
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-concepts/how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    工作原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-concepts/the-9-roles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 个角色
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-concepts/ecs-in-plain-english/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    大白话讲 ECS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-concepts/why-this-approach/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    为什么这么设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    技能
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    技能
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-skills/skill-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    技能体系
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-skills/core-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心技能
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-skills/reviewer-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    评审技能
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    故障排查
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    故障排查
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-troubleshooting/common-problems/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    常见问题
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-troubleshooting/recovery-and-resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    恢复与续跑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    工具
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    工具
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/publish/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publish 工具
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/check-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    环境检查
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/check-project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    项目检查
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/asset-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    资源工具
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    配置
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    配置
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-configuration/project-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    项目配置
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-configuration/godotmaker-yaml/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    godotmaker.yaml
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-configuration/addon-versions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    插件版本
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    贡献指南
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    贡献指南
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    开发环境
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    代码导览
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    代码导览
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        仓库目录结构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hooks/
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="hooks/">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hooksmetrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hooks/metrics/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        权限契约的三层划分
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agents/
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="agents/">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gdd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        两轮 GDD 审计
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skillscore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skills/core/
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="skills/core/">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skillscore_shared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skills/core/_shared/
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skillsreviewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skills/reviewer/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tools/
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tools/">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#publishpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        publish.py 如何串联一切
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        config/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        templates/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tests/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        docs/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shell/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        migrations/
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-a-skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    编写 Skill
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-a-hook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    编写 Hook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    测试
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    发布流程
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    参考资料
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    参考资料
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-reference/glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    术语表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-reference/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    常见疑问
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-reference/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    更新日志
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    发布说明
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    发布说明
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/next/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    最新
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.3.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.3.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.2.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.2.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.2.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.2.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/v0.2.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../update/release-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    发布清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    项目文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    项目文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    版本管理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    小贴士
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user-notice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    用户须知
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        仓库目录结构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hooks/
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="hooks/">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hooksmetrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hooks/metrics/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        权限契约的三层划分
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agents/
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="agents/">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gdd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        两轮 GDD 审计
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skillscore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skills/core/
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="skills/core/">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skillscore_shared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skills/core/_shared/
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skillsreviewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skills/reviewer/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tools/
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tools/">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#publishpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        publish.py 如何串联一切
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        config/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        templates/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tests/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        docs/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shell/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        migrations/
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="_1">代码库指南<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<p>本页面对 GodotMaker 仓库逐目录进行深度介绍，帮助你在开始修改之前建立全局认知。如需简短概览，请参阅 <a href="../development-setup/">开发环境搭建</a>。想了解各模块在运行时如何协作，请继续阅读本文。</p>
+<h2 id="_2">仓库目录结构<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>GodotMaker/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── hooks/                   8 个 hook 脚本 + hooks/metrics/ 子系统
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── agents/                  5 个子 Agent 定义（worker、verifier、reviewer、analyst、gdd-auditor）
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── skills/
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   ├── core/                角色技能 + 辅助技能 + _shared/
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── tools/                   publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── config/                  settings.json, stage_schemas.json, addon_versions.json
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── tests/                   ~320 个 hook 和工具的单元测试
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── shell/                   publish.sh / publish.ps1, report.sh / report.bat
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── migrations/              跨版本迁移脚本
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── VERSION                  语义版本号的唯一真实来源
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>└── CHANGELOG.md             每次发版的变更说明
+</code></pre></div>
+<hr />
+<h2 id="hooks">hooks/<a class="headerlink" href="#hooks" title="Permanent link">&para;</a></h2>
+<p>八个 Python 脚本，负责强制执行流水线规则。每个脚本从 <code>sys.stdin</code> 读取 JSON payload，决定是否允许或拦截该操作，然后将 JSON 响应写入 stdout（静默放行时直接 exit 0，不输出任何内容）。</p>
+<p>各脚本及其处理的事件：</p>
+<table>
+<thead>
+<tr>
+<th>脚本</th>
+<th>事件</th>
+<th>是否拦截</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>session_start.py</code></td>
+<td>SessionStart</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>check_file_permissions.py</code></td>
+<td>PreToolUse (Write|Edit)</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>stage_reminder.py</code></td>
+<td>PreToolUse (Write|Edit)</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>check_stage_prerequisites.py</code></td>
+<td>PreToolUse (Agent)</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>check_asset_access.py</code></td>
+<td>PreToolUse (Read)</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>log_subagent.py</code></td>
+<td>SubagentStart</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>on_subagent_stop.py</code></td>
+<td>SubagentStop</td>
+<td>委托执行</td>
+</tr>
+<tr>
+<td><code>check_worker_report.py</code></td>
+<td>由 on_subagent_stop.py 调用</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>check_completion.py</code></td>
+<td>Stop</td>
+<td>是</td>
+</tr>
+</tbody>
+</table>
+<p>Hook 注册关系（哪个脚本响应哪个事件）存储在 <code>config/settings.json</code> 中，发布到 Claude Code 目标时会部署为 <code>.claude/settings.json</code>。</p>
+<h3 id="hooksmetrics">hooks/metrics/<a class="headerlink" href="#hooksmetrics" title="Permanent link">&para;</a></h3>
+<p>一个用于记录会话期间发生事件的小型子系统。Hook 通过调用 <code>record_event()</code> 将 JSON 行追加到 <code>.godotmaker/metrics_current.jsonl</code>（当前会话）和 <code>.godotmaker/metrics_total.jsonl</code>（全量生命周期日志）。<code>state.py</code> 模块负责在 <code>.godotmaker/state.json</code> 中管理可变的会话内计数器（拦截次数等）。<code>session_start.py</code> 在每次新会话开始时重置两者。</p>
+<p>关于编写 hook 和使用 metrics API 的详细说明，请参阅 <a href="../writing-a-hook/">编写 Hook</a>。</p>
+<h3 id="_3">权限契约的三层划分<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p>角色权限分布在三处，刻意有重叠，但每一层职责不同 — 改动其中一层时，要检查其他层是否要跟着动：</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>控制什么</th>
+<th>真值来源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config/stage_schemas.json</code></td>
+<td>角色完成了没？下一个角色启动前必须存在的产出文件清单。</td>
+<td>由 <code>stage_reminder.py</code>（完成校验）和 <code>check_stage_prerequisites.py</code>（worker 派发前置检查）读取。</td>
+</tr>
+<tr>
+<td><code>hooks/check_file_permissions.py</code></td>
+<td>当前角色现在能写什么？每次 Write/Edit 工具调用都强制执行的 per-role 写权限白名单。</td>
+<td>运行时权限的最终判定；schema 不定义写权限。</td>
+</tr>
+<tr>
+<td><code>skills/core/gm-*/SKILL.md</code> 的 "Permission" 段落</td>
+<td>给该角色的执行者读的人类版镜像。</td>
+<td>应当与 hook 一致；若漂移，运行时以 hook 为准 — 但读 SKILL 的贡献者会被误导。</td>
+</tr>
+</tbody>
+</table>
+<p>一个常见误解是把 <code>stage_schemas.json</code> 当成完整的写权限契约。它<strong>不是</strong> — 它只列出完成校验所需的产出文件。给某个角色的 schema 加文件<strong>不会</strong>自动获得写权限，还得同时扩展 hook 的白名单。</p>
+<hr />
+<h2 id="agents">agents/<a class="headerlink" href="#agents" title="Permanent link">&para;</a></h2>
+<p>子 Agent 定义文件，每个 Agent 对应一个 Markdown 文件。每个文件都带有 YAML front-matter（<code>name</code>、<code>description</code>、<code>model</code>）和系统 prompt 正文。<code>publish.py</code> 会将它们部署到 <code>&lt;target&gt;/.claude/agents/</code>，Claude Code 通过 <code>subagent_type</code> 识别调用。</p>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>职责</th>
+<th>由谁派发</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>worker.md</code></td>
+<td>端到端实现一个任务（代码 + 单元测试）</td>
+<td><code>/gm-build</code>、<code>/gm-fixgap</code></td>
+</tr>
+<tr>
+<td><code>verifier.md</code></td>
+<td>对 Worker 的产出进行机械校验（构建、测试、文件存在性）</td>
+<td><code>/gm-build</code>、<code>/gm-fixgap</code></td>
+</tr>
+<tr>
+<td><code>reviewer.md</code></td>
+<td>对照 <code>skills/reviewer/&lt;domain&gt;</code> 的 checklist 审查代码并报告问题</td>
+<td><code>/gm-build</code>、<code>/gm-fixgap</code></td>
+</tr>
+<tr>
+<td><code>analyst.md</code></td>
+<td>分析用户提供的资源并输出 manifest</td>
+<td><code>/gm-asset</code></td>
+</tr>
+<tr>
+<td><code>gdd-auditor.md</code></td>
+<td>独立审计 GDD 草稿，对照 9 类 checklist 每轮返回 5–8 个补问</td>
+<td><code>game-planner</code>（Rounds 6 + 7）</td>
+</tr>
+</tbody>
+</table>
+<p>派发协议（调用格式和 brief 模板）位于 <code>skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md</code>。<code>gdd-auditor</code> 直接由 <code>skills/core/game-planner/SKILL.md</code> 内联调用。</p>
+<h3 id="gdd">两轮 GDD 审计<a class="headerlink" href="#gdd" title="Permanent link">&para;</a></h3>
+<p><code>gdd-auditor</code> 是唯一一个派发协议<strong>不</strong>放在 <code>_shared/</code> 里的子 Agent。它只在 <code>game-planner</code> 的 Round 6 + Round 7 调用，派发逻辑离开那段访谈脚本就没意义。把它提到 <code>_shared/</code> 只会增加跳转，不会带来复用。</p>
+<p>两轮，全部在新上下文中跑，使用同一个 <code>subagent_type</code>：</p>
+<table>
+<thead>
+<tr>
+<th>轮次</th>
+<th>Round</th>
+<th>输入</th>
+<th>输出</th>
+<th>这一轮存在的理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Round 6</td>
+<td>GDD v1 + 空的 <code>Previously Asked</code></td>
+<td>5–8 个补问</td>
+<td>捕捉 planner 在访谈中遗漏的缺口</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Round 7</td>
+<td>GDD v2 + Round 6 的<strong>完整原文</strong>问题列表（填入 <code>Previously Asked</code>）</td>
+<td>5–8 个<strong>新</strong>问题</td>
+<td>强迫 auditor 看二级缺口而不是重复自己</td>
+</tr>
+</tbody>
+</table>
+<p>Round 7 brief 中的 <code>Previously Asked</code> 字段是必填项，不是可选项。不填就等于让 auditor 在新上下文里完全没有 pass 1 的记忆，结果会重复同样的问题、白白浪费一轮。<code>game-planner</code> SKILL.md 用 <code>**You MUST populate**</code> 标记这个字段，<code>gdd-auditor.md</code> 也把"在 <code>Previously Asked</code> 中重复问题"列为硬性禁止——两层一起强制同一份契约。</p>
+<p><code>auditor_model</code> 默认值是 <code>sonnet</code>（在 <code>config/config.yaml.default</code> 中配置）；审计任务是 checklist 驱动的，不需要 opus 级推理。</p>
+<hr />
+<h2 id="skillscore">skills/core/<a class="headerlink" href="#skillscore" title="Permanent link">&para;</a></h2>
+<p>角色技能和辅助技能，每个技能对应一个目录。每个目录至少包含一个带有 YAML front-matter 和 prompt 正文的 <code>SKILL.md</code>。</p>
+<p><strong>角色技能（9 个）：</strong> <code>gm-scaffold</code>、<code>gm-gdd</code>、<code>gm-asset</code>、<code>gm-build</code>、<code>gm-verify</code>、<code>gm-evaluate</code>、<code>gm-fixgap</code>、<code>gm-accept</code>、<code>gm-finalize</code>。这些技能与 <code>/gm-*</code> 斜杠命令一一对应。每个角色技能的第一个动作是将角色名写入 <code>.godotmaker/current_role</code>，这正是 <code>check_file_permissions.py</code> 用来执行写入规则的依据。</p>
+<p><strong>辅助技能（11 个）：</strong> <code>game-planner</code>、<code>project-scaffold</code>、<code>godot-api</code>、<code>gecs</code>、<code>input-mapper</code>、<code>headless-build</code>、<code>gdunit-driver</code>、<code>godot-e2e</code>、<code>visual-qa</code>、<code>screenshot</code>、<code>mcp-driver</code>。这些是由角色技能加载的参考文档，用户不会直接调用它们。</p>
+<h3 id="skillscore_shared">skills/core/_shared/<a class="headerlink" href="#skillscore_shared" title="Permanent link">&para;</a></h3>
+<p>任何被超过一个技能使用的参考文档，都以此处为唯一真实来源保存。例如：<code>worker-dispatch.md</code>、<code>verifier-dispatch.md</code>、<code>reviewer-dispatch.md</code>、<code>analyst-dispatch.md</code>。</p>
+<p>发布时，<code>publish_shared_refs()</code> 读取 <code>_shared/manifest.json</code>，将每个源文件写入所有列出的消费技能的 <code>references/</code> 文件夹。被部署的副本带有 <code>&lt;!-- AUTO-GENERATED --&gt;</code> 头部，每次发布都会被覆盖。</p>
+<p><strong>编辑规则：</strong>
+- 只编辑 <code>_shared/&lt;file&gt;.md</code> 下的源文件，永远不要编辑已部署的副本。
+- 在消费技能的 <code>SKILL.md</code> 中，通过 <code>references/&lt;file&gt;.md</code> 引用该文档（这是部署后的路径，<code>_shared/</code> 在已发布项目中并不存在）。
+- 新增或修改共享文档后，运行 <code>python -m pytest tests/tools/test_publish_shared.py -q</code> 确认 manifest 与所有消费者引用保持一致。</p>
+<p>manifest 的 schema、添加/移除流程和调试技巧见 <code>docs/contributing/shared-refs.md</code>。</p>
+<hr />
+<h2 id="skillsreviewer">skills/reviewer/<a class="headerlink" href="#skillsreviewer" title="Permanent link">&para;</a></h2>
+<p>八个审查技能，每个领域一个：<code>physics</code>、<code>animation</code>、<code>ui</code>、<code>tilemap</code>、<code>navigation</code>、<code>shader</code>、<code>audio</code>、<code>particles</code>。</p>
+<p>每个审查技能目录包含恰好三个文件：
+- <code>SKILL.md</code> — 审查员 prompt
+- <code>gotchas.md</code> — 领域特定陷阱目录（LLM 容易犯错的地方）
+- <code>checklist.md</code> — 与 gotcha ID 对应的系统性检查项</p>
+<p>审查子 Agent（由 <code>gm-build</code> 和 <code>gm-fixgap</code> 分发）根据 worker 输出中出现的 Godot 类和 API 动态读取这些文件，并不存在静态分发列表——审查员自行挑选相关的领域文件。关于审查技能结构的详细说明，见 <a href="../writing-a-skill/">编写技能</a>。</p>
+<hr />
+<h2 id="tools">tools/<a class="headerlink" href="#tools" title="Permanent link">&para;</a></h2>
+<p>贡献者和用户直接运行的 Python CLI 脚本。</p>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>publish.py</code></td>
+<td>将 GodotMaker 部署到目标 Godot 项目</td>
+</tr>
+<tr>
+<td><code>check_env.py</code></td>
+<td>验证 Godot、Python 和 API key 是否正确配置</td>
+</tr>
+<tr>
+<td><code>check_project.py</code></td>
+<td>检验已生成项目中的缺失文件和损坏路径</td>
+</tr>
+<tr>
+<td><code>asset_gen.py</code></td>
+<td>通过 Gemini / OpenAI / xAI 生成 API 后端美术资源（由 <code>/gm-asset</code> 调用，也可独立运行）</td>
+</tr>
+<tr>
+<td><code>migrate.py</code></td>
+<td>在任何非 MAJOR 升级时把未应用的迁移脚本应用到目标项目；也通过 <code>--new &lt;slug&gt;</code> 生成新脚本模板</td>
+</tr>
+</tbody>
+</table>
+<h3 id="publishpy">publish.py 如何串联一切<a class="headerlink" href="#publishpy" title="Permanent link">&para;</a></h3>
+<p>运行 <code>python tools/publish.py &lt;target&gt;</code> 时：</p>
+<ol>
+<li>从仓库根目录读取 <code>VERSION</code>，与 <code>&lt;target&gt;/.godotmaker/version</code> 比较。MINOR / MAJOR 升级时弹出提示或直接拦截。</li>
+<li>扁平复制技能：<code>skills/core/</code> 和 <code>skills/reviewer/</code> 下的所有目录会写入所选 agent 的技能目录（Claude Code 为 <code>&lt;target&gt;/.claude/skills/</code>，Codex 为 <code>&lt;target&gt;/.agents/skills/</code>）。名称以 <code>_</code> 开头的目录（即 <code>_shared/</code>）会被 <code>publish_skills()</code> 跳过；共享文档改由 <code>publish_shared_refs()</code> 部署到消费技能的 <code>references/</code> 文件夹中。</li>
+<li>复制 hooks → <code>&lt;target&gt;/.godotmaker/hooks/</code>。</li>
+<li>复制 tools → <code>&lt;target&gt;/tools/</code>。</li>
+<li>复制 templates 到所选 agent 的模板目录。</li>
+<li>复制 <code>config/stage_schemas.json</code> → <code>&lt;target&gt;/.godotmaker/stage_schemas.json</code>。</li>
+<li>首次安装（或使用 <code>--force</code>）时：写入对应 agent 的项目指令文件（<code>CLAUDE.md</code> 或 <code>AGENTS.md</code>），提示配置 <code>godotmaker.yaml</code>；Claude Code 目标还会写入 <code>.claude/settings.json</code>。</li>
+<li>将当前版本号写入 <code>&lt;target&gt;/.godotmaker/version</code>。</li>
+</ol>
+<hr />
+<h2 id="config">config/<a class="headerlink" href="#config" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>控制内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>settings.json</code></td>
+<td>Hook 注册：哪些脚本响应哪些 Claude Code 事件</td>
+</tr>
+<tr>
+<td><code>stage_schemas.json</code></td>
+<td>每个角色的必要输出和程序化检查（key 为角色名）</td>
+</tr>
+<tr>
+<td><code>addon_versions.json</code></td>
+<td>按引擎版本锁定的 Godot 插件版本</td>
+</tr>
+</tbody>
+</table>
+<p><code>stage_schemas.json</code> 是 <code>stage_reminder.py</code> 和 <code>check_stage_prerequisites.py</code> 都会读取的 schema。其 key 为角色名（<code>scaffold</code>、<code>gdd</code>、<code>build</code> 等），每个值包含可选的 <code>files</code> 数组（必须存在于磁盘上的路径）和可选的 <code>checks</code> 数组（程序化验证器名称）。完整 schema 说明见 <a href="../writing-a-skill/">编写技能</a>。</p>
+<hr />
+<h2 id="templates">templates/<a class="headerlink" href="#templates" title="Permanent link">&para;</a></h2>
+<p>Markdown 文档模板，由 <code>publish.py</code> 部署到新游戏项目的所选 agent 模板目录下。角色技能在工作过程中填充这些模板。模板包括：<code>GDD.md</code>、<code>PLAN.md</code>、<code>STRUCTURE.md</code>、<code>SCENES.md</code>、<code>ASSETS.md</code>、<code>GAP.md</code>、<code>MEMORY.md</code>、<code>TOC.md</code>、<code>game-claude.md</code>。</p>
+<hr />
+<h2 id="tests">tests/<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
+<p>测试套件，按覆盖对象组织。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>tests/
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── hooks/
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│   ├── helpers.py                       共享工具函数：run_hook, is_blocked, write_completed_roles, ...
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│   ├── test_check_completion.py
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│   ├── test_check_file_permissions.py
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│   ├── test_check_stage_prerequisites.py
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│   ├── test_check_worker_report.py
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>│   ├── test_metrics.py
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>│   ├── test_session_start.py
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>│   └── test_stage_reminder.py
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>├── tools/
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>│   ├── conftest.py
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>│   ├── test_addon_versions.py
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>│   ├── test_check_classname.py
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>│   ├── test_check_env.py
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>│   ├── test_check_project.py
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>│   ├── test_migrate.py
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>│   ├── test_publish.py
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>│   └── test_publish_shared.py
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>└── test_pipeline_e2e.py                 端到端流水线冒烟测试
+</code></pre></div>
+<p><code>pyproject.toml</code> 将 <code>hooks/</code> 加入 <code>pythonpath</code>，使 hook 测试中的 <code>from metrics import ...</code> 无需安装任何包即可解析。关于编写新测试，请参阅 <a href="../testing/">测试</a>。</p>
+<hr />
+<h2 id="docs">docs/<a class="headerlink" href="#docs" title="Permanent link">&para;</a></h2>
+<p>与代码共存于仓库的人类可读文档。</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docs/hooks.md</code></td>
+<td>每个 hook 的精确参考（重写后版本）</td>
+</tr>
+<tr>
+<td><code>docs/versioning.md</code></td>
+<td>版本方案与升级行为</td>
+</tr>
+<tr>
+<td><code>docs/wiki/</code></td>
+<td>面向用户和贡献者的 Wiki</td>
+</tr>
+<tr>
+<td><code>docs/contributing/</code></td>
+<td>共享引用 schema、发版清单</td>
+</tr>
+<tr>
+<td><code>docs/update/</code></td>
+<td><code>next.md</code>（待发布变更）及归档的 <code>vX.Y.Z.md</code> 文件</td>
+</tr>
+<tr>
+<td><code>docs/reference/</code></td>
+<td>API 和配置参考存根</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="shell">shell/<a class="headerlink" href="#shell" title="Permanent link">&para;</a></h2>
+<p>贡献者从终端运行的两个操作的薄包装脚本：</p>
+<ul>
+<li><code>publish.sh</code> / <code>publish.ps1</code> — 委托调用 <code>python tools/publish.py</code></li>
+<li><code>report.sh</code> / <code>report.bat</code> — 运行 <code>python -m hooks.metrics.reporter</code>，从 JSONL metrics 文件生成 HTML 报告</li>
+</ul>
+<hr />
+<h2 id="migrations">migrations/<a class="headerlink" href="#migrations" title="Permanent link">&para;</a></h2>
+<p><code>tools/migrate.py</code> 在任何非 MAJOR 升级时运行的迁移脚本。脚本直接放在 <code>migrations/</code> 下，按 UTC 时间戳命名（<code>&lt;YYYYMMDDhhmmss&gt;_&lt;slug&gt;.py</code>），按时间序执行。每个目标项目在 <code>.godotmaker/applied_migrations.json</code> 里独立追踪已应用的 ID；整套机制与产品 MAJOR.MINOR.PATCH 完全解耦。MAJOR 升级完全跳过迁移、改用 <code>--force</code> 干净重装，重装后 <code>baseline_applied()</code> 会把所有当前迁移重新标记为已应用。完整升级流程见 <a href="../release-process/">发版流程</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
