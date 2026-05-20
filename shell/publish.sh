@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publish GodotMaker skills into a target Godot project directory.
-# Usage: bash shell/publish.sh [--force] [--agent claude-code|codex] <target_godot_project_dir>
+# Usage: bash shell/publish.sh [--force] [--no-config-review] [--agent claude-code|codex] <target_godot_project_dir>
 #
 # On upgrade, compares VERSION against the target's .godotmaker/version:
 #   PATCH  -> auto-proceed

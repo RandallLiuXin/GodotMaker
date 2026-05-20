@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(
 
 import publish
 import agent_runtime
+from project_config import DEFAULT_CONFIG_TEMPLATE, ProjectConfigResult
 from publish import (
     read_godot_path,
     create_godotmaker_yaml,
@@ -31,7 +32,6 @@ from publish import (
     register_godot_permissions,
     rmtree_force,
     _verify_godot_path,
-    DEFAULT_CONFIG_TEMPLATE,
 )
 
 
@@ -113,7 +113,13 @@ def _publish_codex_project(tmp_path, monkeypatch):
     monkeypatch.setattr(publish, "run_migrations",
                         lambda *_args, **_kwargs: True)
     monkeypatch.setattr(sys, "argv",
-                        ["publish.py", "--agent", "codex", "--force", str(target)])
+                        [
+                            "publish.py",
+                            "--agent", "codex",
+                            "--force",
+                            "--no-config-review",
+                            str(target),
+                        ])
 
     publish.main()
     return target, codex_mcp_calls
@@ -422,8 +428,9 @@ class TestRegisterCodexMcp:
 
 class TestCreateProjectConfig:
     def test_creates_config_with_defaults(self, tmp_path):
-        create_project_config(tmp_path)
+        result = create_project_config(tmp_path)
         config = tmp_path / ".godotmaker" / "config.yaml"
+        assert result == ProjectConfigResult(path=config, created=True)
         assert config.exists()
         content = config.read_text()
         assert "agent: claude-code" in content
@@ -437,10 +444,15 @@ class TestCreateProjectConfig:
         config_dir.mkdir()
         config = config_dir / "config.yaml"
         config.write_text("vqa_model: custom-model\n")
-        create_project_config(tmp_path, publish.AGENT_CODEX)
+        result = create_project_config(tmp_path, publish.AGENT_CODEX)
         content = config.read_text()
+        assert result == ProjectConfigResult(path=config, created=False)
         assert "vqa_model: custom-model" in content
         assert "agent: codex" in content
+
+    def test_create_project_config_does_not_stamp_version(self, tmp_path):
+        create_project_config(tmp_path)
+        assert not (tmp_path / ".godotmaker" / "version").exists()
 
     def test_published_agent_selects_runtime_config(self, tmp_path):
         create_project_config(tmp_path, publish.AGENT_CODEX)
@@ -467,6 +479,38 @@ class TestCreateProjectConfig:
         lines = [line for line in content.splitlines() if line and not line.startswith("#")]
         for line in lines:
             assert ":" in line, f"Non-comment line missing ':' — {line}"
+
+
+    def test_review_created_project_config_waits_for_enter(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        config = tmp_path / ".godotmaker" / "config.yaml"
+        result = ProjectConfigResult(path=config, created=True)
+        calls = []
+        monkeypatch.setattr("builtins.input", lambda: calls.append("input") or "")
+
+        publish.review_created_project_config(result)
+
+        assert calls == ["input"]
+        out = capsys.readouterr().out
+        assert "Project config created:" in out
+        assert str(config.resolve()) in out
+
+    def test_review_created_project_config_aborts_on_eof(
+        self, tmp_path, monkeypatch
+    ):
+        result = ProjectConfigResult(
+            path=tmp_path / ".godotmaker" / "config.yaml",
+            created=True,
+        )
+
+        def _raise_eof():
+            raise EOFError()
+
+        monkeypatch.setattr("builtins.input", _raise_eof)
+        with pytest.raises(SystemExit) as exc:
+            publish.review_created_project_config(result)
+        assert exc.value.code == 1
 
 
 SELECTIVE_ENTRIES = [

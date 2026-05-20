@@ -18,6 +18,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Added
 
 - (WIP) Diagnostic log at `.godotmaker/log_agent_tool_debug.log` that records every phase of `log_agent_tool.py` so the next failure mode is localizable from artifacts.
+- First publish now creates `.godotmaker/config.yaml` before the pipeline starts and pauses so users can edit model settings; automation can pass `--no-config-review` to skip the pause.
 
 ## Changed
 

@@ -26,6 +26,11 @@ from pathlib import Path
 from typing import NamedTuple
 
 from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX
+from project_config import (
+    ProjectConfigResult,
+    create_project_config as create_project_config_file,
+    set_simple_yaml_value,
+)
 
 from _version import SemVer, parse_version
 from migrate import (
@@ -55,9 +60,6 @@ AGENT_RUNTIME_REFERENCES = {
 AGENT_ROOT_BOOTSTRAP_TEMPLATES = {
     AGENT_CODEX: Path("templates") / "agents-bootstrap.md",
 }
-
-DEFAULT_CONFIG_TEMPLATE = Path(__file__).resolve().parent.parent / "config" / "config.yaml.default"
-
 
 @dataclass(frozen=True)
 class AgentPublishAdapter:
@@ -682,41 +684,28 @@ def create_godotmaker_yaml(config_file: Path) -> bool:
 
 
 def _set_simple_yaml_value(path: Path, key: str, value: str) -> None:
-    """Set a top-level scalar key in a simple YAML file."""
-    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    updated = False
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith("#") or ":" not in stripped:
-            continue
-        current_key = stripped.split(":", 1)[0].strip()
-        if current_key == key:
-            lines[i] = f"{key}: {value}"
-            updated = True
-            break
-    if not updated:
-        if lines and lines[-1].strip():
-            lines.append("")
-        lines.append(f"{key}: {value}")
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    """Backward-compatible wrapper for tests and older imports."""
+    set_simple_yaml_value(path, key, value)
 
 
 def create_project_config(target: Path, agent: str = AGENT_CLAUDE_CODE):
     """Create or update .godotmaker/config.yaml with project settings."""
-    config_dir = target / ".godotmaker"
-    config_file = config_dir / "config.yaml"
-    if config_file.exists():
-        _set_simple_yaml_value(config_file, "agent", agent)
-        print(".godotmaker/config.yaml already exists, updated agent")
-        return
+    return create_project_config_file(target, agent)
 
-    config_dir.mkdir(parents=True, exist_ok=True)
-    if DEFAULT_CONFIG_TEMPLATE.exists():
-        shutil.copy2(DEFAULT_CONFIG_TEMPLATE, config_file)
-    else:
-        config_file.write_text("# GodotMaker config — template not found\n", encoding="utf-8")
-    _set_simple_yaml_value(config_file, "agent", agent)
-    print("Created .godotmaker/config.yaml")
+
+def review_created_project_config(result: ProjectConfigResult) -> None:
+    """Give the operator a chance to edit a newly-created project config."""
+    print()
+    print("Project config created:")
+    print(f"  {result.path.resolve()}")
+    print()
+    print("Edit this file now if you want to change model settings.")
+    print("When finished, return here and press Enter to continue.")
+    try:
+        input()
+    except (EOFError, KeyboardInterrupt):
+        print("\nAborted before publish continued.")
+        sys.exit(1)
 
 
 def deploy_stage_schemas(repo_root: Path, target: Path):
@@ -1105,6 +1094,8 @@ def main():
     parser.add_argument("--force", action="store_true",
                         help="Clean existing agent skills before publishing; "
                              "skip upgrade confirmation prompts")
+    parser.add_argument("--no-config-review", action="store_true",
+                        help="Do not pause after creating .godotmaker/config.yaml")
     args = parser.parse_args()
 
     # Resolve paths
@@ -1183,7 +1174,13 @@ def main():
 
     # Interactive config generation
     config_ready = create_godotmaker_yaml(config_file)
-    create_project_config(target, agent)
+    project_config = create_project_config(target, agent)
+    if (
+        isinstance(project_config, ProjectConfigResult)
+        and project_config.created
+        and not args.no_config_review
+    ):
+        review_created_project_config(project_config)
     deploy_stage_schemas(repo_root, target)
     create_project_dirs(target)
 
