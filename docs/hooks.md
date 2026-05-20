@@ -50,7 +50,7 @@ skill) and applies that role's write rules. Per-role summary:
 |------|-----------|
 | `scaffold` | anything (project bootstrap) |
 | `gdd` | `.md` planning docs, `project.godot`, `.godotmaker/` (no `assets/`) |
-| `asset` | `ASSETS.md`, `.godotmaker/` (image files go through `asset_gen.py` Bash or analyst subagent) |
+| `asset` | `ASSETS.md`, `.godotmaker/` (image files go through asset tools or analyst subagent) |
 | `build` / `fixgap` | nothing in `e2e/`; nothing in game code (`.gd` / `.tscn` / `.tres`) directly — must dispatch a Worker |
 | `verify` | `.godotmaker/stage.jsonl` and `.godotmaker/current_role` only (read-only otherwise) |
 | `evaluate` | `e2e/`, `.godotmaker/evaluation.json`, `.godotmaker/stage.jsonl`, `.godotmaker/current_role` |

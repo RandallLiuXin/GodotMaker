@@ -24,5 +24,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
+- `/gm-asset` now finalizes and verifies runtime-native generated images before updating asset manifests.
 
 ## Removed

@@ -1,6 +1,6 @@
 # Asset Generator
 
-Generate PNG images with API-backed providers (Gemini, OpenAI, or xAI Grok) and GLB 3D models (Tripo3D) from text prompts. Use `/gm-asset` runtime mapping for runtime-native image generation.
+Generate PNG images with API-backed providers (Gemini, OpenAI, or xAI Grok) and GLB 3D models (Tripo3D) from text prompts. Use `/gm-asset` runtime mapping for runtime-native image generation, then finalize image files with `tools/asset_image_finalize.py`.
 
 ## Models
 
@@ -42,6 +42,68 @@ python3 tools/asset_gen.py image \
 `--model` (default from `.godotmaker/config.yaml`): `gemini`, `openai`, `grok`, or provider-prefixed selectors such as `openai:gpt-image-2`.
 `--size` (default `1K`): OpenAI: `1K`. Grok: `1K`, `2K`. Gemini: `512`, `1K`, `2K`, `4K`.
 `--aspect-ratio` (default `1:1`): varies by backend.
+`--resize WIDTHxHEIGHT` (optional): resize after generation.
+`--label` (optional): include an asset label in the JSON result.
+
+`asset_gen.py image` finalizes and validates the output path before returning JSON.
+
+Successful image results include:
+
+```json
+{
+  "ok": true,
+  "provider": "xai",
+  "path": "assets/img/coin.png",
+  "source": "assets/img/coin.png",
+  "asset_id": "coin",
+  "bytes": 12345,
+  "width": 64,
+  "height": 64,
+  "format": "PNG"
+}
+```
+
+### Finalize runtime-native images
+
+After runtime-native image generation returns a source image path, run:
+
+```bash
+python3 tools/asset_image_finalize.py \
+  --source <generated_image_path> \
+  --out assets/img/<asset_name>.png \
+  --label <asset_id> \
+  --resize 64x64
+```
+
+Use `--resize` only when the target asset requires a fixed size.
+
+Runtime-native generation groups write `.godotmaker/asset-generation/<group_id>.json`:
+
+```json
+{
+  "ok": true,
+  "provider": "native",
+  "assets": [
+    {
+      "ok": true,
+      "source": "<generated_image_path>",
+      "path": "assets/img/coin.png",
+      "asset_id": "coin",
+      "bytes": 12345,
+      "width": 64,
+      "height": 64,
+      "format": "PNG"
+    }
+  ]
+}
+```
+
+Each entry in `assets[]` is the JSON printed by `tools/asset_image_finalize.py`.
+Validate one or more reports with:
+
+```bash
+python3 tools/asset_image_report_check.py .godotmaker/asset-generation/group_1.json
+```
 
 Typical combos:
 - `--model gemini --size 1K` — reference images, character sprites, 3D refs (7¢)

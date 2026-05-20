@@ -43,7 +43,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 
 1. **Direct Write/Edit by you (main agent) is restricted to project-root `ASSETS.md` and files under `.godotmaker/`.** Files in `assets/` and `references/` reach disk only via:
    - `tools/asset_gen.py` invoked through Bash for API-backed generation, OR
-   - the selected runtime-native image-generation provider/tool, OR
+   - the selected runtime-native image-generation provider/tool followed by `tools/asset_image_finalize.py`, OR
    - the analyst subagent (Step 2).
    Do NOT write image files with direct Write/Edit calls.
 2. **Image analysis MUST go through the analyst subagent.** Do NOT Read image binaries from `assets/` yourself — they pollute context. Dispatch analyst when you need style/dimension/role extraction.
@@ -56,7 +56,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 Read `.godotmaker/config.yaml` before generation. Use `asset_image_model` for image assets and scene references:
 
 - `native`: use the active agent runtime's native image-generation provider/tool.
-- `codex`: use Codex runtime-native image-generation provider/tool.
+- `codex`: use the runtime-native image-generation provider/tool for the explicit `codex` selector.
 - `gemini:<model>`, `openai:<model>`, `grok:<model>`: call `tools/asset_gen.py image --model <selector> ...`.
 
 If the selected provider is unavailable, STOP and ask the user to choose another `asset_image_model`.
@@ -96,7 +96,11 @@ For each scene in SCENES.md whose `references/scene_{name}.png` is missing:
    python tools/asset_gen.py image --model <asset_image_model> --prompt "..." \
      --size 1K --aspect-ratio 16:9 -o references/scene_{name}.png
    ```
-   For `native` or `codex`, use the selected runtime-native provider/tool and place the PNG at `references/scene_{name}.png`.
+   For `native` or `codex`, use the selected runtime-native provider/tool, then run:
+   ```bash
+   python tools/asset_image_finalize.py --source <generated_image_path> \
+     --out references/scene_{name}.png --label scene_{name}
+   ```
 4. Show the result to the user. If rejected, regenerate with a tightened prompt (per `references/visual-target.md`).
 
 ### Step 4 — Generate Remaining MISSING Art
@@ -106,13 +110,26 @@ For all remaining MISSING art assets in ASSETS.md (excluding audio):
 Confirm with user:
 > "I'll AI-generate the following: {list}. {if user art: 'Style will match your existing assets.'} OK to proceed?"
 
-After confirmation, generate each asset through the selected `asset_image_model` path (per `asset-planner.md` + `asset-gen.md` for prompt construction). For API-backed selectors, run `python tools/asset_gen.py image --model <asset_image_model>` once per asset. For `native` or `codex`, use the selected runtime-native provider/tool. Sequential is fine; generation latency is provider-bound, not CPU-bound. If you use Bash concurrency for API calls, background several calls with `&` and `wait` for them.
+After confirmation, generate each asset through the selected `asset_image_model` path (per `asset-planner.md` + `asset-gen.md` for prompt construction).
+
+Run up to 3 generation groups in parallel. Each group owns one or more target image paths. If isolated generation groups are unavailable, run the batch sequentially and state the fallback.
+
+- API-backed selectors: each group runs `python tools/asset_gen.py image --model <asset_image_model> ... -o <target.png>` for each target. The tool finalizes and validates the output.
+- `native` / `codex`: each group uses the selected runtime-native provider/tool, records each generated image path, then runs:
+  ```bash
+  python tools/asset_image_finalize.py --source <generated_image_path> \
+    --out <target.png> --label <asset_id> [--resize WIDTHxHEIGHT]
+  ```
+- Each group writes one JSON report under `.godotmaker/asset-generation/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize result>, ...]}`.
+- Do not select images by scanning a global "latest generated image" list. Use the generated paths reported by the group.
 
 ### Step 5 — Update ASSETS.md
 
 After all generation calls return:
 - Change generated rows from `MISSING` → `generated` with file path + generation params
 - Audio rows that user did not provide → mark `deferred` (with user acknowledgment)
+- Run `python tools/asset_image_report_check.py <report.json>...`
+- Re-dispatch one follow-up batch for missing or invalid generated images
 - Verify total MISSING count for the current tag is zero (or all remaining are deferred audio with user OK)
 - New rows added this tag must carry the current tag in their `Tag` column
 
@@ -140,6 +157,8 @@ Never revert a `provided`/`generated` row back to `MISSING` — if the user want
 | Tool | Purpose |
 |------|---------|
 | `tools/asset_gen.py` | API-backed image generation (Gemini / OpenAI / Grok) |
+| `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |
+| `tools/asset_image_report_check.py` | Validate generation group reports and image files |
 
 **Reference docs (read for prompt construction):**
 - `references/asset-planner.md` — generation brief template

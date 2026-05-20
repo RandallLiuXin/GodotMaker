@@ -64,7 +64,7 @@ Craft each prompt for its specific goal. The art direction tells you the visual 
 
 #### Backend selection
 
-Read `.godotmaker/config.yaml` and use `asset_image_model` as the default image path. `native` uses the active runtime-native image-generation provider/tool. `codex` uses Codex runtime-native image generation. API-backed selectors use `tools/asset_gen.py image --model <selector>`.
+Read `.godotmaker/config.yaml` and use `asset_image_model` as the default image path. `native` uses the active runtime-native image-generation provider/tool. `codex` uses the runtime-native image-generation provider/tool for the explicit `codex` selector. API-backed selectors use `tools/asset_gen.py image --model <selector>`. Every generated image must pass through `tools/asset_image_finalize.py` before ASSETS.md is updated. Runtime-native generation groups write the JSON report described in `asset-gen.md`.
 
 Use Gemini or another precise provider where prompt precision matters: reference images, character design, 3D model references, animated sprite refs/poses, and backgrounds with exact layout. Use Grok (`grok:<model>`) for textures, simple objects, item kits, and simple scenic backgrounds only when `XAI_API_KEY` is configured. Use OpenAI (`openai:<model>`) when the project is configured for OpenAI Images API. Missing API keys are hard failures; do not silently switch providers.
 
@@ -81,7 +81,7 @@ Generate anchors first, review, then fan out derivatives in parallel. Budget 1 r
 
 ### 4. Generate images, review, convert to GLBs
 
-Use the asset-gen instructions for prompt templates, CLI commands, and review guidance. Generate all images in parallel, review each PNG, regenerate bad ones (max 1 retry each), then convert approved 3D images to GLBs in parallel.
+Use the asset-gen instructions for prompt templates, CLI commands, and review guidance. Generate images in parallel groups, review each PNG, regenerate bad ones (max 1 retry each), then convert approved 3D images to GLBs in parallel.
 
 For animated sprites, generate in dependency order per the Start From column in ASSETS.md — root actions first (parallel), extract frames and trim loops, then chained actions from their predecessors' last frames (parallel).
 

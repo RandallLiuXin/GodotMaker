@@ -16,6 +16,8 @@ import json
 import sys
 from pathlib import Path
 
+from asset_image_finalize import ImageFinalizeError, finalize_image_asset
+
 TOOLS_DIR = Path(__file__).parent
 BUDGET_FILE = Path("assets/budget.json")
 
@@ -90,13 +92,56 @@ QUALITY_PRESETS = {
 }
 
 
-def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: str | None = None):
+def result_json(
+    ok: bool,
+    path: str | None = None,
+    cost_cents: int = 0,
+    error: str | None = None,
+    extra: dict | None = None,
+):
     d = {"ok": ok, "cost_cents": cost_cents}
     if path:
         d["path"] = path
     if error:
         d["error"] = error
+    if extra:
+        d.update(extra)
     print(json.dumps(d))
+
+
+def finish_image_output(args, output: Path, cost: int, service: str):
+    """Validate and optionally resize a generated image before reporting."""
+    try:
+        final = finalize_image_asset(
+            output,
+            output,
+            resize=getattr(args, "resize", None),
+            image_format="png",
+            label=getattr(args, "label", None),
+        )
+    except ImageFinalizeError as exc:
+        result_json(False, error=str(exc))
+        sys.exit(1)
+    print(f"Saved: {output}", file=sys.stderr)
+    record_spend(cost, service)
+    result_json(
+        True,
+        path=str(output),
+        cost_cents=cost,
+        extra={
+            "provider": service,
+            "source": final["source"],
+            "bytes": final["bytes"],
+            "width": final["width"],
+            "height": final["height"],
+            "format": final["format"],
+            "mode": final["mode"],
+            "original_width": final["original_width"],
+            "original_height": final["original_height"],
+            **({"asset_id": final["asset_id"]} if "asset_id" in final else {}),
+            **({"resize": final["resize"]} if "resize" in final else {}),
+        },
+    )
 
 
 # --- Image backends ---
@@ -220,9 +265,7 @@ def _generate_gemini(args, output: Path, cost: int, model_name: str):
             # Re-encode as real PNG (Gemini may return JPEG data)
             img = Image.open(io.BytesIO(part.inline_data.data))
             img.save(output, format="PNG")
-            print(f"Saved: {output}", file=sys.stderr)
-            record_spend(cost, "gemini")
-            result_json(True, path=str(output), cost_cents=cost)
+            finish_image_output(args, output, cost, "gemini")
             return
 
     result_json(False, error="No image returned")
@@ -257,9 +300,7 @@ def _generate_grok(args, output: Path, cost: int, model_name: str):
         result_json(False, error=str(e))
         sys.exit(1)
 
-    print(f"Saved: {output}", file=sys.stderr)
-    record_spend(cost, "xai")
-    result_json(True, path=str(output), cost_cents=cost)
+    finish_image_output(args, output, cost, "xai")
 
 
 def _openai_size(size: str, aspect_ratio: str) -> tuple[str, int]:
@@ -317,9 +358,7 @@ def _generate_openai(args, output: Path, cost: int, model_name: str):
         sys.exit(1)
 
     _save_openai_b64(response, output)
-    print(f"Saved: {output}", file=sys.stderr)
-    record_spend(cost, "openai")
-    result_json(True, path=str(output), cost_cents=cost)
+    finish_image_output(args, output, cost, "openai")
 
 
 def cmd_image(args):
@@ -512,6 +551,8 @@ def main():
     p_img.add_argument("--aspect-ratio", choices=ALL_ASPECT_RATIOS, default="1:1",
                        help="Aspect ratio. Default: 1:1")
     p_img.add_argument("--image", default=None, help="Reference image for image-to-image edit")
+    p_img.add_argument("--resize", default=None, help="Optional final WIDTHxHEIGHT resize")
+    p_img.add_argument("--label", default=None, help="Optional asset label for JSON output")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_img.set_defaults(func=cmd_image)
 

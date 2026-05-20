@@ -21,7 +21,7 @@ current Claude Code behavior so other runtime mappings can stay symmetric.
 | `dispatch_verifier` | Use Claude Code `Task` with the verifier agent and the verifier report contract. |
 | `track_plan` | Use `TodoWrite` for visible session planning, separate from editing project files such as `PLAN.md` or `GAP.md`. |
 | `native_image_inspection` | Use the active Claude Code runtime image-reading path. If unavailable, gate before visual QA. |
-| `native_image_generation` | Use the active Claude Code runtime-native image-generation path for `native`. Use Codex runtime-native image generation for `codex`. If unavailable, gate before asset generation. |
+| `native_image_generation` | Use the selected runtime-native image-generation path. Finalize each generated source image with `tools/asset_image_finalize.py` and write the generation group JSON from `gm-asset/references/asset-gen.md`. If unavailable, gate before asset generation. |
 | `run_shell_command` | Use Claude Code shell execution, preserving working directory, exit status, and important output in reports. |
 | `access_godot_mcp` | Use the registered Claude MCP server for Godot when available; gate if MCP is required and not configured. |
 | `apply_permission_policy` | Use the published Claude settings, hooks, and permission policy. Do not bypass `.godotmaker/hooks` or role locks. |
