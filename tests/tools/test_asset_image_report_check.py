@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -10,7 +9,7 @@ from PIL import Image
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from asset_image_report_check import ReportCheckError, check_report
+from asset_image_report_check import ReportCheckError, check_report  # noqa: E402
 
 
 def make_png(path: Path, size=(8, 6)):

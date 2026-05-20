@@ -63,7 +63,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - run: pip install pytest
+      - run: pip install pytest pillow
       - run: pytest --tb=short
 
   secret-scan:
