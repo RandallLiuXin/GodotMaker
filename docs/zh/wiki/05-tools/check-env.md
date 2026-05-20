@@ -23,7 +23,7 @@ All required checks passed! Ready to use GodotMaker.
 
 ### Python
 
-- 运行本脚本的 Python 版本为 3.9 或更高。
+- 运行本脚本的 Python 版本为 3.10 或更高。
 - 已安装核心包：`requests`、`pillow`、`numpy`。
 - 根据 `.godotmaker/config.yaml` 检查提供方包：Gemini 需要 `google-genai`，OpenAI 需要 `openai`，Grok 图片或视频生成需要 `xai-sdk`。
 

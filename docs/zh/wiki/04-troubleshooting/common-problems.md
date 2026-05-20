@@ -52,14 +52,14 @@ $env:XAI_API_KEY = "your-key-here"
 或者：
 
 ```
-[FAIL] Godot 4.3.x too old (>= 4.4 required)
+[FAIL] Godot 4.3.x too old (>= 4.5 required)
 ```
 
-**原因：** Godot 4.4 或更高版本没有安装，或者安装目录不在系统 PATH 里。
+**原因：** Godot 4.5 或更高版本没有安装，或者安装目录不在系统 PATH 里。
 
 **解决办法：**
 
-1. 从 https://godotengine.org/download 下载 Godot 4.4+
+1. 从 https://godotengine.org/download 下载 Godot 4.5+
 2. 要么把它的目录加进 PATH，要么打开你游戏项目里的 `.claude/godotmaker.yaml`，把 `godot_path` 字段设为 Godot 可执行文件的完整路径。
 
 验证是否正常：

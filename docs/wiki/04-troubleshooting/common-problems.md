@@ -52,14 +52,14 @@ To make it permanent, add the export line to your shell profile (`~/.bashrc`, `~
 or:
 
 ```
-[FAIL] Godot 4.3.x too old (>= 4.4 required)
+[FAIL] Godot 4.3.x too old (>= 4.5 required)
 ```
 
-**Cause:** Godot 4.4 or later is not installed, or its folder is not on your system PATH.
+**Cause:** Godot 4.5 or later is not installed, or its folder is not on your system PATH.
 
 **Fix:**
 
-1. Download Godot 4.4+ from https://godotengine.org/download
+1. Download Godot 4.5+ from https://godotengine.org/download
 2. Either add its folder to PATH, or open `.claude/godotmaker.yaml` in your game project and set the `godot_path` key to the full path of the Godot executable.
 
 Verify with:
