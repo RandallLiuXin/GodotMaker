@@ -73,13 +73,15 @@ PLAN.md is **per-tag scope**. Always overwrite the root PLAN.md from `.claude/te
 Required structure (matches the template):
 
 - `**Tag:** {Current Tag}` header at the top
-- **Tag Mechanics:** for each user-observable mechanic this tag delivers, add a line `[{Tag}-M{N}] <description>`. Each is a concrete behaviour the user can verify by playing the game. Aim for 2–6 per tag. The first tag's Tag Mechanics MUST collectively constitute a playable closed loop.
+- **Tag Mechanics:** for each user-observable mechanic this tag delivers, add a line `[{Tag}-M{N}] <description>`. Each is a concrete behaviour the user can verify by playing the game. Every tag's mechanics MUST combine into one playable unit.
 - **Inherited Mechanics:**
   - Initial mode: omit this section entirely.
   - Subsequent mode: paste verbatim every `[{prior_tag}-M{N}] <description>` line from every prior tag's `Tag Mechanics` section, MINUS any mechanics this tag is intentionally removing (those go to the Main Build refactor task that prunes the related code/tests). Inherited mechanics are NOT renamed, NOT renumbered, NOT consolidated — keep their original `[v0.X.Y-MN]` ids stable forever.
 - **Risk Tasks (R1, R2, ...):** scan this tag's GDD scope (limited by ROADMAP entry) for features matching the risk taxonomy listed in the template comment (procedural generation, complex physics, custom shaders, etc.). Isolate as risk tasks.
 - **Main Build (M01, M02, ...):** convert remaining mechanics + entities + cross-tag refactor hints into the Main Build section per the template structure.
   - Subsequent mode with `Cross-Tag Refactor Hints`: turn each hint into one or more concrete tasks. E.g. `M03 — Refactor LevelUpCardPool into TalentTree (replaces v0.2.0 cardpool per superseded design)`.
+- **Playable Unit:** describe the game content the player can experience after this tag ships. For each mechanic, state the player operation or content, expected effect, required visible content, and evidence.
+- If the current ROADMAP entry cannot form a playable unit, report `failed` and state that ROADMAP.md needs a playable-unit tag.
 - All tasks in the Task Status table start as `pending`.
 
 ### Step 2: ASSETS.md
@@ -106,7 +108,7 @@ alone.
 SCENES.md is an **end-of-tag snapshot** (same model as STRUCTURE.md) — overwrite root from `.claude/templates/SCENES.md` in both modes. After this step the file lists every scene that exists in the game as of this tag, so `/gm-evaluate`'s per-scene visual cross-check covers inherited scenes too.
 
 - `**Tag:** {Current Tag}` header at the top.
-- Initial mode (v0.1.0): cover all scenes the MVP needs. Minimum required for a playable closed loop: a Main Menu (or auto-start), a Gameplay scene (with HUD overlay), and a Game Over / Results scene.
+- Initial mode (v0.1.0): cover all scenes the first playable unit needs. Minimum required for a playable closed loop: a Main Menu (or auto-start), a Gameplay scene (with HUD overlay), and a Game Over / Results scene.
 - Subsequent mode: read prior tags' archived SCENES.md, carry forward every scene unchanged, then add this tag's new scenes. For scenes this tag redesigns, replace the prior description with the new one and tag the section header `(redesigned in {Current Tag})`. For scenes this tag intentionally removes (paired with a Main Build refactor task), drop the section.
 - Populate each scene's `Acceptance criteria` block with observable facts a screenshot reader can mark PASS/FAIL on. Source: this tag's PLAN Tag Mechanics + Inherited Mechanics that the scene exercises (each line referenced as `[<Tag>-Mn]`) + GDD acceptance language for the scene. If a mechanic is animation-only and cannot be proven from a frozen frame, say so explicitly (e.g. `Mechanic [<Tag>-M1] jump — not provable from spawn-state screenshot; exercised in dynamic-mode test`). Carried-forward scenes in subsequent mode: copy their Acceptance criteria from the prior archive verbatim unless this tag adds visible elements.
 
@@ -223,7 +225,7 @@ If you wrote some files but not others, still report `failed` and list what got 
 {full-artifact | plan-package | architecture-package | scene-asset-package}
 
 ### Files Written
-- PLAN.md — {tag id, K risk + M main = N total tasks, all pending; T tag mechanics + I inherited mechanics}
+- PLAN.md — {tag id, K risk + M main = N total tasks, all pending; T tag mechanics + I inherited mechanics; playable unit summary}
 - STRUCTURE.md — {tag id, C components added, S systems added, R systems refactored}
 - SCENES.md — {tag id, N scenes covered}
 - ASSETS.md — {N new rows appended for current tag, P provided + Q MISSING among them; prior-tag rows untouched}

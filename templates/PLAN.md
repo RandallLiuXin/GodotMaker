@@ -30,6 +30,24 @@
 - [v0.1.0-M1] {inherited mechanic id and behavior}
 - [v0.1.0-M2] {...}
 
+## Playable Unit
+
+<!-- This tag's player-experienced game content. It is not an input script.
+     Describe what the player can do after this tag ships. For each mechanic,
+     name the player operation, the expected game effect, and the visible
+     content that must appear for screenshot/video verification. -->
+
+- **Player experience:** {what the player can experience after this tag, e.g. "start a run, move through the arena, avoid one enemy, collect the key, and reach the exit"}
+- **Unit outcome:** {observable completion, fail, or exit condition reached through normal play}
+- **Scenes involved:** {scene names from SCENES.md}
+
+| Mechanic | Player operation / content | Expected effect | Required visible content | Evidence |
+|----------|----------------------------|-----------------|--------------------------|----------|
+| [{Tag}-M1] | {what the player can do or experience} | {state/gameplay effect after the operation} | {object/UI/state that must appear on screen} | {E2E assertion, screenshot, video frame, or log path} |
+| [{Tag}-M2] | {...} | {...} | {...} | {...} |
+
+- **Review focus:** {code paths reviewers should inspect for real runtime gameplay, not stubs or test-only shortcuts}
+
 ## Risk Tasks
 
 <!-- Omit this section entirely if no risks identified. -->

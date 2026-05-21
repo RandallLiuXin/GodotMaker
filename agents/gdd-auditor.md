@@ -67,7 +67,7 @@ Walk through these categories against the GDD. Flag a category only when the gap
 
 ### I. Sections Skipped
 - If the synthesizer skipped a template section (UI, audio, characters), confirm it's truly N/A vs accidentally dropped
-- If a stretch goal looks load-bearing for MVP, flag the misclassification
+- If a playable unit depends on a mechanic, scene, state flow, or asset not defined elsewhere, flag the gap
 
 ## Brief Format (What You Receive)
 

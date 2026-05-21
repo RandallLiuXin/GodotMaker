@@ -24,7 +24,7 @@
 
 ## 3. Mechanics
 
-### Core Mechanics (MVP)
+### Core Mechanics
 
 <!-- Must-have mechanics for the game to function. -->
 
@@ -33,9 +33,9 @@
 | {e.g., Jump} | {press Space} | {character jumps, landing particles} |
 | ... | ... | ... |
 
-### Secondary Mechanics (Stretch)
+### Additional Mechanics
 
-<!-- Nice-to-have, build after MVP works. -->
+<!-- Optional mechanics that may be assigned to playable units later. -->
 
 - {mechanic}: {brief description}
 - ...
@@ -136,18 +136,16 @@ Main Menu → Start Game → Gameplay → Pause Menu → Resume / Quit
 - If user provides art assets: **all AI-generated assets MUST match the user's style** (color palette, line weight, proportions, atmosphere)
 - If no user art: AI generates based on Art Direction in Section 4
 
-## 10. Scope & Prioritization
+## 10. Scope & Playable Units
 
-### MVP (must ship)
+### Playable Unit Candidates
 
-- [ ] {feature 1}
-- [ ] {feature 2}
-- ...
+<!-- Each candidate is a player-experienced chunk that can become one roadmap tag. -->
 
-### Stretch (if time permits)
-
-- [ ] {feature 1}
-- ...
+| Candidate | Player Experience | Mechanics Included | Completion / Fail / Exit |
+|-----------|-------------------|---------------------|--------------------------|
+| {unit name} | {what the player can experience} | {mechanics involved} | {how this unit resolves or exits} |
+| ... | ... | ... | ... |
 
 ### Deferred (future versions)
 

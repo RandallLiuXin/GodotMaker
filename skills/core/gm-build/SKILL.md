@@ -31,7 +31,7 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 - Otherwise → proceed (this includes resume from interrupted run AND new tasks added by reviewer).
 
 Then read context:
-- `PLAN.md` → current tag's `**Tag:**` header + Tag Mechanics + Inherited Mechanics + pending/in_progress/completed tasks (anything not `verified`)
+- `PLAN.md` → current tag's `**Tag:**` header + Tag Mechanics + Inherited Mechanics + Playable Unit + pending/in_progress/completed tasks (anything not `verified`)
 - `STRUCTURE.md` → architecture and build order (current tag scope: previous tags' systems already exist on disk and may be touched only when PLAN.md explicitly lists a refactor task for them)
 - `MEMORY.md` index + sub-files (cross-tag accumulating notebook) → avoid repeating known mistakes
 - `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring
@@ -45,6 +45,7 @@ Then read context:
 5. **MUST NOT skip stages.** Fix issues first; report to user after 5 attempts.
 6. **MUST NOT self-certify completion.** Dispatch verifiers, then reviewers. Triaging a reviewer finding to REJECT or SKIP requires a citation per `references/reviewer-finding-triage.md` (mandatory for critical/major; optional for minor).
 7. **Tag scope discipline.** Workers MAY touch files from previous tags **only if** PLAN.md has an explicit refactor / fix task naming those files. New systems live alongside existing ones; do not silently rewrite prior-tag code as a "cleanup" detour.
+8. **Build the Playable Unit.** PLAN.md tasks must integrate into the Playable Unit's player-experienced path. Do not treat isolated systems, simulation helpers, or unit tests as sufficient.
 
 ## Honest Reporting
 
@@ -103,6 +104,7 @@ Do NOT delete project code as a "fix" for a tool crash.
 
 - Read `references/worker-dispatch.md` for the brief template
 - Use `subagent_type: "worker"`. Each worker implements ONE system + its unit tests.
+- Include the relevant Playable Unit fields in each worker brief.
 - Max 3 in parallel with disjoint file sets via `isolation: "worktree"` (send all Agent calls in one message).
 - After each worker reports DONE, mark its task in PLAN.md as `completed`.
 - **`main_scene` retarget is your job.** Scaffold leaves `run/main_scene="res://scenes/main.tscn"` (placeholder). After the worker that creates this tag's entry scene (per SCENES.md) completes and the `.tscn` is on disk, `Edit` `project.godot`'s `[application] run/main_scene` to `res://<path>`.
@@ -121,6 +123,7 @@ Run ONE verifier, then ONE reviewer, on the integrated state:
 **Reviewer** (after verifier passes):
 - Read `references/reviewer-dispatch.md` for the brief template
 - Use `subagent_type: "reviewer"`. Reviewer reports back; do not let it modify project files.
+- Ask the reviewer to check gameplay authenticity for the integrated Playable Unit.
 - Triage each finding per `references/reviewer-finding-triage.md` into one of three options:
   - **ACCEPT** → add NEW `pending` fix task to PLAN.md.
   - **REJECT** → finding is wrong; append a record to MEMORY.md "Reviewer Triage Log" section (citation required for critical/major).

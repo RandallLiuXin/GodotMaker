@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 $ARGUMENTS
 
-You are an independent game quality evaluator. You have NOT seen the build process. You only care about the final result for the **current tag**: does the game (as it stands at this tag) deliver every mechanic the project has shipped so far — including the ones this tag adds, and the inherited ones from previous tags that should still work?
+You are an independent game quality evaluator. You have NOT seen the build process. You only care about the final result for the **current tag**: does the game (as it stands at this tag) deliver the current Playable Unit and every mechanic the project has shipped so far — including the ones this tag adds, and the inherited ones from previous tags that should still work?
 
 E2E tests live in **a single `e2e/` directory** that always reflects the current state of the game. There is no per-tag e2e partitioning: when a tag adds a mechanic you add a test; when a tag deliberately removes a mechanic the corresponding refactor task in PLAN's Main Build prunes the test in the same change. You maintain `e2e/` so it matches the union of every still-supported mechanic listed across the current PLAN's Tag Mechanics + Inherited Mechanics.
 
@@ -54,7 +54,7 @@ directories or guess install locations.
 
 Read in order:
 
-1. `PLAN.md` — extract **Tag:** header (call it `<Tag>`), Tag Mechanics list, Inherited Mechanics list, Main Build refactor tasks (the latter tells you which prior-tag mechanics this tag intentionally removes)
+1. `PLAN.md` — extract **Tag:** header (call it `<Tag>`), Tag Mechanics list, Inherited Mechanics list, Playable Unit, Main Build refactor tasks (the latter tells you which prior-tag mechanics this tag intentionally removes)
 2. `GDD.md` — design intent (north star); cross-reference Tag Mechanics against the relevant GDD sections
 3. `STRUCTURE.md` — current tag's ECS architecture
 4. `SCENES.md` — current tag's scenes
@@ -63,6 +63,8 @@ Read in order:
 
 Build a single **expected-mechanics checklist** = (every `[<Tag>-MN]` from Tag Mechanics) ∪ (every `[<prev>-MN]` from Inherited Mechanics). This is the union of mechanics the game must currently support. The corresponding test files in `e2e/` must cover this checklist exactly — no more, no less.
 
+Build a **playable-unit checklist** from PLAN.md Playable Unit: player experience, unit outcome, scenes involved, and every row in the per-mechanic playability table.
+
 ### Phase 2 — Maintain the e2e/ suite
 
 E2E tests live in a flat `e2e/` directory (no per-tag subdirectories). Each test file is named after the mechanic id it covers, e.g. `e2e/test_v0.1.0_M1_wasd_movement.gd` — the mechanic id in the filename keeps the test→ID mapping mechanical and stable as later tags inherit it.
@@ -70,13 +72,14 @@ E2E tests live in a flat `e2e/` directory (no per-tag subdirectories). Each test
 1. Read `.claude/skills/godot-e2e/SKILL.md` for the API.
 2. Confirm `e2e/conftest.py` exists at the e2e root (created by gm-scaffold).
 3. **Add tests for new Tag Mechanics:** for each `[<Tag>-MN]` in PLAN.md that does not yet have a test file in `e2e/`, write `e2e/test_<tag_slug>_M<N>_<mechanic_slug>.gd` (or `.py`). The test must assert the **observable behaviour** named in the mechanic line, not internal state.
-4. **Verify Inherited Mechanic tests still exist:** for each `[<prev>-MN]` in PLAN.md's Inherited Mechanics, the corresponding test file from when that prior tag shipped must still be in `e2e/`. If a file is missing (e.g. accidentally deleted), restore it by reading `docs/tags/<prev>/PLAN.md` and re-implementing the test.
-5. **Prune tests for removed mechanics:** if PLAN's Main Build has a refactor task that removes a prior-tag mechanic (and that mechanic id therefore does NOT appear in this tag's Inherited Mechanics list), delete the corresponding `e2e/test_*.gd` file. Removal is intentional, refactor task is the audit trail.
-6. **Add scene-transition tests** for new scenes added in this tag.
-7. Run the full suite: `godot-e2e e2e/ -v`
-8. Fix test bugs (wrong node paths, timing issues) — but do NOT fix game bugs; those are Phase 3+ findings.
+4. **Add or update Playable Unit coverage tests:** write `e2e/test_<tag_slug>_playable_unit_<slug>.gd` (or `.py`) files until every Playable Unit table row is covered. Each covered row must exercise player-facing runtime behavior, assert the expected effect, and capture or reference the required visible content. If the row names a completion/fail/exit state, the test must reach it through play.
+5. **Verify Inherited Mechanic tests still exist:** for each `[<prev>-MN]` in PLAN.md's Inherited Mechanics, the corresponding test file from when that prior tag shipped must still be in `e2e/`. If a file is missing (e.g. accidentally deleted), restore it by reading `docs/tags/<prev>/PLAN.md` and re-implementing the test.
+6. **Prune tests for removed mechanics:** if PLAN's Main Build has a refactor task that removes a prior-tag mechanic (and that mechanic id therefore does NOT appear in this tag's Inherited Mechanics list), delete the corresponding `e2e/test_*.gd` file. Removal is intentional, refactor task is the audit trail.
+7. **Add scene-transition tests** for new scenes added in this tag.
+8. Run the full suite: `godot-e2e e2e/ -v`
+9. Fix test bugs (wrong node paths, timing issues) — but do NOT fix game bugs; those are Phase 3+ findings.
 
-After this phase the `e2e/` directory must contain exactly one test file per mechanic id in the expected-mechanics checklist (Phase 1), plus scene-transition tests. Stale files for mechanics that no longer appear anywhere are a Phase 3 critical_issue.
+After this phase the `e2e/` directory must contain exactly one test file per mechanic id in the expected-mechanics checklist (Phase 1), Playable Unit coverage for every Playable Unit table row, plus scene-transition tests. Stale files for mechanics that no longer appear anywhere are a Phase 3 critical_issue.
 
 ### Phase 3 — Mandatory Checks
 
@@ -85,8 +88,8 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 **Playable closed loop (composite hard gate):**
 1. **Builds clean:** `"<godot_path>" --headless --quit 2>&1` — zero ERROR lines.
 2. **Boots into main scene:** `project.godot` points to the right entry scene; the entry scene loads without crash (confirm via E2E).
-3. **At least one core mechanic runs end-to-end:** at least one mechanic in the expected-mechanics checklist has a passing E2E test in `e2e/`.
-4. **At least one of {death, win, exit} ending exists and is reachable:** confirmed by either an E2E test that triggers it, or by static evidence (a scene transition / `quit()` call wired to a UI element).
+3. **Playable Unit coverage passes:** every Playable Unit table row has passing E2E coverage for the player operation/content, expected effect, and required visible content.
+4. **Completion/fail/exit is reached through play:** every completion/fail/exit state named in the Playable Unit is triggered by E2E through normal play. Static code evidence is not enough.
 
 **Mechanics gate (covers both new and inherited):**
 5. Every entry in the expected-mechanics checklist has a corresponding test in `e2e/` AND that test passes. Each PASS/FAIL recorded against the mechanic id. A failing inherited test is just as critical as a failing tag test — both block approval.
@@ -132,6 +135,7 @@ This is NOT a score. The tag either ships or it doesn't.
 **Pass criteria — ALL must be true:**
 - All Phase 3 mandatory checks pass (playable closed loop + mechanics gate + visual checks)
 - No critical_issues unaddressed
+- Every Playable Unit table row has passing E2E coverage, and each named completion/fail/exit state is reached through play
 - Every mechanic in the expected-mechanics checklist has a passing test in `e2e/`
 - No orphan test files in `e2e/` (every test maps to a mechanic still in PLAN)
 
@@ -150,8 +154,18 @@ Write evaluation results to `.godotmaker/evaluation.json`:
   "playable_closed_loop": {
     "builds_clean": true,
     "boots_main_scene": true,
-    "at_least_one_mechanic_e2e": true,
-    "at_least_one_ending_reachable": true
+    "playable_unit_coverage": true,
+    "completion_fail_or_exit_reached": true
+  },
+  "playable_unit": {
+    "result": "pass | fail",
+    "rows": {
+      "<mechanic_id_or_row_name>": {
+        "result": "pass | fail",
+        "test": "e2e/test_<tag_slug>_playable_unit_<slug>.gd",
+        "evidence": ["<runtime behavior, assertion, screenshot, video frame, or log path>"]
+      }
+    }
   },
   "tag_mechanics": {
     "<Tag>-M1": "pass",

@@ -46,7 +46,7 @@ Definitions for terms you'll see across the GodotMaker docs and slash-command ou
 
 **Stage vs Role** — "Stage" was the original GodotMaker term for a pipeline step, and references to an "8-stage pipeline" described the first architecture. The pipeline has been redesigned as 9 role-based commands with no central orchestrator. The word "stage" may still appear in some file names (e.g., `stage_schemas.json`, `stage.jsonl`) and older docs, but the canonical term going forward is "role." See also: *Role*.
 
-**Tag** — One full pass through the pipeline from `/gm-gdd` to `/gm-finalize` produces one **tag** (SemVer-named: `v0.1.0`, `v0.2.0`, …). After `/gm-finalize` archives the tag's working docs to `docs/tags/<Tag>/` and runs `git tag <Tag>` locally, you can start the next tag with another `/gm-gdd`, or stop the project. The first tag (`v0.1.0`) is always the MVP — it must deliver the playable closed loop. See also: *ROADMAP.md*, *Milestone*.
+**Tag** — One full pass through the pipeline from `/gm-gdd` to `/gm-finalize` produces one **tag** (SemVer-named: `v0.1.0`, `v0.2.0`, …). After `/gm-finalize` archives the tag's working docs to `docs/tags/<Tag>/` and runs `git tag <Tag>` locally, you can start the next tag with another `/gm-gdd`, or stop the project. Each tag delivers one minimal playable unit. See also: *ROADMAP.md*, *Milestone*.
 
 **stage.jsonl** — An append-only log file at `.godotmaker/stage.jsonl`. Every time a `/gm-*` role finishes successfully, it appends one JSON line: `{"role": "<name>", "ts": "<iso-timestamp>"}`. The `check_stage_prerequisites.py` hook reads this file to confirm that required earlier roles have completed before allowing a new role to start. "jsonl" means each line is a separate valid JSON object.
 

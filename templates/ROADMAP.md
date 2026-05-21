@@ -14,7 +14,7 @@
 - **MINOR** (v0.X.0): new full system or playable module added on top
 - **PATCH** (v0.X.Y): in-tag fixes / small tweaks (rare; usually used after a tag is shipped and a follow-up correction is needed)
 
-The first tag is always **v0.1.0**. MVP lives there even if it's bigger than later tags.
+The first tag is always **v0.1.0**. Every tag is a minimal playable unit.
 
 ## Mid-flow edits
 
@@ -26,15 +26,12 @@ next tag.
 
 ---
 
-## v0.1.0 — {MVP theme, e.g. "Playable core loop"}
+## v0.1.0 — {first playable unit theme, e.g. "Playable core loop"}
 
 <!-- The first tag MUST deliver a playable closed loop:
      - main scene boots without crashing (`godot --headless --quit`)
-     - at least one core mechanic runs end-to-end
-     - at least one of {death, win, exit} endings exists
-
-     MVP is allowed to exceed the ~30 min build budget that later tags
-     aim for — setup overhead is concentrated here. -->
+     - the tag's mechanics produce player-experienced game content
+     - the unit's completion, fail, or exit state is reachable through play -->
 
 - {feature 1, e.g. WASD player movement}
 - {feature 2, e.g. one enemy type with melee attack}
@@ -51,6 +48,4 @@ next tag.
 - {feature 1}
 - {feature 2}
 
-<!-- Add more tags as the GDD grows. Keep each tag scoped so the build
-     stays under ~30 min wall-clock. Cut tags smaller rather than larger
-     when in doubt — early user feedback beats one-shot completeness. -->
+<!-- Add more tags as the GDD grows. Each tag must remain a playable unit. -->

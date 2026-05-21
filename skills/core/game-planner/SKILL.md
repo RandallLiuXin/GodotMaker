@@ -123,10 +123,10 @@ elements)?" Most platformers and tower defense games benefit from TileMap.
 
 ### Round 4 — Audio, Assets & Scope (GDD §8, §9, §10)
 
-**Goal:** Define what assets are needed and draw the MVP boundary.
+**Goal:** Define what assets are needed and group scope into playable units.
 
 Cover: Music needs per scene (mood/style), SFX list, art asset requirements,
-MVP vs stretch vs deferred features, content volume.
+playable unit candidates, deferred features, content volume.
 
 Focus on WHAT the game needs (design perspective), not whether the user HAS files.
 Asset collection happens later in `/gm-asset` — game-planner only defines requirements.

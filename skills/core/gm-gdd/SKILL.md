@@ -92,9 +92,9 @@ This sub-stage exists in BOTH modes but does different work.
 **Initial mode:**
 1. Read `GDD.md` (now confirmed).
 2. Derive a tag list following the SemVer convention from `templates/ROADMAP.md`:
-   - First tag is always `v0.1.0` and MUST deliver the playable closed loop (player can boot the game, exercise one core mechanic, reach one ending).
-   - Subsequent tags add scope incrementally. Aim each tag at ~30 minutes of build wall-clock; MVP (v0.1.0) is allowed to exceed this because of setup overhead.
-   - Tag count target: 3–8 tags total. More than 8 means each tag is too narrow to feel like progress; fewer than 3 means each tag is too broad to give early feedback.
+   - First tag is always `v0.1.0` and MUST deliver the first playable unit.
+   - Every tag is a minimal playable unit: the player can experience a complete slice of gameplay with a completion, fail, or exit state.
+   - Subsequent tags add one playable unit at a time.
 3. Write a draft `ROADMAP.md` populated with this tag list.
 4. **MANDATORY gate:** Use `AskUserQuestion` to ask the user:
    > "Here is the proposed roadmap. Is it OK to proceed with v0.1.0 as defined? You can also reorder, split, merge, or rewrite tags before we move on."
@@ -136,6 +136,8 @@ directly if needed. PLAN.md must be stable before Phase B starts:
 - [ ] `PLAN.md` exists with `**Tag:**` header matching the current tag
 - [ ] Tag Mechanics section is populated with stable `[<Tag>-M<N>]` ids
 - [ ] Inherited Mechanics section is populated for subsequent mode, or omitted for v0.1.0
+- [ ] Playable Unit section is populated and references existing mechanic ids
+- [ ] Playable Unit describes player experience, unit outcome, scenes involved, and per-mechanic player operation / effect / visible evidence
 - [ ] Risk/Main tasks have stable task IDs and all Task Status rows start as `pending`
 - [ ] Tasks list affected systems/scenes/assets clearly enough for downstream artifacts
 
@@ -237,6 +239,7 @@ The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the c
 - [ ] `TOC.md` updated (if decomposer touched it)
 - [ ] Parallel-only consistency check: PLAN task IDs referenced by STRUCTURE/SCENES/ASSETS exist in PLAN.md; every PLAN task's affected scene/system/asset appears in the corresponding artifact or is intentionally marked deferred.
 - [ ] Parallel-only mechanic ID check: every current-tag mechanic ID referenced by STRUCTURE/SCENES/ASSETS exists in final PLAN.md Tag Mechanics; no artifact references a guessed, renumbered, or stale current-tag mechanic ID.
+- [ ] Playable Unit scene check: every scene named in PLAN.md Playable Unit appears in SCENES.md, or PLAN.md marks it deferred.
 
 **Fallback when subagent doesn't finish.** If any gate item is unmet (whether the decomposer reported failure or just produced incomplete artifacts), do NOT respawn the subagent — instead, take over directly. Read whichever artifacts exist, identify the missing pieces, and write them using the same templates the decomposer would have used. The templates document their structure conventions.
 

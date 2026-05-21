@@ -54,7 +54,7 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **System**（ECS）— 每帧遍历所有拥有特定组件组合的实体的函数（或 GDScript 类）。例如，`MovementSystem` 可能遍历所有同时拥有 `Velocity` 组件和 `Position` 组件的实体，每帧更新其位置。System 包含所有游戏逻辑。另见：*ECS*、*Entity*、*Component*。
 
-**Tag** — 一次完整的 `/gm-gdd` → `/gm-finalize` 流水线运行交付一个 **Tag**（采用 SemVer 命名：`v0.1.0`、`v0.2.0`、……）。`/gm-finalize` 完成后会把当前 tag 的工作文档归档到 `docs/tags/<Tag>/` 并在本地执行 `git tag <Tag>`。之后你可以用下一个 `/gm-gdd` 开启下一个 tag，或者就此停在这里。第一个 tag（`v0.1.0`）固定是 MVP——必须交付可玩闭环。另见：*ROADMAP.md*。
+**Tag** — 一次完整的 `/gm-gdd` → `/gm-finalize` 流水线运行交付一个 **Tag**（采用 SemVer 命名：`v0.1.0`、`v0.2.0`、……）。`/gm-finalize` 完成后会把当前 tag 的工作文档归档到 `docs/tags/<Tag>/` 并在本地执行 `git tag <Tag>`。之后你可以用下一个 `/gm-gdd` 开启下一个 tag，或者就此停在这里。每个 tag 都交付一个最小可玩单元。另见：*ROADMAP.md*。
 
 **TOC.md** — 由 `/gm-gdd` 生成的目录文档，列出所有规划文档及其位置。它提供每个 tag 开始时项目内容的快速概览。
 
