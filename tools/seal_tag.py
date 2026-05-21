@@ -3,15 +3,15 @@
 
 `/gm-finalize` mixes LLM-judgment work (Step 3 doc consistency check, Step 5
 CHANGELOG prose, Step 8 final_report writeup) with mechanical fs/git ops
-(archive 7 files, truncate stage.jsonl, delete metrics_current.jsonl, slice
-git log between tags). The mechanical ops show up in `2026-05-12` AAR as
+(archive working docs and evidence, truncate stage.jsonl, delete
+metrics_current.jsonl, slice git log between tags). The mechanical ops show up in `2026-05-12` AAR as
 20+ tool calls with ~4 path-syntax fallbacks (Windows-absolute paths under
 Bash, PowerShell not in allowedTools). This helper collapses them into
 three deterministic subcommands so the SKILL can stay short and the agent
 stays in LLM-judgment work.
 
 Subcommands:
-    archive <Tag>   Step 4 — copy 7 per-tag working docs into docs/tags/<Tag>/
+    archive <Tag>   Step 4 — copy per-tag docs and evidence into docs/tags/<Tag>/
     reset           Step 7 — truncate stage.jsonl + delete metrics_current.jsonl
     bundle <Tag>    Step 5+8 — emit JSON bundle (roadmap entry, git log slice,
                     plan tag mechanics, test counts, previous tag) to stdout
@@ -53,9 +53,57 @@ ARCHIVE_MAP = [
     (".godotmaker/evaluation.json",     "evaluation-final.json"),
 ]
 
+EVIDENCE_DIR = "evidence"
+E2E_DIR = "e2e"
+SCREENSHOTS_DIR = "e2e/screenshots"
+
 
 def _resolve_project_path(arg: str | None) -> Path:
     return Path(arg).resolve() if arg else Path.cwd()
+
+
+def _copy_tree_optional(src: Path, dst: Path, ignore=None) -> int:
+    if not src.is_dir():
+        return 0
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst, ignore=ignore)
+    return _count_files(dst, "*")
+
+
+def _archive_evidence(project_path: Path, dest_dir: Path) -> dict:
+    summary = {
+        "archive_path": f"docs/tags/{dest_dir.name}/evidence/",
+        "e2e_files": 0,
+        "screenshots": 0,
+        "warnings": [],
+    }
+    evidence_dir = dest_dir / EVIDENCE_DIR
+    try:
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        summary["e2e_files"] = _copy_tree_optional(
+            project_path / E2E_DIR,
+            evidence_dir / "e2e",
+            ignore=shutil.ignore_patterns("screenshots"),
+        )
+    except OSError as exc:
+        summary["warnings"].append(f"e2e archive skipped: {exc}")
+    try:
+        summary["screenshots"] = _copy_tree_optional(
+            project_path / SCREENSHOTS_DIR,
+            evidence_dir / "screenshots",
+        )
+    except OSError as exc:
+        summary["warnings"].append(f"screenshot archive skipped: {exc}")
+    try:
+        (evidence_dir / "manifest.json").write_text(
+            json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        summary["warnings"].append(f"evidence manifest skipped: {exc}")
+        print(f"warning: evidence manifest skipped ({exc})", file=sys.stderr)
+    return summary
 
 
 def cmd_archive(project_path: Path, tag: str) -> int:
@@ -83,7 +131,12 @@ def cmd_archive(project_path: Path, tag: str) -> int:
         )
         return 1
 
-    print(f"archived {len(ARCHIVE_MAP)} files to docs/tags/{tag}/")
+    evidence = _archive_evidence(project_path, dest_dir)
+    print(
+        f"archived {len(ARCHIVE_MAP)} files to docs/tags/{tag}/ "
+        f"(evidence: {evidence['e2e_files']} e2e files, "
+        f"{evidence['screenshots']} screenshots)"
+    )
     return 0
 
 
@@ -193,11 +246,28 @@ def _git_log_since(project_path: Path, previous_tag: str | None, upper: str = "H
 def _count_files(directory: Path, pattern: str) -> int:
     if not directory.is_dir():
         return 0
-    return sum(1 for _ in directory.rglob(pattern))
+    return sum(1 for path in directory.rglob(pattern) if path.is_file())
 
 
 def _count_unit_tests(project_path: Path) -> int:
     return _count_files(project_path / "test", "*.gd")
+
+
+def _evidence_summary(project_path: Path, tag: str) -> dict:
+    archive = project_path / "docs" / "tags" / tag / EVIDENCE_DIR
+    manifest = archive / "manifest.json"
+    if manifest.is_file():
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+        except (OSError, json.JSONDecodeError, ValueError):
+            pass
+    return {
+        "archive_path": f"docs/tags/{tag}/evidence/",
+        "e2e_files": _count_files(project_path / E2E_DIR, "*"),
+        "screenshots": _count_files(project_path / SCREENSHOTS_DIR, "*"),
+    }
 
 
 def cmd_bundle(project_path: Path, tag: str) -> int:
@@ -216,6 +286,7 @@ def cmd_bundle(project_path: Path, tag: str) -> int:
                 "unit": _count_unit_tests(project_path),
                 "e2e": _count_files(project_path / "e2e", "test_*.py"),
             },
+            "evidence": _evidence_summary(project_path, tag),
         }
         # Force UTF-8 on stdout regardless of platform locale. Python text
         # mode on Windows defaults to cp936/GBK, which mangles em-dash and

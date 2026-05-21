@@ -25,10 +25,10 @@ def test_creates_style_md_from_assets_art_direction(tmp_path: Path):
     (tmp_path / "ASSETS.md").write_text(
         "# Assets: Card Arena\n\n"
         "## Art Direction\n\n"
-        "- **Style:** polished vertical mobile card game UI with chunky rounded shapes\n"
-        "- **Color palette:** bright blues, gold accents\n"
-        "- **Perspective:** vertical portrait UI\n"
-        "- **Lighting:** soft glossy highlights\n"
+        "- **Style:** polished vertical mobile card game UI with chunky rounded shapes.\n"
+        "- **Color palette:** bright blues, gold accents.\n"
+        "- **Perspective:** vertical portrait UI.\n"
+        "- **Lighting:** soft glossy highlights.\n"
         "- **Reference:** reference.png\n\n"
         "## Asset Table\n",
         encoding="utf-8",
@@ -41,6 +41,8 @@ def test_creates_style_md_from_assets_art_direction(tmp_path: Path):
     assert "polished vertical mobile card game UI with chunky rounded shapes" in style
     assert "bright blues, gold accents" in style
     assert "Reference image: reference.png" in style
+    assert "shapes.." not in style
+    assert "accents.." not in style
 
 
 def test_adds_style_md_to_toc(tmp_path: Path):
@@ -48,17 +50,18 @@ def test_adds_style_md_to_toc(tmp_path: Path):
     (tmp_path / "TOC.md").write_text(
         "# Document Index\n\n"
         "## Cross-Tag (live, accumulating)\n"
-        "- `GDD.md` — Game Design Document\n"
-        "- `ROADMAP.md` — Tag-by-tag release plan (produced by `/gm-gdd` first run, edited by /gm-gdd subsequent runs)\n"
-        "- `MEMORY.md` — Knowledge base index\n",
+        "- `GDD.md` - Game Design Document\n"
+        "- `ROADMAP.md` - Tag-by-tag release plan\n"
+        "- `MEMORY.md` - Knowledge base index\n"
+        "- `ASSETS.md` - Cross-tag asset manifest\n",
         encoding="utf-8",
     )
 
     migration.migrate(tmp_path)
 
     toc = (tmp_path / "TOC.md").read_text(encoding="utf-8")
-    assert "- `STYLE.md` — Visual prompt style guide for image generation" in toc
-    assert toc.index("`ROADMAP.md`") < toc.index("`STYLE.md`") < toc.index("`MEMORY.md`")
+    assert "- `STYLE.md` - Visual prompt style guide for image generation" in toc
+    assert toc.index("`ASSETS.md`") < toc.index("`STYLE.md`")
 
 
 def test_leaves_existing_style_md_unchanged(tmp_path: Path):

@@ -35,7 +35,7 @@ def run(project_dir: Path, *args: str) -> subprocess.CompletedProcess:
 
 @pytest.fixture
 def project_dir(tmp_path: Path) -> Path:
-    """Project root with the seven archive sources + a populated .godotmaker/."""
+    """Project root with archive sources + a populated .godotmaker/."""
     (tmp_path / ".godotmaker").mkdir()
     (tmp_path / "GDD.md").write_text("# GDD\n")
     (tmp_path / "PLAN.md").write_text(
@@ -51,12 +51,15 @@ def project_dir(tmp_path: Path) -> Path:
     (tmp_path / ".godotmaker" / "evaluation.json").write_text(
         json.dumps({"result": "approve", "minor_issues": ["small note"]})
     )
+    (tmp_path / "e2e" / "screenshots").mkdir(parents=True)
+    (tmp_path / "e2e" / "test_v0_1_0_M1_jump.py").write_text("def test_jump(): pass\n")
+    (tmp_path / "e2e" / "screenshots" / "scene_main.png").write_text("png")
     return tmp_path
 
 
 # ---------- archive ----------
 
-def test_archive_copies_all_seven_files(project_dir: Path):
+def test_archive_copies_docs_and_evidence(project_dir: Path):
     r = run(project_dir, "archive", "v0.1.0")
     assert r.returncode == 0, r.stderr
 
@@ -68,6 +71,16 @@ def test_archive_copies_all_seven_files(project_dir: Path):
     assert (dest / "SCENES.md").exists()
     assert (dest / "MEMORY.md").exists()
     assert json.loads((dest / "evaluation-final.json").read_text())["result"] == "approve"
+    assert (dest / "evidence" / "e2e" / "test_v0_1_0_M1_jump.py").exists()
+    assert not (dest / "evidence" / "e2e" / "screenshots").exists()
+    assert (dest / "evidence" / "screenshots" / "scene_main.png").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text())
+    assert manifest == {
+        "archive_path": "docs/tags/v0.1.0/evidence/",
+        "e2e_files": 1,
+        "screenshots": 1,
+        "warnings": [],
+    }
 
 
 def test_archive_overwrites_partial_existing_archive(project_dir: Path):
@@ -94,6 +107,30 @@ def test_archive_lists_every_missing_source_not_just_first(project_dir: Path):
     assert r.returncode == 2
     assert "GDD.md" in r.stderr
     assert "MEMORY.md" in r.stderr
+
+
+def test_archive_succeeds_when_evidence_copy_fails(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    seal_tag = _load_seal_tag_module()
+
+    original_copy_tree_optional = seal_tag._copy_tree_optional
+
+    def fake_copy_tree_optional(src, dst, ignore=None):
+        if src.name == "e2e":
+            raise OSError(13, "Permission denied")
+        return original_copy_tree_optional(src, dst, ignore=ignore)
+
+    monkeypatch.setattr(seal_tag, "_copy_tree_optional", fake_copy_tree_optional)
+
+    rc = seal_tag.cmd_archive(project_dir, "v0.1.0")
+    assert rc == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert (dest / "GDD-snapshot.md").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text())
+    assert manifest["e2e_files"] == 0
+    assert manifest["screenshots"] == 1
+    assert manifest["warnings"]
 
 
 # ---------- reset ----------
@@ -145,7 +182,9 @@ def test_bundle_emits_required_keys(project_dir: Path):
     assert "plan_tag_mechanics" in data
     assert "git_log_since_previous_tag" in data
     assert "test_count" in data
+    assert "evidence" in data
     assert set(data["test_count"].keys()) == {"unit", "e2e"}
+    assert set(data["evidence"].keys()) == {"archive_path", "e2e_files", "screenshots"}
 
 
 def test_bundle_extracts_tag_mechanics_from_plan(project_dir: Path):
@@ -187,14 +226,28 @@ def test_bundle_counts_unit_and_e2e_tests(project_dir: Path):
     (project_dir / "test").mkdir()
     (project_dir / "test" / "test_jump.gd").write_text("")
     (project_dir / "test" / "test_dash.gd").write_text("")
-    (project_dir / "e2e").mkdir()
+    (project_dir / "e2e").mkdir(exist_ok=True)
     (project_dir / "e2e" / "test_level1.py").write_text("")
     (project_dir / "e2e" / "conftest.py").write_text("")  # must not count
 
     r = run(project_dir, "bundle", "v0.1.0")
     data = json.loads(r.stdout)
     assert data["test_count"]["unit"] == 2
-    assert data["test_count"]["e2e"] == 1
+    assert data["test_count"]["e2e"] == 2
+
+
+def test_bundle_reads_archived_evidence_manifest(project_dir: Path):
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+
+    r = run(project_dir, "bundle", "v0.1.0")
+    data = json.loads(r.stdout)
+    assert data["evidence"] == {
+        "archive_path": "docs/tags/v0.1.0/evidence/",
+        "e2e_files": 1,
+        "screenshots": 1,
+        "warnings": [],
+    }
 
 
 def test_bundle_git_log_empty_when_no_git_repo(project_dir: Path):

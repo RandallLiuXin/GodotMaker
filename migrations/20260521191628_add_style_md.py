@@ -28,6 +28,10 @@ def _extract_field(section: str, label: str) -> str:
     return ""
 
 
+def _sentence(value: str) -> str:
+    return value.strip().rstrip(".。;；")
+
+
 def _project_name(target: Path) -> str:
     gdd = target / "GDD.md"
     if not gdd.exists():
@@ -56,7 +60,9 @@ def _build_style_md(target: Path) -> str:
     reference = _extract_field(art_direction, "Reference")
 
     anchor = style or "Use the visual style described in GDD.md section 4."
-    suffix_parts = [part for part in [style, palette, perspective, lighting] if part]
+    suffix_parts = [
+        _sentence(part) for part in [style, palette, perspective, lighting] if part
+    ]
     suffix = ". ".join(suffix_parts)
     if suffix:
         suffix += ". Clean game-ready rendering."
@@ -102,18 +108,21 @@ def _ensure_toc_entry(target: Path) -> None:
         return
 
     text = toc.read_text(encoding="utf-8")
-    entry = "- `STYLE.md` — Visual prompt style guide for image generation"
+    entry = "- `STYLE.md` - Visual prompt style guide for image generation"
     if "`STYLE.md`" in text:
         return
 
-    roadmap_line = (
-        "- `ROADMAP.md` — Tag-by-tag release plan "
-        "(produced by `/gm-gdd` first run, edited by /gm-gdd subsequent runs)"
-    )
-    if roadmap_line in text:
-        text = text.replace(roadmap_line, f"{roadmap_line}\n{entry}", 1)
+    for line in text.splitlines():
+        if line.startswith("- `ASSETS.md`"):
+            text = text.replace(line, f"{line}\n{entry}", 1)
+            break
     else:
-        text = text.rstrip() + f"\n{entry}\n"
+        for line in text.splitlines():
+            if line.startswith("- `ROADMAP.md`"):
+                text = text.replace(line, f"{line}\n{entry}", 1)
+                break
+        else:
+            text = text.rstrip() + f"\n{entry}\n"
 
     toc.write_text(text, encoding="utf-8")
     print("Updated TOC.md with STYLE.md entry")
