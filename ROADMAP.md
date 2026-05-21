@@ -40,6 +40,17 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 
 ## In Progress
 
+### v0.x - Playability and Visual Contracts
+
+- [ ] `R-080` **Playable slice contract** - Make "from one playable slice to the next playable slice" the core planning unit for `/gm-gdd`, the decomposer, `PLAN.md`, and `SCENES.md`. Each slice must name the player input path, observable state progression, completion conditions, failure conditions, and scenes it covers. This defines what build work means before runtime automation is added.
+- [ ] `R-081` **Playability scenario contract** - Turn each playable slice into a scenario that `/gm-evaluate` and `godot-e2e` can consume: input steps, wait conditions, state assertions, screenshot checkpoints, and explicit failure criteria. Scope excludes a general AI player or RL system; the first target is deterministic proof that the slice can actually be played.
+- [ ] `R-082` **Visual style bible** - Add a stable visual specification artifact used as the source of truth for later image prompts. It should capture art direction, palette, rendering style, UI language, camera/framing, reusable prompt suffixes, and forbidden visual traits. Evaluation should check objective drift and missing assets, not make open-ended "looks good" judgments.
+- [ ] `R-083` **Reference object extraction ledger** - Extract visible objects from scene reference images into a reviewable ledger: characters, enemies, props, UI elements, background layers, approximate position, size, style notes, and whether each item needs an independent runtime asset. Image-based extraction is the preferred route, but the output must be a readable ledger that agents can correct and downstream stages can verify.
+- [ ] `R-084` **Reference-derived asset generation** - Make asset generation depend on the reference/object ledger instead of only textual descriptions. Support per-object crops or derived references, character animation derivation from a reference character, UI element derivation, and explicit anchor/derivative relationships so generated assets stay stylistically coherent.
+- [ ] `R-085` **Asset integration contract** - Strengthen `ASSETS.md` and `assets/manifest.json` so every generated or provided asset records its source reference/object, target scene/node/task, intended display size, runtime path, prompt/style metadata, and integration status. Resolve the current contract conflict where `/gm-asset` is barred from editing `PLAN.md` while asset planning guidance asks it to write concrete asset assignments back into `PLAN.md`.
+- [ ] `R-086` **Contract protection for build and fixgap** - Prevent `/gm-build` workers and `/gm-fixgap` workers from weakening playable-slice, scenario, style, reference-object, or asset-integration contracts just to pass evaluation. Combine skill hard rules, hook-level guards where available, and evaluate/verify checks that detect unauthorized contract edits.
+- [ ] `R-087` **Evidence bundle per playable slice** - Persist proof for each completed slice: the scenario that ran, logs, screenshots, short video or key frames, telemetry/progress result, visual-check summary, and final verdict. This gives later agents a concrete resume point and gives users/debuggers evidence that the game advanced from one playable state to the next.
+
 ### v0.5 — Plugin Skills
 
 - [ ] `R-050` [Phantom Camera](https://github.com/ramokz/phantom-camera) — Camera management (inspired by Cinemachine)
