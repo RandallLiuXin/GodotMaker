@@ -65,6 +65,7 @@ For each per-tag document, verify it matches what was actually built **in this t
 - **GDD.md**: Cross-tag "north star". If the user changed design intent during this tag's gm-gdd round, GDD should already reflect it. Check that no claims about future tags have leaked in.
 - **PLAN.md**: All tasks `verified`. Tag Mechanics + Inherited Mechanics sections present and complete. Task file references and system/component names match the final code, not the original worker plan.
 - **STRUCTURE.md**: Components and Systems listed match what actually exists in code. Run a quick scan: list `extends Component` / `extends System` files and reconcile names, responsibilities, and schedules against the final files under `src/`.
+- **STYLE.md**: Visual prompt style guide exists.
 - **ASSETS.md**: Verify rows match `assets/` directory contents.
 - **SCENES.md**: Scene descriptions match actual scenes added in this tag.
 - **MEMORY.md**: Cross-tag accumulator. Append-only since the previous tag — don't rewrite history; if a previous discovery was later proven wrong, mark it `(superseded by …)` instead of deleting.
@@ -81,20 +82,21 @@ From the project root run:
 python tools/seal_tag.py archive <Tag>
 ```
 
-The helper copies six per-tag working docs (overwriting any earlier partial archive):
+The helper copies seven per-tag working docs (overwriting any earlier partial archive):
 
 | Destination | Source |
 |---|---|
 | `docs/tags/<Tag>/GDD-snapshot.md` | `GDD.md` |
 | `docs/tags/<Tag>/PLAN.md` | `PLAN.md` |
 | `docs/tags/<Tag>/STRUCTURE.md` | `STRUCTURE.md` |
+| `docs/tags/<Tag>/STYLE.md` | `STYLE.md` |
 | `docs/tags/<Tag>/SCENES.md` | `SCENES.md` |
 | `docs/tags/<Tag>/MEMORY.md` | `MEMORY.md` |
 | `docs/tags/<Tag>/evaluation-final.json` | `.godotmaker/evaluation.json` |
 
 Exit codes: 2 if any source is missing, 1 if a copy fails mid-loop.
 
-Then verify the archive landed — list `docs/tags/<Tag>/` and confirm all six destination files are present. If the directory is missing a file or has stale content (size or mtime mismatching the source), STOP and report to the user.
+Then verify the archive landed — list `docs/tags/<Tag>/` and confirm all seven destination files are present. If the directory is missing a file or has stale content (size or mtime mismatching the source), STOP and report to the user.
 
 Do not Edit/Write these destinations yourself.
 
@@ -202,7 +204,7 @@ It does NOT touch: `.godotmaker/metrics.jsonl` (cross-session history), `.godotm
 
 Then verify the reset landed — `.godotmaker/stage.jsonl` is empty (0 bytes) and `.godotmaker/metrics_current.jsonl` does not exist. If either check fails, STOP and report.
 
-The root-level per-tag working docs (`PLAN.md`, `STRUCTURE.md`, `SCENES.md`) stay at root.
+The root-level working docs (`PLAN.md`, `STRUCTURE.md`, `STYLE.md`, `SCENES.md`) stay at root.
 
 ### 10. Append finalize event
 

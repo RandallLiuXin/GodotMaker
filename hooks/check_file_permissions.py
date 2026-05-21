@@ -16,10 +16,10 @@ from metrics import record_event, EventType, get_current_role, WORKER_DISPATCH_R
 GAME_CODE_EXTENSIONS = {".gd", ".tscn", ".tres"}
 # Project-root planning artifacts — subagents may NOT modify these unless
 # their agent_type is in PLANNING_WRITER_AGENT_TYPES. Includes the four
-# 1c decomposer outputs (PLAN/STRUCTURE/ASSETS + SCENES/TOC), the
+# 1c decomposer outputs (PLAN/STRUCTURE/STYLE/ASSETS + SCENES/TOC), the
 # tag-iteration roadmap (ROADMAP.md, owned by /gm-gdd), and GAP.md
 # (owned by /gm-fixgap's lead, not subagents).
-PLANNING_DOCS = {"plan.md", "structure.md", "assets.md", "gap.md",
+PLANNING_DOCS = {"plan.md", "structure.md", "style.md", "assets.md", "gap.md",
                  "scenes.md", "toc.md", "roadmap.md"}
 # project.godot is the engine config and changes the whole game. Subagents
 # may not edit it unless their agent_type is in PLANNING_WRITER_AGENT_TYPES.

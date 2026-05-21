@@ -78,7 +78,7 @@ class TestAssetIntentionallyUnenforced:
     def test_asset_passes_even_when_only_scaffold_missing(self, project_dir):
         write_current_role("asset")
         write_completed_roles(["gdd"])
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
+        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
             open(f, "w").close()
         # project.godot deliberately absent — would block build, but asset is
         # exempt from the SCAFFOLD_REQUIRED check.
@@ -91,7 +91,7 @@ class TestBuildPrerequisites:
     def test_block_when_scaffold_artifact_missing(self, project_dir):
         write_current_role("build")
         write_completed_roles(["gdd"])
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
+        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
             open(f, "w").close()
         # No project.godot
         _, _, parsed = run_hook(HOOK, AGENT_INPUT)
@@ -120,7 +120,7 @@ class TestBuildPrerequisites:
         write_current_role("build")
         open("project.godot", "w").close()
         write_completed_roles(["gdd"])
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
+        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
             open(f, "w").close()
         _, code, parsed = run_hook(HOOK, AGENT_INPUT)
         assert code == 0

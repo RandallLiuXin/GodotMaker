@@ -77,6 +77,7 @@ _TAG_ARCHIVE_FILES = (
     "GDD-snapshot.md",
     "PLAN.md",
     "STRUCTURE.md",
+    "STYLE.md",
     "SCENES.md",
     "MEMORY.md",
     "evaluation-final.json",

@@ -1,6 +1,6 @@
 ---
 name: decomposer
-description: Decomposes a confirmed GDD + ROADMAP into the current tag's artifact set — PLAN.md, STRUCTURE.md, SCENES.md, TOC.md, plus appends new rows to the cross-tag ASSETS.md (and optionally project.godot tweaks). Owns sub-stage 1c of /gm-gdd. Returns only a short summary so the lead's context stays lean.
+description: Decomposes a confirmed GDD + ROADMAP into the current tag's artifact set — PLAN.md, STRUCTURE.md, SCENES.md, STYLE.md, TOC.md, plus appends new rows to the cross-tag ASSETS.md (and optionally project.godot tweaks). Owns sub-stage 1c of /gm-gdd. Returns only a short summary so the lead's context stays lean.
 model: inherit
 ---
 
@@ -25,7 +25,7 @@ The lead does NOT want to see the file content come back. Your report is a short
 
 1. `GDD Path` — read in full. Cross-tag design source of truth.
 2. `Roadmap Path` — read in full. Pull this tag's entry; understand what neighbouring tags will deliver later (helps avoid premature scope).
-3. `Templates Dir` — read the 5 templates as you need them: `PLAN.md`, `ASSETS.md`, `SCENES.md`, `STRUCTURE.md`, `TOC.md`. The templates already document their own conventions (Tag header, Tag Mechanics, risk taxonomy, schedule phases, etc.) — follow them rather than inventing structure.
+3. `Templates Dir` — read the 6 templates as you need them: `PLAN.md`, `STYLE.md`, `ASSETS.md`, `SCENES.md`, `STRUCTURE.md`, `TOC.md`. The templates already document their own conventions (Tag header, Tag Mechanics, risk taxonomy, schedule phases, etc.) — follow them rather than inventing structure.
 4. `Project.godot Path` — read to know current viewport / main_scene / autoloads, decide whether tweaks are needed. `main_scene` is off-limits (see Absolute Prohibitions).
 5. `Manifest Path` (optional) — if present, ASSETS.md `provided` rows derive from it.
 6. `Prior Tag Archives` (subsequent mode only) — read each prior tag's `PLAN.md` (for Tag Mechanics) and `STRUCTURE.md` (for what systems / components already exist). You do NOT modify these archives; you read them so the new tag's plan integrates with what already shipped.
@@ -57,8 +57,8 @@ Standard packages:
 | Work Package | Owned Files | Steps to run |
 |---|---|---|
 | `plan-package` | `PLAN.md` | Step 1 |
-| `architecture-package` | `STRUCTURE.md`, `project.godot` | Steps 4-5 |
-| `scene-asset-package` | `SCENES.md`, `ASSETS.md`, `TOC.md` | Steps 2-3, 6 |
+| `architecture-package` | `STRUCTURE.md`, `project.godot` | Steps 5-6 |
+| `scene-asset-package` | `STYLE.md`, `SCENES.md`, `ASSETS.md`, `TOC.md` | Steps 2-4, 7 |
 
 ## Steps (run in order)
 
@@ -84,7 +84,16 @@ Required structure (matches the template):
 - If the current ROADMAP entry cannot form a playable unit, report `failed` and state that ROADMAP.md needs a playable-unit tag.
 - All tasks in the Task Status table start as `pending`.
 
-### Step 2: ASSETS.md
+### Step 2: STYLE.md
+
+Run this step only when `STYLE.md` is in `Owned Files`, or when no `Work Package` is provided.
+
+Follow the rules in `.claude/templates/STYLE.md`:
+
+- **Initial mode:** Create from the template, populate Style Anchor, Prompt Suffix, UI / Asset Rules, Avoid, and Reference Notes from GDD §4 and user-provided visual notes.
+- **Subsequent mode:** Update only when this tag introduces a new visual direction.
+
+### Step 3: ASSETS.md
 
 Run this step only when `ASSETS.md` is in `Owned Files`, or when no `Work Package` is provided.
 
@@ -93,10 +102,10 @@ If this is `scene-asset-package`, read finalized PLAN.md first and use its
 
 Follow the rules in `.claude/templates/ASSETS.md` (the file's own contract). Operationally:
 
-- **Initial mode:** Create from the template, populate Art Direction from GDD §4, seed the Asset Table with v0.1.0's assets. If `Manifest Path` is present, matching rows are `provided`; otherwise `MISSING`.
-- **Subsequent mode:** Append rows for assets this tag introduces. Do not overwrite the file or modify prior-tag rows. Extend Art Direction with a sub-section only if this tag adds a new style direction.
+- **Initial mode:** Create from the template and seed the Asset Table with v0.1.0's assets. If `Manifest Path` is present, matching rows are `provided`; otherwise `MISSING`.
+- **Subsequent mode:** Append rows for assets this tag introduces. Do not overwrite the file or modify prior-tag rows.
 
-### Step 3: SCENES.md
+### Step 4: SCENES.md
 
 Run this step only when `SCENES.md` is in `Owned Files`, or when no `Work Package` is provided.
 
@@ -112,7 +121,7 @@ SCENES.md is an **end-of-tag snapshot** (same model as STRUCTURE.md) — overwri
 - Subsequent mode: read prior tags' archived SCENES.md, carry forward every scene unchanged, then add this tag's new scenes. For scenes this tag redesigns, replace the prior description with the new one and tag the section header `(redesigned in {Current Tag})`. For scenes this tag intentionally removes (paired with a Main Build refactor task), drop the section.
 - Populate each scene's `Acceptance criteria` block with observable facts a screenshot reader can mark PASS/FAIL on. Source: this tag's PLAN Tag Mechanics + Inherited Mechanics that the scene exercises (each line referenced as `[<Tag>-Mn]`) + GDD acceptance language for the scene. If a mechanic is animation-only and cannot be proven from a frozen frame, say so explicitly (e.g. `Mechanic [<Tag>-M1] jump — not provable from spawn-state screenshot; exercised in dynamic-mode test`). Carried-forward scenes in subsequent mode: copy their Acceptance criteria from the prior archive verbatim unless this tag adds visible elements.
 
-### Step 4: STRUCTURE.md
+### Step 5: STRUCTURE.md
 
 Run this step only when `STRUCTURE.md` is in `Owned Files`, or when no `Work Package` is provided.
 
@@ -128,7 +137,7 @@ STRUCTURE.md is **per-tag scope** — overwrite root from `.claude/templates/STR
 
 Each Main Build task in PLAN.md must name its game mechanic function, player-facing outcome, affected systems/scenes/UI, integration point, and verify expectation.
 
-### Step 5: project.godot (only if needed)
+### Step 6: project.godot (only if needed)
 
 Run this step only when `project.godot` is in `Owned Files`, or when no `Work Package` is provided.
 
@@ -151,7 +160,7 @@ If the GDD or this tag's ROADMAP entry implies project-level config changes (vie
 
 If GDD names a different pixel resolution (e.g. 320×180), override viewport_width/height only.
 
-### Step 6: TOC.md
+### Step 7: TOC.md
 
 Run this step only when `TOC.md` is in `Owned Files`, or when no `Work Package` is provided.
 
@@ -216,7 +225,7 @@ Update the document index (overwrite from template if missing, otherwise targete
 ### Status
 {written | failed}
 
-- `written`: all files you own for this package are on disk and look right to you. In full-artifact mode, this means all 5 docs (and project.godot if needed).
+- `written`: all files you own for this package are on disk and look right to you. In full-artifact mode, this means all 6 docs (and project.godot if needed).
 - `failed`: an early-stage error prevented progress (GDD.md unreadable, templates missing, hook denied a write you couldn't work around). Include the error in `Open TODOs`.
 
 If you wrote some files but not others, still report `failed` and list what got done in `Files Written` — the lead will read disk to see actual state and finish the remaining writes itself.
@@ -228,6 +237,7 @@ If you wrote some files but not others, still report `failed` and list what got 
 - PLAN.md — {tag id, K risk + M main = N total tasks, all pending; T tag mechanics + I inherited mechanics; playable unit summary}
 - STRUCTURE.md — {tag id, C components added, S systems added, R systems refactored}
 - SCENES.md — {tag id, N scenes covered}
+- STYLE.md — {style anchor, prompt suffix status, rule count}
 - ASSETS.md — {N new rows appended for current tag, P provided + Q MISSING among them; prior-tag rows untouched}
 - TOC.md — {updated|created}
 

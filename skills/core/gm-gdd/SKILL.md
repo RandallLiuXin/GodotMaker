@@ -6,7 +6,7 @@ description: |
   into SemVer-tagged release tags). On every subsequent run, focuses the
   conversation on the current tag (the earliest entry in ROADMAP.md
   without a git tag), optionally updates GDD.md / ROADMAP.md, then
-  generates the current tag's PLAN/STRUCTURE/SCENES/ASSETS at the project
+  generates the current tag's PLAN/STRUCTURE/SCENES/STYLE/ASSETS at the project
   root. Explicit invocation only — use /gm-gdd.
 disable-model-invocation: true
 ---
@@ -61,7 +61,7 @@ This intake is NOT a confirmation gate. Keep `AskUserQuestion` for explicit GDD 
 2. **You CANNOT write to `assets/`.** Assets are produced in `/gm-asset`.
 3. **Use AskUserQuestion for confirmation.** GDD must be explicitly confirmed by the user before generating ROADMAP / per-tag artifacts. ROADMAP must be explicitly confirmed before any artifact is written.
 4. **MUST NOT skip the ROADMAP confirmation gate** — see Sub-stages below. Initial mode WITHOUT a confirmed ROADMAP cannot proceed to artifact generation; subsequent mode with a roadmap edit WITHOUT re-confirmation cannot proceed either.
-5. **Subsequent mode does NOT append tag-N sections to STRUCTURE/SCENES/ASSETS.** It **overwrites** those root files with the current tag's scope. Prior tags' versions live in `docs/tags/<prev_tag>/`. The cross-tag accumulating files are only `GDD.md`, `ROADMAP.md`, and `MEMORY.md`.
+5. **Subsequent mode does NOT append tag-N sections to STRUCTURE/SCENES.** It **overwrites** those root files with the current tag's scope. Prior tags' versions live in `docs/tags/<prev_tag>/`. The cross-tag accumulating files are `GDD.md`, `ROADMAP.md`, `STYLE.md`, `ASSETS.md`, and `MEMORY.md`.
 6. **GDD design changes that contradict shipped tags MUST be reflected as PLAN refactor tasks.** When subsequent-mode interview reveals that a prior tag's behaviour now needs to change, the GDD update marks the old behaviour as `(superseded by ...)` rather than deleting it, AND the new PLAN.md gains an explicit refactor / removal task in the Main Build section.
 
 ## Sub-stages
@@ -115,7 +115,7 @@ This sub-stage exists in BOTH modes but does different work.
 After GDD + ROADMAP are confirmed, decompose the tag in **two phases**. PLAN.md
 is the canonical source of task IDs, current-tag mechanic IDs, affected files,
 assets needed, and verify expectations. Do not generate STRUCTURE.md,
-SCENES.md, ASSETS.md, or TOC.md in parallel with PLAN.md; those artifacts must
+SCENES.md, STYLE.md, ASSETS.md, or TOC.md in parallel with PLAN.md; those artifacts must
 read the finalized PLAN.md instead of guessing task mappings.
 
 **Phase A — PLAN first.** Launch one `decomposer` for `plan-package` only. It
@@ -149,7 +149,7 @@ or asset mappings that are absent from PLAN.md.
 File ownership remains disjoint:
 
 1. `architecture-package`: owns only `STRUCTURE.md` and `project.godot`.
-2. `scene-asset-package`: owns only `SCENES.md`, `ASSETS.md`, and `TOC.md`.
+2. `scene-asset-package`: owns only `SCENES.md`, `STYLE.md`, `ASSETS.md`, and `TOC.md`.
 
 All Phase B packages may read every input path, prior archive, and finalized
 PLAN.md, but each package may write only its owned files. After all reports
@@ -166,9 +166,9 @@ Agent({
 
 Agent({
   subagent_type: "decomposer",
-  description: "Decompose current tag SCENES.md, ASSETS.md, and TOC.md",
+  description: "Decompose current tag SCENES.md, STYLE.md, ASSETS.md, and TOC.md",
   model: "{decomposer_model from .godotmaker/config.yaml, default: sonnet}",
-  prompt: "{shared brief below + Work Package: scene-asset-package; Owned Files: SCENES.md, ASSETS.md, TOC.md}"
+  prompt: "{shared brief below + Work Package: scene-asset-package; Owned Files: SCENES.md, STYLE.md, ASSETS.md, TOC.md}"
 })
 ```
 
@@ -229,12 +229,13 @@ them into the new PLAN.md's Inherited Mechanics section verbatim}
 {exact list of files this decomposer may write}
 ```
 
-The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the current tag's scope. For `ASSETS.md` it operates differently: in **initial mode** it writes the skeleton (Art Direction + empty tables); in **subsequent mode** it APPENDS new rows for assets this tag introduces (with `Tag = <current tag>`) and never modifies prior-tag rows. It does NOT touch `GDD.md`, `ROADMAP.md`, `MEMORY.md`, or any `docs/tags/` archive. It returns a short report; do NOT relay raw decomposer output to the user — run the gate first.
+The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the current tag's scope. For `STYLE.md` it writes the initial visual prompt guide and updates it only for confirmed visual-direction changes. For `ASSETS.md` it operates differently: in **initial mode** it writes the skeleton; in **subsequent mode** it APPENDS new rows for assets this tag introduces (with `Tag = <current tag>`) and never modifies prior-tag rows. It does NOT touch `GDD.md`, `ROADMAP.md`, `MEMORY.md`, or any `docs/tags/` archive. It returns a short report; do NOT relay raw decomposer output to the user — run the gate first.
 
 **Gate 1c-B:**
 - [ ] Phase B packages used the finalized PLAN.md as the source of task IDs, mechanic IDs, affected files, asset mappings, and verify expectations
 - [ ] `STRUCTURE.md` exists with `**Tag:**` header, scoped to this tag's additions / refactors
 - [ ] `SCENES.md` exists with `**Tag:**` header, scoped to this tag
+- [ ] `STYLE.md` exists
 - [ ] `ASSETS.md` exists and any new rows are tagged correctly (per `templates/ASSETS.md` and `gm-asset/SKILL.md`)
 - [ ] `TOC.md` updated (if decomposer touched it)
 - [ ] Parallel-only consistency check: PLAN task IDs referenced by STRUCTURE/SCENES/ASSETS exist in PLAN.md; every PLAN task's affected scene/system/asset appears in the corresponding artifact or is intentionally marked deferred.

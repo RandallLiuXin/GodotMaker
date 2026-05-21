@@ -30,14 +30,14 @@ Screenshot of a {2D/3D} video game. {Camera: angle, distance, perspective}.
 Game objects: {player — appearance, position, size vs screen}. {enemies/NPCs — each type, position}. {obstacles}. {collectibles/pickups}. {projectiles if any}.
 Environment: {background layers — sky, distant, mid}. {playfield surface — material, tiling}. {foreground elements}. {boundaries/edges}.
 HUD: {each UI element — type and screen position}.
-{Art style, color palette}. Clean sharp digital rendering, game engine output.
+Visual style: {STYLE.md Style Anchor + Prompt Suffix}. Apply STYLE.md UI / Asset Rules. Avoid: {relevant STYLE.md Avoid entries}. Clean sharp digital rendering, game engine output.
 ```
 
 ## Inputs
 
 For each scene, gather from the planning docs:
 - **Elements + Mood** → `SCENES.md` (the per-scene section)
-- **Art direction** → `ASSETS.md` Art Direction header (written during `/gm-gdd`) and `GDD.md` §4
+- **Visual style** → `STYLE.md` Style Anchor, Prompt Suffix, UI / Asset Rules, Avoid, and `GDD.md` §4
 - **Style anchors** → if the user supplied art in `assets/`, reference those files explicitly via the analyst's `assets/manifest.json` style summary
 
 ## Output

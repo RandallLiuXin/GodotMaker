@@ -28,6 +28,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 
 - If `project.godot` does not exist → STOP. Tell user to run `/gm-scaffold` first.
 - If `ROADMAP.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
+- If `STYLE.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
 - If `ASSETS.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
 - If `SCENES.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
 - If `PLAN.md` is missing the `**Tag:**` header → STOP. Tell user the file is stale and to re-run `/gm-gdd` to regenerate it for the current tag.
@@ -47,7 +48,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
    - the analyst subagent (Step 2).
    Do NOT write image files with direct Write/Edit calls.
 2. **Image analysis MUST go through the analyst subagent.** Do NOT Read image binaries from `assets/` yourself — they pollute context. Dispatch analyst when you need style/dimension/role extraction.
-3. **You CANNOT modify PLAN.md, GAP.md, STRUCTURE.md, SCENES.md.** Asset work is isolated from gameplay planning. Code-art coupling issues surface in `/gm-evaluate` and are addressed in `/gm-fixgap` or the next tag.
+3. **You CANNOT modify PLAN.md, GAP.md, STRUCTURE.md, SCENES.md, STYLE.md.** Asset work is isolated from gameplay planning. Code-art coupling issues surface in `/gm-evaluate` and are addressed in `/gm-fixgap` or the next tag.
 4. **You CANNOT write game code.** Code lives in `/gm-build` workers.
 5. **Audio MUST be user-provided** — AI audio generation is not supported. Mark audio as deferred and remind the user.
 
@@ -83,14 +84,14 @@ If user provides files:
 2. Dispatch an **analyst subagent** (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`) to inspect the files and generate/update `assets/manifest.json`.
    - **Do NOT read image files yourself.** All image analysis goes through the analyst.
    - Analyst extracts: type, role, dimensions, palette, style characteristics.
-3. After analyst reports, update ASSETS.md: change matching `MISSING` rows to `provided` and record extracted style notes in Art Direction (if first user-provided batch).
+3. After analyst reports, update ASSETS.md: change matching `MISSING` rows to `provided`.
 
 ### Step 3 — Generate Scene Reference Images (if MISSING)
 
 For each scene in SCENES.md whose `references/scene_{name}.png` is missing:
 
 1. **Read `references/visual-target.md` first** — it has the prompt rules (enumerate every object, exclude effects you won't build, show HUD, etc.) and a prompt template. These reference images become the VQA contract that `gm-evaluate` enforces, so the rules matter.
-2. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood) + `ASSETS.md` Art Direction + `GDD.md` §4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
+2. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood) + `STYLE.md` + `GDD.md` §4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
 3. Generate the image using the selected `asset_image_model` path. For API-backed selectors, run via Bash:
    ```bash
    python tools/asset_gen.py image --model <asset_image_model> --prompt "..." \
@@ -106,6 +107,8 @@ For each scene in SCENES.md whose `references/scene_{name}.png` is missing:
 ### Step 4 — Generate Remaining MISSING Art
 
 For all remaining MISSING art assets in ASSETS.md (excluding audio):
+
+Read `STYLE.md` before crafting generation prompts.
 
 Confirm with user:
 > "I'll AI-generate the following: {list}. {if user art: 'Style will match your existing assets.'} OK to proceed?"

@@ -6,19 +6,13 @@
      every row marks which tag introduced the asset (use the earliest
      tag that needed it; later tweaks keep the original tag).
 
-     /gm-gdd initial mode writes the skeleton + Art Direction.
+     /gm-gdd initial mode writes the skeleton.
      /gm-asset every tag appends rows for that tag's new assets and
      refines paths/status; it does not rewrite existing rows. -->
 
-## Art Direction
+## Visual Style Source
 
-<!-- Visual style guide for asset generation. Established from reference.png. -->
-
-- **Style:** {e.g., pixel art 16x16, hand-painted, low-poly, cel-shaded}
-- **Color palette:** {dominant colors, mood}
-- **Perspective:** {top-down, side-scroll, isometric, 3D third-person}
-- **Lighting:** {flat, directional, ambient, dramatic}
-- **Reference:** reference.png
+Visual prompt language lives in `STYLE.md`.
 
 ## Asset Table
 

@@ -3,7 +3,7 @@
     "files": ["project.godot"]
   },
   "gdd": {
-    "files": ["GDD.md", "PLAN.md", "STRUCTURE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]
+    "files": ["GDD.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]
   },
   "asset": {},
   "build": {

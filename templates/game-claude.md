@@ -18,7 +18,7 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 ### Tag scope
 
 - **`PLAN.md`/`STRUCTURE.md`/`SCENES.md` describe ONLY the current tag.** Previous tags' versions live in `docs/tags/<prev_tag>/` and are immutable. Don't add new content for an already-shipped tag — open a new tag instead.
-- **`ASSETS.md` and `MEMORY.md` accumulate across tags.** Don't split per tag — append rows / entries; the `Tag` column on each ASSETS row marks the introducing tag.
+- **`STYLE.md`, `ASSETS.md`, and `MEMORY.md` accumulate across tags.** Don't split per tag — append rows / entries; the `Tag` column on each ASSETS row marks the introducing tag.
 - **Don't silently rewrite prior-tag code.** Workers may touch files outside the current tag's scope only when `PLAN.md` has an explicit refactor task naming those files. "Cleanup detours" are not allowed.
 - **Don't modify any file under `docs/tags/`.** Those archives are the historical record of what shipped at each tag.
 
@@ -36,6 +36,7 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 | Current tag's task list / progress | `PLAN.md` (`**Tag:**` header at top) |
 | Current tag's systems / components / archetypes | `STRUCTURE.md` |
 | Current tag's scene layouts | `SCENES.md` |
+| Visual prompt style guide | `STYLE.md` |
 | Asset manifest (cross-tag, with introducing-tag column) | `ASSETS.md` |
 | What a previous tag shipped | `docs/tags/<prev_tag>/` |
 | Past discoveries + gotchas (cross-tag) | `MEMORY.md` (index) |

@@ -3,7 +3,7 @@
 
 `/gm-finalize` mixes LLM-judgment work (Step 3 doc consistency check, Step 5
 CHANGELOG prose, Step 8 final_report writeup) with mechanical fs/git ops
-(archive 6 files, truncate stage.jsonl, delete metrics_current.jsonl, slice
+(archive 7 files, truncate stage.jsonl, delete metrics_current.jsonl, slice
 git log between tags). The mechanical ops show up in `2026-05-12` AAR as
 20+ tool calls with ~4 path-syntax fallbacks (Windows-absolute paths under
 Bash, PowerShell not in allowedTools). This helper collapses them into
@@ -11,7 +11,7 @@ three deterministic subcommands so the SKILL can stay short and the agent
 stays in LLM-judgment work.
 
 Subcommands:
-    archive <Tag>   Step 4 — copy 6 per-tag working docs into docs/tags/<Tag>/
+    archive <Tag>   Step 4 — copy 7 per-tag working docs into docs/tags/<Tag>/
     reset           Step 7 — truncate stage.jsonl + delete metrics_current.jsonl
     bundle <Tag>    Step 5+8 — emit JSON bundle (roadmap entry, git log slice,
                     plan tag mechanics, test counts, previous tag) to stdout
@@ -47,6 +47,7 @@ ARCHIVE_MAP = [
     ("GDD.md",                          "GDD-snapshot.md"),
     ("PLAN.md",                         "PLAN.md"),
     ("STRUCTURE.md",                    "STRUCTURE.md"),
+    ("STYLE.md",                        "STYLE.md"),
     ("SCENES.md",                       "SCENES.md"),
     ("MEMORY.md",                       "MEMORY.md"),
     (".godotmaker/evaluation.json",     "evaluation-final.json"),

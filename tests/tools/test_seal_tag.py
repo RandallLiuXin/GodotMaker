@@ -35,7 +35,7 @@ def run(project_dir: Path, *args: str) -> subprocess.CompletedProcess:
 
 @pytest.fixture
 def project_dir(tmp_path: Path) -> Path:
-    """Project root with the six archive sources + a populated .godotmaker/."""
+    """Project root with the seven archive sources + a populated .godotmaker/."""
     (tmp_path / ".godotmaker").mkdir()
     (tmp_path / "GDD.md").write_text("# GDD\n")
     (tmp_path / "PLAN.md").write_text(
@@ -45,6 +45,7 @@ def project_dir(tmp_path: Path) -> Path:
         "- [v0.1.0-M2] dash\n"
     )
     (tmp_path / "STRUCTURE.md").write_text("# STRUCTURE\n")
+    (tmp_path / "STYLE.md").write_text("# STYLE\n")
     (tmp_path / "SCENES.md").write_text("# SCENES\n")
     (tmp_path / "MEMORY.md").write_text("# MEMORY\n")
     (tmp_path / ".godotmaker" / "evaluation.json").write_text(
@@ -55,7 +56,7 @@ def project_dir(tmp_path: Path) -> Path:
 
 # ---------- archive ----------
 
-def test_archive_copies_all_six_files(project_dir: Path):
+def test_archive_copies_all_seven_files(project_dir: Path):
     r = run(project_dir, "archive", "v0.1.0")
     assert r.returncode == 0, r.stderr
 
@@ -63,6 +64,7 @@ def test_archive_copies_all_six_files(project_dir: Path):
     assert (dest / "GDD-snapshot.md").read_text() == "# GDD\n"
     assert (dest / "PLAN.md").exists()
     assert (dest / "STRUCTURE.md").exists()
+    assert (dest / "STYLE.md").exists()
     assert (dest / "SCENES.md").exists()
     assert (dest / "MEMORY.md").exists()
     assert json.loads((dest / "evaluation-final.json").read_text())["result"] == "approve"
