@@ -4,6 +4,16 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [0.4.1] - 2026-05-21
+
+### Added
+
+- First publish now creates `.godotmaker/config.yaml` before the pipeline starts and pauses so users can edit model settings; automation can pass `--no-config-review` to skip the pause.
+
+### Fixed
+
+- `/gm-asset` now finalizes and verifies runtime-native generated images before updating asset manifests.
+
 ## [0.4.0] - 2026-05-19
 
 ### Added
