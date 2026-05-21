@@ -71,9 +71,15 @@ def test_build_and_reviewer_check_playable_unit_authenticity():
 
 def test_evaluate_requires_runtime_playable_unit_proof():
     evaluate = _read("skills/core/gm-evaluate/SKILL.md")
+    schema = _read("config/stage_schemas.json")
+    fixgap = _read("skills/core/gm-fixgap/SKILL.md")
 
     assert "Playable Unit coverage passes" in evaluate
     assert "Static code evidence is not enough" in evaluate
+    assert "Key `playable_unit.rows` by mechanic id" in evaluate
+    assert "write one `playable_unit.rows` entry for" in evaluate
     assert '"playable_unit"' in evaluate
     assert "completion_fail_or_exit_reached" in evaluate
     assert "every Playable Unit table row has passing E2E coverage" in evaluate
+    assert '"evaluation_playable_unit"' in schema
+    assert "playable_unit.rows.*" in fixgap

@@ -17,6 +17,7 @@ from metrics import (
     load_stage_schemas, validate_schema_files,
     get_current_tag,
 )
+from playability_contract import check_evaluation_playable_unit_complete
 
 ROLE_NEXT = {
     "scaffold": "/gm-gdd",
@@ -59,6 +60,16 @@ def check_gap_archived() -> str | None:
     if os.path.isfile("GAP.md"):
         return ("GAP.md is still at project root — it must be archived to "
                 ".godotmaker/gaps/<iteration>/GAP.md before completing fixgap.")
+    return None
+
+
+def check_evaluation_playable_unit() -> str | None:
+    """Evaluate role: evaluation.json must cover every PLAN Playable Unit row."""
+    issues = check_evaluation_playable_unit_complete()
+    if issues:
+        return "Playable Unit evaluation contract failed:\n" + "\n".join(
+            f"  - {issue}" for issue in issues
+        )
     return None
 
 
@@ -114,6 +125,7 @@ def _check_task_table_all_verified(path: str) -> str | None:
 
 PROGRAMMATIC_CHECKS = {
     "plan_all_verified": check_plan_all_verified,
+    "evaluation_playable_unit": check_evaluation_playable_unit,
     "gap_archived": check_gap_archived,
     "tag_archived": check_tag_archived,
 }

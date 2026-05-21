@@ -89,6 +89,11 @@ GAP.md may need tasks from two sources:
 
 #### 1a. Pull issues from `evaluation.json`
 
+Create one critical evaluation-source GAP task for each `playable_unit.rows.*`
+entry with `result == "fail"`. Include the row key, test path, and evidence
+entries. Fix the game code or runtime path. Do not reduce the `PLAN.md` or
+`e2e/` contract.
+
 - `critical_issues` — must fix all (→ task IDs `C1`, `C2`, …)
 - `major_issues` — fix as many as possible (→ task IDs `J1`, `J2`, …)
 - `gameplay_issues` — fix only if related to a critical/major (→ `G1`, `G2`, …)

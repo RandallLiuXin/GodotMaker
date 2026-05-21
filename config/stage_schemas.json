@@ -13,7 +13,8 @@
     "files": [".godotmaker/verify_report.json"]
   },
   "evaluate": {
-    "files": [".godotmaker/evaluation.json"]
+    "files": [".godotmaker/evaluation.json"],
+    "checks": ["evaluation_playable_unit"]
   },
   "fixgap": {
     "checks": ["gap_archived"]

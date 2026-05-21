@@ -65,6 +65,8 @@ Build a single **expected-mechanics checklist** = (every `[<Tag>-MN]` from Tag M
 
 Build a **playable-unit checklist** from PLAN.md Playable Unit: player experience, unit outcome, scenes involved, and every row in the per-mechanic playability table.
 
+Key `playable_unit.rows` by mechanic id, for example `v0.1.0-M1`.
+
 ### Phase 2 — Maintain the e2e/ suite
 
 E2E tests live in a flat `e2e/` directory (no per-tag subdirectories). Each test file is named after the mechanic id it covers, e.g. `e2e/test_v0.1.0_M1_wasd_movement.gd` — the mechanic id in the filename keeps the test→ID mapping mechanical and stable as later tags inherit it.
@@ -80,6 +82,11 @@ E2E tests live in a flat `e2e/` directory (no per-tag subdirectories). Each test
 9. Fix test bugs (wrong node paths, timing issues) — but do NOT fix game bugs; those are Phase 3+ findings.
 
 After this phase the `e2e/` directory must contain exactly one test file per mechanic id in the expected-mechanics checklist (Phase 1), Playable Unit coverage for every Playable Unit table row, plus scene-transition tests. Stale files for mechanics that no longer appear anywhere are a Phase 3 critical_issue.
+
+Before completing `/gm-evaluate`, write one `playable_unit.rows` entry for
+every PLAN Playable Unit row. Each entry must include `result`, `test`, and
+non-empty `evidence`; the referenced test file must exist. For approve, every
+row must be `pass`.
 
 ### Phase 3 — Mandatory Checks
 

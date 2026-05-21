@@ -37,6 +37,54 @@ def stage_jsonl(events: list[dict]) -> str:
     return "\n".join(json.dumps(e) for e in events) + "\n"
 
 
+def write_minimal_playable_unit_plan():
+    with open("PLAN.md", "w", encoding="utf-8") as f:
+        f.write("""# Game Plan
+
+**Tag:** v0.1.0
+
+## Playable Unit
+
+- **Player experience:** start a run
+- **Unit outcome:** exit reached through normal play
+- **Scenes involved:** Main
+
+| Mechanic | Player operation / content | Expected effect | Required visible content | Evidence |
+|----------|----------------------------|-----------------|--------------------------|----------|
+| [v0.1.0-M1] | Press Start | Gameplay scene opens | Player visible | e2e assertion |
+
+## Main Build
+""")
+
+
+def write_minimal_playable_unit_evaluation(result: str = "approve"):
+    os.makedirs("e2e", exist_ok=True)
+    with open("e2e/test_v0_1_0_playable_unit_start.py", "w", encoding="utf-8") as f:
+        f.write("def test_placeholder():\n    assert True\n")
+    with open(".godotmaker/evaluation.json", "w", encoding="utf-8") as f:
+        json.dump({
+            "tag": "v0.1.0",
+            "result": result,
+            "playable_closed_loop": {
+                "builds_clean": True,
+                "boots_main_scene": True,
+                "playable_unit_coverage": True,
+                "completion_fail_or_exit_reached": True,
+            },
+            "playable_unit": {
+                "result": "pass",
+                "rows": {
+                    "v0.1.0-M1": {
+                        "result": "pass",
+                        "test": "e2e/test_v0_1_0_playable_unit_start.py",
+                        "evidence": ["e2e/screenshots/start.png"],
+                    },
+                },
+            },
+            "critical_issues": [],
+        }, f)
+
+
 class TestNonStageWrites:
     def test_ignores_non_write_tool(self, project_dir):
         _, code, parsed = run_hook(HOOK, {
@@ -118,8 +166,8 @@ class TestRoleReminder:
         assert "/gm-build" in ctx
 
     def test_evaluate_complete_reminds_accept_or_fixgap(self, project_dir):
-        with open(".godotmaker/evaluation.json", "w") as f:
-            f.write('{"result": "approve"}')
+        write_minimal_playable_unit_plan()
+        write_minimal_playable_unit_evaluation()
         _, code, parsed = run_hook(HOOK, {
             "hook_event_name": "PreToolUse",
             "tool_name": "Write",
@@ -198,6 +246,46 @@ class TestValidation:
         assert is_blocked(parsed)
         reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
         assert "GDD.md" in reason or "PLAN.md" in reason
+
+    def test_evaluate_blocks_when_playable_unit_contract_missing(self, project_dir):
+        with open(".godotmaker/evaluation.json", "w", encoding="utf-8") as f:
+            f.write('{"result": "approve"}')
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": ".godotmaker/stage.jsonl",
+                "content": stage_jsonl([{"role": "evaluate", "ts": "2026-01-01T05:00:00Z"}]),
+            },
+        })
+        assert is_blocked(parsed)
+        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "Playable Unit evaluation contract failed" in reason
+        assert "PLAN.md" in reason
+
+    def test_evaluate_blocks_when_playable_unit_row_uncovered(self, project_dir):
+        write_minimal_playable_unit_plan()
+        with open(".godotmaker/evaluation.json", "w", encoding="utf-8") as f:
+            json.dump({
+                "result": "approve",
+                "playable_closed_loop": {
+                    "playable_unit_coverage": True,
+                    "completion_fail_or_exit_reached": True,
+                },
+                "playable_unit": {"rows": {}},
+                "critical_issues": [],
+            }, f)
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": ".godotmaker/stage.jsonl",
+                "content": stage_jsonl([{"role": "evaluate", "ts": "2026-01-01T05:00:00Z"}]),
+            },
+        })
+        assert is_blocked(parsed)
+        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "v0.1.0-M1 missing" in reason
 
     def test_build_blocked_when_plan_has_pending(self, project_dir):
         with open("PLAN.md", "w") as f:

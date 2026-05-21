@@ -109,6 +109,56 @@ def _minimal_pass_report() -> dict:
     }
 
 
+def _write_minimal_playable_unit_plan_and_evaluation(result: str = "approve"):
+    """Write the smallest PLAN/evaluation pair accepted by the evaluate gate."""
+    with open("PLAN.md", "w", encoding="utf-8") as f:
+        f.write("""# Game Plan
+
+**Tag:** v0.1.0
+
+## Playable Unit
+
+- **Player experience:** start a run
+- **Unit outcome:** exit reached through normal play
+- **Scenes involved:** Main
+
+| Mechanic | Player operation / content | Expected effect | Required visible content | Evidence |
+|----------|----------------------------|-----------------|--------------------------|----------|
+| [v0.1.0-M1] | Press Start | Gameplay scene opens | Player visible | e2e assertion |
+
+## Main Build
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| M | Main build | verified | |
+""")
+    os.makedirs("e2e", exist_ok=True)
+    with open("e2e/test_v0_1_0_playable_unit_start.py", "w", encoding="utf-8") as f:
+        f.write("def test_placeholder():\n    assert True\n")
+    with open(".godotmaker/evaluation.json", "w", encoding="utf-8") as f:
+        json.dump({
+            "tag": "v0.1.0",
+            "result": result,
+            "playable_closed_loop": {
+                "builds_clean": True,
+                "boots_main_scene": True,
+                "playable_unit_coverage": True,
+                "completion_fail_or_exit_reached": True,
+            },
+            "playable_unit": {
+                "result": "pass",
+                "rows": {
+                    "v0.1.0-M1": {
+                        "result": "pass",
+                        "test": "e2e/test_v0_1_0_playable_unit_start.py",
+                        "evidence": ["e2e/screenshots/start.png"],
+                    },
+                },
+            },
+            "critical_issues": [],
+        }, f)
+
+
 @pytest.fixture
 def project_dir():
     """Temp project with deployed stage_schemas.json. Auto-restores cwd."""
@@ -347,8 +397,7 @@ class TestEvaluatePhase:
         assert is_blocked(parsed)
 
     def test_evaluate_completion_reminds_both_branches(self, project_dir):
-        with open(".godotmaker/evaluation.json", "w") as f:
-            f.write('{"result": "approve"}')
+        _write_minimal_playable_unit_plan_and_evaluation()
         _, parsed = run_hook("stage_reminder.py",
                              write_stage_payload({"evaluate": "2026-01-01T05:00:00Z"}))
         ctx = parsed["hookSpecificOutput"]["additionalContext"]
@@ -508,8 +557,7 @@ class TestFullLifecycleHappyPath:
         write_completed_roles({"scaffold": "t0", "gdd": "t1", "asset": "t1b",
                                "build": "t2", "verify": "t3"})
         write_current_role("evaluate")
-        with open(".godotmaker/evaluation.json", "w") as f:
-            f.write('{"result": "approve"}')
+        _write_minimal_playable_unit_plan_and_evaluation()
         _, parsed = run_hook("stage_reminder.py", write_stage_payload(
             {"scaffold": "t0", "gdd": "t1", "asset": "t1b",
              "build": "t2", "verify": "t3", "evaluate": "t4"}))
