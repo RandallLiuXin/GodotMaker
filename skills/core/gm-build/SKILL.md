@@ -1,7 +1,7 @@
 ---
 name: gm-build
 description: |
-  Implement game systems via worker dispatch. Covers risk-first then main implementation.
+  Implement game mechanic functions via worker dispatch. Covers risk-first then main implementation.
   Dispatches workers until PLAN is clean, then runs one verify+review pass; loops until convergence.
   Explicit invocation only — use /gm-build.
 disable-model-invocation: true
@@ -103,7 +103,7 @@ Do NOT delete project code as a "fix" for a tool crash.
 ### Step 1 — Dispatch Workers (until PLAN is clean)
 
 - Read `references/worker-dispatch.md` for the brief template
-- Use `subagent_type: "worker"`. Each worker implements ONE system + its unit tests.
+- Use `subagent_type: "worker"`. Each worker implements ONE game mechanic function + its tests.
 - Include the relevant Playable Unit fields in each worker brief.
 - Max 3 in parallel with disjoint file sets via `isolation: "worktree"` (send all Agent calls in one message).
 - After each worker reports DONE, mark its task in PLAN.md as `completed`.

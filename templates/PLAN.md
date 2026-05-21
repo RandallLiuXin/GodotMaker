@@ -11,9 +11,8 @@
 
 ## Tag Mechanics
 
-<!-- Mechanics this tag MUST deliver. Each gets a stable id `<Tag>-M<N>`
-     so later tags can reference it as something they inherit. State the
-     observable behavior — not how it'll be verified. -->
+<!-- Game mechanics this tag MUST deliver. Each gets a stable id `<Tag>-M<N>`.
+     State gameplay behavior. -->
 
 - [{Tag}-M1] {what mechanic + observable behavior, e.g. "WASD player movement: holding D moves the player right"}
 - [{Tag}-M2] {...}
@@ -75,11 +74,18 @@
 
 ## Main Build
 
-{What to build — all routine systems. High-level, not implementation recipes.}
+{Game-mechanic functions and integration tasks.}
+
+### Build Tasks
+
+| Task | Game Mechanic Function | Player-Facing Outcome | Affected Systems / Scenes / UI | Integration Point | Verify |
+|------|------------------------|-----------------------|--------------------------------|-------------------|--------|
+| M01 | {mechanic function to implement} | {what the player can do or see} | {systems, scenes, UI touched} | {playable path connection} | {unit/build/manual check} |
+| M02 | {...} | {...} | {...} | {...} | {...} |
 
 ### Systems & Components
 
-<!-- List the systems and components implemented in this phase. -->
+<!-- List the systems and components touched by the build tasks. -->
 
 | System | Components (reads) | Components (writes) | Purpose |
 |--------|--------------------|---------------------|---------|
@@ -118,4 +124,5 @@
 |---|------|--------|-------|
 | R1 | {Risk task 1} | pending | |
 | R2 | {Risk task 2} | pending | |
-| M | Main build | pending | |
+| M01 | {mechanic function task} | pending | |
+| M02 | {mechanic function task} | pending | |

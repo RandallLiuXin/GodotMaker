@@ -60,9 +60,19 @@ def test_gdd_gate_checks_playable_unit():
 
 def test_build_and_reviewer_check_playable_unit_authenticity():
     build = _read("skills/core/gm-build/SKILL.md")
+    dispatch = _read("skills/core/_shared/worker-dispatch.md")
+    plan = _read("templates/PLAN.md")
     reviewer = _read("agents/reviewer.md")
+    worker = _read("agents/worker.md")
 
     assert "**Build the Playable Unit.**" in build
+    assert "Each worker implements ONE game mechanic function + its tests" in build
+    assert "ONE game mechanic function + its tests" in dispatch
+    assert "Minimum 2 unit tests per changed system" in dispatch
+    assert "Minimum 2 unit tests per changed system" in worker
+    assert "Game Mechanic Function" in dispatch
+    assert "Affected Systems / Scenes / UI" in plan
+    assert "Player-Facing Outcome" in plan
     assert "Ask the reviewer to check gameplay authenticity" in build
     assert "### Gameplay Authenticity Review" in reviewer
     assert "Running the game or test suite" in reviewer

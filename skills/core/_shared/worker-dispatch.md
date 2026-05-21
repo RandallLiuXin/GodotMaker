@@ -21,7 +21,7 @@ Agent({
 ## Task: {name}                                         [REQUIRED]
 
 ### Objective                                            [REQUIRED]
-{1-2 sentences: what to build and why it matters to the game}
+{1-2 sentences: the game mechanic function to build}
 
 ### Context                                              [REQUIRED]
 - Project: {game name and type}
@@ -30,10 +30,16 @@ Agent({
 ### Input Files (Read These First)                       [REQUIRED]
 - {path}: {what it contains}
 
+### Game Mechanic Function                               [REQUIRED]
+- Mechanic ID(s): {e.g. v0.1.0-M1}
+- Player-facing outcome: {what the player can do or see}
+- Integration point: {playable path connection}
+- Affected systems/scenes/UI: {paths or names}
+
 ### Deliverables                                         [REQUIRED]
 - [ ] {file path}: {what it should contain}
-- [ ] {unit test file path}: {test scenarios — minimum 2 unit tests}
-- [ ] e2e-testable interface: public methods / signals / simulate_* helpers exposed on this system, with unit tests covering each one
+- [ ] {unit test file path}: {test scenarios — minimum 2 unit tests per changed system}
+- [ ] e2e-testable interface: public methods / signals / simulate_* helpers for affected systems/scenes/UI, with unit tests covering each one
 - [ ] Run headless-build and confirm compilation
 - [ ] Run unit tests and include pass/fail output
 - [ ] Summary of what was implemented (<200 words)
@@ -69,14 +75,14 @@ Agent({
 ## Dispatch Rules
 
 1. **Never delegate understanding.** Your brief must include specific file paths, Component fields, expected behavior. Not "implement movement based on the design."
-2. **One objective per worker.** ONE system + its tests, or ONE scene, or ONE UI screen.
-3. **Workers write their own tests.** Minimum 2 unit tests per system.
+2. **One objective per worker.** ONE game mechanic function + its tests.
+3. **Workers write their own tests.** Minimum 2 unit tests per changed system.
 4. **Workers must not spawn sub-workers.**
-5. **Include the WHY.** Workers who understand the game context make better decisions.
+5. **Include game context.** Add the relevant Playable Unit fields to the brief.
 6. **MEMORY entry is mandatory.** Every worker reports what they learned.
 7. **Test file naming**: `test_{source_file_stem}.gd` — e.g., system file `s_movement.gd` → test file `test_s_movement.gd`. check_project.py enforces this pattern.
 8. **gdUnit4 version compatibility**: Godot 4.4 → gdUnit4 v5.x, Godot 4.5+ → gdUnit4 v6.x. Headless mode requires `--ignoreHeadlessMode`.
-9. **E2E input handling**: do NOT use `Input.is_action_just_pressed()` in ECS systems. Use `_input()` callback + flag variable pattern, expose `simulate_*()` methods so the Evaluator's e2e tests can drive the system.
+9. **E2E input handling**: do NOT use `Input.is_action_just_pressed()` in ECS systems. Use `_input()` callback + flag variable pattern, expose `simulate_*()` methods so the Evaluator's e2e tests can drive the mechanic function.
 10. **UI scene root must be Control**: Any scene containing UI (menus, HUD, panels) must use a Control node as root, not Node2D. Control anchor/layout only works when the entire ancestor chain is Control nodes.
 11. **Entity.name must be set explicitly**: When creating Entity instances programmatically, set `entity.name = "MyEntity"` before `add_entity()`. Without this, Godot assigns unpredictable auto-names (`@Node@2`), breaking E2E test node paths.
 12. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
@@ -127,7 +133,7 @@ workspace support for each parallel worker:
 ```
 Agent({
   subagent_type: "worker",
-  description: "Worker: implement {system_A}",
+  description: "Worker: implement {mechanic_function_A}",
   model: "{worker_model}",
   isolation: "worktree",
   prompt: "{worker brief A}"
@@ -135,7 +141,7 @@ Agent({
 
 Agent({
   subagent_type: "worker",
-  description: "Worker: implement {system_B}",
+  description: "Worker: implement {mechanic_function_B}",
   model: "{worker_model}",
   isolation: "worktree",
   prompt: "{worker brief B}"

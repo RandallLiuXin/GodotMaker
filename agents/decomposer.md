@@ -73,12 +73,12 @@ PLAN.md is **per-tag scope**. Always overwrite the root PLAN.md from `.claude/te
 Required structure (matches the template):
 
 - `**Tag:** {Current Tag}` header at the top
-- **Tag Mechanics:** for each user-observable mechanic this tag delivers, add a line `[{Tag}-M{N}] <description>`. Each is a concrete behaviour the user can verify by playing the game. Every tag's mechanics MUST combine into one playable unit.
+- **Tag Mechanics:** for each game mechanic this tag delivers, add a line `[{Tag}-M{N}] <description>`. Describe gameplay behavior. Every tag's mechanics MUST combine into one playable unit.
 - **Inherited Mechanics:**
   - Initial mode: omit this section entirely.
   - Subsequent mode: paste verbatim every `[{prior_tag}-M{N}] <description>` line from every prior tag's `Tag Mechanics` section, MINUS any mechanics this tag is intentionally removing (those go to the Main Build refactor task that prunes the related code/tests). Inherited mechanics are NOT renamed, NOT renumbered, NOT consolidated — keep their original `[v0.X.Y-MN]` ids stable forever.
 - **Risk Tasks (R1, R2, ...):** scan this tag's GDD scope (limited by ROADMAP entry) for features matching the risk taxonomy listed in the template comment (procedural generation, complex physics, custom shaders, etc.). Isolate as risk tasks.
-- **Main Build (M01, M02, ...):** convert remaining mechanics + entities + cross-tag refactor hints into the Main Build section per the template structure.
+- **Main Build (M01, M02, ...):** convert game mechanics + entities + cross-tag refactor hints into mechanic-function build tasks per the template structure.
   - Subsequent mode with `Cross-Tag Refactor Hints`: turn each hint into one or more concrete tasks. E.g. `M03 — Refactor LevelUpCardPool into TalentTree (replaces v0.2.0 cardpool per superseded design)`.
 - **Playable Unit:** describe the game content the player can experience after this tag ships. For each mechanic, state the player operation or content, expected effect, required visible content, and evidence.
 - If the current ROADMAP entry cannot form a playable unit, report `failed` and state that ROADMAP.md needs a playable-unit tag.
@@ -126,7 +126,7 @@ STRUCTURE.md is **per-tag scope** — overwrite root from `.claude/templates/STR
 - `**Tag:** {Current Tag}` header at the top.
 - Captures the structure as it exists at the END of this tag — i.e., previous tags' systems plus this tag's additions / refactors. Subsequent mode: read prior tags' archived STRUCTURE.md to know what already exists; carry forward Components / Systems that remain, add this tag's new ones, and explicitly mark refactored ones (e.g. `LevelUpCardPool — REPLACED in v0.3.0 by TalentTree`).
 
-Each task in PLAN.md must reference a specific system — not "implement movement" but "implement PlayerMovementSystem: reads PlayerInput + Velocity, writes Transform".
+Each Main Build task in PLAN.md must name its game mechanic function, player-facing outcome, affected systems/scenes/UI, integration point, and verify expectation.
 
 ### Step 5: project.godot (only if needed)
 
