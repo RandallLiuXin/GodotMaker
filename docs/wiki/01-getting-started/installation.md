@@ -18,7 +18,7 @@ Install each one, then continue.
 
 GodotMaker can use runtime-native image and vision capabilities or API-backed providers depending on `.godotmaker/config.yaml`.
 
-API keys are required only when the project selects an API-backed provider. GodotMaker itself does not provide the external model service. If you want Codex to provide image generation in a Claude Code project, set `asset_image_model: codex`.
+API keys are required only when the project selects an API-backed provider. GodotMaker itself does not provide the external model service. If you want Codex to provide image generation in a Claude Code project, set `asset_image_model: codex`; this requires Codex CLI on PATH and does not require an image API key.
 
 | Key | Required when | What it unlocks |
 |-----|---------------|-----------------|

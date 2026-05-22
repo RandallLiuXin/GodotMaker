@@ -18,7 +18,7 @@ GodotMaker 能把你的游戏想法变成一个可以运行的 Godot 4 项目。
 
 GodotMaker 可以根据 `.godotmaker/config.yaml` 使用 runtime 原生图片和视觉能力，或者使用 API 后端 provider。
 
-只有项目选择 API 后端 provider 时，才需要 API key。GodotMaker 本身不提供外部模型服务。如果你希望 Claude Code 项目由 Codex 负责生图，可以设置 `asset_image_model: codex`。
+只有项目选择 API 后端 provider 时，才需要 API key。GodotMaker 本身不提供外部模型服务。如果你希望 Claude Code 项目由 Codex 负责生图，可以设置 `asset_image_model: codex`；这需要 Codex CLI 位于 PATH 中，不需要图片 API key。
 
 | Key | 什么时候需要 | 用途 |
 |-----|--------------|------|

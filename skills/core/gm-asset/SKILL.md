@@ -57,7 +57,10 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 Read `.godotmaker/config.yaml` before generation. Use `asset_image_model` for image assets and scene references:
 
 - `native`: use the active agent runtime's native image-generation provider/tool.
-- `codex`: use the runtime-native image-generation provider/tool for the explicit `codex` selector.
+- `codex`: use Codex image generation explicitly. If the active runtime is
+  Codex, use the active Codex runtime-native image-generation provider/tool. If
+  the active runtime is Claude Code, invoke non-interactive `codex exec` through
+  Bash and instruct Codex to use `$imagegen` / built-in `image_gen`.
 - `gemini:<model>`, `openai:<model>`, `grok:<model>`: call `tools/asset_gen.py image --model <selector> ...`.
 
 If the selected provider is unavailable, STOP and ask the user to choose another `asset_image_model`.
@@ -118,11 +121,18 @@ After confirmation, generate each asset through the selected `asset_image_model`
 Run up to 3 generation groups in parallel. Each group owns one or more target image paths. If isolated generation groups are unavailable, run the batch sequentially and state the fallback.
 
 - API-backed selectors: each group runs `python tools/asset_gen.py image --model <asset_image_model> ... -o <target.png>` for each target. The tool finalizes and validates the output.
-- `native` / `codex`: each group uses the selected runtime-native provider/tool, records each generated image path, then runs:
+- `native` / `codex`: each group uses the selected runtime-native provider/tool,
+  records each generated image path, then runs:
   ```bash
   python tools/asset_image_finalize.py --source <generated_image_path> \
     --out <target.png> --label <asset_id> [--resize WIDTHxHEIGHT]
   ```
+- For `codex` under Claude Code, call Codex through Bash. Put the prompt in a
+  temp file. The Codex prompt must explicitly require `$imagegen` / built-in
+  `image_gen`, copy the selected PNG from `$CODEX_HOME/generated_images/...` to
+  a requested source path under `.godotmaker/asset-generation/codex/`, and
+  report failure if the image-generation tool is unavailable. After `codex exec`
+  returns, verify that source path exists before finalizing it.
 - Each group writes one JSON report under `.godotmaker/asset-generation/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize result>, ...]}`.
 - Do not select images by scanning a global "latest generated image" list. Use the generated paths reported by the group.
 

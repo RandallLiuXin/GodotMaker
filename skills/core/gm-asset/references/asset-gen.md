@@ -19,6 +19,41 @@ Project default is controlled by `.godotmaker/config.yaml`'s
 `asset_image_model` field. `native` and `codex` are runtime providers and are
 not valid `tools/asset_gen.py` backends.
 
+### Codex handoff from Claude Code
+
+When `asset_image_model: codex` is selected in a Claude Code project, use
+non-interactive Codex as the image-generation provider. This is not an
+`asset_gen.py` backend.
+
+Write one prompt file per asset or generation group and run `codex exec` from
+the project root:
+
+```bash
+mkdir -p .godotmaker/asset-generation/codex
+cat > .godotmaker/asset-generation/codex_<asset_id>.prompt.txt <<'EOF'
+Use the $imagegen skill and built-in image_gen tool to generate this project
+asset.
+
+Generate a PNG for:
+<prompt>
+
+After generation, copy the selected generated PNG from
+$CODEX_HOME/generated_images/... to:
+.godotmaker/asset-generation/codex/<asset_id>_source.png
+
+If built-in image generation is unavailable, do not create an image file.
+Report the failure clearly.
+EOF
+
+codex exec --json --dangerously-bypass-approvals-and-sandbox \
+  -C "$PWD" --output-last-message .godotmaker/asset-generation/codex_<asset_id>.summary.txt \
+  - < .godotmaker/asset-generation/codex_<asset_id>.prompt.txt
+```
+
+Then check that `.godotmaker/asset-generation/codex/<asset_id>_source.png`
+exists and pass that file to `tools/asset_image_finalize.py`. Do not silently
+switch providers when the configured provider is `codex`.
+
 ### Gemini sizes and costs
 
 | Size | Cost |

@@ -51,7 +51,7 @@ If Godot is not on your PATH, this check shows a warning rather than a hard fail
 | `XAI_API_KEY` | Required when selected | xAI Grok image or video generation |
 | `TRIPO3D_API_KEY` | Optional | 3D model generation (3D games only) |
 
-API-backed selectors fail when the matching key is absent. `asset_image_model: native` passes for Codex and warns for Claude Code because the checker cannot prove a Claude-side native generation tool is available. `asset_video_model: none` does not require `XAI_API_KEY`.
+API-backed selectors fail when the matching key is absent. `asset_image_model: native` passes for Codex and warns for Claude Code because the checker cannot prove a Claude-side native generation tool is available. `asset_image_model: codex` in a Claude Code project passes when the Codex CLI is on PATH. `asset_video_model: none` does not require `XAI_API_KEY`.
 
 The checker also verifies that the selected provider package can be imported, catching installation issues that version checks alone would miss.
 

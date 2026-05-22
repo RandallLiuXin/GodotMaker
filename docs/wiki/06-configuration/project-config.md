@@ -59,6 +59,9 @@ For a Claude Code project that should use Codex image generation:
 asset_image_model: codex
 ```
 
+This selects Codex as the image-generation provider. It requires Codex CLI on
+PATH and does not require an image API key.
+
 ## API keys
 
 Provider-prefixed selectors require the matching API key:
@@ -73,7 +76,7 @@ Asset generation does not silently fall back when a key is missing. VQA can fall
 
 ## How to change a setting
 
-Open `.godotmaker/config.yaml` and change the value after the colon. For example, to use Codex native image generation:
+Open `.godotmaker/config.yaml` and change the value after the colon. For example, to use Codex image generation:
 
 ```yaml
 asset_image_model: codex

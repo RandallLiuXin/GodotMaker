@@ -51,7 +51,7 @@ All required checks passed! Ready to use GodotMaker.
 | `XAI_API_KEY` | 选中时必填 | xAI Grok 图片或视频生成 |
 | `TRIPO3D_API_KEY` | 可选 | 3D 模型生成（仅 3D 游戏需要） |
 
-API 后端选择器缺少对应 key 时会失败。`asset_image_model: native` 对 Codex 会通过；对 Claude Code 会给出警告，因为环境检查无法证明 Claude 侧原生生图工具可用。`asset_video_model: none` 不需要 `XAI_API_KEY`。
+API 后端选择器缺少对应 key 时会失败。`asset_image_model: native` 对 Codex 会通过；对 Claude Code 会给出警告，因为环境检查无法证明 Claude 侧原生生图工具可用。Claude Code 项目中的 `asset_image_model: codex` 会在 Codex CLI 位于 PATH 时通过。`asset_video_model: none` 不需要 `XAI_API_KEY`。
 
 检查工具还会验证被选中提供方的 Python 包能否正常导入，从而捕获单靠版本号检查无法发现的安装问题。
 

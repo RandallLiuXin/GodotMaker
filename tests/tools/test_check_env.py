@@ -350,7 +350,7 @@ class TestCheckFunctions:
 
     @patch("check_env.shutil.which", return_value="/usr/bin/codex")
     @patch.dict(os.environ, {}, clear=True)
-    def test_claude_codex_image_model_accepts_codex_cli(self, mock_which):
+    def test_claude_codex_image_model_accepts_codex_exec_handoff(self, mock_which):
         from check_env import check_api_keys
 
         r = EnvCheck()
@@ -364,7 +364,25 @@ class TestCheckFunctions:
         )
 
         assert not r.failed
-        assert any("Codex CLI found" in p for p in r.passed)
+        assert any("Codex CLI found for Codex image generation" in p for p in r.passed)
+
+    @patch("check_env.shutil.which", return_value="/usr/bin/codex")
+    @patch.dict(os.environ, {}, clear=True)
+    def test_claude_codex_vqa_model_accepts_codex_exec_handoff(self, mock_which):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "native",
+                "vqa_model": "codex",
+            },
+            agent="claude-code",
+        )
+
+        assert not r.failed
+        assert any("Codex CLI found for Codex image inspection" in p for p in r.passed)
 
     @patch.dict(os.environ, {}, clear=True)
     def test_none_video_model_does_not_require_xai_key(self):

@@ -65,7 +65,7 @@ Craft each prompt for its specific goal.
 
 #### Backend selection
 
-Read `.godotmaker/config.yaml` and use `asset_image_model` as the default image path. `native` uses the active runtime-native image-generation provider/tool. `codex` uses the runtime-native image-generation provider/tool for the explicit `codex` selector. API-backed selectors use `tools/asset_gen.py image --model <selector>`. Every generated image must pass through `tools/asset_image_finalize.py` before ASSETS.md is updated. Runtime-native generation groups write the JSON report described in `asset-gen.md`.
+Read `.godotmaker/config.yaml` and use `asset_image_model` as the default image path. `native` uses the active runtime-native image-generation provider/tool. `codex` uses Codex image generation explicitly; in Claude Code, follow the `codex exec` handoff in `asset-gen.md` instead of calling `tools/asset_gen.py`. API-backed selectors use `tools/asset_gen.py image --model <selector>`. Every generated image must pass through `tools/asset_image_finalize.py` before ASSETS.md is updated. Runtime-native generation groups write the JSON report described in `asset-gen.md`.
 
 Use Gemini or another precise provider where prompt precision matters: reference images, character design, 3D model references, animated sprite refs/poses, and backgrounds with exact layout. Use Grok (`grok:<model>`) for textures, simple objects, item kits, and simple scenic backgrounds only when `XAI_API_KEY` is configured. Use OpenAI (`openai:<model>`) when the project is configured for OpenAI Images API. Missing API keys are hard failures; do not silently switch providers.
 

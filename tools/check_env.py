@@ -328,7 +328,10 @@ def check_runtime_model_provider(
             r.ok(f"Codex {capability.replace('_', ' ')} uses the active Codex runtime")
             return
         if shutil.which("codex") or shutil.which("codex.cmd") or shutil.which("codex.exe"):
-            r.ok("Codex image provider selected and Codex CLI found")
+            if capability == "image_generation":
+                r.ok("Codex CLI found for Codex image generation")
+            else:
+                r.ok("Codex CLI found for Codex image inspection")
         else:
             r.fail("Codex image provider selected but Codex CLI was not found")
 

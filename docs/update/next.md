@@ -26,6 +26,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Build workers now receive one game-mechanic function per task instead of system-first work units.
 - Visual prompt style guide now gives asset generation a shared visual language.
 - Finalize now archives the current tag's E2E tests and screenshots under `docs/tags/<Tag>/evidence/` for later review and debugging.
+- Claude Code projects can now use `asset_image_model: codex` to select Codex image generation.
 
 ## Fixed
 

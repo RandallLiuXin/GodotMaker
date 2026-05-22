@@ -55,6 +55,8 @@ decomposer_model: sonnet
 asset_image_model: codex
 ```
 
+这会选择 Codex 作为图片生成 provider。它需要 Codex CLI 位于 PATH 中，不需要图片 API key。
+
 ## API Key
 
 带提供方前缀的选择器需要对应 API key：
@@ -69,7 +71,7 @@ asset_image_model: codex
 
 ## 如何修改配置
 
-打开 `.godotmaker/config.yaml`，修改冒号后的值即可。例如使用 Codex native 图片生成：
+打开 `.godotmaker/config.yaml`，修改冒号后的值即可。例如使用 Codex 图片生成：
 
 ```yaml
 asset_image_model: codex
