@@ -14,7 +14,8 @@
 - **MINOR** (v0.X.0): new full system or playable module added on top
 - **PATCH** (v0.X.Y): in-tag fixes / small tweaks (rare; usually used after a tag is shipped and a follow-up correction is needed)
 
-The first tag is always **v0.1.0**. Every tag is a minimal playable unit.
+The first tag is always **v0.1.0**. Every tag is a minimal playable unit:
+describe both the player experience and the features that implement it.
 
 ## Mid-flow edits
 
@@ -30,21 +31,35 @@ next tag.
 
 <!-- The first tag MUST deliver a playable closed loop:
      - main scene boots without crashing (`godot --headless --quit`)
+     - the tag's scope is grouped by what the player does, understands, and achieves
      - the tag's mechanics produce player-experienced game content
      - the unit's completion, fail, or exit state is reachable through play -->
 
+**Expected player experience**
+- {experience 1, e.g. start a run, move around the arena, and avoid the first enemy}
+- {experience 2, e.g. take damage, understand the run state, and reach death or restart}
+
+**Features / mechanics**
 - {feature 1, e.g. WASD player movement}
 - {feature 2, e.g. one enemy type with melee attack}
-- {feature 3, e.g. health + death + restart}
+- {feature 3, e.g. health display, damage feedback, death, and restart}
 
 ## v0.2.0 — {next theme, e.g. "Combat depth"}
 
+**Expected player experience**
+- {experience 1}
+
+**Features / mechanics**
 - {feature 1}
 - {feature 2}
 - {feature 3}
 
 ## v0.3.0 — {next theme}
 
+**Expected player experience**
+- {experience 1}
+
+**Features / mechanics**
 - {feature 1}
 - {feature 2}
 

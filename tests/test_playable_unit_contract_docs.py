@@ -13,6 +13,8 @@ def test_roadmap_template_defines_playable_unit_tag_contract():
     roadmap = _read("templates/ROADMAP.md")
 
     assert "Every tag is a minimal playable unit" in roadmap
+    assert "Expected player experience" in roadmap
+    assert "Features / mechanics" in roadmap
     assert "player-experienced game content" in roadmap
     assert "reachable through play" in roadmap
 
@@ -37,6 +39,7 @@ def test_plan_template_defines_playable_unit_contract():
         "Player operation / content",
         "Expected effect",
         "Required visible content",
+        "player-facing state, feedback, and presentation",
         "Review focus",
     ]:
         assert token in plan
@@ -46,7 +49,7 @@ def test_decomposer_must_generate_playable_unit():
     decomposer = _read("agents/decomposer.md")
 
     assert "Every tag's mechanics MUST combine into one playable unit" in decomposer
-    assert "player operation or content, expected effect, required visible content" in decomposer
+    assert "player-facing state, feedback, and presentation" in decomposer
     assert "ROADMAP.md needs a playable-unit tag" in decomposer
 
 
@@ -55,6 +58,8 @@ def test_gdd_gate_checks_playable_unit():
 
     assert "Every tag is a minimal playable unit" in gdd
     assert "Playable Unit section is populated" in gdd
+    assert "completion, fail, or exit state" in gdd
+    assert "player-facing state, feedback, and presentation" in gdd
     assert "Playable Unit scene check" in gdd
 
 

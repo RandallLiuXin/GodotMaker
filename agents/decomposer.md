@@ -78,7 +78,7 @@ Required structure (matches the template):
   - Initial mode: omit this section entirely.
   - Subsequent mode: paste verbatim every `[{prior_tag}-M{N}] <description>` line from every prior tag's `Tag Mechanics` section, MINUS any mechanics this tag is intentionally removing (those go to the Main Build refactor task that prunes the related code/tests). Inherited mechanics are NOT renamed, NOT renumbered, NOT consolidated — keep their original `[v0.X.Y-MN]` ids stable forever.
 - **Risk Tasks (R1, R2, ...):** scan this tag's GDD scope (limited by ROADMAP entry) for features matching the risk taxonomy listed in the template comment (procedural generation, complex physics, custom shaders, etc.). Isolate as risk tasks.
-- **Main Build (M01, M02, ...):** convert game mechanics + entities + cross-tag refactor hints into mechanic-function build tasks per the template structure.
+- **Main Build (M01, M02, ...):** convert game mechanics + entities + cross-tag refactor hints into mechanic-function build tasks per the template structure. Add normal M-series tasks for player-facing state, feedback, and presentation needed to play the current tag.
   - Subsequent mode with `Cross-Tag Refactor Hints`: turn each hint into one or more concrete tasks. E.g. `M03 — Refactor LevelUpCardPool into TalentTree (replaces v0.2.0 cardpool per superseded design)`.
 - **Playable Unit:** describe the game content the player can experience after this tag ships. For each mechanic, state the player operation or content, expected effect, required visible content, and evidence.
 - If the current ROADMAP entry cannot form a playable unit, report `failed` and state that ROADMAP.md needs a playable-unit tag.

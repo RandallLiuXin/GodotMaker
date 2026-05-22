@@ -74,13 +74,14 @@
 
 ## Main Build
 
-{Game-mechanic functions and integration tasks.}
+{Game-mechanic functions and integration tasks. Add normal M-series tasks for
+the player-facing state, feedback, and presentation needed to play this tag.}
 
 ### Build Tasks
 
 | Task | Game Mechanic Function | Player-Facing Outcome | Affected Systems / Scenes / UI | Integration Point | Verify |
 |------|------------------------|-----------------------|--------------------------------|-------------------|--------|
-| M01 | {mechanic function to implement} | {what the player can do or see} | {systems, scenes, UI touched} | {playable path connection} | {unit/build/manual check} |
+| M01 | {mechanic function to implement} | {what the player can do or understand} | {systems, scenes, UI touched} | {playable path connection} | {unit/build/manual check} |
 | M02 | {...} | {...} | {...} | {...} | {...} |
 
 ### Systems & Components
