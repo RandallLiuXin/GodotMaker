@@ -22,6 +22,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Changed
 
 - Tags are now planned and evaluated as minimal playable units, with runtime proof required for the playable path before evaluation can approve.
+- Finalize now uses faster scoped document consistency gates while preserving tag archives, changelogs, reports, git tags, and reset behavior.
 - Evaluate completion now validates that every Playable Unit row has a recorded E2E test and non-empty runtime evidence.
 - Build workers now receive one game-mechanic function per task instead of system-first work units.
 - Visual prompt style guide now gives asset generation a shared visual language.

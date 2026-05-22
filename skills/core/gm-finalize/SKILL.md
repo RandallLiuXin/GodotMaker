@@ -60,19 +60,15 @@ If any check fails, STOP and tell the user which one — finalize must not seal 
 
 ### 3. Document Consistency Check (current tag scope)
 
-For each per-tag document, verify it matches what was actually built **in this tag**. Do NOT update prior tags' archives.
+Run these fast gates before archiving. For passing gates, continue silently. For failures, update the root doc to match reality and remember the path for `doc_updates`.
 
-- **GDD.md**: Cross-tag "north star". If the user changed design intent during this tag's gm-gdd round, GDD should already reflect it. Check that no claims about future tags have leaked in.
-- **PLAN.md**: All tasks `verified`. Tag Mechanics + Inherited Mechanics sections present and complete. Task file references and system/component names match the final code, not the original worker plan.
-- **STRUCTURE.md**: Components and Systems listed match what actually exists in code. Run a quick scan: list `extends Component` / `extends System` files and reconcile names, responsibilities, and schedules against the final files under `src/`.
-- **STYLE.md**: Visual prompt style guide exists.
-- **ASSETS.md**: Verify rows match `assets/` directory contents.
-- **SCENES.md**: Scene descriptions match actual scenes added in this tag.
-- **MEMORY.md**: Cross-tag accumulator. Append-only since the previous tag — don't rewrite history; if a previous discovery was later proven wrong, mark it `(superseded by …)` instead of deleting.
+- **PLAN.md**: All tasks are `verified`; Tag Mechanics and Inherited Mechanics sections exist.
+- **STRUCTURE.md**: `extends Component` and `extends System` filenames under `src/` appear in the component/system listings.
+- **ASSETS.md**: Asset paths for current-tag generated rows exist under `assets/` or `references/`.
+- **SCENES.md**: Scene paths referenced for this tag exist on disk.
+- **MEMORY.md**: If a current-tag discovery is now superseded by the final implementation, mark it `(superseded by …)`.
 
-Before archiving, search the root docs for stale implementation names that no longer exist in `src/` (for example renamed Systems or Components). If a name appears only in docs and not in code, either update it to the actual name or remove the stale claim. This is a documentation fix only; do not rename code in finalize.
-
-For any inconsistency: update the doc to match reality. Do NOT change code here — finalize is a paper-trail step.
+Apply documentation fixes only. Finalize does not change code.
 
 ### 4. Archive into `docs/tags/<Tag>/`
 
@@ -120,7 +116,7 @@ The bundle JSON on stdout has:
 - `test_count.unit` (count of `test/**/*.gd`) + `test_count.e2e` (count of `e2e/**/test_*.py`)
 - `evidence.archive_path`, `evidence.e2e_files`, `evidence.screenshots`, `evidence.warnings`
 
-Combine that with PLAN.md task table and `evaluation.json` `minor_issues`, and write `docs/tags/<Tag>/CHANGELOG.md` in this format:
+Combine that with PLAN.md task table and `evaluation.json` `minor_issues`, and write `docs/tags/<Tag>/CHANGELOG.md` directly. Keep the entry concise. Use this format:
 
 ```markdown
 # Changelog — <Tag>
@@ -232,24 +228,18 @@ Captures the truncated stage.jsonl plus the new finalize marker — runtime meta
 
 Delete `.godotmaker/current_role` AFTER step 10 has completed — that write needs the role lock in place so `check_file_permissions.py` keeps the finalize permission scope active.
 
-Then print:
+Then print a compact result:
 
 ```
 ## Tag <Tag> Sealed
 
-**{game_name}** — tag <Tag> archived and git-tagged.
-
 - Archive: docs/tags/<Tag>/
 - Git tag: <Tag> (local; not pushed)
-- Tag mechanics delivered: {Tag Mechanics list}
+- Tag mechanics: {Tag Mechanics IDs or "none"}
 - Doc updates this round: {list or "none needed"}
-- Known limitations: {list or "none"}
-
-Remaining tags in ROADMAP.md: {list of unshipped tags}
+- Known limitations: {list only if non-empty; otherwise "none"}
 
 To start the next tag: /gm-gdd
-To package this tag as a release: use the release skill (separate)
-To stop here: just don't run anything else — the archive is permanent.
 ```
 
 ## What this skill explicitly does NOT do
