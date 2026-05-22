@@ -29,6 +29,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- GDD planning now scopes "your call" delegation to the current question or round instead of treating it as permission to auto-decide the rest of the design.
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
 
 ## Removed

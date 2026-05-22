@@ -52,6 +52,7 @@ Before invoking `game-planner` in initial mode, collect the user's rough idea in
 - If `$ARGUMENTS` is empty, ask the user for one open-ended paragraph: what they want to make, any references, mechanics, visual style, constraints, and anything they already decided. Make clear that rough notes are enough.
 - Pass this freeform intake verbatim into the `game-planner` brief as "Initial User Concept".
 - `game-planner` must skip questions that the freeform intake already answers and use those details to choose smarter defaults.
+- Any "your call" / "you decide" language in the intake is scoped to the named topic or the current intake round unless the user explicitly grants broader delegation.
 
 This intake is NOT a confirmation gate. Keep `AskUserQuestion` for explicit GDD and ROADMAP confirmations only.
 

@@ -38,7 +38,7 @@ through implications:
 1. **Skip what's already answered.** If the user said "pixel art platformer", don't ask about art style or perspective.
 2. **Use smart defaults.** For common genres, fill in obvious answers and confirm them rather than asking from scratch.
 3. **Ask about gray areas.** Focus questions on decisions that could go multiple ways.
-4. **Help, don't interrogate.** If the user says "just pick reasonable defaults", respect that — fill in sensible choices and move on.
+4. **Help, don't interrogate.** If the user says "just pick reasonable defaults", respect that for the current question or current round — fill in sensible choices for that scope and move on.
 5. **Sections are flexible.** Different game types need different GDD sections. Skip sections that don't apply (e.g., no "Characters" for Tetris, no "Level Design" for endless runners).
 
 ## Initial User Concept
@@ -46,7 +46,7 @@ through implications:
 When `/gm-gdd` provides an `Initial User Concept`, treat it as the user's freeform pre-brief. Extract concrete decisions before asking Round 1 questions:
 
 - game idea, genre, references, intended platform/input, art style, tone, mechanics, win/loss conditions, scope, constraints
-- explicit "your call" areas where you should choose defaults instead of asking
+- explicit "your call" areas where you should choose defaults for that topic or round instead of asking
 - ambiguities that still need user input
 
 Do not re-ask anything the concept already answers. Start Round 1 by briefly stating the assumptions you extracted, then ask only the remaining high-leverage gaps.
@@ -146,7 +146,7 @@ Rules for synthesis:
 - Use the template as a reference, NOT a rigid requirement
 - Skip sections that don't apply (mark as "N/A — {reason}" or omit entirely)
 - Add custom sections if the game needs them
-- Fill in smart defaults for anything the user said "your call" about
+- Fill in smart defaults for anything the user said "your call" about in that question or round
 
 ### Round 6 — Audit Pass 1 (GDD v1 → v2)
 
