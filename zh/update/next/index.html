@@ -2405,13 +2405,17 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Tags are now planned and evaluated as minimal playable units, with runtime proof required for the playable path before evaluation can approve.</li>
+<li>Finalize now uses faster scoped document consistency gates while preserving tag archives, changelogs, reports, git tags, and reset behavior.</li>
 <li>Evaluate completion now validates that every Playable Unit row has a recorded E2E test and non-empty runtime evidence.</li>
 <li>Build workers now receive one game-mechanic function per task instead of system-first work units.</li>
 <li>Visual prompt style guide now gives asset generation a shared visual language.</li>
 <li>Finalize now archives the current tag's E2E tests and screenshots under <code>docs/tags/&lt;Tag&gt;/evidence/</code> for later review and debugging.</li>
+<li>Claude Code projects can now use <code>asset_image_model: codex</code> to select Codex image generation.</li>
+<li>GDD planning now checks that each playable unit includes the player-facing state, feedback, and presentation needed to play the current tag.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
+<li>GDD planning now scopes "your call" delegation to the current question or round instead of treating it as permission to auto-decide the rest of the design.</li>
 <li>(WIP) Rewire Agent prompt/output trace capture to <code>PreToolUse</code>/<code>PostToolUse</code> because the <code>SubagentStart</code> payload has no <code>prompt</code> field and silently wrote 0-byte traces.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>

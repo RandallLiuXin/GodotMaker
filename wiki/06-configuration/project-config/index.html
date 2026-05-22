@@ -2448,6 +2448,8 @@
 <p>For a Claude Code project that should use Codex image generation:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
 </code></pre></div>
+<p>This selects Codex as the image-generation provider. It requires Codex CLI on
+PATH and does not require an image API key.</p>
 <h2 id="api-keys">API keys<a class="headerlink" href="#api-keys" title="Permanent link">&para;</a></h2>
 <p>Provider-prefixed selectors require the matching API key:</p>
 <table>
@@ -2474,7 +2476,7 @@
 </table>
 <p>Asset generation does not silently fall back when a key is missing. VQA can fall back only through the explicit <code>vqa_fallback_model</code> setting.</p>
 <h2 id="how-to-change-a-setting">How to change a setting<a class="headerlink" href="#how-to-change-a-setting" title="Permanent link">&para;</a></h2>
-<p>Open <code>.godotmaker/config.yaml</code> and change the value after the colon. For example, to use Codex native image generation:</p>
+<p>Open <code>.godotmaker/config.yaml</code> and change the value after the colon. For example, to use Codex image generation:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
 </code></pre></div>
 <p>To use OpenAI for API-backed image generation:</p>

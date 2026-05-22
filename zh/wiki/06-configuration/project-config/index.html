@@ -2444,6 +2444,7 @@
 <p>如果 Claude Code 项目希望使用 Codex 图片生成：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
 </code></pre></div>
+<p>这会选择 Codex 作为图片生成 provider。它需要 Codex CLI 位于 PATH 中，不需要图片 API key。</p>
 <h2 id="api-key">API Key<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h2>
 <p>带提供方前缀的选择器需要对应 API key：</p>
 <table>
@@ -2470,7 +2471,7 @@
 </table>
 <p>资源生成不会在 key 缺失时静默切换提供方。VQA 只有在显式配置 <code>vqa_fallback_model</code> 时才会回退。</p>
 <h2 id="_5">如何修改配置<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p>打开 <code>.godotmaker/config.yaml</code>，修改冒号后的值即可。例如使用 Codex native 图片生成：</p>
+<p>打开 <code>.godotmaker/config.yaml</code>，修改冒号后的值即可。例如使用 Codex 图片生成：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
 </code></pre></div>
 <p>使用 OpenAI API 生成图片：</p>

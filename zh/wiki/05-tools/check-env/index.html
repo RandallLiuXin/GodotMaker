@@ -2575,7 +2575,7 @@
 </tr>
 </tbody>
 </table>
-<p>API 后端选择器缺少对应 key 时会失败。<code>asset_image_model: native</code> 对 Codex 会通过；对 Claude Code 会给出警告，因为环境检查无法证明 Claude 侧原生生图工具可用。<code>asset_video_model: none</code> 不需要 <code>XAI_API_KEY</code>。</p>
+<p>API 后端选择器缺少对应 key 时会失败。<code>asset_image_model: native</code> 对 Codex 会通过；对 Claude Code 会给出警告，因为环境检查无法证明 Claude 侧原生生图工具可用。Claude Code 项目中的 <code>asset_image_model: codex</code> 会在 Codex CLI 位于 PATH 时通过。<code>asset_video_model: none</code> 不需要 <code>XAI_API_KEY</code>。</p>
 <p>检查工具还会验证被选中提供方的 Python 包能否正常导入，从而捕获单靠版本号检查无法发现的安装问题。</p>
 <h2 id="_3">读懂输出结果<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
 <p>每行以以下三种标记之一开头：</p>
