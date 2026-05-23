@@ -36,32 +36,11 @@
         <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/versioning/"/>
     </url>
     <url>
-        <loc>https://RandallLiuXin.github.io/GodotMaker/contributing/shared-refs/</loc>
-        <lastmod>2026-05-23</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/contributing/shared-refs/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/contributing/shared-refs/"/>
-    </url>
-    <url>
-        <loc>https://RandallLiuXin.github.io/GodotMaker/decisions/disable-gdtoolkit/</loc>
-        <lastmod>2026-05-23</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/decisions/disable-gdtoolkit/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/decisions/disable-gdtoolkit/"/>
-    </url>
-    <url>
         <loc>https://RandallLiuXin.github.io/GodotMaker/update/next/</loc>
         <lastmod>2026-05-23</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/update/next/"/>
         <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/update/next/"/>
-    </url>
-    <url>
-        <loc>https://RandallLiuXin.github.io/GodotMaker/update/next.template/</loc>
-        <lastmod>2026-05-23</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/update/next.template/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/update/next.template/"/>
     </url>
     <url>
         <loc>https://RandallLiuXin.github.io/GodotMaker/update/release-checklist/</loc>
@@ -393,32 +372,11 @@
         <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/versioning/"/>
     </url>
     <url>
-        <loc>https://RandallLiuXin.github.io/GodotMaker/zh/contributing/shared-refs/</loc>
-        <lastmod>2026-05-23</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/contributing/shared-refs/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/contributing/shared-refs/"/>
-    </url>
-    <url>
-        <loc>https://RandallLiuXin.github.io/GodotMaker/zh/decisions/disable-gdtoolkit/</loc>
-        <lastmod>2026-05-23</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/decisions/disable-gdtoolkit/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/decisions/disable-gdtoolkit/"/>
-    </url>
-    <url>
         <loc>https://RandallLiuXin.github.io/GodotMaker/zh/update/next/</loc>
         <lastmod>2026-05-23</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/update/next/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/update/next/"/>
-    </url>
-    <url>
-        <loc>https://RandallLiuXin.github.io/GodotMaker/zh/update/next.template/</loc>
-        <lastmod>2026-05-23</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/update/next.template/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/update/next.template/"/>
     </url>
     <url>
         <loc>https://RandallLiuXin.github.io/GodotMaker/zh/update/release-checklist/</loc>
