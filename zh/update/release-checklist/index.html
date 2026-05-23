@@ -1675,6 +1675,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../v0.5.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.5.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../v0.4.1/" class="md-nav__link">
         
   
@@ -2425,9 +2453,11 @@
 </li>
 <li>
 <p><strong>README + wiki entry-flow consistency.</strong> The first command shown in
-     <code>README.md</code>, <code>README.zh-CN.md</code>, and <code>docs/wiki/01-getting-started/first-game.md</code>
-     must match. For a new project this is <code>/gm-scaffold</code>; <code>/gm-gdd</code> is the
-     entry only when starting a new tag on an existing project.</p>
+     <code>README.md</code>, <code>README.zh-CN.md</code>, and
+     <code>docs/wiki/01-getting-started/first-game.md</code> must match the current
+     public entrypoint. For the CLI-first path this is <code>godotmaker</code>; direct
+     <code>/gm-scaffold</code> or <code>/gm-gdd</code> role commands are advanced/manual entrypoints,
+     not the first-run command shown to new users.</p>
 </li>
 <li><strong>New config keys are in <code>config.yaml.default</code>.</strong> Any <code>*_model</code> field
      newly referenced by a skill must also be declared in
