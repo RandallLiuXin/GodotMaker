@@ -21,6 +21,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Clarified source-available licensing language and excluded internal planning notes from the documentation site.
+
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.

@@ -5,6 +5,11 @@ site_author: RandallLiuXin
 repo_url: https://github.com/RandallLiuXin/GodotMaker
 repo_name: RandallLiuXin/GodotMaker
 edit_uri: edit/main/docs/
+exclude_docs: |
+  contributing/**
+  decisions/**
+  zh/decisions/**
+  update/next.template.md
 
 theme:
   name: material
@@ -33,6 +38,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Wiki Home: wiki/Home.md
   - Getting Started:
       - Installation: wiki/01-getting-started/installation.md
       - Your First Game: wiki/01-getting-started/first-game.md
@@ -123,6 +129,7 @@ plugins:
           build: true
           nav_translations:
             Home: 首页
+            Wiki Home: Wiki 首页
             Getting Started: 快速开始
             Installation: 安装
             Your First Game: 第一款游戏

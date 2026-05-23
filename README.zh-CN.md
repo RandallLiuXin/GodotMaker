@@ -20,7 +20,7 @@
 
 GodotMaker 选择另一条路：你带着游戏想法来，它协助你整理成 GDD，然后自动驱动 Agent 完成规划、实现、测试、运行、截图评估和修复。几个小时后，你验收的是一个真正落在本地的 Godot 项目。
 
-项目代码在你手里，工作流源码公开、本地优先，并可在 Business Source License 允许的范围内免费运行。想继续打磨，就继续完善想法或 GDD，再跑下一轮。
+项目代码在你手里，工作流源码 source-available、本地优先，并可在 Business Source License 允许的范围内免费运行。想继续打磨，就继续完善想法或 GDD，再跑下一轮。
 
 ## 它有什么不同
 
@@ -32,7 +32,7 @@ GodotMaker 选择另一条路：你带着游戏想法来，它协助你整理成
 - **没有中间商赚差价。** GodotMaker 是工作流层，不通过封闭平台转卖 agent 工作。
 - **源码可见的自动化流程。** 框架和 CLI 驱动流程公开可查看，可在许可范围内运行、修改和贡献。
 
-Claude Code、Codex、Gemini、OpenAI、xAI、Tripo 等外部 runtime 或模型 provider 可能有自己的价格、额度和数据政策。GodotMaker 保证的是工作流源码公开、项目本地、产物归你。
+Claude Code、Codex、Gemini、OpenAI、xAI、Tripo 等外部 runtime 或模型 provider 可能有自己的价格、额度和数据政策。GodotMaker 保证的是工作流源码 source-available、项目本地、产物归你。
 
 ## Agent 会做什么
 

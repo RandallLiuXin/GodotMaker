@@ -12,7 +12,7 @@ GodotMaker turns a game idea into a playable Godot 4 project through a no-human-
 - **No closed-platform resale** - GodotMaker is a source-available workflow layer, not a hosted editor that resells agent work and keeps the project locked away.
 - **Tested code by default** - unit tests and end-to-end gameplay tests are written alongside the game code.
 - **Visual QA included** - the evaluator runs the game, captures screenshots, compares the result to the design, and feeds issues back into the fix loop.
-- **Source-available workflow layer** - GodotMaker's workflow source is public under BUSL 1.1 and does not lock the project behind a hosted editor.
+- **Source-available workflow layer** - GodotMaker's workflow source is available under BUSL 1.1 and does not lock the project behind a hosted editor.
 
 ## Start Here
 

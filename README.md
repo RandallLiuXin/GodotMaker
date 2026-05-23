@@ -20,7 +20,7 @@ Many tools promise "AI-made games." In practice, they often come with the same p
 
 GodotMaker takes a different route: bring the game idea, let it help shape that idea into a GDD, then let agents run for hours through planning, implementation, tests, gameplay runs, screenshots, evaluation, and fixes. When the run finishes, you review a real Godot project on your disk.
 
-The code is yours. The workflow source is public, local-first, and free to run for permitted uses under the Business Source License. If you want a better game, refine the idea or GDD and run another iteration.
+The code is yours. The workflow source is source-available, local-first, and free to run for permitted uses under the Business Source License. If you want a better game, refine the idea or GDD and run another iteration.
 
 ## What Makes It Different
 
