@@ -78,9 +78,11 @@ Steps to follow when publishing a new version of GodotMaker.
    shipped past previous releases. Run before tagging.
 
    - **README + wiki entry-flow consistency.** The first command shown in
-     `README.md`, `README.zh-CN.md`, and `docs/wiki/01-getting-started/first-game.md`
-     must match. For a new project this is `/gm-scaffold`; `/gm-gdd` is the
-     entry only when starting a new tag on an existing project.
+     `README.md`, `README.zh-CN.md`, and
+     `docs/wiki/01-getting-started/first-game.md` must match the current
+     public entrypoint. For the CLI-first path this is `godotmaker`; direct
+     `/gm-scaffold` or `/gm-gdd` role commands are advanced/manual entrypoints,
+     not the first-run command shown to new users.
    - **New config keys are in `config.yaml.default`.** Any `*_model` field
      newly referenced by a skill must also be declared in
      `config/config.yaml.default` with the same default value. The automated
