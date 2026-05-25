@@ -122,3 +122,68 @@ def test_finalize_keeps_matching_aspect_without_padding(tmp_path):
         assert all(
             rgba.getpixel((x, y))[3] == 255 for x in range(4) for y in range(2)
         )
+
+
+def test_finalize_archives_original_by_default(tmp_path):
+    source = tmp_path / "generated" / "coin.png"
+    output = tmp_path / "assets" / "img" / "coin.png"
+    make_png(source, size=(16, 8))
+
+    result = finalize_image_asset(source, output, resize="4x4")
+
+    origin = tmp_path / "assets" / "origin" / "coin.png"
+    assert result["origin"] == str(origin)
+    assert origin.exists()
+    with Image.open(origin) as image:
+        # Original resolution preserved for comparison/debugging.
+        assert image.size == (16, 8)
+
+
+def test_finalize_skips_origin_when_disabled(tmp_path):
+    source = tmp_path / "generated" / "coin.png"
+    output = tmp_path / "assets" / "img" / "coin.png"
+    make_png(source, size=(16, 8))
+
+    result = finalize_image_asset(source, output, resize="4x4", archive_original=False)
+
+    assert "origin" not in result
+    assert not (tmp_path / "assets" / "origin" / "coin.png").exists()
+
+
+def test_finalize_skips_origin_without_resize(tmp_path):
+    source = tmp_path / "generated" / "coin.png"
+    output = tmp_path / "assets" / "img" / "coin.png"
+    make_png(source, size=(16, 8))
+
+    result = finalize_image_asset(source, output)
+
+    assert "origin" not in result
+    assert not (tmp_path / "assets" / "origin" / "coin.png").exists()
+
+
+def test_cli_no_origin_flag(tmp_path):
+    source = tmp_path / "generated" / "coin.png"
+    output = tmp_path / "assets" / "img" / "coin.png"
+    make_png(source)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_image_finalize.py"),
+            "--source",
+            str(source),
+            "--out",
+            str(output),
+            "--resize",
+            "2x2",
+            "--no-origin",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    data = json.loads(result.stdout)
+    assert "origin" not in data
+    assert not (tmp_path / "assets" / "origin" / "coin.png").exists()

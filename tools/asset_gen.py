@@ -140,6 +140,7 @@ def finish_image_output(args, output: Path, cost: int, service: str):
             "original_height": final["original_height"],
             **({"asset_id": final["asset_id"]} if "asset_id" in final else {}),
             **({"resize": final["resize"]} if "resize" in final else {}),
+            **({"origin": final["origin"]} if "origin" in final else {}),
         },
     )
 
