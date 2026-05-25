@@ -86,3 +86,39 @@ def test_cli_outputs_json(tmp_path):
     assert data["width"] == 2
     assert data["height"] == 2
     assert output.exists()
+
+
+def test_finalize_pads_instead_of_stretching_on_aspect_mismatch(tmp_path):
+    # A square source forced into a wide target must NOT be stretched: it is
+    # scaled proportionally and centered on a transparent canvas.
+    source = tmp_path / "generated" / "hero.png"
+    output = tmp_path / "assets" / "img" / "hero.png"
+    make_png(source, size=(10, 10), color=(255, 0, 0, 255))
+
+    result = finalize_image_asset(source, output, resize="10x4")
+
+    assert (result["width"], result["height"]) == (10, 4)
+    with Image.open(output) as image:
+        assert image.size == (10, 4)
+        rgba = image.convert("RGBA")
+        # Centered art stays opaque...
+        assert rgba.getpixel((5, 2))[3] == 255
+        # ...while the horizontal padding is fully transparent.
+        assert rgba.getpixel((0, 2))[3] == 0
+        assert rgba.getpixel((9, 2))[3] == 0
+
+
+def test_finalize_keeps_matching_aspect_without_padding(tmp_path):
+    source = tmp_path / "generated" / "bar.png"
+    output = tmp_path / "assets" / "img" / "bar.png"
+    make_png(source, size=(8, 4), color=(0, 128, 255, 255))
+
+    result = finalize_image_asset(source, output, resize="4x2")
+
+    assert (result["width"], result["height"]) == (4, 2)
+    with Image.open(output) as image:
+        rgba = image.convert("RGBA")
+        # Same aspect ratio -> no transparent padding anywhere.
+        assert all(
+            rgba.getpixel((x, y))[3] == 255 for x in range(4) for y in range(2)
+        )

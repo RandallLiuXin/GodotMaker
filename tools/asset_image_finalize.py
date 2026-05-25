@@ -66,6 +66,31 @@ def _atomic_save(image, output: Path, image_format: str) -> None:
             tmp_path.unlink()
 
 
+def _fit_with_padding(image, size: tuple[int, int]):
+    """Resize preserving aspect ratio, padding to exactly ``size``.
+
+    The image is scaled to fit within ``size`` (never cropped, never
+    stretched) and centered on a fully transparent canvas of exactly
+    ``size``. When the source aspect ratio already matches the target this
+    degrades to a plain proportional resize with no padding. Avoids the
+    aspect-ratio distortion a direct ``Image.resize(size)`` would cause when
+    the generated image's aspect ratio differs from the requested one.
+    """
+    from PIL import Image
+
+    target_w, target_h = size
+    src_w, src_h = image.size
+    scale = min(target_w / src_w, target_h / src_h)
+    fit_w = max(1, round(src_w * scale))
+    fit_h = max(1, round(src_h * scale))
+    fitted = image.resize((fit_w, fit_h), Image.Resampling.LANCZOS)
+    if fitted.mode != "RGBA":
+        fitted = fitted.convert("RGBA")
+    canvas = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+    canvas.paste(fitted, ((target_w - fit_w) // 2, (target_h - fit_h) // 2))
+    return canvas
+
+
 def finalize_image_asset(
     source: Path,
     output: Path,
@@ -93,10 +118,7 @@ def finalize_image_asset(
             or source_format != image_format.lower()
         )
         if requested_size is not None:
-            from PIL import Image
-
-            resample = Image.Resampling.LANCZOS
-            image = image.resize(requested_size, resample)
+            image = _fit_with_padding(image, requested_size)
         if image_format.lower() == "png" and image.mode not in {"RGB", "RGBA"}:
             image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
 
