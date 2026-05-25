@@ -2456,6 +2456,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Diagnostic log at <code>.godotmaker/log_agent_tool_debug.log</code> that records every phase of <code>log_agent_tool.py</code> so the next failure mode is localizable from artifacts.</li>
+<li>A resized image's untouched original is archived to <code>assets/origin/</code> for comparison and debugging.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2464,6 +2465,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Rewire Agent prompt/output trace capture to <code>PreToolUse</code>/<code>PostToolUse</code> because the <code>SubagentStart</code> payload has no <code>prompt</code> field and silently wrote 0-byte traces.</li>
+<li>Resized image assets are scaled proportionally and transparency-padded instead of stretched, so non-square art is no longer squashed.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
