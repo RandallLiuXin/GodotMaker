@@ -42,7 +42,7 @@ Scaffold is **lifetime-once** — its event gets cleared after each tag's finali
 1. **Do NOT design the game here.** Game design is `/gm-gdd`'s job. Scaffold creates an empty, generic project. Non-gameplay project settings (resolution, rendering method, viewport defaults) are config choices scaffold may make — those are not game design.
 2. **Do NOT create Component/System stubs.** STRUCTURE.md doesn't exist yet, so there's nothing to derive from. Workers in `/gm-build` create code files on demand.
 3. **All addons MUST come from `.claude/config/addon_versions.json`** — do not guess versions.
-4. **Initial git commit is mandatory.** Worker worktree isolation in `/gm-build` requires `HEAD` to resolve.
+4. **Initial git commit is mandatory and must include import metadata.** Run `<godot_path> --headless --import` before the commit to generate and stage the `.uid` files. Worker worktree isolation in `/gm-build` requires `HEAD` to resolve.
 
 ## Scaffold Steps
 
@@ -146,7 +146,8 @@ def game(_game_process):
 ### 3. Initial commit
 
 ```bash
-git init   # if not already a git repo
+git init                              # if not already a git repo
+<godot_path> --headless --import      # generate .godot/ cache + *.uid sidecars
 git add -A
 git commit -m "Scaffold: initial Godot project with addons"
 ```

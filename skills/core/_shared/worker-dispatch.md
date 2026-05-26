@@ -116,14 +116,16 @@ Workers with **no file ownership overlap** can run in parallel using git worktre
 
 Don't dispatch task-by-task — design batches. Before each round, inspect every pending task's **Affected files** list in `PLAN.md` and group tasks into the largest possible batch (up to 3) whose file sets are pairwise disjoint. Sequential dependencies (B reads a class B-task creates) belong in different batches; file-disjoint independent work belongs together.
 
-A typical `/gm-build` cycle runs as 3–6 batches: each batch is "dispatch parallel → wait → merge → build-check", repeated until `PLAN.md` is fully `verified`. Fix tasks discovered by the Reviewer use the same batching rule.
+A typical `/gm-build` cycle runs as 3–6 batches: each batch is "dispatch parallel → wait for all → merge → build-check → commit", repeated until `PLAN.md` is fully `verified`. Fix tasks discovered by the Reviewer use the same batching rule.
 
-### Before dispatch — snapshot the working tree
+### Precondition for parallel dispatch
 
-Before sending any isolated worker call, detect whether the current checkout is
-a normal branch, an existing worktree, detached HEAD, or a host-managed sandbox.
-If a clean snapshot is required but cannot be created safely, do not dispatch
-parallel workers; use sequential worker briefs or fail before the stage starts.
+Use `isolation: "worktree"` whenever the runtime supports it; fall back to
+sequential worker briefs only when it does not.
+
+Do NOT fall back to sequential because the tree has untracked or ignored files
+(`.uid`, `.godot/`). Keep the main tree clean by committing between batches (see
+Merge procedure).
 
 ### How to dispatch
 
@@ -174,6 +176,12 @@ If a worker's branch is missing or `git diff main..{branch}` is empty, treat the
    ```
 
 4. **If merge conflict occurs**: resolve manually, prioritizing the more recent/complete implementation. Then re-run both workers' unit tests to confirm.
+
+5. **Commit the merged batch** before dispatching the next one:
+   ```bash
+   git add -A
+   git commit -m "build: merge batch (<task ids>) + import metadata"
+   ```
 
 ### Rules
 

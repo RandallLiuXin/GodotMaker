@@ -23,11 +23,13 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Changed
 
 - Clarified source-available licensing language and excluded internal planning notes from the documentation site.
+- Scaffold generates and commits Godot `.uid` import metadata in its initial commit so the project tree starts clean for `/gm-build`.
 
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
 - Resized image assets are scaled proportionally and transparency-padded instead of stretched, so non-square art is no longer squashed.
 - Clarified Visual QA handling of normal gameplay captures versus `--debug-collisions` collision-check captures.
+- `/gm-build` no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.
 
 ## Removed
