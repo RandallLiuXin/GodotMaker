@@ -3,7 +3,10 @@
 Complete reference for all GodotMaker hooks. Hooks are Python scripts that run
 on Claude Code events to enforce pipeline rules.
 
-Registered in `config/settings.json`, deployed to `.godotmaker/hooks/` via publish.
+Hook registration is runner-specific:
+`agent-runtimes/claude-code/config/settings.json` for Claude Code and
+`agent-runtimes/codex/config/hooks.json` for Codex. The scripts are deployed to
+`.godotmaker/hooks/` via publish.
 
 ---
 

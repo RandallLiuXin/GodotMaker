@@ -25,7 +25,8 @@ GodotMaker/
 │   ├── core/       Role skills + supporting skills + _shared/ cross-skill reference docs
 │   └── reviewer/   8 domain reviewer skills (physics, animation, ui, ...)
 ├── tools/          CLI tools: publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
-├── config/         settings.json, stage_schemas.json, addon_versions.json
+├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
+├── agent-runtimes/ runner-specific references, templates, and hook config
 ├── templates/      Document templates deployed into generated game projects
 ├── tests/          ~320 unit tests for hooks and tools
 ├── docs/           Wiki, contributing guides, versioning reference, hooks reference

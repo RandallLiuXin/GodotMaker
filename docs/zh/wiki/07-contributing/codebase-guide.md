@@ -12,7 +12,8 @@ GodotMaker/
 │   ├── core/                角色技能 + 辅助技能 + _shared/
 │   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
-├── config/                  settings.json, stage_schemas.json, addon_versions.json
+├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
+├── agent-runtimes/          runner 专属 reference、template 和 hook config
 ├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
 ├── tests/                   ~320 个 hook 和工具的单元测试
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
@@ -42,7 +43,9 @@ GodotMaker/
 | `check_worker_report.py` | 由 on_subagent_stop.py 调用 | 是 |
 | `check_completion.py` | Stop | 是 |
 
-Hook 注册关系（哪个脚本响应哪个事件）存储在 `config/settings.json` 中，发布到 Claude Code 目标时会部署为 `.claude/settings.json`。
+Hook 注册关系（哪个脚本响应哪个事件）存储在
+`agent-runtimes/<agent>/config/` 下，并发布到所选 runner 的项目级 hook
+配置（`.claude/settings.json` 或 `.codex/hooks.json`）。
 
 ### hooks/metrics/
 

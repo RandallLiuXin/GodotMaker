@@ -36,5 +36,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `/gm-build` no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.
 - Worker dispatch briefs now explicitly block approval prompts and confirmation pauses during non-interactive pipeline runs.
 - Codex image generation copies each subagent's own generated file to a fixed per-asset path instead of the newest file in `generated_images`, which was unsafe once generation runs in parallel.
+- Hook registration config is now runner-specific: Claude Code uses `agent-runtimes/claude-code/config/settings.json`, while Codex publishes `agent-runtimes/codex/config/hooks.json` to `.codex/hooks.json`.
 
 ## Removed

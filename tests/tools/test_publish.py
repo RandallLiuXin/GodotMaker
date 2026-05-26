@@ -79,7 +79,7 @@ def _runtime_text_files(root: Path):
             yield path, path.read_text(encoding="utf-8")
 
 
-def _publish_codex_project(tmp_path, monkeypatch):
+def _publish_codex_project(tmp_path, monkeypatch, before_publish=None):
     from _version import SemVer
 
     target = tmp_path / "target"
@@ -89,6 +89,8 @@ def _publish_codex_project(tmp_path, monkeypatch):
         'godot_path: "/test/godot"\n',
         encoding="utf-8",
     )
+    if before_publish is not None:
+        before_publish(target)
 
     codex_mcp_calls = []
 
@@ -123,6 +125,46 @@ def _publish_codex_project(tmp_path, monkeypatch):
 
     publish.main()
     return target, codex_mcp_calls
+
+
+def _publish_claude_project(tmp_path, monkeypatch, before_publish=None):
+    from _version import SemVer
+
+    target = tmp_path / "target"
+    config_dir = target / ".claude"
+    config_dir.mkdir(parents=True)
+    (config_dir / "godotmaker.yaml").write_text(
+        'godot_path: "/test/godot"\n',
+        encoding="utf-8",
+    )
+    if before_publish is not None:
+        before_publish(target)
+
+    monkeypatch.setattr(
+        publish,
+        "check_version_upgrade",
+        lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)),
+    )
+    monkeypatch.setattr(publish, "register_mcp",
+                        lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(publish, "register_godot_permissions",
+                        lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(publish, "ensure_git_repo",
+                        lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(publish, "baseline_applied",
+                        lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(publish, "run_migrations",
+                        lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(sys, "argv",
+                        [
+                            "publish.py",
+                            "--force",
+                            "--no-config-review",
+                            str(target),
+                        ])
+
+    publish.main()
+    return target
 
 
 class TestReadGodotPath:
@@ -1005,6 +1047,93 @@ class TestCodexPublishParity:
         assert "codex" in lower
         assert "mapping" in lower or "runtime" in lower
 
+    def test_codex_publish_outputs_runtime_hook_config(self, tmp_path, monkeypatch):
+        target, _calls = _publish_codex_project(tmp_path, monkeypatch)
+        hooks_file = target / ".codex" / "hooks.json"
+        source_file = (
+            Path(__file__).parents[2] / "agent-runtimes" / "codex" /
+            "config" / "hooks.json"
+        )
+
+        assert hooks_file.exists()
+        deployed = json.loads(hooks_file.read_text(encoding="utf-8"))
+        source = json.loads(source_file.read_text(encoding="utf-8"))
+
+        assert deployed == source
+        assert "PreToolUse" not in deployed["hooks"]
+        assert "PostToolUse" not in deployed["hooks"]
+
+    def test_claude_publish_outputs_runtime_hook_config(self, tmp_path, monkeypatch):
+        target = _publish_claude_project(tmp_path, monkeypatch)
+        settings_file = target / ".claude" / "settings.json"
+        source_file = (
+            Path(__file__).parents[2] / "agent-runtimes" / "claude-code" /
+            "config" / "settings.json"
+        )
+
+        assert settings_file.exists()
+        deployed = json.loads(settings_file.read_text(encoding="utf-8"))
+        source = json.loads(source_file.read_text(encoding="utf-8"))
+
+        assert deployed == source
+        assert not (target / ".claude" / "config" / "settings.json").exists()
+
+    def test_codex_publish_does_not_copy_claude_settings_json(self, tmp_path, monkeypatch):
+        target, _calls = _publish_codex_project(tmp_path, monkeypatch)
+
+        assert (target / ".agents" / "config" / "config.yaml.default").exists()
+        assert not (target / ".agents" / "config" / "settings.json").exists()
+
+    def test_codex_publish_removes_previous_claude_settings_json(self, tmp_path, monkeypatch):
+        def _seed(target):
+            config_dir = target / ".agents" / "config"
+            config_dir.mkdir(parents=True)
+            (config_dir / "settings.json").write_text('{"hooks": {}}\n', encoding="utf-8")
+
+        target, _calls = _publish_codex_project(
+            tmp_path,
+            monkeypatch,
+            before_publish=_seed,
+        )
+
+        assert not (target / ".agents" / "config" / "settings.json").exists()
+
+    def test_codex_hook_deploy_force_replaces_previous_hook_config(self, tmp_path):
+        target = tmp_path / "target"
+        hooks_file = target / ".codex" / "hooks.json"
+        source_file = (
+            Path(__file__).parents[2] / "agent-runtimes" / "codex" /
+            "config" / "hooks.json"
+        )
+        hooks_file.parent.mkdir(parents=True)
+        hooks_file.write_text(
+            json.dumps({
+                "hooks": {
+                    "PreToolUse": [
+                        {
+                            "matcher": "shell_command",
+                            "hooks": [
+                                {"type": "command", "command": "python stale.py"},
+                            ],
+                        },
+                    ],
+                },
+            }),
+            encoding="utf-8",
+        )
+
+        publish.deploy_agent_hook_config(
+            Path(__file__).parents[2],
+            target,
+            agent_runtime.AGENT_CODEX,
+            force=True,
+        )
+
+        deployed = json.loads(hooks_file.read_text(encoding="utf-8"))
+        source = json.loads(source_file.read_text(encoding="utf-8"))
+        assert deployed == source
+        assert "PreToolUse" not in deployed["hooks"]
+
 
 class TestPublishMainAgentBranches:
     def test_codex_publish_registers_mcp_by_default(
@@ -1028,11 +1157,12 @@ class TestPublishMainAgentBranches:
                             lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)))
         for name in (
             "publish_skills", "publish_shared_refs", "publish_directory",
-            "deploy_settings", "deploy_agent_instructions", "create_godotmaker_yaml",
+            "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
             "register_mcp", "register_codex_mcp", "register_godot_permissions", "ensure_gitignore",
             "ensure_gitattributes",
             "ensure_worktreeinclude", "ensure_git_repo", "write_target_version",
+            "deploy_agent_hook_config",
             "baseline_applied",
         ):
             monkeypatch.setattr(publish, name, _record(name))
@@ -1043,7 +1173,7 @@ class TestPublishMainAgentBranches:
         publish.main()
 
         assert "deploy_agent_instructions" in calls
-        assert "deploy_settings" not in calls
+        assert "deploy_agent_hook_config" in calls
         assert "register_codex_mcp" in calls
         assert "register_mcp" not in calls
         assert "register_godot_permissions" not in calls
@@ -1068,11 +1198,12 @@ class TestPublishMainAgentBranches:
         )
         for name in (
             "publish_skills", "publish_shared_refs", "publish_directory",
-            "deploy_settings", "deploy_agent_instructions",
+            "deploy_agent_instructions",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
             "register_mcp", "register_godot_permissions", "ensure_gitignore",
             "ensure_gitattributes",
             "ensure_worktreeinclude", "ensure_git_repo", "write_target_version",
+            "deploy_agent_hook_config",
             "baseline_applied",
         ):
             monkeypatch.setattr(publish, name, _no_op)
@@ -1108,11 +1239,12 @@ class TestPublishMainAgentBranches:
                             lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)))
         for name in (
             "publish_skills", "publish_shared_refs", "publish_directory",
-            "deploy_settings", "deploy_agent_instructions", "create_godotmaker_yaml",
+            "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
             "register_mcp", "register_codex_mcp", "register_godot_permissions", "ensure_gitignore",
             "ensure_gitattributes",
             "ensure_worktreeinclude", "ensure_git_repo", "write_target_version",
+            "deploy_agent_hook_config",
             "baseline_applied",
         ):
             monkeypatch.setattr(publish, name, _record(name))
@@ -1121,7 +1253,7 @@ class TestPublishMainAgentBranches:
 
         publish.main()
 
-        assert "deploy_settings" in calls
+        assert "deploy_agent_hook_config" in calls
         assert "register_mcp" in calls
         assert "register_codex_mcp" not in calls
         assert "register_godot_permissions" in calls
@@ -1160,7 +1292,7 @@ class TestPublishMainForceRmtree:
 
         for name in (
             "publish_skills", "publish_shared_refs", "publish_directory",
-            "deploy_settings", "deploy_agent_instructions", "create_godotmaker_yaml",
+            "deploy_agent_hook_config", "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas",
             "create_project_dirs", "register_mcp", "register_codex_mcp", "register_godot_permissions",
             "ensure_gitignore", "ensure_gitattributes",

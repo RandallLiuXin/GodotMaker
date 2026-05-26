@@ -47,8 +47,9 @@ python tools\publish.py C:\Games\my-game
 使用 `--agent codex` 时，agent 相关文件会改用 Codex 的项目本地布局：
 技能写入 `.agents/skills/`，模板和配置写入 `.agents/`，`godotmaker.yaml`
 位于 `.agents/godotmaker.yaml`，并创建 `AGENTS.md` 而不是 `CLAUDE.md`。
-共享框架状态仍然位于 `.godotmaker/`。Codex 的 approval 与 sandbox 策略由
-Codex 运行时处理；publish 不会创建 `.agents/settings.json` 等价文件。
+Codex hook 注册写入 `.codex/hooks.json`。共享框架状态仍然位于
+`.godotmaker/`。Codex 的 approval 与 sandbox 策略由 Codex 运行时处理；
+publish 不会创建 `.agents/settings.json` 等价文件。
 
 ### Codex 权限
 
@@ -98,7 +99,7 @@ python tools/publish.py --agent codex --force /path/to/my-game
 `--force` 同时做四件事：
 
 1. 重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。
-2. 对 Claude Code 发布而言，即使你已自定义过 `.claude/settings.json`，也会强制覆盖。
+2. 即使你已自定义过所选 runner 的 hook config（`.claude/settings.json` 或 `.codex/hooks.json`），也会强制覆盖。
 3. 跳过 minor 和 major 升级的确认提示。
 4. 允许降级。
 
@@ -106,12 +107,12 @@ python tools/publish.py --agent codex --force /path/to/my-game
 
 ## 升级时哪些内容会被保留
 
-正常发布不会覆盖以下文件（只有 `--force` 才能改动 Claude Code 的 `settings.json`）：
+正常发布不会覆盖以下文件（只有 `--force` 才能改动所选 runner 的 hook config）：
 
 | 文件 | 保留原因 |
 |------|---------------|
 | `CLAUDE.md` / `AGENTS.md` | 你可能添加了项目专属指令 |
-| `.claude/settings.json` | 你可能调整过 hook 行为 |
+| `.claude/settings.json` / `.codex/hooks.json` | 你可能调整过 hook 行为 |
 | `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` | 包含本机专属的 Godot 路径 |
 | `.godotmaker/config.yaml` | 包含项目专属的偏好设置 |
 

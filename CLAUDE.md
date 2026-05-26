@@ -16,7 +16,8 @@ skills/
   reviewer/         8 reviewer skills (physics, animation, ui, etc.)
 shell/              publish.sh / publish.ps1, report.sh / report.bat
 tools/              publish.py, check_env.py, check_project.py, asset_gen.py, etc.
-config/             settings.json, stage_schemas.json, addon_versions.json
+config/             config.yaml.default, stage_schemas.json, addon_versions.json
+agent-runtimes/     runner-specific references, templates, and hook config
 templates/          PLAN/STRUCTURE/ASSETS/SCENES/MEMORY/GDD templates + game-claude.md
 docs/               hooks.md, wiki/, update/
 ```

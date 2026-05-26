@@ -748,9 +748,10 @@ class TestPublishMainMigrationRouting:
         # to migration routing, replaced with no-ops.
         for name in (
             "publish_skills", "publish_shared_refs", "publish_directory",
-            "deploy_settings", "deploy_agent_instructions", "create_godotmaker_yaml",
+            "deploy_agent_hook_config", "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas",
             "create_project_dirs", "register_mcp", "register_codex_mcp",
+            "register_godot_permissions",
             "ensure_gitignore", "ensure_gitattributes",
             "ensure_git_repo", "write_target_version",
         ):

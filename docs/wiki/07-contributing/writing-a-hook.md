@@ -1,6 +1,6 @@
 # Writing a Hook
 
-Hooks are small Python scripts that Claude Code calls on specific events during a session. They enforce rules that the AI cannot bypass on its own — file permission boundaries, required outputs before a role can finish, report quality gates. The hook list is registered in `config/settings.json`; the scripts live in `hooks/` and are deployed to `.godotmaker/hooks/` by `publish.py`.
+Hooks are small Python scripts that the coding-agent runtime calls on specific events during a session. They enforce rules that the AI cannot bypass on its own — file permission boundaries, required outputs before a role can finish, report quality gates. The hook list is registered per runner in `agent-runtimes/<agent>/config/`; the scripts live in `hooks/` and are deployed to `.godotmaker/hooks/` by `publish.py`.
 
 For the full per-hook reference (exact payloads, block conditions, edge cases), see [../../hooks.md](../../hooks.md). This page covers how to write a new hook, not how every existing hook works.
 
@@ -191,7 +191,9 @@ State is stored in `.godotmaker/state.json` and reset on every `SessionStart`.
 
 1. Create your hook script in `hooks/<my_hook>.py`.
 
-2. Add it to `config/settings.json` under the appropriate event:
+2. Add it to the appropriate runner hook config under the appropriate event:
+   `agent-runtimes/claude-code/config/settings.json` for Claude Code or
+   `agent-runtimes/codex/config/hooks.json` for Codex.
 
    ```json
    {

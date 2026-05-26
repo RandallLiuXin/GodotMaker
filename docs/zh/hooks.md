@@ -2,7 +2,10 @@
 
 GodotMaker 所有 Hook 的完整参考。Hook 是 Python 脚本，在 Claude Code 事件上自动运行，用于执行流水线规则。
 
-在 `config/settings.json` 中注册，通过发布脚本部署到 `.godotmaker/hooks/`。
+Hook 注册关系按 runner 分开维护：Claude Code 使用
+`agent-runtimes/claude-code/config/settings.json`，Codex 使用
+`agent-runtimes/codex/config/hooks.json`。脚本通过发布流程部署到
+`.godotmaker/hooks/`。
 
 ---
 

@@ -12,7 +12,8 @@ GodotMaker/
 │   ├── core/                Role skills + supporting skills + _shared/
 │   └── reviewer/            8 reviewer skills (gotchas.md + checklist.md each)
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
-├── config/                  settings.json, stage_schemas.json, addon_versions.json
+├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
+├── agent-runtimes/          Runner-specific references, templates, and hook config
 ├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC)
 ├── tests/                   ~320 unit tests for hooks and tools
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
@@ -42,7 +43,9 @@ Scripts and the events they handle:
 | `check_worker_report.py` | Called by on_subagent_stop.py | Yes |
 | `check_completion.py` | Stop | Yes |
 
-Hook registration (which script fires on which event) lives in `config/settings.json` and is deployed into Claude Code targets as `.claude/settings.json`.
+Hook registration (which script fires on which event) lives under
+`agent-runtimes/<agent>/config/` and is deployed into the selected runner's
+project-local hook config (`.claude/settings.json` or `.codex/hooks.json`).
 
 ### hooks/metrics/
 
@@ -153,7 +156,7 @@ When you run `python tools/publish.py <target>`:
 4. Copy tools to `<target>/tools/`.
 5. Copy templates to the selected agent template directory.
 6. Copy `config/stage_schemas.json` to `<target>/.godotmaker/stage_schemas.json`.
-7. On fresh install (or `--force`): write agent-specific instructions (`CLAUDE.md` or `AGENTS.md`), prompt for `godotmaker.yaml`, and for Claude Code targets write `.claude/settings.json`.
+7. On fresh install (or `--force`): write agent-specific instructions (`CLAUDE.md` or `AGENTS.md`), prompt for `godotmaker.yaml`, and write the selected runner's hook config.
 8. Stamp `<target>/.godotmaker/version` with the current version.
 
 ---
@@ -162,7 +165,6 @@ When you run `python tools/publish.py <target>`:
 
 | File | What it controls |
 |------|-----------------|
-| `settings.json` | Hook registration: which scripts fire on which Claude Code events |
 | `stage_schemas.json` | Per-role required outputs and programmatic checks (keys are role names) |
 | `addon_versions.json` | Pinned Godot addon versions per engine version |
 

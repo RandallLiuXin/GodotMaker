@@ -1,6 +1,6 @@
 # 编写 Hook
 
-Hook 是 Claude Code 在会话特定事件发生时调用的小型 Python 脚本。它们强制执行 AI 自身无法绕过的规则——文件权限边界、角色完成前的必要输出、报告质量门禁。Hook 列表注册在 `config/settings.json` 中；脚本存放在 `hooks/` 下，由 `publish.py` 部署到 `.godotmaker/hooks/`。
+Hook 是 coding-agent runtime 在会话特定事件发生时调用的小型 Python 脚本。它们强制执行 AI 自身无法绕过的规则——文件权限边界、角色完成前的必要输出、报告质量门禁。Hook 列表按 runner 注册在 `agent-runtimes/<agent>/config/` 下；脚本存放在 `hooks/` 下，由 `publish.py` 部署到 `.godotmaker/hooks/`。
 
 关于每个 hook 的完整参考（精确的 payload、拦截条件、边界情况），请参阅 [../../hooks.md](../../hooks.md)。本页专注于如何编写新的 hook，而不是讲解每个现有 hook 的工作原理。
 
@@ -191,7 +191,9 @@ value = state.get("my_flag", default=False)
 
 1. 在 `hooks/<my_hook>.py` 创建 hook 脚本。
 
-2. 在 `config/settings.json` 中将其添加到对应事件下：
+2. 在对应 runner 的 hook config 中将其添加到对应事件下：Claude Code 使用
+   `agent-runtimes/claude-code/config/settings.json`，Codex 使用
+   `agent-runtimes/codex/config/hooks.json`。
 
    ```json
    {

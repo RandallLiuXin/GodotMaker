@@ -51,9 +51,10 @@ Godot MCP tools.
 When published with `--agent codex`, the agent-owned files use the Codex
 layout instead: skills go under `.agents/skills/`, templates/config under
 `.agents/`, `godotmaker.yaml` is stored at `.agents/godotmaker.yaml`, and
-`AGENTS.md` is created instead of `CLAUDE.md`. Shared framework state still
-lives under `.godotmaker/`. Codex approval and sandbox policy are handled by
-Codex at runtime; publish does not create a `.agents/settings.json` equivalent.
+`AGENTS.md` is created instead of `CLAUDE.md`. Codex hook registration is
+written to `.codex/hooks.json`. Shared framework state still lives under
+`.godotmaker/`. Codex approval and sandbox policy are handled by Codex at
+runtime; publish does not create a `.agents/settings.json` equivalent.
 
 ### Codex permissions
 
@@ -107,7 +108,7 @@ python tools/publish.py --agent codex --force /path/to/my-game
 `--force` does four things at once:
 
 1. Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.
-2. For Claude Code publishes, overwrites `.claude/settings.json` even if you've already customized it.
+2. Overwrites the selected runner's hook config (`.claude/settings.json` or `.codex/hooks.json`) even if you've already customized it.
 3. Skips the confirmation prompts for minor and major upgrades.
 4. Allows downgrades.
 
@@ -115,12 +116,12 @@ For **major** upgrades with `--force`, the clean-up is more thorough: the select
 
 ## What is preserved on upgrade
 
-These files are never overwritten by a normal publish (only `--force` can change Claude Code's `settings.json`):
+These files are never overwritten by a normal publish (only `--force` can change the selected runner's hook config):
 
 | File | Why it is kept |
 |------|---------------|
 | `CLAUDE.md` / `AGENTS.md` | You may have added project-specific instructions |
-| `.claude/settings.json` | You may have adjusted hook behavior |
+| `.claude/settings.json` / `.codex/hooks.json` | You may have adjusted hook behavior |
 | `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` | Contains your machine-specific Godot path |
 | `.godotmaker/config.yaml` | Contains your project-specific preferences |
 

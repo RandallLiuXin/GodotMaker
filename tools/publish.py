@@ -49,6 +49,7 @@ class VersionCheckResult(NamedTuple):
 EXCLUDE_DIRS = {"__pycache__", "doc_source", ".workspace"}
 AGENT_CHOICES = (AGENT_CLAUDE_CODE, AGENT_CODEX)
 AGENT_RUNTIME_SOURCE_ROOTS = {
+    AGENT_CLAUDE_CODE: Path("agent-runtimes") / "claude-code",
     AGENT_CODEX: Path("agent-runtimes") / "codex",
 }
 AGENT_RUNTIME_REFERENCES = {
@@ -59,6 +60,16 @@ AGENT_RUNTIME_REFERENCES = {
 }
 AGENT_ROOT_BOOTSTRAP_TEMPLATES = {
     AGENT_CODEX: Path("templates") / "agents-bootstrap.md",
+}
+AGENT_HOOK_CONFIGS = {
+    AGENT_CLAUDE_CODE: (
+        Path("config") / "settings.json",
+        Path(".claude") / "settings.json",
+    ),
+    AGENT_CODEX: (
+        Path("config") / "hooks.json",
+        Path(".codex") / "hooks.json",
+    ),
 }
 
 @dataclass(frozen=True)
@@ -73,7 +84,6 @@ class AgentPublishAdapter:
     templates_root: str
     runtime_references_root: str | None
     root_instruction_filename: str
-    deploy_settings: bool
     register_claude_mcp: bool
     register_godot_permissions: bool
     ensure_worktreeinclude: bool
@@ -109,7 +119,6 @@ AGENT_ADAPTERS = {
         templates_root=".claude/templates",
         runtime_references_root=None,
         root_instruction_filename="CLAUDE.md",
-        deploy_settings=True,
         register_claude_mcp=True,
         register_godot_permissions=True,
         ensure_worktreeinclude=True,
@@ -123,7 +132,6 @@ AGENT_ADAPTERS = {
         templates_root=".agents/templates",
         runtime_references_root=".agents/references",
         root_instruction_filename="AGENTS.md",
-        deploy_settings=False,
         register_claude_mcp=False,
         register_godot_permissions=False,
         ensure_worktreeinclude=False,
@@ -526,17 +534,24 @@ def publish_directory(
     print(f"Published {label} ({count} files)")
 
 
-def deploy_settings(repo_root: Path, config_dir: Path, force: bool):
-    """Deploy settings.json (hooks configuration) — only if not exists."""
-    src = repo_root / "config" / "settings.json"
-    dst = config_dir / "settings.json"
+def deploy_agent_hook_config(repo_root: Path, target: Path, agent: str, force: bool):
+    """Deploy selected-agent hook config."""
+    spec = AGENT_HOOK_CONFIGS.get(agent)
+    source_root = AGENT_RUNTIME_SOURCE_ROOTS.get(agent)
+    if spec is None or source_root is None:
+        return
+    source_relative, target_relative = spec
+    src = repo_root / source_root / source_relative
+    dst = target / target_relative
     if not src.exists():
         return
+
     if not dst.exists() or force:
+        dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
-        print("Created settings.json (hooks enabled)")
+        print(f"Created {target_relative} (hooks enabled)")
     else:
-        print("settings.json already exists, skipping (use --force to overwrite)")
+        print(f"{target_relative} already exists, skipping (use --force to overwrite)")
 
 
 def deploy_agent_instructions(repo_root: Path, target: Path, agent: str):
@@ -1166,8 +1181,8 @@ def main():
     godotmaker_dir = target / ".godotmaker"
     godotmaker_dir.mkdir(parents=True, exist_ok=True)
     publish_directory(repo_root / "hooks", godotmaker_dir / "hooks", "hooks/")
-    if adapter.deploy_settings:
-        deploy_settings(repo_root, config_dir, args.force)
+    if agent in AGENT_HOOK_CONFIGS:
+        deploy_agent_hook_config(repo_root, target, agent, args.force)
     publish_directory(repo_root / "templates", adapter.templates_dir(target),
                       "templates/", "*.md")
     deploy_agent_instructions(repo_root, target, agent)
