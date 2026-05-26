@@ -18,26 +18,11 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Added
 
 - (WIP) Diagnostic log at `.godotmaker/log_agent_tool_debug.log` that records every phase of `log_agent_tool.py` so the next failure mode is localizable from artifacts.
-- A resized image's untouched original is archived to `assets/origin/` for comparison and debugging.
 
 ## Changed
-
-- Clarified source-available licensing language and excluded internal planning notes from the documentation site.
-- Scaffold generates and commits Godot `.uid` import metadata in its initial commit so the project tree starts clean for `/gm-build`.
-- GDD design audit now focuses on the current release tag and only runs its second pass when the first turns up enough gaps, so simple or already-clear designs aren't over-questioned.
-- `/gm-asset` generates Codex images in one `codex exec` call with parallel subagents (one per asset) instead of one serial call per image.
-- Worker subagents now default to `sonnet` instead of `opus` — measured worker context stays well within sonnet's window, so the lighter model is sufficient and cuts token cost.
 
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
-- Resized image assets are scaled proportionally and transparency-padded instead of stretched, so non-square art is no longer squashed.
-- Clarified Visual QA handling of normal gameplay captures versus `--debug-collisions` collision-check captures.
-- `/gm-build` no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.
-- Worker dispatch briefs now explicitly block approval prompts and confirmation pauses during non-interactive pipeline runs.
-- Codex image generation copies each subagent's own generated file to a fixed per-asset path instead of the newest file in `generated_images`, which was unsafe once generation runs in parallel.
-- Hook registration config is now runner-specific: Claude Code uses `agent-runtimes/claude-code/config/settings.json`, while Codex publishes `agent-runtimes/codex/config/hooks.json` to `.codex/hooks.json`.
-- `/gm-evaluate` runs visual-qa in a dispatched subagent instead of a forked skill context (which errored under `claude -p`), and rejects with a `critical_issue` when a per-scene call can't run instead of hand-writing `native` logs.
-- Visual QA rejects a stitched contact-sheet supplied in place of per-scene reference + screenshot paths.
 
 ## Removed
