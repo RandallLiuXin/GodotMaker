@@ -10,7 +10,7 @@
 
 **`agent`** — 当前项目选择的编码智能体运行时，例如 `claude-code` 或 `codex`。
 
-**`worker_model`** — 编写游戏代码的 Claude 模型。默认是 `opus`，因为复杂实现更适合强模型。
+**`worker_model`** — 编写游戏代码的 Claude 模型。默认是 `sonnet`；需要更强实现推理的游戏可改为 `opus`。
 
 **`verifier_model`**、**`reviewer_model`**、**`analyst_model`**、**`auditor_model`**、**`decomposer_model`** — 验证、审查、图片分析、审计和 GDD 拆分等角色的默认模型。
 
@@ -33,7 +33,7 @@ vqa_fallback_model: native
 asset_image_model: native
 asset_video_model: none
 
-worker_model: opus
+worker_model: sonnet
 verifier_model: sonnet
 reviewer_model: sonnet
 analyst_model: sonnet

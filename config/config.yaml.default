@@ -31,11 +31,9 @@ asset_image_model: native
 # Supported values: none, grok:<model>
 asset_video_model: none
 
-# Agent model configuration
-# Workers use opus for complex implementation tasks
-# Other roles (validation, document authoring) use sonnet - they receive
-# fully-resolved briefs from the lead agent and don't need opus-tier reasoning
-worker_model: opus
+# Agent model configuration. All roles default to sonnet; raise
+# worker_model to opus for games that need heavier implementation reasoning.
+worker_model: sonnet
 verifier_model: sonnet
 reviewer_model: sonnet
 analyst_model: sonnet

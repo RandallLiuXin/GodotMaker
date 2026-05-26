@@ -10,7 +10,7 @@ The first time you run `python tools/publish.py <project>`, the publish script c
 
 **`agent`** — selected coding-agent runtime, such as `claude-code` or `codex`.
 
-**`worker_model`** — which Claude model writes game code. Defaults to `opus` because complex implementation benefits from the stronger model.
+**`worker_model`** — which Claude model writes game code. Defaults to `sonnet`; set it to `opus` for games that need heavier implementation reasoning.
 
 **`verifier_model`**, **`reviewer_model`**, **`analyst_model`**, **`auditor_model`**, **`decomposer_model`** — role model defaults for validation, review, image analysis, audit, and GDD decomposition.
 
@@ -37,7 +37,7 @@ vqa_fallback_model: native
 asset_image_model: native
 asset_video_model: none
 
-worker_model: opus
+worker_model: sonnet
 verifier_model: sonnet
 reviewer_model: sonnet
 analyst_model: sonnet

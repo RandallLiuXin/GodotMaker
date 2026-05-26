@@ -10,7 +10,7 @@ When dispatching a worker, fill in this EXACT template. All REQUIRED fields must
 Agent({
   subagent_type: "worker",
   description: "Worker: implement {task_name}",
-  model: "{worker_model from .godotmaker/config.yaml, default: opus}",
+  model: "{worker_model from .godotmaker/config.yaml, default: sonnet}",
   prompt: "{worker brief below}"
 })
 ```
@@ -88,7 +88,7 @@ Agent({
 11. **Entity.name must be set explicitly**: When creating Entity instances programmatically, set `entity.name = "MyEntity"` before `add_entity()`. Without this, Godot assigns unpredictable auto-names (`@Node@2`), breaking E2E test node paths.
 12. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
 13. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
-14. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `opus`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
+14. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
 15. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`).
 16. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 

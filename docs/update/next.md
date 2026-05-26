@@ -26,6 +26,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Scaffold generates and commits Godot `.uid` import metadata in its initial commit so the project tree starts clean for `/gm-build`.
 - GDD design audit now focuses on the current release tag and only runs its second pass when the first turns up enough gaps, so simple or already-clear designs aren't over-questioned.
 - `/gm-asset` generates Codex images in one `codex exec` call with parallel subagents (one per asset) instead of one serial call per image.
+- Worker subagents now default to `sonnet` instead of `opus` — measured worker context stays well within sonnet's window, so the lighter model is sufficient and cuts token cost.
 
 ## Fixed
 
