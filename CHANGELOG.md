@@ -4,6 +4,19 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [0.6.1] - 2026-05-27
+
+### Changed
+
+- README status notes now mark Codex runner support and AI-generated art as preview features and link to the roadmap.
+- Visual QA now follows configured `vqa_model` / `vqa_fallback_model` backend selection and shares one criteria prompt across runtime-native and API-backed paths.
+- gm-asset references now separate planning, provider contracts, tool usage, recipes, and post-processing rules.
+- gm-asset generation now documents fixed-path batch reports for active Codex art assets and scene references.
+
+### Fixed
+
+- Codex image generation now claims the exact `ImageGenerationEnd.saved_path` before finalizing project assets.
+
 ## [0.6.0] - 2026-05-26
 
 ### Added
