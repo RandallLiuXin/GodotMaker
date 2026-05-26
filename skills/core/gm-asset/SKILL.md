@@ -3,7 +3,7 @@ name: gm-asset
 description: |
   Asset collection + generation. Reads ASSETS.md MISSING entries (rows
   whose Tag matches the current tag), dispatches an analyst subagent for
-  user-provided image inspection, generates AI images through the configured
+  image inspection, generates AI images through the configured
   asset_image_model path, updates ASSETS.md status. ASSETS.md is cross-tag — every
   row carries a Tag column marking the introducing tag. Re-runnable any
   time during a tag. Explicit invocation only — use /gm-asset.
@@ -48,7 +48,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
    - Runtime-native generation followed by `tools/asset_image_finalize.py`.
    - The analyst subagent (Step 2).
    Do NOT write image files with direct Write/Edit calls.
-2. **Image analysis MUST go through the analyst subagent.** Do NOT Read image binaries from `assets/` yourself. Dispatch analyst when you need style/dimension/role extraction.
+2. **Image analysis MUST go through the analyst subagent.** Do NOT Read image binaries from `assets/` or `references/` yourself. Dispatch analyst when you need style/dimension/role extraction.
 3. **You CANNOT modify PLAN.md, GAP.md, STRUCTURE.md, SCENES.md, STYLE.md.**
 4. **You CANNOT write game code.**
 5. **Audio MUST be user-provided.** Mark audio as deferred and remind the user.
@@ -85,7 +85,7 @@ Use `AskUserQuestion`:
 If user provides files:
 
 1. Wait for user confirmation that files are placed.
-2. Dispatch an **analyst subagent** (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`) to inspect the files and generate/update `assets/manifest.json`.
+2. Dispatch an **analyst subagent** (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`) to inspect image files and generate/update `assets/manifest.json`.
    - **Do NOT read image files yourself.** All image analysis goes through the analyst.
    - Analyst extracts: type, role, dimensions, palette, style characteristics.
 3. After analyst reports, update ASSETS.md: change matching `MISSING` rows to `provided`.

@@ -23,6 +23,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - README status notes now mark Codex runner support and AI-generated art as preview features and link to the roadmap.
 - Visual QA now follows configured `vqa_model` / `vqa_fallback_model` backend selection and shares one criteria prompt across runtime-native and API-backed paths.
+- gm-asset references now separate planning, provider contracts, tool usage, recipes, and post-processing rules.
 
 ## Fixed
 
