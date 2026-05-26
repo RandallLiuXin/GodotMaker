@@ -2470,7 +2470,7 @@
 <p>第一次运行 <code>python tools/publish.py &lt;project&gt;</code> 时，发布脚本会把 GodotMaker 默认配置复制到 <code>.godotmaker/config.yaml</code>。之后再次发布不会覆盖你的配置；只有 <code>agent</code> 字段会更新为当前选择的运行时。</p>
 <h2 id="_3">常用字段<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
 <p><strong><code>agent</code></strong> — 当前项目选择的编码智能体运行时，例如 <code>claude-code</code> 或 <code>codex</code>。</p>
-<p><strong><code>worker_model</code></strong> — 编写游戏代码的 Claude 模型。默认是 <code>opus</code>，因为复杂实现更适合强模型。</p>
+<p><strong><code>worker_model</code></strong> — 编写游戏代码的 Claude 模型。默认是 <code>sonnet</code>；需要更强实现推理的游戏可改为 <code>opus</code>。</p>
 <p><strong><code>verifier_model</code></strong>、<strong><code>reviewer_model</code></strong>、<strong><code>analyst_model</code></strong>、<strong><code>auditor_model</code></strong>、<strong><code>decomposer_model</code></strong> — 验证、审查、图片分析、审计和 GDD 拆分等角色的默认模型。</p>
 <p><strong><code>vqa_model</code></strong> — 视觉 QA 的主模型选择器。支持 <code>native</code>、<code>codex</code>、<code>gemini:&lt;model&gt;</code> 和 <code>openai:&lt;model&gt;</code>。<code>native</code> 表示由当前智能体运行时直接检查图片；<code>codex</code> 表示由 Codex 提供图片检查能力；API 后端会运行 <code>visual_qa.py</code>。</p>
 <p><strong><code>vqa_fallback_model</code></strong> — 主 VQA 后端不可用时的回退模型。支持 <code>native</code>、<code>codex</code> 和 <code>none</code>。</p>
@@ -2485,7 +2485,7 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nt">asset_video_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nt">worker_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opus</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nt">worker_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nt">verifier_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nt">reviewer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nt">analyst_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>

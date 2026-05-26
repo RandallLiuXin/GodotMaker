@@ -2470,7 +2470,7 @@
 <p>The first time you run <code>python tools/publish.py &lt;project&gt;</code>, the publish script copies GodotMaker's defaults into <code>.godotmaker/config.yaml</code>. On every subsequent publish the file is left untouched except for the <code>agent</code> field, which is updated to the selected runtime.</p>
 <h2 id="common-fields">Common fields<a class="headerlink" href="#common-fields" title="Permanent link">&para;</a></h2>
 <p><strong><code>agent</code></strong> — selected coding-agent runtime, such as <code>claude-code</code> or <code>codex</code>.</p>
-<p><strong><code>worker_model</code></strong> — which Claude model writes game code. Defaults to <code>opus</code> because complex implementation benefits from the stronger model.</p>
+<p><strong><code>worker_model</code></strong> — which Claude model writes game code. Defaults to <code>sonnet</code>; set it to <code>opus</code> for games that need heavier implementation reasoning.</p>
 <p><strong><code>verifier_model</code></strong>, <strong><code>reviewer_model</code></strong>, <strong><code>analyst_model</code></strong>, <strong><code>auditor_model</code></strong>, <strong><code>decomposer_model</code></strong> — role model defaults for validation, review, image analysis, audit, and GDD decomposition.</p>
 <p><strong><code>vqa_model</code></strong> — primary visual QA selector. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, and <code>openai:&lt;model&gt;</code>. <code>native</code> means the active agent runtime inspects the images directly. <code>codex</code> means Codex supplies the image inspection. API-backed selectors run <code>visual_qa.py</code>.</p>
 <p><strong><code>vqa_fallback_model</code></strong> — fallback when the primary VQA backend is unavailable. Supported values are <code>native</code>, <code>codex</code>, and <code>none</code>.</p>
@@ -2489,7 +2489,7 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nt">asset_video_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nt">worker_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opus</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nt">worker_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nt">verifier_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nt">reviewer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="nt">analyst_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>

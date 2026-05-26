@@ -2464,6 +2464,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Scaffold generates and commits Godot <code>.uid</code> import metadata in its initial commit so the project tree starts clean for <code>/gm-build</code>.</li>
 <li>GDD design audit now focuses on the current release tag and only runs its second pass when the first turns up enough gaps, so simple or already-clear designs aren't over-questioned.</li>
 <li><code>/gm-asset</code> generates Codex images in one <code>codex exec</code> call with parallel subagents (one per asset) instead of one serial call per image.</li>
+<li>Worker subagents now default to <code>sonnet</code> instead of <code>opus</code> — measured worker context stays well within sonnet's window, so the lighter model is sufficient and cuts token cost.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
