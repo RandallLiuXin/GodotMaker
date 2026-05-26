@@ -2475,6 +2475,8 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Worker dispatch briefs now explicitly block approval prompts and confirmation pauses during non-interactive pipeline runs.</li>
 <li>Codex image generation copies each subagent's own generated file to a fixed per-asset path instead of the newest file in <code>generated_images</code>, which was unsafe once generation runs in parallel.</li>
 <li>Hook registration config is now runner-specific: Claude Code uses <code>agent-runtimes/claude-code/config/settings.json</code>, while Codex publishes <code>agent-runtimes/codex/config/hooks.json</code> to <code>.codex/hooks.json</code>.</li>
+<li><code>/gm-evaluate</code> runs visual-qa in a dispatched subagent instead of a forked skill context (which errored under <code>claude -p</code>), and rejects with a <code>critical_issue</code> when a per-scene call can't run instead of hand-writing <code>native</code> logs.</li>
+<li>Visual QA rejects a stitched contact-sheet supplied in place of per-scene reference + screenshot paths.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
