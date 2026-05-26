@@ -3,7 +3,6 @@ name: visual-qa
 description: |
   Visual quality assurance: analyze game screenshots for defects, compare against reference, check motion in frame sequences.
   Supports runtime-native inspection plus Gemini or OpenAI API-backed VQA.
-context: fork
 ---
 
 # Visual QA
@@ -52,6 +51,8 @@ Pick the mode from caller args by matching the first row whose precondition hold
 If a reference path appears in the args but the file does not exist on disk → STOP. Return `verdict: error` with `reason: "reference file missing: <path>"`.
 
 Reject any other argv shapes (`--screenshot <file> --requirements "..."` and similar).
+
+Each call takes one scene's reference plus that scene's screenshot or frame paths. Reject a single stitched / montage / contact-sheet image supplied in place of per-scene paths.
 
 ## Runtime-Native Execution
 

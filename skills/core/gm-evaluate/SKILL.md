@@ -104,7 +104,7 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 
 **Visual cross-check (per scene listed in SCENES.md):**
 7. Capture a screenshot via `game.screenshot("e2e/screenshots/scene_{name}.png")`. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Dynamic Mode". Screenshots overwrite per run (they're verification artifacts, not history; `e2e/screenshots/` is gitignored or sparingly committed at the user's choice).
-8. Compare against the reference image in `references/scene_{name}.png` by invoking the `visual-qa` skill.
+8. Compare against the reference image in `references/scene_{name}.png` by dispatching a subagent to run the `visual-qa` skill.
 
    **Precondition — reference must exist.** Before calling visual-qa, confirm `references/scene_{name}.png` exists. If missing → record `critical_issue: "missing reference for scene_{name}"` and skip the visual-qa call for this scene. Do NOT degrade to Question mode against the screenshot alone.
 
@@ -113,14 +113,16 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
    **VQA log path.** Ask `visual-qa` to write its debug log to `e2e/screenshots/vqa.log`.
 
    ```
-   # Static scene
-   Skill(skill="visual-qa") "Check references/scene_{name}.png against e2e/screenshots/scene_{name}.png --log e2e/screenshots/vqa.log — Goal: {scene goal from SCENES.md}, Requirements: {key elements + layout}, Verify: {acceptance criteria block, or mechanic-id list fallback}."
+   # Static scene — dispatch a subagent to run visual-qa with:
+   "Check references/scene_{name}.png against e2e/screenshots/scene_{name}.png --log e2e/screenshots/vqa.log — Goal: {scene goal from SCENES.md}, Requirements: {key elements + layout}, Verify: {acceptance criteria block, or mechanic-id list fallback}."
 
-   # Dynamic scene (frame sequence in per-scene subdir)
-   Skill(skill="visual-qa") "Check references/scene_{name}.png against e2e/screenshots/scene_{name}/frame_*.png --log e2e/screenshots/vqa.log — Goal: ..., Requirements: ..., Verify: motion is fluid, no stuck entities, animation matches movement."
+   # Dynamic scene (frame sequence in per-scene subdir) — dispatch a subagent to run visual-qa with:
+   "Check references/scene_{name}.png against e2e/screenshots/scene_{name}/frame_*.png --log e2e/screenshots/vqa.log — Goal: ..., Requirements: ..., Verify: motion is fluid, no stuck entities, animation matches movement."
    ```
 
    **Audit trail.** Record every visual-qa call (verdict + context + mode + output digest) in `visual_checks.{scene_name}.vqa_calls[]` (schema below). If you override a recorded verdict for the final `result` — for instance you read the PNGs yourself and disagree — write the reason and what you saw into `visual_checks.{scene_name}.notes`. Either way, `result` reflects the chain transparently.
+
+   **Real invocation required.** Every `vqa_calls` entry and every `vqa.log` line must come from a visual-qa invocation — do not author them directly. If the invocation errors or its backend is unavailable, record a `critical_issue` and set `result: reject`.
 
    If a `fail` looks wrong, prefer re-calling visual-qa with refined `--context` or `--both` before overriding by hand. If the final visual-qa output marks an issue as style-only or non-blocking, do not promote it to `critical_issue`; record it in `visual_checks.{scene_name}.notes` or `minor_issues`.
 
