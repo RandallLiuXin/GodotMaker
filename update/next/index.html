@@ -18,7 +18,7 @@
         <link rel="prev" href="../../wiki/08-reference/changelog/">
       
       
-        <link rel="next" href="../v0.5.0/">
+        <link rel="next" href="../v0.6.0/">
       
       
         
@@ -1804,6 +1804,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../v0.6.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.6.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../v0.5.0/" class="md-nav__link">
         
   
@@ -2456,27 +2484,11 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Diagnostic log at <code>.godotmaker/log_agent_tool_debug.log</code> that records every phase of <code>log_agent_tool.py</code> so the next failure mode is localizable from artifacts.</li>
-<li>A resized image's untouched original is archived to <code>assets/origin/</code> for comparison and debugging.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Clarified source-available licensing language and excluded internal planning notes from the documentation site.</li>
-<li>Scaffold generates and commits Godot <code>.uid</code> import metadata in its initial commit so the project tree starts clean for <code>/gm-build</code>.</li>
-<li>GDD design audit now focuses on the current release tag and only runs its second pass when the first turns up enough gaps, so simple or already-clear designs aren't over-questioned.</li>
-<li><code>/gm-asset</code> generates Codex images in one <code>codex exec</code> call with parallel subagents (one per asset) instead of one serial call per image.</li>
-<li>Worker subagents now default to <code>sonnet</code> instead of <code>opus</code> — measured worker context stays well within sonnet's window, so the lighter model is sufficient and cuts token cost.</li>
-</ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Rewire Agent prompt/output trace capture to <code>PreToolUse</code>/<code>PostToolUse</code> because the <code>SubagentStart</code> payload has no <code>prompt</code> field and silently wrote 0-byte traces.</li>
-<li>Resized image assets are scaled proportionally and transparency-padded instead of stretched, so non-square art is no longer squashed.</li>
-<li>Clarified Visual QA handling of normal gameplay captures versus <code>--debug-collisions</code> collision-check captures.</li>
-<li><code>/gm-build</code> no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.</li>
-<li>Worker dispatch briefs now explicitly block approval prompts and confirmation pauses during non-interactive pipeline runs.</li>
-<li>Codex image generation copies each subagent's own generated file to a fixed per-asset path instead of the newest file in <code>generated_images</code>, which was unsafe once generation runs in parallel.</li>
-<li>Hook registration config is now runner-specific: Claude Code uses <code>agent-runtimes/claude-code/config/settings.json</code>, while Codex publishes <code>agent-runtimes/codex/config/hooks.json</code> to <code>.codex/hooks.json</code>.</li>
-<li><code>/gm-evaluate</code> runs visual-qa in a dispatched subagent instead of a forked skill context (which errored under <code>claude -p</code>), and rejects with a <code>critical_issue</code> when a per-scene call can't run instead of hand-writing <code>native</code> logs.</li>
-<li>Visual QA rejects a stitched contact-sheet supplied in place of per-scene reference + screenshot paths.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
