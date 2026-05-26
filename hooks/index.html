@@ -2633,7 +2633,10 @@
 <h1 id="hooks-reference">Hooks Reference<a class="headerlink" href="#hooks-reference" title="Permanent link">&para;</a></h1>
 <p>Complete reference for all GodotMaker hooks. Hooks are Python scripts that run
 on Claude Code events to enforce pipeline rules.</p>
-<p>Registered in <code>config/settings.json</code>, deployed to <code>.godotmaker/hooks/</code> via publish.</p>
+<p>Hook registration is runner-specific:
+<code>agent-runtimes/claude-code/config/settings.json</code> for Claude Code and
+<code>agent-runtimes/codex/config/hooks.json</code> for Codex. The scripts are deployed to
+<code>.godotmaker/hooks/</code> via publish.</p>
 <hr />
 <h2 id="hook-inventory">Hook Inventory<a class="headerlink" href="#hook-inventory" title="Permanent link">&para;</a></h2>
 <table>

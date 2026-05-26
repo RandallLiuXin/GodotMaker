@@ -2515,14 +2515,15 @@
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│   ├── core/       Role skills + supporting skills + _shared/ cross-skill reference docs
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│   └── reviewer/   8 domain reviewer skills (physics, animation, ui, ...)
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>├── tools/          CLI tools: publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── config/         settings.json, stage_schemas.json, addon_versions.json
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── templates/      Document templates deployed into generated game projects
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├── tests/          ~320 unit tests for hooks and tools
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>├── docs/           Wiki, contributing guides, versioning reference, hooks reference
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>├── shell/          publish.sh / publish.ps1, report.sh / report.bat
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├── migrations/     Per-version-jump migration scripts
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>├── VERSION         Semantic version (MAJOR.MINOR.PATCH) — source of truth
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>└── CHANGELOG.md    Per-release change notes
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── agent-runtimes/ runner-specific references, templates, and hook config
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├── templates/      Document templates deployed into generated game projects
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>├── tests/          ~320 unit tests for hooks and tools
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>├── docs/           Wiki, contributing guides, versioning reference, hooks reference
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├── shell/          publish.sh / publish.ps1, report.sh / report.bat
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>├── migrations/     Per-version-jump migration scripts
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>├── VERSION         Semantic version (MAJOR.MINOR.PATCH) — source of truth
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>└── CHANGELOG.md    Per-release change notes
 </code></pre></div>
 <p>One sentence per folder: <code>hooks/</code> is the enforcement layer; <code>skills/</code> is the AI instruction layer; <code>tools/</code> contains the Python scripts contributors and users run directly; <code>config/</code> drives both; <code>tests/</code> keeps all of it honest.</p>
 <h2 id="common-development-loops">Common development loops<a class="headerlink" href="#common-development-loops" title="Permanent link">&para;</a></h2>

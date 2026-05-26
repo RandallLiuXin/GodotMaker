@@ -2535,9 +2535,10 @@ Godot MCP tools.</p>
 <p>When published with <code>--agent codex</code>, the agent-owned files use the Codex
 layout instead: skills go under <code>.agents/skills/</code>, templates/config under
 <code>.agents/</code>, <code>godotmaker.yaml</code> is stored at <code>.agents/godotmaker.yaml</code>, and
-<code>AGENTS.md</code> is created instead of <code>CLAUDE.md</code>. Shared framework state still
-lives under <code>.godotmaker/</code>. Codex approval and sandbox policy are handled by
-Codex at runtime; publish does not create a <code>.agents/settings.json</code> equivalent.</p>
+<code>AGENTS.md</code> is created instead of <code>CLAUDE.md</code>. Codex hook registration is
+written to <code>.codex/hooks.json</code>. Shared framework state still lives under
+<code>.godotmaker/</code>. Codex approval and sandbox policy are handled by Codex at
+runtime; publish does not create a <code>.agents/settings.json</code> equivalent.</p>
 <h3 id="codex-permissions">Codex permissions<a class="headerlink" href="#codex-permissions" title="Permanent link">&para;</a></h3>
 <p>Codex permissions are controlled by the Codex host process, not by files that
 <code>publish.py</code> writes into the project. A full GodotMaker pipeline may need to
@@ -2601,13 +2602,13 @@ for the full policy.</p>
 <p><code>--force</code> does four things at once:</p>
 <ol>
 <li>Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.</li>
-<li>For Claude Code publishes, overwrites <code>.claude/settings.json</code> even if you've already customized it.</li>
+<li>Overwrites the selected runner's hook config (<code>.claude/settings.json</code> or <code>.codex/hooks.json</code>) even if you've already customized it.</li>
 <li>Skips the confirmation prompts for minor and major upgrades.</li>
 <li>Allows downgrades.</li>
 </ol>
 <p>For <strong>major</strong> upgrades with <code>--force</code>, the clean-up is more thorough: the selected agent's <code>skills/</code>, <code>agents/</code>, <code>config/</code>, and <code>templates/</code> folders, <code>.godotmaker/hooks/</code>, <code>tools/</code>, and the runtime state files are all wiped and rebuilt from scratch.</p>
 <h2 id="what-is-preserved-on-upgrade">What is preserved on upgrade<a class="headerlink" href="#what-is-preserved-on-upgrade" title="Permanent link">&para;</a></h2>
-<p>These files are never overwritten by a normal publish (only <code>--force</code> can change Claude Code's <code>settings.json</code>):</p>
+<p>These files are never overwritten by a normal publish (only <code>--force</code> can change the selected runner's hook config):</p>
 <table>
 <thead>
 <tr>
@@ -2621,7 +2622,7 @@ for the full policy.</p>
 <td>You may have added project-specific instructions</td>
 </tr>
 <tr>
-<td><code>.claude/settings.json</code></td>
+<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code></td>
 <td>You may have adjusted hook behavior</td>
 </tr>
 <tr>

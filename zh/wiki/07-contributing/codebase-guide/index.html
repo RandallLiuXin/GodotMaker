@@ -2764,14 +2764,15 @@
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   ├── core/                角色技能 + 辅助技能 + _shared/
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── tools/                   publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── config/                  settings.json, stage_schemas.json, addon_versions.json
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── tests/                   ~320 个 hook 和工具的单元测试
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── shell/                   publish.sh / publish.ps1, report.sh / report.bat
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── migrations/              跨版本迁移脚本
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── VERSION                  语义版本号的唯一真实来源
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>└── CHANGELOG.md             每次发版的变更说明
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── agent-runtimes/          runner 专属 reference、template 和 hook config
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── tests/                   ~320 个 hook 和工具的单元测试
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── shell/                   publish.sh / publish.ps1, report.sh / report.bat
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── migrations/              跨版本迁移脚本
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── VERSION                  语义版本号的唯一真实来源
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>└── CHANGELOG.md             每次发版的变更说明
 </code></pre></div>
 <hr />
 <h2 id="hooks">hooks/<a class="headerlink" href="#hooks" title="Permanent link">&para;</a></h2>
@@ -2833,7 +2834,9 @@
 </tr>
 </tbody>
 </table>
-<p>Hook 注册关系（哪个脚本响应哪个事件）存储在 <code>config/settings.json</code> 中，发布到 Claude Code 目标时会部署为 <code>.claude/settings.json</code>。</p>
+<p>Hook 注册关系（哪个脚本响应哪个事件）存储在
+<code>agent-runtimes/&lt;agent&gt;/config/</code> 下，并发布到所选 runner 的项目级 hook
+配置（<code>.claude/settings.json</code> 或 <code>.codex/hooks.json</code>）。</p>
 <h3 id="hooksmetrics">hooks/metrics/<a class="headerlink" href="#hooksmetrics" title="Permanent link">&para;</a></h3>
 <p>一个用于记录会话期间发生事件的小型子系统。Hook 通过调用 <code>record_event()</code> 将 JSON 行追加到 <code>.godotmaker/metrics_current.jsonl</code>（当前会话）和 <code>.godotmaker/metrics_total.jsonl</code>（全量生命周期日志）。<code>state.py</code> 模块负责在 <code>.godotmaker/state.json</code> 中管理可变的会话内计数器（拦截次数等）。<code>session_start.py</code> 在每次新会话开始时重置两者。</p>
 <p>关于编写 hook 和使用 metrics API 的详细说明，请参阅 <a href="../writing-a-hook/">编写 Hook</a>。</p>

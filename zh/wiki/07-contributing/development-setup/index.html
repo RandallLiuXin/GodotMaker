@@ -2515,14 +2515,15 @@
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│   ├── core/       角色技能 + 辅助技能 + _shared/ 跨技能共享参考文档
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│   └── reviewer/   8 个领域审查技能 (physics, animation, ui, ...)
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>├── tools/          CLI 工具：publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── config/         settings.json, stage_schemas.json, addon_versions.json
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── templates/      部署到生成的游戏项目中的文档模板
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├── tests/          ~320 个 hook 和工具的单元测试
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>├── docs/           Wiki、贡献指南、版本参考、hooks 参考
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>├── shell/          publish.sh / publish.ps1, report.sh / report.bat
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├── migrations/     跨版本迁移脚本
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>├── VERSION         语义版本号 (MAJOR.MINOR.PATCH)——唯一真实来源
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>└── CHANGELOG.md    每次发版的变更说明
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── agent-runtimes/ runner 专属 reference、template 和 hook config
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├── templates/      部署到生成的游戏项目中的文档模板
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>├── tests/          ~320 个 hook 和工具的单元测试
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>├── docs/           Wiki、贡献指南、版本参考、hooks 参考
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├── shell/          publish.sh / publish.ps1, report.sh / report.bat
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>├── migrations/     跨版本迁移脚本
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>├── VERSION         语义版本号 (MAJOR.MINOR.PATCH)——唯一真实来源
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>└── CHANGELOG.md    每次发版的变更说明
 </code></pre></div>
 <p>一句话概括每个目录的职责：<code>hooks/</code> 是规则执行层；<code>skills/</code> 是 AI 指令层；<code>tools/</code> 包含贡献者和用户直接运行的 Python 脚本；<code>config/</code> 同时驱动前两者；<code>tests/</code> 保证一切都正确运转。</p>
 <h2 id="_4">常见开发流程<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>

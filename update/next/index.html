@@ -2474,6 +2474,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li><code>/gm-build</code> no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.</li>
 <li>Worker dispatch briefs now explicitly block approval prompts and confirmation pauses during non-interactive pipeline runs.</li>
 <li>Codex image generation copies each subagent's own generated file to a fixed per-asset path instead of the newest file in <code>generated_images</code>, which was unsafe once generation runs in parallel.</li>
+<li>Hook registration config is now runner-specific: Claude Code uses <code>agent-runtimes/claude-code/config/settings.json</code>, while Codex publishes <code>agent-runtimes/codex/config/hooks.json</code> to <code>.codex/hooks.json</code>.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
