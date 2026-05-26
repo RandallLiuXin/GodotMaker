@@ -22,8 +22,7 @@ not valid `tools/asset_gen.py` backends.
 ### Codex handoff from Claude Code
 
 When `asset_image_model: codex` is selected in a Claude Code project, use
-non-interactive Codex as the image-generation provider. This is not an
-`asset_gen.py` backend.
+non-interactive Codex as the image-generation provider.
 
 Generate the whole batch in ONE `codex exec` call (not one per image) and have
 Codex spawn one subagent per asset, run in parallel, at most 3 at a time.
@@ -40,9 +39,11 @@ Wait for all subagents to finish.
 
 Each subagent must, for its asset:
 - generate the image from that asset's prompt with image_gen,
-- copy the image it just generated (the path image_gen returned) to that
-  asset's exact target path — do NOT scan generated_images for the newest file,
-- report the asset id and whether its target file now exists.
+- read that call's ImageGenerationEnd.saved_path,
+- run tools/codex_image_claim.py with that saved_path and the asset's exact
+  target path,
+- report the asset id and the JSON printed by tools/codex_image_claim.py.
+- if the claim command exits nonzero, report the JSON error for that asset.
 
 Assets:
 - id: <asset_id_1>
@@ -64,6 +65,35 @@ codex exec --json --dangerously-bypass-approvals-and-sandbox \
 After `codex exec` returns, check that each `<asset_id>_source.png` exists, then
 pass each to `tools/asset_image_finalize.py`. Do not silently switch providers
 when the configured provider is `codex`.
+
+### Active Codex runtime batch
+
+When the active runtime is Codex and `asset_image_model` is `native` or `codex`,
+generate up to 3 assets in one batch. Use one subagent per asset when Codex
+subagents are available. If the batch runs sequentially, write the sequential
+fallback reason in `.godotmaker/asset-generation/codex_batch.summary.txt`.
+
+For each asset:
+
+1. Generate the image with `image_gen`.
+2. Read that call's `ImageGenerationEnd.saved_path`.
+3. Claim the source image:
+   ```bash
+   python tools/codex_image_claim.py --source "<saved_path>" \
+     --out .godotmaker/asset-generation/codex/<asset_id>_source.png \
+     --asset-id <asset_id>
+   ```
+4. Finalize the project asset:
+   ```bash
+   python tools/asset_image_finalize.py \
+     --source .godotmaker/asset-generation/codex/<asset_id>_source.png \
+     --out <target.png> --label <asset_id> [--resize WIDTHxHEIGHT]
+   ```
+5. Put the finalize JSON in the generation group report.
+6. If the claim command exits nonzero, report its JSON error for that asset.
+
+Do not scan `generated_images`, sort by `LastWriteTime`, or choose the newest
+image.
 
 ### Gemini sizes and costs
 

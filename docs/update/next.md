@@ -27,5 +27,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
+- Codex image generation now claims the exact `ImageGenerationEnd.saved_path` before finalizing project assets.
 
 ## Removed
