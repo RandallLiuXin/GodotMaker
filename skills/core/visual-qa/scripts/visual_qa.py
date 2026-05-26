@@ -2,9 +2,9 @@
 """Visual QA — analyze game screenshots via Gemini or OpenAI models.
 
 Three modes:
-  Static:   visual_qa.py [--context "..."] reference.png screenshot.png
-  Dynamic:  visual_qa.py [--context "..."] reference.png frame1.png frame2.png ...
-  Question: visual_qa.py --question "what's wrong?" screenshot.png [frame2.png ...]
+  Static:   visual_qa.py --model <selector> [--context "..."] reference.png screenshot.png
+  Dynamic:  visual_qa.py --model <selector> [--context "..."] reference.png frame1.png frame2.png ...
+  Question: visual_qa.py --model <selector> --question "what's wrong?" screenshot.png [frame2.png ...]
 
 Static mode (2 images): reference + single game screenshot. For static scenes.
 Dynamic mode (3+ images): reference + frame sequence at 2 FPS cadence. For motion.
@@ -12,7 +12,7 @@ Question mode: free-form question + any number of screenshots. No reference need
 
 --context: Task context (Goal, Requirements, Verify) for goal verification.
 --question: Free-form question about the screenshots (replaces reference-based modes).
---model: Override model selector (default: gemini:gemini-2.5-flash).
+--model: Required model selector, e.g. gemini:<model> or openai:<model>.
 --log: Path to JSONL log file for debug logging.
 Requires: GEMINI_API_KEY / GOOGLE_API_KEY for Gemini, or OPENAI_API_KEY for OpenAI.
 """
@@ -27,9 +27,7 @@ PROMPTS_DIR = Path(__file__).parent
 STATIC_PROMPT = PROMPTS_DIR / "static_prompt.md"
 DYNAMIC_PROMPT = PROMPTS_DIR / "dynamic_prompt.md"
 QUESTION_PROMPT = PROMPTS_DIR / "question_prompt.md"
-
-DEFAULT_MODEL = "gemini:gemini-2.5-flash"
-
+CRITERIA_PROMPT = PROMPTS_DIR / "criteria.md"
 
 def _mime_for_image(path: Path) -> str:
     return {
@@ -43,8 +41,11 @@ def _image_data_url(path: Path) -> str:
     return f"data:{_mime_for_image(path)};base64,{b64}"
 
 
-def _split_model_selector(selector: str) -> tuple[str, str]:
-    raw = (selector or DEFAULT_MODEL).strip()
+def _split_model_selector(selector: str | None) -> tuple[str, str]:
+    raw = (selector or "").strip()
+    if not raw:
+        print("Error: --model is required", file=sys.stderr)
+        sys.exit(1)
     if ":" in raw:
         provider, model = raw.split(":", 1)
         if provider and model:
@@ -82,7 +83,7 @@ def main():
     args = sys.argv[1:]
     context = None
     question = None
-    model_selector = DEFAULT_MODEL
+    model_selector = None
     log_path = None
 
     # Parse named flags
@@ -138,6 +139,7 @@ def main():
         prompt = (STATIC_PROMPT if static else DYNAMIC_PROMPT).read_text(
             encoding="utf-8"
         )
+        prompt += "\n\n" + CRITERIA_PROMPT.read_text(encoding="utf-8")
         if context:
             prompt += f"\n\n## Task Context\n\n{context}\n"
 

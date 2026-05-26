@@ -6,6 +6,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "skills" / "core" / "visual-qa" / "scripts" / "visual_qa.py"
 VQA_SKILL = REPO_ROOT / "skills" / "core" / "visual-qa" / "SKILL.md"
+VQA_CRITERIA = REPO_ROOT / "skills" / "core" / "visual-qa" / "scripts" / "criteria.md"
 EVALUATE_SKILL = REPO_ROOT / "skills" / "core" / "gm-evaluate" / "SKILL.md"
 
 
@@ -60,14 +61,14 @@ def test_visual_qa_log_writes_are_utf8():
 
 
 def test_visual_qa_contract_avoids_prior_history_inference():
-    vqa = VQA_SKILL.read_text(encoding="utf-8")
+    criteria = VQA_CRITERIA.read_text(encoding="utf-8")
     evaluate = EVALUATE_SKILL.read_text(encoding="utf-8")
 
-    assert "Do not infer prior play history" in vqa
+    assert "Do not infer prior play history" in criteria
     assert "Visible state only; do not infer prior play history." in evaluate
 
 
-def test_evaluate_uses_e2e_vqa_log_without_changing_visual_qa_default():
+def test_evaluate_uses_e2e_vqa_log():
     vqa = VQA_SKILL.read_text(encoding="utf-8")
     evaluate = EVALUATE_SKILL.read_text(encoding="utf-8")
 

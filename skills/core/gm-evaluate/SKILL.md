@@ -124,10 +124,10 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 
    **Real invocation required.** Every `vqa_calls` entry and every `vqa.log` line must come from a visual-qa invocation — do not author them directly. If the invocation errors or its backend is unavailable, record a `critical_issue` and set `result: reject`.
 
-   If a `fail` looks wrong, prefer re-calling visual-qa with refined `--context` or `--both` before overriding by hand. If the final visual-qa output marks an issue as style-only or non-blocking, do not promote it to `critical_issue`; record it in `visual_checks.{scene_name}.notes` or `minor_issues`.
+   If a `fail` looks wrong, prefer re-calling visual-qa with refined context before overriding by hand. If the final visual-qa output marks an issue as style-only or non-blocking, do not promote it to `critical_issue`; record it in `visual_checks.{scene_name}.notes` or `minor_issues`.
 
    - Verdict mapping (on the final recorded verdict): `fail` → critical_issue; `warning` → major_issue; `pass` → recorded under `visual_checks`.
-   - Backend follows `vqa_model` / `vqa_fallback_model` in `.godotmaker/config.yaml`; pass `--native` for runtime-native inspection or `--both` for an aggregated native + API verdict if a check is ambiguous.
+   - Backend follows `vqa_model` / `vqa_fallback_model` in `.godotmaker/config.yaml`.
 
 For each check, record: **PASS** or **FAIL** with evidence (E2E output, screenshot path, error message).
 
@@ -193,8 +193,9 @@ Write evaluation results to `.godotmaker/evaluation.json`:
       "vqa_calls": [
         {
           "ts": "<UTC ISO 8601>",
-          "mode": "static | dynamic | question | both",
-          "backend": "native | gemini | both",
+          "mode": "static | dynamic | question",
+          "backend": "native | codex | gemini | openai",
+          "model": "<vqa_model or fallback selector used>",
           "context": "Goal: ... Requirements: ... Verify: ...",
           "verdict": "pass | fail | warning",
           "output_summary": "<first line or 1-sentence digest of the visual-qa response>"

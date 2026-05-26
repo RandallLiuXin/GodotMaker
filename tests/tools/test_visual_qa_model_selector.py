@@ -44,6 +44,15 @@ def test_model_selector_keeps_legacy_bare_gemini_model():
     )
 
 
+def test_model_selector_requires_explicit_model(capsys):
+    visual_qa = _load_visual_qa()
+
+    with pytest.raises(SystemExit):
+        visual_qa._split_model_selector(None)
+
+    assert "--model is required" in capsys.readouterr().err
+
+
 def test_native_selector_exits_with_runtime_message(capsys):
     visual_qa = _load_visual_qa()
 
