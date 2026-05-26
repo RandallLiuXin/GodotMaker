@@ -58,7 +58,7 @@ asset is finalized:
 3. Claim the source image:
    ```bash
    python tools/codex_image_claim.py --source "<saved_path>" \
-     --out .godotmaker/asset-generation/codex/<asset_id>_source.png \
+     --out <source_path> \
      --asset-id <asset_id>
    ```
 4. Report the JSON printed by `tools/codex_image_claim.py`.
@@ -105,10 +105,10 @@ For each asset:
 
 Assets:
 - id: <asset_id_1>
-  target: .godotmaker/asset-generation/codex/<asset_id_1>_source.png
+  target: .godotmaker/asset-generation/sources/<asset_id_1>_source.png
   prompt: <prompt 1>
 - id: <asset_id_2>
-  target: .godotmaker/asset-generation/codex/<asset_id_2>_source.png
+  target: .godotmaker/asset-generation/sources/<asset_id_2>_source.png
   prompt: <prompt 2>
 
 If built-in image generation is unavailable, do not create that image file.
@@ -118,10 +118,10 @@ Report the failure clearly.
 Command shape:
 
 ```bash
-mkdir -p .godotmaker/asset-generation/codex
+mkdir -p .godotmaker/asset-generation/sources .godotmaker/asset-generation/reports
 codex exec --json --dangerously-bypass-approvals-and-sandbox \
-  -C "$PWD" --output-last-message .godotmaker/asset-generation/codex_batch.summary.txt \
-  - < .godotmaker/asset-generation/codex_batch.prompt.txt
+  -C "$PWD" --output-last-message .godotmaker/asset-generation/reports/codex_batch.summary.txt \
+  - < .godotmaker/asset-generation/reports/codex_batch.prompt.txt
 ```
 
 Do not silently switch providers when the configured provider is `codex`.
@@ -131,12 +131,98 @@ Do not silently switch providers when the configured provider is `codex`.
 When the active runtime is Codex and `asset_image_model` is `native` or
 `codex`, generate up to 3 assets in one batch.
 
+Batch input schema:
+
+```json
+{
+  "group_id": "assets_001",
+  "kind": "art_asset",
+  "provider": "<asset_image_model>",
+  "items": [
+    {
+      "asset_id": "<asset_id>",
+      "prompt": "<prompt>",
+      "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
+      "final_path": "assets/img/<asset_id>.png",
+      "resize": null
+    }
+  ],
+  "report_path": ".godotmaker/asset-generation/reports/assets_001.json"
+}
+```
+
 1. Use one subagent per asset when Codex subagents are available.
-2. If isolated generation groups are unavailable, run the batch sequentially.
-3. Write the sequential fallback reason in
-   `.godotmaker/asset-generation/codex_batch.summary.txt`.
-4. For each asset, follow the Codex source claim protocol.
-5. Finalize each claimed source into its project target path.
+2. Give each subagent exactly one asset's input record.
+3. Each subagent generates only its assigned asset and follows the Codex source
+   claim protocol.
+4. Do not scan global generated-image directories.
+5. If isolated generation groups are unavailable, run the batch sequentially.
+6. Write the sequential fallback reason in
+   `.godotmaker/asset-generation/reports/<group_id>.summary.txt`.
+7. Finalize each claimed source into its project target path.
+8. Write one flat finalize JSON entry per asset.
+
+Each report uses this shape:
+
+```json
+{
+  "ok": true,
+  "provider": "<asset_image_model>",
+  "sequential_fallback_reason": "<reason or null>",
+  "assets": [
+    {
+      "ok": true,
+      "source": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
+      "path": "<final_path>",
+      "asset_id": "<asset_id>",
+      "bytes": 12345,
+      "width": 64,
+      "height": 64,
+      "format": "PNG"
+    }
+  ]
+}
+```
+
+Each `assets[]` item is the flat JSON printed by
+`tools/asset_image_finalize.py`.
+
+### Scene reference batch
+
+Scene references use the same provider paths, claim/finalize steps, and report
+entry shape as art assets.
+
+Input schema:
+
+```json
+{
+  "group_id": "scene_refs_001",
+  "kind": "scene_reference",
+  "provider": "<asset_image_model>",
+  "anchor_item": {
+    "asset_id": "scene_main",
+    "prompt": "<prompt>",
+    "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
+    "final_path": "references/scene_main.png",
+    "resize": null
+  },
+  "parallel_items": [
+    {
+      "asset_id": "scene_shop",
+      "prompt": "<prompt>",
+      "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",
+      "final_path": "references/scene_shop.png",
+      "resize": null
+    }
+  ],
+  "report_path": ".godotmaker/asset-generation/reports/scene_refs_001.json"
+}
+```
+
+If `anchor_item` is present, generate and finalize it first. Then generate
+`parallel_items` in batches of up to 3. If no scene needs to anchor style, set
+`anchor_item` to `null` and put all missing scene references in
+`parallel_items`.
 
 ## Tool Reference
 

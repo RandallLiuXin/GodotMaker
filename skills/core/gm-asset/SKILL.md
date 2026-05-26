@@ -92,7 +92,38 @@ If user provides files:
 
 ### Step 3 — Generate Scene Reference Images (if MISSING)
 
-For each scene in SCENES.md whose `references/scene_{name}.png` is missing:
+Build the missing scene-reference list from SCENES.md. For each missing scene,
+plan a fixed source path, final path, and report path:
+
+```json
+{
+  "group_id": "scene_refs_001",
+  "kind": "scene_reference",
+  "provider": "<asset_image_model>",
+  "anchor_item": {
+    "asset_id": "scene_main",
+    "prompt": "<prompt>",
+    "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
+    "final_path": "references/scene_main.png"
+  },
+  "parallel_items": [
+    {
+      "asset_id": "scene_shop",
+      "prompt": "<prompt>",
+      "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",
+      "final_path": "references/scene_shop.png"
+    }
+  ],
+  "report_path": ".godotmaker/asset-generation/reports/scene_refs_001.json"
+}
+```
+
+If one scene should anchor the visual style for the rest, generate that anchor
+scene first. Then generate the remaining missing scene references in parallel
+groups of up to 3. If isolated generation groups are unavailable, run
+sequentially and write the fallback reason in the report and summary.
+
+For each missing scene:
 
 1. Read `references/visual-target.md`.
 2. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood) + `STYLE.md` + `GDD.md` section 4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
@@ -101,7 +132,8 @@ For each scene in SCENES.md whose `references/scene_{name}.png` is missing:
    - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-gen.md` Active Codex runtime batch for this scene.
    - Claude Code with `asset_image_model: codex`: follow `references/asset-gen.md` Codex handoff from Claude Code for this scene.
    - Other runtime-native provider: generate a source image path, then run `python tools/asset_image_finalize.py --source <generated_image_path> --out references/scene_{name}.png --label scene_{name}`.
-4. Show the result to the user. If rejected, regenerate with a tightened prompt (per `references/visual-target.md`).
+4. Write the scene's flat finalize JSON entry to the scene-reference generation report.
+5. Show the result to the user. If rejected, regenerate with a tightened prompt (per `references/visual-target.md`).
 
 ### Step 4 — Generate Remaining MISSING Art
 
@@ -114,16 +146,38 @@ Confirm with user:
 
 After confirmation, generate each asset through the selected `asset_image_model` path (per `asset-planner.md` + `asset-gen.md` for prompt construction).
 
-Run up to 3 generation groups in parallel. Each group owns one or more target image paths. If isolated generation groups are unavailable, run the batch sequentially and state the fallback.
+Run generation groups in batches of up to 3 art assets. Each group uses this
+input schema:
+
+```json
+{
+  "group_id": "assets_001",
+  "kind": "art_asset",
+  "provider": "<asset_image_model>",
+  "items": [
+    {
+      "asset_id": "<asset_id>",
+      "prompt": "<prompt>",
+      "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
+      "final_path": "assets/img/<asset_id>.png",
+      "resize": null
+    }
+  ],
+  "report_path": ".godotmaker/asset-generation/reports/assets_001.json"
+}
+```
+
+If isolated generation groups are unavailable, run the batch sequentially and
+write the fallback reason in the report and summary.
 
 Use the selected `asset_image_model` path:
 
 - API-backed selector: each group runs `python tools/asset_gen.py image --model <asset_image_model> ... -o <target.png>` for each target. The tool finalizes and validates the output.
-- Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-gen.md` Active Codex runtime batch.
+- Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-gen.md` Active Codex runtime batch. Use one Codex subagent per asset when subagents are available.
 - Claude Code with `asset_image_model: codex`: follow `references/asset-gen.md` Codex handoff from Claude Code.
 - Other runtime-native provider: generate each source image path, then run `python tools/asset_image_finalize.py --source <generated_image_path> --out <target.png> --label <asset_id> [--resize WIDTHxHEIGHT]`.
 
-Each group writes one JSON report under `.godotmaker/asset-generation/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize result>, ...]}`.
+Each group writes one JSON report under `.godotmaker/asset-generation/reports/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize JSON>, ...]}`. Each `assets[]` item is the flat JSON printed by `tools/asset_image_finalize.py`, so `tools/asset_image_report_check.py` can validate it.
 
 ### Step 5 - Update ASSETS.md
 

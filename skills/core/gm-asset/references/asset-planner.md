@@ -117,15 +117,27 @@ Plan batches that can run without conflicting outputs.
 2. Group independent assets into parallel-ready batches, at most 3 concurrent
    generation groups.
 3. Keep all outputs for one asset under known source and final target paths.
-4. For Codex-generated assets, plan the claimed source path:
-   `.godotmaker/asset-generation/codex/<asset_id>_source.png`.
-5. For runtime-native groups, plan a JSON report under
-   `.godotmaker/asset-generation/`.
+4. Plan every generated source path under
+   `.godotmaker/asset-generation/sources/`.
+5. Plan every generation report under
+   `.godotmaker/asset-generation/reports/`.
 6. For generated project assets, plan final paths under `assets/` or
    `references/` only through the approved tools in `/gm-asset` SKILL.md.
 
 If isolated generation groups may be unavailable, include a sequential fallback
 note for the executor to report in the generation summary.
+
+Scene reference planning uses the same batch rules:
+
+1. If one scene establishes the visual style, plan it as `anchor_item`.
+2. Put the remaining scene references in `parallel_items`.
+3. If no anchor scene is needed, put all missing scene references in
+   `parallel_items`.
+4. Plan fixed scene paths:
+   - source path: `.godotmaker/asset-generation/sources/scene_{name}_source.png`
+   - final path: `references/scene_{name}.png`
+   - report path: `.godotmaker/asset-generation/reports/scene_refs_<group_id>.json`
+5. Plan one flat finalize JSON report entry per scene reference.
 
 ### 7. Prepare ASSETS.md updates
 
@@ -216,4 +228,5 @@ When planning is complete, identify:
 2. Assets to generate, claim, provide, defer, or mark N/A.
 3. Planned source paths and final project paths.
 4. Provider path and generation batch membership.
-5. Source sheets or UI kits that will need curation.
+5. Scene reference anchor item and parallel items, when applicable.
+6. Source sheets or UI kits that will need curation.
