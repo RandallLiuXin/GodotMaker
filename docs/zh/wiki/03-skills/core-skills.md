@@ -30,7 +30,7 @@ Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十二
 
 | 技能 | 提供的内容 | 被谁加载 |
 |------|-----------|----------|
-| `game-planner` | 设计阶段的访谈结构与 GDD 模板指导，并在定稿前通过 `gdd-auditor` 子 Agent 进行两轮独立审计 | `/gm-gdd` |
+| `game-planner` | 设计阶段的访谈结构与 GDD 模板指导，并在定稿前通过 `gdd-auditor` 子 Agent 对当前发布 tag 范围进行独立审计（第一轮必跑，第二轮仅在第一轮发现足够缺口时触发） | `/gm-gdd` |
 | `project-scaffold` | 项目目录规则、插件安装步骤、ECS 目录约定 | `/gm-scaffold` |
 | `input-mapper` | 管理 `project.godot` 中 Godot 输入动作的参考资料 | `/gm-build`、`/gm-fixgap` |
 

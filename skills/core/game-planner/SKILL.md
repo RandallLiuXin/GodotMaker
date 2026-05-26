@@ -56,9 +56,9 @@ Do not re-ask anything the concept already answers. Start Round 1 by briefly sta
 The flow has two phases:
 
 1. **Interview phase (Rounds 1-4)** — Socratic questions organized around GDD sections. Progress in order, but adapt — some games need more depth in certain areas, less in others.
-2. **Audit phase (Rounds 5-7)** — synthesize a draft GDD, then run **two fixed rounds of independent audit** (`gdd-auditor` subagent) to catch the blind spots the interview missed. Each audit round produces 5-8 follow-up questions delivered to the user in a single batch.
+2. **Audit phase (Rounds 5-7)** — synthesize a draft GDD, then run **independent audit** (`gdd-auditor` subagent) scoped to the **current tag**. Pass 1 (Round 6) always runs. Pass 2 (Round 7) runs only when Pass 1 meets the trigger in that round. Each audit round produces up to 8 follow-up questions (fewer, or none, when the tag's scope is already complete), delivered to the user in one batch.
 
-Round 8 is the user's final review (Ask Maker mode). Do not skip the audit rounds — they exist precisely because interview-only flows leak details (pause behavior, failure recovery, balance numbers, mechanic interactions) that bite later.
+Round 8 is the user's final review (Ask Maker mode). Pass 1 is mandatory; do not skip it.
 
 ### Round 1 — Game Identity (GDD §1-2)
 
@@ -148,9 +148,9 @@ Rules for synthesis:
 - Add custom sections if the game needs them
 - Fill in smart defaults for anything the user said "your call" about in that question or round
 
-### Round 6 — Audit Pass 1 (GDD v1 → v2)
+### Round 6 — Audit Pass 1 (GDD v1 → v2, always runs)
 
-Spawn the **`gdd-auditor`** subagent with a fresh context. Pass it the full GDD v1 and the iteration number `1`.
+Spawn the **`gdd-auditor`** subagent with a fresh context. Pass it the full GDD v1, the iteration number `1`, and the current tag's scope.
 
 ```
 Agent({
@@ -172,13 +172,26 @@ Audit brief:
 ### Iteration
 1
 
+### Current Tag
+{current tag id — always v0.1.0 in initial mode; the current tag from /gm-gdd in subsequent mode}
+
+### Current Tag Scope
+{initial mode: the v0.1.0 first-playable-unit definition from Round 4.
+subsequent mode: the current tag's ROADMAP bullets passed in by /gm-gdd.}
+
+### Shipped Tags (out of scope)
+{subsequent mode only: list prior tags already shipped; omit in initial mode}
+
 ### Game Genre Hint
 {genre from Round 1}
 ```
 
-The auditor returns 5-8 follow-up questions. Present them to the user **in one batch** (do not ask them one-by-one):
+The auditor returns **up to 8** follow-up questions (possibly none). Two outcomes:
 
-> "I've drafted the GDD, but before showing it to you I had an independent reviewer audit it. They flagged {N} gaps worth filling in. Please answer these in one go — anything you don't have a strong opinion on, just say 'your call':
+- **Verdict `complete` / no questions** — tell the user the audit found nothing to fill in for {tag}, keep the GDD as v2 = v1, and **skip straight to Round 8** (do not run Pass 2).
+- **Questions returned** — present them to the user **in one batch** (do not ask them one-by-one):
+
+> "I've drafted the GDD, but before showing it to you I had an independent reviewer audit it for {tag}. They flagged {N} gaps worth filling in. Please answer these in one go — anything you don't have a strong opinion on, just say 'your call':
 >
 > 1. **[State & Lifecycle]** Can the player pause? If so, does pausing freeze audio too? *(default: yes to both)*
 > 2. **[Failure & Recovery]** When the player dies, do they restart the level or hit a checkpoint?
@@ -188,9 +201,11 @@ The auditor returns 5-8 follow-up questions. Present them to the user **in one b
 
 Wait for the user's batched answers, then update the GDD → **v2**.
 
-### Round 7 — Audit Pass 2 (GDD v2 → v3)
+### Round 7 — Audit Pass 2 (GDD v2 → v3, conditional)
 
-Spawn the auditor again with iteration `2`. **You MUST populate the `Previously Asked` field with the exact questions asked in Round 6** — otherwise the auditor will re-ask the same gaps.
+**Run Pass 2 only if Pass 1 met the trigger:** Pass 1 returned **≥3 follow-up questions** OR its verdict flagged **any contradiction**. Otherwise skip Pass 2 and go to Round 8.
+
+When the trigger is met, spawn the auditor again with iteration `2`. **You MUST populate the `Previously Asked` field with the exact questions asked in Round 6** — otherwise the auditor will re-ask the same gaps.
 
 ```
 Agent({
@@ -211,6 +226,15 @@ Audit brief:
 
 ### Iteration
 2
+
+### Current Tag
+{same current tag as Pass 1}
+
+### Current Tag Scope
+{same scope as Pass 1}
+
+### Shipped Tags (out of scope)
+{subsequent mode only: same list as Pass 1; omit in initial mode}
 
 ### Previously Asked (do not repeat)
 - {Round 6 question 1, verbatim}

@@ -30,7 +30,7 @@ Supporting skills are reference packs loaded silently by the role skills. You ne
 
 | Skill | What it provides | Loaded by |
 |-------|-----------------|-----------|
-| `game-planner` | Interview structure, GDD template guidance, and two fixed rounds of independent audit (via the `gdd-auditor` sub-agent) before the design is finalized | `/gm-gdd` |
+| `game-planner` | Interview structure, GDD template guidance, and current-tag-scoped independent audit (via the `gdd-auditor` sub-agent — one pass always, a second only when the first finds enough gaps) before the design is finalized | `/gm-gdd` |
 | `project-scaffold` | Project layout rules, addon setup steps, and the ECS folder conventions | `/gm-scaffold` |
 | `input-mapper` | Reference for managing Godot input actions in `project.godot` | `/gm-build`, `/gm-fixgap` |
 

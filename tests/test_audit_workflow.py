@@ -1,4 +1,5 @@
-"""Workflow-level checks for the two-pass GDD audit loop.
+"""Workflow-level checks for the GDD audit loop (current-tag-scoped;
+Pass 1 always runs, Pass 2 is conditional on Pass 1's findings).
 
 Validates that the contract between game-planner SKILL.md (the dispatcher) and
 agents/gdd-auditor.md (the sub-agent) stays intact across edits to either side.
@@ -22,8 +23,10 @@ def _auditor_text():
 
 
 def test_game_planner_dispatches_gdd_auditor():
-    """Both audit rounds must invoke the gdd-auditor sub-agent. If either
-    dispatch goes missing the two-pass loop silently degrades to one pass."""
+    """Both audit rounds must keep their gdd-auditor dispatch block in the
+    doc. Pass 1 runs unconditionally and Pass 2 is conditional, but both
+    blocks must stay present — this counts textual dispatch blocks, not
+    runtime invocations. A missing block means a round was deleted, not gated."""
     text = _planner_text()
     dispatch_count = len(re.findall(r'subagent_type:\s*"gdd-auditor"', text))
     assert dispatch_count >= 2, (
@@ -44,8 +47,8 @@ def test_game_planner_uses_auditor_model_from_config():
 
 
 def test_game_planner_has_two_audit_rounds():
-    """Round 6 and Round 7 must both exist as headings — they are the only
-    place the two-pass design is named in user-readable form."""
+    """Round 6 and Round 7 must both exist as headings — Pass 1 (always) and
+    Pass 2 (conditional) are the user-readable names of the audit phase."""
     text = _planner_text()
     assert re.search(r"###\s*Round\s*6\s*[—-]\s*Audit Pass 1", text), (
         "Round 6 audit heading missing from game-planner SKILL.md"
@@ -108,3 +111,65 @@ def test_gdd_auditor_brief_format_documents_previously_asked():
     )
     assert "Iteration" in brief, "Brief Format must list `Iteration` as a brief field"
     assert "GDD Path" in brief, "Brief Format must list `GDD Path` as a brief field"
+
+
+def test_pass_2_is_conditional():
+    """Round 7 (Pass 2) must be gated on a trigger derived from Pass 1's
+    findings — not an unconditional second pass. The trigger keeps simple /
+    already-clear tag scopes from being over-audited while preserving the
+    independent-review safety net for the rounds that actually need it."""
+    text = _planner_text()
+    round_7_match = re.search(
+        r"###\s*Round\s*7.*?(?=###\s*Round\s*8|\Z)", text, re.DOTALL
+    )
+    assert round_7_match, "Round 7 section not found"
+    round_7 = round_7_match.group(0)
+    assert "conditional" in round_7.lower(), (
+        "Round 7 must be marked conditional, not an unconditional second pass."
+    )
+    assert re.search(r"only if", round_7, re.IGNORECASE), (
+        "Round 7 must state the trigger condition (e.g. 'Run Pass 2 only if ...')."
+    )
+    assert "contradiction" in round_7.lower(), (
+        "Round 7 trigger must reference contradictions surfaced by Pass 1."
+    )
+
+
+def test_audit_briefs_carry_current_tag_scope():
+    """Both audit briefs must pass the current tag's scope so the auditor
+    constrains findings to the tag being planned, not the whole cross-tag GDD."""
+    text = _planner_text()
+    count = text.count("Current Tag Scope")
+    assert count >= 2, (
+        "Both Round 6 and Round 7 audit briefs must include a `Current Tag Scope` "
+        f"field; found {count}."
+    )
+
+
+def test_gdd_auditor_scopes_to_current_tag():
+    """The auditor must declare that it audits only the current tag's scope
+    and document the scope fields in its brief — otherwise it re-audits the
+    whole cross-tag GDD and re-litigates already-shipped tags."""
+    text = _auditor_text()
+    assert "Audit Scope" in text, (
+        "gdd-auditor.md must declare an `Audit Scope` section limiting it to the current tag."
+    )
+    assert "Current Tag Scope" in text, (
+        "gdd-auditor.md Brief Format must document the `Current Tag Scope` field."
+    )
+
+
+def test_gdd_auditor_has_no_question_floor():
+    """The auditor must have no lower bound on question count — a clear,
+    complete tag scope should yield zero questions instead of a manufactured
+    5-8. Only the upper cap of 8 remains."""
+    text = _auditor_text()
+    assert "5-8" not in text, (
+        "gdd-auditor.md still mandates a 5-8 question floor; the lower bound must be removed."
+    )
+    assert "0-8" in text, (
+        "gdd-auditor.md should express the question count as 0-8 (upper bound only)."
+    )
+    assert re.search(r"no floor|no minimum|return zero", text, re.IGNORECASE), (
+        "gdd-auditor.md must explicitly allow zero questions when the scope is complete."
+    )

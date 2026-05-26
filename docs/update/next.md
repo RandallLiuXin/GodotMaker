@@ -24,6 +24,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Clarified source-available licensing language and excluded internal planning notes from the documentation site.
 - Scaffold generates and commits Godot `.uid` import metadata in its initial commit so the project tree starts clean for `/gm-build`.
+- GDD design audit now focuses on the current release tag and only runs its second pass when the first turns up enough gaps, so simple or already-clear designs aren't over-questioned.
 
 ## Fixed
 
