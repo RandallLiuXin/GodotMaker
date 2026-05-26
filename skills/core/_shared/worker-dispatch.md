@@ -57,6 +57,7 @@ Agent({
 - Copy relevant gotchas from reviewer skills (ui/gotchas.md, animation/gotchas.md, etc.)
 
 ### Prohibited Actions                                   [REQUIRED]
+- DO NOT ask for approval, wait for user input, or pause for confirmation. Execute the task directly. If required information or external state is missing, report `PARTIAL` or `FAILED` with the blocker.
 - DO NOT fabricate resource paths — only use paths listed in ASSETS.md or verified to exist in the project. If you need an asset that doesn't exist, report it in your summary; do NOT invent a path.
 - DO NOT modify files outside your Deliverables list — read-only access to all other files.
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
@@ -89,6 +90,7 @@ Agent({
 13. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
 14. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `opus`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
 15. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`).
+16. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 
 ## Worker Utility Convention
 

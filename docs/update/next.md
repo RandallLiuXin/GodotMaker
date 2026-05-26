@@ -31,5 +31,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Resized image assets are scaled proportionally and transparency-padded instead of stretched, so non-square art is no longer squashed.
 - Clarified Visual QA handling of normal gameplay captures versus `--debug-collisions` collision-check captures.
 - `/gm-build` no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.
+- Worker dispatch briefs now explicitly block approval prompts and confirmation pauses during non-interactive pipeline runs.
 
 ## Removed
