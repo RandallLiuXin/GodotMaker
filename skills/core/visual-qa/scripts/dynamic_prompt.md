@@ -59,8 +59,8 @@ The assets are usually fine — what breaks is placement, scaling, and compositi
 ### Placeholder Remnants
 - Primitive geometry (untextured cubes, spheres) contrasting with surrounding detail
 - Default Godot materials (grey StandardMaterial3D, magenta missing shader)
-- Debug artifacts (nav mesh, axis gizmos, path lines) — note: collision shapes visible via `--debug-collisions` are expected in collision-check screenshots; only flag them as artifacts in normal gameplay captures
-- **Collision-sprite mismatch** (in `--debug-collisions` captures only): collision shape significantly larger/smaller than the sprite, offset from the visual, or wrong shape type for the object
+- Debug artifacts in normal gameplay captures (nav mesh, axis gizmos, path lines, visible collision shapes)
+- **Collision-sprite mismatch** in `--debug-collisions` captures: collision shape significantly larger/smaller than the sprite, offset from the visual, or wrong shape type for the object
 - Orphaned UI elements at default positions
 
 ### Motion & Animation (compare consecutive frames)

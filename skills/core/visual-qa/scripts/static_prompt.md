@@ -60,7 +60,8 @@ The assets themselves are usually fine — they come from a generation pipeline.
 - Primitive geometry (untextured cubes, spheres) contrasting with surrounding detail
 - Detail level mismatches: placeholder-quality next to finished materials
 - Default Godot materials (grey StandardMaterial3D, magenta missing shader)
-- Debug artifacts (nav mesh, axis gizmos, path lines; collision shapes only in normal gameplay captures, not `--debug-collisions` captures)
+- Debug artifacts in normal gameplay captures (nav mesh, axis gizmos, path lines, visible collision shapes)
+- Collision overlay mismatch in `--debug-collisions` captures (shape offset, wrong size, or wrong shape type relative to the sprite)
 - Orphaned UI elements at default positions
 
 ## Output Format

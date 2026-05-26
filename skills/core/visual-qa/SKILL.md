@@ -162,8 +162,10 @@ state truth, or layout stability:
 
 - Untextured primitives contrasting with surrounding detail
 - Default Godot materials (grey StandardMaterial3D, magenta missing shader)
-- Debug artifacts (nav mesh, axis gizmos; collision shapes only in normal
-  gameplay captures, not `--debug-collisions` captures)
+- Debug artifacts in normal gameplay captures (nav mesh, axis gizmos, visible
+  collision shapes)
+- Collision overlay mismatch in `--debug-collisions` captures (shape offset,
+  wrong size, or wrong shape type relative to the sprite)
 
 ### Motion & Animation (dynamic mode only)
 
