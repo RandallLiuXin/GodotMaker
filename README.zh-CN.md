@@ -89,11 +89,14 @@ python tools/check_env.py
 - [你的第一款游戏](https://RandallLiuXin.github.io/GodotMaker/zh/wiki/01-getting-started/first-game/)
 - [工作原理](https://RandallLiuXin.github.io/GodotMaker/zh/wiki/02-concepts/how-it-works/)
 - [常见问题](https://RandallLiuXin.github.io/GodotMaker/zh/wiki/04-troubleshooting/common-problems/)
+- [路线图](ROADMAP.md)
 - [完整文档](https://RandallLiuXin.github.io/GodotMaker/zh/)
 
 ## 状态
 
 GodotMaker 正在准备源码可见的 public alpha。CLI、Codex 支持、视觉 QA 和打包流程还会快速变化。
+
+Codex runner 支持和 AI 自动生成美术资源仍是预览功能。当前美术流程可以生成有用的参考图和素材草图，但不能保证只依赖 AI 就得到生产可用的 sprite、UI 组件或稳定一致的美术效果。后续计划提供专门的美术资源制作 UI，让筛选、裁剪、替换和审查更可靠。
 
 如果你觉得这个方向有价值，欢迎 star、试用 CLI，并把你希望它做得更好的游戏类型和问题提到 issue。
 

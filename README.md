@@ -89,11 +89,14 @@ Optional API keys are needed only when your project config selects API-backed pr
 - [Your first game](https://RandallLiuXin.github.io/GodotMaker/wiki/01-getting-started/first-game/)
 - [How it works](https://RandallLiuXin.github.io/GodotMaker/wiki/02-concepts/how-it-works/)
 - [Common problems](https://RandallLiuXin.github.io/GodotMaker/wiki/04-troubleshooting/common-problems/)
+- [Roadmap](ROADMAP.md)
 - [Full docs](https://RandallLiuXin.github.io/GodotMaker/)
 
 ## Status
 
 GodotMaker is preparing for a source-available public alpha. The CLI, Codex support, visual QA, and packaging are moving quickly.
+
+Codex runner support and AI-generated art are preview features. The current art workflow can generate useful references and draft assets, but it cannot guarantee production-ready sprites, UI pieces, or visual consistency from AI alone. A dedicated art-production UI is planned to make curation, slicing, replacement, and review more reliable.
 
 If this direction is useful to you, star the repo, try the CLI, and open issues with the games you want it to build better.
 
