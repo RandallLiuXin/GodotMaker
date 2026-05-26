@@ -2461,11 +2461,14 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Clarified source-available licensing language and excluded internal planning notes from the documentation site.</li>
+<li>Scaffold generates and commits Godot <code>.uid</code> import metadata in its initial commit so the project tree starts clean for <code>/gm-build</code>.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Rewire Agent prompt/output trace capture to <code>PreToolUse</code>/<code>PostToolUse</code> because the <code>SubagentStart</code> payload has no <code>prompt</code> field and silently wrote 0-byte traces.</li>
 <li>Resized image assets are scaled proportionally and transparency-padded instead of stretched, so non-square art is no longer squashed.</li>
+<li>Clarified Visual QA handling of normal gameplay captures versus <code>--debug-collisions</code> collision-check captures.</li>
+<li><code>/gm-build</code> no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
