@@ -2463,6 +2463,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Clarified source-available licensing language and excluded internal planning notes from the documentation site.</li>
 <li>Scaffold generates and commits Godot <code>.uid</code> import metadata in its initial commit so the project tree starts clean for <code>/gm-build</code>.</li>
 <li>GDD design audit now focuses on the current release tag and only runs its second pass when the first turns up enough gaps, so simple or already-clear designs aren't over-questioned.</li>
+<li><code>/gm-asset</code> generates Codex images in one <code>codex exec</code> call with parallel subagents (one per asset) instead of one serial call per image.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2471,6 +2472,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Clarified Visual QA handling of normal gameplay captures versus <code>--debug-collisions</code> collision-check captures.</li>
 <li><code>/gm-build</code> no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.</li>
 <li>Worker dispatch briefs now explicitly block approval prompts and confirmation pauses during non-interactive pipeline runs.</li>
+<li>Codex image generation copies each subagent's own generated file to a fixed per-asset path instead of the newest file in <code>generated_images</code>, which was unsafe once generation runs in parallel.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
