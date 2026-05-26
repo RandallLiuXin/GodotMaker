@@ -25,6 +25,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Clarified source-available licensing language and excluded internal planning notes from the documentation site.
 - Scaffold generates and commits Godot `.uid` import metadata in its initial commit so the project tree starts clean for `/gm-build`.
 - GDD design audit now focuses on the current release tag and only runs its second pass when the first turns up enough gaps, so simple or already-clear designs aren't over-questioned.
+- `/gm-asset` generates Codex images in one `codex exec` call with parallel subagents (one per asset) instead of one serial call per image.
 
 ## Fixed
 
@@ -33,5 +34,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Clarified Visual QA handling of normal gameplay captures versus `--debug-collisions` collision-check captures.
 - `/gm-build` no longer falls back to slow sequential workers when the tree has uncommitted import artifacts.
 - Worker dispatch briefs now explicitly block approval prompts and confirmation pauses during non-interactive pipeline runs.
+- Codex image generation copies each subagent's own generated file to a fixed per-asset path instead of the newest file in `generated_images`, which was unsafe once generation runs in parallel.
 
 ## Removed

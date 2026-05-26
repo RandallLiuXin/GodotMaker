@@ -127,12 +127,14 @@ Run up to 3 generation groups in parallel. Each group owns one or more target im
   python tools/asset_image_finalize.py --source <generated_image_path> \
     --out <target.png> --label <asset_id> [--resize WIDTHxHEIGHT]
   ```
-- For `codex` under Claude Code, call Codex through Bash. Put the prompt in a
-  temp file. The Codex prompt must explicitly require `$imagegen` / built-in
-  `image_gen`, copy the selected PNG from `$CODEX_HOME/generated_images/...` to
-  a requested source path under `.godotmaker/asset-generation/codex/`, and
-  report failure if the image-generation tool is unavailable. After `codex exec`
-  returns, verify that source path exists before finalizing it.
+- For `codex` under Claude Code, generate the whole batch in ONE `codex exec`
+  call (not one per image) and have Codex spawn one subagent per asset, run in
+  parallel, max 3 concurrent. The batch prompt lists each asset's id, prompt,
+  and exact target source path under `.godotmaker/asset-generation/codex/`, and
+  requires each subagent to copy the image it generated (the path `image_gen`
+  returned) to that asset's target path — never the newest file in
+  `generated_images`. See `references/asset-gen.md`. After `codex exec` returns,
+  verify each source path exists before finalizing.
 - Each group writes one JSON report under `.godotmaker/asset-generation/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize result>, ...]}`.
 - Do not select images by scanning a global "latest generated image" list. Use the generated paths reported by the group.
 

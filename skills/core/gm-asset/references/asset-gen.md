@@ -25,34 +25,45 @@ When `asset_image_model: codex` is selected in a Claude Code project, use
 non-interactive Codex as the image-generation provider. This is not an
 `asset_gen.py` backend.
 
-Write one prompt file per asset or generation group and run `codex exec` from
-the project root:
+Generate the whole batch in ONE `codex exec` call (not one per image) and have
+Codex spawn one subagent per asset, run in parallel, at most 3 at a time.
+
+Write one batch prompt file listing every asset (id, prompt, exact target
+path), then run `codex exec` from the project root:
 
 ```bash
 mkdir -p .godotmaker/asset-generation/codex
-cat > .godotmaker/asset-generation/codex_<asset_id>.prompt.txt <<'EOF'
-Use the $imagegen skill and built-in image_gen tool to generate this project
-asset.
+cat > .godotmaker/asset-generation/codex_batch.prompt.txt <<'EOF'
+Use the $imagegen skill and built-in image_gen tool to generate these assets.
+Spawn one subagent per asset and run them in parallel, at most 3 at a time.
+Wait for all subagents to finish.
 
-Generate a PNG for:
-<prompt>
+Each subagent must, for its asset:
+- generate the image from that asset's prompt with image_gen,
+- copy the image it just generated (the path image_gen returned) to that
+  asset's exact target path — do NOT scan generated_images for the newest file,
+- report the asset id and whether its target file now exists.
 
-After generation, copy the selected generated PNG from
-$CODEX_HOME/generated_images/... to:
-.godotmaker/asset-generation/codex/<asset_id>_source.png
+Assets:
+- id: <asset_id_1>
+  target: .godotmaker/asset-generation/codex/<asset_id_1>_source.png
+  prompt: <prompt 1>
+- id: <asset_id_2>
+  target: .godotmaker/asset-generation/codex/<asset_id_2>_source.png
+  prompt: <prompt 2>
 
-If built-in image generation is unavailable, do not create an image file.
+If built-in image generation is unavailable, do not create that image file.
 Report the failure clearly.
 EOF
 
 codex exec --json --dangerously-bypass-approvals-and-sandbox \
-  -C "$PWD" --output-last-message .godotmaker/asset-generation/codex_<asset_id>.summary.txt \
-  - < .godotmaker/asset-generation/codex_<asset_id>.prompt.txt
+  -C "$PWD" --output-last-message .godotmaker/asset-generation/codex_batch.summary.txt \
+  - < .godotmaker/asset-generation/codex_batch.prompt.txt
 ```
 
-Then check that `.godotmaker/asset-generation/codex/<asset_id>_source.png`
-exists and pass that file to `tools/asset_image_finalize.py`. Do not silently
-switch providers when the configured provider is `codex`.
+After `codex exec` returns, check that each `<asset_id>_source.png` exists, then
+pass each to `tools/asset_image_finalize.py`. Do not silently switch providers
+when the configured provider is `codex`.
 
 ### Gemini sizes and costs
 
