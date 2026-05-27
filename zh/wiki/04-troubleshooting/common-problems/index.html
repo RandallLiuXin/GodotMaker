@@ -998,6 +998,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#agent-runtime-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent runtime 或 CLI 看起来卡住了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2786,6 +2797,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#agent-runtime-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent runtime 或 CLI 看起来卡住了
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3160,6 +3182,11 @@
 <hr />
 <h2 id="_3">流水线阶段校验问题<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
 <p>这些报错会在你跳步执行 <code>/gm-*</code> 命令时出现。每个角色在启动前都会检查前置角色是否已经完成。</p>
+<hr />
+<h3 id="agent-runtime-cli">Agent runtime 或 CLI 看起来卡住了<a class="headerlink" href="#agent-runtime-cli" title="Permanent link">&para;</a></h3>
+<p><strong>症状：</strong> <code>godotmaker-cli</code> 很长时间收不到输出、报告 Agent 超时，或者某个阶段看起来已经完成了非交互式自动化工作，但底层 Agent 进程没有正常退出。</p>
+<p><strong>原因：</strong> GodotMaker 驱动的是外部 Agent runtime。这些 runtime 不是本仓库维护的组件，长时间会话偶尔会遇到运行时自身的临时问题，例如静默工具调用、速率限制、输出流中断，或子进程清理异常。</p>
+<p><strong>解决办法：</strong> 停止当前运行，然后在同一个项目目录重新启动 <code>godotmaker-cli</code>。绝大多数情况下，流水线会根据本地状态恢复并继续推进。我们非常欢迎提交 feedback 和 issue，如果能附上当次运行的必要信息和项目里的 <code>.godotmaker/</code> 目录就更好了。</p>
 <hr />
 <h3 id="role-gdd-has-not-completed-yet-run-gm-gdd-first">"Role 'gdd' has not completed yet — run /gm-gdd first"<a class="headerlink" href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" title="Permanent link">&para;</a></h3>
 <p><strong>症状：</strong> 你运行了 <code>/gm-build</code>，结果被 hook 拦下来，提示 <code>gdd</code> 角色未完成。</p>

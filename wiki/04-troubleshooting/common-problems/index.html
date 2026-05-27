@@ -998,6 +998,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#agent-runtime-or-cli-appears-stuck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent runtime or CLI appears stuck
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2786,6 +2797,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#agent-runtime-or-cli-appears-stuck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent runtime or CLI appears stuck
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3160,6 +3182,11 @@
 <hr />
 <h2 id="pipeline-gate-problems">Pipeline gate problems<a class="headerlink" href="#pipeline-gate-problems" title="Permanent link">&para;</a></h2>
 <p>These messages appear when you try to run a <code>/gm-*</code> command out of order. Each role checks that the previous required role finished before it starts.</p>
+<hr />
+<h3 id="agent-runtime-or-cli-appears-stuck">Agent runtime or CLI appears stuck<a class="headerlink" href="#agent-runtime-or-cli-appears-stuck" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> <code>godotmaker-cli</code> stops receiving output for a long time, reports an agent timeout, or a stage appears to have finished its non-interactive work but the underlying agent process does not exit cleanly.</p>
+<p><strong>Cause:</strong> GodotMaker drives external agent runtimes. Those runtimes are not maintained by this repository, and long-running sessions can occasionally hit transient runtime-specific failures such as silent tool calls, rate limits, stream interruptions, or child-process cleanup issues.</p>
+<p><strong>Fix:</strong> Stop the current run and start <code>godotmaker-cli</code> again from the same project directory. In most cases the pipeline resumes from local state and continues normally. Feedback and issue reports are very welcome. If possible, include the key details for that run and the project's <code>.godotmaker/</code> directory, which often contains the state and reports needed to diagnose the issue.</p>
 <hr />
 <h3 id="role-gdd-has-not-completed-yet-run-gm-gdd-first">"Role 'gdd' has not completed yet — run /gm-gdd first"<a class="headerlink" href="#role-gdd-has-not-completed-yet-run-gm-gdd-first" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom:</strong> You ran <code>/gm-build</code> and got a hook block saying the <code>gdd</code> role is missing.</p>
