@@ -4,6 +4,13 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [0.6.2] - 2026-05-27
+
+### Fixed
+
+- `gm-build` now consumes a newer failing verify report before treating an already-built, fully verified plan as complete.
+- `run_verify.py` now treats gdUnit warning exit code 101 as a non-blocking unit-test warning when the XML report shows every assertion passed.
+
 ## [0.6.1] - 2026-05-27
 
 ### Changed
