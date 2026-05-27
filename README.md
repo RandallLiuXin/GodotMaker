@@ -100,6 +100,12 @@ Codex runner support and AI-generated art are preview features. The current art 
 
 If this direction is useful to you, star the repo, try the CLI, and open issues with the games you want it to build better.
 
+## Runtime Note
+
+GodotMaker is a workflow layer driven by external agent runtimes. Those agents are not maintained by this repository, and long-running automation can occasionally hit runtime-specific issues such as silent timeouts, completed work that does not exit cleanly, transient tool failures, rate limits, or child processes that need cleanup.
+
+Most one-off agent failures are recoverable by stopping the current run and starting `godotmaker-cli` again; the workflow is designed to resume from local project state. Feedback and issue reports are very welcome. If possible, include the key details for that run and the project's `.godotmaker/` directory, which often contains the state and reports needed to diagnose the issue.
+
 ## License
 
 Business Source License 1.1. See [LICENSE](LICENSE). Each released version converts to Apache License 2.0 four years after that version is first publicly distributed. **The games you build with GodotMaker are not GodotMaker and are entirely yours**, subject to any third-party engine, asset, model-provider, runtime, or dependency terms that may apply.

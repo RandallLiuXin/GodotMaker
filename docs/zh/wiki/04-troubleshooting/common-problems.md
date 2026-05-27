@@ -114,6 +114,16 @@ git config --global user.email "you@example.com"
 
 ---
 
+### Agent runtime 或 CLI 看起来卡住了
+
+**症状：** `godotmaker-cli` 很长时间收不到输出、报告 Agent 超时，或者某个阶段看起来已经完成了非交互式自动化工作，但底层 Agent 进程没有正常退出。
+
+**原因：** GodotMaker 驱动的是外部 Agent runtime。这些 runtime 不是本仓库维护的组件，长时间会话偶尔会遇到运行时自身的临时问题，例如静默工具调用、速率限制、输出流中断，或子进程清理异常。
+
+**解决办法：** 停止当前运行，然后在同一个项目目录重新启动 `godotmaker-cli`。绝大多数情况下，流水线会根据本地状态恢复并继续推进。我们非常欢迎提交 feedback 和 issue，如果能附上当次运行的必要信息和项目里的 `.godotmaker/` 目录就更好了。
+
+---
+
 ### "Role 'gdd' has not completed yet — run /gm-gdd first"
 
 **症状：** 你运行了 `/gm-build`，结果被 hook 拦下来，提示 `gdd` 角色未完成。

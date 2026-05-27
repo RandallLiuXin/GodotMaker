@@ -100,6 +100,12 @@ Codex runner 支持和 AI 自动生成美术资源仍是预览功能。当前美
 
 如果你觉得这个方向有价值，欢迎 star、试用 CLI，并把你希望它做得更好的游戏类型和问题提到 issue。
 
+## 运行时说明
+
+GodotMaker 本身是一个工作流层，实际执行依赖外部 Agent runtime。这些 Agent 不是本仓库维护的组件，长时间自动化运行时偶尔会遇到运行时自身的小问题，例如静默超时、非输出式自动化任务已经完成但进程没有主动退出、临时工具失败、速率限制，或子进程需要额外清理。
+
+绝大多数一次性的 Agent 失败都可以通过停止当前运行、重新启动 `godotmaker-cli` 恢复；工作流会根据本地项目状态继续推进。我们非常欢迎提交 feedback 和 issue，如果能附上当次运行的必要信息和项目里的 `.godotmaker/` 目录就更好了。
+
 ## 许可证
 
 Business Source License 1.1。见 [LICENSE](LICENSE)。每个发布版本会在首次公开发布 4 年后自动转为 Apache License 2.0。**用 GodotMaker 做出来的游戏不是 GodotMaker，本身完全属于你**，但仍需遵守第三方引擎、素材、模型 provider、runtime 或依赖项可能适用的条款。

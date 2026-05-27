@@ -114,6 +114,16 @@ These messages appear when you try to run a `/gm-*` command out of order. Each r
 
 ---
 
+### Agent runtime or CLI appears stuck
+
+**Symptom:** `godotmaker-cli` stops receiving output for a long time, reports an agent timeout, or a stage appears to have finished its non-interactive work but the underlying agent process does not exit cleanly.
+
+**Cause:** GodotMaker drives external agent runtimes. Those runtimes are not maintained by this repository, and long-running sessions can occasionally hit transient runtime-specific failures such as silent tool calls, rate limits, stream interruptions, or child-process cleanup issues.
+
+**Fix:** Stop the current run and start `godotmaker-cli` again from the same project directory. In most cases the pipeline resumes from local state and continues normally. Feedback and issue reports are very welcome. If possible, include the key details for that run and the project's `.godotmaker/` directory, which often contains the state and reports needed to diagnose the issue.
+
+---
+
 ### "Role 'gdd' has not completed yet — run /gm-gdd first"
 
 **Symptom:** You ran `/gm-build` and got a hook block saying the `gdd` role is missing.
