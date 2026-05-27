@@ -216,6 +216,31 @@ def test_check_unit_tests_xml_pass_counts_all_cases():
     assert note is None
 
 
+def test_check_unit_tests_xml_pass_exit_101_is_warn():
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="report_1" tests="76" failures="0" errors="0" skipped="0" />
+"""
+
+    def fake_run(cmd, *args, **kwargs):
+        _write_gdunit_xml_from_cmd(cmd, xml)
+        return _make_proc(
+            stdout="line 21: WARNING:: Found 4 possible orphan nodes.\n",
+            returncode=101,
+        )
+
+    with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+        result, note = run_verify.check_unit_tests("/usr/bin/godot", Path("/x"))
+
+    assert result == {
+        "result": "warn",
+        "passed": 76,
+        "failed": 0,
+        "failures": [],
+        "warnings": ["Found 4 possible orphan nodes."],
+    }
+    assert note is None
+
+
 def test_check_unit_tests_xml_suite_errors_count_as_failed():
     xml = """<?xml version="1.0" encoding="UTF-8"?>
 <testsuites name="report_1" tests="3" failures="0" skipped="0">

@@ -34,8 +34,9 @@ TOP_RESULT_VALUES = {"pass", "fail"}
 PER_CHECK_RESULT_VALUES = {"pass", "warn", "fail", "error"}
 REQUIRED_CHECKS = {"build", "unit_tests", "lint", "static_check"}
 
-# `warn` is lint-only (per gm-verify SKILL.md per-check result semantics).
-WARN_ALLOWED_CHECKS = {"lint"}
+# `warn` is reserved for non-blocking checks: lint style noise and gdUnit
+# warnings such as orphan-node reports when every assertion passed.
+WARN_ALLOWED_CHECKS = {"lint", "unit_tests"}
 
 # Producer rule: each non-escalate suggested_fallback REQUIRES the named
 # operand to be present and non-empty. Mirrors the table in
@@ -317,14 +318,19 @@ def test_escalate_does_not_require_any_operand():
     assert validate_report(r) == []
 
 
-def test_warn_outside_lint_is_invalid():
-    """`warn` is lint-only per SKILL.md per-check result semantics. A
-    build / unit_tests / static_check report with result == warn is a
-    documentation drift signal."""
+def test_warn_outside_allowed_checks_is_invalid():
+    """`warn` is allowed only for checks with non-blocking warning semantics."""
     r = report_pass()
     r["checks"]["build"]["result"] = "warn"
     issues = validate_report(r)
     assert any("warn" in i and "build" in i for i in issues), issues
+
+
+def test_unit_tests_warn_is_valid():
+    r = report_pass()
+    r["checks"]["unit_tests"]["result"] = "warn"
+    r["checks"]["unit_tests"]["warnings"] = ["Found 4 possible orphan nodes."]
+    assert validate_report(r) == []
 
 
 def test_missing_top_level_key_is_caught():

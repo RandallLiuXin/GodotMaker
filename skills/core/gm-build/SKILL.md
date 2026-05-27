@@ -25,6 +25,17 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 - If `ROADMAP.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
 - If **no event with `role == "gdd"`** exists anywhere in the file → STOP. Tell user to run `/gm-gdd` first.
 - If `PLAN.md` is missing the `**Tag:**` header → STOP. Tell user the file is stale and to re-run `/gm-gdd` to regenerate it for the current tag.
+
+Read `.godotmaker/verify_report.json` if it exists.
+
+Define **pending verify feedback** as:
+- `.godotmaker/verify_report.json` exists.
+- Its top-level `result` is `"fail"`.
+- Its `ts` is later than the latest `role == "build"` event in `stage.jsonl`, or there is no prior build event.
+
+Apply the resume gates in this order:
+
+- If pending verify feedback exists → proceed to Step 0, even if the last event is `build` and all PLAN.md tasks are already `verified`.
 - If the **last event** has `role == "build"` AND all PLAN.md tasks are `verified` → STOP. Tell the user:
   > "Build already completed for the current tag at {timestamp}. Recommended next: /gm-verify.
   > If you need to redo this step or have other plans, just tell me."
@@ -81,7 +92,7 @@ not on a worker-count cadence.
 
 ### Step 0 — Process Verify Feedback
 
-Run this step before Step 1 only if `.godotmaker/verify_report.json` exists, `result == "fail"`, and its `ts` is later than the most recent `role == "build"` event in `stage.jsonl` (or there is no prior build event). Otherwise → skip to Step 1.
+Run this step before Step 1 only if pending verify feedback exists. Otherwise → skip to Step 1.
 
 Translate failures into `pending` tasks at the bottom of `PLAN.md`.
 

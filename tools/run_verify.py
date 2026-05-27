@@ -173,6 +173,21 @@ _GDUNIT_FAILURE = re.compile(
     r"^\s*FAILED:\s*(.+?)\s+-\s+(.+)$",
     re.MULTILINE,
 )
+_GDUNIT_ORPHAN_WARNING = re.compile(
+    r"Found\s+\d+\s+possible\s+orphan\s+nodes?\.?",
+    re.IGNORECASE,
+)
+
+
+def _gdunit_warning_messages(combined: str, returncode: int) -> list[str]:
+    warnings: list[str] = []
+    for match in _GDUNIT_ORPHAN_WARNING.finditer(combined):
+        warning = match.group(0).strip()
+        if warning not in warnings:
+            warnings.append(warning)
+    if returncode == 101 and not warnings:
+        warnings.append("gdUnit exited with warning code 101")
+    return warnings
 
 
 def _int_attr(element: ET.Element, name: str) -> int:
@@ -275,6 +290,15 @@ def _parse_gdunit_stdout(combined: str, returncode: int) -> dict | None:
             "message": fm.group(2).strip(),
         })
 
+    if returncode == 101 and failed_count == 0:
+        return {
+            "result": "warn",
+            "passed": passed_count,
+            "failed": 0,
+            "failures": [],
+            "warnings": _gdunit_warning_messages(combined, returncode),
+        }
+
     if returncode != 0 and failed_count == 0:
         failed_count = 1
         failures.append({
@@ -325,6 +349,7 @@ def check_unit_tests(godot_path: str, project_dir: Path
                 ),
             )
 
+        combined = (proc.stdout or "") + (proc.stderr or "")
         results_xml = _find_gdunit_results_xml(report_path)
         if results_xml:
             try:
@@ -339,6 +364,13 @@ def check_unit_tests(godot_path: str, project_dir: Path
                     ),
                 )
             if proc.returncode != 0 and parsed_xml["result"] == "pass":
+                if proc.returncode == 101:
+                    parsed_xml["result"] = "warn"
+                    parsed_xml["warnings"] = _gdunit_warning_messages(
+                        combined,
+                        proc.returncode,
+                    )
+                    return (parsed_xml, None)
                 if proc.returncode == 100:
                     parsed_xml["result"] = "fail"
                     parsed_xml["failed"] = 1
@@ -363,7 +395,6 @@ def check_unit_tests(godot_path: str, project_dir: Path
                 )
             return (parsed_xml, None)
 
-        combined = (proc.stdout or "") + (proc.stderr or "")
         parsed = _parse_gdunit_stdout(combined, proc.returncode)
         if parsed:
             return (parsed, None)

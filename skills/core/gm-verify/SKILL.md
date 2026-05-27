@@ -129,11 +129,14 @@ Schema:
       ]
     },
     "unit_tests": {
-      "result": "pass | fail | error",
+      "result": "pass | warn | fail | error",
       "passed": 624,
       "failed": 0,
       "failures": [
         {"test": "test_player_input::test_jump", "message": "expected 10, got 0"}
+      ],
+      "warnings": [
+        "Found 4 possible orphan nodes."
       ]
     },
     "lint": {
@@ -173,7 +176,7 @@ Field rules:
 - **Top-level `result`** — `"pass"` iff every `checks.*.result` ∈ {`pass`, `warn`}. Any `fail` / `error` makes overall `fail`. `tooling_notes` alone never makes overall `fail` — the `error` it pairs with does.
 - **`ts`** — UTC ISO 8601 at the moment you write the file. Consumers compare it against their own last-event timestamp for freshness.
 - **All array fields are required** (possibly empty `[]`). Do not omit them.
-- **Per-check `result`** — `pass` / `fail` are project-content. `warn` is lint-only style noise. `error` means the tool itself crashed and the project's actual state is unknown for this check; pair `error` with exactly one `tooling_notes` entry. Consumers fix `error` via config, NOT project code.
+- **Per-check `result`** — `pass` / `fail` are project-content. `warn` is non-blocking diagnostic noise (lint style drift or gdUnit warnings such as orphan nodes when every assertion passed). `error` means the tool itself crashed and the project's actual state is unknown for this check; pair `error` with exactly one `tooling_notes` entry. Consumers fix `error` via config, NOT project code.
 - **`format_drift`** — object when `gdformat --check` reports drift; `null` otherwise.
 - **`suggested_fallback`** + matching operand — the producer fills the operand so the consumer can act deterministically:
 
