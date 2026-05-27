@@ -2517,6 +2517,8 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Rewire Agent prompt/output trace capture to <code>PreToolUse</code>/<code>PostToolUse</code> because the <code>SubagentStart</code> payload has no <code>prompt</code> field and silently wrote 0-byte traces.</li>
+<li><code>gm-build</code> now consumes a newer failing verify report before treating an already-built, fully verified plan as complete.</li>
+<li><code>run_verify.py</code> now treats gdUnit warning exit code 101 as a non-blocking unit-test warning when the XML report shows every assertion passed.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
