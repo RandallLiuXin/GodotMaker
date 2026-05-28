@@ -155,6 +155,13 @@
         <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/update/v0.6.2/"/>
     </url>
     <url>
+        <loc>https://RandallLiuXin.github.io/GodotMaker/update/v0.6.3/</loc>
+        <lastmod>2026-05-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/update/v0.6.3/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/update/v0.6.3/"/>
+    </url>
+    <url>
         <loc>https://RandallLiuXin.github.io/GodotMaker/wiki/Home/</loc>
         <lastmod>2026-05-28</lastmod>
         <changefreq>daily</changefreq>
@@ -510,6 +517,13 @@
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/update/v0.6.2/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/update/v0.6.2/"/>
+    </url>
+    <url>
+        <loc>https://RandallLiuXin.github.io/GodotMaker/zh/update/v0.6.3/</loc>
+        <lastmod>2026-05-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://RandallLiuXin.github.io/GodotMaker/zh/update/v0.6.3/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://RandallLiuXin.github.io/GodotMaker/update/v0.6.3/"/>
     </url>
     <url>
         <loc>https://RandallLiuXin.github.io/GodotMaker/zh/wiki/Home/</loc>
