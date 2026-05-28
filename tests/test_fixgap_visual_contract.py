@@ -53,7 +53,7 @@ def test_verifier_rechecks_visual_evidence_when_requested():
     assert "Worker self-check result:" in dispatch
     assert "runs visual-qa on evaluator captures" in dispatch
     assert "Worker self-check evidence:" not in dispatch
-    assert "OS temp directory" in dispatch
+    assert "reports/verifier-temp/" in dispatch
     assert "/tmp" not in dispatch
     assert "$TMPDIR" not in dispatch
 
@@ -65,6 +65,7 @@ def test_fixgap_uses_screenshot_and_visual_qa_without_e2e_ownership():
     assert "| screenshot |" in fixgap
     assert "| visual-qa |" in fixgap
     assert "reports/fixgap-visual/<task_id>/" in screenshot
+    assert "reports/verifier-temp/" in screenshot
     assert ".godotmaker/scratch/fixgap-visual/<task_id>/" not in screenshot
 
 

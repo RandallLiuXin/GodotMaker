@@ -43,7 +43,7 @@ If a reference path appears in the args but the file does not exist on disk,
 STOP. Return `verdict: error` with `reason: "reference file missing: <path>"`.
 
 Screenshot paths for Static/Dynamic mode may come from `e2e/screenshots/`,
-`reports/fixgap-visual/`, or a verifier temp directory.
+`reports/fixgap-visual/`, or `reports/verifier-temp/`.
 
 Each call takes one scene's reference plus that scene's screenshot or frame
 paths. Reject a single stitched, montage, or contact-sheet image supplied in

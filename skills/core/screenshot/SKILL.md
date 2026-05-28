@@ -107,7 +107,7 @@ is enough — use the Quick Capture pattern above and call `visual-qa` Static mo
 
 For fixgap worker visual self-checks, save evidence under
 `reports/fixgap-visual/<task_id>/`. For verifier-only fresh captures, use
-the OS temp directory.
+`reports/verifier-temp/`.
 
 ## Generate reference.png
 

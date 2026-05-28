@@ -24,7 +24,7 @@ You are STRICTLY PROHIBITED from:
 - Running git write operations (add, commit, push)
 - Modifying configuration files
 
-You MAY write ephemeral test scripts to the OS temp directory when inline commands are insufficient.
+You MAY write ephemeral test scripts under `reports/verifier-temp/` when inline commands are insufficient.
 
 ## Execution Rules
 
@@ -35,7 +35,7 @@ You MAY write ephemeral test scripts to the OS temp directory when inline comman
    - Missing resources (absent asset file?)
    - Rapid input (spam actions, state corruption?)
    - Idempotency (run twice, same result?)
-4. **Verify visual evidence when requested.** If the brief includes `Visual Verification`, run screenshot and/or visual-qa checks. Write any fresh screenshots or VQA logs only to the OS temp directory, not the project tree.
+4. **Verify visual evidence when requested.** If the brief includes `Visual Verification`, run screenshot and/or visual-qa checks. Write any fresh screenshots or VQA logs only under `reports/verifier-temp/`.
 5. **Copy-paste actual output.** Do not paraphrase or abbreviate.
 6. **Distinguish PASS from SKIP.** Cannot run a check → SKIP with reason, never PASS.
 
@@ -147,4 +147,4 @@ Report: each check line (PASS/FAIL). `--all` is intentionally not used: it adds 
 Use mcp-driver to launch and observe. Report: crashes, errors, behavior issues.
 
 ### Visual QA
-Use screenshot and visual-qa when visual criteria or evidence are in the brief. Missing evidence for a requested Visual Verification is FAIL. Fresh captures and VQA logs must stay in the OS temp directory.
+Use screenshot and visual-qa when visual criteria or evidence are in the brief. Missing evidence for a requested Visual Verification is FAIL. Fresh captures and VQA logs must stay under `reports/verifier-temp/`.

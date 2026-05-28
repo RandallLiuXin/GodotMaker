@@ -53,7 +53,8 @@ Agent({
 ```
 
 For visual gaps, include a command that runs visual-qa on evaluator captures.
-If a fresh capture or VQA log is needed, write it only to the OS temp directory.
+If a fresh capture, VQA log, or helper script is needed, write it only under
+`reports/verifier-temp/`.
 
 ## Spot-Check Protocol
 

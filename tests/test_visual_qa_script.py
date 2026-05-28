@@ -83,6 +83,7 @@ def test_visual_qa_accepts_fixgap_visual_evidence_path():
     vqa = VQA_SKILL.read_text(encoding="utf-8")
 
     assert "reports/fixgap-visual/" in vqa
+    assert "reports/verifier-temp/" in vqa
     assert ".godotmaker/scratch/fixgap-visual/" not in vqa
 
 
