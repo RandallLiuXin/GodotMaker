@@ -105,6 +105,10 @@ Skill(skill="visual-qa") "Check references/scene_main.png against e2e/screenshot
 For static scenes (decoration, terrain, UI without motion), one screenshot
 is enough — use the Quick Capture pattern above and call `visual-qa` Static mode.
 
+For fixgap worker visual self-checks, save evidence under
+`reports/fixgap-visual/<task_id>/`. For verifier-only fresh captures, use
+the OS temp directory.
+
 ## Generate reference.png
 
 Use the quick capture method, save to `reference.png` in the project root:

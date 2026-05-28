@@ -42,6 +42,7 @@ Agent({
 - [ ] e2e-testable interface: public methods / signals / simulate_* helpers for affected systems/scenes/UI, with unit tests covering each one
 - [ ] Run headless-build and confirm compilation
 - [ ] Run unit tests and include pass/fail output
+- [ ] If `Visual Self-Check` is present: capture screenshot(s), run visual-qa, include output
 - [ ] Summary of what was implemented (<200 words)
 - [ ] MEMORY entry: discoveries, gotchas, decisions (<100 words)
 
@@ -72,6 +73,13 @@ Agent({
  Include: asset row/path, runtime size, visual role, readability requirement,
  and anchor/derivative source.}
 
+### Visual Self-Check                                    [REQUIRED for fixgap visual tasks]
+- Source: {evaluation.json.visual_checks scene and blocking finding}
+- Reference: {references/scene_name.png}
+- Target state: {scene or gameplay state to capture}
+- Verify: {observable visual criteria from evaluation vqa_calls[].context or SCENES.md Acceptance criteria}
+- Output directory: `reports/fixgap-visual/{task_id}/`
+
 ### Scene Layout Reference                                [REQUIRED for UI/scene tasks]
 {Copy the relevant scene description from SCENES.md here.
  Include: element positions, sizes, layout type, mood.
@@ -98,6 +106,7 @@ Agent({
 15. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`).
 16. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 17. **Visual tasks require asset contract rows.** Fill the `Visual Asset Contract` section for visual tasks.
+18. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
 
 ## Worker Utility Convention
 

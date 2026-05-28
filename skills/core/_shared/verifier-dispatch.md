@@ -36,11 +36,12 @@ Agent({
 - [ ] Unit tests: all pass
 - [ ] {additional specific criteria}
 
-### Visual Verification                                  [REQUIRED for visual tasks]
+### Visual Verification                                  [REQUIRED when requested]
 - Scene/reference/capture paths: {visual_checks scene, reference, captures[], and latest vqa_calls[].files from evaluation.json}
 - Visual-qa context: {latest vqa_calls[].context or scene Acceptance criteria}
 - Asset contract rows: {relevant SCENES.md Asset bindings and ASSETS.md Visual Asset Contract rows}
 - VQA log: {visual_checks.<scene>.vqa_log or latest vqa_calls[].log}
+- Worker self-check result: {visual-qa verdict and output from the worker report, if present}
 - Required result: {pass, warning, or explicit non-blocking notes}
 
 ### Negative Tests                                       [OPTIONAL]
@@ -48,7 +49,11 @@ Agent({
 
 ### Focus Areas                                          [OPTIONAL]
 {Specific files, systems, or interactions to stress-test}
+
 ```
+
+For visual gaps, include a command that runs visual-qa on evaluator captures.
+If a fresh capture or VQA log is needed, write it only to the OS temp directory.
 
 ## Spot-Check Protocol
 

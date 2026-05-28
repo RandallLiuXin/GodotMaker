@@ -35,12 +35,15 @@ holds. If no row matches, STOP and tell the caller their args are malformed.
 
 | Mode | Precondition | Required argv shape |
 |---|---|---|
-| Static | `references/<ref>.png` path AND exactly 1 `e2e/screenshots/<shot>.png` path | `Check references/<ref>.png against e2e/screenshots/<shot>.png - Goal: ... Requirements: ... Verify: ...` |
-| Dynamic | `references/<ref>.png` path AND 2 or more frame paths (`e2e/screenshots/<dir>/frame_*.png`) | `Check references/<ref>.png against <frame_glob> - Goal: ... Requirements: ... Verify: ...` |
+| Static | `references/<ref>.png` path AND exactly 1 screenshot path | `Check references/<ref>.png against <screenshot.png> - Goal: ... Requirements: ... Verify: ...` |
+| Dynamic | `references/<ref>.png` path AND 2 or more frame paths | `Check references/<ref>.png against <frame_glob> - Goal: ... Requirements: ... Verify: ...` |
 | Question | No `references/` path; caller asks a question about screenshots | `--question "..." <screenshot.png> [...]` |
 
 If a reference path appears in the args but the file does not exist on disk,
 STOP. Return `verdict: error` with `reason: "reference file missing: <path>"`.
+
+Screenshot paths for Static/Dynamic mode may come from `e2e/screenshots/`,
+`reports/fixgap-visual/`, or a verifier temp directory.
 
 Each call takes one scene's reference plus that scene's screenshot or frame
 paths. Reject a single stitched, montage, or contact-sheet image supplied in

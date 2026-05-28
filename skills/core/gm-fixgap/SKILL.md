@@ -102,6 +102,9 @@ entries. Fix the game code or runtime path. Do not reduce the `PLAN.md` or
 Evaluation-source visual tasks must cite the blocking finding reported by
 evaluation. Do not create a C/J task from a style-only or non-blocking visual
 finding.
+For blocking visual tasks, copy the relevant `evaluation.json.visual_checks`
+scene, reference, captures[], latest `vqa_calls[].context`, and latest
+`vqa_calls[].log` into the GAP task.
 
 #### 1b. Pull failures from `verify_report.json`
 
@@ -153,6 +156,7 @@ Worker-dispatch tasks only — Step 1b classified main-agent-direct and escalate
 - Dispatch verify-source before evaluation-source within `pending`.
 - Use `subagent_type: "worker"`. Max 3 in parallel with disjoint file sets via `isolation: "worktree"`.
 - In each brief, paste the specific finding from GAP.md, the file(s) to modify, and the correct behavior from GDD.md.
+- For blocking evaluation-source visual tasks, fill `Visual Asset Contract` and `Visual Self-Check` from `references/worker-dispatch.md`.
 - Update task status `pending` → `in_progress` when dispatched, `in_progress` → `completed` when worker reports DONE.
 
 ### Step 4 — Final Verify + Review (single pass after all fixes)
@@ -165,7 +169,8 @@ after **all** GAP.md tasks reach `completed`.
 - Read `references/verifier-dispatch.md` for the brief template
 - Use `subagent_type: "verifier"`. Pass all completed workers' deliverables.
 - For evaluation-source visual tasks, fill the `Visual Verification` section
-  from `references/verifier-dispatch.md`.
+  from `references/verifier-dispatch.md`, including the worker self-check
+  result when present.
 - A new FAIL task must cite an unresolved blocking finding or a blocking regression.
 - On FAIL for a task: add a NEW pending task in GAP.md (the failed task stays `completed`). Loop back to Step 3.
 - On PASS: update those tasks from `completed` → `verified`.
@@ -227,6 +232,7 @@ memory/
 | gdunit-driver | Unit test execution | .claude/skills/gdunit-driver/SKILL.md |
 | godot-api | Godot API reference | .claude/skills/godot-api/SKILL.md |
 | screenshot | Gameplay screenshot capture | .claude/skills/screenshot/SKILL.md |
+| visual-qa | Screenshot/reference visual checks | .claude/skills/visual-qa/SKILL.md |
 | mcp-driver | Runtime debugging via godot-mcp | .claude/skills/mcp-driver/SKILL.md |
 
 **Asset analysis:** Dispatch an Analyst subagent (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`) when you need to analyze user-provided assets.
