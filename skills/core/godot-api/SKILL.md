@@ -4,9 +4,6 @@ description: |
   Look up Godot engine class APIs — methods, properties, signals, enums.
   Use when you need to find which class to use or look up specific API details.
   Supports version-specific docs — reads the correct API for the project's Godot version.
-context: fork
-model: sonnet
-agent: Explore
 ---
 
 # Godot API Lookup

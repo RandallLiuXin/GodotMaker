@@ -15,7 +15,6 @@ description: |
   fabricated. NOT relevant for standard Godot subsystems (physics, animation,
   UI, tilemap, shader, particles, navigation, signals, audio) unless explicitly
   connected to ECS.
-context: fork
 ---
 
 # gecs — ECS Framework for Godot 4.x
