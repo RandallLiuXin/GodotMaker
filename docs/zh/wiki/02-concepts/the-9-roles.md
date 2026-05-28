@@ -114,7 +114,7 @@
 - 对每个场景截图，用视觉质量检查工具与参考图对比
 - 得出最终结论：approve 或 reject，如果 reject 则附上具体问题列表
 
-**你得到什么：** `.godotmaker/evaluation.json`（完整判定结果，按 mechanic id 列出 PASS/FAIL）以及 `e2e/screenshots/` 里的截图。
+**你得到什么：** `.godotmaker/evaluation.json`（完整判定结果，按 mechanic id 列出 PASS/FAIL）、`e2e/screenshots/` 里的最新截图，以及 `.godotmaker/evaluation-runs/` 下的每轮评估证据归档。
 
 **需要知道的：** 评估者不能写游戏代码，也不能碰 `src/`——对游戏文件严格只读。被拒不是失败，而是信息。问题列表会直接被 `/gm-fixgap` 使用。
 

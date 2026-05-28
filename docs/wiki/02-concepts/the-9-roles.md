@@ -114,7 +114,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 - Takes screenshots of each scene and compares them against reference images using a visual quality check
 - Produces a final verdict: approve or reject, with a list of specific problems if rejected
 
-**What you get:** `.godotmaker/evaluation.json` (the full verdict, with per-mechanic PASS/FAIL records) and screenshots in `e2e/screenshots/`.
+**What you get:** `.godotmaker/evaluation.json` (the full verdict, with per-mechanic PASS/FAIL records), latest screenshots in `e2e/screenshots/`, and archived evaluate-run evidence under `.godotmaker/evaluation-runs/`.
 
 **Things to know:** The evaluator cannot write game code or touch `src/` — it is strictly read-only on game files. A rejection is not a failure; it is information. The problem list feeds directly into `/gm-fixgap`.
 

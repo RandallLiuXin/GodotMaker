@@ -108,6 +108,33 @@ def test_append_does_not_overwrite_existing(project_dir):
     assert events[1]["role"] == "gdd"
 
 
+def test_evaluate_archives_current_e2e_screenshots(project_dir):
+    screenshots = os.path.join(project_dir, "e2e", "screenshots")
+    os.makedirs(os.path.join(screenshots, "scene_main"), exist_ok=True)
+    with open(os.path.join(screenshots, "scene_main.png"), "w", encoding="utf-8") as f:
+        f.write("png")
+    with open(os.path.join(screenshots, "scene_main", "frame_000.png"), "w", encoding="utf-8") as f:
+        f.write("frame")
+    with open(os.path.join(project_dir, ".godotmaker", "evaluation.json"), "w", encoding="utf-8") as f:
+        json.dump({"result": "reject"}, f)
+
+    _, stderr, code = run(project_dir, "evaluate", "--tag=v0.1.0")
+    assert code == 0, stderr
+
+    latest_path = os.path.join(project_dir, ".godotmaker", "evaluation-runs", "latest.json")
+    with open(latest_path, encoding="utf-8") as f:
+        latest = json.load(f)
+
+    archive_path = os.path.join(project_dir, latest["archive_path"])
+    assert latest["tag"] == "v0.1.0"
+    assert latest["screenshot_files"] == 2
+    assert os.path.isfile(os.path.join(archive_path, "evaluation.json"))
+    assert os.path.isfile(os.path.join(archive_path, "screenshots", "scene_main.png"))
+    assert os.path.isfile(
+        os.path.join(archive_path, "screenshots", "scene_main", "frame_000.png")
+    )
+
+
 def test_full_pipeline_sequence_preserves_order(project_dir):
     """End-to-end pipeline shape (one fixgap loop): scaffold → gdd → asset
     → build → verify → evaluate → fixgap → verify → evaluate → accept →

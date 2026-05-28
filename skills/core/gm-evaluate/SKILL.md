@@ -103,7 +103,7 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 6. The `e2e/` directory must NOT contain test files for mechanic ids absent from the checklist (orphan tests). Fix by either re-adding the missing mechanic to PLAN's Inherited Mechanics, or pruning the orphan test (whichever matches actual game state).
 
 **Visual cross-check (per scene listed in SCENES.md):**
-7. Capture a screenshot via `game.screenshot("e2e/screenshots/scene_{name}.png")`. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Dynamic Mode". Screenshots overwrite per run (they're verification artifacts, not history; `e2e/screenshots/` is gitignored or sparingly committed at the user's choice).
+7. Capture screenshots under `e2e/screenshots/`. Use `game.screenshot("e2e/screenshots/scene_{name}.png")` for static scenes. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Dynamic Mode". Treat `e2e/screenshots/` as latest-run output only.
 8. Compare against the reference image in `references/scene_{name}.png` by dispatching a subagent to run the `visual-qa` skill.
 
    **Precondition — reference must exist.** Before calling visual-qa, confirm `references/scene_{name}.png` exists. If missing → record `critical_issue: "missing reference for scene_{name}"` and skip the visual-qa call for this scene. Do NOT degrade to Question mode against the screenshot alone.
@@ -242,6 +242,8 @@ Write evaluation results to `.godotmaker/evaluation.json`:
 ```
 
 After writing evaluation.json, from the project root run `python tools/append_stage_event.py evaluate --tag=<Tag>` to append a `{"role": "evaluate", "ts": "<server-generated UTC>", "tag": "<Tag>"}` line to `.godotmaker/stage.jsonl`. Do NOT hand-write the JSON or the timestamp — the helper exists so the timestamp comes from the system clock, not your own output.
+
+Do not manually create `.godotmaker/evaluation-runs/`; `append_stage_event.py` owns the evaluate-run archive.
 
 Then: `git add -A && git commit -m "chore(evaluate): <Tag>"`.
 
