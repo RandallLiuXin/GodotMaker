@@ -1,6 +1,6 @@
 [project]
 name = "godotmaker"
-version = "0.6.3"
+version = "0.6.4"
 description = "ECS-native text-to-game framework for Godot"
 license = {text = "BUSL-1.1"}
 requires-python = ">=3.10"

@@ -4,6 +4,16 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [0.6.4] - 2026-05-28
+
+### Added
+
+- `/gm-evaluate` now archives each completed run's `e2e/screenshots/` and `.godotmaker/evaluation.json` under `.godotmaker/evaluation-runs/` for iteration-to-iteration visual debugging.
+
+### Fixed
+
+- `gecs` and `godot-api` run inline instead of forking a separate skill context, fixing headless builds that could stall when a worker looked up ECS or Godot APIs.
+
 ## [0.6.3] - 2026-05-28
 
 ### Changed
