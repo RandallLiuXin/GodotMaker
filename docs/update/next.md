@@ -24,6 +24,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
-- `gecs` and `godot-api` now run inline instead of forking a skill context (`context: fork`). When invoked from inside a worker subagent under a headless run, the forked context did real work that never surfaced on the parent process's stdout, so the runner's idle-timeout watchdog killed otherwise-healthy builds.
+- `gecs` and `godot-api` now run inline instead of forking a skill context (`context: fork`). When invoked from inside a worker subagent under a headless run, the forked context did real work that never surfaced on the parent process's stdout, so the runner's idle-timeout watchdog killed otherwise-healthy builds. (#31)
 
 ## Removed
