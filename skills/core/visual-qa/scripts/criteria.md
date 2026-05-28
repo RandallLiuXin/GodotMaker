@@ -3,8 +3,7 @@
 Use these rules before choosing the final verdict:
 
 - `fail` means an acceptance criterion is not visibly satisfied, or a
-  visual/logical/motion bug blocks readability, operation, state truth, or
-  layout stability.
+  visual/logical/motion bug blocks operation, state truth, or layout stability.
 - `warning` means the acceptance criteria pass, and a material non-blocking
   issue was observed while checking the caller-provided context. Do not expand
   the review scope to search for warnings.
@@ -20,15 +19,21 @@ Use these rules before choosing the final verdict:
 
 ### Implementation Quality
 
-Flag these as `fail` only when they block acceptance, readability, operation,
-state truth, or layout stability:
+Flag these as `fail` only when they block acceptance, operation, state truth, or
+layout stability:
 
 - Grid/uniform placement when reference shows organic arrangement
 - Uniform/default scale when reference shows varied, purposeful sizing
 - Flat composition when reference has depth and layering
 - Stretched, tiled, or carelessly applied materials
 - Objects unrelated to environment
-- Camera framing misses required context or blocks readability/operation
+- Camera framing misses required context or blocks operation
+
+### Visibility Scope
+
+Only report visibility, contrast, or readability findings when the caller's
+`Verify:` criteria explicitly require the object, UI, or text to be visible or
+readable.
 
 ### Visual Bugs
 

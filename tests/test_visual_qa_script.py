@@ -7,6 +7,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "skills" / "core" / "visual-qa" / "scripts" / "visual_qa.py"
 VQA_SKILL = REPO_ROOT / "skills" / "core" / "visual-qa" / "SKILL.md"
 VQA_CRITERIA = REPO_ROOT / "skills" / "core" / "visual-qa" / "scripts" / "criteria.md"
+VQA_STATIC_PROMPT = REPO_ROOT / "skills" / "core" / "visual-qa" / "scripts" / "static_prompt.md"
+VQA_DYNAMIC_PROMPT = REPO_ROOT / "skills" / "core" / "visual-qa" / "scripts" / "dynamic_prompt.md"
+VQA_QUESTION_PROMPT = REPO_ROOT / "skills" / "core" / "visual-qa" / "scripts" / "question_prompt.md"
 EVALUATE_SKILL = REPO_ROOT / "skills" / "core" / "gm-evaluate" / "SKILL.md"
 
 
@@ -81,3 +84,20 @@ def test_visual_qa_accepts_fixgap_visual_evidence_path():
 
     assert "reports/fixgap-visual/" in vqa
     assert ".godotmaker/scratch/fixgap-visual/" not in vqa
+
+
+def test_visual_qa_limits_visibility_findings_to_verify_criteria():
+    criteria = VQA_CRITERIA.read_text(encoding="utf-8")
+    static_prompt = VQA_STATIC_PROMPT.read_text(encoding="utf-8")
+    dynamic_prompt = VQA_DYNAMIC_PROMPT.read_text(encoding="utf-8")
+    question_prompt = VQA_QUESTION_PROMPT.read_text(encoding="utf-8")
+    skill = VQA_SKILL.read_text(encoding="utf-8")
+
+    assert "Visibility Scope" in criteria
+    assert "explicitly require" in criteria
+    assert "visibility, contrast, or readability findings" in criteria
+    assert "blocks readability" not in criteria
+    assert "visually ambiguous" not in skill
+
+    for text in (static_prompt, dynamic_prompt, question_prompt, skill):
+        assert "**Objective reason:**" not in text

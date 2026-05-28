@@ -16,8 +16,8 @@ CRITICAL: When Task Context is provided, use its `Verify:` criteria as the
 gate. Treat the reference image as visual intent, not as a pixel-perfect or
 style-matching gate. Do not fail a check for pure reference/style mismatch
 (palette, capitalization, wording, roundedness, spacing, polish) unless it
-breaks the `Verify:` criteria or makes the scene unreadable, unusable, visually
-ambiguous, or logically false.
+breaks the `Verify:` criteria, blocks operation, destabilizes layout, or makes
+the visible state logically false.
 
 ## Execution Steps
 
