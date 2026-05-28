@@ -26,6 +26,18 @@
 |---------|----------|------|-------------|
 | {element name} | {top-center, bottom-left, center, etc.} | {width% × height%} | {what it is and looks like} |
 
+### Asset bindings
+
+<!-- Bind each gameplay-visible object and non-text UI element to ASSETS.md.
+     Use `asset_name / assets/...` for concrete assets, or `procedural`,
+     `UI text`, or `not required this tag` when no runtime image/model asset is
+     required for this tag. `not required this tag` needs a deferral reason in
+     Visual Contract. -->
+
+| Element | Asset Row / Path | Runtime Size | Visual Contract |
+|---------|------------------|--------------|-----------------|
+| {element name} | {asset name / path, procedural, or UI text} | {px, %, or world units} | {readability, animation, or state requirement} |
+
 ### Acceptance criteria
 
 <!-- Observable facts to mark PASS/FAIL from the spawn-state screenshot

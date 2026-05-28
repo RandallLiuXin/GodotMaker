@@ -164,6 +164,8 @@ after **all** GAP.md tasks reach `completed`.
 **Verifier:**
 - Read `references/verifier-dispatch.md` for the brief template
 - Use `subagent_type: "verifier"`. Pass all completed workers' deliverables.
+- For evaluation-source visual tasks, fill the `Visual Verification` section
+  from `references/verifier-dispatch.md`.
 - A new FAIL task must cite an unresolved blocking finding or a blocking regression.
 - On FAIL for a task: add a NEW pending task in GAP.md (the failed task stays `completed`). Loop back to Step 3.
 - On PASS: update those tasks from `completed` → `verified`.

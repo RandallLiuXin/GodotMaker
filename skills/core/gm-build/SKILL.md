@@ -116,6 +116,7 @@ Do NOT delete project code as a "fix" for a tool crash.
 - Read `references/worker-dispatch.md` for the brief template
 - Use `subagent_type: "worker"`. Each worker implements ONE game mechanic function + its tests.
 - Include the relevant Playable Unit fields in each worker brief.
+- For visual tasks, fill the `Visual Asset Contract` section from `references/worker-dispatch.md`.
 - Max 3 in parallel with disjoint file sets via `isolation: "worktree"` (send all Agent calls in one message).
 - After each worker reports DONE, mark its task in PLAN.md as `completed`.
 - **`main_scene` retarget is your job.** Scaffold leaves `run/main_scene="res://scenes/main.tscn"` (placeholder). After the worker that creates this tag's entry scene (per SCENES.md) completes and the `.tscn` is on disk, `Edit` `project.godot`'s `[application] run/main_scene` to `res://<path>`.

@@ -141,6 +141,7 @@ directly if needed. PLAN.md must be stable before Phase B starts:
 - [ ] Playable Unit section is populated and references existing mechanic ids
 - [ ] Playable Unit describes player experience, unit outcome, scenes involved, and per-mechanic player operation / effect / visible evidence
 - [ ] PLAN covers the player-facing state, feedback, and presentation needed to play the current tag normally
+- [ ] PLAN Runtime Asset Assignments binds required visible content to ASSETS.md rows, procedural output, UI text, or `not required this tag` with a deferral reason
 - [ ] Risk/Main tasks have stable task IDs and all Task Status rows start as `pending`
 - [ ] Tasks list affected systems/scenes/assets clearly enough for downstream artifacts
 
@@ -240,10 +241,12 @@ The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the c
 - [ ] `SCENES.md` exists with `**Tag:**` header, scoped to this tag
 - [ ] `STYLE.md` exists
 - [ ] `ASSETS.md` exists and any new rows are tagged correctly (per `templates/ASSETS.md` and `gm-asset/SKILL.md`)
+- [ ] `ASSETS.md` Visual Asset Contract covers current-tag gameplay-visible objects with runtime size, scene/mechanic use, readability requirement, and source relationship
 - [ ] `TOC.md` updated (if decomposer touched it)
 - [ ] Parallel-only consistency check: PLAN task IDs referenced by STRUCTURE/SCENES/ASSETS exist in PLAN.md; every PLAN task's affected scene/system/asset appears in the corresponding artifact or is intentionally marked deferred.
 - [ ] Parallel-only mechanic ID check: every current-tag mechanic ID referenced by STRUCTURE/SCENES/ASSETS exists in final PLAN.md Tag Mechanics; no artifact references a guessed, renumbered, or stale current-tag mechanic ID.
 - [ ] Playable Unit scene check: every scene named in PLAN.md Playable Unit appears in SCENES.md, or PLAN.md marks it deferred.
+- [ ] Scene asset binding check: every SCENES.md gameplay object and non-text UI element binds to ASSETS.md, procedural output, UI text, or `not required this tag` with a deferral reason.
 
 **Fallback when subagent doesn't finish.** If any gate item is unmet (whether the decomposer reported failure or just produced incomplete artifacts), do NOT respawn the subagent — instead, take over directly. Read whichever artifacts exist, identify the missing pieces, and write them using the same templates the decomposer would have used. The templates document their structure conventions.
 

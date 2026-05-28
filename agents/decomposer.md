@@ -12,8 +12,8 @@ The lead does NOT want to see the file content come back. Your report is a short
 
 ## Absolute Prohibitions
 
-- Do NOT write game code (`.gd`, `.tscn`, `.tres`). That is `/gm-build`'s job.
-- Do NOT write to `assets/`. That is `/gm-asset`'s job.
+- Do NOT write game code (`.gd`, `.tscn`, `.tres`).
+- Do NOT write to `assets/`.
 - Do NOT spawn sub-agents.
 - Do NOT modify `GDD.md` — it is already confirmed by the user.
 - Do NOT modify `ROADMAP.md` — it is already confirmed by the user.
@@ -81,6 +81,7 @@ Required structure (matches the template):
 - **Main Build (M01, M02, ...):** convert game mechanics + entities + cross-tag refactor hints into mechanic-function build tasks per the template structure. Add normal M-series tasks for player-facing state, feedback, and presentation needed to play the current tag.
   - Subsequent mode with `Cross-Tag Refactor Hints`: turn each hint into one or more concrete tasks. E.g. `M03 — Refactor LevelUpCardPool into TalentTree (replaces v0.2.0 cardpool per superseded design)`.
 - **Playable Unit:** describe the game content the player can experience after this tag ships. For each mechanic, state the player operation or content, expected effect, required visible content, and evidence.
+- **Runtime Asset Assignments:** fill one row for every current-tag task or mechanic that produces player-visible content. Use `not required this tag` only with a deferral reason.
 - If the current ROADMAP entry cannot form a playable unit, report `failed` and state that ROADMAP.md needs a playable-unit tag.
 - All tasks in the Task Status table start as `pending`.
 
@@ -99,6 +100,8 @@ Run this step only when `ASSETS.md` is in `Owned Files`, or when no `Work Packag
 
 If this is `scene-asset-package`, read finalized PLAN.md first and use its
 `Assets Needed` / task-to-asset mapping as the source of truth.
+If PLAN.md lacks a needed Runtime Asset Assignment, report it under
+`Open TODOs / Deferred`; do not invent a new mapping in ASSETS.md.
 
 Follow the rules in `.claude/templates/ASSETS.md` (the file's own contract). Operationally:
 
@@ -113,6 +116,8 @@ If this is `scene-asset-package`, read finalized PLAN.md first. Use its Tag
 Mechanics, Inherited Mechanics, task IDs, affected scenes, and asset mappings as
 the only cross-reference source; do not guess task IDs or mechanic IDs from GDD
 alone.
+Copy the relevant PLAN Runtime Asset Assignments into each scene's `Asset
+bindings`. Use `not required this tag` only with a deferral reason.
 
 SCENES.md is an **end-of-tag snapshot** (same model as STRUCTURE.md) — overwrite root from `.claude/templates/SCENES.md` in both modes. After this step the file lists every scene that exists in the game as of this tag, so `/gm-evaluate`'s per-scene visual cross-check covers inherited scenes too.
 

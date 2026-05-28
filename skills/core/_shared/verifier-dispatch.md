@@ -36,6 +36,13 @@ Agent({
 - [ ] Unit tests: all pass
 - [ ] {additional specific criteria}
 
+### Visual Verification                                  [REQUIRED for visual tasks]
+- Scene/reference/capture paths: {visual_checks scene, reference, captures[], and latest vqa_calls[].files from evaluation.json}
+- Visual-qa context: {latest vqa_calls[].context or scene Acceptance criteria}
+- Asset contract rows: {relevant SCENES.md Asset bindings and ASSETS.md Visual Asset Contract rows}
+- VQA log: {visual_checks.<scene>.vqa_log or latest vqa_calls[].log}
+- Required result: {pass, warning, or explicit non-blocking notes}
+
 ### Negative Tests                                       [OPTIONAL]
 - [ ] {input that should fail and how}
 

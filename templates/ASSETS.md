@@ -27,6 +27,20 @@ Visual prompt language lives in `STYLE.md`.
 | 4 | v0.1.0 | background_sky | background | 1280x720 | {prompt or tool params} | assets/backgrounds/sky.png | pending |
 | ... | ... | ... | ... | ... | ... | ... | ... |
 
+## Visual Asset Contract
+
+<!-- Runtime contract for visible assets. Each gameplay-visible object, non-text
+     UI element, and scene reference should map to an ASSETS.md row or to
+     `procedural`, `UI text`, or `not required this tag`.
+     Use `asset_name / assets/...` for concrete asset bindings.
+     `not required this tag` needs a deferral reason in Readability Requirement. -->
+
+| Tag | Scene / Mechanic | Visible Object | Asset Row / Path | Runtime Size | Visual Role | Readability Requirement | Source |
+|-----|------------------|----------------|------------------|--------------|-------------|-------------------------|--------|
+| v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_idle / assets/sprites/player_idle.png | 32x32 px on screen | controllable player | readable silhouette against gameplay background | anchor |
+| v0.1.0 | Gameplay / [v0.1.0-M2] | enemy_basic | enemy_basic / assets/sprites/enemy_basic.png | 32x32 px on screen | enemy pressure | readable in normal gameplay captures | derivative of player/style anchor |
+| v0.1.0 | Main Menu | title text | UI text | viewport-relative | menu identity | readable at target resolution | procedural/UI |
+
 ## Animated Sprites
 
 <!-- Spritesheet breakdown for animated assets. -->

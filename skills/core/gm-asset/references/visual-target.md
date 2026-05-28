@@ -36,6 +36,8 @@ Visual style: {STYLE.md Style Anchor + Prompt Suffix}. Apply STYLE.md UI / Asset
 ## Inputs
 
 For each scene, gather from the planning docs:
+- **Asset bindings**: the scene's `Asset bindings` rows plus matching
+  `ASSETS.md` Visual Asset Contract rows
 - **Elements + Mood** → `SCENES.md` (the per-scene section)
 - **Visual style** → `STYLE.md` Style Anchor, Prompt Suffix, UI / Asset Rules, Avoid, and `GDD.md` §4
 - **Style anchors** → if the user supplied art in `assets/`, reference those files explicitly via the analyst's `assets/manifest.json` style summary

@@ -154,6 +154,25 @@ table schema and include:
 
 Audio rows remain `deferred` unless the user provides files.
 
+Update `ASSETS.md` Visual Asset Contract for each current-tag visual asset:
+
+1. `Scene / Mechanic`: every scene and mechanic that must show the asset.
+2. `Visible Object`: the object or UI element name used in SCENES.md.
+3. `Asset Row / Path`: `asset_name / assets/...` for a concrete ASSETS.md
+   row and final path, or `procedural`, `UI text`, or
+   `not required this tag` with a deferral reason.
+4. `Runtime Size`: the intended display size in pixels, viewport percentage,
+   or world units.
+5. `Visual Role`: player, enemy, projectile, pickup, prop, background, HUD,
+   overlay, VFX, or other concrete role.
+6. `Readability Requirement`: the screenshot or frame-sequence condition that
+   makes the asset acceptable in play.
+7. `Source`: `anchor`, `derivative of <asset>`, `scene reference`,
+   `user-provided`, or `procedural/UI`.
+
+For small sprites, write the minimum readable display size and the contrast or
+silhouette requirement. For derivative assets, name the anchor asset.
+
 ## Asset Type Rules
 
 ### Background

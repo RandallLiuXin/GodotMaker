@@ -101,6 +101,18 @@ the player-facing state, feedback, and presentation needed to play this tag.}
 - {asset description}
 - **Terrain approach:** Sprite placement (individual scene elements) | N/A
 
+### Runtime Asset Assignments
+
+<!-- Bind player-facing tasks to concrete assets or explicit procedural/UI
+     outputs. Use `asset_name / assets/...` for concrete assets, or
+     `procedural`, `UI text`, or `not required this tag`. `not required this tag`
+     needs a deferral reason in Verification. Asset names and paths should match
+     ASSETS.md and SCENES.md. -->
+
+| Task / Mechanic | Visible Content | Asset Row / Path | Runtime Size | Verification |
+|-----------------|-----------------|------------------|--------------|--------------|
+| M01 / [{Tag}-M1] | {player-facing object or UI} | {asset row/path, procedural, or UI text} | {px, %, or world units} | {screenshot, frame sequence, or E2E assertion} |
+
 ### Verify
 
 - Player input -> entity response feels correct

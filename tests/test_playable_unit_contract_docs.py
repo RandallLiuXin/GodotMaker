@@ -84,6 +84,29 @@ def test_build_and_reviewer_check_playable_unit_authenticity():
     assert "Tests avoid gameplay-bypassing shortcuts" in reviewer
 
 
+def test_visual_asset_contract_flows_through_build_and_evaluate():
+    plan = _read("templates/PLAN.md")
+    scenes = _read("templates/SCENES.md")
+    assets = _read("templates/ASSETS.md")
+    decomposer = _read("agents/decomposer.md")
+    dispatch = _read("skills/core/_shared/worker-dispatch.md")
+    build = _read("skills/core/gm-build/SKILL.md")
+    evaluate = _read("skills/core/gm-evaluate/SKILL.md")
+    fixgap = _read("skills/core/gm-fixgap/SKILL.md")
+
+    assert "Runtime Asset Assignments" in plan
+    assert "Asset bindings" in scenes
+    assert "Visual Asset Contract" in assets
+    assert "Runtime Asset Assignments" in decomposer
+    assert "Visual Asset Contract` section" in build
+    assert "PLAN.md Runtime Asset Assignments" in dispatch
+    assert "SCENES.md Asset" in dispatch
+    assert "ASSETS.md Visual Asset Contract" in dispatch
+    assert "Visual binding preflight" in evaluate
+    assert "captures[]" in evaluate
+    assert "Visual Verification` section" in fixgap
+
+
 def test_evaluate_requires_runtime_playable_unit_proof():
     evaluate = _read("skills/core/gm-evaluate/SKILL.md")
     schema = _read("config/stage_schemas.json")

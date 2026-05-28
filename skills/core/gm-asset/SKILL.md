@@ -34,7 +34,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 - If `PLAN.md` is missing the `**Tag:**` header → STOP. Tell user the file is stale and to re-run `/gm-gdd` to regenerate it for the current tag.
 - Build two work-pending checks for the current tag:
   1. **ASSETS.md gap:** any current-tag row in the Asset Table whose status is `MISSING` (i.e. not `provided` / `generated` / `N/A` / `deferred`).
-  2. **Scene-reference gap:** any scene listed in `SCENES.md` for the current tag whose `references/scene_{name}.png` is absent on disk.
+  2. **Scene-reference gap:** any scene listed in `SCENES.md` for the current tag whose `references/scene_{name}.png` is absent on disk, whose scene-reference report is missing, or whose report contract summary no longer matches the scene's Asset bindings / matching Visual Asset Contract rows.
 - If **both** checks come back empty → STOP. Tell the user:
   > "No MISSING assets and no missing scene references for the current tag. Recommended next: /gm-build.
   > If you've added new art files or scenes since last run, just tell me and I'll re-scan."
@@ -100,6 +100,7 @@ plan a fixed source path, final path, and report path:
   "group_id": "scene_refs_001",
   "kind": "scene_reference",
   "provider": "<asset_image_model>",
+  "contract_summary": "<SCENES.md Asset bindings + ASSETS.md Visual Asset Contract rows used>",
   "anchor_item": {
     "asset_id": "scene_main",
     "prompt": "<prompt>",
@@ -126,13 +127,13 @@ sequentially and write the fallback reason in the report and summary.
 For each missing scene:
 
 1. Read `references/visual-target.md`.
-2. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood) + `STYLE.md` + `GDD.md` section 4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
+2. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood + Asset bindings) + matching ASSETS.md Visual Asset Contract rows + `STYLE.md` + `GDD.md` section 4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
 3. Generate the scene image using the selected `asset_image_model` path:
    - API-backed selector: run `python tools/asset_gen.py image --model <asset_image_model> --prompt "..." --size 1K --aspect-ratio 16:9 -o references/scene_{name}.png`.
    - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-gen.md` Active Codex runtime batch for this scene.
    - Claude Code with `asset_image_model: codex`: follow `references/asset-gen.md` Codex handoff from Claude Code for this scene.
    - Other runtime-native provider: generate a source image path, then run `python tools/asset_image_finalize.py --source <generated_image_path> --out references/scene_{name}.png --label scene_{name}`.
-4. Write the scene's flat finalize JSON entry to the scene-reference generation report.
+4. Write the scene's flat finalize JSON entry and contract summary to the scene-reference generation report.
 5. Show the result to the user. If rejected, regenerate with a tightened prompt (per `references/visual-target.md`).
 
 ### Step 4 — Generate Remaining MISSING Art
@@ -188,6 +189,10 @@ After all generation calls return:
 - Re-dispatch one follow-up batch for missing or invalid generated images
 - Verify total MISSING count for the current tag is zero (or all remaining are deferred audio with user OK)
 - New rows added this tag must carry the current tag in their `Tag` column
+- Update `ASSETS.md` Visual Asset Contract for generated or provided visual
+  assets. Bind each gameplay-visible object to its scene/mechanic use,
+  runtime size, visual role, readability requirement, and anchor/derivative
+  source.
 
 ## Plan Discipline
 

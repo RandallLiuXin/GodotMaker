@@ -108,19 +108,40 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 
    **Precondition — reference must exist.** Before calling visual-qa, confirm `references/scene_{name}.png` exists. If missing → record `critical_issue: "missing reference for scene_{name}"` and skip the visual-qa call for this scene. Do NOT degrade to Question mode against the screenshot alone.
 
-   **Context construction.** Pull the `Acceptance criteria` block from SCENES.md for this scene; paste it verbatim into the `Verify:` field. If the block is absent, fall back to the mechanic ids from PLAN.md Tag Mechanics + Inherited Mechanics that this scene exercises, each with its one-line description. Never leave `Requirements:` or `Verify:` as a placeholder. For deterministic setup screenshots, add `Visible state only; do not infer prior play history.` to `Verify:`.
+   **Visual binding preflight.** Before calling visual-qa, check the scene's
+   `Asset bindings` rows. Each non-`procedural` / non-`UI text` /
+   non-`not required this tag` binding must have:
+   - a concrete `asset_name / path` value;
+   - a matching ASSETS.md Asset Table row;
+   - a matching ASSETS.md Visual Asset Contract row;
+   - a non-empty Runtime Size;
+   - an existing file when the row status means the asset should be on disk.
+
+   If the scene has no `Asset bindings` section or ASSETS.md has no Visual
+   Asset Contract section, record `missing visual contract for <scene>` in
+   `major_issues`, then continue VQA with the scene Acceptance criteria and
+   mechanic fallback context. If the sections exist but a current-tag binding is
+   incomplete, record a `critical_issue`, set this scene's
+   `visual_checks.<scene>.result` to `"fail"`, note the exact missing binding in
+   `visual_checks.<scene>.notes`, and skip visual-qa for that scene.
+
+   For `not required this tag`, require a deferral reason in the Visual Contract
+   or Readability Requirement text. Missing deferral reasons are incomplete
+   bindings.
+
+   **Context construction.** Pull the `Acceptance criteria` block from SCENES.md for this scene; paste it verbatim into the `Verify:` field. Add the scene's `Asset bindings` rows and matching ASSETS.md Visual Asset Contract rows to `Requirements:`. If the block is absent, fall back to the mechanic ids from PLAN.md Tag Mechanics + Inherited Mechanics that this scene exercises, each with its one-line description. Never leave `Requirements:` or `Verify:` as a placeholder. For deterministic setup screenshots, add `Visible state only; do not infer prior play history.` to `Verify:`.
 
    **VQA log path.** Ask `visual-qa` to write its debug log to `e2e/screenshots/vqa.log`.
 
    ```
    # Static scene — dispatch a subagent to run visual-qa with:
-   "Check references/scene_{name}.png against e2e/screenshots/scene_{name}.png --log e2e/screenshots/vqa.log — Goal: {scene goal from SCENES.md}, Requirements: {key elements + layout}, Verify: {acceptance criteria block, or mechanic-id list fallback}."
+   "Check references/scene_{name}.png against e2e/screenshots/scene_{name}.png --log e2e/screenshots/vqa.log — Goal: {scene goal from SCENES.md}, Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}, Verify: {acceptance criteria block, or mechanic-id list fallback}."
 
    # Dynamic scene (frame sequence in per-scene subdir) — dispatch a subagent to run visual-qa with:
-   "Check references/scene_{name}.png against e2e/screenshots/scene_{name}/frame_*.png --log e2e/screenshots/vqa.log — Goal: ..., Requirements: ..., Verify: motion is fluid, no stuck entities, animation matches movement."
+   "Check references/scene_{name}.png against e2e/screenshots/scene_{name}/frame_*.png --log e2e/screenshots/vqa.log — Goal: ..., Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}, Verify: motion is fluid, no stuck entities, animation matches movement."
    ```
 
-   **Audit trail.** Record every visual-qa call (verdict + context + mode + output digest) in `visual_checks.{scene_name}.vqa_calls[]` (schema below). If you override a recorded verdict for the final `result` — for instance you read the PNGs yourself and disagree — write the reason and what you saw into `visual_checks.{scene_name}.notes`. Either way, `result` reflects the chain transparently.
+   **Audit trail.** Record every visual-qa call (verdict + context + mode + files + log path + output digest) in `visual_checks.{scene_name}.vqa_calls[]` (schema below). Also record the screenshot/frame paths used in `visual_checks.{scene_name}.captures[]`. If you override a recorded verdict for the final `result` — for instance you read the PNGs yourself and disagree — write the reason and what you saw into `visual_checks.{scene_name}.notes`. Either way, `result` reflects the chain transparently.
 
    **Real invocation required.** Every `vqa_calls` entry and every `vqa.log` line must come from a visual-qa invocation — do not author them directly. If the invocation errors or its backend is unavailable, record a `critical_issue` and set `result: reject`.
 
@@ -187,7 +208,9 @@ Write evaluation results to `.godotmaker/evaluation.json`:
   "visual_checks": {
     "<scene_name>": {
       "screenshot": "e2e/screenshots/scene_<name>.png",
+      "captures": ["e2e/screenshots/scene_<name>.png"],
       "reference": "references/scene_<name>.png",
+      "vqa_log": "e2e/screenshots/vqa.log",
       "result": "pass | fail | warning",
       "notes": "",
       "vqa_calls": [
@@ -196,6 +219,8 @@ Write evaluation results to `.godotmaker/evaluation.json`:
           "mode": "static | dynamic | question",
           "backend": "native | codex | gemini | openai",
           "model": "<vqa_model or fallback selector used>",
+          "files": ["references/scene_<name>.png", "e2e/screenshots/scene_<name>.png"],
+          "log": "e2e/screenshots/vqa.log",
           "context": "Goal: ... Requirements: ... Verify: ...",
           "verdict": "pass | fail | warning",
           "output_summary": "<first line or 1-sentence digest of the visual-qa response>"

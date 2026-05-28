@@ -66,6 +66,12 @@ Agent({
 ### Assets Available                                     [OPTIONAL]
 {Asset paths and descriptions}
 
+### Visual Asset Contract                                [REQUIRED for visual tasks]
+{Copy the relevant PLAN.md Runtime Asset Assignments, SCENES.md Asset
+ bindings, and ASSETS.md Visual Asset Contract rows.
+ Include: asset row/path, runtime size, visual role, readability requirement,
+ and anchor/derivative source.}
+
 ### Scene Layout Reference                                [REQUIRED for UI/scene tasks]
 {Copy the relevant scene description from SCENES.md here.
  Include: element positions, sizes, layout type, mood.
@@ -91,6 +97,7 @@ Agent({
 14. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
 15. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`).
 16. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
+17. **Visual tasks require asset contract rows.** Fill the `Visual Asset Contract` section for visual tasks.
 
 ## Worker Utility Convention
 
