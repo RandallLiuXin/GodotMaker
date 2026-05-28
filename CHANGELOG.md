@@ -4,6 +4,17 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [0.6.3] - 2026-05-28
+
+### Changed
+
+- Current-tag visual assets now carry runtime size, usage, and readability contracts through planning, asset generation, build, fixgap, and evaluation.
+
+### Fixed
+
+- `/gm-fixgap` now preserves evaluator visual evidence through fix and verification.
+- `visual-qa` now limits visibility and readability findings to explicit `Verify:` criteria.
+
 ## [0.6.2] - 2026-05-27
 
 ### Fixed

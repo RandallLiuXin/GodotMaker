@@ -21,12 +21,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
-- Current-tag visual assets now carry runtime size, usage, and readability contracts through planning, asset generation, build, fixgap, and evaluation.
-
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
-- `/gm-fixgap` now preserves evaluator visual evidence through fix and verification.
-- `visual-qa` now limits visibility and readability findings to explicit `Verify:` criteria.
 
 ## Removed
