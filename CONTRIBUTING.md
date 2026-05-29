@@ -28,15 +28,17 @@ GodotMaker is licensed under the Business Source License 1.1 (see [LICENSE](LICE
 1. Fork the repo and create a branch from `main`.
 2. Follow the coding conventions below.
 3. Write or update tests for your changes.
-4. **Run benchmarks** — you must verify your changes do not regress performance before submitting. Include benchmark results in the PR description.
+4. For performance-sensitive changes, run benchmarks and include the results in the PR description.
 5. Run the full validation pipeline locally:
    ```bash
    # Run tests
-   pytest
+   python -m pytest
+
+   # Run gdUnit4 for Godot project changes
    godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd --add res://test/ --ignoreHeadlessMode
 
    # Gitleaks (runs automatically via pre-commit hook)
-   gitleaks detect --source .
+   gitleaks detect --source . --config .gitleaks.toml
    ```
 6. Add a changelog entry to [`docs/update/next.md`](docs/update/next.md) describing your change. Rules:
    - **One sentence per bullet.** If you can't fit it, your bullet is doing two things — split it.
@@ -62,8 +64,11 @@ cd GodotMaker
 # Install git hooks (gitleaks pre-commit)
 bash scripts/install-hooks.sh
 
-# Install Python dependencies
-pip install -r requirements.txt
+# Install development dependencies used by CI
+python -m pip install pytest ruff mkdocs mkdocs-material
+
+# Optional: install asset/API provider dependencies when working on tools/
+python -m pip install -r tools/requirements.txt
 ```
 
 ## Coding Conventions
@@ -97,7 +102,7 @@ pip install -r requirements.txt
 
 1. All PRs require at least one review.
 2. CI must pass before merge.
-3. Benchmark verification is mandatory — reviewers will check for performance data in the PR description.
+3. Performance-sensitive PRs must include benchmark data in the PR description.
 
 ## Questions?
 
