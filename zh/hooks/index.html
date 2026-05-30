@@ -2822,7 +2822,7 @@
 <td>PreToolUse</td>
 <td>Read</td>
 <td>是</td>
-<td>阻止主代理（任何角色）读取 <code>assets/</code> 中的图片文件</td>
+<td>在活跃角色期间，阻止主代理读取 <code>assets/</code> 中的图片文件</td>
 </tr>
 <tr>
 <td><code>log_subagent.py</code></td>
@@ -2888,7 +2888,7 @@
 </tr>
 <tr>
 <td><code>verify</code></td>
-<td>仅 <code>.godotmaker/stage.jsonl</code> 和 <code>.godotmaker/current_role</code>（其他地方只读）</td>
+<td>仅 <code>.godotmaker/stage.jsonl</code>、<code>.godotmaker/current_role</code> 和 <code>.godotmaker/verify_report.json</code>（其他地方只读）</td>
 </tr>
 <tr>
 <td><code>evaluate</code></td>
@@ -2900,8 +2900,8 @@
 </tr>
 </tbody>
 </table>
-<p>子代理始终被阻止写入 <code>e2e/</code>（评估器专属）和规划文档（<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> / <code>GAP.md</code>）；它们通过报告来记录变更。</p>
-<p>未设置角色时（遗留模式），回退行为：主代理被阻止写游戏代码，子代理被阻止写规划文档。</p>
+<p>在流水线角色活跃期间，子代理会被阻止写入 <code>e2e/</code>（评估器专属）和规划文档（<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> / <code>GAP.md</code>）；它们通过报告来记录变更。</p>
+<p>未设置角色时，表示当前没有活跃的 <code>/gm-*</code> 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。</p>
 <p>同时为每次文件操作记录 <code>FILE_WRITE</code> / <code>FILE_EDIT</code> 指标事件。</p>
 <h3 id="stage_reminderpy">stage_reminder.py<a class="headerlink" href="#stage_reminderpy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> PreToolUse（Write|Edit）
@@ -2969,9 +2969,9 @@
 <h3 id="check_asset_accesspy">check_asset_access.py<a class="headerlink" href="#check_asset_accesspy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> PreToolUse（Read）
 <strong>是否阻止：</strong> 是</p>
-<p>阻止主代理（任何角色）读取 <code>assets/</code> 中的图片文件。
+<p>仅在流水线角色活跃时（存在 <code>.godotmaker/current_role</code>），阻止主代理读取 <code>assets/</code> 中的图片文件。
 图片扩展名：.png、.jpg、.jpeg、.svg、.webp、.gif、.bmp、.tga。</p>
-<p>子代理（Analyst）被允许。非图片文件（.json、.ogg）被允许。</p>
+<p>没有活跃角色的普通对话被允许。子代理（Analyst）被允许。非图片文件（.json、.ogg）被允许。</p>
 <p>目的：强制主代理将资源分析委托给 Analyst 子代理，而不是消耗上下文来读取原始图片数据。</p>
 <h3 id="log_subagentpy">log_subagent.py<a class="headerlink" href="#log_subagentpy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> SubagentStart（以及 <code>on_subagent_stop.py</code> 调用它处理 SubagentStop）
@@ -2997,7 +2997,7 @@
 <h3 id="check_worker_reportpy">check_worker_report.py<a class="headerlink" href="#check_worker_reportpy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> SubagentStop（通过 <code>on_subagent_stop.py</code> 调用）
 <strong>是否阻止：</strong> 是</p>
-<p>验证所有子代理角色的报告格式和内容。</p>
+<p>仅在 <code>/gm-*</code> 流水线角色活跃时验证子代理角色的报告格式和内容。没有 <code>.godotmaker/current_role</code> 时，普通子代理对话被允许，该 Hook 不阻止。</p>
 <p><strong>格式检测流程：</strong>
 1. 从消息内容检测 <code>report_type</code>（分层：精确标记 → 正则 → 回退）
 2. 若检测到 <code>report_type</code> → 检查该类型所需的章节
@@ -3058,7 +3058,7 @@
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  └── check_stage_prerequisites.py (若前置角色未完成则阻止 build/fixgap)
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>PreToolUse(Read)
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  └── check_asset_access.py (阻止主代理读取 assets/ 中的图片)
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  └── check_asset_access.py (活跃角色期间阻止主代理读取 assets/ 中的图片)
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>SubagentStart
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  └── log_subagent.py (记录启动 + 角色)

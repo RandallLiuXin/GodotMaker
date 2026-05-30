@@ -2823,7 +2823,7 @@ on Claude Code events to enforce pipeline rules.</p>
 <td>PreToolUse</td>
 <td>Read</td>
 <td>Yes</td>
-<td>Block the main agent (any role) from reading image files in <code>assets/</code></td>
+<td>During an active role, block the main agent from reading image files in <code>assets/</code></td>
 </tr>
 <tr>
 <td><code>log_subagent.py</code></td>
@@ -2893,7 +2893,7 @@ skill) and applies that role's write rules. Per-role summary:</p>
 </tr>
 <tr>
 <td><code>verify</code></td>
-<td><code>.godotmaker/stage.jsonl</code> and <code>.godotmaker/current_role</code> only (read-only otherwise)</td>
+<td><code>.godotmaker/stage.jsonl</code>, <code>.godotmaker/current_role</code>, and <code>.godotmaker/verify_report.json</code> only (read-only otherwise)</td>
 </tr>
 <tr>
 <td><code>evaluate</code></td>
@@ -2905,11 +2905,12 @@ skill) and applies that role's write rules. Per-role summary:</p>
 </tr>
 </tbody>
 </table>
-<p>Subagents are always blocked from <code>e2e/</code> (Evaluator-owned) and from planning
-docs (<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> / <code>GAP.md</code>); they report changes
-in their report instead.</p>
-<p>When no role is set (legacy mode), falls back to: main agent blocked from game
-code, subagents blocked from planning docs.</p>
+<p>During an active pipeline role, subagents are blocked from <code>e2e/</code>
+(Evaluator-owned) and from planning docs (<code>PLAN.md</code> / <code>STRUCTURE.md</code> /
+<code>ASSETS.md</code> / <code>GAP.md</code>); they report changes in their report instead.</p>
+<p>When no role is set, no <code>/gm-*</code> pipeline role is active. The hook records the
+file operation but does not block, so users can run ordinary coding-agent
+conversations in a GodotMaker project directory.</p>
 <p>Also records <code>FILE_WRITE</code> / <code>FILE_EDIT</code> metrics events for every file operation.</p>
 <h3 id="stage_reminderpy">stage_reminder.py<a class="headerlink" href="#stage_reminderpy" title="Permanent link">&para;</a></h3>
 <p><strong>Event:</strong> PreToolUse (Write|Edit)
@@ -2987,9 +2988,11 @@ not sub-subagent dispatches.</p>
 <h3 id="check_asset_accesspy">check_asset_access.py<a class="headerlink" href="#check_asset_accesspy" title="Permanent link">&para;</a></h3>
 <p><strong>Event:</strong> PreToolUse (Read)
 <strong>Blocks:</strong> Yes</p>
-<p>Blocks the main agent (any role) from reading image files in <code>assets/</code>.
+<p>Blocks the main agent from reading image files in <code>assets/</code> only while a
+pipeline role is active (<code>.godotmaker/current_role</code> exists).
 Image extensions: .png, .jpg, .jpeg, .svg, .webp, .gif, .bmp, .tga.</p>
-<p>Subagents (analyst) are allowed. Non-image files (.json, .ogg) are allowed.</p>
+<p>Regular conversations with no active role are allowed. Subagents (analyst) are
+allowed. Non-image files (.json, .ogg) are allowed.</p>
 <p>Purpose: force the main agent to delegate asset analysis to the analyst
 subagent instead of consuming context with raw image data.</p>
 <h3 id="log_subagentpy">log_subagent.py<a class="headerlink" href="#log_subagentpy" title="Permanent link">&para;</a></h3>
@@ -3030,7 +3033,9 @@ removes the race.</p>
 <h3 id="check_worker_reportpy">check_worker_report.py<a class="headerlink" href="#check_worker_reportpy" title="Permanent link">&para;</a></h3>
 <p><strong>Event:</strong> SubagentStop (called via <code>on_subagent_stop.py</code>)
 <strong>Blocks:</strong> Yes</p>
-<p>Validates report format and content for all subagent roles.</p>
+<p>Validates report format and content for subagent roles while a <code>/gm-*</code>
+pipeline role is active. With no <code>.godotmaker/current_role</code>, ordinary
+subagent conversations are allowed and this hook does not block.</p>
 <p><strong>Format detection flow:</strong>
 1. Detect <code>report_type</code> from message content (layered: exact marker → regex → fallback)
 2. If <code>report_type</code> detected → check required sections for that type
