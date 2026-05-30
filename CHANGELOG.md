@@ -4,6 +4,12 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [0.6.5] - 2026-05-30
+
+### Fixed
+
+- Ordinary coding-agent conversations in GodotMaker project directories can now write files, read assets, and use subagents without being blocked by pipeline-only hooks when no `.godotmaker/current_role` is active.
+
 ## [0.6.4] - 2026-05-28
 
 ### Added

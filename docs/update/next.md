@@ -24,6 +24,5 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
-- Allow ordinary coding-agent conversations in GodotMaker project directories by making file-permission, asset-image-read, and subagent-report gates skip enforcement when no `.godotmaker/current_role` is active.
 
 ## Removed
