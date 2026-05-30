@@ -18,7 +18,7 @@ Hook registration is runner-specific:
 | `check_file_permissions.py` | PreToolUse | Write\|Edit | Yes | Per-role write rules driven by `.godotmaker/current_role` |
 | `stage_reminder.py` | PreToolUse | Write\|Edit | Yes | Detect `stage.jsonl` appends, validate role outputs, inject next-role reminder |
 | `check_stage_prerequisites.py` | PreToolUse | Agent | Yes | Before worker dispatch, verify the prerequisite role completed and its outputs exist |
-| `check_asset_access.py` | PreToolUse | Read | Yes | Block the main agent (any role) from reading image files in `assets/` |
+| `check_asset_access.py` | PreToolUse | Read | Yes | During an active role, block the main agent from reading image files in `assets/` |
 | `log_subagent.py` | SubagentStart | — | No | Record subagent start metrics (role detection, agent_id) |
 | `on_subagent_stop.py` | SubagentStop | — | Yes | Dispatcher: serialise `log_subagent.handle_stop` + `check_worker_report` to avoid metrics-file race |
 | `check_completion.py` | Stop | — | Yes | Final gate: for `build` / `fixgap` only, blocks if workers were dispatched without verifier + reviewer |
@@ -55,16 +55,17 @@ skill) and applies that role's write rules. Per-role summary:
 | `gdd` | `.md` planning docs, `project.godot`, `.godotmaker/` (no `assets/`) |
 | `asset` | `ASSETS.md`, `.godotmaker/` (image files go through asset tools or analyst subagent) |
 | `build` / `fixgap` | nothing in `e2e/`; nothing in game code (`.gd` / `.tscn` / `.tres`) directly — must dispatch a Worker |
-| `verify` | `.godotmaker/stage.jsonl` and `.godotmaker/current_role` only (read-only otherwise) |
+| `verify` | `.godotmaker/stage.jsonl`, `.godotmaker/current_role`, and `.godotmaker/verify_report.json` only (read-only otherwise) |
 | `evaluate` | `e2e/`, `.godotmaker/evaluation.json`, `.godotmaker/stage.jsonl`, `.godotmaker/current_role` |
 | `accept` / `finalize` | anything except `e2e/` and game code (`.gd` / `.tscn` / `.tres`) |
 
-Subagents are always blocked from `e2e/` (Evaluator-owned) and from planning
-docs (`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`); they report changes
-in their report instead.
+During an active pipeline role, subagents are blocked from `e2e/`
+(Evaluator-owned) and from planning docs (`PLAN.md` / `STRUCTURE.md` /
+`ASSETS.md` / `GAP.md`); they report changes in their report instead.
 
-When no role is set (legacy mode), falls back to: main agent blocked from game
-code, subagents blocked from planning docs.
+When no role is set, no `/gm-*` pipeline role is active. The hook records the
+file operation but does not block, so users can run ordinary coding-agent
+conversations in a GodotMaker project directory.
 
 Also records `FILE_WRITE` / `FILE_EDIT` metrics events for every file operation.
 
@@ -123,10 +124,12 @@ not sub-subagent dispatches.
 **Event:** PreToolUse (Read)
 **Blocks:** Yes
 
-Blocks the main agent (any role) from reading image files in `assets/`.
+Blocks the main agent from reading image files in `assets/` only while a
+pipeline role is active (`.godotmaker/current_role` exists).
 Image extensions: .png, .jpg, .jpeg, .svg, .webp, .gif, .bmp, .tga.
 
-Subagents (analyst) are allowed. Non-image files (.json, .ogg) are allowed.
+Regular conversations with no active role are allowed. Subagents (analyst) are
+allowed. Non-image files (.json, .ogg) are allowed.
 
 Purpose: force the main agent to delegate asset analysis to the analyst
 subagent instead of consuming context with raw image data.
@@ -179,7 +182,9 @@ removes the race.
 **Event:** SubagentStop (called via `on_subagent_stop.py`)
 **Blocks:** Yes
 
-Validates report format and content for all subagent roles.
+Validates report format and content for subagent roles while a `/gm-*`
+pipeline role is active. With no `.godotmaker/current_role`, ordinary
+subagent conversations are allowed and this hook does not block.
 
 **Format detection flow:**
 1. Detect `report_type` from message content (layered: exact marker → regex → fallback)

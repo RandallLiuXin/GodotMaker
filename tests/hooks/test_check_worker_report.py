@@ -1,6 +1,6 @@
 """Tests for check_worker_report.py hook."""
 import pytest
-from .helpers import run_hook, is_blocked, cleanup_metrics
+from .helpers import run_hook, is_blocked, cleanup_metrics, write_current_role
 
 HOOK = "check_worker_report.py"
 
@@ -34,6 +34,8 @@ COMPLETE_REVIEWER = (
 
 @pytest.fixture(autouse=True)
 def clean():
+    cleanup_metrics()
+    write_current_role("build")
     yield
     cleanup_metrics()
 
@@ -208,6 +210,16 @@ class TestFlexibleMarkerDetection:
 
 
 class TestEdgeCases:
+    def test_no_current_role_allows_regular_subagent_output(self):
+        cleanup_metrics()
+        _, code, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "x1",
+            "last_assistant_message": COMPLETE_WORKER.replace("### Tests", "### REMOVED"),
+        })
+        assert code == 0
+        assert not is_blocked(parsed)
+
     def test_unknown_report_type_allowed(self):
         _, code, parsed = run_hook(HOOK, {
             "hook_event_name": "SubagentStop",

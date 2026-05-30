@@ -17,7 +17,7 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 | `check_file_permissions.py` | PreToolUse | Write\|Edit | 是 | 由 `.godotmaker/current_role` 驱动的每角色写规则 |
 | `stage_reminder.py` | PreToolUse | Write\|Edit | 是 | 检测 `stage.jsonl` 追加操作，验证角色输出，注入下一角色提示 |
 | `check_stage_prerequisites.py` | PreToolUse | Agent | 是 | Worker 派发前，验证前置角色已完成且其产出存在 |
-| `check_asset_access.py` | PreToolUse | Read | 是 | 阻止主代理（任何角色）读取 `assets/` 中的图片文件 |
+| `check_asset_access.py` | PreToolUse | Read | 是 | 在活跃角色期间，阻止主代理读取 `assets/` 中的图片文件 |
 | `log_subagent.py` | SubagentStart | — | 否 | 记录子代理启动指标（角色检测、agent_id） |
 | `on_subagent_stop.py` | SubagentStop | — | 是 | 分发器：串行执行 `log_subagent.handle_stop` + `check_worker_report`，避免指标文件竞态 |
 | `check_completion.py` | Stop | — | 是 | 最终门控：仅针对 `build` / `fixgap`，若派发了 Worker 但未运行 Verifier + Reviewer 则阻止结束 |
@@ -50,13 +50,13 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 | `gdd` | `.md` 规划文档、`project.godot`、`.godotmaker/`（不含 `assets/`） |
 | `asset` | `ASSETS.md`、`.godotmaker/`（图片文件通过 `asset_gen.py` Bash 或 Analyst 子代理处理） |
 | `build` / `fixgap` | `e2e/` 中不可写；游戏代码（`.gd` / `.tscn` / `.tres`）不可直接写——必须派发 Worker |
-| `verify` | 仅 `.godotmaker/stage.jsonl` 和 `.godotmaker/current_role`（其他地方只读） |
+| `verify` | 仅 `.godotmaker/stage.jsonl`、`.godotmaker/current_role` 和 `.godotmaker/verify_report.json`（其他地方只读） |
 | `evaluate` | `e2e/`、`.godotmaker/evaluation.json`、`.godotmaker/stage.jsonl`、`.godotmaker/current_role` |
 | `accept` / `finalize` | 除 `e2e/` 和游戏代码（`.gd` / `.tscn` / `.tres`）外的任何内容 |
 
-子代理始终被阻止写入 `e2e/`（评估器专属）和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）；它们通过报告来记录变更。
+在流水线角色活跃期间，子代理会被阻止写入 `e2e/`（评估器专属）和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）；它们通过报告来记录变更。
 
-未设置角色时（遗留模式），回退行为：主代理被阻止写游戏代码，子代理被阻止写规划文档。
+未设置角色时，表示当前没有活跃的 `/gm-*` 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。
 
 同时为每次文件操作记录 `FILE_WRITE` / `FILE_EDIT` 指标事件。
 
@@ -105,10 +105,10 @@ Hook 还会重新验证前置角色在 `config/stage_schemas.json` 中的 `files
 **事件：** PreToolUse（Read）
 **是否阻止：** 是
 
-阻止主代理（任何角色）读取 `assets/` 中的图片文件。
+仅在流水线角色活跃时（存在 `.godotmaker/current_role`），阻止主代理读取 `assets/` 中的图片文件。
 图片扩展名：.png、.jpg、.jpeg、.svg、.webp、.gif、.bmp、.tga。
 
-子代理（Analyst）被允许。非图片文件（.json、.ogg）被允许。
+没有活跃角色的普通对话被允许。子代理（Analyst）被允许。非图片文件（.json、.ogg）被允许。
 
 目的：强制主代理将资源分析委托给 Analyst 子代理，而不是消耗上下文来读取原始图片数据。
 
@@ -146,7 +146,7 @@ Hook 还会重新验证前置角色在 `config/stage_schemas.json` 中的 `files
 **事件：** SubagentStop（通过 `on_subagent_stop.py` 调用）
 **是否阻止：** 是
 
-验证所有子代理角色的报告格式和内容。
+仅在 `/gm-*` 流水线角色活跃时验证子代理角色的报告格式和内容。没有 `.godotmaker/current_role` 时，普通子代理对话被允许，该 Hook 不阻止。
 
 **格式检测流程：**
 1. 从消息内容检测 `report_type`（分层：精确标记 → 正则 → 回退）
@@ -204,7 +204,7 @@ PreToolUse(Agent)
   └── check_stage_prerequisites.py (若前置角色未完成则阻止 build/fixgap)
 
 PreToolUse(Read)
-  └── check_asset_access.py (阻止主代理读取 assets/ 中的图片)
+  └── check_asset_access.py (活跃角色期间阻止主代理读取 assets/ 中的图片)
 
 SubagentStart
   └── log_subagent.py (记录启动 + 角色)

@@ -6,7 +6,9 @@ results), Build, Memory Entry.
 
 Verifier reports MUST have: Overall, Results, Adversarial Probes.
 
-Blocks (JSON decision: "block") if required sections are missing.
+Blocks (JSON decision: "block") if required sections are missing. When no
+current_role is set, no /gm-* pipeline role is active and regular subagent
+conversations are allowed without report-format enforcement.
 
 Anti-deadloop: if a specific agent has been blocked BLOCK_LIMIT times,
 force-allow with a warning to prevent infinite retry loops.
@@ -22,7 +24,7 @@ from metrics import (
     record_event, read_current_events, EventType,
     detect_report_type, event_has_role,
     REPORT_REQUIRED_SECTIONS, REPORT_FORMAT_HINTS, REPORT_REQUIRED_LABELS,
-    state,
+    get_current_role, state,
 )
 
 BLOCK_LIMIT = 2  # Max blocks per subagent before force-allowing
@@ -213,6 +215,9 @@ def main_with_data(data: dict) -> None:
     if not message:
         sys.exit(0)
 
+    if not get_current_role():
+        sys.exit(0)
+
     # Anti-deadloop: per-agent block counter
     agent_id = data.get("agent_id") or ""
     state_key = f"worker_report_block:{agent_id}" if agent_id else "worker_report_block:main"
@@ -344,4 +349,3 @@ def build_progress_reminder() -> str | None:
 
 if __name__ == "__main__":
     main()
-

@@ -9,6 +9,7 @@ HOOK = "check_file_permissions.py"
 
 @pytest.fixture(autouse=True)
 def clean():
+    cleanup_metrics()
     yield
     cleanup_metrics()
 
@@ -23,17 +24,17 @@ def project_dir():
         os.chdir(original)
 
 
-class TestMainAgentBlocked:
-    """Main agent (no agent_id) should be blocked from writing game code."""
+class TestNoRoleRegularConversation:
+    """Without current_role, hooks must not restrict ordinary conversations."""
 
     @pytest.mark.parametrize("ext", [".gd", ".tscn", ".tres"])
-    def test_block_game_code_extensions(self, ext):
+    def test_main_agent_can_write_game_code_extensions(self, ext):
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
             "tool_input": {"file_path": f"scripts/player{ext}"},
             "agent_id": "",
         })
-        assert is_blocked(parsed), f"Should block main agent writing {ext}"
+        assert not is_blocked(parsed), f"No-role main agent should write {ext}"
 
     def test_allow_planning_docs(self):
         _, _, parsed = run_hook(HOOK, {
@@ -52,17 +53,17 @@ class TestMainAgentBlocked:
         assert not is_blocked(parsed), "Main agent should be allowed to edit MEMORY.md"
 
 
-class TestWorkerBlocked:
-    """Subagents (with agent_id) should be blocked from writing planning docs."""
+class TestNoRoleSubagentRegularConversation:
+    """Without current_role, subagents are not treated as pipeline workers."""
 
     @pytest.mark.parametrize("doc", ["PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md"])
-    def test_block_planning_docs(self, doc):
+    def test_allow_planning_docs(self, doc):
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Edit",
             "tool_input": {"file_path": doc},
             "agent_id": "worker-123",
         })
-        assert is_blocked(parsed), f"Worker should be blocked from writing {doc}"
+        assert not is_blocked(parsed), f"No-role subagent should write {doc}"
 
     def test_allow_game_code(self):
         _, _, parsed = run_hook(HOOK, {
@@ -83,6 +84,10 @@ class TestWorkerBlocked:
 
 class TestDecomposerSubagent:
     """Decomposer subagent owns planning docs — must be exempt from the worker block."""
+
+    @pytest.fixture(autouse=True)
+    def active_gdd_role(self, project_dir):
+        write_current_role("gdd")
 
     # Full decomposer-owned set: PLANNING_DOCS minus gap.md (which belongs to
     # /gm-fixgap's lead, not decomposer) plus project.godot.
@@ -158,6 +163,10 @@ class TestIdentityResolution:
     Payload wins when present; metrics is consulted only when payload is empty.
     These tests document and freeze that priority — if the resolution rule
     changes (e.g., to require both to agree), update these tests deliberately."""
+
+    @pytest.fixture(autouse=True)
+    def active_gdd_role(self, project_dir):
+        write_current_role("gdd")
 
     def test_payload_decomposer_metrics_worker_allows(self, project_dir):
         """When payload says decomposer and metrics says worker, the payload
@@ -243,7 +252,7 @@ class TestEdgeCases:
             "tool_input": {"file_path": "scripts\\player_system.gd"},
             "agent_id": "",
         })
-        assert is_blocked(parsed), "Should handle Windows backslash paths"
+        assert not is_blocked(parsed), "No-role regular conversation should allow Windows paths"
 
 
 class TestRoleBased:

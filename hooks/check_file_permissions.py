@@ -3,8 +3,8 @@
 
 Reads .godotmaker/current_role and applies the role's write rules. See the
 gm-*/SKILL.md files for the canonical per-role rules; this hook enforces
-them. When no role is set, falls back to legacy rules (main agent blocked
-from game code, subagents blocked from planning docs).
+them. When no role is set, no /gm-* pipeline role is active, so regular
+coding-agent conversations are allowed to write normally.
 """
 import json
 import os
@@ -205,29 +205,6 @@ def _check_subagent(path_lower: str, file_name: str, agent_id: str,
                file_name, agent_id)
 
 
-def _check_legacy(is_subagent: bool, path_lower: str, file_name: str,
-                  ext: str, agent_id: str, agent_type: str) -> None:
-    """Fallback rules when no current_role is set."""
-    if is_subagent:
-        if _is_godotmaker_path(path_lower):
-            _block(f"Workers cannot write to .godotmaker/ ({file_name}).",
-                   file_name, agent_id)
-        if file_name in PLANNING_DOCS:
-            if agent_type in PLANNING_WRITER_AGENT_TYPES:
-                return
-            _block(f"Workers cannot modify planning documents ({file_name}).",
-                   file_name, agent_id)
-        if file_name == PROJECT_GODOT:
-            if agent_type in PLANNING_WRITER_AGENT_TYPES:
-                return
-            _block("Workers cannot modify project.godot.",
-                   file_name, agent_id)
-    else:
-        if ext in GAME_CODE_EXTENSIONS:
-            _block(f"Main agent cannot write game code directly ({file_name}). "
-                   "Dispatch a Worker subagent.", file_name)
-
-
 def main():
     try:
         data = json.load(sys.stdin)
@@ -261,7 +238,9 @@ def main():
     role = get_current_role()
 
     if not role:
-        _check_legacy(is_subagent, path_lower, file_name, ext, agent_id, agent_type)
+        record_event(EventType.HOOK_ALLOW, hook="check_file_permissions",
+                     file=file_name, agent_id=agent_id or "main", role=role)
+        sys.exit(0)
     elif is_subagent:
         _check_subagent(path_lower, file_name, agent_id, agent_type)
     else:
