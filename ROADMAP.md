@@ -48,6 +48,8 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 - [ ] `R-083` **Reference object curation and asset integration** - Turn generated scene references into a usable asset source before build: decide which references are suitable, regenerate extraction atlases when needed, crop objects with the appropriate tool, select canonical references when multiple candidates conflict, record rejected/variant candidates, map accepted objects into `ASSETS.md` / `assets/manifest.json`, and protect the resulting contracts from build/fixgap shortcuts.
 - [x] `R-084` **Best-effort evaluate evidence archive** - When a tag is finalized, archive the existing E2E tests and screenshots under `docs/tags/<Tag>/evidence/` when available and summarize them in `final_report.json`. Evidence archive gaps are warnings, not finalize blockers.
 - [ ] `R-085` **Interactive art generation workflow** - Add an operator-facing workflow for generating, reviewing, curating, replacing, and approving visual references and game assets before they are consumed by build/fixgap. The workflow should expose generated candidates, extraction atlases, crop/split results, rejected variants, canonical selections, manifest mappings, and regeneration actions through an interactive surface rather than relying only on autonomous skill text. Scope includes the framework contracts and tool outputs needed by such a UI; the exact desktop/web host can live outside this repository.
+- [ ] `R-086` **Common UI motion skill** - Add a focused skill for common game UI motion such as panel transitions, button feedback, popups, score changes, health/XP feedback, modal entrance/exit, and state-change emphasis. The goal is to make UI feedback readable and reusable across generated games instead of relying on static controls.
+- [ ] `R-087` **Character animation component skill** - Add a focused skill for character animation components and animation-state wiring, including idle/move/attack/hit/death style state mapping, sprite-sheet or AnimationPlayer setup, and gameplay-facing animation triggers.
 
 ### v0.5 — Plugin Skills
 
@@ -88,6 +90,8 @@ Items below are ideas under consideration — not committed to a timeline.
 - `R-110` **Android build workflow** — APK/AAB export with signing, versioning, and store-ready packaging.
 - `R-111` **Sprite sheet animation pipeline** — Generate multi-frame sprite sheets from single-frame AI-generated sprites.
 - `R-112` **Re-evaluate gdtoolkit (gdlint / gdformat)** *(low priority)* — Disabled in v0.3.4 due to recurring `gdtoolkit/linter/class_checks.py:144 NotImplementedError` crashes on ECS-style class shapes. Rationale + restore guide in [`docs/decisions/disable-gdtoolkit.md`](docs/decisions/disable-gdtoolkit.md).
+- `R-113` **3D game support** *(low priority)* — Extend planning, asset, build, verification, and evaluation contracts beyond the current 2D-first pipeline so generated projects can target 3D scenes, cameras, physics, controls, and content.
+- `R-114` **Audio asset generation** *(low priority)* — Add an audio generation and curation workflow for music, ambience, and sound effects, including provider selection, manifest mapping, import settings, and validation. Until this ships, audio remains user-provided or manually added.
 
 ## Contributing
 

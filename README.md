@@ -97,7 +97,16 @@ You only need to set an API key when your project configuration selects an API p
 
 GodotMaker is preparing for a public alpha under a source-available license. The CLI, Codex support, visual QA, and packaging workflow are evolving quickly.
 
-Codex runner support and AI-generated art assets are still preview features. The current art workflow can produce useful references and asset sketches, but AI alone cannot yet guarantee production-ready sprites, UI components, or stable visual consistency. A dedicated art-asset production UI is planned to make selection, cropping, replacement, and review more reliable.
+Preview features and practical fallbacks:
+
+| Area | Current status | If you need predictability |
+|---|---|---|
+| Codex runner | Preview. It is useful for experimenting with native image generation and Codex-driven runs, but the path is still newer than the Claude Code workflow. | Use Claude Code for the main pipeline run. |
+| Art-production pipeline | Preview. The workflow can generate useful references and draft assets, but characters, animation, UI pieces, UI motion, and visual consistency still need human review and may need manual replacement. | Put your own visual assets under `assets/`, then run `/gm-asset` so the workflow can inspect them, update `assets/manifest.json`, and mark matching `ASSETS.md` rows as `provided`. |
+| 3D games | Not supported by the current pipeline. The workflow targets 2D games. | Build 2D games for now, or add 3D work manually after generation. |
+| Audio generation | Not supported by the current pipeline. Audio rows are treated as user-provided or deferred. | Provide music/SFX manually and wire them into the project yourself until the audio workflow ships. |
+
+A dedicated art-production UI is planned to make curation, slicing, replacement, and review more reliable.
 
 If this direction resonates with you, star the repo, try the CLI, and open issues for the game genres, workflows, and production problems you want GodotMaker to handle better.
 
