@@ -77,18 +77,55 @@ Read `ASSETS.md` Asset Table. Filter to rows whose `Tag` matches the current tag
 
 Do NOT touch rows from prior tags — even if they look broken, that's a `/gm-fixgap` concern. New rows you add for newly-discovered assets must carry the current tag in their `Tag` column.
 
-### Step 2 — Collect User-Provided Files
+### Step 2 — Detect User-Provided Files
 
-Use `AskUserQuestion`:
-> "I'm about to fill in {N} missing assets. Do you want to provide any of them yourself before I generate? Audio MUST be user-provided. Place files in `assets/` and tell me when ready."
+Run the deterministic preflight before any AI generation:
 
-If user provides files:
+```bash
+python tools/asset_user_preflight.py --project-root .
+```
 
-1. Wait for user confirmation that files are placed.
-2. Dispatch an **analyst subagent** (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`) to inspect image files and generate/update `assets/manifest.json`.
+The script scans supported file suffixes under `assets/`, excludes paths already
+consumed by completed ASSETS.md rows or `assets/manifest.json`, and prints JSON:
+
+```json
+{
+  "ok": true,
+  "candidate_count": 2,
+  "image_candidate_count": 1,
+  "audio_candidate_count": 1,
+  "needs_analyst": true,
+  "candidates": [
+    {"path": "assets/player.png", "kind_hint": "image", "reason": "..."},
+    {"path": "assets/audio/hit.ogg", "kind_hint": "audio", "reason": "..."}
+  ]
+}
+```
+
+Candidates can include `match_kind: "exact_path"` with `matched_asset_id`,
+`matched_asset_type`, and `matched_status` when the file path exactly matches an
+unfilled ASSETS.md row.
+
+If `candidate_count > 0`, treat the listed files as user-provided candidates
+already placed on disk:
+
+1. For image candidates, dispatch an **analyst subagent**
+   (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`) to
+   inspect only the listed candidate paths and generate/update
+   `assets/manifest.json`.
    - **Do NOT read image files yourself.** All image analysis goes through the analyst.
    - Analyst extracts: type, role, dimensions, palette, style characteristics.
-3. After analyst reports, update ASSETS.md: change matching `MISSING` rows to `provided`.
+2. For audio candidates, do not dispatch analyst. Prefer preflight candidates
+   with `match_kind: "exact_path"`; otherwise match only by clear
+   filename/asset-id match.
+3. After analyst reports, update ASSETS.md: change high-confidence matching
+   `MISSING` / `deferred` rows to `provided`.
+4. Leave uncertain candidates in `assets/manifest.json` or on disk without
+   changing ASSETS.md. Do not guess.
+
+If no candidates are found, continue to generation. In an interactive session
+you may still ask the user whether they want to add files before generation,
+but CLI-driven runs must not depend on that question being answered.
 
 ### Step 3 — Generate Scene Reference Images (if MISSING)
 
@@ -218,6 +255,7 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 | Tool | Purpose |
 |------|---------|
 | `tools/asset_gen.py` | API-backed image generation (Gemini / OpenAI / Grok) |
+| `tools/asset_user_preflight.py` | Find unconsumed user-provided asset candidates under `assets/` |
 | `tools/codex_image_claim.py` | Copy Codex saved_path into a project source path |
 | `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |
 | `tools/asset_image_report_check.py` | Validate generation group reports and image files |
