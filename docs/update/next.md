@@ -23,6 +23,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Clarified README preview-feature scope and roadmap priorities for art production, Codex runner fallback, 3D support, and audio generation.
 - `/gm-asset` now runs a lightweight user-asset preflight before generation so CLI-driven runs can notice files already placed under `assets/`.
+- `/gm-asset` now plans generated art as source, final, and curation artifacts so runs keep clearer asset handoff records.
 
 ## Fixed
 

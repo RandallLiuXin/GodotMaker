@@ -1,21 +1,24 @@
 # Asset Generation Reference
 
-This file describes how `/gm-asset` generates, claims, finalizes, and prepares
-image/model assets. It does not decide which assets are required for the
-current tag; use `asset-planner.md` for that.
+This file describes how `/gm-asset` generates 2D visual sources, claims
+runtime-native image outputs, finalizes accepted files, and records handoff
+metadata. Use `asset-planner.md` to decide which assets are required.
 
 ## Scope
 
 Use this file for:
 
-1. Choosing the provider path for an already-planned asset.
-2. Running API-backed generation tools.
+1. Choosing the provider path for an already-planned 2D visual asset.
+2. Running API-backed image generation.
 3. Claiming runtime-native image outputs.
-4. Finalizing generated images before updating ASSETS.md.
-5. Applying asset-type prompt and post-processing recipes.
+4. Finalizing generated images.
+5. Writing prompt/source/final metadata for the asset-generation manifest.
+6. Applying family-specific prompt contracts.
 
 Do not use this file to modify PLAN.md, GDD.md, STRUCTURE.md, SCENES.md, or
 STYLE.md.
+
+Read `asset-family-contract.md` before writing prompts.
 
 ## Provider Paths
 
@@ -28,9 +31,9 @@ backends.
 
 | Selector | Backend | Best for |
 |----------|---------|----------|
-| `gemini:<model>` or `gemini` | Gemini image generation | Precise prompt following: references, characters, backgrounds, 3D refs |
+| `gemini:<model>` or `gemini` | Gemini image generation | Prompt-following, references, characters, UI, backgrounds |
 | `openai:<model>` or `openai` | OpenAI image generation/editing | OpenAI Images API projects |
-| `grok:<model>` or `grok` | xAI Grok image generation | Textures, simple objects, item kits, simple scenic backgrounds |
+| `grok:<model>` or `grok` | xAI Grok image generation | Textures, simple props, simple scenic backgrounds |
 
 Use API-backed providers only when the required API key is configured. Missing
 API keys are hard failures.
@@ -48,10 +51,12 @@ Runtime-native providers are not valid `tools/asset_gen.py` backends.
 Every runtime-native image must be finalized with
 `tools/asset_image_finalize.py` before ASSETS.md is updated.
 
+## Source Claim And Finalization
+
 ### Codex source claim protocol
 
-For any Codex-generated image, claim the generated source before any project
-asset is finalized:
+For any Codex-generated image, claim the generated source before finalizing any
+project asset:
 
 1. Generate the image with `image_gen`.
 2. Read that call's `ImageGenerationEnd.saved_path`.
@@ -78,6 +83,44 @@ python tools/asset_image_finalize.py \
 ```
 
 Put the finalize JSON in the generation group report.
+
+### Generate image with asset_gen.py
+
+Use API-backed providers only.
+
+```bash
+python3 tools/asset_gen.py image \
+  --model <selector> \
+  --prompt "the full prompt" \
+  --size 1K \
+  --aspect-ratio 1:1 \
+  -o <target.png>
+```
+
+Common options:
+
+1. `--model`: `gemini`, `openai`, `grok`, or provider-prefixed selectors.
+2. `--size`: `1K` by default. Gemini also supports `512`, `2K`, and `4K`.
+3. `--aspect-ratio`: provider-specific; default is `1:1`.
+4. `--image`: reference image input for image-to-image generation/editing.
+5. `--resize WIDTHxHEIGHT`: optional resize after generation.
+6. `--label`: optional asset id in the JSON result.
+
+`asset_gen.py image` finalizes and validates the output path before returning
+JSON.
+
+### Validate generation reports
+
+Validate one or more reports with:
+
+```bash
+python3 tools/asset_image_report_check.py .godotmaker/asset-generation/reports/group_1.json
+```
+
+Each `assets[]` item in a generation report is the flat JSON printed by
+`tools/asset_image_finalize.py`.
+
+## Batch Contracts
 
 ### Claude Code to Codex handoff
 
@@ -118,7 +161,7 @@ Report the failure clearly.
 Command shape:
 
 ```bash
-mkdir -p .godotmaker/asset-generation/sources .godotmaker/asset-generation/reports
+mkdir -p .godotmaker/asset-generation/sources .godotmaker/asset-generation/prompts .godotmaker/asset-generation/reports
 codex exec --json --dangerously-bypass-approvals-and-sandbox \
   -C "$PWD" --output-last-message .godotmaker/asset-generation/reports/codex_batch.summary.txt \
   - < .godotmaker/asset-generation/reports/codex_batch.prompt.txt
@@ -126,12 +169,9 @@ codex exec --json --dangerously-bypass-approvals-and-sandbox \
 
 Do not silently switch providers when the configured provider is `codex`.
 
-### Active Codex runtime batch
+### Art asset batch
 
-When the active runtime is Codex and `asset_image_model` is `native` or
-`codex`, generate up to 3 assets in one batch.
-
-Batch input schema:
+Use this input schema for non-scene visual assets:
 
 ```json
 {
@@ -141,7 +181,10 @@ Batch input schema:
   "items": [
     {
       "asset_id": "<asset_id>",
+      "family": "<asset family>",
+      "production_shape": "<production shape>",
       "prompt": "<prompt>",
+      "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
       "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
       "final_path": "assets/img/<asset_id>.png",
       "resize": null
@@ -150,6 +193,9 @@ Batch input schema:
   "report_path": ".godotmaker/asset-generation/reports/assets_001.json"
 }
 ```
+
+When the active runtime is Codex and `asset_image_model` is `native` or
+`codex`:
 
 1. Use one subagent per asset when Codex subagents are available.
 2. Give each subagent exactly one asset's input record.
@@ -162,7 +208,7 @@ Batch input schema:
 7. Finalize each claimed source into its project target path.
 8. Write one flat finalize JSON entry per asset.
 
-Each report uses this shape:
+Report shape:
 
 ```json
 {
@@ -184,9 +230,6 @@ Each report uses this shape:
 }
 ```
 
-Each `assets[]` item is the flat JSON printed by
-`tools/asset_image_finalize.py`.
-
 ### Scene reference batch
 
 Scene references use the same provider paths, claim/finalize steps, and report
@@ -201,7 +244,10 @@ Input schema:
   "provider": "<asset_image_model>",
   "anchor_item": {
     "asset_id": "scene_main",
+    "family": "screen_reference",
+    "production_shape": "reference_only",
     "prompt": "<prompt>",
+    "prompt_path": ".godotmaker/asset-generation/prompts/scene_main.txt",
     "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
     "final_path": "references/scene_main.png",
     "resize": null
@@ -209,7 +255,10 @@ Input schema:
   "parallel_items": [
     {
       "asset_id": "scene_shop",
+      "family": "screen_reference",
+      "production_shape": "reference_only",
       "prompt": "<prompt>",
+      "prompt_path": ".godotmaker/asset-generation/prompts/scene_shop.txt",
       "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",
       "final_path": "references/scene_shop.png",
       "resize": null
@@ -224,264 +273,144 @@ If `anchor_item` is present, generate and finalize it first. Then generate
 `anchor_item` to `null` and put all missing scene references in
 `parallel_items`.
 
-## Tool Reference
-
-Run tools from the project root.
-
-### Generate image with asset_gen.py
-
-Use API-backed providers only.
-
-```bash
-python3 tools/asset_gen.py image \
-  --model <selector> \
-  --prompt "the full prompt" \
-  --size 1K \
-  --aspect-ratio 1:1 \
-  -o assets/img/<asset_name>.png
-```
-
-Common options:
-
-1. `--model`: `gemini`, `openai`, `grok`, or provider-prefixed selectors.
-2. `--size`: `1K` by default. Gemini also supports `512`, `2K`, and `4K`.
-3. `--aspect-ratio`: provider-specific; default is `1:1`.
-4. `--image`: reference image input for image-to-image generation/editing.
-5. `--resize WIDTHxHEIGHT`: optional resize after generation.
-6. `--label`: optional asset id in the JSON result.
-
-`asset_gen.py image` finalizes and validates the output path before returning
-JSON.
-
-### Finalize runtime-native images
-
-After runtime-native image generation returns or claims a source image path,
-run:
-
-```bash
-python3 tools/asset_image_finalize.py \
-  --source <generated_image_path> \
-  --out assets/img/<asset_name>.png \
-  --label <asset_id> \
-  [--resize WIDTHxHEIGHT]
-```
-
-Use `--resize` only when the target asset requires a fixed size.
-
-### Validate generation reports
-
-Runtime-native generation groups write
-`.godotmaker/asset-generation/<group_id>.json`:
-
-```json
-{
-  "ok": true,
-  "provider": "native",
-  "assets": [
-    {
-      "ok": true,
-      "source": "<generated_image_path>",
-      "path": "assets/img/coin.png",
-      "asset_id": "coin",
-      "bytes": 12345,
-      "width": 64,
-      "height": 64,
-      "format": "PNG"
-    }
-  ]
-}
-```
-
-Validate one or more reports with:
-
-```bash
-python3 tools/asset_image_report_check.py .godotmaker/asset-generation/group_1.json
-```
-
-### Generate GLB model
-
-```bash
-python3 tools/asset_gen.py glb \
-  --image assets/img/car.png \
-  -o assets/glb/car.glb
-```
-
-Use a clean 3D model reference image. Do not remove the solid background before
-GLB conversion.
-
-### Generate video
-
-```bash
-python3 tools/asset_gen.py video \
-  --prompt "walking to the right, smooth walk cycle, solid dark-green background" \
-  --image assets/img/knight_walk_pose.png \
-  --duration 2 \
-  -o assets/video/knight_walk.mp4
-```
-
-Use the pose frame, not the character reference, as the starting image.
-
-### Output and logging
-
-Successful image results include:
-
-```json
-{
-  "ok": true,
-  "provider": "xai",
-  "path": "assets/img/coin.png",
-  "source": "assets/img/coin.png",
-  "asset_id": "coin",
-  "bytes": 12345,
-  "width": 64,
-  "height": 64,
-  "format": "PNG"
-}
-```
-
-On failure:
-
-```json
-{"ok": false, "error": "..."}
-```
-
-Progress and API client output goes to stderr. Redirect stderr to a temp file
-and read it only on failure:
-
-```bash
-_log=$(mktemp)
-result=$(python3 tools/asset_gen.py image --prompt "..." -o path.png 2>"$_log") || tail -20 "$_log"
-```
-
-## Asset Recipes
+## Prompt Contracts
 
 ### Scene reference
 
 Use scene references as visual targets for a scene. They are written under
-`references/scene_{name}.png` by `/gm-asset` Step 3 and are not gameplay
-assets.
+`references/scene_{name}.png` and are not gameplay assets.
 
 Prompt shape:
 
 ```text
-{description in the art style}. {composition instructions}.
+Screenshot of a {2D game}. {camera/viewpoint}. Game objects: {visible objects with position and approximate size}. Environment: {layers and playfield}. HUD: {visible UI elements}. Visual style: {STYLE.md Style Anchor + Prompt Suffix}. No text labels unless the scene explicitly needs UI text.
 ```
 
-Read `visual-target.md` before writing the prompt. Include the scene's player
-experience, visible objects, UI, composition, and style language.
+Read `visual-target.md` before writing the prompt.
+
+### Style reference
+
+Use style references as source images for later derivatives.
+
+Prompt shape:
+
+```text
+{game genre and viewpoint}. Cohesive visual target sheet showing color palette, material language, shape language, UI treatment, and representative gameplay props. No text labels.
+```
+
+Record the source as `style_reference` with `production_shape:
+reference_only`.
+
+### Character canonical
+
+Use a canonical character image before generating action sheets or variants.
+
+Prompt shape:
+
+```text
+{character name}, {role and visual identity}. Neutral readable pose, clean silhouette, full body visible, centered on a solid {bg_color} background. {STYLE.md prompt suffix}. No text, no UI, no cropped body parts.
+```
+
+Record the source as `character_canonical` with `production_shape:
+single_image`.
+
+### Character action source
+
+Use one source per action.
+
+Prompt shape:
+
+```text
+{character name} performing {action}. {rows}x{cols} sprite sheet, exactly {frame_count} frames, one action only, same character identity in every frame, consistent scale, centered in each cell, solid {bg_color} background. {STYLE.md prompt suffix}. No text, no UI, no borders.
+```
+
+Record the source as `character_action_source` with `production_shape:
+action_sheet`. Mark `processing_status` as `needs_curation` until final frames
+or final sprite sheets exist.
+
+### Projectile or impact effect source
+
+Use separate sources for projectiles, impacts, pickup effects, explosions, and
+spawn effects.
+
+Prompt shape:
+
+```text
+{effect name}, {effect behavior}. {rows}x{cols} effect sprite sheet, exactly {frame_count} frames, transparent-friendly solid {bg_color} background, centered in each cell, consistent scale, no text, no UI.
+```
+
+Use `projectile_fx_source` or `impact_fx_source` and mark the source
+`needs_curation` until final frames exist.
+
+### Compact prop pack
+
+Use compact prop packs for compact similarly sized props.
+
+Prompt shape:
+
+```text
+{prop names}. {rows}x{cols} grid, one centered prop per cell, consistent scale, solid {bg_color} background, no text, no UI, no borders. {STYLE.md prompt suffix}.
+```
+
+Record rows, columns, expected item names, and final target paths in the
+manifest. Mark the source `needs_curation` until extracted prop files exist.
+
+### UI component sheet
+
+Use UI component sheets for icons, small buttons, tabs, badges, counters, and
+compact HUD pieces.
+
+Prompt shape:
+
+```text
+{component names}. Clean game UI component sheet, {rows}x{cols} grid, one isolated component per cell, consistent lighting and material style, solid {bg_color} background, no text or numbers, no composite screens. {STYLE.md UI rules}.
+```
+
+Use `ui_component_sheet` or `icon_pack`. Mark the source `needs_curation` until
+each final component path exists.
+
+### Panel source
+
+Use panel sources for large panels, card frames, dialogue boxes, shop slots,
+and menu containers.
+
+Prompt shape:
+
+```text
+{panel name}, isolated game UI panel, empty content area, clean edges, no text, no numbers, no icons unless requested, solid {bg_color} background. {STYLE.md UI rules}.
+```
+
+Use `panel_source`. Do not force large panels into compact grid sheets.
 
 ### Background
 
-Use backgrounds for title screens, sky panoramas, parallax layers, arenas, and
-large scenic images that the game will display.
+Use backgrounds for runtime backgrounds and parallax layers.
 
 Prompt shape:
 
 ```text
-{description in the art style}. {composition instructions}. Intended game display: {viewport or parallax behavior}.
+{description in the art style}. {composition instructions}. Intended game display: {viewport or parallax behavior}. No gameplay actors, pickups, hazards, UI, or text.
 ```
 
-Use a precise provider when layout and object placement matter. Use a simpler
-provider only for scenic output where exact prompt adherence is not critical.
+### Runtime sprite
+
+Use runtime sprites only when a single final image is enough.
+
+Prompt shape:
+
+```text
+{name}, {description}. Centered on a solid {bg_color} background. Clean silhouette. {STYLE.md prompt suffix}. No text, no UI.
+```
 
 ### Texture
 
-Use for tileable ground, walls, floors, UI panels, and repeated materials.
+Use textures for repeated terrain, floors, walls, UI materials, and tileable
+surfaces.
 
 Prompt shape:
 
 ```text
-{name}, {description}. Top-down view, uniform lighting, no shadows, seamless tileable texture, suitable for game engine tiling, clean edges.
-```
-
-The whole image is the texture. Do not remove the background.
-
-### Single object or sprite
-
-Use for props, items, icons, characters, enemies, and NPCs.
-
-Prompt shape:
-
-```text
-{name}, {description}. Centered on a solid {bg_color} background.
-```
-
-Use a precise provider for characters or objects that must match the design.
-Use a cheaper/simple provider only when exact appearance is flexible.
-
-### Variant from reference
-
-When `--image` is available, feed the existing reference image and prompt only
-for the requested change.
-
-Prompt shape:
-
-```text
-{what to change: different angle, pose, color, damage state, size variant}
-```
-
-Do not re-describe the entire character or object unless the requested change
-requires it.
-
-### Item kit
-
-Use one source image for several small objects when they share a style.
-
-Prompt shape:
-
-```text
-{item1}, {item2}, {item3}, {item4}. 2x2 grid layout, each item centered in its cell, solid {bg_color} background. {art style}.
-```
-
-Slice into individual PNGs:
-
-```bash
-python3 tools/grid_slice.py path_grid.png \
-  -o .godotmaker/asset-generation/work/items/ --grid 2x2 --names "sword,shield,potion,helm"
-```
-
-Then finalize each sliced output into its project target path with
-`tools/asset_image_finalize.py`. Remove background from each item first if
-transparency is required.
-
-### 3D model reference
-
-Prompt shape:
-
-```text
-3D model reference of {name}. {description}. 3/4 front elevated camera angle, solid white background, soft diffused studio lighting, matte material finish, single centered subject, no shadows on background. Any windows or glass should be solid tinted and opaque.
-```
-
-Then run `asset_gen.py glb` with the approved reference image.
-
-### Animated sprite
-
-Use one reference image per character and reuse it for all animations.
-
-1. Generate a neutral reference image.
-2. Generate pose frames from the reference.
-3. Generate videos from pose frames.
-4. Extract frames.
-5. Trim loops for looping animations.
-6. Remove backgrounds in batch.
-7. Add additional animations from the same reference.
-
-Reference prompt shape:
-
-```text
-{name}, {description}. Neutral standing pose, facing right, centered on a solid {bg_color} background. Clean silhouette.
-```
-
-Pose prompt shape:
-
-```text
-{action pose description}, side view, solid {bg_color} background.
-```
-
-Video prompt shape:
-
-```text
-{action}, smooth animation. Solid {bg_color} background.
+{name}, {description}. Uniform lighting, seamless tileable texture, clean edges, no text, no labels.
 ```
 
 ## Post-processing
@@ -497,20 +426,12 @@ Write background-removal outputs under `.godotmaker/asset-generation/work/`.
 Finalize approved outputs into project asset paths with
 `tools/asset_image_finalize.py`.
 
-### Extract frames
+### Manifest update
 
-```bash
-mkdir -p .godotmaker/asset-generation/work/knight_walk_frames
-ffmpeg -i assets/video/knight_walk.mp4 -vsync 0 .godotmaker/asset-generation/work/knight_walk_frames/%04d.png
-```
-
-### Trim loops
-
-```bash
-python3 tools/find_loop_frame.py .godotmaker/asset-generation/work/knight_walk_frames/
-```
-
-`window: 0` means no good loop point. Use the whole clip.
+After generation and finalization, update
+`.godotmaker/asset-generation/manifest.json` with the fields from
+`asset-family-contract.md`. Keep source-only and needs-curation assets in the
+manifest even when no final runtime asset exists yet.
 
 ### Resize and flip
 
@@ -531,7 +452,8 @@ Finalize approved outputs into project asset paths with
 
 Use the full generation resolution. Do not downscale for aesthetic reasons.
 
-1. `1K`: default for textures, sprites, 3D references, and character refs.
+1. `1K`: default for references, characters, sprites, UI sources, textures,
+   and props.
 2. `512`: quick tests where supported.
 3. `2K`: backgrounds, title screens, high-detail objects, and large textures.
 4. `4K`: large maps and panoramic backgrounds where supported.
@@ -542,7 +464,7 @@ Minimum generation resolution is usually much larger than in-game sprite size.
 If a sprite will render small in-game:
 
 1. Prefer 128 px or larger display sizes where possible.
-2. Generate a kit image so each object has enough pixels before slicing.
+2. Generate a source sheet so each object has enough pixels before selection.
 3. Prompt for bold simple forms, thick outlines, flat colors, and exaggerated
    proportions.
 
@@ -550,14 +472,3 @@ If a sprite will render small in-game:
 
 Generators cannot reliably distinguish left/right facing or exact rotations.
 Generate one direction and flip in-engine when appropriate.
-
-### Video size consistency
-
-When mixing still images and video-extracted frames, resize everything to the
-smallest source size before background removal.
-
-### Animation playback
-
-Video-extracted animations often assume a source frame rate such as 24 fps. Set
-frame duration consistently and do not reset the animation frame counter between
-movement tiles.

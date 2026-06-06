@@ -26,7 +26,7 @@ The output must look like an **in-game screenshot, not concept art**. A clean sc
 ## Prompt template
 
 ```
-Screenshot of a {2D/3D} video game. {Camera: angle, distance, perspective}.
+Screenshot of a 2D video game. {Camera: angle, distance, perspective}.
 Game objects: {player — appearance, position, size vs screen}. {enemies/NPCs — each type, position}. {obstacles}. {collectibles/pickups}. {projectiles if any}.
 Environment: {background layers — sky, distant, mid}. {playfield surface — material, tiling}. {foreground elements}. {boundaries/edges}.
 HUD: {each UI element — type and screen position}.

@@ -18,6 +18,8 @@ You are filling in the missing assets in `ASSETS.md` for the **current tag** (re
 
 This skill is **per-tag re-runnable**: a user can call `/gm-asset` between build batches when they add new art files. Each invocation processes whatever is currently `MISSING` for the current tag.
 
+Read `references/asset-family-contract.md` before planning generated visual assets.
+
 ## Session Setup
 
 **FIRST ACTION — before anything else:** Write `asset` to `.godotmaker/current_role`.
@@ -76,6 +78,29 @@ Read `ASSETS.md` Asset Table. Filter to rows whose `Tag` matches the current tag
 - **Scene reference images:** AI-generated based on SCENES.md descriptions
 
 Do NOT touch rows from prior tags — even if they look broken, that's a `/gm-fixgap` concern. New rows you add for newly-discovered assets must carry the current tag in their `Tag` column.
+
+### Step 1.5 - Plan Asset Families
+
+Before generation, create or update `.godotmaker/asset-generation/manifest.json`
+using `references/asset-family-contract.md`.
+
+For each current-tag visual row, record:
+
+1. `asset_id`
+2. `family`
+3. `production_shape`
+4. `runtime_role`
+5. `source_path`
+6. `final_path`
+7. `derived_from`
+8. `canonical_reference`
+9. `prompt_path`
+10. `processing_status`
+11. `extraction_status`
+
+Generate canonical references before derivative assets. Mark source sheets,
+component sheets, and irregular references as `needs_curation` until their
+final runtime assets are selected or processed.
 
 ### Step 2 — Detect User-Provided Files
 
@@ -140,14 +165,20 @@ plan a fixed source path, final path, and report path:
   "contract_summary": "<SCENES.md Asset bindings + ASSETS.md Visual Asset Contract rows used>",
   "anchor_item": {
     "asset_id": "scene_main",
+    "family": "screen_reference",
+    "production_shape": "reference_only",
     "prompt": "<prompt>",
+    "prompt_path": ".godotmaker/asset-generation/prompts/scene_main.txt",
     "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
     "final_path": "references/scene_main.png"
   },
   "parallel_items": [
     {
       "asset_id": "scene_shop",
+      "family": "screen_reference",
+      "production_shape": "reference_only",
       "prompt": "<prompt>",
+      "prompt_path": ".godotmaker/asset-generation/prompts/scene_shop.txt",
       "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",
       "final_path": "references/scene_shop.png"
     }
@@ -195,7 +226,10 @@ input schema:
   "items": [
     {
       "asset_id": "<asset_id>",
+      "family": "<asset family>",
+      "production_shape": "<production shape>",
       "prompt": "<prompt>",
+      "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
       "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
       "final_path": "assets/img/<asset_id>.png",
       "resize": null
@@ -230,6 +264,9 @@ After all generation calls return:
   assets. Bind each gameplay-visible object to its scene/mechanic use,
   runtime size, visual role, readability requirement, and anchor/derivative
   source.
+- Update `.godotmaker/asset-generation/manifest.json` with source path, final
+  path, prompt path, family, production shape, processing status, extraction
+  status, and canonical reference for every generated visual asset.
 
 ## Plan Discipline
 
@@ -263,6 +300,8 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 **Reference docs (read for prompt construction):**
 - `references/asset-planner.md` — generation brief template
 - `references/asset-gen.md` — `asset_gen.py` usage details
+- `references/asset-family-contract.md` — asset family, production shape, and
+  manifest contract
 
 **Asset analysis:** Dispatch an Analyst subagent (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`).
 

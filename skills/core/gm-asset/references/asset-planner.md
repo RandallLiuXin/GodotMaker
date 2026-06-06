@@ -12,6 +12,7 @@ Use this file for:
 2. Deriving missing visual assets from project documents and scene references.
 3. Choosing asset roles, anchors, derivatives, and provider paths.
 4. Building generation batches and ASSETS.md updates.
+5. Writing `.godotmaker/asset-generation/manifest.json` entries.
 
 Do not use this file to write PLAN.md, GDD.md, STRUCTURE.md, SCENES.md, or
 STYLE.md.
@@ -26,6 +27,8 @@ Read these before planning:
 4. `STRUCTURE.md`: architecture and asset hints.
 5. `SCENES.md`: scene element lists and gameplay screen descriptions.
 6. `references/scene_*.png`: visual targets generated from scene descriptions.
+7. `references/asset-family-contract.md`: asset family and production shape
+   definitions.
 
 If a scene reference is missing, use the SCENES.md text and STYLE.md instead.
 
@@ -53,19 +56,36 @@ For each current-tag scene:
 The final list is the union of scene-visible assets and gameplay-required
 assets.
 
-### 3. Classify assets
+### 3. Classify asset families
 
-Classify each planned asset into one role:
+Classify each planned asset into one family from
+`references/asset-family-contract.md`:
 
-1. `scene_reference`: full-scene target image.
-2. `background`: large scenic image, parallax layer, title screen, or arena.
-3. `texture`: tileable or repeated material.
-4. `sprite`: standalone 2D object, character, item, icon, or VFX frame.
-5. `ui_kit`: related UI panels, buttons, icons, and HUD elements.
-6. `item_kit`: several small objects generated as one source image.
-7. `model_reference`: 2D image intended for GLB conversion.
-8. `animated_sprite`: reference, poses, video, frames, and extracted animation.
-9. `audio`: user-provided only.
+1. `screen_reference`
+2. `style_reference`
+3. `character_canonical`
+4. `character_action_source`
+5. `projectile_fx_source`
+6. `impact_fx_source`
+7. `compact_prop_pack`
+8. `ui_component_sheet`
+9. `icon_pack`
+10. `panel_source`
+11. `background`
+12. `runtime_sprite`
+13. `texture`
+14. `audio`
+
+Choose one production shape for each visual asset:
+
+1. `single_image`
+2. `grid_sheet`
+3. `action_sheet`
+4. `frame_sequence`
+5. `reference_only`
+6. `curation_required`
+
+Record the family and production shape before writing the prompt.
 
 ### 4. Choose anchors and derivatives
 
@@ -87,6 +107,30 @@ Common anchor patterns:
    details.
 4. One weapon/item family image anchors item variants.
 
+### 4.5 Plan source, final, and handoff metadata
+
+For every planned generated visual asset, reserve:
+
+1. `source_path` under `.godotmaker/asset-generation/sources/`.
+2. `prompt_path` under `.godotmaker/asset-generation/prompts/`.
+3. `final_path` under `assets/` or `references/`.
+4. `report_path` under `.godotmaker/asset-generation/reports/`.
+5. Manifest entry under `.godotmaker/asset-generation/manifest.json`.
+
+Use these status rules:
+
+1. `screen_reference` and `style_reference`: `processing_status` can be
+   `ready` when the reference is accepted.
+2. `character_canonical`: `processing_status` can be `ready` when it is usable
+   as a derivative reference.
+3. `character_action_source`, `projectile_fx_source`, `impact_fx_source`,
+   `compact_prop_pack`, `ui_component_sheet`, and `icon_pack`: use
+   `needs_curation` until final runtime assets are processed or selected.
+4. `background`, `runtime_sprite`, and `texture`: use `ready` only after the
+   final project path exists and matches the ASSETS.md row.
+5. `panel_source`: use `needs_curation` when the panel still needs slicing,
+   sizing, or state variants.
+
 ### 5. Select provider path
 
 Read `.godotmaker/config.yaml` and use `asset_image_model` as the default image
@@ -101,9 +145,9 @@ path.
 
 Provider choice by asset role:
 
-1. Use precise providers for scene references, character designs, 3D model
-   references, animation references, and backgrounds with exact layout.
-2. Use simpler providers for textures, simple props, item kits, and simple
+1. Use precise providers for scene references, character canonicals, action
+   sources, UI sources, and backgrounds with exact layout.
+2. Use simpler providers for textures, simple props, compact prop packs, and simple
    scenic backgrounds when exact prompt adherence is not critical.
 3. Use image references for derivatives when style consistency matters.
 4. Treat missing API keys or unavailable runtime-native generation as hard
@@ -123,6 +167,9 @@ Plan batches that can run without conflicting outputs.
    `.godotmaker/asset-generation/reports/`.
 6. For generated project assets, plan final paths under `assets/` or
    `references/` only through the approved tools in `/gm-asset` SKILL.md.
+7. Write prompt text to the planned `prompt_path` before generation.
+8. Include `family`, `production_shape`, `source_path`, `final_path`, and
+   `prompt_path` in each batch item.
 
 If isolated generation groups may be unavailable, include a sequential fallback
 note for the executor to report in the generation summary.
@@ -137,6 +184,8 @@ Scene reference planning uses the same batch rules:
    - source path: `.godotmaker/asset-generation/sources/scene_{name}_source.png`
    - final path: `references/scene_{name}.png`
    - report path: `.godotmaker/asset-generation/reports/scene_refs_<group_id>.json`
+   - family: `screen_reference`
+   - production shape: `reference_only`
 5. Plan one flat finalize JSON report entry per scene reference.
 
 ### 7. Prepare ASSETS.md updates
@@ -147,8 +196,8 @@ table schema and include:
 1. `Tag`: current tag.
 2. `Status`: `generated`, `provided`, `deferred`, or `N/A`.
 3. `File Path`: final project path.
-4. `Generation Params`: provider, prompt source, anchor relationship,
-   derivative source, or curation status.
+4. `Generation Params`: family, production shape, provider, prompt path,
+   source path, canonical reference, derivative source, and processing status.
 5. `Size`: intended in-game display or world size when the table has a size
    column.
 
@@ -167,8 +216,8 @@ Update `ASSETS.md` Visual Asset Contract for each current-tag visual asset:
    overlay, VFX, or other concrete role.
 6. `Readability Requirement`: the screenshot or frame-sequence condition that
    makes the asset acceptable in play.
-7. `Source`: `anchor`, `derivative of <asset>`, `scene reference`,
-   `user-provided`, or `procedural/UI`.
+7. `Source`: `canonical`, `derived from <asset>`, `source sheet`,
+   `scene reference`, `needs curation`, `user-provided`, or `procedural/UI`.
 
 For small sprites, write the minimum readable display size and the contrast or
 silhouette requirement. For derivative assets, name the anchor asset.
@@ -185,37 +234,30 @@ large scenic images. Specify viewport behavior and intended display size.
 Use for repeated terrain, floors, walls, UI materials, and tileable surfaces.
 Specify tile size in world units.
 
-### Sprite
+### Runtime sprite
 
 Use for characters, enemies, items, props, pickups, icons, and VFX images.
 Specify intended in-game pixel size.
 
-### UI kit
+### Character canonical
+
+Use one canonical reference per important character, enemy family, or NPC
+family. Generate a neutral readable pose with a clean silhouette.
+
+### Character action source
+
+Use one source per action. Keep body actions separate from projectiles, impact
+effects, and UI effects.
+
+### Compact prop pack
+
+Use for compact similarly sized props. Plan rows, columns, expected items, and
+names before generation. Mark as `needs_curation` until final prop files exist.
+
+### UI component sheet
 
 Use for related interface elements. Prefer one coherent kit source when style
 consistency matters. Mark extraction or curation needs in ASSETS.md notes.
-
-### Item kit
-
-Use for multiple related small items. Plan the kit source image and the
-individual final item paths.
-
-### Model reference
-
-Use for GLB conversion. Specify the final GLB path and the reference image path.
-Use a clean presentation image with a solid background.
-
-### Animated sprite
-
-Plan one reference image per character or animated object. Then plan actions:
-
-1. Root actions from the reference.
-2. Optional chained actions from a previous action's last extracted frame.
-3. Frame output directories.
-4. Loop or one-shot playback type.
-5. Background removal needs.
-
-Keep animation chains short to limit visual drift.
 
 ## Common Mistakes
 
@@ -249,3 +291,4 @@ When planning is complete, identify:
 4. Provider path and generation batch membership.
 5. Scene reference anchor item and parallel items, when applicable.
 6. Source sheets or UI kits that will need curation.
+7. Manifest entries to write under `.godotmaker/asset-generation/manifest.json`.
