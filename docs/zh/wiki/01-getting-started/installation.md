@@ -24,8 +24,7 @@ GodotMaker 可以根据 `.godotmaker/config.yaml` 使用 runtime 原生图片和
 |-----|--------------|------|
 | `GOOGLE_API_KEY` 或 `GEMINI_API_KEY` | `vqa_model` 或素材模型使用 `gemini:<model>` | Gemini 视觉 QA 和图片生成 |
 | `OPENAI_API_KEY` | `vqa_model` 或素材模型使用 `openai:<model>` | OpenAI 视觉理解和图片生成 |
-| `XAI_API_KEY` | 素材图片或视频模型使用 `grok:<model>` | xAI 图片或视频生成 |
-| `TRIPO3D_API_KEY` | 项目需要生成 GLB 模型 | 3D 模型生成 |
+| `XAI_API_KEY` | 素材图片模型使用 `grok:<model>` | xAI 图片生成 |
 
 ### Windows PowerShell
 
@@ -44,7 +43,6 @@ export GOOGLE_API_KEY="your-key-here"
 # Optional:
 # export OPENAI_API_KEY="your-key-here"
 # export XAI_API_KEY="your-key-here"
-# export TRIPO3D_API_KEY="your-key-here"
 ```
 
 ## 安装 GodotMaker

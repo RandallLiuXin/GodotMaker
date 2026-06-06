@@ -256,7 +256,6 @@ class TestCheckFunctions:
             {
                 "asset_image_model": "codex",
                 "vqa_model": "codex",
-                "asset_video_model": "grok:grok-imagine-video",
             },
             agent="codex",
         )
@@ -385,7 +384,7 @@ class TestCheckFunctions:
         assert any("Codex CLI found for Codex image inspection" in p for p in r.passed)
 
     @patch.dict(os.environ, {}, clear=True)
-    def test_none_video_model_does_not_require_xai_key(self):
+    def test_non_grok_image_model_does_not_require_xai_key(self):
         from check_env import check_api_keys
 
         r = EnvCheck()
@@ -394,14 +393,13 @@ class TestCheckFunctions:
             {
                 "asset_image_model": "native",
                 "vqa_model": "native",
-                "asset_video_model": "none",
             },
             agent="codex",
         )
 
         assert not any("XAI_API_KEY" in f for f in r.failed)
 
-    def test_python_checks_xai_sdk_for_video_only_grok(self, monkeypatch):
+    def test_python_checks_xai_sdk_for_grok_image(self, monkeypatch):
         from check_env import check_python
 
         imported: list[str] = []
@@ -415,9 +413,8 @@ class TestCheckFunctions:
         check_python(
             r,
             {
-                "asset_image_model": "native",
+                "asset_image_model": "grok:grok-imagine-image",
                 "vqa_model": "native",
-                "asset_video_model": "grok:grok-imagine-video",
             },
         )
 

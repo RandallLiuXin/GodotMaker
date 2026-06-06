@@ -136,7 +136,7 @@ def _check_main(role: str, path_lower: str, file_name: str, ext: str) -> None:
             return
         _block(f"Asset role can only write the project-root ASSETS.md "
                f"or .godotmaker/ (attempted: {file_name}). Image files go "
-               f"through tools/asset_gen.py (Bash) or the analyst subagent.",
+               f"through tools/asset_source_generate.py (Bash) or the analyst subagent.",
                file_name)
 
     if role == "gdd":

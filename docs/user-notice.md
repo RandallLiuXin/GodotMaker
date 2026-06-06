@@ -47,7 +47,6 @@ Possible providers include:
 - Gemini, through `GOOGLE_API_KEY` or `GEMINI_API_KEY`
 - OpenAI, through `OPENAI_API_KEY`
 - xAI Grok, through `XAI_API_KEY`
-- Tripo3D, through `TRIPO3D_API_KEY`
 
 Depending on the selected feature, requests may include prompts, asset descriptions, screenshots, reference images, or generated asset data. API usage may be billed by the provider.
 

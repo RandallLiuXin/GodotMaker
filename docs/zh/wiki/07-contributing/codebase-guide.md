@@ -11,7 +11,7 @@ GodotMaker/
 ├── skills/
 │   ├── core/                角色技能 + 辅助技能 + _shared/
 │   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
-├── tools/                   publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
+├── tools/                   publish.py, check_env.py, check_project.py, asset_source_generate.py, migrate.py
 ├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 ├── agent-runtimes/          runner 专属 reference、template 和 hook config
 ├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
@@ -143,7 +143,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 | `publish.py` | 将 GodotMaker 部署到目标 Godot 项目 |
 | `check_env.py` | 验证 Godot、Python 和 API key 是否正确配置 |
 | `check_project.py` | 检验已生成项目中的缺失文件和损坏路径 |
-| `asset_gen.py` | 通过 Gemini / OpenAI / xAI 生成 API 后端美术资源（由 `/gm-asset` 调用，也可独立运行） |
+| `asset_source_generate.py` | 根据 `/gm-asset` spec 生成 API 后端 source 图片 |
 | `migrate.py` | 在任何非 MAJOR 升级时把未应用的迁移脚本应用到目标项目；也通过 `--new <slug>` 生成新脚本模板 |
 
 ### publish.py 如何串联一切

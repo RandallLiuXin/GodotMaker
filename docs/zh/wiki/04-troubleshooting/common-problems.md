@@ -246,7 +246,7 @@ cat .godotmaker/metrics_*.jsonl | grep HOOK_BLOCK
 也可以直接运行生成器单独测试：
 
 ```bash
-python tools/asset_gen.py
+python tools/asset_source_generate.py --spec .godotmaker/asset-generation/specs/<asset_id>.json
 ```
 
 ---

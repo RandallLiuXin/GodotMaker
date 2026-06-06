@@ -48,7 +48,7 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 |------|----------|
 | `scaffold` | 任何内容（项目初始化） |
 | `gdd` | `.md` 规划文档、`project.godot`、`.godotmaker/`（不含 `assets/`） |
-| `asset` | `ASSETS.md`、`.godotmaker/`（图片文件通过 `asset_gen.py` Bash 或 Analyst 子代理处理） |
+| `asset` | `ASSETS.md`、`.godotmaker/`（图片文件通过 `asset_source_generate.py` Bash 或 Analyst 子代理处理） |
 | `build` / `fixgap` | `e2e/` 中不可写；游戏代码（`.gd` / `.tscn` / `.tres`）不可直接写——必须派发 Worker |
 | `verify` | 仅 `.godotmaker/stage.jsonl`、`.godotmaker/current_role` 和 `.godotmaker/verify_report.json`（其他地方只读） |
 | `evaluate` | `e2e/`、`.godotmaker/evaluation.json`、`.godotmaker/stage.jsonl`、`.godotmaker/current_role` |

@@ -45,7 +45,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 ## Hard Rules
 
 1. **Direct Write/Edit by you (main agent) is restricted to project-root `ASSETS.md` and files under `.godotmaker/`.** Files in `assets/` and `references/` reach disk only via:
-   - `tools/asset_gen.py` invoked through Bash for API-backed generation.
+   - `tools/asset_source_generate.py` invoked through Bash for API-backed generation.
    - `tools/codex_image_claim.py` followed by `tools/asset_image_finalize.py`.
    - Runtime-native generation followed by `tools/asset_image_finalize.py`.
    - The analyst subagent (Step 2).
@@ -64,7 +64,7 @@ Read `.godotmaker/config.yaml` before generation. Use `asset_image_model` for im
   Codex, use the active Codex runtime-native image-generation provider/tool. If
   the active runtime is Claude Code, invoke non-interactive `codex exec` through
   Bash and instruct Codex to use `$imagegen` / built-in `image_gen`.
-- `gemini:<model>`, `openai:<model>`, `grok:<model>`: call `tools/asset_gen.py image --model <selector> ...`.
+- `gemini:<model>`, `openai:<model>`, `grok:<model>`: write a source-generation spec and call `tools/asset_source_generate.py --spec <spec.json>`.
 
 If the selected provider is unavailable, STOP and ask the user to choose another `asset_image_model`.
 
@@ -77,12 +77,14 @@ Read `ASSETS.md` Asset Table. Filter to rows whose `Tag` matches the current tag
 - **Audio:** must be user-provided
 - **Scene reference images:** AI-generated based on SCENES.md descriptions
 
-Do NOT touch rows from prior tags — even if they look broken, that's a `/gm-fixgap` concern. New rows you add for newly-discovered assets must carry the current tag in their `Tag` column.
+Do NOT touch rows from prior tags. New rows you add for newly-discovered assets must carry the current tag in their `Tag` column.
 
 ### Step 1.5 - Plan Asset Families
 
-Before generation, create or update `.godotmaker/asset-generation/manifest.json`
-using `references/asset-family-contract.md`.
+Before generation, write manifest entry JSON files under
+`.godotmaker/asset-generation/work/manifest-entries/` using
+`references/asset-family-contract.md`, then upsert them with
+`tools/asset_generation_manifest_update.py`.
 
 For each current-tag visual row, record:
 
@@ -141,7 +143,7 @@ already placed on disk:
    - **Do NOT read image files yourself.** All image analysis goes through the analyst.
    - Analyst extracts: type, role, dimensions, palette, style characteristics.
 2. For audio candidates, do not dispatch analyst. Prefer preflight candidates
-   with `match_kind: "exact_path"`; otherwise match only by clear
+   with `match_kind: "exact_path"`; if absent, match only by clear
    filename/asset-id match.
 3. After analyst reports, update ASSETS.md: change high-confidence matching
    `MISSING` / `deferred` rows to `provided`.
@@ -196,13 +198,15 @@ For each missing scene:
 
 1. Read `references/visual-target.md`.
 2. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood + Asset bindings) + matching ASSETS.md Visual Asset Contract rows + `STYLE.md` + `GDD.md` section 4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
-3. Generate the scene image using the selected `asset_image_model` path:
-   - API-backed selector: run `python tools/asset_gen.py image --model <asset_image_model> --prompt "..." --size 1K --aspect-ratio 16:9 -o references/scene_{name}.png`.
+3. Write the prompt text to `prompt_path`.
+4. Generate the scene source using the selected `asset_image_model` path:
+   - API-backed selector: write the source-generation spec, then run `python tools/asset_source_generate.py --spec <spec.json>`.
    - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-gen.md` Active Codex runtime batch for this scene.
    - Claude Code with `asset_image_model: codex`: follow `references/asset-gen.md` Codex handoff from Claude Code for this scene.
-   - Other runtime-native provider: generate a source image path, then run `python tools/asset_image_finalize.py --source <generated_image_path> --out references/scene_{name}.png --label scene_{name}`.
-4. Write the scene's flat finalize JSON entry and contract summary to the scene-reference generation report.
-5. Show the result to the user. If rejected, regenerate with a tightened prompt (per `references/visual-target.md`).
+   - Other runtime-native provider: generate a source image path.
+5. Finalize the source image with `python tools/asset_image_finalize.py --source <source_path> --out <final_path> --label scene_{name}`.
+6. Write the scene's flat finalize JSON entry and contract summary to the scene-reference generation report.
+7. Show the result to the user. If rejected, regenerate with a tightened prompt.
 
 ### Step 4 — Generate Remaining MISSING Art
 
@@ -244,12 +248,12 @@ write the fallback reason in the report and summary.
 
 Use the selected `asset_image_model` path:
 
-- API-backed selector: each group runs `python tools/asset_gen.py image --model <asset_image_model> ... -o <target.png>` for each target. The tool finalizes and validates the output.
+- API-backed selector: each group writes one source-generation spec per asset, runs `python tools/asset_source_generate.py --spec <spec.json>`, then finalizes each source to `final_path`.
 - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-gen.md` Active Codex runtime batch. Use one Codex subagent per asset when subagents are available.
 - Claude Code with `asset_image_model: codex`: follow `references/asset-gen.md` Codex handoff from Claude Code.
-- Other runtime-native provider: generate each source image path, then run `python tools/asset_image_finalize.py --source <generated_image_path> --out <target.png> --label <asset_id> [--resize WIDTHxHEIGHT]`.
+- Other runtime-native provider: generate each source image path, then run `python tools/asset_image_finalize.py --source <source_path> --out <final_path> --label <asset_id> [--resize WIDTHxHEIGHT]`.
 
-Each group writes one JSON report under `.godotmaker/asset-generation/reports/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize JSON>, ...]}`. Each `assets[]` item is the flat JSON printed by `tools/asset_image_finalize.py`, so `tools/asset_image_report_check.py` can validate it.
+Each group writes one JSON report under `.godotmaker/asset-generation/reports/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize JSON>, ...]}`. Each `assets[]` item is the flat JSON printed by `tools/asset_image_finalize.py`.
 
 ### Step 5 - Update ASSETS.md
 
@@ -257,16 +261,17 @@ After all generation calls return:
 - Change generated rows from `MISSING` to `generated` with file path + generation params
 - Audio rows that user did not provide: mark `deferred` (with user acknowledgment)
 - Run `python tools/asset_image_report_check.py <report.json>...`
+- Update `.godotmaker/asset-generation/manifest.json` with source path, final
+  path, prompt path, family, production shape, processing status, extraction
+  status, and canonical reference for every generated visual asset.
+  Use `python tools/asset_generation_manifest_update.py --entry-file <entry.json>`.
+- Run `python tools/asset_generation_manifest_check.py --check-files`
 - Re-dispatch one follow-up batch for missing or invalid generated images
 - Verify total MISSING count for the current tag is zero (or all remaining are deferred audio with user OK)
 - New rows added this tag must carry the current tag in their `Tag` column
 - Update `ASSETS.md` Visual Asset Contract for generated or provided visual
   assets. Bind each gameplay-visible object to its scene/mechanic use,
-  runtime size, visual role, readability requirement, and anchor/derivative
-  source.
-- Update `.godotmaker/asset-generation/manifest.json` with source path, final
-  path, prompt path, family, production shape, processing status, extraction
-  status, and canonical reference for every generated visual asset.
+  runtime size, visual role, readability requirement, and final runtime asset.
 
 ## Plan Discipline
 
@@ -291,15 +296,18 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 **CLI tools (call via Bash):**
 | Tool | Purpose |
 |------|---------|
-| `tools/asset_gen.py` | API-backed image generation (Gemini / OpenAI / Grok) |
+| `tools/asset_source_generate.py` | API-backed source image generation (Gemini / OpenAI / Grok) |
 | `tools/asset_user_preflight.py` | Find unconsumed user-provided asset candidates under `assets/` |
 | `tools/codex_image_claim.py` | Copy Codex saved_path into a project source path |
 | `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |
 | `tools/asset_image_report_check.py` | Validate generation group reports and image files |
+| `tools/asset_generation_manifest_update.py` | Upsert asset-generation manifest entries |
+| `tools/asset_generation_manifest_check.py` | Validate asset-generation manifest schema and handoff files |
+| `tools/asset_sheet_process.py` | Split transparent 2D source sheets and write processing reports |
 
 **Reference docs (read for prompt construction):**
 - `references/asset-planner.md` — generation brief template
-- `references/asset-gen.md` — `asset_gen.py` usage details
+- `references/asset-gen.md` — asset source pipeline contract
 - `references/asset-family-contract.md` — asset family, production shape, and
   manifest contract
 

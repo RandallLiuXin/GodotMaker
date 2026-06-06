@@ -9,7 +9,7 @@ metadata. Use `asset-planner.md` to decide which assets are required.
 Use this file for:
 
 1. Choosing the provider path for an already-planned 2D visual asset.
-2. Running API-backed image generation.
+2. Running API-backed source generation.
 3. Claiming runtime-native image outputs.
 4. Finalizing generated images.
 5. Writing prompt/source/final metadata for the asset-generation manifest.
@@ -26,7 +26,7 @@ Project default is controlled by `.godotmaker/config.yaml` `asset_image_model`.
 
 ### API-backed providers
 
-API-backed providers are valid `tools/asset_gen.py image --model <selector>`
+API-backed providers are valid `tools/asset_source_generate.py --spec <spec.json>`
 backends.
 
 | Selector | Backend | Best for |
@@ -40,7 +40,7 @@ API keys are hard failures.
 
 ### Runtime-native providers
 
-Runtime-native providers are not valid `tools/asset_gen.py` backends.
+Runtime-native providers are not valid `tools/asset_source_generate.py` backends.
 
 1. `native`: use the active coding-agent runtime's native image-generation
    provider/tool.
@@ -79,35 +79,53 @@ finalize it into the project target path:
 ```bash
 python tools/asset_image_finalize.py \
   --source <source_path> \
-  --out <target.png> --label <asset_id> [--resize WIDTHxHEIGHT]
+  --out <final_path> --label <asset_id> [--resize WIDTHxHEIGHT]
 ```
 
 Put the finalize JSON in the generation group report.
 
-### Generate image with asset_gen.py
+### Generate API-backed source with asset_source_generate.py
 
 Use API-backed providers only.
 
-```bash
-python3 tools/asset_gen.py image \
-  --model <selector> \
-  --prompt "the full prompt" \
-  --size 1K \
-  --aspect-ratio 1:1 \
-  -o <target.png>
+Write this spec shape under `.godotmaker/asset-generation/specs/`:
+
+```json
+{
+  "asset_id": "<asset_id>",
+  "model": "<gemini|openai|grok selector>",
+  "prompt": "<full prompt>",
+  "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
+  "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
+  "size": "1K",
+  "aspect_ratio": "1:1",
+  "reference_images": [],
+  "report_path": ".godotmaker/asset-generation/reports/<asset_id>_source.json"
+}
 ```
 
-Common options:
+Run:
 
-1. `--model`: `gemini`, `openai`, `grok`, or provider-prefixed selectors.
-2. `--size`: `1K` by default. Gemini also supports `512`, `2K`, and `4K`.
-3. `--aspect-ratio`: provider-specific; default is `1:1`.
-4. `--image`: reference image input for image-to-image generation/editing.
-5. `--resize WIDTHxHEIGHT`: optional resize after generation.
-6. `--label`: optional asset id in the JSON result.
+```bash
+python3 tools/asset_source_generate.py \
+  --spec .godotmaker/asset-generation/specs/<asset_id>.json
+```
 
-`asset_gen.py image` finalizes and validates the output path before returning
-JSON.
+Spec fields:
+
+1. `asset_id`: manifest asset id.
+2. `model`: `gemini`, `openai`, `grok`, or provider-prefixed selector.
+3. `prompt`: full source-generation prompt.
+4. `prompt_path`: persisted prompt path.
+5. `source_path`: generated source image path.
+6. `size`: `1K` by default. Gemini also supports `512`, `2K`, and `4K`.
+7. `aspect_ratio`: provider-specific; default is `1:1`.
+8. `reference_images`: reference image inputs.
+9. `report_path`: optional source-generation report path.
+
+`asset_source_generate.py` writes the prompt, source image, and optional source
+report. Finalize accepted sources into project paths with
+`tools/asset_image_finalize.py`.
 
 ### Validate generation reports
 
@@ -119,6 +137,22 @@ python3 tools/asset_image_report_check.py .godotmaker/asset-generation/reports/g
 
 Each `assets[]` item in a generation report is the flat JSON printed by
 `tools/asset_image_finalize.py`.
+
+### Validate asset-generation manifest
+
+Upsert manifest entries with:
+
+```bash
+python3 tools/asset_generation_manifest_update.py --entry-file .godotmaker/asset-generation/work/manifest-entries/<asset_id>.json
+```
+
+Validate the handoff manifest with:
+
+```bash
+python3 tools/asset_generation_manifest_check.py --check-files
+```
+
+Use `--check-files` after generation and finalization.
 
 ## Batch Contracts
 
@@ -201,7 +235,8 @@ When the active runtime is Codex and `asset_image_model` is `native` or
 2. Give each subagent exactly one asset's input record.
 3. Each subagent generates only its assigned asset and follows the Codex source
    claim protocol.
-4. Do not scan global generated-image directories.
+4. Each subagent claims the `saved_path` returned by its own image generation
+   call into the assigned `source_path`.
 5. If isolated generation groups are unavailable, run the batch sequentially.
 6. Write the sequential fallback reason in
    `.godotmaker/asset-generation/reports/<group_id>.summary.txt`.
@@ -433,6 +468,32 @@ After generation and finalization, update
 `asset-family-contract.md`. Keep source-only and needs-curation assets in the
 manifest even when no final runtime asset exists yet.
 
+### Process grid or action sheets
+
+Remove the solid source-sheet background first:
+
+```bash
+python3 tools/rembg_matting.py \
+  .godotmaker/asset-generation/sources/<asset_id>_source.png \
+  -o .godotmaker/asset-generation/work/<asset_id>_transparent.png \
+  --preview .godotmaker/asset-generation/work/<asset_id>_rembg_qa.png
+```
+
+Process transparent 2D sheets with:
+
+```bash
+python3 tools/asset_sheet_process.py \
+  --source .godotmaker/asset-generation/work/<asset_id>_transparent.png \
+  --out-dir .godotmaker/asset-generation/work/<asset_id>/ \
+  --grid <cols>x<rows> \
+  --names "<name1>,<name2>" \
+  --report .godotmaker/asset-generation/reports/<asset_id>_sheet.json
+```
+
+Use `--reject-edge-touch` when the prompt required safe cell padding. Use the
+report to update manifest `processing_status`, `extraction_status`, `qc`, and
+final selected asset paths.
+
 ### Resize and flip
 
 Use ImageMagick:
@@ -450,7 +511,7 @@ Finalize approved outputs into project asset paths with
 
 ### Image resolution
 
-Use the full generation resolution. Do not downscale for aesthetic reasons.
+Use the full generation resolution. Do not downscale generated sources.
 
 1. `1K`: default for references, characters, sprites, UI sources, textures,
    and props.
@@ -464,7 +525,7 @@ Minimum generation resolution is usually much larger than in-game sprite size.
 If a sprite will render small in-game:
 
 1. Prefer 128 px or larger display sizes where possible.
-2. Generate a source sheet so each object has enough pixels before selection.
+2. Generate a source sheet before selecting final objects.
 3. Prompt for bold simple forms, thick outlines, flat colors, and exaggerated
    proportions.
 

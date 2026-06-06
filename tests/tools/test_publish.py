@@ -479,7 +479,6 @@ class TestCreateProjectConfig:
         assert "vqa_model: native" in content
         assert "vqa_fallback_model: native" in content
         assert "asset_image_model: native" in content
-        assert "asset_video_model: none" in content
 
     def test_skips_if_exists(self, tmp_path):
         config_dir = tmp_path / ".godotmaker"
@@ -515,7 +514,6 @@ class TestCreateProjectConfig:
         assert "vqa_model:" in content
         assert "vqa_fallback_model:" in content
         assert "asset_image_model:" in content
-        assert "asset_video_model:" in content
         assert "worker_model:" in content
         assert "agent:" in content
         lines = [line for line in content.splitlines() if line and not line.startswith("#")]

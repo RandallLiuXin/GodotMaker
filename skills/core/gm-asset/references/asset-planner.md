@@ -140,7 +140,7 @@ path.
    `asset-gen.md`.
 2. `codex`: use the Codex image generation path documented in `asset-gen.md`.
 3. `gemini:<model>`, `openai:<model>`, `grok:<model>`: use
-   `tools/asset_gen.py image --model <selector>` as documented in
+   `tools/asset_source_generate.py --spec <spec.json>` as documented in
    `asset-gen.md`.
 
 Provider choice by asset role:

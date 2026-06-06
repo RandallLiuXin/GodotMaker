@@ -47,7 +47,6 @@ GodotMaker 是一个编排框架。它依赖你选择的 Agent runtime，例如 
 - Gemini，通过 `GOOGLE_API_KEY` 或 `GEMINI_API_KEY`
 - OpenAI，通过 `OPENAI_API_KEY`
 - xAI Grok，通过 `XAI_API_KEY`
-- Tripo3D，通过 `TRIPO3D_API_KEY`
 
 根据所选功能不同，请求内容可能包含 prompt、素材描述、截图、参考图或生成出的素材数据。API 使用可能由 provider 计费。
 

@@ -109,7 +109,7 @@ across every consumer.
 
 ## 6. Tools
 
-Last resort. Tools (`tools/asset_gen.py`, `tools/check_project.py`,
+Last resort. Tools (`tools/asset_source_generate.py`, `tools/check_project.py`,
 `tools/migrate.py`, etc.) are subprocesses; if they fail, they
 typically produce a clear stderr message that the calling skill
 relays to the user, so "stuck pipeline with no clear error" is

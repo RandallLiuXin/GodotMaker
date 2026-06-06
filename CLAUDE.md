@@ -15,7 +15,7 @@ skills/
     _shared/        cross-skill reference docs (see "Shared reference docs" below)
   reviewer/         8 reviewer skills (physics, animation, ui, etc.)
 shell/              publish.sh / publish.ps1, report.sh / report.bat
-tools/              publish.py, check_env.py, check_project.py, asset_gen.py, etc.
+tools/              publish.py, check_env.py, check_project.py, asset_source_generate.py, etc.
 config/             config.yaml.default, stage_schemas.json, addon_versions.json
 agent-runtimes/     runner-specific references, templates, and hook config
 templates/          PLAN/STRUCTURE/ASSETS/SCENES/MEMORY/GDD templates + game-claude.md

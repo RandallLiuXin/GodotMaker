@@ -44,6 +44,18 @@ Use one status per generated visual artifact:
 5. `deferred`: asset is intentionally not produced in this tag.
 6. `rejected`: generated source should not be used.
 
+## Extraction Status
+
+Use one extraction status per generated visual artifact:
+
+1. `not_required`: no extraction step is needed.
+2. `pending`: extraction has not run yet.
+3. `source_sheet`: source sheet exists.
+4. `extracted`: extraction created candidate outputs.
+5. `processed`: final outputs are selected.
+6. `needs_curation`: candidate outputs need selection or cleanup.
+7. `rejected`: extraction output should not be used.
+
 ## Manifest Entry
 
 Write or update `.godotmaker/asset-generation/manifest.json` with entries in

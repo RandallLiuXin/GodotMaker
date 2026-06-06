@@ -21,23 +21,12 @@ Visual prompt language lives in `STYLE.md`.
 
 | # | Tag | Name | Type | Size | Generation Params | File Path | Status |
 |---|-----|------|------|------|-------------------|-----------|--------|
-| 1 | v0.1.0 | player_canonical | character_canonical | 1K source | family=character_canonical; shape=single_image; prompt=.godotmaker/asset-generation/prompts/player_canonical.txt | .godotmaker/asset-generation/sources/player_canonical_source.png | MISSING |
-| 2 | v0.1.0 | player_idle_source | character_action_source | 4 frames | family=character_action_source; shape=action_sheet; derived_from=player_canonical; status=needs_curation | .godotmaker/asset-generation/sources/player_idle_source.png | MISSING |
-| 3 | v0.1.0 | player_idle | sprite | 64x64 px | family=runtime_sprite; derived_from=player_idle_source | assets/sprites/player_idle.png | MISSING |
-| 4 | v0.1.0 | hud_buttons_source | ui_component_sheet | 2x3 components | family=ui_component_sheet; shape=grid_sheet; status=needs_curation | .godotmaker/asset-generation/sources/hud_buttons_source.png | MISSING |
-| 5 | v0.1.0 | background_sky | background | 1280x720 | family=background; shape=single_image; prompt=.godotmaker/asset-generation/prompts/background_sky.txt | assets/backgrounds/sky.png | MISSING |
+| 1 | v0.1.0 | player_idle | sprite | 64x64 px | family=runtime_sprite; derived_from=player_canonical | assets/sprites/player_idle.png | MISSING |
+| 2 | v0.1.0 | player_run | sprite_sheet | 6 frames | family=character_action_source; action=run; derived_from=player_canonical | assets/sprites/player_run.png | MISSING |
+| 3 | v0.1.0 | enemy_basic | sprite | 64x64 px | family=runtime_sprite; derived_from=enemy_canonical | assets/sprites/enemy_basic.png | MISSING |
+| 4 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button | assets/ui/action_button.png | MISSING |
+| 5 | v0.1.0 | background_sky | background | 1280x720 | family=background; shape=single_image | assets/backgrounds/sky.png | MISSING |
 | ... | ... | ... | ... | ... | ... | ... | ... |
-
-## Asset Production Manifest
-
-<!-- /gm-asset records generated source images, final runtime assets, prompt
-     paths, family, production shape, curation status, and lineage in:
-
-     .godotmaker/asset-generation/manifest.json
-
-     Use this manifest to track generated sources, selected final assets,
-     prompts, curation status, and lineage.
-     Do not hand-edit it unless you are repairing an asset-generation run. -->
 
 ## Visual Asset Contract
 
@@ -52,7 +41,7 @@ Visual prompt language lives in `STYLE.md`.
 | v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_idle / assets/sprites/player_idle.png | 64x64 px on screen | controllable player | readable silhouette against gameplay background | derived from player_canonical |
 | v0.1.0 | Gameplay / [v0.1.0-M2] | enemy_basic | enemy_basic / assets/sprites/enemy_basic.png | 64x64 px on screen | enemy pressure | readable in normal gameplay captures | canonical |
 | v0.1.0 | Main Menu | title text | UI text | viewport-relative | menu identity | readable at target resolution | procedural/UI |
-| v0.1.0 | HUD / [v0.1.0-M1] | action button | hud_buttons_source / .godotmaker/asset-generation/sources/hud_buttons_source.png | 96x48 px target | HUD control | final button sprite must be selected before build uses it | needs curation |
+| v0.1.0 | HUD / [v0.1.0-M1] | action button | action_button / assets/ui/action_button.png | 96x48 px target | HUD control | readable touch target at target resolution | derived from UI component sheet |
 
 ## 2D Animation Sources
 
@@ -60,25 +49,23 @@ Visual prompt language lives in `STYLE.md`.
 
 ### player_idle_source (tag: v0.1.0)
 - **Family:** character_action_source
-- **Source:** .godotmaker/asset-generation/sources/player_idle_source.png
+- **Output:** assets/sprites/player_idle.png
 - **Derived from:** player_canonical
 - **Action:** idle
 - **Frames:** 4
 - **FPS:** 8
 - **Loop:** true
-- **Processing status:** needs_curation
-- **Final asset:** assets/sprites/player_idle.png
+- **Processing status:** ready
 
 ### {action_source_name} (tag: vX.Y.Z)
 - **Family:** character_action_source
-- **Source:** ...
+- **Output:** ...
 - **Derived from:** ...
 - **Action:** ...
 - **Frames:** ...
 - **FPS:** ...
 - **Loop:** ...
 - **Processing status:** ...
-- **Final asset:** ...
 
 ## Audio
 
@@ -106,4 +93,4 @@ Visual prompt language lives in `STYLE.md`.
 
 - {asset} (v0.1.0): needs background removal (rembg)
 - {source_sheet} (v0.1.0): select usable frames or components
-- {source_sheet} (v0.1.0): select final runtime sprites and update `.godotmaker/asset-generation/manifest.json`
+- {source_sheet} (v0.1.0): select final runtime sprites and update the asset table

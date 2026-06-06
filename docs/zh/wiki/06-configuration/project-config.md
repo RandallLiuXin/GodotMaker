@@ -18,9 +18,8 @@
 
 **`vqa_fallback_model`** — 主 VQA 后端不可用时的回退模型。支持 `native`、`codex` 和 `none`。
 
-**`asset_image_model`** — `/gm-asset` 使用的图片生成选择器。支持 `native`、`codex`、`gemini:<model>`、`openai:<model>` 和 `grok:<model>`。`native` 由当前运行时处理；`codex` 由 Codex 原生图片生成处理；API 后端会运行 `tools/asset_gen.py image`，脚本会拒绝运行时提供方。
+**`asset_image_model`** — `/gm-asset` 使用的图片生成选择器。支持 `native`、`codex`、`gemini:<model>`、`openai:<model>` 和 `grok:<model>`。`native` 由当前运行时处理；`codex` 由 Codex 原生图片生成处理；API 后端会运行 `tools/asset_source_generate.py --spec <spec.json>`，脚本会拒绝运行时提供方。
 
-**`asset_video_model`** — 视频生成选择器。支持 `none` 和 `grok:<model>`；`grok:<model>` 由 `tools/asset_gen.py video` 处理。
 
 默认配置大致如下：
 
@@ -31,7 +30,6 @@ vqa_model: native
 vqa_fallback_model: native
 
 asset_image_model: native
-asset_video_model: none
 
 worker_model: sonnet
 verifier_model: sonnet

@@ -18,9 +18,7 @@ The first time you run `python tools/publish.py <project>`, the publish script c
 
 **`vqa_fallback_model`** — fallback when the primary VQA backend is unavailable. Supported values are `native`, `codex`, and `none`.
 
-**`asset_image_model`** — image generation selector for `/gm-asset`. Supported values are `native`, `codex`, `gemini:<model>`, `openai:<model>`, and `grok:<model>`. `native` is handled by the active agent runtime. `codex` is handled by Codex native image generation. API-backed selectors run `tools/asset_gen.py image`; the script rejects runtime providers.
-
-**`asset_video_model`** — video generation selector. Supports `none` and `grok:<model>` through `tools/asset_gen.py video`.
+**`asset_image_model`** — image generation selector for `/gm-asset`. Supported values are `native`, `codex`, `gemini:<model>`, `openai:<model>`, and `grok:<model>`. `native` is handled by the active agent runtime. `codex` is handled by Codex native image generation. API-backed selectors run `tools/asset_source_generate.py --spec <spec.json>`; the script rejects runtime providers.
 
 The default config looks like this:
 
@@ -35,7 +33,6 @@ vqa_model: native
 vqa_fallback_model: native
 
 asset_image_model: native
-asset_video_model: none
 
 worker_model: sonnet
 verifier_model: sonnet

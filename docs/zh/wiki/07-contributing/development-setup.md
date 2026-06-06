@@ -24,7 +24,7 @@ GodotMaker/
 ├── skills/
 │   ├── core/       角色技能 + 辅助技能 + _shared/ 跨技能共享参考文档
 │   └── reviewer/   8 个领域审查技能 (physics, animation, ui, ...)
-├── tools/          CLI 工具：publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
+├── tools/          CLI 工具：publish.py, check_env.py, check_project.py, asset_source_generate.py, migrate.py
 ├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
 ├── agent-runtimes/ runner 专属 reference、template 和 hook config
 ├── templates/      部署到生成的游戏项目中的文档模板

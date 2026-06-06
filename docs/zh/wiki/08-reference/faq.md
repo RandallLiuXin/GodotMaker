@@ -10,7 +10,7 @@
 
 ### 我需要付费 API key 吗？
 
-只有当项目配置选择 API 后端时才需要对应 key。默认配置使用 native VQA 和 native 图片生成。`gemini:<model>` 需要 `GOOGLE_API_KEY` 或 `GEMINI_API_KEY`，`openai:<model>` 需要 `OPENAI_API_KEY`，`grok:<model>` 需要 `XAI_API_KEY`，生成 GLB 需要 `TRIPO3D_API_KEY`。
+只有当项目配置选择 API 后端时才需要对应 key。默认配置使用 native VQA 和 native 图片生成。`gemini:<model>` 需要 `GOOGLE_API_KEY` 或 `GEMINI_API_KEY`，`openai:<model>` 需要 `OPENAI_API_KEY`，`grok:<model>` 需要 `XAI_API_KEY`。
 
 Claude Code 本身需要 Anthropic 账号并开通 API 访问（或已开通 Claude Code 的 Claude Pro / Team 订阅）。
 

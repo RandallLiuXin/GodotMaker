@@ -102,4 +102,4 @@ Agent({
 1. **One analyst per asset batch.** If user provides assets in multiple rounds, dispatch a new analyst each time (or re-dispatch to update manifest).
 2. **Analyst is read-only on game code.** Analyst may only write to `assets/manifest.json`. It must not modify any .gd/.tscn/.tres files.
 3. **Use the Agent Call template above.** Read `analyst_model` from `.godotmaker/config.yaml` (default: `sonnet`).
-4. **Style summary feeds `/gm-asset`.** Copy the art_style.summary from manifest.json into the asset generation prompts when calling `tools/asset_gen.py`.
+4. **Style summary feeds `/gm-asset`.** Copy the art_style.summary from manifest.json into the asset generation prompts when creating source-generation specs.

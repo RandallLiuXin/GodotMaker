@@ -24,8 +24,7 @@ API keys are required only when the project selects an API-backed provider. Godo
 |-----|---------------|-----------------|
 | `GOOGLE_API_KEY` or `GEMINI_API_KEY` | `vqa_model` or an asset model uses `gemini:<model>` | Gemini visual QA and image generation |
 | `OPENAI_API_KEY` | `vqa_model` or an asset model uses `openai:<model>` | OpenAI vision and image generation |
-| `XAI_API_KEY` | an asset image/video model uses `grok:<model>` | xAI image or video generation |
-| `TRIPO3D_API_KEY` | the project generates GLB models | 3D model generation |
+| `XAI_API_KEY` | an asset image model uses `grok:<model>` | xAI image generation |
 
 ### Windows PowerShell
 
@@ -44,7 +43,6 @@ export GOOGLE_API_KEY="your-key-here"
 # Optional:
 # export OPENAI_API_KEY="your-key-here"
 # export XAI_API_KEY="your-key-here"
-# export TRIPO3D_API_KEY="your-key-here"
 ```
 
 ## Install GodotMaker

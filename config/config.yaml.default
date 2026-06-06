@@ -22,14 +22,10 @@ vqa_fallback_model: native
 # Supported values:
 # - native: active agent runtime image generation
 # - codex: Codex image generation
-# - gemini:<model>: tools/asset_gen.py Gemini backend
-# - openai:<model>: tools/asset_gen.py OpenAI Images backend
-# - grok:<model>: tools/asset_gen.py xAI Grok backend
+# - gemini:<model>: API-backed source generation through tools/asset_source_generate.py
+# - openai:<model>: API-backed source generation through tools/asset_source_generate.py
+# - grok:<model>: API-backed source generation through tools/asset_source_generate.py
 asset_image_model: native
-
-# Asset video generation model.
-# Supported values: none, grok:<model>
-asset_video_model: none
 
 # Agent model configuration. All roles default to sonnet; raise
 # worker_model to opus for games that need heavier implementation reasoning.

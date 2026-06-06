@@ -103,16 +103,6 @@ def image_model_from_config(config: dict[str, str]) -> str:
     return provider or "native"
 
 
-def video_model_from_config(config: dict[str, str]) -> str:
-    if config.get("asset_video_model"):
-        return config["asset_video_model"]
-    if config.get("grok_video_model"):
-        return f"grok:{config['grok_video_model']}"
-    return "none"
-
-
-
-
 # --- Individual checks ---
 
 
@@ -156,7 +146,6 @@ def check_python(r: EnvCheck, config: dict[str, str] | None = None):
     config = config or {}
     packages = {"pillow": "PIL", "numpy": "numpy", "requests": "requests"}
     image_provider, _ = split_model_selector(image_model_from_config(config), "gemini")
-    video_provider, _ = split_model_selector(video_model_from_config(config), "grok")
     vqa_provider, _ = split_model_selector(
         config.get("vqa_model") or "native", "gemini"
     )
@@ -164,7 +153,7 @@ def check_python(r: EnvCheck, config: dict[str, str] | None = None):
         packages["google-genai"] = "google.genai"
     if "openai" in {image_provider, vqa_provider}:
         packages["openai"] = "openai"
-    if image_provider == "grok" or video_provider == "grok":
+    if image_provider == "grok":
         packages["xai-sdk"] = "xai_sdk"
 
     for pkg_name, import_name in packages.items():
@@ -344,7 +333,6 @@ def check_api_keys(
     print("\n--- API Keys ---")
     config = config or {}
     image_provider, _ = split_model_selector(image_model_from_config(config), "gemini")
-    video_provider, _ = split_model_selector(video_model_from_config(config), "grok")
     vqa_provider, _ = split_model_selector(
         config.get("vqa_model") or "native", "gemini"
     )
@@ -394,22 +382,10 @@ def check_api_keys(
             r.ok("XAI_API_KEY set")
         else:
             r.fail("XAI_API_KEY not set but asset_image_model uses a Grok model")
-    elif video_provider == "grok":
-        if os.environ.get("XAI_API_KEY"):
-            r.ok("XAI_API_KEY set (for configured video generation)")
-        else:
-            r.warn(
-                "XAI_API_KEY not set (required only if you run asset video generation)"
-            )
     elif os.environ.get("XAI_API_KEY"):
         r.ok("XAI_API_KEY set (optional)")
     else:
         r.warn("XAI_API_KEY not set (optional)")
-
-    if os.environ.get("TRIPO3D_API_KEY"):
-        r.ok("TRIPO3D_API_KEY set (optional)")
-    else:
-        r.warn("TRIPO3D_API_KEY not set (optional, 3D model generation)")
 
 
 

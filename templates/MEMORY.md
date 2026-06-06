@@ -14,7 +14,7 @@
 <!-- Example entries (delete when starting):
 - [movement_system](memory/movement_system.md) — PlayerMovementSystem: exponential deceleration, raycast ground detection
 - [collision](memory/collision.md) — CollisionSystem: layer/mask setup, Area2D vs CharacterBody2D tradeoff
-- [asset_gen](memory/asset_gen.md) — Asset generation: Gemini prompt patterns, background removal issues
+- [asset_pipeline](memory/asset_pipeline.md) — Asset generation: prompt patterns, background removal issues
 -->
 
 ## Discoveries

@@ -16,7 +16,7 @@ The canonical, full-detail changelog is maintained in the repository root:
 - 8 hook scripts enforcing per-role file-write permissions, stage prerequisite gating, sub-agent report validation, and completion diligence checks.
 - `tools/publish.py` deploys the framework into a target Godot project with semantic version tracking and upgrade prompts.
 - Static checks: `check_project.py` for project completeness, `check_classname.py` for Godot built-in name conflicts.
-- Asset pipeline: `asset_gen.py` (Gemini / OpenAI / xAI image generation), `rembg_matting.py`, `tripo3d.py`.
+- Asset pipeline: `asset_source_generate.py` (Gemini / OpenAI / xAI source generation), `rembg_matting.py`.
 - Wiki documentation across 8 sections.
 - 193+ unit tests for hooks and tools.
 

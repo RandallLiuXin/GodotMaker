@@ -243,10 +243,10 @@ cat .godotmaker/metrics_*.jsonl | grep HOOK_BLOCK
 | `quota exceeded` | Rate limit hit | Wait a few minutes, then re-run `/gm-asset` |
 | Network timeout | Connectivity issue | Check your internet connection; re-run `/gm-asset` |
 
-You can also run the generator directly to test it in isolation:
+You can also run a source-generation spec directly to test it in isolation:
 
 ```bash
-python tools/asset_gen.py
+python tools/asset_source_generate.py --spec .godotmaker/asset-generation/specs/<asset_id>.json
 ```
 
 ---

@@ -25,7 +25,7 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 
 - Python 3.10 or later is running this script.
 - Core packages are installed: `requests`, `pillow`, `numpy`.
-- Provider packages are checked based on `.godotmaker/config.yaml`: `google-genai` for Gemini, `openai` for OpenAI, and `xai-sdk` for Grok image or video generation.
+- Provider packages are checked based on `.godotmaker/config.yaml`: `google-genai` for Gemini, `openai` for OpenAI, and `xai-sdk` for Grok image generation.
 
 ### Node.js
 
@@ -48,10 +48,9 @@ If Godot is not on your PATH, this check shows a warning rather than a hard fail
 |-----|--------|---------|
 | `GOOGLE_API_KEY` or `GEMINI_API_KEY` | Required when selected | Gemini image generation or VQA |
 | `OPENAI_API_KEY` | Required when selected | OpenAI image generation or VQA |
-| `XAI_API_KEY` | Required when selected | xAI Grok image or video generation |
-| `TRIPO3D_API_KEY` | Optional | 3D model generation (3D games only) |
+| `XAI_API_KEY` | Required when selected | xAI Grok image generation |
 
-API-backed selectors fail when the matching key is absent. `asset_image_model: native` passes for Codex and warns for Claude Code because the checker cannot prove a Claude-side native generation tool is available. `asset_image_model: codex` in a Claude Code project passes when the Codex CLI is on PATH. `asset_video_model: none` does not require `XAI_API_KEY`.
+API-backed selectors fail when the matching key is absent. `asset_image_model: native` passes for Codex and warns for Claude Code because the checker cannot prove a Claude-side native generation tool is available. `asset_image_model: codex` in a Claude Code project passes when the Codex CLI is on PATH.
 
 The checker also verifies that the selected provider package can be imported, catching installation issues that version checks alone would miss.
 

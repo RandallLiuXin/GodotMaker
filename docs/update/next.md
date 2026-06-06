@@ -18,6 +18,9 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Added
 
 - (WIP) Diagnostic log at `.godotmaker/log_agent_tool_debug.log` that records every phase of `log_agent_tool.py` so the next failure mode is localizable from artifacts.
+- Added validation for asset-generation handoff manifests so generated-art runs can detect missing fields and files.
+- Added a manifest update helper so generated-art runs can upsert handoff entries through a validated tool.
+- Added a 2D source-sheet processor so generated grids can produce cropped assets and processing reports.
 
 ## Changed
 
@@ -30,3 +33,5 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
 
 ## Removed
+
+- Removed the legacy `tools/asset_gen.py` helper in favor of the spec-driven asset source generator.

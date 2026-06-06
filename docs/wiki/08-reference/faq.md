@@ -10,7 +10,7 @@ No. GodotMaker is designed for people who have a game idea but are not game deve
 
 ### Do I need a paid API key?
 
-Only if your project config selects an API-backed provider. The default config uses native VQA and native image generation. `GOOGLE_API_KEY` or `GEMINI_API_KEY` is required for `gemini:<model>`, `OPENAI_API_KEY` for `openai:<model>`, `XAI_API_KEY` for `grok:<model>`, and `TRIPO3D_API_KEY` for GLB generation.
+Only if your project config selects an API-backed provider. The default config uses native VQA and native image generation. `GOOGLE_API_KEY` or `GEMINI_API_KEY` is required for `gemini:<model>`, `OPENAI_API_KEY` for `openai:<model>`, and `XAI_API_KEY` for `grok:<model>`.
 
 Claude Code itself requires an Anthropic account with API access (or a Claude Pro / Team subscription with Claude Code enabled).
 
