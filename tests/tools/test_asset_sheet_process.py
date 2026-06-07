@@ -31,15 +31,25 @@ def test_process_sheet_splits_and_reports_cells(tmp_path):
         tmp_path / "out",
         grid="2x2",
         names="a,b,c,d",
+        asset_id="ui_kit_source",
+        tag="v0.1.0",
         report=tmp_path / "report.json",
     )
 
+    assert result["version"] == 1
+    assert result["asset_id"] == "ui_kit_source"
+    assert result["tag"] == "v0.1.0"
+    assert result["strategy"] == "transparent_grid"
+    assert result["status"] == "candidate_extracted"
     assert result["accepted_count"] == 3
     assert result["rejected_count"] == 1
+    assert result["candidates"][0]["candidate_id"] == "ui_kit_source.a"
+    assert result["rejected"][0]["state"] == "rejected"
     assert (tmp_path / "out" / "a.png").exists()
     assert (tmp_path / "report.json").exists()
     report = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     assert report["rejected"][0]["reason"] == "empty_cell"
+    assert report["candidates"][0]["state"] == "candidate"
 
 
 def test_process_sheet_rejects_edge_touch_when_requested(tmp_path):
@@ -105,6 +115,10 @@ def test_cli_outputs_json(tmp_path):
             "2x2",
             "--names",
             "a,b,c,d",
+            "--asset-id",
+            "ui_kit_source",
+            "--tag",
+            "v0.1.0",
         ],
         capture_output=True,
         text=True,
@@ -114,4 +128,6 @@ def test_cli_outputs_json(tmp_path):
     assert result.returncode == 0
     data = json.loads(result.stdout)
     assert data["ok"] is True
+    assert data["asset_id"] == "ui_kit_source"
+    assert data["tag"] == "v0.1.0"
     assert data["accepted_count"] == 3

@@ -18,7 +18,8 @@ You are filling in the missing assets in `ASSETS.md` for the **current tag** (re
 
 This skill is **per-tag re-runnable**: a user can call `/gm-asset` between build batches when they add new art files. Each invocation processes whatever is currently `MISSING` for the current tag.
 
-Read `references/asset-family-contract.md` before planning generated visual assets.
+Read `references/asset-family-contract.md` and `references/asset-curation.md`
+before planning generated visual assets.
 
 ## Session Setup
 
@@ -83,8 +84,8 @@ Do NOT touch rows from prior tags. New rows you add for newly-discovered assets 
 
 Before generation, write manifest entry JSON files under
 `.godotmaker/asset-generation/work/manifest-entries/` using
-`references/asset-family-contract.md`, then upsert them with
-`tools/asset_generation_manifest_update.py`.
+`references/asset-family-contract.md` and `references/asset-curation.md`, then
+upsert them with `tools/asset_generation_manifest_update.py`.
 
 For each current-tag visual row, record:
 
@@ -99,6 +100,7 @@ For each current-tag visual row, record:
 9. `prompt_path`
 10. `processing_status`
 11. `extraction_status`
+12. `curation`
 
 Generate canonical references before derivative assets. Mark source sheets,
 component sheets, and irregular references as `needs_curation` until their
@@ -255,6 +257,40 @@ Use the selected `asset_image_model` path:
 
 Each group writes one JSON report under `.godotmaker/asset-generation/reports/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize JSON>, ...]}`. Each `assets[]` item is the flat JSON printed by `tools/asset_image_finalize.py`.
 
+### Step 4.5 - Curate Generated Visual Sources
+
+Read `references/asset-curation.md`.
+
+For every generated source whose manifest entry has `production_shape:
+grid_sheet`, `action_sheet`, `frame_sequence`, or `curation_required`, or whose
+`processing_status` is `needs_curation`:
+
+1. Decide the extraction strategy from `references/asset-curation.md`.
+2. For transparent regular sheets, run:
+   ```bash
+   python tools/asset_sheet_process.py \
+     --source <source_path> \
+     --out-dir .godotmaker/asset-generation/curation/<asset_id>/ \
+     --grid <COLSxROWS> \
+     --names <comma-separated-names> \
+     --asset-id <asset_id> \
+     --tag <current_tag> \
+     --report .godotmaker/asset-generation/curation/<asset_id>.json
+   ```
+3. For unsuitable sources, write a curation report with
+   `status: needs_regeneration` or `status: rejected`.
+4. Select canonical candidates for character, enemy, UI, prop, and environment
+   families.
+5. Copy selected candidates into final runtime paths with
+   `tools/asset_image_finalize.py`.
+6. Update the manifest entry's `curation`, `processing_status`,
+   `extraction_status`, `final_path`, `derived_from`, and
+   `canonical_reference`.
+
+Do not update an ASSETS.md row to `generated` while its manifest entry still has
+`processing_status: needs_curation` or `curation.status` other than `selected`
+or `not_required`.
+
 ### Step 5 - Update ASSETS.md
 
 After all generation calls return:
@@ -263,7 +299,7 @@ After all generation calls return:
 - Run `python tools/asset_image_report_check.py <report.json>...`
 - Update `.godotmaker/asset-generation/manifest.json` with source path, final
   path, prompt path, family, production shape, processing status, extraction
-  status, and canonical reference for every generated visual asset.
+  status, canonical reference, and curation object for every generated visual asset.
   Use `python tools/asset_generation_manifest_update.py --entry-file <entry.json>`.
 - Run `python tools/asset_generation_manifest_check.py --check-files`
 - Re-dispatch one follow-up batch for missing or invalid generated images
@@ -310,6 +346,8 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 - `references/asset-gen.md` — asset source pipeline contract
 - `references/asset-family-contract.md` — asset family, production shape, and
   manifest contract
+- `references/asset-curation.md` — curation, canonical selection, and rejected
+  candidate records
 
 **Asset analysis:** Dispatch an Analyst subagent (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`).
 

@@ -54,6 +54,26 @@ ALLOWED_EXTRACTION_STATUSES = {
     "rejected",
 }
 
+ALLOWED_CURATION_STATUSES = {
+    "not_required",
+    "pending",
+    "candidate_extracted",
+    "selected",
+    "needs_curation",
+    "needs_regeneration",
+    "rejected",
+}
+
+ALLOWED_CURATION_STRATEGIES = {
+    "none",
+    "transparent_grid",
+    "solid_background_grid",
+    "row_column_grid",
+    "explicit_boxes",
+    "manual_selection",
+    "regenerate_source",
+}
+
 
 class ManifestCheckError(Exception):
     """Raised when the asset-generation manifest is invalid."""
@@ -114,6 +134,48 @@ def _track_unique_path(
     seen_paths[key] = (index, field)
 
 
+def _check_curation(
+    item: dict[str, Any],
+    *,
+    index: int,
+    issues: list[str],
+) -> str | None:
+    curation = item.get("curation")
+    if curation is None:
+        return None
+    if not isinstance(curation, dict):
+        issues.append(f"assets[{index}].curation must be an object or null")
+        return None
+
+    status = curation.get("status")
+    if not isinstance(status, str) or not status.strip():
+        issues.append(f"assets[{index}].curation.status must be a non-empty string")
+    elif status not in ALLOWED_CURATION_STATUSES:
+        issues.append(f"assets[{index}].curation.status is not allowed: {status}")
+
+    strategy = curation.get("strategy")
+    if not isinstance(strategy, str) or not strategy.strip():
+        issues.append(f"assets[{index}].curation.strategy must be a non-empty string")
+    elif strategy not in ALLOWED_CURATION_STRATEGIES:
+        issues.append(f"assets[{index}].curation.strategy is not allowed: {strategy}")
+
+    report_path = curation.get("report_path")
+    if status != "not_required":
+        if not isinstance(report_path, str) or not report_path.strip():
+            issues.append(f"assets[{index}].curation.report_path must be a non-empty string")
+            report_path = None
+    elif report_path is not None and not isinstance(report_path, str):
+        issues.append(f"assets[{index}].curation.report_path must be a string or null")
+        report_path = None
+
+    for field in ("selected_count", "rejected_count"):
+        value = curation.get(field)
+        if value is not None and (not isinstance(value, int) or value < 0):
+            issues.append(f"assets[{index}].curation.{field} must be a non-negative integer")
+
+    return report_path if isinstance(report_path, str) and report_path.strip() else None
+
+
 def check_manifest(
     manifest_path: Path,
     *,
@@ -162,6 +224,7 @@ def check_manifest(
         prompt_path = _string_field(item, "prompt_path", issues, index=index, required=False)
         processing_status = _string_field(item, "processing_status", issues, index=index)
         extraction_status = _string_field(item, "extraction_status", issues, index=index)
+        curation_report_path = _check_curation(item, index=index, issues=issues)
 
         for optional_field in ("derived_from", "canonical_reference", "preview_path", "notes"):
             value = item.get(optional_field)
@@ -227,6 +290,15 @@ def check_manifest(
         if processing_status in {"processed", "ready"} and final_path is None:
             issues.append(f"assets[{index}] missing final_path for {processing_status}")
 
+        if (
+            production_shape in {"grid_sheet", "action_sheet", "frame_sequence", "curation_required"}
+            and processing_status != "deferred"
+        ):
+            if item.get("curation") is None:
+                issues.append(f"assets[{index}] missing curation for {production_shape}")
+        if processing_status == "needs_curation" and item.get("curation") is None:
+            issues.append(f"assets[{index}] missing curation for needs_curation")
+
         if check_files:
             if source_path and processing_status in {"source_only", "needs_curation", "processed", "ready"}:
                 _path_exists(root, source_path, issues, "Source path not found")
@@ -236,6 +308,9 @@ def check_manifest(
                 file_checks += 1
             if final_path and processing_status in {"processed", "ready"}:
                 _path_exists(root, final_path, issues, "Final path not found")
+                file_checks += 1
+            if curation_report_path:
+                _path_exists(root, curation_report_path, issues, "Curation report not found")
                 file_checks += 1
 
         checked_assets += 1

@@ -66,6 +66,26 @@ or `-m color`.
 GPU acceleration is used automatically if an NVIDIA GPU with CUDA is available.
 On CPU it is slower but still works.
 
+## asset_sheet_process.py
+
+`asset_sheet_process.py` splits transparent 2D source sheets into cropped
+candidates and writes a curation report. Use it for regular grids such as icon
+packs, compact prop packs, UI component sheets, and simple animation sources.
+
+```bash
+python tools/asset_sheet_process.py \
+  --source .godotmaker/asset-generation/sources/ui_kit_source.png \
+  --out-dir .godotmaker/asset-generation/curation/ui_kit_source/ \
+  --grid 4x3 \
+  --names play_button,shop_button,coin_icon,gem_icon,panel,tab,badge,slot,arrow_left,arrow_right,close_button,empty_slot \
+  --asset-id ui_kit_source \
+  --tag v0.1.0 \
+  --report .godotmaker/asset-generation/curation/ui_kit_source.json
+```
+
+The report includes `candidates[]`, `rejected[]`, `strategy`, and `status`.
+Selected candidates are later finalized into runtime paths under `assets/`.
+
 ## Calling these by hand
 
 You usually do not need to run these scripts directly. `/gm-asset` orchestrates

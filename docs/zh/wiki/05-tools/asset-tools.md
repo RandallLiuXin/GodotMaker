@@ -54,6 +54,23 @@ python tools/rembg_matting.py assets/sprites/enemy_raw.png --preview
 
 如果有支持 CUDA 的 NVIDIA GPU，会自动启用 GPU 加速。在 CPU 上运行较慢，但同样可用。
 
+## asset_sheet_process.py
+
+`asset_sheet_process.py` 会把透明背景的 2D source sheet 拆成裁剪后的候选对象，并写出 curation report。它适用于规则网格，例如 icon pack、小型道具包、UI 组件 sheet 和简单动画 source。
+
+```bash
+python tools/asset_sheet_process.py \
+  --source .godotmaker/asset-generation/sources/ui_kit_source.png \
+  --out-dir .godotmaker/asset-generation/curation/ui_kit_source/ \
+  --grid 4x3 \
+  --names play_button,shop_button,coin_icon,gem_icon,panel,tab,badge,slot,arrow_left,arrow_right,close_button,empty_slot \
+  --asset-id ui_kit_source \
+  --tag v0.1.0 \
+  --report .godotmaker/asset-generation/curation/ui_kit_source.json
+```
+
+报告中包含 `candidates[]`、`rejected[]`、`strategy` 和 `status`。被选中的 candidate 后续会 finalize 到 `assets/` 下的运行时路径。
+
 ## 手动调用这些脚本的场景
 
 大多数情况下不需要直接运行这些脚本。`/gm-asset` 会根据 `ASSETS.md` 和 source-generation manifest 自动调度它们。

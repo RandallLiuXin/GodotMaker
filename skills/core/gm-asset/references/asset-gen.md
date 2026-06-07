@@ -14,11 +14,12 @@ Use this file for:
 4. Finalizing generated images.
 5. Writing prompt/source/final metadata for the asset-generation manifest.
 6. Applying family-specific prompt contracts.
+7. Handing source sheets and extraction atlases to the curation pass.
 
 Do not use this file to modify PLAN.md, GDD.md, STRUCTURE.md, SCENES.md, or
 STYLE.md.
 
-Read `asset-family-contract.md` before writing prompts.
+Read `asset-family-contract.md` and `asset-curation.md` before writing prompts.
 
 ## Provider Paths
 
@@ -127,6 +128,10 @@ Spec fields:
 report. Finalize accepted sources into project paths with
 `tools/asset_image_finalize.py`.
 
+If the source is a sheet, atlas, UI kit, action sheet, or irregular reference,
+do not finalize it directly as a runtime asset. Send it through
+`asset-curation.md`.
+
 ### Validate generation reports
 
 Validate one or more reports with:
@@ -153,6 +158,24 @@ python3 tools/asset_generation_manifest_check.py --check-files
 ```
 
 Use `--check-files` after generation and finalization.
+
+### Process source sheets for curation
+
+For transparent regular sheets, create a curation report with:
+
+```bash
+python3 tools/asset_sheet_process.py \
+  --source <source_path> \
+  --out-dir .godotmaker/asset-generation/curation/<asset_id>/ \
+  --grid <COLSxROWS> \
+  --names <comma-separated-names> \
+  --asset-id <asset_id> \
+  --tag <current_tag> \
+  --report .godotmaker/asset-generation/curation/<asset_id>.json
+```
+
+The report provides `candidates[]` and `rejected[]`. Select candidates before
+updating ASSETS.md rows to `generated`.
 
 ## Batch Contracts
 
@@ -484,15 +507,17 @@ Process transparent 2D sheets with:
 ```bash
 python3 tools/asset_sheet_process.py \
   --source .godotmaker/asset-generation/work/<asset_id>_transparent.png \
-  --out-dir .godotmaker/asset-generation/work/<asset_id>/ \
+  --out-dir .godotmaker/asset-generation/curation/<asset_id>/ \
   --grid <cols>x<rows> \
   --names "<name1>,<name2>" \
-  --report .godotmaker/asset-generation/reports/<asset_id>_sheet.json
+  --asset-id <asset_id> \
+  --tag <current_tag> \
+  --report .godotmaker/asset-generation/curation/<asset_id>.json
 ```
 
 Use `--reject-edge-touch` when the prompt required safe cell padding. Use the
-report to update manifest `processing_status`, `extraction_status`, `qc`, and
-final selected asset paths.
+report to update manifest `curation`, `processing_status`,
+`extraction_status`, `qc`, and final selected asset paths.
 
 ### Resize and flip
 

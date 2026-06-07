@@ -25,6 +25,13 @@ def make_entry(asset_id="player_idle", **overrides):
         "prompt_path": ".godotmaker/asset-generation/prompts/player_idle.txt",
         "processing_status": "ready",
         "extraction_status": "processed",
+        "curation": {
+            "status": "selected",
+            "strategy": "transparent_grid",
+            "report_path": ".godotmaker/asset-generation/curation/player_idle.json",
+            "selected_count": 4,
+            "rejected_count": 0,
+        },
         "qc": {"alpha": "ok"},
         "preview_path": None,
         "notes": "",

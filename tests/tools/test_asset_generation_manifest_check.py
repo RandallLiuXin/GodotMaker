@@ -25,6 +25,13 @@ def write_manifest(path: Path, asset_overrides=None):
         "prompt_path": ".godotmaker/asset-generation/prompts/player_idle.txt",
         "processing_status": "ready",
         "extraction_status": "processed",
+        "curation": {
+            "status": "selected",
+            "strategy": "transparent_grid",
+            "report_path": ".godotmaker/asset-generation/curation/player_idle.json",
+            "selected_count": 4,
+            "rejected_count": 0,
+        },
         "qc": {"alpha": "ok"},
         "preview_path": None,
         "notes": "",
@@ -68,6 +75,64 @@ def test_check_manifest_rejects_unknown_extraction_status(tmp_path):
 
     with pytest.raises(ManifestCheckError, match="extraction_status is not allowed"):
         check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_unknown_curation_status(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(manifest, {"curation": {"status": "garbage", "strategy": "transparent_grid"}})
+
+    with pytest.raises(ManifestCheckError, match="curation.status is not allowed"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_allows_needs_curation_status(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "processing_status": "needs_curation",
+            "extraction_status": "extracted",
+            "final_path": None,
+            "curation": {
+                "status": "needs_curation",
+                "strategy": "transparent_grid",
+                "report_path": ".godotmaker/asset-generation/curation/player_idle.json",
+                "selected_count": 3,
+                "rejected_count": 1,
+            },
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
+
+
+def test_check_manifest_requires_curation_for_source_sheets(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(manifest, {"curation": None})
+
+    with pytest.raises(ManifestCheckError, match="missing curation"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_allows_deferred_source_sheet_without_curation(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "source_path": None,
+            "final_path": None,
+            "prompt_path": None,
+            "processing_status": "deferred",
+            "extraction_status": "not_required",
+            "curation": None,
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
 
 
 def test_check_manifest_rejects_duplicate_asset_id_within_same_tag(tmp_path):
@@ -123,11 +188,12 @@ def test_check_manifest_checks_files_when_requested(tmp_path):
     write_manifest(manifest)
     touch(tmp_path / ".godotmaker" / "asset-generation" / "sources" / "player_idle_source.png")
     touch(tmp_path / ".godotmaker" / "asset-generation" / "prompts" / "player_idle.txt")
+    touch(tmp_path / ".godotmaker" / "asset-generation" / "curation" / "player_idle.json")
     touch(tmp_path / "assets" / "sprites" / "player_idle.png")
 
     result = check_manifest(manifest, project_root=tmp_path, check_files=True)
 
-    assert result["file_checks"] == 3
+    assert result["file_checks"] == 4
 
 
 def test_check_manifest_reports_missing_file(tmp_path):

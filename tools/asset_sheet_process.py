@@ -103,6 +103,8 @@ def process_sheet(
     *,
     grid: str,
     names: str | None = None,
+    asset_id: str | None = None,
+    tag: str | None = None,
     padding: int = 0,
     reject_edge_touch: bool = False,
     report: Path | None = None,
@@ -148,18 +150,21 @@ def process_sheet(
             bbox = _alpha_bbox(cell)
             base = {
                 "name": name,
+                "candidate_id": f"{asset_id or source.stem}.{name}",
+                "state": "candidate",
                 "index": index,
                 "grid": [col, row],
                 "source_box": [left, top, left + cell_w, top + cell_h],
             }
             if bbox is None:
-                rejected.append({**base, "reason": "empty_cell"})
+                rejected.append({**base, "state": "rejected", "reason": "empty_cell"})
                 continue
 
             touches_edge = _edge_touch(bbox, width=cell_w, height=cell_h)
             if touches_edge and reject_edge_touch:
                 rejected.append({
                     **base,
+                    "state": "rejected",
                     "reason": "edge_touch",
                     "crop_bbox": list(bbox),
                 })
@@ -182,10 +187,29 @@ def process_sheet(
         image.close()
 
     result: dict[str, object] = {
+        "version": 1,
         "ok": True,
+        "asset_id": asset_id,
+        "tag": tag,
         "source": str(source),
+        "source_path": str(source),
+        "strategy": "transparent_grid",
+        "status": "candidate_extracted" if accepted else "needs_regeneration",
         "grid": {"cols": cols, "rows": rows},
         "cell_size": [cell_w, cell_h],
+        "candidates": [
+            {
+                "candidate_id": f"{asset_id or source.stem}.{item['name']}",
+                "name": item["name"],
+                "path": item["path"],
+                "state": "candidate",
+                "bbox": item["source_box"],
+                "crop_bbox": item["crop_bbox"],
+                "role": "",
+                "final_path": None,
+            }
+            for item in accepted
+        ],
         "accepted": accepted,
         "rejected": rejected,
         "accepted_count": len(accepted),
@@ -203,6 +227,8 @@ def _main() -> int:
     parser.add_argument("--out-dir", required=True, help="Output directory")
     parser.add_argument("--grid", required=True, help="Grid layout, e.g. 2x2")
     parser.add_argument("--names", default=None, help="Comma-separated output names")
+    parser.add_argument("--asset-id", default=None, help="Optional source asset id")
+    parser.add_argument("--tag", default=None, help="Optional current tag")
     parser.add_argument("--padding", type=int, default=0, help="Padding around detected content")
     parser.add_argument("--reject-edge-touch", action="store_true", help="Reject cells touching edges")
     parser.add_argument("--report", default=None, help="Optional JSON report path")
@@ -214,6 +240,8 @@ def _main() -> int:
             Path(args.out_dir),
             grid=args.grid,
             names=args.names,
+            asset_id=args.asset_id,
+            tag=args.tag,
             padding=args.padding,
             reject_edge_touch=args.reject_edge_touch,
             report=Path(args.report) if args.report else None,

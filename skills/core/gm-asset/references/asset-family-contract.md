@@ -83,6 +83,13 @@ this shape:
         "edge_touch": "not_checked",
         "readability": "pending_evaluate"
       },
+      "curation": {
+        "status": "selected",
+        "strategy": "transparent_grid",
+        "report_path": ".godotmaker/asset-generation/curation/player_idle.json",
+        "selected_count": 4,
+        "rejected_count": 0
+      },
       "preview_path": null,
       "notes": ""
     }
@@ -105,3 +112,36 @@ same current-tag asset is being regenerated.
 8. Mark irregular or mixed sheets as `needs_curation`.
 9. Record source, final, prompt, and status in the manifest.
 10. Bind gameplay-visible final assets in `ASSETS.md` Visual Asset Contract.
+
+## Curation Field
+
+Use the optional `curation` object for source sheets, extraction atlases,
+irregular references, and selected canonical assets.
+
+Allowed `curation.status` values:
+
+1. `not_required`
+2. `pending`
+3. `candidate_extracted`
+4. `selected`
+5. `needs_curation`
+6. `needs_regeneration`
+7. `rejected`
+
+Allowed `curation.strategy` values:
+
+1. `none`
+2. `transparent_grid`
+3. `solid_background_grid`
+4. `row_column_grid`
+5. `explicit_boxes`
+6. `manual_selection`
+7. `regenerate_source`
+
+Required curation fields:
+
+1. `status`
+2. `strategy`
+3. `report_path` when `status` is not `not_required`
+
+Set `selected_count` and `rejected_count` when a curation report exists.

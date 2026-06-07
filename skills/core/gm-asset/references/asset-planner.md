@@ -29,6 +29,8 @@ Read these before planning:
 6. `references/scene_*.png`: visual targets generated from scene descriptions.
 7. `references/asset-family-contract.md`: asset family and production shape
    definitions.
+8. `references/asset-curation.md`: extraction, canonical selection, and
+   rejected candidate records.
 
 If a scene reference is missing, use the SCENES.md text and STYLE.md instead.
 
@@ -116,6 +118,8 @@ For every planned generated visual asset, reserve:
 3. `final_path` under `assets/` or `references/`.
 4. `report_path` under `.godotmaker/asset-generation/reports/`.
 5. Manifest entry under `.godotmaker/asset-generation/manifest.json`.
+6. Curation report under `.godotmaker/asset-generation/curation/` when the
+   source requires extraction or selection.
 
 Use these status rules:
 
@@ -130,6 +134,21 @@ Use these status rules:
    final project path exists and matches the ASSETS.md row.
 5. `panel_source`: use `needs_curation` when the panel still needs slicing,
    sizing, or state variants.
+6. `grid_sheet`, `action_sheet`, `frame_sequence`, and `curation_required`:
+   include a `curation` object in the manifest entry.
+
+### 4.6 Plan curation records
+
+For every source that requires curation:
+
+1. Choose the extraction strategy from `asset-curation.md`.
+2. Reserve a curation report path:
+   `.godotmaker/asset-generation/curation/<asset_id>.json`.
+3. Reserve candidate output paths under
+   `.godotmaker/asset-generation/curation/<asset_id>/`.
+4. Record selected final runtime paths under `assets/`.
+5. Record rejected candidates in the curation report.
+6. Use canonical references for derivative assets.
 
 ### 5. Select provider path
 
@@ -198,6 +217,7 @@ table schema and include:
 3. `File Path`: final project path.
 4. `Generation Params`: family, production shape, provider, prompt path,
    source path, canonical reference, derivative source, and processing status.
+   Include curation report and selected candidate when curation was required.
 5. `Size`: intended in-game display or world size when the table has a size
    column.
 

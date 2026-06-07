@@ -22,9 +22,9 @@ Visual prompt language lives in `STYLE.md`.
 | # | Tag | Name | Type | Size | Generation Params | File Path | Status |
 |---|-----|------|------|------|-------------------|-----------|--------|
 | 1 | v0.1.0 | player_idle | sprite | 64x64 px | family=runtime_sprite; derived_from=player_canonical | assets/sprites/player_idle.png | MISSING |
-| 2 | v0.1.0 | player_run | sprite_sheet | 6 frames | family=character_action_source; action=run; derived_from=player_canonical | assets/sprites/player_run.png | MISSING |
+| 2 | v0.1.0 | player_run | sprite_sheet | 6 frames | family=character_action_source; action=run; derived_from=player_canonical; curation=.godotmaker/asset-generation/curation/player_run.json | assets/sprites/player_run.png | MISSING |
 | 3 | v0.1.0 | enemy_basic | sprite | 64x64 px | family=runtime_sprite; derived_from=enemy_canonical | assets/sprites/enemy_basic.png | MISSING |
-| 4 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button | assets/ui/action_button.png | MISSING |
+| 4 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button; selected_candidate=ui_kit.action_button | assets/ui/action_button.png | MISSING |
 | 5 | v0.1.0 | background_sky | background | 1280x720 | family=background; shape=single_image | assets/backgrounds/sky.png | MISSING |
 | ... | ... | ... | ... | ... | ... | ... | ... |
 
@@ -55,6 +55,8 @@ Visual prompt language lives in `STYLE.md`.
 - **Frames:** 4
 - **FPS:** 8
 - **Loop:** true
+- **Curation report:** .godotmaker/asset-generation/curation/player_idle.json
+- **Selected candidate:** player_idle.idle_loop
 - **Processing status:** ready
 
 ### {action_source_name} (tag: vX.Y.Z)
@@ -65,7 +67,22 @@ Visual prompt language lives in `STYLE.md`.
 - **Frames:** ...
 - **FPS:** ...
 - **Loop:** ...
+- **Curation report:** ...
+- **Selected candidate:** ...
 - **Processing status:** ...
+
+## Visual Curation Records
+
+<!-- Source sheets, extraction atlases, selected candidates, variants, and
+     rejected candidates. Keep detailed JSON under
+     .godotmaker/asset-generation/curation/. -->
+
+### ui_kit_source (tag: v0.1.0)
+- **Source:** .godotmaker/asset-generation/sources/ui_kit_source.png
+- **Report:** .godotmaker/asset-generation/curation/ui_kit_source.json
+- **Status:** needs_curation
+- **Selected:** action_button -> assets/ui/action_button.png
+- **Rejected:** empty_04 (empty_cell)
 
 ## Audio
 
