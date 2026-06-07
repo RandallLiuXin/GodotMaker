@@ -66,7 +66,7 @@ python tools/rembg_matting.py assets/sprites/enemy_raw.png --preview
 
 ## asset_sheet_process.py
 
-`asset_sheet_process.py` 会把透明背景的 2D source sheet 拆成裁剪后的候选对象，并写出 curation report。它适用于规则网格，例如 icon pack、小型道具包、UI 组件 sheet 和简单动画 source。
+`asset_sheet_process.py` 会把 2D source sheet 拆成裁剪后的候选对象，并写出 curation report。它支持透明 sheet，也支持通过 `--background magenta` 处理纯 `#FF00FF` 背景 sheet。magenta 模式会清理纯色背景和连接到边缘的 magenta 毛边。它适用于规则网格，例如 icon pack、小型道具包、UI 组件 sheet 和简单动画 source。
 
 ```bash
 python tools/asset_sheet_process.py \
@@ -76,6 +76,9 @@ python tools/asset_sheet_process.py \
   --names play_button,shop_button,coin_icon,gem_icon,panel,tab,badge,slot,arrow_left,arrow_right,close_button,empty_slot \
   --asset-id ui_kit_source \
   --tag v0.1.0 \
+  --background magenta \
+  --magenta-threshold 100 \
+  --magenta-edge-threshold 150 \
   --report .godotmaker/asset-generation/curation/ui_kit_source.json
 ```
 

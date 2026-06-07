@@ -21,6 +21,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added validation for asset-generation handoff manifests so generated-art runs can detect missing fields and files.
 - Added a manifest update helper so generated-art runs can upsert handoff entries through a validated tool.
 - Added a 2D source-sheet processor so generated grids can produce cropped assets and processing reports.
+- Added magenta-background and edge-fringe processing support to the 2D source-sheet processor for production-shaped extraction sheets.
 - Added a first-pass asset curation contract for generated source sheets, canonical selections, and rejected candidates.
 - Added a curation selection helper so accepted candidates can be finalized into runtime asset paths.
 - Split the asset generation reference into runtime pipeline and prompt-contract references.

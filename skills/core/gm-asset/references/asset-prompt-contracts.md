@@ -9,7 +9,7 @@ handoff.
 1. Read `STYLE.md` before writing prompts.
 2. Include the Style Anchor and Prompt Suffix where the prompt shape asks for
    style.
-3. Use a named solid flat `{bg_color}` background for sources that need
+3. Use a solid flat magenta `#FF00FF` background for sources that need
    extraction.
 4. Keep UI sheets free of text and numbers.
 5. Do not request transparent backgrounds, checkerboards, or alpha grids.
@@ -48,7 +48,7 @@ Use a canonical character image before generating action sheets or variants.
 Prompt shape:
 
 ```text
-{character name}, {role and visual identity}. Neutral readable pose, clean silhouette, full body visible, centered on a solid {bg_color} background. {STYLE.md prompt suffix}. No text, no UI, no cropped body parts.
+{character name}, {role and visual identity}. Neutral readable pose, clean silhouette, full body visible, centered on a solid flat magenta #FF00FF background. {STYLE.md prompt suffix}. No text, no UI, no cropped body parts.
 ```
 
 Record the source as `character_canonical` with `production_shape:
@@ -61,7 +61,7 @@ Use one source per action.
 Prompt shape:
 
 ```text
-{character name} performing {action}. {rows}x{cols} sprite sheet, exactly {frame_count} frames, one action only, same character identity in every frame, consistent scale, centered in each cell, solid {bg_color} background. {STYLE.md prompt suffix}. No text, no UI, no borders.
+{character name} performing {action}. {rows}x{cols} sprite sheet, exactly {frame_count} frames, one action only, same character identity in every frame, consistent scale, centered in each cell, solid flat magenta #FF00FF background. {STYLE.md prompt suffix}. No text, no UI, no borders.
 ```
 
 Record the source as `character_action_source` with `production_shape:
@@ -76,7 +76,7 @@ spawn effects.
 Prompt shape:
 
 ```text
-{effect name}, {effect behavior}. {rows}x{cols} effect sprite sheet, exactly {frame_count} frames, solid {bg_color} background, centered in each cell, consistent scale, no text, no UI.
+{effect name}, {effect behavior}. {rows}x{cols} effect sprite sheet, exactly {frame_count} frames, solid flat magenta #FF00FF background, centered in each cell, consistent scale, no text, no UI.
 ```
 
 Use `projectile_fx_source` or `impact_fx_source` and mark the source
@@ -89,7 +89,7 @@ Use compact prop packs for compact similarly sized props.
 Prompt shape:
 
 ```text
-{prop names}. {rows}x{cols} grid, one centered prop per cell, consistent scale, solid {bg_color} background, no text, no UI, no borders. {STYLE.md prompt suffix}.
+{prop names}. {rows}x{cols} grid, one centered prop per cell, consistent scale, solid flat magenta #FF00FF background, no text, no UI, no borders. {STYLE.md prompt suffix}.
 ```
 
 Record rows, columns, expected item names, and final target paths in the
@@ -103,7 +103,7 @@ compact HUD pieces.
 Prompt shape:
 
 ```text
-{component names}. Clean game UI component sheet, {rows}x{cols} grid, one isolated component per cell, consistent lighting and material style, solid {bg_color} background, no text or numbers, no composite screens. {STYLE.md UI rules}.
+{component names}. Clean game UI component sheet, {rows}x{cols} grid, one isolated component per cell, consistent lighting and material style, solid flat magenta #FF00FF background, no text or numbers, no composite screens. {STYLE.md UI rules}.
 ```
 
 Use `ui_component_sheet` or `icon_pack`. Mark the source `needs_curation` until
@@ -117,7 +117,7 @@ and menu containers.
 Prompt shape:
 
 ```text
-{panel name}, isolated game UI panel, empty content area, clean edges, no text, no numbers, no icons unless requested, solid {bg_color} background. {STYLE.md UI rules}.
+{panel name}, isolated game UI panel, empty content area, clean edges, no text, no numbers, no icons unless requested, solid flat magenta #FF00FF background. {STYLE.md UI rules}.
 ```
 
 Use `panel_source`. Do not force large panels into compact grid sheets.
@@ -139,7 +139,7 @@ Use runtime sprites only when a single final image is enough.
 Prompt shape:
 
 ```text
-{name}, {description}. Centered on a solid {bg_color} background. Clean silhouette. {STYLE.md prompt suffix}. No text, no UI.
+{name}, {description}. Centered on a solid flat magenta #FF00FF background. Clean silhouette. {STYLE.md prompt suffix}. No text, no UI.
 ```
 
 ## Texture

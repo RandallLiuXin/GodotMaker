@@ -144,7 +144,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 | `check_env.py` | 验证 Godot、Python 和 API key 是否正确配置 |
 | `check_project.py` | 检验已生成项目中的缺失文件和损坏路径 |
 | `asset_source_generate.py` | 根据 `/gm-asset` spec 生成 API 后端 source 图片 |
-| `asset_sheet_process.py` | 将透明 2D source sheet 拆成 curation candidate |
+| `asset_sheet_process.py` | 将生产形态的 2D source sheet 拆成 curation candidate |
 | `asset_curation_select.py` | 将选中的 curation candidate finalize 到运行时素材路径 |
 | `migrate.py` | 在任何非 MAJOR 升级时把未应用的迁移脚本应用到目标项目；也通过 `--new <slug>` 生成新脚本模板 |
 

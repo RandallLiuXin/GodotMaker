@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 import tempfile
+from collections import deque
 from pathlib import Path
 
 
@@ -15,6 +17,7 @@ class SheetProcessError(Exception):
 
 
 SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+MAGENTA_RGB = (255, 0, 255)
 
 
 def _parse_grid(value: str) -> tuple[int, int]:
@@ -55,6 +58,71 @@ def _has_transparent_pixels(image) -> bool:
     alpha = image.getchannel("A")
     extrema = alpha.getextrema()
     return extrema[0] < 255
+
+
+def _color_distance(rgb: tuple[int, int, int], target: tuple[int, int, int] = MAGENTA_RGB) -> float:
+    red, green, blue = rgb
+    target_red, target_green, target_blue = target
+    return math.sqrt(
+        (red - target_red) ** 2
+        + (green - target_green) ** 2
+        + (blue - target_blue) ** 2
+    )
+
+
+def _remove_magenta_background(
+    image,
+    *,
+    threshold: int,
+    edge_threshold: int,
+) -> tuple[object, dict[str, int]]:
+    if threshold < 0:
+        raise SheetProcessError("--magenta-threshold must be zero or positive")
+    if edge_threshold < 0:
+        raise SheetProcessError("--magenta-edge-threshold must be zero or positive")
+    converted = image.convert("RGBA")
+    pixels = converted.load()
+    removed = 0
+    edge_removed = 0
+    width, height = converted.size
+
+    for x in range(width):
+        for y in range(height):
+            red, green, blue, alpha = pixels[x, y]
+            if alpha > 0 and _color_distance((red, green, blue)) < threshold:
+                pixels[x, y] = (0, 0, 0, 0)
+                removed += 1
+
+    visited: set[tuple[int, int]] = set()
+    queue: deque[tuple[int, int]] = deque()
+    for x in range(width):
+        queue.append((x, 0))
+        queue.append((x, height - 1))
+    for y in range(height):
+        queue.append((0, y))
+        queue.append((width - 1, y))
+
+    while queue:
+        x, y = queue.popleft()
+        if (x, y) in visited or x < 0 or x >= width or y < 0 or y >= height:
+            continue
+        visited.add((x, y))
+        red, green, blue, alpha = pixels[x, y]
+        should_expand = alpha == 0
+        if alpha > 0 and _color_distance((red, green, blue)) < edge_threshold:
+            pixels[x, y] = (0, 0, 0, 0)
+            edge_removed += 1
+            should_expand = True
+        if should_expand:
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    next_pixel = (x + dx, y + dy)
+                    if next_pixel not in visited:
+                        queue.append(next_pixel)
+
+    return converted, {"removed_pixels": removed, "edge_removed_pixels": edge_removed}
 
 
 def _padded_bbox(
@@ -107,9 +175,12 @@ def process_sheet(
     tag: str | None = None,
     padding: int = 0,
     reject_edge_touch: bool = False,
+    background: str = "transparent",
+    magenta_threshold: int = 100,
+    magenta_edge_threshold: int = 150,
     report: Path | None = None,
 ) -> dict[str, object]:
-    """Split a transparent grid sheet into cropped per-cell PNGs and metadata."""
+    """Split a production-shaped grid sheet into cropped per-cell PNGs."""
     try:
         from PIL import Image
     except ImportError as exc:
@@ -128,11 +199,28 @@ def process_sheet(
     total = cols * rows
     cell_names = _parse_names(names, total)
 
+    if background not in {"transparent", "magenta"}:
+        raise SheetProcessError("--background must be transparent or magenta")
+
     image = Image.open(source).convert("RGBA")
     try:
+        cleanup: dict[str, object] = {
+            "background": background,
+            "magenta_threshold": magenta_threshold if background == "magenta" else None,
+            "magenta_edge_threshold": magenta_edge_threshold if background == "magenta" else None,
+            "removed_pixels": 0,
+            "edge_removed_pixels": 0,
+        }
+        if background == "magenta":
+            image, cleanup_counts = _remove_magenta_background(
+                image,
+                threshold=magenta_threshold,
+                edge_threshold=magenta_edge_threshold,
+            )
+            cleanup.update(cleanup_counts)
         width, height = image.size
         if not _has_transparent_pixels(image):
-            raise SheetProcessError("Source sheet must have transparency before processing")
+            raise SheetProcessError("Source sheet must have transparency after background cleanup")
         if width % cols != 0 or height % rows != 0:
             raise SheetProcessError("Source dimensions must divide evenly by grid")
         cell_w = width // cols
@@ -193,8 +281,10 @@ def process_sheet(
         "tag": tag,
         "source": str(source),
         "source_path": str(source),
-        "strategy": "transparent_grid",
+        "strategy": "solid_background_grid" if background == "magenta" else "transparent_grid",
         "status": "candidate_extracted" if accepted else "needs_regeneration",
+        "background": background,
+        "cleanup": cleanup,
         "grid": {"cols": cols, "rows": rows},
         "cell_size": [cell_w, cell_h],
         "candidates": [
@@ -214,6 +304,9 @@ def process_sheet(
         "rejected": rejected,
         "accepted_count": len(accepted),
         "rejected_count": len(rejected),
+        "edge_touch_candidates": [
+            item["candidate_id"] for item in accepted if bool(item.get("edge_touch"))
+        ],
     }
     if report is not None:
         _atomic_write_json(Path(report), result)
@@ -231,6 +324,24 @@ def _main() -> int:
     parser.add_argument("--tag", default=None, help="Optional current tag")
     parser.add_argument("--padding", type=int, default=0, help="Padding around detected content")
     parser.add_argument("--reject-edge-touch", action="store_true", help="Reject cells touching edges")
+    parser.add_argument(
+        "--background",
+        choices=["transparent", "magenta"],
+        default="transparent",
+        help="Source background mode",
+    )
+    parser.add_argument(
+        "--magenta-threshold",
+        type=int,
+        default=100,
+        help="Euclidean RGB distance for #FF00FF cleanup",
+    )
+    parser.add_argument(
+        "--magenta-edge-threshold",
+        type=int,
+        default=150,
+        help="Euclidean RGB distance for edge-connected #FF00FF fringe cleanup",
+    )
     parser.add_argument("--report", default=None, help="Optional JSON report path")
     args = parser.parse_args()
 
@@ -244,6 +355,9 @@ def _main() -> int:
             tag=args.tag,
             padding=args.padding,
             reject_edge_touch=args.reject_edge_touch,
+            background=args.background,
+            magenta_threshold=args.magenta_threshold,
+            magenta_edge_threshold=args.magenta_edge_threshold,
             report=Path(args.report) if args.report else None,
         )
     except SheetProcessError as exc:

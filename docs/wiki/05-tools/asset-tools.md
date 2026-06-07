@@ -79,9 +79,12 @@ On CPU it is slower but still works.
 
 ## asset_sheet_process.py
 
-`asset_sheet_process.py` splits transparent 2D source sheets into cropped
-candidates and writes a curation report. Use it for regular grids such as icon
-packs, compact prop packs, UI component sheets, and simple animation sources.
+`asset_sheet_process.py` splits 2D source sheets into cropped candidates and
+writes a curation report. It supports transparent sheets and solid magenta
+`#FF00FF` sheets through `--background magenta`. Magenta mode removes the solid
+background and edge-connected magenta fringe. Use it for regular grids such as
+icon packs, compact prop packs, UI component sheets, and simple animation
+sources.
 
 ```bash
 python tools/asset_sheet_process.py \
@@ -91,6 +94,9 @@ python tools/asset_sheet_process.py \
   --names play_button,shop_button,coin_icon,gem_icon,panel,tab,badge,slot,arrow_left,arrow_right,close_button,empty_slot \
   --asset-id ui_kit_source \
   --tag v0.1.0 \
+  --background magenta \
+  --magenta-threshold 100 \
+  --magenta-edge-threshold 150 \
   --report .godotmaker/asset-generation/curation/ui_kit_source.json
 ```
 

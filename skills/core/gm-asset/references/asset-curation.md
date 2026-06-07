@@ -53,8 +53,10 @@ Choose the first strategy that matches the source:
 
 1. Transparent or already-separated sheet: use `tools/asset_sheet_process.py`
    with `--grid`, `--names`, and `--report`.
-2. Pure-color background with separated objects: remove background, then use
-   `tools/asset_sheet_process.py`.
+2. Solid magenta `#FF00FF` background with separated objects: use
+   `tools/asset_sheet_process.py --background magenta`.
+   Use `--magenta-threshold` and `--magenta-edge-threshold` when generated
+   sheets leave visible magenta fringe.
 3. Regular rows or columns: crop with an explicit grid after confirming every
    cell maps to one object.
 4. Irregular atlas with clear object boxes: write explicit object boxes in the

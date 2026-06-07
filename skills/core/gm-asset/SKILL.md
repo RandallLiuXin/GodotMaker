@@ -282,6 +282,7 @@ grid_sheet`, `action_sheet`, `frame_sequence`, or `curation_required`, or whose
      --names <comma-separated-names> \
      --asset-id <asset_id> \
      --tag <current_tag> \
+     --background magenta \
      --report .godotmaker/asset-generation/curation/<asset_id>.json
    ```
 3. For unsuitable sources, write a curation report with
@@ -351,7 +352,7 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 | `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |
 | `tools/asset_generation_manifest_update.py` | Upsert asset-generation manifest entries |
 | `tools/asset_generation_manifest_check.py` | Validate asset-generation manifest schema and handoff files |
-| `tools/asset_sheet_process.py` | Split transparent 2D source sheets and write processing reports |
+| `tools/asset_sheet_process.py` | Split production-shaped 2D source sheets and write processing reports |
 | `tools/asset_curation_select.py` | Finalize selected curation candidates into runtime asset paths |
 
 **Reference docs (read for prompt construction):**

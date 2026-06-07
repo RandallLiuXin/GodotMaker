@@ -144,7 +144,7 @@ Python CLI scripts that contributors and users run directly.
 | `check_env.py` | Verify Godot, Python, API keys are set up correctly |
 | `check_project.py` | Validate a generated project for missing files and broken paths |
 | `asset_source_generate.py` | Generate API-backed source images from `/gm-asset` specs |
-| `asset_sheet_process.py` | Split transparent 2D source sheets into curation candidates |
+| `asset_sheet_process.py` | Split production-shaped 2D source sheets into curation candidates |
 | `asset_curation_select.py` | Finalize selected curation candidates into runtime asset paths |
 | `migrate.py` | Apply pending migrations to a target on any non-MAJOR upgrade; also scaffolds new ones via `--new <slug>` |
 
