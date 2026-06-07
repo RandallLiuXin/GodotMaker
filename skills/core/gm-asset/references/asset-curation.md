@@ -107,6 +107,28 @@ Write curation reports under `.godotmaker/asset-generation/curation/`:
    the others `variant` or `rejected`.
 5. Record rejected candidates in the curation report.
 
+## Selecting Candidates
+
+Finalize a selected candidate with:
+
+```bash
+python tools/asset_curation_select.py \
+  --report .godotmaker/asset-generation/curation/<asset_id>.json \
+  --candidate <candidate_id_or_name> \
+  --final-path <final_path> \
+  --asset-id <final_asset_id> \
+  --project-root .
+```
+
+The tool copies or resizes the candidate into the runtime asset path and updates
+the curation report:
+
+1. Candidate `state` becomes `selected`.
+2. Candidate `final_path` points to the runtime asset.
+3. Report `status` becomes `selected`.
+4. Report `selected_count` and `rejected_count` are updated.
+5. Report `selected_candidate_ids` lists selected candidates.
+
 ## Manifest Integration
 
 For each manifest entry that requires curation:
@@ -120,6 +142,9 @@ For each manifest entry that requires curation:
 5. Set `curation.report_path` to the curation report.
 6. Set `curation.status` to the source-level outcome.
 7. Set `curation.strategy` to the extraction strategy.
+8. Set `curation.selected_count` to the number selected by
+   `tools/asset_curation_select.py`.
+9. Set `final_path` to the runtime asset produced by selection.
 
 ## ASSETS.md Integration
 

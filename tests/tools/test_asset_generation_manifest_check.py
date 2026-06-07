@@ -108,6 +108,44 @@ def test_check_manifest_allows_needs_curation_status(tmp_path):
     assert result["asset_count"] == 1
 
 
+def test_check_manifest_rejects_ready_asset_with_unselected_curation(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "curation": {
+                "status": "candidate_extracted",
+                "strategy": "transparent_grid",
+                "report_path": ".godotmaker/asset-generation/curation/player_idle.json",
+                "selected_count": 0,
+                "rejected_count": 0,
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="must be selected or not_required"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_selected_curation_without_selected_count(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "curation": {
+                "status": "selected",
+                "strategy": "transparent_grid",
+                "report_path": ".godotmaker/asset-generation/curation/player_idle.json",
+                "selected_count": 0,
+                "rejected_count": 0,
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="selected_count must be positive"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
 def test_check_manifest_requires_curation_for_source_sheets(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_manifest(manifest, {"curation": None})

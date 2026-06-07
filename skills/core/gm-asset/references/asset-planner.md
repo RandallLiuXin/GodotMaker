@@ -1,8 +1,9 @@
 # Asset Planning Reference
 
 This file describes how `/gm-asset` plans the current tag's asset work before
-generation. Use `asset-gen.md` for provider commands, runtime claim protocol,
-finalization, and asset-type generation recipes.
+generation. Use `asset-runtime-pipeline.md` for provider commands, runtime
+claim protocol, finalization, and batch execution. Use
+`asset-prompt-contracts.md` for visual source prompt shapes.
 
 ## Scope
 
@@ -116,7 +117,7 @@ For every planned generated visual asset, reserve:
 1. `source_path` under `.godotmaker/asset-generation/sources/`.
 2. `prompt_path` under `.godotmaker/asset-generation/prompts/`.
 3. `final_path` under `assets/` or `references/`.
-4. `report_path` under `.godotmaker/asset-generation/reports/`.
+4. Diagnostic `report_path` under `.godotmaker/asset-generation/reports/`.
 5. Manifest entry under `.godotmaker/asset-generation/manifest.json`.
 6. Curation report under `.godotmaker/asset-generation/curation/` when the
    source requires extraction or selection.
@@ -156,11 +157,12 @@ Read `.godotmaker/config.yaml` and use `asset_image_model` as the default image
 path.
 
 1. `native`: use the active runtime-native image-generation path documented in
-   `asset-gen.md`.
-2. `codex`: use the Codex image generation path documented in `asset-gen.md`.
+   `asset-runtime-pipeline.md`.
+2. `codex`: use the Codex image generation path documented in
+   `asset-runtime-pipeline.md`.
 3. `gemini:<model>`, `openai:<model>`, `grok:<model>`: use
    `tools/asset_source_generate.py --spec <spec.json>` as documented in
-   `asset-gen.md`.
+   `asset-runtime-pipeline.md`.
 
 Provider choice by asset role:
 
@@ -182,7 +184,7 @@ Plan batches that can run without conflicting outputs.
 3. Keep all outputs for one asset under known source and final target paths.
 4. Plan every generated source path under
    `.godotmaker/asset-generation/sources/`.
-5. Plan every generation report under
+5. Plan every diagnostic report under
    `.godotmaker/asset-generation/reports/`.
 6. For generated project assets, plan final paths under `assets/` or
    `references/` only through the approved tools in `/gm-asset` SKILL.md.
@@ -205,7 +207,7 @@ Scene reference planning uses the same batch rules:
    - report path: `.godotmaker/asset-generation/reports/scene_refs_<group_id>.json`
    - family: `screen_reference`
    - production shape: `reference_only`
-5. Plan one flat finalize JSON report entry per scene reference.
+5. Plan one flat finalize JSON diagnostic entry per scene reference.
 
 ### 7. Prepare ASSETS.md updates
 

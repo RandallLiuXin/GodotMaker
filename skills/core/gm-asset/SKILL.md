@@ -19,7 +19,9 @@ You are filling in the missing assets in `ASSETS.md` for the **current tag** (re
 This skill is **per-tag re-runnable**: a user can call `/gm-asset` between build batches when they add new art files. Each invocation processes whatever is currently `MISSING` for the current tag.
 
 Read `references/asset-family-contract.md` and `references/asset-curation.md`
-before planning generated visual assets.
+before planning generated visual assets. Read
+`references/asset-runtime-pipeline.md` and
+`references/asset-prompt-contracts.md` before generation.
 
 ## Session Setup
 
@@ -203,11 +205,11 @@ For each missing scene:
 3. Write the prompt text to `prompt_path`.
 4. Generate the scene source using the selected `asset_image_model` path:
    - API-backed selector: write the source-generation spec, then run `python tools/asset_source_generate.py --spec <spec.json>`.
-   - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-gen.md` Active Codex runtime batch for this scene.
-   - Claude Code with `asset_image_model: codex`: follow `references/asset-gen.md` Codex handoff from Claude Code for this scene.
+   - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Active Codex runtime batch for this scene.
+   - Claude Code with `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Codex handoff from Claude Code for this scene.
    - Other runtime-native provider: generate a source image path.
 5. Finalize the source image with `python tools/asset_image_finalize.py --source <source_path> --out <final_path> --label scene_{name}`.
-6. Write the scene's flat finalize JSON entry and contract summary to the scene-reference generation report.
+6. Write the scene's flat finalize JSON entry and contract summary to the scene-reference diagnostic report.
 7. Show the result to the user. If rejected, regenerate with a tightened prompt.
 
 ### Step 4 — Generate Remaining MISSING Art
@@ -219,7 +221,10 @@ Read `STYLE.md` before crafting generation prompts.
 Confirm with user:
 > "I'll AI-generate the following: {list}. {if user art: 'Style will match your existing assets.'} OK to proceed?"
 
-After confirmation, generate each asset through the selected `asset_image_model` path (per `asset-planner.md` + `asset-gen.md` for prompt construction).
+After confirmation, generate each asset through the selected `asset_image_model`
+path. Use `asset-planner.md` for batch shape,
+`asset-prompt-contracts.md` for prompts, and
+`asset-runtime-pipeline.md` for provider execution.
 
 Run generation groups in batches of up to 3 art assets. Each group uses this
 input schema:
@@ -246,16 +251,18 @@ input schema:
 ```
 
 If isolated generation groups are unavailable, run the batch sequentially and
-write the fallback reason in the report and summary.
+write the fallback reason in the diagnostic summary.
 
 Use the selected `asset_image_model` path:
 
 - API-backed selector: each group writes one source-generation spec per asset, runs `python tools/asset_source_generate.py --spec <spec.json>`, then finalizes each source to `final_path`.
-- Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-gen.md` Active Codex runtime batch. Use one Codex subagent per asset when subagents are available.
-- Claude Code with `asset_image_model: codex`: follow `references/asset-gen.md` Codex handoff from Claude Code.
+- Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Active Codex runtime batch. Use one Codex subagent per asset when subagents are available.
+- Claude Code with `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Codex handoff from Claude Code.
 - Other runtime-native provider: generate each source image path, then run `python tools/asset_image_finalize.py --source <source_path> --out <final_path> --label <asset_id> [--resize WIDTHxHEIGHT]`.
 
-Each group writes one JSON report under `.godotmaker/asset-generation/reports/`: `{"ok": true, "provider": "<asset_image_model>", "assets": [<finalize JSON>, ...]}`. Each `assets[]` item is the flat JSON printed by `tools/asset_image_finalize.py`.
+Each group may write one diagnostic JSON report under
+`.godotmaker/asset-generation/reports/`. Use it for troubleshooting provider
+calls, fallback notes, and finalize JSON. The manifest is the handoff contract.
 
 ### Step 4.5 - Curate Generated Visual Sources
 
@@ -281,8 +288,15 @@ grid_sheet`, `action_sheet`, `frame_sequence`, or `curation_required`, or whose
    `status: needs_regeneration` or `status: rejected`.
 4. Select canonical candidates for character, enemy, UI, prop, and environment
    families.
-5. Copy selected candidates into final runtime paths with
-   `tools/asset_image_finalize.py`.
+5. Finalize selected candidates into runtime paths:
+   ```bash
+   python tools/asset_curation_select.py \
+     --report .godotmaker/asset-generation/curation/<asset_id>.json \
+     --candidate <candidate_id_or_name> \
+     --final-path <final_path> \
+     --asset-id <final_asset_id> \
+     --project-root .
+   ```
 6. Update the manifest entry's `curation`, `processing_status`,
    `extraction_status`, `final_path`, `derived_from`, and
    `canonical_reference`.
@@ -296,7 +310,6 @@ or `not_required`.
 After all generation calls return:
 - Change generated rows from `MISSING` to `generated` with file path + generation params
 - Audio rows that user did not provide: mark `deferred` (with user acknowledgment)
-- Run `python tools/asset_image_report_check.py <report.json>...`
 - Update `.godotmaker/asset-generation/manifest.json` with source path, final
   path, prompt path, family, production shape, processing status, extraction
   status, canonical reference, and curation object for every generated visual asset.
@@ -336,14 +349,15 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 | `tools/asset_user_preflight.py` | Find unconsumed user-provided asset candidates under `assets/` |
 | `tools/codex_image_claim.py` | Copy Codex saved_path into a project source path |
 | `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |
-| `tools/asset_image_report_check.py` | Validate generation group reports and image files |
 | `tools/asset_generation_manifest_update.py` | Upsert asset-generation manifest entries |
 | `tools/asset_generation_manifest_check.py` | Validate asset-generation manifest schema and handoff files |
 | `tools/asset_sheet_process.py` | Split transparent 2D source sheets and write processing reports |
+| `tools/asset_curation_select.py` | Finalize selected curation candidates into runtime asset paths |
 
 **Reference docs (read for prompt construction):**
 - `references/asset-planner.md` — generation brief template
-- `references/asset-gen.md` — asset source pipeline contract
+- `references/asset-runtime-pipeline.md` — provider, claim, finalize, batch, and manifest handoff contract
+- `references/asset-prompt-contracts.md` — visual source prompt contracts
 - `references/asset-family-contract.md` — asset family, production shape, and
   manifest contract
 - `references/asset-curation.md` — curation, canonical selection, and rejected

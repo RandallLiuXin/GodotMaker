@@ -22,12 +22,15 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added a manifest update helper so generated-art runs can upsert handoff entries through a validated tool.
 - Added a 2D source-sheet processor so generated grids can produce cropped assets and processing reports.
 - Added a first-pass asset curation contract for generated source sheets, canonical selections, and rejected candidates.
+- Added a curation selection helper so accepted candidates can be finalized into runtime asset paths.
+- Split the asset generation reference into runtime pipeline and prompt-contract references.
 
 ## Changed
 
 - Clarified README preview-feature scope and roadmap priorities for art production, Codex runner fallback, 3D support, and audio generation.
 - `/gm-asset` now runs a lightweight user-asset preflight before generation so CLI-driven runs can notice files already placed under `assets/`.
 - `/gm-asset` now plans generated art as source, final, and curation artifacts so runs keep clearer asset handoff records.
+- Reframed `rembg_matting.py` as an optional curation utility instead of a primary asset-generation path.
 
 ## Fixed
 
@@ -36,3 +39,4 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Removed
 
 - Removed the legacy `tools/asset_gen.py` helper in favor of the spec-driven asset source generator.
+- Removed the legacy asset group report checker and standalone grid slicer from the active asset pipeline.

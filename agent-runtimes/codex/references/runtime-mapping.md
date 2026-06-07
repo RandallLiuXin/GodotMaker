@@ -47,8 +47,8 @@ Codex-only references like this file.
 
 When a loaded skill says to read `references/*.md`, treat that path as relative
 to the current skill directory, not the project root. For example, inside
-`$gm-asset`, `references/asset-gen.md` resolves to
-`.agents/skills/gm-asset/references/asset-gen.md`.
+`$gm-asset`, `references/asset-runtime-pipeline.md` resolves to
+`.agents/skills/gm-asset/references/asset-runtime-pipeline.md`.
 
 Project artifact paths are different: if a skill asks the stage to create or
 consume project assets such as `references/scene_<name>.png`, resolve those as
@@ -61,14 +61,14 @@ skill instruction, prefer skill-local resolution.
 |---|---|
 | `invoke_stage` | Native when the published project-local skill exists under the Codex skill tree and can be invoked as `$gm-*`. If a shared reference says to run `/gm-verify`, execute `$gm-verify`. Gate if the matching `$gm-*` skill is not available. |
 | `read_project_config` | Read the Codex-published project config path produced by publish, normally `.agents/godotmaker.yaml`, whenever shared docs refer to `.claude/godotmaker.yaml` or `godotmaker.yaml` config. Gate if it is missing and the stage needs `godot_path` or project settings. |
-| `read_skill_reference` | Read references from the published Codex skill tree, normally `.agents/skills/<skill>/references/`. A shared skill path like `references/asset-gen.md` is skill-local, not project-root. Shared refs are deployed copies; do not look for `_shared/` at runtime. |
+| `read_skill_reference` | Read references from the published Codex skill tree, normally `.agents/skills/<skill>/references/`. A shared skill path like `references/asset-runtime-pipeline.md` is skill-local, not project-root. Shared refs are deployed copies; do not look for `_shared/` at runtime. |
 | `dispatch_worker` | Use `spawn_agent(agent_type="worker", message=...)` with a message that explicitly loads the Codex project-local worker role definition and worker brief when the Codex runtime exposes subagent spawning with project-local context. If unavailable, use a sequential fallback only for work the stage contract allows the lead agent to do directly; otherwise gate before editing. |
 | `dispatch_reviewer` | Use `spawn_agent(agent_type="worker", message=...)` with a message that explicitly loads the Codex project-local reviewer role definition and reviewer references when available. If unavailable, the lead session may run the review checklist only when the skill explicitly allows non-delegated review; otherwise gate and report that Codex reviewer delegation is unsupported in this environment. |
 | `dispatch_verifier` | Use `spawn_agent(agent_type="worker", message=...)` with a message that explicitly loads the Codex project-local verifier role definition and verifier references when available. If unavailable, run deterministic verification commands directly only where the verifier contract is mechanical and no independent judgment is required; otherwise gate. |
 | `track_plan` | Map Claude-style `TodoWrite` planning to Codex `update_plan`. Keep exactly one active item and update status as work progresses. This is separate from editing project files such as `PLAN.md` or `GAP.md`. |
 | `ask_user_question` | Map Claude-style `AskUserQuestion` to Codex `request_user_input` when that tool is available in the active mode. If unavailable, ask the user a concise normal question. In non-interactive execution, choose a conservative default only when the skill permits it and record the assumption; otherwise gate before continuing. |
 | `native_image_inspection` | Use the active Codex runtime image-reading path for `native` and `codex`. Write the requested VQA log entry. If unavailable, gate before visual QA. |
-| `native_image_generation` | Use the active Codex image generation path for `native` and `codex`. Follow the saved_path claim protocol in `gm-asset/references/asset-gen.md`. If unavailable, gate before asset generation. |
+| `native_image_generation` | Use the active Codex image generation path for `native` and `codex`. Follow the saved_path claim protocol in `gm-asset/references/asset-runtime-pipeline.md`. If unavailable, gate before asset generation. |
 | `run_shell_command` | Use Codex shell execution with the current sandbox and approval policy. Capture command, working directory, exit code, and important output in the final stage report. Do not imply a command passed if it was skipped or blocked. |
 | `access_godot_mcp` | Use the configured Codex MCP server for Godot. Codex publish must register `godot-mcp` by default and fail if registration cannot complete, because later GodotMaker stages depend on the MCP tools. |
 | `apply_permission_policy` | Use the Codex sandbox/approval model and project hooks together. Expected framework commands should run without interactive deadlock; if approval is denied or unavailable, stop and report the blocked command. Do not bypass `.godotmaker/hooks` or role locks. |

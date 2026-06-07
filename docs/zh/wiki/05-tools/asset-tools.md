@@ -1,6 +1,16 @@
 # 素材工具
 
-GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源。`/gm-asset` 会自动调度这些脚本；你也可以手动运行它们来测试单个 source、抠图步骤或 sheet 处理步骤。
+GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源。`/gm-asset` 会自动调度主流程工具；你也可以手动运行它们来测试 source 生成、source sheet 处理或 candidate 选择。
+
+主流程工具：
+
+1. `asset_source_generate.py`
+2. `asset_sheet_process.py`
+3. `asset_curation_select.py`
+
+可选 curation utility：
+
+1. `rembg_matting.py`
 
 ## asset_source_generate.py
 
@@ -37,7 +47,7 @@ python tools/asset_source_generate.py \
 
 ## rembg_matting.py
 
-`rembg_matting.py` 用于去除图片的纯色背景，输出带透明背景的 PNG 文件。
+`rembg_matting.py` 是可选 curation 工具，用于在 source sheet 处理前移除纯色背景。
 
 ```bash
 # 单张图片
@@ -71,6 +81,21 @@ python tools/asset_sheet_process.py \
 
 报告中包含 `candidates[]`、`rejected[]`、`strategy` 和 `status`。被选中的 candidate 后续会 finalize 到 `assets/` 下的运行时路径。
 
+## asset_curation_select.py
+
+`asset_curation_select.py` 会从 curation report 中选择一个 candidate，并 finalize 到运行时素材路径。
+
+```bash
+python tools/asset_curation_select.py \
+  --report .godotmaker/asset-generation/curation/ui_kit_source.json \
+  --candidate ui_kit_source.action_button \
+  --final-path assets/ui/action_button.png \
+  --asset-id action_button \
+  --project-root .
+```
+
+工具会把 report 状态更新为 `selected`，记录 candidate 的 final path，并输出与 `asset_image_finalize.py` 相同的 finalize metadata。
+
 ## 手动调用这些脚本的场景
 
 大多数情况下不需要直接运行这些脚本。`/gm-asset` 会根据 `ASSETS.md` 和 source-generation manifest 自动调度它们。
@@ -79,7 +104,8 @@ python tools/asset_sheet_process.py \
 
 - 你想用调整过的 spec 重新生成某一个 source 图片。
 - 在完整运行 `/gm-asset` 之前，你想先试验不同的提供商、尺寸或宽高比。
-- 你拿到了外部提供的 source 图片，需要去除纯色背景。
+- 你需要在 source sheet curation 前移除纯色背景。
 - 你在调试 extraction 时需要单独处理一个 source sheet。
+- 你需要把某个 extracted candidate 选入运行时素材路径。
 
 如果你想更新 `/gm-evaluate` 用于对比的视觉目标，请重新运行 `/gm-asset`，而不是直接修改已生成的图片。

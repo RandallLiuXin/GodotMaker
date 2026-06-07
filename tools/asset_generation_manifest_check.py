@@ -139,17 +139,18 @@ def _check_curation(
     *,
     index: int,
     issues: list[str],
-) -> str | None:
+) -> tuple[str | None, str | None]:
     curation = item.get("curation")
     if curation is None:
-        return None
+        return None, None
     if not isinstance(curation, dict):
         issues.append(f"assets[{index}].curation must be an object or null")
-        return None
+        return None, None
 
     status = curation.get("status")
     if not isinstance(status, str) or not status.strip():
         issues.append(f"assets[{index}].curation.status must be a non-empty string")
+        status = None
     elif status not in ALLOWED_CURATION_STATUSES:
         issues.append(f"assets[{index}].curation.status is not allowed: {status}")
 
@@ -173,7 +174,13 @@ def _check_curation(
         if value is not None and (not isinstance(value, int) or value < 0):
             issues.append(f"assets[{index}].curation.{field} must be a non-negative integer")
 
-    return report_path if isinstance(report_path, str) and report_path.strip() else None
+    if status == "selected":
+        selected_count = curation.get("selected_count")
+        if not isinstance(selected_count, int) or selected_count <= 0:
+            issues.append(f"assets[{index}].curation.selected_count must be positive when selected")
+
+    clean_report_path = report_path if isinstance(report_path, str) and report_path.strip() else None
+    return clean_report_path, status if isinstance(status, str) else None
 
 
 def check_manifest(
@@ -224,7 +231,7 @@ def check_manifest(
         prompt_path = _string_field(item, "prompt_path", issues, index=index, required=False)
         processing_status = _string_field(item, "processing_status", issues, index=index)
         extraction_status = _string_field(item, "extraction_status", issues, index=index)
-        curation_report_path = _check_curation(item, index=index, issues=issues)
+        curation_report_path, curation_status = _check_curation(item, index=index, issues=issues)
 
         for optional_field in ("derived_from", "canonical_reference", "preview_path", "notes"):
             value = item.get(optional_field)
@@ -289,6 +296,15 @@ def check_manifest(
 
         if processing_status in {"processed", "ready"} and final_path is None:
             issues.append(f"assets[{index}] missing final_path for {processing_status}")
+        if (
+            processing_status in {"processed", "ready"}
+            and curation_status is not None
+            and curation_status not in {"selected", "not_required"}
+        ):
+            issues.append(
+                f"assets[{index}].curation.status must be selected or not_required "
+                f"for {processing_status}"
+            )
 
         if (
             production_shape in {"grid_sheet", "action_sheet", "frame_sequence", "curation_required"}

@@ -1,8 +1,19 @@
 # Asset tools
 
 GodotMaker generates and processes 2D art through small Python helper scripts.
-`/gm-asset` calls them automatically. You can also run them by hand to test a
-single source, background-removal pass, or sheet-processing pass.
+`/gm-asset` calls the primary tools automatically. You can also run them by
+hand to test source generation, source-sheet processing, or candidate
+selection.
+
+Primary pipeline tools:
+
+1. `asset_source_generate.py`
+2. `asset_sheet_process.py`
+3. `asset_curation_select.py`
+
+Optional curation utility:
+
+1. `rembg_matting.py`
 
 ## asset_source_generate.py
 
@@ -45,8 +56,8 @@ runtime assets are selected and finalized by the rest of the asset pipeline.
 
 ## rembg_matting.py
 
-`rembg_matting.py` removes solid-color backgrounds from images, producing PNG
-files with transparent backgrounds.
+`rembg_matting.py` is an optional curation utility for removing solid-color
+backgrounds before source-sheet processing.
 
 ```bash
 # Single image
@@ -86,6 +97,23 @@ python tools/asset_sheet_process.py \
 The report includes `candidates[]`, `rejected[]`, `strategy`, and `status`.
 Selected candidates are later finalized into runtime paths under `assets/`.
 
+## asset_curation_select.py
+
+`asset_curation_select.py` selects one candidate from a curation report and
+finalizes it into a runtime asset path.
+
+```bash
+python tools/asset_curation_select.py \
+  --report .godotmaker/asset-generation/curation/ui_kit_source.json \
+  --candidate ui_kit_source.action_button \
+  --final-path assets/ui/action_button.png \
+  --asset-id action_button \
+  --project-root .
+```
+
+The tool updates the report status to `selected`, stores the candidate's final
+path, and prints the same finalize metadata as `asset_image_finalize.py`.
+
 ## Calling these by hand
 
 You usually do not need to run these scripts directly. `/gm-asset` orchestrates
@@ -95,8 +123,9 @@ Manual use cases:
 
 - Generate one source image from a tweaked spec.
 - Test a provider, size, or aspect ratio before a full `/gm-asset` run.
-- Remove a solid background from a provided source image.
+- Remove a solid background before source-sheet curation.
 - Process one source sheet while debugging extraction.
+- Select one extracted candidate into a runtime asset path.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.
