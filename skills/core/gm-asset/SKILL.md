@@ -283,6 +283,7 @@ grid_sheet`, `action_sheet`, `frame_sequence`, or `curation_required`, or whose
      --asset-id <asset_id> \
      --tag <current_tag> \
      --background magenta \
+     --snap-mode autoslice \
      --component-mode largest \
      --component-padding 8 \
      --min-component-area 100 \

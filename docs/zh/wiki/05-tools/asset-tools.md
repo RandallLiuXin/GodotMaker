@@ -79,13 +79,14 @@ python tools/asset_sheet_process.py \
   --background magenta \
   --magenta-threshold 100 \
   --magenta-edge-threshold 150 \
+  --snap-mode autoslice \
   --component-mode largest \
   --component-padding 8 \
   --min-component-area 100 \
   --report .godotmaker/asset-generation/curation/ui_kit_source.json
 ```
 
-对于小型道具包、icon pack 和 UI 组件 sheet，使用 `--component-mode largest`。报告中包含 `candidates[]`、`rejected[]`、`strategy`、`component_count`、选中组件 metadata 和 `status`。被选中的 candidate 后续会 finalize 到 `assets/` 下的运行时路径。
+必须显式传入 `--snap-mode`。对于对象已经分离的小型道具包、icon pack 和 UI 组件 sheet，使用 `--snap-mode autoslice`。对于严格规则网格和动画帧 sheet，使用 `--snap-mode grid`。在一个 grid slot 内需要丢弃较小碎片时，使用 `--component-mode largest`。报告中包含 `candidates[]`、`rejected[]`、`strategy`、`component_count`、选中组件 metadata 和 `status`。被选中的 candidate 后续会 finalize 到 `assets/` 下的运行时路径。
 
 ## asset_curation_select.py
 

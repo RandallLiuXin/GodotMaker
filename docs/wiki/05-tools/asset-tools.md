@@ -97,16 +97,20 @@ python tools/asset_sheet_process.py \
   --background magenta \
   --magenta-threshold 100 \
   --magenta-edge-threshold 150 \
+  --snap-mode autoslice \
   --component-mode largest \
   --component-padding 8 \
   --min-component-area 100 \
   --report .godotmaker/asset-generation/curation/ui_kit_source.json
 ```
 
-Use `--component-mode largest` for compact prop packs, icon packs, and UI
-component sheets. The report includes `candidates[]`, `rejected[]`, `strategy`,
-`component_count`, selected-component metadata, and `status`. Selected
-candidates are later finalized into runtime paths under `assets/`.
+Pass `--snap-mode` explicitly. Use `--snap-mode autoslice` for compact prop
+packs, icon packs, and UI component sheets with separated objects. Use
+`--snap-mode grid` for strict regular grids and animation frame sheets. Use
+`--component-mode largest` to discard smaller fragments in one grid slot. The
+report includes `candidates[]`, `rejected[]`, `strategy`, `component_count`,
+selected-component metadata, and `status`. Selected candidates are later
+finalized into runtime paths under `assets/`.
 
 ## asset_curation_select.py
 

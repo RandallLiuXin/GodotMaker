@@ -45,6 +45,15 @@ def make_component_sheet(path: Path):
     image.save(path)
 
 
+def make_autoslice_sheet(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (20, 10), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((2, 2, 13, 7), fill=(255, 0, 0, 255))
+    draw.rectangle((16, 2, 18, 7), fill=(0, 255, 0, 255))
+    image.save(path)
+
+
 def visible_colors(image):
     pixels = image.load()
     colors = set()
@@ -64,6 +73,7 @@ def test_process_sheet_splits_and_reports_cells(tmp_path):
         source,
         tmp_path / "out",
         grid="2x2",
+        snap_mode="grid",
         names="a,b,c,d",
         asset_id="ui_kit_source",
         tag="v0.1.0",
@@ -94,6 +104,7 @@ def test_process_sheet_splits_magenta_background_source(tmp_path):
         source,
         tmp_path / "out",
         grid="2x2",
+        snap_mode="grid",
         names="a,b,c,d",
         asset_id="ui_kit_source",
         tag="v0.1.0",
@@ -123,6 +134,7 @@ def test_process_sheet_largest_component_discards_stray_fragments(tmp_path):
         source,
         tmp_path / "out",
         grid="1x1",
+        snap_mode="grid",
         names="button",
         asset_id="ui_kit_source",
         component_mode="largest",
@@ -153,6 +165,7 @@ def test_process_sheet_all_component_mode_preserves_stray_fragments(tmp_path):
         source,
         tmp_path / "out",
         grid="1x1",
+        snap_mode="grid",
         names="button",
         asset_id="ui_kit_source",
         component_mode="all",
@@ -170,6 +183,38 @@ def test_process_sheet_all_component_mode_preserves_stray_fragments(tmp_path):
         candidate.close()
 
 
+def test_process_sheet_autoslice_keeps_cross_cell_object_intact(tmp_path):
+    source = tmp_path / "autoslice_sheet.png"
+    make_autoslice_sheet(source)
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        grid="2x1",
+        names="wide_button,right_icon",
+        asset_id="ui_kit_source",
+        snap_mode="autoslice",
+    )
+
+    assert result["snap_mode"] == "autoslice"
+    assert result["accepted_count"] == 2
+    wide = result["accepted"][0]
+    icon = result["accepted"][1]
+    assert wide["name"] == "wide_button"
+    assert wide["crop_bbox"] == [2, 2, 14, 8]
+    assert wide["width"] == 12
+    assert icon["name"] == "right_icon"
+    assert icon["crop_bbox"] == [16, 2, 19, 8]
+    wide_image = Image.open(tmp_path / "out" / "wide_button.png").convert("RGBA")
+    icon_image = Image.open(tmp_path / "out" / "right_icon.png").convert("RGBA")
+    try:
+        assert visible_colors(wide_image) == {(255, 0, 0)}
+        assert visible_colors(icon_image) == {(0, 255, 0)}
+    finally:
+        wide_image.close()
+        icon_image.close()
+
+
 def test_process_sheet_removes_edge_connected_magenta_fringe(tmp_path):
     source = tmp_path / "magenta_fringe_sheet.png"
     make_magenta_sheet(source, fringe=True)
@@ -178,6 +223,7 @@ def test_process_sheet_removes_edge_connected_magenta_fringe(tmp_path):
         source,
         tmp_path / "out",
         grid="2x2",
+        snap_mode="grid",
         names="a,b,c,d",
         asset_id="ui_kit_source",
         background="magenta",
@@ -196,6 +242,7 @@ def test_process_sheet_rejects_magenta_edge_touch_when_requested(tmp_path):
         source,
         tmp_path / "out",
         grid="2x2",
+        snap_mode="grid",
         names="a,b,c,d",
         background="magenta",
         reject_edge_touch=True,
@@ -218,6 +265,7 @@ def test_process_sheet_rejects_edge_touch_when_requested(tmp_path):
         source,
         tmp_path / "out",
         grid="1x1",
+        snap_mode="grid",
         names="edge",
         reject_edge_touch=True,
     )
@@ -235,7 +283,7 @@ def test_process_sheet_rejects_non_divisible_grid(tmp_path):
     image.save(source)
 
     with pytest.raises(SheetProcessError, match="divide evenly"):
-        process_sheet(source, tmp_path / "out", grid="2x2")
+        process_sheet(source, tmp_path / "out", grid="2x2", snap_mode="grid")
 
 
 def test_process_sheet_rejects_opaque_source(tmp_path):
@@ -243,7 +291,7 @@ def test_process_sheet_rejects_opaque_source(tmp_path):
     Image.new("RGBA", (10, 10), (255, 255, 255, 255)).save(source)
 
     with pytest.raises(SheetProcessError, match="transparency"):
-        process_sheet(source, tmp_path / "out", grid="1x1")
+        process_sheet(source, tmp_path / "out", grid="1x1", snap_mode="grid")
 
 
 def test_process_sheet_rejects_unsafe_names(tmp_path):
@@ -251,7 +299,7 @@ def test_process_sheet_rejects_unsafe_names(tmp_path):
     make_sheet(source)
 
     with pytest.raises(SheetProcessError, match="safe file names"):
-        process_sheet(source, tmp_path / "out", grid="2x2", names="a,../b,c,d")
+        process_sheet(source, tmp_path / "out", grid="2x2", snap_mode="grid", names="a,../b,c,d")
 
 
 def test_cli_outputs_json(tmp_path):
@@ -276,6 +324,8 @@ def test_cli_outputs_json(tmp_path):
             "v0.1.0",
             "--background",
             "transparent",
+            "--snap-mode",
+            "grid",
         ],
         capture_output=True,
         text=True,
@@ -288,3 +338,29 @@ def test_cli_outputs_json(tmp_path):
     assert data["asset_id"] == "ui_kit_source"
     assert data["tag"] == "v0.1.0"
     assert data["accepted_count"] == 3
+
+
+def test_cli_requires_snap_mode(tmp_path):
+    source = tmp_path / "sheet.png"
+    make_sheet(source)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_sheet_process.py"),
+            "--source",
+            str(source),
+            "--out-dir",
+            str(tmp_path / "out"),
+            "--grid",
+            "2x2",
+            "--names",
+            "a,b,c,d",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "--snap-mode" in result.stderr
