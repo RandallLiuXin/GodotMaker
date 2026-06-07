@@ -87,6 +87,53 @@ def test_update_manifest_preserves_same_asset_id_from_different_tag(tmp_path):
     }
 
 
+def test_update_manifest_allows_entries_from_one_source_sheet(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    first_entry = tmp_path / "battle_button.json"
+    second_entry = tmp_path / "resource_panel.json"
+    write_json(first_entry, make_entry(
+        "battle_button",
+        family="ui_component_sheet",
+        production_shape="grid_sheet",
+        runtime_role="main menu UI component",
+        source_path=".godotmaker/asset-generation/sources/ui_main_kit_source.png",
+        final_path="assets/ui/battle_button.png",
+        prompt_path=".godotmaker/asset-generation/prompts/ui_main_kit_source.txt",
+        curation={
+            "status": "selected",
+            "strategy": "solid_background_grid",
+            "report_path": ".godotmaker/asset-generation/curation/ui_main_kit.json",
+            "selected_count": 9,
+            "rejected_count": 0,
+        },
+    ))
+    write_json(second_entry, make_entry(
+        "resource_panel",
+        family="ui_component_sheet",
+        production_shape="grid_sheet",
+        runtime_role="main menu UI component",
+        source_path=".godotmaker/asset-generation/sources/ui_main_kit_source.png",
+        final_path="assets/ui/resource_panel.png",
+        prompt_path=".godotmaker/asset-generation/prompts/ui_main_kit_source.txt",
+        curation={
+            "status": "selected",
+            "strategy": "solid_background_grid",
+            "report_path": ".godotmaker/asset-generation/curation/ui_main_kit.json",
+            "selected_count": 9,
+            "rejected_count": 0,
+        },
+    ))
+
+    result = update_manifest(manifest, [first_entry, second_entry], project_root=tmp_path)
+
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    assert result["asset_count"] == 2
+    assert {item["asset_id"] for item in data["assets"]} == {
+        "battle_button",
+        "resource_panel",
+    }
+
+
 def test_update_manifest_rejects_duplicate_existing_entries(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_json(

@@ -210,9 +210,7 @@ def check_manifest(
         raise ManifestCheckError("; ".join(issues))
 
     seen: set[tuple[str, str]] = set()
-    seen_source_paths: dict[tuple[str, str], tuple[int, str]] = {}
     seen_final_paths: dict[tuple[str, str], tuple[int, str]] = {}
-    seen_prompt_paths: dict[tuple[str, str], tuple[int, str]] = {}
     checked_assets = 0
     file_checks = 0
 
@@ -249,26 +247,10 @@ def check_manifest(
             seen.add(key)
 
         _track_unique_path(
-            seen_source_paths,
-            source_path,
-            tag=tag,
-            field="source_path",
-            index=index,
-            issues=issues,
-        )
-        _track_unique_path(
             seen_final_paths,
             final_path,
             tag=tag,
             field="final_path",
-            index=index,
-            issues=issues,
-        )
-        _track_unique_path(
-            seen_prompt_paths,
-            prompt_path,
-            tag=tag,
-            field="prompt_path",
             index=index,
             issues=issues,
         )

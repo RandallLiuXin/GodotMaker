@@ -184,7 +184,22 @@ def test_check_manifest_rejects_duplicate_asset_id_within_same_tag(tmp_path):
         check_manifest(manifest, project_root=tmp_path)
 
 
-def test_check_manifest_rejects_duplicate_output_paths(tmp_path):
+def test_check_manifest_allows_shared_source_sheet_and_prompt(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(manifest)
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    duplicate = dict(data["assets"][0])
+    duplicate["asset_id"] = "player_run"
+    duplicate["final_path"] = "assets/sprites/player_run.png"
+    data["assets"].append(duplicate)
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 2
+
+
+def test_check_manifest_rejects_duplicate_final_paths(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_manifest(manifest)
     data = json.loads(manifest.read_text(encoding="utf-8"))
@@ -193,7 +208,7 @@ def test_check_manifest_rejects_duplicate_output_paths(tmp_path):
     data["assets"].append(duplicate)
     manifest.write_text(json.dumps(data), encoding="utf-8")
 
-    with pytest.raises(ManifestCheckError, match="Duplicate source_path path"):
+    with pytest.raises(ManifestCheckError, match="Duplicate final_path path"):
         check_manifest(manifest, project_root=tmp_path)
 
 

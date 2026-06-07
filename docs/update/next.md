@@ -34,6 +34,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Reframed `rembg_matting.py` as an optional curation utility instead of a primary asset-generation path.
 - `asset_sheet_process.py` can now extract the largest connected component from UI, icon, and prop sheets to avoid neighboring-cell fragments.
 - `asset_sheet_process.py` can now autoslice separated source sheets before assigning candidates back to grid names.
+- Asset-generation manifests now allow multiple runtime assets to share one source sheet and prompt.
 
 ## Fixed
 
