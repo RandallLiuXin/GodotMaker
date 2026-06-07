@@ -36,6 +36,26 @@ def make_magenta_sheet(path: Path, *, edge_touch: bool = False, fringe: bool = F
     image.save(path)
 
 
+def make_component_sheet(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (24, 12), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((2, 2, 8, 8), fill=(255, 0, 0, 255))
+    draw.rectangle((18, 2, 21, 5), fill=(0, 255, 0, 255))
+    image.save(path)
+
+
+def visible_colors(image):
+    pixels = image.load()
+    colors = set()
+    for y in range(image.height):
+        for x in range(image.width):
+            red, green, blue, alpha = pixels[x, y]
+            if alpha > 0:
+                colors.add((red, green, blue))
+    return colors
+
+
 def test_process_sheet_splits_and_reports_cells(tmp_path):
     source = tmp_path / "sheet.png"
     make_sheet(source)
@@ -93,6 +113,61 @@ def test_process_sheet_splits_magenta_background_source(tmp_path):
         candidate.close()
     report = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     assert report["cleanup"]["background"] == "magenta"
+
+
+def test_process_sheet_largest_component_discards_stray_fragments(tmp_path):
+    source = tmp_path / "component_sheet.png"
+    make_component_sheet(source)
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        names="button",
+        asset_id="ui_kit_source",
+        component_mode="largest",
+        component_padding=1,
+        min_component_area=1,
+    )
+
+    assert result["accepted_count"] == 1
+    accepted = result["accepted"][0]
+    assert accepted["component_count"] == 2
+    assert accepted["selected_component_area"] == 49
+    assert accepted["selected_component_bbox"] == [2, 2, 9, 9]
+    assert accepted["crop_bbox"] == [2, 2, 9, 9]
+    assert accepted["padded_crop_bbox"] == [1, 1, 10, 10]
+    candidate = Image.open(tmp_path / "out" / "button.png").convert("RGBA")
+    try:
+        assert candidate.size == (9, 9)
+        assert visible_colors(candidate) == {(255, 0, 0)}
+    finally:
+        candidate.close()
+
+
+def test_process_sheet_all_component_mode_preserves_stray_fragments(tmp_path):
+    source = tmp_path / "component_sheet.png"
+    make_component_sheet(source)
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        names="button",
+        asset_id="ui_kit_source",
+        component_mode="all",
+    )
+
+    assert result["accepted_count"] == 1
+    accepted = result["accepted"][0]
+    assert accepted["component_count"] == 2
+    assert accepted["selected_component_area"] is None
+    assert accepted["crop_bbox"] == [2, 2, 22, 9]
+    candidate = Image.open(tmp_path / "out" / "button.png").convert("RGBA")
+    try:
+        assert visible_colors(candidate) == {(255, 0, 0), (0, 255, 0)}
+    finally:
+        candidate.close()
 
 
 def test_process_sheet_removes_edge_connected_magenta_fringe(tmp_path):

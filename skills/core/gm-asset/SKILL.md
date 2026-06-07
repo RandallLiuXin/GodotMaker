@@ -283,6 +283,9 @@ grid_sheet`, `action_sheet`, `frame_sequence`, or `curation_required`, or whose
      --asset-id <asset_id> \
      --tag <current_tag> \
      --background magenta \
+     --component-mode largest \
+     --component-padding 8 \
+     --min-component-area 100 \
      --report .godotmaker/asset-generation/curation/<asset_id>.json
    ```
 3. For unsuitable sources, write a curation report with

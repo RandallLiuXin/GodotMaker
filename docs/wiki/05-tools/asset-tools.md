@@ -97,11 +97,16 @@ python tools/asset_sheet_process.py \
   --background magenta \
   --magenta-threshold 100 \
   --magenta-edge-threshold 150 \
+  --component-mode largest \
+  --component-padding 8 \
+  --min-component-area 100 \
   --report .godotmaker/asset-generation/curation/ui_kit_source.json
 ```
 
-The report includes `candidates[]`, `rejected[]`, `strategy`, and `status`.
-Selected candidates are later finalized into runtime paths under `assets/`.
+Use `--component-mode largest` for compact prop packs, icon packs, and UI
+component sheets. The report includes `candidates[]`, `rejected[]`, `strategy`,
+`component_count`, selected-component metadata, and `status`. Selected
+candidates are later finalized into runtime paths under `assets/`.
 
 ## asset_curation_select.py
 

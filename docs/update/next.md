@@ -32,6 +32,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `/gm-asset` now runs a lightweight user-asset preflight before generation so CLI-driven runs can notice files already placed under `assets/`.
 - `/gm-asset` now plans generated art as source, final, and curation artifacts so runs keep clearer asset handoff records.
 - Reframed `rembg_matting.py` as an optional curation utility instead of a primary asset-generation path.
+- `asset_sheet_process.py` can now extract the largest connected component from UI, icon, and prop sheets to avoid neighboring-cell fragments.
 
 ## Fixed
 

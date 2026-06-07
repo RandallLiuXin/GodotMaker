@@ -57,6 +57,8 @@ Choose the first strategy that matches the source:
    `tools/asset_sheet_process.py --background magenta`.
    Use `--magenta-threshold` and `--magenta-edge-threshold` when generated
    sheets leave visible magenta fringe.
+   Use `--component-mode largest` for compact prop packs, icon packs, and UI
+   component sheets.
 3. Regular rows or columns: crop with an explicit grid after confirming every
    cell maps to one object.
 4. Irregular atlas with clear object boxes: write explicit object boxes in the
