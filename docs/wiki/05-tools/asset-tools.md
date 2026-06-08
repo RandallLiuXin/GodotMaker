@@ -8,8 +8,9 @@ Primary pipeline tools:
 
 1. `asset_source_generate.py`
 2. `asset_action_process.py`
-3. `asset_sheet_process.py`
-4. `asset_curation_select.py`
+3. `asset_action_manifest_entry.py`
+4. `asset_sheet_process.py`
+5. `asset_curation_select.py`
 
 Optional curation utility:
 
@@ -124,6 +125,25 @@ For later body actions, add:
 --scale-reference-metadata <accepted_action_pipeline_meta.json>
 ```
 
+## asset_action_manifest_entry.py
+
+`asset_action_manifest_entry.py` turns one processed action
+`pipeline-meta.json` plus its `character_action_source` entry into a
+`character_frame_output` manifest entry.
+
+Manual entry point:
+
+```bash
+python tools/asset_action_manifest_entry.py \
+  --metadata <processed_dir>/pipeline-meta.json \
+  --source-entry <character_action_source_entry.json> \
+  --asset-id <frame_output_asset_id> \
+  --project-root . \
+  --out <frame_output_entry.json>
+```
+
+Upsert the generated entry with `asset_generation_manifest_update.py`.
+
 ## asset_curation_select.py
 
 `asset_curation_select.py` selects one candidate from a curation report and
@@ -152,10 +172,11 @@ Manual use cases:
 
 1. Generate one source image from a tweaked spec.
 2. Process one character action sheet while debugging animation output.
-3. Test a provider, size, or aspect ratio before a full `/gm-asset` run.
-4. Remove a solid background before source-sheet curation.
-5. Process one source sheet while debugging extraction.
-6. Select one extracted candidate into a runtime asset path.
+3. Build one character frame-output manifest entry from action metadata.
+4. Test a provider, size, or aspect ratio before a full `/gm-asset` run.
+5. Remove a solid background before source-sheet curation.
+6. Process one source sheet while debugging extraction.
+7. Select one extracted candidate into a runtime asset path.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.

@@ -6,8 +6,9 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 
 1. `asset_source_generate.py`
 2. `asset_action_process.py`
-3. `asset_sheet_process.py`
-4. `asset_curation_select.py`
+3. `asset_action_manifest_entry.py`
+4. `asset_sheet_process.py`
+5. `asset_curation_select.py`
 
 可选 curation 工具：
 
@@ -104,6 +105,23 @@ python tools/asset_action_process.py \
 --scale-reference-metadata <accepted_action_pipeline_meta.json>
 ```
 
+## asset_action_manifest_entry.py
+
+`asset_action_manifest_entry.py` 会把一个已处理动作的 `pipeline-meta.json` 和对应的 `character_action_source` entry 转换成 `character_frame_output` manifest entry。
+
+手动入口：
+
+```bash
+python tools/asset_action_manifest_entry.py \
+  --metadata <processed_dir>/pipeline-meta.json \
+  --source-entry <character_action_source_entry.json> \
+  --asset-id <frame_output_asset_id> \
+  --project-root . \
+  --out <frame_output_entry.json>
+```
+
+生成的 entry 继续交给 `asset_generation_manifest_update.py` upsert。
+
 ## asset_curation_select.py
 
 `asset_curation_select.py` 会从 curation report 中选择一个 candidate，并 finalize 到运行时素材路径。
@@ -129,9 +147,10 @@ python tools/asset_curation_select.py \
 
 1. 用调整过的 spec 重新生成某一个 source 图片。
 2. 调试动画输出时单独处理一个角色动作 sheet。
-3. 在完整运行 `/gm-asset` 前试验不同的提供商、尺寸或宽高比。
-4. 在 source sheet curation 前移除纯色背景。
-5. 调试 extraction 时单独处理一个 source sheet。
-6. 把某个 extracted candidate 选入运行时素材路径。
+3. 从 action metadata 生成一个 character frame-output manifest entry。
+4. 在完整运行 `/gm-asset` 前试验不同的提供商、尺寸或宽高比。
+5. 在 source sheet curation 前移除纯色背景。
+6. 调试 extraction 时单独处理一个 source sheet。
+7. 把某个 extracted candidate 选入运行时素材路径。
 
 如果想更新 `/gm-evaluate` 用于对比的视觉目标，请重新运行 `/gm-asset`，不要直接编辑已生成的图片。

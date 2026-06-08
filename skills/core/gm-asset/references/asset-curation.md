@@ -103,6 +103,18 @@ python tools/asset_action_process.py \
 
 For later body actions, add `--scale-reference-metadata <pipeline-meta.json>`.
 
+Build the derived `character_frame_output` manifest entry from the action
+metadata:
+
+```bash
+python tools/asset_action_manifest_entry.py \
+  --metadata <processed_dir>/pipeline-meta.json \
+  --source-entry <character_action_source_entry.json> \
+  --asset-id <frame_output_asset_id> \
+  --project-root . \
+  --out <frame_output_entry.json>
+```
+
 ## Curation Record Shape
 
 Write curation reports under `.godotmaker/asset-generation/curation/`:
