@@ -175,14 +175,29 @@ python tools/asset_curation_select.py \
   --project-root .
 ```
 
-The tool copies or resizes the candidate into the runtime asset path and updates
-the curation report:
+The selection tool copies or resizes the candidate into the runtime asset path
+and updates the curation report:
 
 1. Candidate `state` becomes `selected`.
 2. Candidate `final_path` points to the runtime asset.
 3. Report `status` becomes `selected`.
 4. Report `selected_count` and `rejected_count` are updated.
 5. Report `selected_candidate_ids` lists selected candidates.
+
+Build the selected candidate's runtime manifest entry:
+
+```bash
+python tools/asset_curation_manifest_entry.py \
+  --report <report.json> \
+  --source-entry <source_entry.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --project-root . \
+  --out <final_asset_entry.json>
+```
+
+The manifest-entry tool writes JSON only. Upsert that entry with
+`tools/asset_generation_manifest_update.py`.
 
 ## Manifest Integration
 

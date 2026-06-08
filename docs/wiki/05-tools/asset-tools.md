@@ -11,6 +11,7 @@ Primary pipeline tools:
 3. `asset_action_manifest_entry.py`
 4. `asset_sheet_process.py`
 5. `asset_curation_select.py`
+6. `asset_curation_manifest_entry.py`
 
 Optional curation utility:
 
@@ -163,6 +164,25 @@ python tools/asset_curation_select.py \
 The tool updates the report status to `selected`, stores the candidate's final
 path, and prints the same finalize metadata as `asset_image_finalize.py`.
 
+## asset_curation_manifest_entry.py
+
+`asset_curation_manifest_entry.py` turns one selected curation candidate plus
+its source-sheet manifest entry into a validated runtime manifest entry.
+
+Manual entry point:
+
+```bash
+python tools/asset_curation_manifest_entry.py \
+  --report <report.json> \
+  --source-entry <source_sheet_entry.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --project-root . \
+  --out <final_asset_entry.json>
+```
+
+Upsert the generated entry with `asset_generation_manifest_update.py`.
+
 ## Calling these by hand
 
 You usually do not need to run these scripts directly. `/gm-asset` orchestrates
@@ -177,6 +197,7 @@ Manual use cases:
 5. Remove a solid background before source-sheet curation.
 6. Process one source sheet while debugging extraction.
 7. Select one extracted candidate into a runtime asset path.
+8. Build one runtime manifest entry from a selected curation candidate.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.

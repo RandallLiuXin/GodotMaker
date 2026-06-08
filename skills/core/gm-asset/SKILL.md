@@ -306,12 +306,14 @@ grid_sheet`, `action_sheet`, `frame_sequence`, or `curation_required`, or whose
    families.
 10. Finalize selected candidates into runtime paths with
    `tools/asset_curation_select.py`.
-11. Generate `character_frame_output` manifest entries with
+11. Generate selected-candidate manifest entries with
+   `tools/asset_curation_manifest_entry.py`.
+12. Generate `character_frame_output` manifest entries with
    `tools/asset_action_manifest_entry.py`.
-12. Update the manifest entry's `curation`, `processing_status`,
+13. Update the manifest entry's `curation`, `processing_status`,
    `extraction_status`, `final_path`, `derived_from`, and
    `canonical_reference`.
-13. Upsert generated manifest entries with
+14. Upsert generated manifest entries with
    `tools/asset_generation_manifest_update.py`.
 
 Do not update an ASSETS.md row to `generated` while its manifest entry still has
@@ -368,6 +370,7 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 | `tools/asset_action_manifest_entry.py` | Build character frame-output manifest entries from action metadata |
 | `tools/asset_sheet_process.py` | Split production-shaped 2D source sheets and write processing reports |
 | `tools/asset_curation_select.py` | Finalize selected curation candidates into runtime asset paths |
+| `tools/asset_curation_manifest_entry.py` | Build runtime manifest entries from selected curation candidates |
 
 **Reference docs (read for prompt construction):**
 - `references/asset-planner.md` — generation brief template

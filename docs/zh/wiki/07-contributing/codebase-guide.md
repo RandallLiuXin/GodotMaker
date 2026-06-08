@@ -148,6 +148,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 | `asset_action_manifest_entry.py` | 根据已处理动作 metadata 生成 frame-output manifest entry |
 | `asset_sheet_process.py` | 将生产形态的 2D source sheet 拆成 curation candidate |
 | `asset_curation_select.py` | 将选中的 curation candidate finalize 到运行时素材路径 |
+| `asset_curation_manifest_entry.py` | 根据已选中的 curation candidate 生成运行时 manifest entry |
 | `migrate.py` | 在任何非 MAJOR 升级时把未应用的迁移脚本应用到目标项目；也通过 `--new <slug>` 生成新脚本模板 |
 
 ### publish.py 如何串联一切

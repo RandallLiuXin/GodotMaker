@@ -148,6 +148,7 @@ Python CLI scripts that contributors and users run directly.
 | `asset_action_manifest_entry.py` | Build frame-output manifest entries from processed action metadata |
 | `asset_sheet_process.py` | Split production-shaped 2D source sheets into curation candidates |
 | `asset_curation_select.py` | Finalize selected curation candidates into runtime asset paths |
+| `asset_curation_manifest_entry.py` | Build runtime manifest entries from selected curation candidates |
 | `migrate.py` | Apply pending migrations to a target on any non-MAJOR upgrade; also scaffolds new ones via `--new <slug>` |
 
 ### How publish.py wires everything together

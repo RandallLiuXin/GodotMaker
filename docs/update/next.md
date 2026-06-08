@@ -26,6 +26,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added magenta-background and edge-fringe processing support to the 2D source-sheet processor for production-shaped extraction sheets.
 - Added a first-pass asset curation contract for generated source sheets, canonical selections, and rejected candidates.
 - Added a curation selection helper so accepted candidates can be finalized into runtime asset paths.
+- Added a curation manifest-entry helper so selected source-sheet candidates can produce validated runtime handoff entries.
 - Split the asset generation reference into runtime pipeline and prompt-contract references.
 - Added character animation asset contracts for canonical sources, per-action source sheets, processed frame outputs, action processing metadata, and final runtime handoff validation.
 

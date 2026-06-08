@@ -9,6 +9,7 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 3. `asset_action_manifest_entry.py`
 4. `asset_sheet_process.py`
 5. `asset_curation_select.py`
+6. `asset_curation_manifest_entry.py`
 
 可选 curation 工具：
 
@@ -139,6 +140,24 @@ python tools/asset_curation_select.py \
 
 工具会把 report 状态更新为 `selected`，记录 candidate 的 final path，并输出与 `asset_image_finalize.py` 相同的 finalize metadata。
 
+## asset_curation_manifest_entry.py
+
+`asset_curation_manifest_entry.py` 会把一个已选中的 curation candidate 和它对应的 source-sheet manifest entry 转换成已校验的运行时 manifest entry。
+
+手动入口：
+
+```bash
+python tools/asset_curation_manifest_entry.py \
+  --report <report.json> \
+  --source-entry <source_sheet_entry.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --project-root . \
+  --out <final_asset_entry.json>
+```
+
+生成的 entry 继续交给 `asset_generation_manifest_update.py` upsert。
+
 ## 手动调用这些脚本
 
 大多数情况下不需要直接运行这些脚本。`/gm-asset` 会根据 `ASSETS.md` 和 source-generation manifest 自动调度它们。
@@ -152,5 +171,6 @@ python tools/asset_curation_select.py \
 5. 在 source sheet curation 前移除纯色背景。
 6. 调试 extraction 时单独处理一个 source sheet。
 7. 把某个 extracted candidate 选入运行时素材路径。
+8. 从已选中的 curation candidate 生成一个运行时 manifest entry。
 
 如果想更新 `/gm-evaluate` 用于对比的视觉目标，请重新运行 `/gm-asset`，不要直接编辑已生成的图片。
