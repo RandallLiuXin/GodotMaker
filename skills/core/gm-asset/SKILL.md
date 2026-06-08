@@ -50,7 +50,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 
 1. **Direct Write/Edit by you (main agent) is restricted to project-root `ASSETS.md` and files under `.godotmaker/`.** Files in `assets/` and `references/` reach disk only via:
    - `tools/asset_source_generate.py` invoked through Bash for API-backed generation.
-   - `tools/codex_image_claim.py` followed by `tools/asset_image_finalize.py`.
+   - provider-specific source claim tools followed by `tools/asset_image_finalize.py`.
    - Runtime-native generation followed by `tools/asset_image_finalize.py`.
    - The analyst subagent (Step 2).
    Do NOT write image files with direct Write/Edit calls.
@@ -64,10 +64,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 Read `.godotmaker/config.yaml` before generation. Use `asset_image_model` for image assets and scene references:
 
 - `native`: use the active agent runtime's native image-generation provider/tool.
-- `codex`: use Codex image generation explicitly. If the active runtime is
-  Codex, use the active Codex runtime-native image-generation provider/tool. If
-  the active runtime is Claude Code, invoke non-interactive `codex exec` through
-  Bash and instruct Codex to use `$imagegen` / built-in `image_gen`.
+- `codex`: read `references/providers/codex-image.md`.
 - `gemini:<model>`, `openai:<model>`, `grok:<model>`: write a source-generation spec and call `tools/asset_source_generate.py --spec <spec.json>`.
 
 If the selected provider is unavailable, STOP and ask the user to choose another `asset_image_model`.
@@ -226,8 +223,7 @@ For each missing scene:
 2. Write the prompt text to `prompt_path`.
 3. Generate the scene source using the selected `asset_image_model` path:
    - API-backed selector: write the source-generation spec, then run `python tools/asset_source_generate.py --spec <spec.json>`.
-   - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Active Codex runtime batch for this scene.
-   - Claude Code with `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Codex handoff from Claude Code for this scene.
+   - `asset_image_model: codex`: follow `references/providers/codex-image.md`.
    - Other runtime-native provider: generate a source image path.
 4. Finalize the source image with `python tools/asset_image_finalize.py
    --source <source_path> --out <final_path> --label scene_{name}
@@ -303,8 +299,7 @@ write the fallback reason in the diagnostic summary.
 Use the selected `asset_image_model` path:
 
 - API-backed selector: each group writes one source-generation spec per asset and runs `python tools/asset_source_generate.py --spec <spec.json>`. Finalize only entries that already have a runtime `final_path`.
-- Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Active Codex runtime batch. Use one Codex subagent per asset when subagents are available.
-- Claude Code with `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Codex handoff from Claude Code.
+- `asset_image_model: codex`: follow `references/providers/codex-image.md`.
 - Other runtime-native provider: generate each source image path. Finalize only entries that already have a runtime `final_path`.
 
 For fixed-grid `component_sheet` and `action_sheet` sources, create a layout
@@ -404,7 +399,6 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 | `tools/asset_source_generate.py` | API-backed source image generation (Gemini / OpenAI / Grok) |
 | `tools/asset_layout_guide.py` | Create layout-only guides for fixed-grid source images |
 | `tools/asset_user_preflight.py` | Find unconsumed user-provided asset candidates under `assets/` |
-| `tools/codex_image_claim.py` | Copy Codex saved_path into a project source path |
 | `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |
 | `tools/asset_generation_manifest_update.py` | Upsert asset-generation manifest entries |
 | `tools/asset_generation_manifest_check.py` | Validate asset-generation manifest schema and handoff files |
@@ -416,7 +410,7 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 
 **Reference docs (read for prompt construction):**
 - `references/asset-planner.md` — generation brief template
-- `references/asset-runtime-pipeline.md` — provider, claim, finalize, batch, and manifest handoff contract
+- `references/asset-runtime-pipeline.md` — source, final, batch, and manifest handoff contract
 - `references/asset-prompt-contracts.md` — visual source prompt contracts
 - `references/asset-family-contract.md` — asset family, production shape, and
   manifest contract

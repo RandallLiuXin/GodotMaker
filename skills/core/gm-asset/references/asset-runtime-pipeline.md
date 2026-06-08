@@ -29,29 +29,7 @@ backends.
 
 1. `native`: use the active coding-agent runtime's native image-generation
    provider/tool.
-2. `codex`: use Codex image generation explicitly. In Claude Code, call Codex
-   through `codex exec`. In active Codex, use the active runtime image
-   generation path.
-
-## Source Claim
-
-For any Codex-generated image:
-
-1. Generate the image with `image_gen`.
-2. Read that call's `ImageGenerationEnd.saved_path`.
-3. Claim the source image with `tools/codex_image_claim.py`.
-4. Pass `saved_path`, target `source_path`, and `asset_id`.
-5. Report the JSON printed by `tools/codex_image_claim.py`.
-6. If the claim command exits nonzero, report its JSON error for that asset.
-
-Use the `saved_path` from the current `image_gen` call only.
-
-```bash
-python tools/codex_image_claim.py \
-  --source <saved_path> \
-  --out <source_path> \
-  --asset-id <asset_id>
-```
+2. `codex`: read `references/providers/codex-image.md`.
 
 ## API Source Generation
 
@@ -147,54 +125,6 @@ python tools/asset_generation_manifest_check.py --check-files
 Use `--check-files` after source generation, finalization, and curation
 selection.
 
-## Claude Code To Codex Handoff
-
-When `asset_image_model: codex` is selected in a Claude Code project, use one
-non-interactive Codex batch for the current generation group.
-
-1. Write one batch prompt file listing each asset id, prompt, and exact source
-   target path.
-2. Run one `codex exec` call from the project root.
-3. Ask Codex to spawn one subagent per asset, at most 3 concurrent.
-4. Require each subagent to follow the Source Claim section.
-5. After `codex exec` returns, verify each claimed source exists.
-6. Finalize each claimed source into its project target path.
-
-Batch prompt shape:
-
-```text
-Use the $imagegen skill and built-in image_gen tool to generate these assets.
-Spawn one subagent per asset and run them in parallel, at most 3 at a time.
-Wait for all subagents to finish.
-
-For each asset:
-1. Follow the Source Claim section.
-2. Report the asset id and the claim JSON.
-
-Assets:
-- id: <asset_id_1>
-  target: .godotmaker/asset-generation/sources/<asset_id_1>_source.png
-  prompt: <prompt 1>
-- id: <asset_id_2>
-  target: .godotmaker/asset-generation/sources/<asset_id_2>_source.png
-  prompt: <prompt 2>
-
-If built-in image generation is unavailable, do not create that image file.
-Report the failure clearly.
-```
-
-Run `codex exec` from the project root with JSON output enabled, the batch
-prompt on stdin, and the batch summary written under
-`.godotmaker/asset-generation/reports/`.
-
-```bash
-codex exec --json -C <project_root> \
-  --output-last-message <summary_path> \
-  - < <batch_prompt_path>
-```
-
-Do not silently switch providers when the configured provider is `codex`.
-
 ## Art Asset Batch
 
 Use this input schema for non-scene visual assets:
@@ -222,20 +152,9 @@ Use this input schema for non-scene visual assets:
 }
 ```
 
-When the active runtime is Codex and `asset_image_model` is `native` or
-`codex`:
-
-1. Use one subagent per asset when Codex subagents are available.
-2. Give each subagent exactly one asset's input record.
-3. Each subagent generates only its assigned asset and follows the Source Claim
-   section.
-4. Each subagent claims its own generated `saved_path` into the assigned
-   `source_path`.
-5. If isolated generation groups are unavailable, run the batch sequentially.
-6. Write the sequential fallback reason in
-   `.godotmaker/asset-generation/reports/<group_id>.summary.txt`.
-7. Finalize each claimed source into its project target path.
-8. Write one flat finalize JSON entry per asset.
+Run each group through the selected provider path. Finalize each accepted
+source into its project target path and write one flat finalize JSON entry per
+asset.
 
 Diagnostic report shape:
 

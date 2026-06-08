@@ -12,6 +12,7 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 from urllib.parse import unquote, urlparse
 
 
@@ -99,17 +100,140 @@ def claim_codex_image(source: str, output: Path, *, asset_id: str | None = None)
     return result
 
 
+def _load_json(path: Path, label: str) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise CodexImageClaimError(f"{label} file not found: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise CodexImageClaimError(f"{label} file is not valid JSON: {path}") from exc
+
+
+def _string(value: Any, field: str, *, item_label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise CodexImageClaimError(f"{item_label}.{field} must be a non-empty string")
+    return value.strip()
+
+
+def _planned_items(plan: Any) -> dict[str, dict[str, str]]:
+    if not isinstance(plan, dict):
+        raise CodexImageClaimError("Plan must be a JSON object")
+
+    raw_items: list[Any] = []
+    if isinstance(plan.get("items"), list):
+        raw_items.extend(plan["items"])
+    if plan.get("anchor_item") is not None:
+        raw_items.append(plan["anchor_item"])
+    if isinstance(plan.get("parallel_items"), list):
+        raw_items.extend(plan["parallel_items"])
+
+    if not raw_items:
+        raise CodexImageClaimError("Plan must contain items, anchor_item, or parallel_items")
+
+    planned: dict[str, dict[str, str]] = {}
+    for index, item in enumerate(raw_items):
+        if not isinstance(item, dict):
+            raise CodexImageClaimError(f"plan item {index} must be an object")
+        label = f"plan item {index}"
+        asset_id = _string(item.get("asset_id"), "asset_id", item_label=label)
+        source_path = _string(item.get("source_path"), "source_path", item_label=label)
+        source = Path(source_path)
+        if source.is_absolute() or ".." in source.parts:
+            raise CodexImageClaimError(f"{label}.source_path must stay within the project")
+        if asset_id in planned:
+            raise CodexImageClaimError(f"Duplicate planned asset_id: {asset_id}")
+        planned[asset_id] = {"asset_id": asset_id, "source_path": source_path}
+    return planned
+
+
+def _reported_saved_paths(report: Any) -> dict[str, str]:
+    if isinstance(report, list):
+        raw_items = report
+    elif isinstance(report, dict):
+        if report.get("ok") is False:
+            raise CodexImageClaimError(f"Codex saved-path report failed: {report.get('error') or 'unknown error'}")
+        failures = report.get("failures")
+        if isinstance(failures, list) and failures:
+            first = failures[0]
+            if isinstance(first, dict):
+                asset = first.get("asset_id") or "unknown asset"
+                error = first.get("error") or "unknown error"
+                raise CodexImageClaimError(f"Codex generation failed for {asset}: {error}")
+            raise CodexImageClaimError("Codex saved-path report contains failures")
+        raw_items = report.get("assets")
+    else:
+        raise CodexImageClaimError("Saved-path report must be a JSON object or array")
+
+    if not isinstance(raw_items, list) or not raw_items:
+        raise CodexImageClaimError("Saved-path report must contain a non-empty assets list")
+
+    saved_paths: dict[str, str] = {}
+    for index, item in enumerate(raw_items):
+        if not isinstance(item, dict):
+            raise CodexImageClaimError(f"report asset {index} must be an object")
+        label = f"report asset {index}"
+        asset_id = _string(item.get("asset_id"), "asset_id", item_label=label)
+        saved_path = _string(item.get("saved_path"), "saved_path", item_label=label)
+        if asset_id in saved_paths:
+            raise CodexImageClaimError(f"Duplicate reported asset_id: {asset_id}")
+        saved_paths[asset_id] = saved_path
+    return saved_paths
+
+
+def claim_codex_image_batch(plan_path: Path, report_path: Path, *, project_root: Path) -> dict[str, Any]:
+    planned = _planned_items(_load_json(plan_path, "Plan"))
+    saved_paths = _reported_saved_paths(_load_json(report_path, "Saved-path report"))
+
+    unknown = sorted(set(saved_paths) - set(planned))
+    if unknown:
+        raise CodexImageClaimError(f"Saved-path report contains unknown asset_id: {', '.join(unknown)}")
+
+    missing = sorted(set(planned) - set(saved_paths))
+    if missing:
+        raise CodexImageClaimError(f"Saved-path report is missing asset_id: {', '.join(missing)}")
+
+    results = []
+    for asset_id, item in planned.items():
+        output = project_root / item["source_path"]
+        result = claim_codex_image(saved_paths[asset_id], output, asset_id=asset_id)
+        result["source_path"] = item["source_path"]
+        results.append(result)
+
+    return {
+        "ok": True,
+        "plan": str(plan_path),
+        "report": str(report_path),
+        "assets": results,
+    }
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(
-        description="Copy a Codex ImageGenerationEnd saved_path to a project source path"
+        description="Claim Codex ImageGenerationEnd saved_path outputs"
     )
-    parser.add_argument("--source", required=True, help="Codex ImageGenerationEnd saved_path")
-    parser.add_argument("--out", required=True, help="Project-local claimed source image path")
+    parser.add_argument("--source", help="Codex ImageGenerationEnd saved_path")
+    parser.add_argument("--out", help="Project-local claimed source image path")
     parser.add_argument("--asset-id", default=None, help="Optional asset id for JSON output")
+    parser.add_argument("--plan", help="Planned generation batch JSON")
+    parser.add_argument("--report", help="Codex saved-path report JSON")
+    parser.add_argument("--project-root", default=".", help="Project root for relative batch source_path outputs")
     args = parser.parse_args()
 
     try:
-        result = claim_codex_image(args.source, Path(args.out), asset_id=args.asset_id)
+        if args.plan or args.report:
+            if args.source or args.out or args.asset_id:
+                raise CodexImageClaimError("Batch mode cannot be combined with --source, --out, or --asset-id")
+            if not args.plan or not args.report:
+                raise CodexImageClaimError("Batch mode requires --plan and --report")
+            result = claim_codex_image_batch(
+                Path(args.plan),
+                Path(args.report),
+                project_root=Path(args.project_root),
+            )
+        else:
+            if not args.source or not args.out:
+                raise CodexImageClaimError("Single-image mode requires --source and --out")
+            result = claim_codex_image(args.source, Path(args.out), asset_id=args.asset_id)
     except (CodexImageClaimError, OSError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
