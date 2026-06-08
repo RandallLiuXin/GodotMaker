@@ -75,6 +75,8 @@ this shape:
       "runtime_role": "player",
       "source_path": ".godotmaker/asset-generation/sources/player_idle_source.png",
       "final_path": "assets/sprites/player_idle_sheet.png",
+      "target_size": null,
+      "target_aspect": null,
       "derived_from": "player_idle",
       "canonical_reference": "player_canonical",
       "prompt_path": ".godotmaker/asset-generation/prompts/player_idle.txt",
@@ -134,6 +136,8 @@ same current-tag asset is being regenerated.
 10. Mark irregular or mixed sheets as `needs_curation`.
 11. Record source, final, prompt, and status in the manifest.
 12. Bind gameplay-visible final assets in `ASSETS.md` Visual Asset Contract.
+13. Record `target_size` and `target_aspect` for fixed-viewport references,
+    backgrounds, and parallax plates.
 
 ## Character Frame Output QC
 

@@ -61,6 +61,109 @@ def test_check_manifest_accepts_valid_schema(tmp_path):
     assert result["check_files"] is False
 
 
+def test_check_manifest_accepts_target_size_and_aspect_metadata(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "screen_reference",
+            "production_shape": "reference_only",
+            "target_size": "1280x720",
+            "target_aspect": "16:9",
+            "curation": None,
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
+
+
+def test_check_manifest_rejects_non_string_target_metadata(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "screen_reference",
+            "production_shape": "reference_only",
+            "target_size": [1280, 720],
+            "target_aspect": {"w": 16, "h": 9},
+            "curation": None,
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="target_size"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_invalid_target_metadata_format(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "screen_reference",
+            "production_shape": "reference_only",
+            "target_size": "large",
+            "target_aspect": "wide",
+            "curation": None,
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="target_size"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_requires_screen_reference_target_geometry(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "screen_reference",
+            "production_shape": "reference_only",
+            "curation": None,
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="missing target_size"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_requires_background_target_geometry(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "background",
+            "production_shape": "single_image",
+            "curation": None,
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="missing target_size"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_allows_deferred_background_without_target_geometry(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "background",
+            "production_shape": "single_image",
+            "source_path": None,
+            "final_path": None,
+            "prompt_path": None,
+            "processing_status": "deferred",
+            "extraction_status": "not_required",
+            "curation": None,
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
+
+
 def test_check_manifest_accepts_character_frame_output_delivery_sheet(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_manifest(

@@ -224,6 +224,8 @@ For every planned generated visual asset, reserve:
 5. Manifest entry under `.godotmaker/asset-generation/manifest.json`.
 6. Curation report under `.godotmaker/asset-generation/curation/` when the
    source requires extraction or selection.
+7. `target_size` and `target_aspect` for fixed-viewport scene references,
+   backgrounds, parallax plates, and fixed-size runtime images.
 
 Use these status rules:
 
@@ -315,6 +317,8 @@ Scene reference planning uses the same batch rules:
    - report path: `.godotmaker/asset-generation/reports/scene_refs_<group_id>.json`
    - family: `screen_reference`
    - production shape: `reference_only`
+   - target size: the scene's intended viewport or project default
+   - target aspect: the scene's intended viewport aspect
 5. Plan one flat finalize JSON diagnostic entry per scene reference.
 
 ### 7. Prepare ASSETS.md updates
@@ -358,6 +362,9 @@ silhouette requirement. For derivative assets, name the anchor asset.
 
 Use for title screens, sky panoramas, arena backgrounds, parallax layers, and
 large scenic images. Specify viewport behavior and intended display size.
+
+For fixed-viewport backgrounds, record `target_size` and `target_aspect`.
+Finalize with source-aspect validation.
 
 ### Texture
 

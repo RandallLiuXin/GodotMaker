@@ -124,6 +124,41 @@ def test_finalize_keeps_matching_aspect_without_padding(tmp_path):
         )
 
 
+def test_finalize_accepts_required_source_aspect_before_resize(tmp_path):
+    source = tmp_path / "generated" / "scene.png"
+    output = tmp_path / "references" / "scene_main.png"
+    make_png(source, size=(1600, 900), color=(20, 80, 160, 255))
+
+    result = finalize_image_asset(
+        source,
+        output,
+        resize="1280x720",
+        require_aspect="16:9",
+    )
+
+    assert (result["width"], result["height"]) == (1280, 720)
+    assert result["required_aspect"] == "16:9"
+    assert result["aspect_delta"] == 0
+    assert output.exists()
+
+
+def test_finalize_rejects_required_source_aspect_mismatch(tmp_path):
+    source = tmp_path / "generated" / "scene.png"
+    output = tmp_path / "references" / "scene_main.png"
+    make_png(source, size=(1536, 1024), color=(20, 80, 160, 255))
+
+    with pytest.raises(ImageFinalizeError, match="does not match required 16:9"):
+        finalize_image_asset(
+            source,
+            output,
+            resize="1280x720",
+            require_aspect="16:9",
+            aspect_tolerance=0.01,
+        )
+
+    assert not output.exists()
+
+
 def test_finalize_archives_original_by_default(tmp_path):
     source = tmp_path / "generated" / "coin.png"
     output = tmp_path / "assets" / "img" / "coin.png"
@@ -187,3 +222,35 @@ def test_cli_no_origin_flag(tmp_path):
     data = json.loads(result.stdout)
     assert "origin" not in data
     assert not (tmp_path / "assets" / "origin" / "coin.png").exists()
+
+
+def test_cli_rejects_required_source_aspect_mismatch(tmp_path):
+    source = tmp_path / "generated" / "scene.png"
+    output = tmp_path / "references" / "scene_main.png"
+    make_png(source, size=(1024, 1536))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_image_finalize.py"),
+            "--source",
+            str(source),
+            "--out",
+            str(output),
+            "--resize",
+            "1280x720",
+            "--require-aspect",
+            "16:9",
+            "--aspect-tolerance",
+            "0.01",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    data = json.loads(result.stdout)
+    assert data["ok"] is False
+    assert "does not match required 16:9" in data["error"]
+    assert not output.exists()

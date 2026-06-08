@@ -114,6 +114,21 @@ python tools/asset_image_finalize.py \
   --label <asset_id>
 ```
 
+For scene references, backgrounds, parallax plates, and fixed-viewport sources,
+validate the source aspect before resize:
+
+```bash
+python tools/asset_image_finalize.py \
+  --source <source_path> \
+  --out <final_path> \
+  --label <asset_id> \
+  --require-aspect <WIDTH:HEIGHT> \
+  --resize <WIDTHxHEIGHT>
+```
+
+If aspect validation fails, do not use the finalized output. Regenerate the
+source or leave the asset incomplete.
+
 If the source is a sheet, atlas, UI kit, action sheet, or irregular reference,
 send it through `asset-curation.md` before marking runtime asset rows
 `generated`.
@@ -194,6 +209,8 @@ Use this input schema for non-scene visual assets:
       "asset_id": "<asset_id>",
       "family": "<asset family>",
       "production_shape": "<production shape>",
+      "target_size": "<WIDTHxHEIGHT or null>",
+      "target_aspect": "<WIDTH:HEIGHT or null>",
       "prompt": "<prompt>",
       "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
       "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
@@ -258,6 +275,8 @@ Input schema:
     "asset_id": "scene_main",
     "family": "screen_reference",
     "production_shape": "reference_only",
+    "target_size": "1280x720",
+    "target_aspect": "16:9",
     "prompt": "<prompt>",
     "prompt_path": ".godotmaker/asset-generation/prompts/scene_main.txt",
     "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
@@ -269,6 +288,8 @@ Input schema:
       "asset_id": "scene_shop",
       "family": "screen_reference",
       "production_shape": "reference_only",
+      "target_size": "1280x720",
+      "target_aspect": "16:9",
       "prompt": "<prompt>",
       "prompt_path": ".godotmaker/asset-generation/prompts/scene_shop.txt",
       "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",

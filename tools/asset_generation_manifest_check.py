@@ -107,6 +107,61 @@ def _string_field(
     return value
 
 
+def _target_size_field(
+    item: dict[str, Any],
+    field: str,
+    issues: list[str],
+    *,
+    index: int,
+    required: bool = False,
+) -> str | None:
+    value = _string_field(item, field, issues, index=index, required=required)
+    if value is None:
+        return None
+    raw = value.lower()
+    if "x" not in raw:
+        issues.append(f"assets[{index}].{field} must use WIDTHxHEIGHT")
+        return None
+    left, right = raw.split("x", 1)
+    try:
+        width = int(left)
+        height = int(right)
+    except ValueError:
+        issues.append(f"assets[{index}].{field} must use integer WIDTHxHEIGHT")
+        return None
+    if width <= 0 or height <= 0:
+        issues.append(f"assets[{index}].{field} dimensions must be positive")
+        return None
+    return value
+
+
+def _target_aspect_field(
+    item: dict[str, Any],
+    field: str,
+    issues: list[str],
+    *,
+    index: int,
+    required: bool = False,
+) -> str | None:
+    value = _string_field(item, field, issues, index=index, required=required)
+    if value is None:
+        return None
+    if ":" not in value:
+        issues.append(f"assets[{index}].{field} must use WIDTH:HEIGHT")
+        return None
+    left, right = value.split(":", 1)
+    try:
+        width = float(left)
+        height = float(right)
+    except ValueError:
+        issues.append(f"assets[{index}].{field} must use numeric WIDTH:HEIGHT")
+        return None
+    if width <= 0 or height <= 0:
+        issues.append(f"assets[{index}].{field} dimensions must be positive")
+        return None
+    return value
+
+
 def _path_exists(project_root: Path, raw_path: str, issues: list[str], message: str) -> None:
     path = Path(raw_path)
     if not path.is_absolute():
@@ -309,6 +364,24 @@ def check_manifest(
         processing_status = _string_field(item, "processing_status", issues, index=index)
         extraction_status = _string_field(item, "extraction_status", issues, index=index)
         curation_report_path, curation_status = _check_curation(item, index=index, issues=issues)
+        require_target_geometry = (
+            family in {"screen_reference", "background"}
+            and processing_status not in {"deferred", "rejected"}
+        )
+        _target_size_field(
+            item,
+            "target_size",
+            issues,
+            index=index,
+            required=require_target_geometry,
+        )
+        _target_aspect_field(
+            item,
+            "target_aspect",
+            issues,
+            index=index,
+            required=require_target_geometry,
+        )
 
         for optional_field in ("derived_from", "canonical_reference", "preview_path", "notes"):
             value = item.get(optional_field)

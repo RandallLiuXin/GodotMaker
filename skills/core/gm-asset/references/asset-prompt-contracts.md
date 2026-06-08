@@ -46,7 +46,7 @@ Use scene references as visual targets for a scene. They are written under
 Prompt shape:
 
 ```text
-Screenshot of a {2D game}. {camera/viewpoint}. Game objects: {visible objects with position and approximate size}. Environment: {layers and playfield}. HUD: {visible UI elements}. Visual style: {STYLE.md Style Anchor + Prompt Suffix}. No text labels unless the scene explicitly needs UI text.
+Screenshot of a {2D game}. {target aspect and orientation}. {camera/viewpoint}. Game objects: {visible objects with position and approximate size}. Environment: {layers and playfield}. HUD: {visible UI elements}. Visual style: {STYLE.md Style Anchor + Prompt Suffix}. No text labels unless the scene explicitly needs UI text.
 ```
 
 Scene reference prompts must include:
@@ -56,6 +56,8 @@ Scene reference prompts must include:
 3. HUD or UI elements described in `SCENES.md`.
 4. Style language from `STYLE.md`.
 5. Only effects and objects that the game will implement.
+6. Exact target orientation and aspect ratio, such as `wide 16:9 landscape
+   composition` or `vertical 9:16 portrait composition`.
 
 ## Style Reference
 
@@ -199,8 +201,11 @@ Use backgrounds for runtime backgrounds and parallax layers.
 Prompt shape:
 
 ```text
-{description in the art style}. {composition instructions}. Intended game display: {viewport or parallax behavior}. No gameplay actors, pickups, hazards, UI, or text.
+{description in the art style}. {target aspect and orientation}. {composition instructions}. Intended game display: {viewport or parallax behavior}. No gameplay actors, pickups, hazards, UI, or text.
 ```
+
+For fixed-viewport backgrounds, include the target aspect and orientation in
+the first sentence.
 
 ## Map Or Stage Reference
 

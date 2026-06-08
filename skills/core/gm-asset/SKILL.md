@@ -189,6 +189,8 @@ plan a fixed source path, final path, and report path:
     "asset_id": "scene_main",
     "family": "screen_reference",
     "production_shape": "reference_only",
+    "target_size": "1280x720",
+    "target_aspect": "16:9",
     "prompt": "<prompt>",
     "prompt_path": ".godotmaker/asset-generation/prompts/scene_main.txt",
     "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
@@ -199,6 +201,8 @@ plan a fixed source path, final path, and report path:
       "asset_id": "scene_shop",
       "family": "screen_reference",
       "production_shape": "reference_only",
+      "target_size": "1280x720",
+      "target_aspect": "16:9",
       "prompt": "<prompt>",
       "prompt_path": ".godotmaker/asset-generation/prompts/scene_shop.txt",
       "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",
@@ -217,15 +221,22 @@ sequentially and write the fallback reason in the report and summary.
 For each missing scene:
 
 1. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood + Asset bindings) + matching ASSETS.md Visual Asset Contract rows + `STYLE.md` + `GDD.md` section 4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
+   Include the target aspect ratio in the prompt, such as `wide 16:9
+   landscape composition` or `vertical 9:16 portrait composition`.
 2. Write the prompt text to `prompt_path`.
 3. Generate the scene source using the selected `asset_image_model` path:
    - API-backed selector: write the source-generation spec, then run `python tools/asset_source_generate.py --spec <spec.json>`.
    - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Active Codex runtime batch for this scene.
    - Claude Code with `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Codex handoff from Claude Code for this scene.
    - Other runtime-native provider: generate a source image path.
-4. Finalize the source image with `python tools/asset_image_finalize.py --source <source_path> --out <final_path> --label scene_{name}`.
+4. Finalize the source image with `python tools/asset_image_finalize.py
+   --source <source_path> --out <final_path> --label scene_{name}
+   --require-aspect <target_aspect> --resize <target_size>`.
 5. Write the scene's flat finalize JSON entry and contract summary to the scene-reference diagnostic report.
-6. Show the result to the user. If rejected, regenerate with a tightened prompt.
+6. If source aspect validation fails, regenerate with a tightened prompt. If it
+   still fails, write the failed diagnostic entry and leave the scene reference
+   incomplete.
+7. Show the result to the user. If rejected, regenerate with a tightened prompt.
 
 ### Step 4 — Generate Remaining MISSING Art
 
@@ -273,6 +284,8 @@ input schema:
       "asset_id": "<asset_id>",
       "family": "<asset family>",
       "production_shape": "<production shape>",
+      "target_size": "<WIDTHxHEIGHT or null>",
+      "target_aspect": "<WIDTH:HEIGHT or null>",
       "prompt": "<prompt>",
       "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
       "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
@@ -302,6 +315,11 @@ generation runtime before generating the source.
 Each group may write one diagnostic JSON report under
 `.godotmaker/asset-generation/reports/`. Use it for troubleshooting provider
 calls, fallback notes, and finalize JSON. The manifest is the handoff contract.
+
+For `background` entries with a fixed viewport or parallax plate size, include
+`target_size` and `target_aspect` in the batch item and prompt. Finalize with
+`--require-aspect <target_aspect> --resize <target_size>`. If source aspect
+validation fails, regenerate or leave the row `MISSING`.
 
 ### Step 4.5 - Curate Generated Visual Sources
 

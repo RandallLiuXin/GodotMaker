@@ -35,6 +35,31 @@ def _parse_size(value: str | None) -> tuple[int, int] | None:
     return width, height
 
 
+def _parse_aspect(value: str | None) -> tuple[float, str] | None:
+    if not value:
+        return None
+    raw = value.lower().strip()
+    separator = ":" if ":" in raw else "x" if "x" in raw else None
+    if separator is None:
+        raise ImageFinalizeError("--require-aspect must use WIDTH:HEIGHT or WIDTHxHEIGHT")
+    left, right = raw.split(separator, 1)
+    try:
+        width = float(left)
+        height = float(right)
+    except ValueError as exc:
+        raise ImageFinalizeError("--require-aspect must use numeric dimensions") from exc
+    if width <= 0 or height <= 0:
+        raise ImageFinalizeError("--require-aspect dimensions must be positive")
+    return width / height, f"{left}:{right}"
+
+
+def _aspect_delta(width: int, height: int, required_ratio: float) -> float:
+    if width <= 0 or height <= 0:
+        raise ImageFinalizeError("Image dimensions must be positive")
+    actual_ratio = width / height
+    return abs(actual_ratio - required_ratio) / required_ratio
+
+
 def _load_image(path: Path):
     try:
         from PIL import Image
@@ -110,6 +135,8 @@ def finalize_image_asset(
     output: Path,
     *,
     resize: str | None = None,
+    require_aspect: str | None = None,
+    aspect_tolerance: float = 0.03,
     image_format: str = "png",
     label: str | None = None,
     archive_original: bool = True,
@@ -123,10 +150,25 @@ def finalize_image_asset(
         raise ImageFinalizeError(f"Source image is not a file: {source}")
 
     requested_size = _parse_size(resize)
+    required_aspect = _parse_aspect(require_aspect)
+    if aspect_tolerance < 0:
+        raise ImageFinalizeError("--aspect-tolerance must be non-negative")
     image = _load_image(source)
     origin_saved: str | None = None
     try:
         original_width, original_height = image.size
+        aspect_delta: float | None = None
+        aspect_label: str | None = None
+        if required_aspect is not None:
+            required_ratio, aspect_label = required_aspect
+            aspect_delta = _aspect_delta(original_width, original_height, required_ratio)
+            if aspect_delta > aspect_tolerance:
+                actual = f"{original_width}:{original_height}"
+                raise ImageFinalizeError(
+                    "Source image aspect ratio "
+                    f"{actual} does not match required {aspect_label} "
+                    f"(delta {aspect_delta:.4f}, tolerance {aspect_tolerance:.4f})"
+                )
         source_format = (image.format or source.suffix.lstrip(".")).lower()
         changed = (
             requested_size is not None
@@ -185,6 +227,10 @@ def finalize_image_asset(
         result["origin"] = origin_saved
     if requested_size is not None:
         result["resize"] = f"{requested_size[0]}x{requested_size[1]}"
+    if required_aspect is not None:
+        result["required_aspect"] = aspect_label
+        result["aspect_delta"] = aspect_delta
+        result["aspect_tolerance"] = aspect_tolerance
     if label:
         result["label"] = label
         result["asset_id"] = label
@@ -196,6 +242,17 @@ def _main() -> int:
     parser.add_argument("--source", required=True, help="Generated source image path")
     parser.add_argument("--out", required=True, help="Final project image path")
     parser.add_argument("--resize", default=None, help="Optional WIDTHxHEIGHT resize")
+    parser.add_argument(
+        "--require-aspect",
+        default=None,
+        help="Require source aspect WIDTH:HEIGHT or WIDTHxHEIGHT before resize",
+    )
+    parser.add_argument(
+        "--aspect-tolerance",
+        type=float,
+        default=0.03,
+        help="Maximum relative source-aspect delta for --require-aspect",
+    )
     parser.add_argument("--format", default="png", choices=["png"], help="Output format")
     parser.add_argument("--label", default=None, help="Optional asset label for JSON output")
     parser.add_argument(
@@ -211,6 +268,8 @@ def _main() -> int:
             Path(args.source),
             Path(args.out),
             resize=args.resize,
+            require_aspect=args.require_aspect,
+            aspect_tolerance=args.aspect_tolerance,
             image_format=args.format,
             label=args.label,
             archive_original=args.archive_original,
