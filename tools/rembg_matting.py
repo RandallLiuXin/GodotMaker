@@ -75,7 +75,7 @@ def create_session(model: str = "birefnet-general"):
             "WARNING: NVIDIA GPU detected but CUDA is not available for rembg/onnxruntime.\n"
             "  Background removal will run on CPU (much slower).\n"
             "  To fix, install GPU dependencies:\n"
-            "    pip install onnxruntime-gpu nvidia-cudnn-cu12==9.*\n"
+            "    pip install -r tools/requirements-gpu.txt\n"
             "  Then verify:\n"
             "    python -c \"import onnxruntime; print(onnxruntime.get_available_providers())\"\n"
             "  Expected output should include 'CUDAExecutionProvider'.\n",

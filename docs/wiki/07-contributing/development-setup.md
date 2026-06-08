@@ -8,6 +8,8 @@ This page gets you from a fresh clone to a running test suite, and walks through
 git clone https://github.com/RandallLiuXin/GodotMaker.git
 cd GodotMaker
 pip install -r tools/requirements.txt
+# Optional: NVIDIA GPU acceleration for rembg (Linux/Windows only)
+# pip install -r tools/requirements-gpu.txt
 ```
 
 You also need **Godot 4.5 or later** on your `PATH`. Run this to confirm everything is in place before you start:

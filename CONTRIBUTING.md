@@ -69,6 +69,8 @@ python -m pip install pytest ruff mkdocs mkdocs-material
 
 # Optional: install asset/API provider dependencies when working on tools/
 python -m pip install -r tools/requirements.txt
+# Optional: NVIDIA GPU acceleration for rembg (Linux/Windows only)
+# python -m pip install -r tools/requirements-gpu.txt
 ```
 
 ## Coding Conventions

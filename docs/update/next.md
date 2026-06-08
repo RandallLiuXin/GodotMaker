@@ -21,6 +21,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Split Python tool dependencies: `tools/requirements.txt` now installs CPU `onnxruntime` for all platforms; optional `tools/requirements-gpu.txt` adds NVIDIA CUDA acceleration on Linux/Windows.
 - Clarified README preview-feature scope and roadmap priorities for art production, Codex runner fallback, 3D support, and audio generation.
 - `/gm-asset` now runs a lightweight user-asset preflight before generation so CLI-driven runs can notice files already placed under `assets/`.
 

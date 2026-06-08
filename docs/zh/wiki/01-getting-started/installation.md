@@ -61,6 +61,8 @@ npm install -g godotmaker-cli
 git clone https://github.com/RandallLiuXin/GodotMaker.git
 cd GodotMaker
 pip install -r tools/requirements.txt
+# 可选：rembg NVIDIA GPU 加速（仅 Linux/Windows）
+# pip install -r tools/requirements-gpu.txt
 python tools/check_env.py
 ```
 

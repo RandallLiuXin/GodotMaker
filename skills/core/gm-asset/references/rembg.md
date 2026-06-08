@@ -24,9 +24,9 @@ The prompt must include a solid flat background color. Without it, the generator
 
 The script auto-detects NVIDIA GPUs and uses CUDA when available. If a GPU is present but CUDA deps are missing, it prints a clear warning and falls back to CPU.
 
-Required for GPU:
+Required for GPU (Linux/Windows with NVIDIA CUDA only):
 ```bash
-pip install onnxruntime-gpu nvidia-cudnn-cu12==9.*
+pip install -r tools/requirements-gpu.txt
 ```
 
 Verify CUDA is working:
@@ -39,9 +39,10 @@ If the script warns about GPU detected but CUDA unavailable — install the deps
 
 ## CLI
 
-Dependencies in `tools/requirements.txt`. If rembg is not installed:
+Dependencies in `tools/requirements.txt` (CPU). For NVIDIA GPU acceleration on Linux/Windows, also install `tools/requirements-gpu.txt`. If rembg is not installed:
 ```bash
-pip install rembg[gpu,cli]   # use rembg[cpu,cli] if no GPU
+pip install -r tools/requirements.txt
+pip install -r tools/requirements-gpu.txt   # optional, Linux/Windows + NVIDIA only
 ```
 
 ### Single image

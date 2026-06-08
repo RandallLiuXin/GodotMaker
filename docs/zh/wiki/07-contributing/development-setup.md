@@ -8,6 +8,8 @@
 git clone https://github.com/RandallLiuXin/GodotMaker.git
 cd GodotMaker
 pip install -r tools/requirements.txt
+# 可选：rembg NVIDIA GPU 加速（仅 Linux/Windows）
+# pip install -r tools/requirements-gpu.txt
 ```
 
 你还需要将 **Godot 4.5 或更高版本**加入 `PATH`。开始之前先运行以下命令确认环境就绪：

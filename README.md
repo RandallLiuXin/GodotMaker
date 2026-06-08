@@ -69,6 +69,8 @@ For framework development:
 git clone https://github.com/RandallLiuXin/GodotMaker.git
 cd GodotMaker
 pip install -r tools/requirements.txt
+# Optional: NVIDIA GPU acceleration for rembg (Linux/Windows only)
+# pip install -r tools/requirements-gpu.txt
 python tools/check_env.py
 ```
 

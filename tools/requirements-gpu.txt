@@ -1,0 +1,10 @@
+# Optional NVIDIA CUDA acceleration for rembg background removal.
+# Linux/Windows with an NVIDIA GPU only — not available on macOS.
+#
+# Install after the base requirements:
+#   pip install -r tools/requirements.txt
+#   pip install -r tools/requirements-gpu.txt
+#
+# Replaces the CPU onnxruntime wheel with onnxruntime-gpu.
+onnxruntime-gpu
+nvidia-cudnn-cu12==9.*
