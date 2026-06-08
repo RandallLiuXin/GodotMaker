@@ -52,8 +52,9 @@ Use these source-level outcomes:
 Choose the first strategy that matches the source:
 
 1. Character animation frame sheets and fixed-row sprite sheets: use
-   `tools/asset_sheet_process.py --snap-mode grid` with `--grid`, `--names`,
-   and `--report`.
+   `tools/asset_action_process.py` for character actions or
+   `tools/asset_sheet_process.py --snap-mode grid` for non-character fixed
+   grids.
 2. Strict regular grids where every cell maps to one object: use
    `tools/asset_sheet_process.py --snap-mode grid`.
 3. Solid magenta `#FF00FF` background with separated UI, icon, or prop
@@ -67,6 +68,40 @@ Choose the first strategy that matches the source:
    curation record and crop with a follow-up tool or manual pass.
 5. Crowded, overlapping, inconsistent, or text-heavy source: mark
    `needs_regeneration`.
+
+## Character Action Curation
+
+Process each `character_action_source` before updating ASSETS.md.
+
+1. Use `tools/asset_action_process.py`.
+2. Use explicit grid shape and frame names.
+3. Use solid `#FF00FF` background processing for magenta sources.
+4. Use `kind: body` for body-only character, enemy, NPC, summon, and animated
+   prop actions.
+5. Use `kind: fx` for projectile, impact, slash, aura, dust, pickup, and
+   detached effect sources.
+6. Use `align: feet` or `align: bottom` for grounded body actions.
+7. Use `align: center` for floating actions and detached FX.
+8. Compare later body actions against accepted idle or run metadata.
+9. Reject processed outputs with non-empty `edge_touch_frames`.
+10. Write frames, transparent delivery grid sheet, GIF, and pipeline metadata.
+11. Keep one processing report per action source.
+12. Set derived outputs to `character_frame_output` with `derived_from` pointing
+    to the action source and `canonical_reference` pointing to the accepted
+    canonical asset.
+
+```bash
+python tools/asset_action_process.py \
+  --source <action_source.png> \
+  --out-dir <processed_dir> \
+  --grid <COLSxROWS> \
+  --names <frame_names> \
+  --kind <body|fx> \
+  --final-dir <runtime_dir> \
+  --final-prefix <asset_id>
+```
+
+For later body actions, add `--scale-reference-metadata <pipeline-meta.json>`.
 
 ## Curation Record Shape
 
@@ -115,11 +150,13 @@ Write curation reports under `.godotmaker/asset-generation/curation/`:
 
 ## Selecting Candidates
 
-Finalize a selected candidate with:
+Finalize a selected candidate with `tools/asset_curation_select.py`. Provide
+the curation report path, candidate id or name, final runtime path, final asset
+id, and project root.
 
 ```bash
 python tools/asset_curation_select.py \
-  --report .godotmaker/asset-generation/curation/<asset_id>.json \
+  --report <report.json> \
   --candidate <candidate_id_or_name> \
   --final-path <final_path> \
   --asset-id <final_asset_id> \

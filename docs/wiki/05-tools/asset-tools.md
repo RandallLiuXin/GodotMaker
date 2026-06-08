@@ -1,15 +1,15 @@
 # Asset tools
 
 GodotMaker generates and processes 2D art through small Python helper scripts.
-`/gm-asset` calls the primary tools automatically. You can also run them by
-hand to test source generation, source-sheet processing, or candidate
-selection.
+`/gm-asset` calls the primary tools automatically. Manual calls are for
+debugging one source, one action sheet, or one curation decision.
 
 Primary pipeline tools:
 
 1. `asset_source_generate.py`
-2. `asset_sheet_process.py`
-3. `asset_curation_select.py`
+2. `asset_action_process.py`
+3. `asset_sheet_process.py`
+4. `asset_curation_select.py`
 
 Optional curation utility:
 
@@ -18,7 +18,7 @@ Optional curation utility:
 ## asset_source_generate.py
 
 `asset_source_generate.py` generates API-backed source images from a JSON spec.
-It supports Gemini, OpenAI, and xAI Grok selectors. Runtime-native `native` /
+It supports Gemini, OpenAI, and xAI Grok selectors. Runtime-native `native` and
 `codex` image generation is selected by `/gm-asset`, not this script.
 
 Provider-prefixed selectors require the matching key: `GOOGLE_API_KEY` /
@@ -26,103 +26,117 @@ Provider-prefixed selectors require the matching key: `GOOGLE_API_KEY` /
 Grok. To choose which provider `/gm-asset` uses, set `asset_image_model` in
 [`../06-configuration/project-config.md`](../06-configuration/project-config.md).
 
-### Generate a source image
-
-Write a spec:
-
-```json
-{
-  "asset_id": "player_canonical",
-  "model": "gemini:gemini-3.1-flash-image-preview",
-  "prompt": "top-down player character, blue outfit, centered on a solid green background",
-  "prompt_path": ".godotmaker/asset-generation/prompts/player_canonical.txt",
-  "source_path": ".godotmaker/asset-generation/sources/player_canonical_source.png",
-  "size": "1K",
-  "aspect_ratio": "1:1",
-  "reference_images": [],
-  "report_path": ".godotmaker/asset-generation/reports/player_canonical_source.json"
-}
-```
-
-Run:
+Manual entry point:
 
 ```bash
-python tools/asset_source_generate.py \
-  --spec .godotmaker/asset-generation/specs/player_canonical.json
+python tools/asset_source_generate.py --spec <spec.json>
 ```
 
-The script writes the prompt file, source image, and optional report. Final
-runtime assets are selected and finalized by the rest of the asset pipeline.
+The spec contains the asset id, model selector, prompt, prompt path, source
+path, size, aspect ratio, reference images, and report path.
 
 ## rembg_matting.py
 
 `rembg_matting.py` is an optional curation utility for removing solid-color
 backgrounds before source-sheet processing.
 
+Manual entry points:
+
 ```bash
-# Single image
-python tools/rembg_matting.py assets/sprites/enemy_raw.png -o assets/sprites/enemy.png
-
-# Batch
-python tools/rembg_matting.py --batch raw_frames/ -o clean_frames/
-
-# Preview
-python tools/rembg_matting.py assets/sprites/enemy_raw.png --preview
+python tools/rembg_matting.py <input.png> -o <output.png>
+python tools/rembg_matting.py --batch <input_dir> -o <output_dir>
+python tools/rembg_matting.py <input.png> --preview
 ```
 
 The tool uses a neural network (BiRefNet) to identify the subject and color
-matting to clean up the edges. You can force a mode with `-m trust`, `-m adapt`,
-or `-m color`.
+matting to clean up the edges. You can force a mode with `-m trust`,
+`-m adapt`, or `-m color`.
 
 GPU acceleration is used automatically if an NVIDIA GPU with CUDA is available.
 On CPU it is slower but still works.
 
 ## asset_sheet_process.py
 
-`asset_sheet_process.py` splits 2D source sheets into cropped candidates and
-writes a curation report. It supports transparent sheets and solid magenta
-`#FF00FF` sheets through `--background magenta`. Magenta mode removes the solid
-background and edge-connected magenta fringe. Use it for regular grids such as
-icon packs, compact prop packs, UI component sheets, and simple animation
-sources.
+`asset_sheet_process.py` splits non-character 2D source sheets into cropped
+candidates and writes a curation report. It supports transparent sheets and
+solid magenta `#FF00FF` sheets through `--background magenta`.
+
+Use it for icon packs, compact prop packs, UI component sheets, and other
+non-character source sheets.
+
+Required decisions:
+
+1. `--grid <COLSxROWS>`
+2. `--names <comma-separated names>`
+3. `--snap-mode autoslice` for separated objects
+4. `--snap-mode grid` for strict cell grids
+5. `--component-mode largest` for compact UI/icon/prop cells with stray
+   fragments
+
+Manual entry point:
 
 ```bash
 python tools/asset_sheet_process.py \
-  --source .godotmaker/asset-generation/sources/ui_kit_source.png \
-  --out-dir .godotmaker/asset-generation/curation/ui_kit_source/ \
-  --grid 4x3 \
-  --names play_button,shop_button,coin_icon,gem_icon,panel,tab,badge,slot,arrow_left,arrow_right,close_button,empty_slot \
-  --asset-id ui_kit_source \
-  --tag v0.1.0 \
-  --background magenta \
-  --magenta-threshold 100 \
-  --magenta-edge-threshold 150 \
-  --snap-mode autoslice \
-  --component-mode largest \
-  --component-padding 8 \
-  --min-component-area 100 \
-  --report .godotmaker/asset-generation/curation/ui_kit_source.json
+  --source <source.png> \
+  --out-dir <curation_dir> \
+  --grid <COLSxROWS> \
+  --names <names> \
+  --snap-mode <autoslice|grid> \
+  --report <report.json>
 ```
 
-Pass `--snap-mode` explicitly. Use `--snap-mode autoslice` for compact prop
-packs, icon packs, and UI component sheets with separated objects. Use
-`--snap-mode grid` for strict regular grids and animation frame sheets. Use
-`--component-mode largest` to discard smaller fragments in one grid slot. The
-report includes `candidates[]`, `rejected[]`, `strategy`, `component_count`,
-selected-component metadata, and `status`. Selected candidates are later
-finalized into runtime paths under `assets/`.
+## asset_action_process.py
+
+`asset_action_process.py` processes character, enemy, NPC, summon, and animated
+prop action sources. It writes normalized frame PNGs, `sheet-transparent.png`,
+`animation.gif`, `pipeline-meta.json`, and an intermediate curation report.
+
+Required decisions:
+
+1. `--kind body` for body-only character actions
+2. `--kind fx` for detached effects
+3. `--grid <COLSxROWS>`
+4. `--names <comma-separated frame names>`
+5. `--align feet` or `--align bottom` for grounded body actions
+6. `--align center` for floating actions and detached effects
+7. `--scale-reference-metadata <pipeline-meta.json>` for later body actions
+
+The tool rejects action frames that touch source cell edges. Its `--final-dir`
+and `--final-prefix` options only copy processed frames and the delivery grid
+sheet into runtime paths; they do not assemble mixed atlases or row strips.
+
+Manual entry point:
+
+```bash
+python tools/asset_action_process.py \
+  --source <action_source.png> \
+  --out-dir <processed_dir> \
+  --grid <COLSxROWS> \
+  --names <frame_names> \
+  --kind <body|fx> \
+  --final-dir <runtime_dir> \
+  --final-prefix <asset_id>
+```
+
+For later body actions, add:
+
+```bash
+--scale-reference-metadata <accepted_action_pipeline_meta.json>
+```
 
 ## asset_curation_select.py
 
 `asset_curation_select.py` selects one candidate from a curation report and
 finalizes it into a runtime asset path.
 
+Manual entry point:
+
 ```bash
 python tools/asset_curation_select.py \
-  --report .godotmaker/asset-generation/curation/ui_kit_source.json \
-  --candidate ui_kit_source.action_button \
-  --final-path assets/ui/action_button.png \
-  --asset-id action_button \
+  --report <report.json> \
+  --candidate <candidate_id_or_name> \
+  --final-path <final_path> \
+  --asset-id <final_asset_id> \
   --project-root .
 ```
 
@@ -136,11 +150,12 @@ them based on `ASSETS.md` and the source-generation manifest.
 
 Manual use cases:
 
-- Generate one source image from a tweaked spec.
-- Test a provider, size, or aspect ratio before a full `/gm-asset` run.
-- Remove a solid background before source-sheet curation.
-- Process one source sheet while debugging extraction.
-- Select one extracted candidate into a runtime asset path.
+1. Generate one source image from a tweaked spec.
+2. Process one character action sheet while debugging animation output.
+3. Test a provider, size, or aspect ratio before a full `/gm-asset` run.
+4. Remove a solid background before source-sheet curation.
+5. Process one source sheet while debugging extraction.
+6. Select one extracted candidate into a runtime asset path.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.

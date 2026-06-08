@@ -102,7 +102,7 @@ Preview features and practical fallbacks:
 | Area | Current status | If you need predictability |
 |---|---|---|
 | Codex runner | Preview. It is useful for experimenting with native image generation and Codex-driven runs, but the path is still newer than the Claude Code workflow. | Use Claude Code for the main pipeline run. |
-| Art-production pipeline | Preview. The workflow can generate useful references and draft assets, but characters, animation, UI pieces, UI motion, and visual consistency still need human review and may need manual replacement. | Put your own visual assets under `assets/`, then run `/gm-asset` so the workflow can inspect them, update `assets/manifest.json`, and mark matching `ASSETS.md` rows as `provided`. |
+| Art-production pipeline | Preview. The workflow can generate references, canonical character sources, action source sheets, UI sheets, and draft runtime assets, but characters, animation, UI pieces, UI motion, and visual consistency still need human review and may need manual replacement. | Put your own visual assets under `assets/`, then run `/gm-asset` so the workflow can inspect them, update `assets/manifest.json`, and mark matching `ASSETS.md` rows as `provided`. |
 | 3D games | Not supported by the current pipeline. The workflow targets 2D games. | Build 2D games for now, or add 3D work manually after generation. |
 | Audio generation | Not supported by the current pipeline. Audio rows are treated as user-provided or deferred. | Provide music/SFX manually and wire them into the project yourself until the audio workflow ships. |
 

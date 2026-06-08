@@ -71,7 +71,13 @@ Agent({
 {Copy the relevant PLAN.md Runtime Asset Assignments, SCENES.md Asset
  bindings, and ASSETS.md Visual Asset Contract rows.
  Include: asset row/path, runtime size, visual role, readability requirement,
- and anchor/derivative source.}
+ anchor/derivative source, and final runtime asset path.
+ Use existing final paths from ASSETS.md or assets/manifest.json.
+ Do not use source sheets, curation candidates, prompt files, or scene
+ references as runtime assets unless ASSETS.md explicitly lists that path as
+ the final asset.
+ Do not replace an available final asset with placeholder art, procedural
+ shapes, or freshly drawn stand-ins.}
 
 ### Visual Self-Check                                    [REQUIRED for fixgap visual tasks]
 - Source: {evaluation.json.visual_checks scene and blocking finding}

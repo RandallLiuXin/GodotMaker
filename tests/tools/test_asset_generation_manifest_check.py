@@ -61,6 +61,94 @@ def test_check_manifest_accepts_valid_schema(tmp_path):
     assert result["check_files"] is False
 
 
+def test_check_manifest_accepts_character_frame_output_delivery_sheet(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "player_idle_delivery",
+            "family": "character_frame_output",
+            "production_shape": "delivery_sheet",
+            "source_path": ".godotmaker/asset-generation/curation/player_idle/sheet.png",
+            "final_path": "assets/sprites/player_idle.png",
+            "derived_from": "player_idle",
+            "canonical_reference": "player_canonical",
+            "qc": {
+                "action_processing": {
+                    "frame_count": 4,
+                    "frame_paths": [
+                        "assets/sprites/player_idle_01.png",
+                        "assets/sprites/player_idle_02.png",
+                        "assets/sprites/player_idle_03.png",
+                        "assets/sprites/player_idle_04.png",
+                    ],
+                    "align": "feet",
+                    "shared_scale": True,
+                    "sheet_path": "assets/sprites/player_idle.png",
+                    "gif_path": ".godotmaker/asset-generation/processed/player_idle/animation.gif",
+                    "metadata_path": ".godotmaker/asset-generation/processed/player_idle/pipeline-meta.json",
+                    "edge_touch_frames": [],
+                    "scale_reference": {"checked": False},
+                }
+            },
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
+
+
+def test_check_manifest_requires_character_frame_output_action_metadata(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "player_idle_delivery",
+            "family": "character_frame_output",
+            "production_shape": "delivery_sheet",
+            "derived_from": "",
+            "canonical_reference": "",
+            "qc": {},
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="qc.action_processing"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_character_frame_output_edge_touch(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "player_idle_delivery",
+            "family": "character_frame_output",
+            "production_shape": "delivery_sheet",
+            "source_path": ".godotmaker/asset-generation/curation/player_idle/sheet.png",
+            "final_path": "assets/sprites/player_idle.png",
+            "derived_from": "player_idle",
+            "canonical_reference": "player_canonical",
+            "qc": {
+                "action_processing": {
+                    "frame_count": 1,
+                    "frame_paths": ["assets/sprites/player_idle_01.png"],
+                    "align": "feet",
+                    "shared_scale": True,
+                    "sheet_path": "assets/sprites/player_idle.png",
+                    "gif_path": ".godotmaker/asset-generation/processed/player_idle/animation.gif",
+                    "metadata_path": ".godotmaker/asset-generation/processed/player_idle/pipeline-meta.json",
+                    "edge_touch_frames": ["player_idle.idle_01"],
+                    "scale_reference": {"checked": False},
+                }
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="edge_touch_frames must be empty"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
 def test_check_manifest_rejects_unknown_family(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_manifest(manifest, {"family": "model_reference"})

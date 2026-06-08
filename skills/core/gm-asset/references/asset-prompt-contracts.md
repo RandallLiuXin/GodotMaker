@@ -54,6 +54,19 @@ Prompt shape:
 Record the source as `character_canonical` with `production_shape:
 single_image`.
 
+Use one accepted canonical per player character, important NPC, enemy family,
+boss, summon, and recurring creature line. Derivative prompts name the canonical
+asset and use its final reference image when the selected provider supports
+image references.
+
+Before writing a derivative prompt:
+
+1. Load or view the accepted canonical image with the active runtime's image
+   reading path.
+2. Put the canonical image into the provider's reference-image input when the
+   selected provider supports image references.
+3. Name the canonical asset id and final image path in the prompt.
+
 ## Character Action Source
 
 Use one source per action.
@@ -61,12 +74,35 @@ Use one source per action.
 Prompt shape:
 
 ```text
-{character name} performing {action}. {rows}x{cols} sprite sheet, exactly {frame_count} frames, one action only, same character identity in every frame, consistent scale, centered in each cell, solid flat magenta #FF00FF background. {STYLE.md prompt suffix}. No text, no UI, no borders.
+Use the accepted canonical reference for {character name}. {character name} performing {action}. {rows}x{cols} sprite sheet, exactly {frame_count} frames, one action only, same character identity in every frame, same costume, same palette, consistent body scale, centered in each cell, stable feet or bottom anchor when grounded, solid flat magenta #FF00FF background. {STYLE.md prompt suffix}. No text, no UI, no borders.
 ```
 
 Record the source as `character_action_source` with `production_shape:
 action_sheet`. Mark `processing_status` as `needs_curation` until final frames
 or final sprite sheets exist.
+
+Action source rules:
+
+1. Generate one raw source per action family.
+2. Use `2x2` for 4-frame idle, attack, hurt, jump, hover, and short side-view
+   walk or run actions.
+3. Use `2x3` for 6-frame cast, charge, death, summon, run, and richer attack
+   actions.
+4. Use `2x4`, `3x3`, `3x4`, or `4x4` only for one continuous long action.
+5. Use raw `4x4` for canonical four-direction locomotion only when every row is
+   the same walk or run action in a different direction.
+6. Do not generate a raw mixed-action atlas for important characters.
+7. Do not generate raw single-row body sheets for characters, enemies, NPCs,
+   summons, or animated props.
+8. Keep controllable hero attack, shoot, and cast body prompts body-only.
+9. Put projectiles, muzzle flashes, slash arcs, weapon trails, impacts, detached
+   dust, and wide FX in separate effect sources.
+10. Keep the full body inside the central safe area of each cell.
+11. Keep body height within 15% of the accepted idle or run body height.
+12. Keep limbs, weapons, hair, capes, tails, wings, and attached effects inside
+    the cell edges.
+13. If final runtime needs strips or mixed atlases, record that follow-up after
+    the action sources pass curation.
 
 ## Projectile Or Impact Effect Source
 

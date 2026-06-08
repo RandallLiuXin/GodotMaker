@@ -43,7 +43,7 @@ Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` pl
 - If **both** checks come back empty → STOP. Tell the user:
   > "No MISSING assets and no missing scene references for the current tag. Recommended next: /gm-build.
   > If you've added new art files or scenes since last run, just tell me and I'll re-scan."
-- Otherwise → proceed.
+- If either check has work → proceed.
 
 ## Hard Rules
 
@@ -108,13 +108,18 @@ Generate canonical references before derivative assets. Mark source sheets,
 component sheets, and irregular references as `needs_curation` until their
 final runtime assets are selected or processed.
 
+For character, enemy, NPC, summon, and recurring creature assets, plan a bundle:
+
+1. One `character_canonical` source.
+2. One `character_action_source` per required body action.
+3. Separate `projectile_fx_source` or `impact_fx_source` entries for detached
+   effects.
+4. `character_frame_output` entries for processed runtime frames or delivery
+   grid sheets.
+
 ### Step 2 — Detect User-Provided Files
 
-Run the deterministic preflight before any AI generation:
-
-```bash
-python tools/asset_user_preflight.py --project-root .
-```
+Run `tools/asset_user_preflight.py --project-root .` before any AI generation.
 
 The script scans supported file suffixes under `assets/`, excludes paths already
 consumed by completed ASSETS.md rows or `assets/manifest.json`, and prints JSON:
@@ -218,13 +223,24 @@ For all remaining MISSING art assets in ASSETS.md (excluding audio):
 
 Read `STYLE.md` before crafting generation prompts.
 
-Confirm with user:
-> "I'll AI-generate the following: {list}. {if user art: 'Style will match your existing assets.'} OK to proceed?"
-
-After confirmation, generate each asset through the selected `asset_image_model`
-path. Use `asset-planner.md` for batch shape,
+Generate each asset through the selected `asset_image_model` path. Use
+`asset-planner.md` for batch shape,
 `asset-prompt-contracts.md` for prompts, and
 `asset-runtime-pipeline.md` for provider execution.
+
+Generate character and enemy bundles in this order:
+
+1. Generate `character_canonical` sources first.
+2. Finalize accepted canonicals to their reference or runtime paths.
+3. Load or view the accepted canonical image before writing derivative prompts.
+4. Generate `character_action_source` sheets from the canonical reference.
+5. Generate detached projectile, impact, slash, muzzle, dust, pickup, and aura
+   sources as separate effect sources.
+6. Leave `character_frame_output` entries pending until Step 4.5 processes the
+   action sources.
+7. Do not generate raw mixed-action atlases for important characters.
+8. Do not generate raw single-row body sheets for characters, enemies, NPCs,
+   summons, or animated props.
 
 Run generation groups in batches of up to 3 art assets. Each group uses this
 input schema:
@@ -242,7 +258,7 @@ input schema:
       "prompt": "<prompt>",
       "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
       "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
-      "final_path": "assets/img/<asset_id>.png",
+      "final_path": "assets/img/<asset_id>.png or null for source-only entries",
       "resize": null
     }
   ],
@@ -255,10 +271,10 @@ write the fallback reason in the diagnostic summary.
 
 Use the selected `asset_image_model` path:
 
-- API-backed selector: each group writes one source-generation spec per asset, runs `python tools/asset_source_generate.py --spec <spec.json>`, then finalizes each source to `final_path`.
+- API-backed selector: each group writes one source-generation spec per asset and runs `python tools/asset_source_generate.py --spec <spec.json>`. Finalize only entries that already have a runtime `final_path`.
 - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Active Codex runtime batch. Use one Codex subagent per asset when subagents are available.
 - Claude Code with `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Codex handoff from Claude Code.
-- Other runtime-native provider: generate each source image path, then run `python tools/asset_image_finalize.py --source <source_path> --out <final_path> --label <asset_id> [--resize WIDTHxHEIGHT]`.
+- Other runtime-native provider: generate each source image path. Finalize only entries that already have a runtime `final_path`.
 
 Each group may write one diagnostic JSON report under
 `.godotmaker/asset-generation/reports/`. Use it for troubleshooting provider
@@ -273,38 +289,28 @@ grid_sheet`, `action_sheet`, `frame_sequence`, or `curation_required`, or whose
 `processing_status` is `needs_curation`:
 
 1. Decide the extraction strategy from `references/asset-curation.md`.
-2. For transparent regular sheets, run:
-   ```bash
-   python tools/asset_sheet_process.py \
-     --source <source_path> \
-     --out-dir .godotmaker/asset-generation/curation/<asset_id>/ \
-     --grid <COLSxROWS> \
-     --names <comma-separated-names> \
-     --asset-id <asset_id> \
-     --tag <current_tag> \
-     --background magenta \
-     --snap-mode autoslice \
-     --component-mode largest \
-     --component-padding 8 \
-     --min-component-area 100 \
-     --report .godotmaker/asset-generation/curation/<asset_id>.json
-   ```
-3. For unsuitable sources, write a curation report with
+2. For character action sources, run `tools/asset_action_process.py` with
+   explicit grid, frame names, `kind`, alignment, and final runtime directory.
+3. Use `kind: body` for body-only character, enemy, NPC, summon, and animated
+   prop actions.
+4. Use `kind: fx` for projectile, impact, slash, aura, dust, pickup, and
+   detached effect sources.
+5. For later body actions, pass the accepted idle or run `pipeline-meta.json`
+   as the scale reference.
+6. Reject action outputs with non-empty `edge_touch_frames`.
+7. For UI, icon, and compact prop sheets, run `tools/asset_sheet_process.py`
+   with explicit grid, names, snap mode, component policy, and curation report.
+8. For unsuitable sources, write a curation report with
    `status: needs_regeneration` or `status: rejected`.
-4. Select canonical candidates for character, enemy, UI, prop, and environment
+9. Select canonical candidates for character, enemy, UI, prop, and environment
    families.
-5. Finalize selected candidates into runtime paths:
-   ```bash
-   python tools/asset_curation_select.py \
-     --report .godotmaker/asset-generation/curation/<asset_id>.json \
-     --candidate <candidate_id_or_name> \
-     --final-path <final_path> \
-     --asset-id <final_asset_id> \
-     --project-root .
-   ```
-6. Update the manifest entry's `curation`, `processing_status`,
+10. Finalize selected candidates into runtime paths with
+   `tools/asset_curation_select.py`.
+11. Update the manifest entry's `curation`, `processing_status`,
    `extraction_status`, `final_path`, `derived_from`, and
    `canonical_reference`.
+12. Create or update `character_frame_output` manifest entries for processed
+   runtime frames or delivery grid sheets.
 
 Do not update an ASSETS.md row to `generated` while its manifest entry still has
 `processing_status: needs_curation` or `curation.status` other than `selected`
@@ -356,6 +362,7 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 | `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |
 | `tools/asset_generation_manifest_update.py` | Upsert asset-generation manifest entries |
 | `tools/asset_generation_manifest_check.py` | Validate asset-generation manifest schema and handoff files |
+| `tools/asset_action_process.py` | Process character action sheets into normalized frames, sheet, GIF, and metadata |
 | `tools/asset_sheet_process.py` | Split production-shaped 2D source sheets and write processing reports |
 | `tools/asset_curation_select.py` | Finalize selected curation candidates into runtime asset paths |
 

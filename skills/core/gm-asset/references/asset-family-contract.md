@@ -11,6 +11,7 @@ before writing prompts or choosing output paths.
 | `style_reference` | Style anchor that guides later generated assets | `.godotmaker/asset-generation/sources/...` |
 | `character_canonical` | Neutral identity reference for a player, NPC, or enemy | source image plus final reference path |
 | `character_action_source` | One character action such as idle, run, attack, hurt, death | source sheet or frame sequence |
+| `character_frame_output` | Processed frames or delivery grid sheet from one action source | final sprite frames or grid sheet |
 | `projectile_fx_source` | Projectile or travelling effect art | source sheet or final sprite |
 | `impact_fx_source` | Hit, explosion, spawn, pickup, or impact effect | source sheet or final sprite |
 | `compact_prop_pack` | Several compact props or pickups sharing one style | source sheet plus extracted final assets |
@@ -30,6 +31,7 @@ before writing prompts or choosing output paths.
 | `grid_sheet` | Compact props, icons, small UI components | `source_path`, `rows`, `cols`, `expected_items` |
 | `action_sheet` | One character or enemy action | `source_path`, `action`, `frames`, `anchor` |
 | `frame_sequence` | Extracted or generated animation frames | `source_path`, `frame_dir`, `fps`, `loop` |
+| `delivery_sheet` | Runtime-ready grid sheet assembled from processed frames | `source_path`, `final_path`, `derived_from` |
 | `reference_only` | Screen/style references | `source_path` or `final_path`, `contract_summary` |
 | `curation_required` | Irregular sheets or references that need human/tool selection | `source_path`, `curation_reason` |
 
@@ -66,31 +68,46 @@ this shape:
   "version": 1,
   "assets": [
     {
-      "asset_id": "player_idle",
+      "asset_id": "player_idle_delivery",
       "tag": "v0.1.0",
-      "family": "character_action_source",
-      "production_shape": "action_sheet",
+      "family": "character_frame_output",
+      "production_shape": "delivery_sheet",
       "runtime_role": "player",
       "source_path": ".godotmaker/asset-generation/sources/player_idle_source.png",
-      "final_path": "assets/sprites/player_idle.png",
-      "derived_from": "player_canonical",
+      "final_path": "assets/sprites/player_idle_sheet.png",
+      "derived_from": "player_idle",
       "canonical_reference": "player_canonical",
       "prompt_path": ".godotmaker/asset-generation/prompts/player_idle.txt",
       "processing_status": "ready",
       "extraction_status": "processed",
       "qc": {
-        "alpha": "ok",
-        "edge_touch": "not_checked",
-        "readability": "pending_evaluate"
+        "action_processing": {
+          "frame_count": 4,
+          "frame_paths": [
+            "assets/sprites/player_idle_01.png",
+            "assets/sprites/player_idle_02.png",
+            "assets/sprites/player_idle_03.png",
+            "assets/sprites/player_idle_04.png"
+          ],
+          "align": "feet",
+          "shared_scale": true,
+          "sheet_path": "assets/sprites/player_idle_sheet.png",
+          "gif_path": ".godotmaker/asset-generation/processed/player_idle/animation.gif",
+          "metadata_path": ".godotmaker/asset-generation/processed/player_idle/pipeline-meta.json",
+          "edge_touch_frames": [],
+          "scale_reference": {
+            "checked": false
+          }
+        }
       },
       "curation": {
         "status": "selected",
-        "strategy": "transparent_grid",
-        "report_path": ".godotmaker/asset-generation/curation/player_idle.json",
+        "strategy": "solid_background_grid",
+        "report_path": ".godotmaker/asset-generation/processed/player_idle/curation-report.json",
         "selected_count": 4,
         "rejected_count": 0
       },
-      "preview_path": null,
+      "preview_path": ".godotmaker/asset-generation/processed/player_idle/animation.gif",
       "notes": ""
     }
   ]
@@ -106,12 +123,37 @@ same current-tag asset is being regenerated.
 2. Choose `production_shape` before calling the provider.
 3. Generate canonical references before derivative assets.
 4. Generate one body action per action sheet.
-5. Generate projectiles and impacts separately from body animation sheets.
-6. Use grid sheets only for compact, similarly sized objects.
-7. Use `panel_source` for large UI panels and card frames.
-8. Mark irregular or mixed sheets as `needs_curation`.
-9. Record source, final, prompt, and status in the manifest.
-10. Bind gameplay-visible final assets in `ASSETS.md` Visual Asset Contract.
+5. Generate idle, run, attack, hurt, death, cast, and shoot body actions as
+   separate action sources for important characters and enemies.
+6. Generate projectiles, muzzle flashes, slash arcs, impacts, dust, and pickup
+   effects separately from body animation sheets.
+7. Use `character_frame_output` for processed runtime frames or delivery grid
+   sheets derived from a `character_action_source`.
+8. Use grid sheets only for compact, similarly sized objects.
+9. Use `panel_source` for large UI panels and card frames.
+10. Mark irregular or mixed sheets as `needs_curation`.
+11. Record source, final, prompt, and status in the manifest.
+12. Bind gameplay-visible final assets in `ASSETS.md` Visual Asset Contract.
+
+## Character Frame Output QC
+
+Every `character_frame_output` manifest entry must include
+`qc.action_processing` with:
+
+1. `frame_count`
+2. `frame_paths`
+3. `align`
+4. `shared_scale`
+5. `sheet_path`
+6. `gif_path`
+7. `metadata_path`
+8. `edge_touch_frames`
+9. `scale_reference`
+
+`edge_touch_frames` must be empty before a `character_frame_output` becomes
+`ready`. `scale_reference.checked` must be present. The first accepted body
+action can set it to `false`; later body actions should compare against the
+accepted idle or run metadata.
 
 ## Curation Field
 

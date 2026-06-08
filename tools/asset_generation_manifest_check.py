@@ -14,6 +14,7 @@ ALLOWED_FAMILIES = {
     "style_reference",
     "character_canonical",
     "character_action_source",
+    "character_frame_output",
     "projectile_fx_source",
     "impact_fx_source",
     "compact_prop_pack",
@@ -31,6 +32,7 @@ ALLOWED_PRODUCTION_SHAPES = {
     "grid_sheet",
     "action_sheet",
     "frame_sequence",
+    "delivery_sheet",
     "reference_only",
     "curation_required",
 }
@@ -73,6 +75,8 @@ ALLOWED_CURATION_STRATEGIES = {
     "manual_selection",
     "regenerate_source",
 }
+
+ALLOWED_ACTION_ALIGNS = {"center", "bottom", "feet"}
 
 
 class ManifestCheckError(Exception):
@@ -183,6 +187,81 @@ def _check_curation(
     return clean_report_path, status if isinstance(status, str) else None
 
 
+def _check_character_frame_output(
+    item: dict[str, Any],
+    *,
+    index: int,
+    issues: list[str],
+) -> list[str]:
+    extra_file_paths: list[str] = []
+    for field in ("derived_from", "canonical_reference"):
+        value = item.get(field)
+        if not isinstance(value, str) or not value.strip():
+            issues.append(f"assets[{index}].{field} is required for character_frame_output")
+
+    qc = item.get("qc")
+    if not isinstance(qc, dict):
+        issues.append(f"assets[{index}].qc must be an object for character_frame_output")
+        return extra_file_paths
+    action = qc.get("action_processing")
+    if not isinstance(action, dict):
+        issues.append(f"assets[{index}].qc.action_processing is required for character_frame_output")
+        return extra_file_paths
+
+    frame_count = action.get("frame_count")
+    if not isinstance(frame_count, int) or frame_count <= 0:
+        issues.append(f"assets[{index}].qc.action_processing.frame_count must be positive")
+
+    frame_paths = action.get("frame_paths")
+    if not isinstance(frame_paths, list) or not frame_paths:
+        issues.append(f"assets[{index}].qc.action_processing.frame_paths must be a non-empty list")
+    else:
+        clean_frame_paths = []
+        for frame_index, frame_path in enumerate(frame_paths):
+            if not isinstance(frame_path, str) or not frame_path.strip():
+                issues.append(
+                    f"assets[{index}].qc.action_processing.frame_paths[{frame_index}] "
+                    "must be a non-empty string"
+                )
+                continue
+            clean_frame_paths.append(frame_path)
+        if isinstance(frame_count, int) and frame_count > 0 and len(clean_frame_paths) != frame_count:
+            issues.append(
+                f"assets[{index}].qc.action_processing.frame_paths length must match frame_count"
+            )
+        extra_file_paths.extend(clean_frame_paths)
+
+    align = action.get("align")
+    if align not in ALLOWED_ACTION_ALIGNS:
+        issues.append(f"assets[{index}].qc.action_processing.align is not allowed: {align}")
+
+    if not isinstance(action.get("shared_scale"), bool):
+        issues.append(f"assets[{index}].qc.action_processing.shared_scale must be boolean")
+
+    for field in ("sheet_path", "gif_path", "metadata_path"):
+        value = action.get(field)
+        if not isinstance(value, str) or not value.strip():
+            issues.append(f"assets[{index}].qc.action_processing.{field} must be a non-empty string")
+        else:
+            extra_file_paths.append(value)
+
+    edge_touch = action.get("edge_touch_frames")
+    if edge_touch is not None and not isinstance(edge_touch, list):
+        issues.append(f"assets[{index}].qc.action_processing.edge_touch_frames must be a list")
+    if isinstance(edge_touch, list) and edge_touch:
+        issues.append(f"assets[{index}].qc.action_processing.edge_touch_frames must be empty")
+
+    scale_reference = action.get("scale_reference")
+    if not isinstance(scale_reference, dict):
+        issues.append(f"assets[{index}].qc.action_processing.scale_reference must be an object")
+    elif not isinstance(scale_reference.get("checked"), bool):
+        issues.append(
+            f"assets[{index}].qc.action_processing.scale_reference.checked must be boolean"
+        )
+
+    return extra_file_paths
+
+
 def check_manifest(
     manifest_path: Path,
     *,
@@ -289,13 +368,23 @@ def check_manifest(
             )
 
         if (
-            production_shape in {"grid_sheet", "action_sheet", "frame_sequence", "curation_required"}
+            production_shape in {
+                "grid_sheet",
+                "action_sheet",
+                "frame_sequence",
+                "delivery_sheet",
+                "curation_required",
+            }
             and processing_status != "deferred"
         ):
             if item.get("curation") is None:
                 issues.append(f"assets[{index}] missing curation for {production_shape}")
         if processing_status == "needs_curation" and item.get("curation") is None:
             issues.append(f"assets[{index}] missing curation for needs_curation")
+
+        extra_file_paths: list[str] = []
+        if family == "character_frame_output":
+            extra_file_paths = _check_character_frame_output(item, index=index, issues=issues)
 
         if check_files:
             if source_path and processing_status in {"source_only", "needs_curation", "processed", "ready"}:
@@ -309,6 +398,9 @@ def check_manifest(
                 file_checks += 1
             if curation_report_path:
                 _path_exists(root, curation_report_path, issues, "Curation report not found")
+                file_checks += 1
+            for extra_path in extra_file_paths:
+                _path_exists(root, extra_path, issues, "Action processing path not found")
                 file_checks += 1
 
         checked_assets += 1

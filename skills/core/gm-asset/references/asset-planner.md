@@ -68,16 +68,17 @@ Classify each planned asset into one family from
 2. `style_reference`
 3. `character_canonical`
 4. `character_action_source`
-5. `projectile_fx_source`
-6. `impact_fx_source`
-7. `compact_prop_pack`
-8. `ui_component_sheet`
-9. `icon_pack`
-10. `panel_source`
-11. `background`
-12. `runtime_sprite`
-13. `texture`
-14. `audio`
+5. `character_frame_output`
+6. `projectile_fx_source`
+7. `impact_fx_source`
+8. `compact_prop_pack`
+9. `ui_component_sheet`
+10. `icon_pack`
+11. `panel_source`
+12. `background`
+13. `runtime_sprite`
+14. `texture`
+15. `audio`
 
 Choose one production shape for each visual asset:
 
@@ -85,8 +86,9 @@ Choose one production shape for each visual asset:
 2. `grid_sheet`
 3. `action_sheet`
 4. `frame_sequence`
-5. `reference_only`
-6. `curation_required`
+5. `delivery_sheet`
+6. `reference_only`
+7. `curation_required`
 
 Record the family and production shape before writing the prompt.
 
@@ -110,6 +112,39 @@ Common anchor patterns:
    details.
 4. One weapon/item family image anchors item variants.
 
+### 4.1 Plan character and enemy bundles
+
+For every important player character, enemy family, NPC, summon, or recurring
+creature:
+
+1. Reserve one `character_canonical` entry.
+2. Reserve one `character_action_source` entry for each required action.
+3. Use `idle` before other body actions.
+4. Use the accepted canonical reference for action prompts when the provider
+   supports image references.
+5. Use one action source per action family.
+6. Use `character_frame_output` entries for processed runtime frames or
+   delivery grid sheets derived from action sources.
+7. Put projectiles, impacts, slash arcs, muzzle flashes, dust, and pickup
+   effects in `projectile_fx_source` or `impact_fx_source` entries.
+8. Do not use one raw mixed-action atlas as the source for an important
+   character.
+9. Do not use raw single-row body sheets for characters, enemies, NPCs,
+   summons, or animated props.
+10. If the engine needs one atlas, assemble it in a separate pass after
+   per-action curation.
+
+Default action planning:
+
+1. `idle`: `2x2`, 4 frames, body-only, anchor `bottom` or `feet`.
+2. `run` or side-view `walk`: `2x2` or `2x3`, body-only, anchor `feet`.
+3. `attack`: `2x2` or `2x3`, body-only for controllable characters.
+4. `shoot` or `cast`: `2x2` or `2x3`, body-only plus separate projectile or
+   impact sources.
+5. `hurt`: `2x2`, body-only.
+6. `death` or transformation: `2x3`, `2x4`, or `3x3`.
+7. Four-direction top-down locomotion: `4x4` canonical directional sheet.
+
 ### 4.5 Plan source, final, and handoff metadata
 
 For every planned generated visual asset, reserve:
@@ -131,12 +166,15 @@ Use these status rules:
 3. `character_action_source`, `projectile_fx_source`, `impact_fx_source`,
    `compact_prop_pack`, `ui_component_sheet`, and `icon_pack`: use
    `needs_curation` until final runtime assets are processed or selected.
-4. `background`, `runtime_sprite`, and `texture`: use `ready` only after the
+4. `character_frame_output`: use `processed` or `ready` only after processed
+   frames or delivery grid sheets exist at their final project paths.
+5. `background`, `runtime_sprite`, and `texture`: use `ready` only after the
    final project path exists and matches the ASSETS.md row.
-5. `panel_source`: use `needs_curation` when the panel still needs slicing,
+6. `panel_source`: use `needs_curation` when the panel still needs slicing,
    sizing, or state variants.
-6. `grid_sheet`, `action_sheet`, `frame_sequence`, and `curation_required`:
-   include a `curation` object in the manifest entry.
+7. `grid_sheet`, `action_sheet`, `frame_sequence`, `delivery_sheet`, and
+   `curation_required`: include a `curation` object in the manifest entry when
+   source processing or selection was required.
 
 ### 4.6 Plan curation records
 
@@ -179,17 +217,19 @@ Provider choice by asset role:
 Plan batches that can run without conflicting outputs.
 
 1. Put anchors before derivatives.
-2. Group independent assets into parallel-ready batches, at most 3 concurrent
+2. Put character canonicals before their action sources.
+3. Put action sources before `character_frame_output` entries.
+4. Group independent assets into parallel-ready batches, at most 3 concurrent
    generation groups.
-3. Keep all outputs for one asset under known source and final target paths.
-4. Plan every generated source path under
+5. Keep all outputs for one asset under known source and final target paths.
+6. Plan every generated source path under
    `.godotmaker/asset-generation/sources/`.
-5. Plan every diagnostic report under
+7. Plan every diagnostic report under
    `.godotmaker/asset-generation/reports/`.
-6. For generated project assets, plan final paths under `assets/` or
+8. For generated project assets, plan final paths under `assets/` or
    `references/` only through the approved tools in `/gm-asset` SKILL.md.
-7. Write prompt text to the planned `prompt_path` before generation.
-8. Include `family`, `production_shape`, `source_path`, `final_path`, and
+9. Write prompt text to the planned `prompt_path` before generation.
+10. Include `family`, `production_shape`, `source_path`, `final_path`, and
    `prompt_path` in each batch item.
 
 If isolated generation groups may be unavailable, include a sequential fallback
@@ -269,7 +309,8 @@ family. Generate a neutral readable pose with a clean silhouette.
 ### Character action source
 
 Use one source per action. Keep body actions separate from projectiles, impact
-effects, and UI effects.
+effects, and UI effects. Process action sources into `character_frame_output`
+entries before binding them to gameplay-visible ASSETS.md rows.
 
 ### Compact prop pack
 

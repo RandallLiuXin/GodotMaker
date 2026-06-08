@@ -20,11 +20,13 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - (WIP) Diagnostic log at `.godotmaker/log_agent_tool_debug.log` that records every phase of `log_agent_tool.py` so the next failure mode is localizable from artifacts.
 - Added validation for asset-generation handoff manifests so generated-art runs can detect missing fields and files.
 - Added a manifest update helper so generated-art runs can upsert handoff entries through a validated tool.
+- Added a character action processor that turns raw action sheets into normalized frames, transparent sheets, GIF previews, and pipeline metadata.
 - Added a 2D source-sheet processor so generated grids can produce cropped assets and processing reports.
 - Added magenta-background and edge-fringe processing support to the 2D source-sheet processor for production-shaped extraction sheets.
 - Added a first-pass asset curation contract for generated source sheets, canonical selections, and rejected candidates.
 - Added a curation selection helper so accepted candidates can be finalized into runtime asset paths.
 - Split the asset generation reference into runtime pipeline and prompt-contract references.
+- Added character animation asset contracts for canonical sources, per-action source sheets, processed frame outputs, action processing metadata, and final runtime handoff validation.
 
 ## Changed
 
@@ -35,6 +37,9 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `asset_sheet_process.py` can now extract the largest connected component from UI, icon, and prop sheets to avoid neighboring-cell fragments.
 - `asset_sheet_process.py` can now autoslice separated source sheets before assigning candidates back to grid names.
 - Asset-generation manifests now allow multiple runtime assets to share one source sheet and prompt.
+- `/gm-asset` now plans important character and enemy art as canonical references plus one action source per body action, with detached FX generated separately.
+- `asset_action_process.py` now exposes a smaller CLI surface built around `body` and `fx` action kinds, rejects edge-touch frames by default, and records body-scale reference checks.
+- Worker visual briefs now require final runtime asset paths from ASSETS.md or the manifest and prohibit replacing available assets with placeholders.
 
 ## Fixed
 

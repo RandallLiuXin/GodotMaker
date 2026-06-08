@@ -39,16 +39,19 @@ For any Codex-generated image:
 
 1. Generate the image with `image_gen`.
 2. Read that call's `ImageGenerationEnd.saved_path`.
-3. Claim the source image:
-   ```bash
-   python tools/codex_image_claim.py --source "<saved_path>" \
-     --out <source_path> \
-     --asset-id <asset_id>
-   ```
-4. Report the JSON printed by `tools/codex_image_claim.py`.
-5. If the claim command exits nonzero, report its JSON error for that asset.
+3. Claim the source image with `tools/codex_image_claim.py`.
+4. Pass `saved_path`, target `source_path`, and `asset_id`.
+5. Report the JSON printed by `tools/codex_image_claim.py`.
+6. If the claim command exits nonzero, report its JSON error for that asset.
 
 Use the `saved_path` from the current `image_gen` call only.
+
+```bash
+python tools/codex_image_claim.py \
+  --source <saved_path> \
+  --out <source_path> \
+  --asset-id <asset_id>
+```
 
 ## API Source Generation
 
@@ -72,20 +75,19 @@ Write one spec per generated source under
 Run:
 
 ```bash
-python tools/asset_source_generate.py \
-  --spec .godotmaker/asset-generation/specs/<asset_id>.json
+python tools/asset_source_generate.py --spec <spec.json>
 ```
 
 ## Finalization
 
-Finalize accepted source images into project target paths:
+Finalize accepted source images with `tools/asset_image_finalize.py`. Provide
+the source path, final path, asset label, and optional resize.
 
 ```bash
 python tools/asset_image_finalize.py \
   --source <source_path> \
   --out <final_path> \
-  --label <asset_id> \
-  [--resize WIDTHxHEIGHT]
+  --label <asset_id>
 ```
 
 If the source is a sheet, atlas, UI kit, action sheet, or irregular reference,
@@ -94,16 +96,12 @@ send it through `asset-curation.md` before marking runtime asset rows
 
 ## Manifest Handoff
 
-Upsert manifest entries with:
+Upsert manifest entries with `tools/asset_generation_manifest_update.py`.
+Validate the handoff manifest with `tools/asset_generation_manifest_check.py
+--check-files`.
 
 ```bash
-python tools/asset_generation_manifest_update.py \
-  --entry-file .godotmaker/asset-generation/work/manifest-entries/<asset_id>.json
-```
-
-Validate the handoff manifest with:
-
-```bash
+python tools/asset_generation_manifest_update.py --entry-file <entry.json>
 python tools/asset_generation_manifest_check.py --check-files
 ```
 
@@ -146,13 +144,14 @@ If built-in image generation is unavailable, do not create that image file.
 Report the failure clearly.
 ```
 
-Command shape:
+Run `codex exec` from the project root with JSON output enabled, the batch
+prompt on stdin, and the batch summary written under
+`.godotmaker/asset-generation/reports/`.
 
 ```bash
-mkdir -p .godotmaker/asset-generation/sources .godotmaker/asset-generation/prompts .godotmaker/asset-generation/reports
-codex exec --json --dangerously-bypass-approvals-and-sandbox \
-  -C "$PWD" --output-last-message .godotmaker/asset-generation/reports/codex_batch.summary.txt \
-  - < .godotmaker/asset-generation/reports/codex_batch.prompt.txt
+codex exec --json -C <project_root> \
+  --output-last-message <summary_path> \
+  - < <batch_prompt_path>
 ```
 
 Do not silently switch providers when the configured provider is `codex`.
