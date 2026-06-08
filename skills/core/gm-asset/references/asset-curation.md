@@ -69,6 +69,28 @@ Choose the first strategy that matches the source:
 5. Crowded, overlapping, inconsistent, or text-heavy source: mark
    `needs_regeneration`.
 
+## Component Sheet Curation
+
+Use component-sheet curation for UI pieces, icons, compact props, pickups,
+badges, small chests, stones, bushes, crates, pots, debris, and small signs.
+
+Use `tools/asset_sheet_process.py` with:
+
+1. `--snap-mode grid` for strict equal cells.
+2. `--snap-mode autoslice` for separated objects.
+3. `--component-mode largest` for compact UI, icon, and prop cells.
+4. `--component-mode all` for intentional multi-part components.
+
+Reject the source or split the plan when it contains:
+
+1. Walkable platforms, floors, bridges, walls, ladders, doors, gates, exits.
+2. Large trees, buildings, terrain chunks, roads, rails, pipes, long hazards.
+3. Collision-bearing, placement-critical, wide, or tall objects.
+4. Mixed compact props and large scene objects in one square grid.
+
+Use separate single images, strips, or deferred map/stage follow-up entries for
+those objects.
+
 ## Character Action Curation
 
 Process each `character_action_source` before updating ASSETS.md.

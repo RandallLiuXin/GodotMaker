@@ -18,7 +18,8 @@ You are filling in the missing assets in `ASSETS.md` for the **current tag** (re
 
 This skill is **per-tag re-runnable**: a user can call `/gm-asset` between build batches when they add new art files. Each invocation processes whatever is currently `MISSING` for the current tag.
 
-Read `references/asset-family-contract.md` and `references/asset-curation.md`
+Read `references/asset-planner.md`,
+`references/asset-family-contract.md`, and `references/asset-curation.md`
 before planning generated visual assets. Read
 `references/asset-runtime-pipeline.md` and
 `references/asset-prompt-contracts.md` before generation.
@@ -88,6 +89,16 @@ Before generation, write manifest entry JSON files under
 `.godotmaker/asset-generation/work/manifest-entries/` using
 `references/asset-family-contract.md` and `references/asset-curation.md`, then
 upsert them with `tools/asset_generation_manifest_update.py`.
+
+Choose one production strategy for each visual row:
+
+1. `component_sheet`: UI pieces, icons, compact props, pickups, badges, and
+   other similarly sized objects.
+2. `action_sheet`: one body action or one FX loop.
+3. `map_or_stage_reference`: layered-map or side-scroll visual planning
+   artifact plus derived asset list.
+4. `single_image`: background, panel, card frame, large prop, canonical,
+   texture, or runtime sprite.
 
 For each current-tag visual row, record:
 
@@ -205,17 +216,16 @@ sequentially and write the fallback reason in the report and summary.
 
 For each missing scene:
 
-1. Read `references/visual-target.md`.
-2. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood + Asset bindings) + matching ASSETS.md Visual Asset Contract rows + `STYLE.md` + `GDD.md` section 4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
-3. Write the prompt text to `prompt_path`.
-4. Generate the scene source using the selected `asset_image_model` path:
+1. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood + Asset bindings) + matching ASSETS.md Visual Asset Contract rows + `STYLE.md` + `GDD.md` section 4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
+2. Write the prompt text to `prompt_path`.
+3. Generate the scene source using the selected `asset_image_model` path:
    - API-backed selector: write the source-generation spec, then run `python tools/asset_source_generate.py --spec <spec.json>`.
    - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Active Codex runtime batch for this scene.
    - Claude Code with `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Codex handoff from Claude Code for this scene.
    - Other runtime-native provider: generate a source image path.
-5. Finalize the source image with `python tools/asset_image_finalize.py --source <source_path> --out <final_path> --label scene_{name}`.
-6. Write the scene's flat finalize JSON entry and contract summary to the scene-reference diagnostic report.
-7. Show the result to the user. If rejected, regenerate with a tightened prompt.
+4. Finalize the source image with `python tools/asset_image_finalize.py --source <source_path> --out <final_path> --label scene_{name}`.
+5. Write the scene's flat finalize JSON entry and contract summary to the scene-reference diagnostic report.
+6. Show the result to the user. If rejected, regenerate with a tightened prompt.
 
 ### Step 4 — Generate Remaining MISSING Art
 
@@ -241,6 +251,14 @@ Generate character and enemy bundles in this order:
 7. Do not generate raw mixed-action atlases for important characters.
 8. Do not generate raw single-row body sheets for characters, enemies, NPCs,
    summons, or animated props.
+
+For maps and side-scroll stages, produce visual planning assets and asset
+lists:
+
+1. Layered map: foundation or background, dressed reference, object list,
+   compact prop packs or separate prop sources.
+2. Side-scroll stage: scenery or parallax reference, stage reference, platform,
+   object, hazard, pickup, door, gate, and checkpoint asset list.
 
 Run generation groups in batches of up to 3 art assets. Each group uses this
 input schema:
@@ -275,6 +293,11 @@ Use the selected `asset_image_model` path:
 - Active Codex runtime with `asset_image_model: native` or `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Active Codex runtime batch. Use one Codex subagent per asset when subagents are available.
 - Claude Code with `asset_image_model: codex`: follow `references/asset-runtime-pipeline.md` Codex handoff from Claude Code.
 - Other runtime-native provider: generate each source image path. Finalize only entries that already have a runtime `final_path`.
+
+For fixed-grid `component_sheet` and `action_sheet` sources, create a layout
+guide with `tools/asset_layout_guide.py`, store it under
+`.godotmaker/asset-generation/guides/`, and make it visible to the image
+generation runtime before generating the source.
 
 Each group may write one diagnostic JSON report under
 `.godotmaker/asset-generation/reports/`. Use it for troubleshooting provider
@@ -361,6 +384,7 @@ Never revert a `provided`/`generated` row back to `MISSING`; if the user wants t
 | Tool | Purpose |
 |------|---------|
 | `tools/asset_source_generate.py` | API-backed source image generation (Gemini / OpenAI / Grok) |
+| `tools/asset_layout_guide.py` | Create layout-only guides for fixed-grid source images |
 | `tools/asset_user_preflight.py` | Find unconsumed user-provided asset candidates under `assets/` |
 | `tools/codex_image_claim.py` | Copy Codex saved_path into a project source path |
 | `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |

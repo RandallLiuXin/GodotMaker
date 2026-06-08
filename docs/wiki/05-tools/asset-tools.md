@@ -7,11 +7,12 @@ debugging one source, one action sheet, or one curation decision.
 Primary pipeline tools:
 
 1. `asset_source_generate.py`
-2. `asset_action_process.py`
-3. `asset_action_manifest_entry.py`
-4. `asset_sheet_process.py`
-5. `asset_curation_select.py`
-6. `asset_curation_manifest_entry.py`
+2. `asset_layout_guide.py`
+3. `asset_action_process.py`
+4. `asset_action_manifest_entry.py`
+5. `asset_sheet_process.py`
+6. `asset_curation_select.py`
+7. `asset_curation_manifest_entry.py`
 
 Optional curation utility:
 
@@ -36,6 +37,25 @@ python tools/asset_source_generate.py --spec <spec.json>
 
 The spec contains the asset id, model selector, prompt, prompt path, source
 path, size, aspect ratio, reference images, and report path.
+
+## asset_layout_guide.py
+
+`asset_layout_guide.py` creates layout-only guides for fixed-grid source
+images. Use it for UI component sheets, icon packs, compact prop packs, and
+action sheets.
+
+Manual entry point:
+
+```bash
+python tools/asset_layout_guide.py \
+  --out <guide.png> \
+  --rows <rows> \
+  --cols <cols> \
+  --labels <labels>
+```
+
+The guide controls slot count, centering, and safe padding for image
+generation. It is not runtime art.
 
 ## rembg_matting.py
 
@@ -191,13 +211,14 @@ them based on `ASSETS.md` and the source-generation manifest.
 Manual use cases:
 
 1. Generate one source image from a tweaked spec.
-2. Process one character action sheet while debugging animation output.
-3. Build one character frame-output manifest entry from action metadata.
-4. Test a provider, size, or aspect ratio before a full `/gm-asset` run.
-5. Remove a solid background before source-sheet curation.
-6. Process one source sheet while debugging extraction.
-7. Select one extracted candidate into a runtime asset path.
-8. Build one runtime manifest entry from a selected curation candidate.
+2. Create one layout guide for a fixed-grid source.
+3. Process one character action sheet while debugging animation output.
+4. Build one character frame-output manifest entry from action metadata.
+5. Test a provider, size, or aspect ratio before a full `/gm-asset` run.
+6. Remove a solid background before source-sheet curation.
+7. Process one source sheet while debugging extraction.
+8. Select one extracted candidate into a runtime asset path.
+9. Build one runtime manifest entry from a selected curation candidate.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.

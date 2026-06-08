@@ -78,6 +78,30 @@ Run:
 python tools/asset_source_generate.py --spec <spec.json>
 ```
 
+## Layout Guides
+
+Create layout guides before fixed-grid image generation.
+
+```bash
+python tools/asset_layout_guide.py \
+  --out <guide.png> \
+  --rows <rows> \
+  --cols <cols> \
+  --labels <labels>
+```
+
+Store guides under `.godotmaker/asset-generation/guides/`.
+
+Use guides for:
+
+1. UI component sheets.
+2. Icon packs.
+3. Compact prop packs.
+4. Character or FX action sheets.
+
+Make the guide visible to the selected image-generation runtime before calling
+the provider. Treat the guide as layout control only.
+
 ## Finalization
 
 Finalize accepted source images with `tools/asset_image_finalize.py`. Provide

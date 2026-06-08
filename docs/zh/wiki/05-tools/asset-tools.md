@@ -5,11 +5,12 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 主流程工具：
 
 1. `asset_source_generate.py`
-2. `asset_action_process.py`
-3. `asset_action_manifest_entry.py`
-4. `asset_sheet_process.py`
-5. `asset_curation_select.py`
-6. `asset_curation_manifest_entry.py`
+2. `asset_layout_guide.py`
+3. `asset_action_process.py`
+4. `asset_action_manifest_entry.py`
+5. `asset_sheet_process.py`
+6. `asset_curation_select.py`
+7. `asset_curation_manifest_entry.py`
 
 可选 curation 工具：
 
@@ -28,6 +29,22 @@ python tools/asset_source_generate.py --spec <spec.json>
 ```
 
 spec 包含 asset id、model selector、prompt、prompt path、source path、尺寸、宽高比、reference images 和 report path。
+
+## asset_layout_guide.py
+
+`asset_layout_guide.py` 会为固定网格 source 图片创建 layout guide。适用于 UI component sheet、icon pack、compact prop pack 和 action sheet。
+
+手动入口：
+
+```bash
+python tools/asset_layout_guide.py \
+  --out <guide.png> \
+  --rows <rows> \
+  --cols <cols> \
+  --labels <labels>
+```
+
+guide 用于约束 image generation 的 slot 数量、居中和安全边距。它不是运行时美术资源。
 
 ## rembg_matting.py
 
@@ -165,12 +182,13 @@ python tools/asset_curation_manifest_entry.py \
 主要手动场景：
 
 1. 用调整过的 spec 重新生成某一个 source 图片。
-2. 调试动画输出时单独处理一个角色动作 sheet。
-3. 从 action metadata 生成一个 character frame-output manifest entry。
-4. 在完整运行 `/gm-asset` 前试验不同的提供商、尺寸或宽高比。
-5. 在 source sheet curation 前移除纯色背景。
-6. 调试 extraction 时单独处理一个 source sheet。
-7. 把某个 extracted candidate 选入运行时素材路径。
-8. 从已选中的 curation candidate 生成一个运行时 manifest entry。
+2. 为固定网格 source 创建一个 layout guide。
+3. 调试动画输出时单独处理一个角色动作 sheet。
+4. 从 action metadata 生成一个 character frame-output manifest entry。
+5. 在完整运行 `/gm-asset` 前试验不同的提供商、尺寸或宽高比。
+6. 在 source sheet curation 前移除纯色背景。
+7. 调试 extraction 时单独处理一个 source sheet。
+8. 把某个 extracted candidate 选入运行时素材路径。
+9. 从已选中的 curation candidate 生成一个运行时 manifest entry。
 
 如果想更新 `/gm-evaluate` 用于对比的视觉目标，请重新运行 `/gm-asset`，不要直接编辑已生成的图片。

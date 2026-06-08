@@ -20,6 +20,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - (WIP) Diagnostic log at `.godotmaker/log_agent_tool_debug.log` that records every phase of `log_agent_tool.py` so the next failure mode is localizable from artifacts.
 - Added validation for asset-generation handoff manifests so generated-art runs can detect missing fields and files.
 - Added a manifest update helper so generated-art runs can upsert handoff entries through a validated tool.
+- Added a layout-guide helper for fixed-grid UI, prop, icon, and action source generation.
 - Added a character action processor that turns raw action sheets into normalized frames, transparent sheets, GIF previews, and pipeline metadata.
 - Added a character action manifest-entry helper so processed action metadata can produce validated frame-output handoff entries.
 - Added a 2D source-sheet processor so generated grids can produce cropped assets and processing reports.
@@ -51,3 +52,4 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Removed the legacy `tools/asset_gen.py` helper in favor of the spec-driven asset source generator.
 - Removed the legacy asset group report checker and standalone grid slicer from the active asset pipeline.
+- Removed stale gm-asset reference pages for scene visual targets and rembg-specific guidance.

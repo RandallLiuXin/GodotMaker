@@ -59,7 +59,23 @@ For each current-tag scene:
 The final list is the union of scene-visible assets and gameplay-required
 assets.
 
-### 3. Classify asset families
+### 3. Choose production strategy
+
+Choose one production strategy before choosing the manifest family:
+
+1. `component_sheet`: UI pieces, icons, small props, pickups, badges, compact
+   chests, and other similarly sized objects.
+2. `action_sheet`: one body action or one FX loop for a character, enemy, NPC,
+   summon, animated prop, projectile, impact, slash, aura, dust, or pickup FX.
+3. `map_or_stage_reference`: layered-map or side-scroll visual planning
+   artifact plus the asset list derived from it.
+4. `single_image`: background, panel, card frame, large prop, canonical
+   character, texture, or runtime sprite that does not need splitting.
+
+Use the strategy to choose prompt shape, layout guide use, processing tool,
+curation record, and runtime outputs.
+
+### 3.1 Classify asset families
 
 Classify each planned asset into one family from
 `references/asset-family-contract.md`:
@@ -92,6 +108,42 @@ Choose one production shape for each visual asset:
 
 Record the family and production shape before writing the prompt.
 
+### 3.2 Strategy rules
+
+Use `component_sheet` for compact assets that share one style and fit one
+regular grid or autoslice sheet:
+
+1. UI buttons, tabs, counters, badges, HUD pieces, card slots, small frames.
+2. Resource icons, skill icons, rank icons, item icons.
+3. Compact props, pickups, crates, stones, bushes, pots, debris, small signs.
+
+Do not put these in `component_sheet`:
+
+1. Walkable platforms, floors, bridges, walls, ladders, doors, gates, exits.
+2. Large trees, buildings, terrain chunks, long hazards, roads, rails, pipes.
+3. Any object whose collision or placement depends on exact wide/tall shape.
+
+Use `action_sheet` for one coherent action or effect loop:
+
+1. One body action per source: idle, walk, run, attack, shoot, cast, hurt,
+   death, summon, charge.
+2. One detached FX loop per source: projectile, impact, slash, aura, dust,
+   pickup, muzzle flash, explosion.
+3. Body actions use `kind: body`; detached effects use `kind: fx`.
+
+Use `map_or_stage_reference` for visual planning assets:
+
+1. Layered map: foundation or background, dressed reference, object list,
+   compact prop packs or separate prop sources.
+2. Side-scroll stage: scenery or parallax reference, stage reference, platform,
+   object, hazard, pickup, and door asset list.
+
+Use `single_image` for sources that should stay one file:
+
+1. Character canonical, enemy canonical, UI style reference.
+2. Large panel, card frame, dialogue frame, shop slot.
+3. Background, parallax plate, texture, large prop, runtime sprite.
+
 ### 4. Choose anchors and derivatives
 
 Identify which assets establish the style for later assets.
@@ -111,6 +163,22 @@ Common anchor patterns:
 3. One environment image anchors vegetation, terrain, props, and background
    details.
 4. One weapon/item family image anchors item variants.
+
+### 4.0 Layout guides
+
+Use `tools/asset_layout_guide.py` before image generation when a source must
+fit a fixed grid, exact slot count, or safe padding.
+
+Recommended use:
+
+1. `component_sheet` with 2x2, 3x3, or 4x4 grid.
+2. `action_sheet` with fixed multi-row frames.
+3. Prop packs where each cell has a named output.
+4. UI component sheets where spacing must stay consistent.
+
+Write guides under `.godotmaker/asset-generation/guides/`. Make the guide
+visible to the selected image-generation runtime before generating the source.
+Use it as a layout reference only.
 
 ### 4.1 Plan character and enemy bundles
 
@@ -317,10 +385,32 @@ entries before binding them to gameplay-visible ASSETS.md rows.
 Use for compact similarly sized props. Plan rows, columns, expected items, and
 names before generation. Mark as `needs_curation` until final prop files exist.
 
+Use separate sources for wide, tall, collision-bearing, or placement-critical
+objects.
+
 ### UI component sheet
 
 Use for related interface elements. Prefer one coherent kit source when style
 consistency matters. Mark extraction or curation needs in ASSETS.md notes.
+
+### Map or stage reference
+
+Use for visual planning assets.
+
+Layered map planning output:
+
+1. Foundation or background source.
+2. Dressed reference source.
+3. Object list with asset ids, roles, approximate placement, and production
+   strategy.
+4. Compact prop packs or separate prop/panel/background sources.
+
+Side-scroll stage planning output:
+
+1. Scenery or parallax source list.
+2. Stage reference source.
+3. Platform, terrain, hazard, pickup, door, gate, and checkpoint asset list.
+4. Compact prop packs, wide strips, or separate single-image sources.
 
 ## Common Mistakes
 

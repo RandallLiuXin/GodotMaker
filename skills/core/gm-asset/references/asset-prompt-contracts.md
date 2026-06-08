@@ -15,6 +15,29 @@ handoff.
 5. Do not request transparent backgrounds, checkerboards, or alpha grids.
 6. Generate source images at full resolution.
 
+## Layout Guide Handoff
+
+Use `tools/asset_layout_guide.py` for fixed-grid component sheets, prop packs,
+and action sheets.
+
+```bash
+python tools/asset_layout_guide.py \
+  --out <guide.png> \
+  --rows <rows> \
+  --cols <cols> \
+  --labels <labels>
+```
+
+Before image generation:
+
+1. Make the guide visible to the active image-generation runtime.
+2. State that the guide controls slot count, spacing, centering, and safe
+   padding only.
+3. Tell the image model not to copy guide lines, labels, center marks, safe
+   boxes, or guide background into the final source.
+4. Keep the source prompt's solid `#FF00FF` background rule when extraction is
+   required.
+
 ## Scene Reference
 
 Use scene references as visual targets for a scene. They are written under
@@ -26,7 +49,13 @@ Prompt shape:
 Screenshot of a {2D game}. {camera/viewpoint}. Game objects: {visible objects with position and approximate size}. Environment: {layers and playfield}. HUD: {visible UI elements}. Visual style: {STYLE.md Style Anchor + Prompt Suffix}. No text labels unless the scene explicitly needs UI text.
 ```
 
-Read `visual-target.md` before writing the prompt.
+Scene reference prompts must include:
+
+1. Gameplay-visible objects and approximate screen positions.
+2. Scene camera, playfield, boundaries, foreground, and background layers.
+3. HUD or UI elements described in `SCENES.md`.
+4. Style language from `STYLE.md`.
+5. Only effects and objects that the game will implement.
 
 ## Style Reference
 
@@ -131,6 +160,11 @@ Prompt shape:
 Record rows, columns, expected item names, and final target paths in the
 manifest. Mark the source `needs_curation` until extracted prop files exist.
 
+Use compact prop packs only for objects that fit a regular cell. Generate wide,
+tall, collision-bearing, platform, floor, bridge, wall, ladder, gate, door,
+exit, large tree, building, terrain chunk, long hazard, road, rail, pipe, and
+tileset-like assets as separate images, strips, or custom wide-cell sources.
+
 ## UI Component Sheet
 
 Use UI component sheets for icons, small buttons, tabs, badges, counters, and
@@ -167,6 +201,23 @@ Prompt shape:
 ```text
 {description in the art style}. {composition instructions}. Intended game display: {viewport or parallax behavior}. No gameplay actors, pickups, hazards, UI, or text.
 ```
+
+## Map Or Stage Reference
+
+Use map and stage references for asset planning.
+
+Map or stage prompts must state:
+
+1. Viewpoint: top-down layered map, side-view stage, or parallax plate.
+2. Reference role: foundation/background, dressed map reference, scenery plate,
+   or stage reference.
+3. Visible objects to derive into assets.
+4. Background and gameplay object separation.
+5. Text, label, UI, and number restrictions.
+6. Style language from `STYLE.md`.
+
+After the reference exists, list runtime-visible objects and assign each item to
+`component_sheet`, `action_sheet`, or `single_image`.
 
 ## Runtime Sprite
 
