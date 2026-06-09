@@ -22,13 +22,40 @@ Do not read image binaries in the manager context.
 1. Read the current tag from `PLAN.md`.
 2. Filter `ASSETS.md` to current-tag `MISSING` rows.
 3. Add missing current-tag scene references from `SCENES.md`.
-4. Group generated visual work into production units.
-5. Choose one production-unit doc for each unit.
-6. Choose one provider doc for each unit.
-7. Reserve source, final, prompt, report, and manifest-entry paths.
-8. Record dependencies between units.
-9. Dispatch independent units in batches of up to 3.
-10. Keep bundle work in one production unit.
+4. Identify current-tag visual anchors.
+5. Apply the Visual Anchor Gate.
+6. Group generated visual work into production units.
+7. Choose one production-unit doc for each unit.
+8. Choose one provider doc for each unit.
+9. Reserve source, final, prompt, report, and manifest-entry paths.
+10. Record dependencies between units.
+11. Dispatch independent units in batches of up to 3.
+12. Keep bundle work in one production unit.
+
+## Visual Anchor Gate
+
+Current-tag visual anchors are:
+
+1. User-provided image assets accepted as `direct_runtime`.
+2. Current-tag `references/scene_*.png` files with matching reports.
+3. Current-tag generated `screen-reference` or `style_reference` manifest
+   entries whose files exist.
+4. Current-tag canonical character or UI reference images whose manifest entries
+   are `ready`.
+
+When no visual anchor exists:
+
+1. Plan only one foundation `screen-reference` production unit.
+2. Use the primary current-tag scene from `SCENES.md`.
+3. Do not dispatch `background-map`, `character-bundle`, `fx-bundle`,
+   `ui-kit`, `compact-prop-pack`, `platform-strip`, or `scene-prop-set`.
+4. Collect the foundation reference report.
+5. Rebuild the production plan.
+
+When at least one visual anchor exists:
+
+1. Put visible anchor paths in every production-unit brief.
+2. Dispatch independent units in batches of up to 3.
 
 ## Production Unit Selection
 

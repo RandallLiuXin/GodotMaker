@@ -136,6 +136,9 @@ Write plan artifacts under `.godotmaker/asset-generation/work/`.
 Use `references/asset-planner.md` for grouping, dependencies, batch rules, and
 plan artifact fields.
 
+Apply the Visual Anchor Gate from `references/asset-planner.md` before
+dispatching generated visual work.
+
 ### Step 4 - Dispatch Asset Producers
 
 Dispatch `asset-producer` for every generated visual production unit.
