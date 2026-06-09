@@ -28,6 +28,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added a character action manifest-entry helper so processed action metadata can produce validated frame-output handoff entries.
 - Added a 2D source-sheet processor so generated grids can produce cropped assets and processing reports.
 - Added magenta-background and edge-fringe processing support to the 2D source-sheet processor for production-shaped extraction sheets.
+- Added action-sheet edge-touch recovery that archives the previous source and repacks autosliced frames into the active source path.
 - Added an asset-producer subagent and production-unit entry docs for generated visual asset work.
 - Added separate native, Codex, and Gemini image-provider docs for `/gm-asset`.
 - Added a first-pass asset curation contract for generated source sheets, canonical selections, and rejected candidates.

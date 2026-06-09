@@ -60,6 +60,9 @@ python tools/asset_action_process.py \
   --final-prefix <asset_id>
 ```
 
+If grid processing rejects an action source for edge-touch, rerun the same
+command with `--recover-edge-touch`.
+
 When `--final-dir` is used, `--final-prefix` is required. The tool writes
 runtime frame files as `<final-prefix>_<frame-name>.png` unless the frame name
 already starts with `<final-prefix>_`.
@@ -79,6 +82,8 @@ python tools/asset_action_manifest_entry.py \
 ```
 
 Reject processed outputs with non-empty `edge_touch_frames`.
+Keep `source_recovery.report` and `source_recovery.archived_source_path` when
+recovery is used.
 
 ## Defaults
 

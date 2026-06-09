@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import shutil
 import sys
@@ -10,7 +11,13 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from asset_sheet_process import SheetProcessError, process_sheet
+from asset_sheet_process import (
+    MAGENTA_RGB,
+    SheetProcessError,
+    _autoslice_rects,
+    _remove_magenta_background,
+    process_sheet,
+)
 
 
 class ActionProcessError(Exception):
@@ -253,6 +260,138 @@ def _copy_runtime_outputs(
     return final_frames, str(final_sheet)
 
 
+def _utc_timestamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+
+def _history_path_for(source: Path, timestamp: str) -> Path:
+    history_dir = source.parent / "history"
+    candidate = history_dir / f"{source.stem}.{timestamp}{source.suffix}"
+    if not candidate.exists():
+        return candidate
+    index = 2
+    while True:
+        numbered = history_dir / f"{source.stem}.{timestamp}-{index}{source.suffix}"
+        if not numbered.exists():
+            return numbered
+        index += 1
+
+
+def _write_recovered_action_source(
+    source: Path,
+    *,
+    output_dir: Path,
+    grid: str,
+    frame_names: list[str],
+    background: str,
+    align: str,
+    timestamp: str | None,
+) -> dict[str, object]:
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise ActionProcessError("Pillow is required to recover action sheets") from exc
+
+    source = Path(source)
+    if not source.exists():
+        raise ActionProcessError(f"Source sheet not found: {source}")
+
+    cols, rows = _parse_grid(grid)
+    expected = cols * rows
+    if len(frame_names) != expected:
+        raise ActionProcessError("Recovery frame names do not match grid")
+
+    image = Image.open(source).convert("RGBA")
+    try:
+        if background == "magenta":
+            scan_image, cleanup = _remove_magenta_background(
+                image,
+                threshold=100,
+                edge_threshold=150,
+            )
+        elif background == "transparent":
+            scan_image = image.copy()
+            cleanup = {"removed_pixels": 0, "edge_removed_pixels": 0}
+        else:
+            raise ActionProcessError("--background must be transparent or magenta")
+
+        rects = _autoslice_rects(scan_image)
+        if len(rects) != expected:
+            raise ActionProcessError(
+                f"Autoslice recovery found {len(rects)} frames; expected {expected}"
+            )
+
+        width, height = image.size
+        if width % cols != 0 or height % rows != 0:
+            raise ActionProcessError("Source dimensions must divide evenly by grid")
+        original_cell_w = width // cols
+        original_cell_h = height // rows
+        padding = max(8, int(min(original_cell_w, original_cell_h) * 0.08))
+        max_crop_w = max(rect[2] - rect[0] for rect in rects)
+        max_crop_h = max(rect[3] - rect[1] for rect in rects)
+        cell_w = max(original_cell_w, max_crop_w + padding * 2)
+        cell_h = max(original_cell_h, max_crop_h + padding * 2)
+
+        canvas_color = MAGENTA_RGB + (255,) if background == "magenta" else (0, 0, 0, 0)
+        recovered = Image.new("RGBA", (cell_w * cols, cell_h * rows), canvas_color)
+        placements: list[dict[str, object]] = []
+        for index, (name, rect) in enumerate(zip(frame_names, rects)):
+            left, top, right, bottom = rect
+            crop = scan_image.crop(rect)
+            row, col = divmod(index, cols)
+            x = col * cell_w + (cell_w - crop.width) // 2
+            if align in {"bottom", "feet"}:
+                y = row * cell_h + cell_h - crop.height - padding
+            else:
+                y = row * cell_h + (cell_h - crop.height) // 2
+            recovered.paste(crop, (x, y), crop)
+            placements.append(
+                {
+                    "name": name,
+                    "source_bbox": [left, top, right, bottom],
+                    "source_size": [crop.width, crop.height],
+                    "target_cell": [col, row],
+                    "paste_position": [x, y],
+                }
+            )
+
+        archive_timestamp = timestamp or _utc_timestamp()
+        archived_source = _history_path_for(source, archive_timestamp)
+        archived_source.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, archived_source)
+        recovered.save(source)
+
+        report = {
+            "version": 1,
+            "ok": True,
+            "method": "autoslice_repack",
+            "archived_source_path": str(archived_source),
+            "active_source_path": str(source),
+            "background": background,
+            "cleanup": cleanup,
+            "grid": {"cols": cols, "rows": rows},
+            "original_size": [width, height],
+            "recovered_size": [recovered.width, recovered.height],
+            "original_cell_size": [original_cell_w, original_cell_h],
+            "recovered_cell_size": [cell_w, cell_h],
+            "padding": padding,
+            "placements": placements,
+        }
+        recovery_report = output_dir / "recovery-report.json"
+        _write_atomic_json(recovery_report, report)
+        report["report"] = str(recovery_report)
+        return report
+    finally:
+        image.close()
+
+
+def _has_edge_touch_rejection(curation: dict[str, object]) -> bool:
+    rejected = curation.get("rejected")
+    if not isinstance(rejected, list):
+        return False
+    return any(isinstance(item, dict) and item.get("reason") == "edge_touch" for item in rejected)
+
+
 def process_action_sheet(
     source: Path,
     output_dir: Path,
@@ -271,6 +410,8 @@ def process_action_sheet(
     shared_scale: bool = True,
     duration: int = 160,
     reject_edge_touch: bool = True,
+    recover_edge_touch: bool = False,
+    recovery_timestamp: str | None = None,
     scale_reference_metadata: Path | None = None,
     scale_tolerance: float = 0.15,
     final_dir: Path | None = None,
@@ -292,6 +433,8 @@ def process_action_sheet(
     frame_dir = output_dir / "frames"
     frame_dir.mkdir(parents=True, exist_ok=True)
     curation_report = output_dir / "curation-report.json"
+    initial_curation_report = output_dir / "curation-report.initial-grid.json"
+    source_recovery: dict[str, object] | None = None
 
     try:
         curation = process_sheet(
@@ -318,6 +461,42 @@ def process_action_sheet(
         if isinstance(item, dict) and item.get("path")
     }
     missing = [name for name in frame_names if name not in candidates]
+    if missing and recover_edge_touch and reject_edge_touch and _has_edge_touch_rejection(curation):
+        if curation_report.exists():
+            shutil.copy2(curation_report, initial_curation_report)
+        source_recovery = _write_recovered_action_source(
+            source,
+            output_dir=output_dir,
+            grid=grid,
+            frame_names=frame_names,
+            background=background,
+            align=align,
+            timestamp=recovery_timestamp,
+        )
+        try:
+            curation = process_sheet(
+                source,
+                candidate_dir,
+                grid=grid,
+                names=names,
+                asset_id=asset_id,
+                tag=tag,
+                background=background,
+                snap_mode="grid",
+                component_mode=component_mode,
+                component_padding=component_padding,
+                min_component_area=min_component_area,
+                reject_edge_touch=reject_edge_touch,
+                report=curation_report,
+            )
+        except SheetProcessError as exc:
+            raise ActionProcessError(str(exc)) from exc
+        candidates = {
+            str(item.get("name")): Path(str(item.get("path")))
+            for item in curation.get("candidates", [])
+            if isinstance(item, dict) and item.get("path")
+        }
+        missing = [name for name in frame_names if name not in candidates]
     if missing:
         raise ActionProcessError(f"Missing required frames: {', '.join(missing)}")
 
@@ -367,6 +546,10 @@ def process_action_sheet(
         "shared_scale": shared_scale,
         "duration": duration,
         "curation_report_path": str(curation_report),
+        "initial_curation_report_path": (
+            str(initial_curation_report) if source_recovery is not None else None
+        ),
+        "source_recovery": source_recovery,
         "edge_touch_frames": curation.get("edge_touch_candidates", []),
         "frames": frame_meta,
         "frame_paths": [str(path) for path in frame_paths],
@@ -397,6 +580,7 @@ def _main() -> int:
     parser.add_argument("--tag")
     parser.add_argument("--background", choices=["transparent", "magenta"], default="magenta")
     parser.add_argument("--align", choices=["center", "bottom", "feet"])
+    parser.add_argument("--recover-edge-touch", action="store_true")
     parser.add_argument("--scale-reference-metadata", type=Path)
     parser.add_argument("--scale-tolerance", type=float, default=0.15)
     parser.add_argument("--final-dir", type=Path)
@@ -418,6 +602,7 @@ def _main() -> int:
             background=args.background,
             component_mode=component_mode,
             align=align,
+            recover_edge_touch=args.recover_edge_touch,
             scale_reference_metadata=args.scale_reference_metadata,
             scale_tolerance=args.scale_tolerance,
             final_dir=args.final_dir,

@@ -9,15 +9,16 @@ processing, and curation commands.
 For each generated visual production unit, reserve:
 
 1. Source images under `.godotmaker/asset-generation/sources/`.
-2. Prompt files under `.godotmaker/asset-generation/prompts/`.
-3. Reports under `.godotmaker/asset-generation/reports/`.
-4. Curation reports under `.godotmaker/asset-generation/curation/`.
-5. Processed previews and derived files under
+2. Replaced source images under `.godotmaker/asset-generation/sources/history/`.
+3. Prompt files under `.godotmaker/asset-generation/prompts/`.
+4. Reports under `.godotmaker/asset-generation/reports/`.
+5. Curation reports under `.godotmaker/asset-generation/curation/`.
+6. Processed previews and derived files under
    `.godotmaker/asset-generation/processed/`.
-6. Manifest entry files under
+7. Manifest entry files under
    `.godotmaker/asset-generation/work/manifest-entries/`.
-7. Final runtime assets under `assets/`.
-8. Scene references under `references/`.
+8. Final runtime assets under `assets/`.
+9. Scene references under `references/`.
 
 ## Provider Docs
 

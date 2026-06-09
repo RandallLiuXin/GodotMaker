@@ -30,6 +30,23 @@ def make_action_sheet(path: Path, *, missing_last: bool = False):
     image.save(path)
 
 
+def make_edge_touch_action_sheet(path: Path, *, missing_last: bool = False):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (80, 80), (255, 0, 255, 255))
+    draw = ImageDraw.Draw(image)
+    boxes = [
+        ((0, 8, 30, 32) if missing_last else (8, 8, 30, 32)),
+        (50, 8, 72, 32),
+        (8, 50, 30, 72),
+        (50, 50, 79, 79),
+    ]
+    for index, box in enumerate(boxes):
+        if missing_last and index == 3:
+            continue
+        draw.rectangle(box, fill=(40 + index * 20, 80, 220, 255))
+    image.save(path)
+
+
 def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
     source = tmp_path / "player_idle_source.png"
     make_action_sheet(source)
@@ -87,6 +104,72 @@ def test_process_action_sheet_rejects_missing_required_frame(tmp_path):
             names="idle_01,idle_02,idle_03,idle_04",
             asset_id="player_idle",
         )
+
+
+def test_process_action_sheet_rejects_edge_touch_by_default(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_edge_touch_action_sheet(source)
+
+    with pytest.raises(ActionProcessError, match="Missing required frames"):
+        process_action_sheet(
+            source,
+            tmp_path / "processed",
+            grid="2x2",
+            names="idle_01,idle_02,idle_03,idle_04",
+            asset_id="player_idle",
+        )
+
+
+def test_process_action_sheet_recovers_edge_touch_with_history(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_edge_touch_action_sheet(source)
+    original_bytes = source.read_bytes()
+
+    result = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04",
+        asset_id="player_idle",
+        recover_edge_touch=True,
+        recovery_timestamp="20260609-120000",
+        final_dir=tmp_path / "assets" / "sprites",
+        final_prefix="player_idle",
+    )
+
+    recovery = result["source_recovery"]
+    assert isinstance(recovery, dict)
+    history_path = Path(str(recovery["archived_source_path"]))
+    assert history_path.exists()
+    assert history_path.name == "player_idle_source.20260609-120000.png"
+    assert history_path.read_bytes() == original_bytes
+    assert Path(str(recovery["active_source_path"])) == source
+    assert source.read_bytes() != original_bytes
+    assert recovery["method"] == "autoslice_repack"
+    assert recovery["original_size"] == [80, 80]
+    assert recovery["recovered_size"] == [92, 92]
+    assert len(recovery["placements"]) == 4
+    assert result["edge_touch_frames"] == []
+    assert Path(result["initial_curation_report_path"]).exists()
+    assert Path(result["curation_report_path"]).exists()
+    assert Path(result["final_sheet_path"]).exists()
+
+
+def test_process_action_sheet_recovery_rejects_frame_count_mismatch(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_edge_touch_action_sheet(source, missing_last=True)
+
+    with pytest.raises(ActionProcessError, match="Autoslice recovery found 3 frames; expected 4"):
+        process_action_sheet(
+            source,
+            tmp_path / "processed",
+            grid="2x2",
+            names="idle_01,idle_02,idle_03,idle_04",
+            asset_id="player_idle",
+            recover_edge_touch=True,
+            recovery_timestamp="20260609-120000",
+        )
+    assert not (source.parent / "history" / "player_idle_source.20260609-120000.png").exists()
 
 
 def test_process_action_sheet_rejects_body_scale_drift(tmp_path):
