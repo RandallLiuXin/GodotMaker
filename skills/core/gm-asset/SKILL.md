@@ -207,18 +207,24 @@ python tools/asset_generation_manifest_update.py --entry-file <entry.json>
 python tools/asset_generation_manifest_check.py --check-files
 ```
 
-5. Redispatch failed or incomplete production units once when the failure is
+5. Update the matching ASSETS.md rows:
+
+```bash
+python tools/asset_assets_md_update.py --entry-file <entry.json>
+```
+
+6. Redispatch failed or incomplete production units once when the failure is
    actionable from the report.
 
 ### Step 6 - Update ASSETS.md
 
 For current-tag rows only:
 
-1. Mark final generated runtime assets `generated`.
+1. Confirm final generated runtime assets are `generated`.
 2. Mark provided files `provided`.
 3. Mark unprovided audio `deferred`.
 4. Keep rows with incomplete curation or missing final paths as `MISSING`.
-5. Update `Generation Params` with provider, production unit, prompt path,
+5. Confirm `Generation Params` include provider, production unit, prompt path,
    source path, final path, curation report, and manifest entry.
 6. Update the Visual Asset Contract for gameplay-visible generated assets.
 

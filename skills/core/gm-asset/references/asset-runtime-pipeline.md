@@ -72,6 +72,12 @@ Validate the manifest with:
 python tools/asset_generation_manifest_check.py --check-files
 ```
 
+Update matching ASSETS.md rows with:
+
+```bash
+python tools/asset_assets_md_update.py --entry-file <entry.json>
+```
+
 Manifest entry shape:
 
 ```json
