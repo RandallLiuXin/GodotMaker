@@ -60,6 +60,10 @@ python tools/asset_action_process.py \
   --final-prefix <asset_id>
 ```
 
+When `--final-dir` is used, `--final-prefix` is required. The tool writes
+runtime frame files as `<final-prefix>_<frame-name>.png` unless the frame name
+already starts with `<final-prefix>_`.
+
 For later body actions, add
 `--scale-reference-metadata <accepted_idle_or_run_metadata.json>`.
 

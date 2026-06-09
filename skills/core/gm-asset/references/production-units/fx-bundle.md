@@ -47,6 +47,10 @@ python tools/asset_action_process.py \
   --final-prefix <asset_id>
 ```
 
+When `--final-dir` is used, `--final-prefix` is required. The tool writes
+runtime frame files as `<final-prefix>_<frame-name>.png` unless the frame name
+already starts with `<final-prefix>_`.
+
 Use `align: center` for floating effects, projectiles, and detached FX.
 Finalize single-image effects with `tools/asset_image_finalize.py`.
 

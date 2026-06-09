@@ -57,6 +57,12 @@ def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
     assert len(result["final_frame_paths"]) == 4
     assert Path(result["final_sheet_path"]).exists()
     assert Path(result["final_sheet_path"]).name == "player_idle_sheet.png"
+    assert [Path(path).name for path in result["final_frame_paths"]] == [
+        "player_idle_idle_01.png",
+        "player_idle_idle_02.png",
+        "player_idle_idle_03.png",
+        "player_idle_idle_04.png",
+    ]
     sizes = {tuple(frame["output_size"]) for frame in result["frames"]}
     assert len(sizes) > 1
     bottom_edges = {
@@ -110,6 +116,43 @@ def test_process_action_sheet_rejects_body_scale_drift(tmp_path):
         )
 
 
+def test_process_action_sheet_requires_final_prefix_with_final_dir(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source)
+
+    with pytest.raises(ActionProcessError, match="--final-prefix is required"):
+        process_action_sheet(
+            source,
+            tmp_path / "processed",
+            grid="2x2",
+            names="idle_01,idle_02,idle_03,idle_04",
+            asset_id="player_idle",
+            final_dir=tmp_path / "assets" / "sprites",
+        )
+
+
+def test_process_action_sheet_does_not_double_prefix_runtime_frames(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source)
+
+    result = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="2x2",
+        names="player_idle_01,player_idle_02,player_idle_03,player_idle_04",
+        asset_id="player_idle",
+        final_dir=tmp_path / "assets" / "sprites",
+        final_prefix="player_idle",
+    )
+
+    assert [Path(path).name for path in result["final_frame_paths"]] == [
+        "player_idle_01.png",
+        "player_idle_02.png",
+        "player_idle_03.png",
+        "player_idle_04.png",
+    ]
+
+
 def test_cli_outputs_json(tmp_path):
     source = tmp_path / "player_idle_source.png"
     make_action_sheet(source)
@@ -147,3 +190,9 @@ def test_cli_outputs_json(tmp_path):
     assert data["ok"] is True
     assert data["frame_count"] == 4
     assert Path(data["gif_path"]).exists()
+    assert [Path(path).name for path in data["final_frame_paths"]] == [
+        "player_idle_idle_01.png",
+        "player_idle_idle_02.png",
+        "player_idle_idle_03.png",
+        "player_idle_idle_04.png",
+    ]

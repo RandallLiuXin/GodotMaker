@@ -233,13 +233,22 @@ def _copy_runtime_outputs(
 ) -> tuple[list[str], str | None]:
     if final_dir is None:
         return [str(path) for path in frame_paths], None
+    if not final_prefix:
+        raise ActionProcessError("--final-prefix is required when --final-dir is used")
     final_dir.mkdir(parents=True, exist_ok=True)
     final_frames = []
+    used_names: set[str] = set()
     for path in frame_paths:
-        target = final_dir / path.name
+        frame_stem = path.stem
+        output_stem = frame_stem if frame_stem.startswith(f"{final_prefix}_") else f"{final_prefix}_{frame_stem}"
+        output_name = f"{output_stem}{path.suffix}"
+        if output_name in used_names:
+            raise ActionProcessError(f"Runtime frame name collision: {output_name}")
+        used_names.add(output_name)
+        target = final_dir / output_name
         shutil.copy2(path, target)
         final_frames.append(str(target))
-    final_sheet = final_dir / f"{final_prefix}_sheet.png" if final_prefix else final_dir / sheet_path.name
+    final_sheet = final_dir / f"{final_prefix}_sheet.png"
     shutil.copy2(sheet_path, final_sheet)
     return final_frames, str(final_sheet)
 
