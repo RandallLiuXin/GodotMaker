@@ -1,105 +1,116 @@
 # Analyst Dispatch Protocol
 
-When the user provides art/audio assets, dispatch an analyst to process them.
-The dispatching role MUST NOT read image files in `assets/` directly — always delegate to the analyst.
+Use this protocol when a role needs image or audio inspection for
+user-provided files under `assets/`.
 
-**Agent definition:** `.claude/agents/analyst.md` — system prompt loaded automatically via `subagent_type: "analyst"`.
+The dispatching role must not read image binaries directly. Dispatch
+`analyst` with the candidate paths and use the returned report plus
+`assets/manifest.json`.
 
-## Agent Call
+## Before Dispatch
 
+For `/gm-asset`, run:
+
+```bash
+python tools/asset_user_preflight.py --project-root .
 ```
-Agent({
-  subagent_type: "analyst",
-  description: "Analyst: process user assets",
-  model: "{analyst_model from .godotmaker/config.yaml, default: sonnet}",
-  prompt: "{analyst brief below}"
-})
-```
 
-## Analyst Brief Template
+Dispatch `analyst` only when the preflight output has image candidates. Handle
+audio-only candidates in the dispatching role with exact path or filename
+matches.
 
-```
-## Analyze: User-provided assets                          [REQUIRED]
+## Brief
 
-### Project Path                                           [REQUIRED]
-{Absolute path to the Godot project}
+```text
+## Analyze User-Provided Assets
 
-### Assets Directory                                       [REQUIRED]
-{Path to assets/ directory}
+### Project Root
+{absolute project path}
 
-### GDD Art Direction                                      [REQUIRED]
-{Copy GDD §4 art style description here}
+### Candidate Paths
+- {assets/... path}
 
-### Task                                                   [REQUIRED]
-1. List all files in the assets directory (recursively)
-2. For each image file (.png, .jpg, .svg, .webp):
-   - Identify: type (sprite, tileset, background, ui, icon), role, dimensions
-   - If sprite sheet: detect frame count and frame size
-   - Assess style characteristics: color palette, line weight, proportions, mood
-3. For each audio file (.ogg, .wav, .mp3):
-   - Identify: type (bgm, sfx), role, duration
-4. Generate `assets/manifest.json` following the schema below
-5. Summarize the overall art style in 2-3 sentences (for use as AI generation reference)
+### Matching ASSETS.md Rows
+- {row id/name/status/path when available}
 
-### Output Schema: manifest.json                           [REQUIRED]
-{See schema below}
+### Visual Context
+- STYLE.md is an initial visual seed.
+- Existing scene references and canonical asset references are primary style anchors.
+- Do not treat STYLE.md as the final style source when image references exist.
 
-### Report Format                                          [REQUIRED]
+### Task
+1. Inspect only the listed candidate paths.
+2. Classify each image as sprite, sprite_sheet, tileset, background, ui, icon,
+   prop, reference, or unknown.
+3. Record dimensions, frame/grid observations, transparency, and visible text.
+4. Classify audio as bgm or sfx and record duration when available.
+5. Write or update `assets/manifest.json`.
+6. Mark each image as `direct_runtime`, `source_for_processing`, or
+   `uncertain`.
+7. Report high-confidence matches to current ASSETS.md rows.
+8. Report source sheets, tilesets, UI kits, and prop sheets as processing
+   sources.
+9. Report uncertain files without changing ASSETS.md.
+
+### Report Format
 ## Analyst Report:
+
 ### Status: DONE | PARTIAL | FAILED
-### Asset Summary
-- Total files: {count}
-- Sprites: {count}, Tilesets: {count}, Backgrounds: {count}, UI: {count}, Audio: {count}
-### Art Style Summary
-{2-3 sentences describing the visual style}
-### Files Generated
-- `assets/manifest.json`
+
+### Candidate Summary
+- Images: {count}
+- Audio: {count}
+- Matched ASSETS rows: {count}
+- Uncertain: {count}
+
+### Manifest
+- Path: assets/manifest.json
+- Status: written | updated | unchanged | failed
+
+### Row Matches
+- {asset row/name}: {candidate path} ({confidence}; {notes})
+
+### Uncertain Files
+- {candidate path}: {reason}
 ```
 
-## manifest.json Schema
+## Manifest Shape
+
+Write `assets/manifest.json` as JSON:
 
 ```json
 {
   "version": 1,
-  "art_style": {
-    "summary": "Pixel art with warm palette, 1-2px outlines, 16x16 base grid",
-    "palette": ["#hex1", "#hex2", "..."],
-    "line_weight": "1-2px",
-    "proportions": "chibi / realistic / stylized",
-    "mood": "bright and cheerful"
-  },
   "assets": [
     {
-      "file": "sprites/player.png",
+      "file": "assets/sprites/player.png",
+      "kind": "image",
       "type": "sprite",
-      "role": "Player character idle sprite",
+      "role": "player idle",
       "dimensions": "64x64",
       "frames": 1,
+      "frame_size": null,
+      "alpha": true,
+      "visible_text": false,
+      "handoff": "direct_runtime",
+      "candidate_for": "player_idle",
+      "confidence": "high",
       "notes": ""
-    },
-    {
-      "file": "sprites/player_run.png",
-      "type": "sprite_sheet",
-      "role": "Player run animation",
-      "dimensions": "256x64",
-      "frames": 4,
-      "frame_size": "64x64",
-      "notes": "4-frame run cycle"
-    },
-    {
-      "file": "audio/bgm_gameplay.ogg",
-      "type": "audio_bgm",
-      "role": "Gameplay background music",
-      "duration": "2:30",
-      "notes": "Loops"
     }
   ]
 }
 ```
 
-## Dispatch Rules
+## Rules
 
-1. **One analyst per asset batch.** If user provides assets in multiple rounds, dispatch a new analyst each time (or re-dispatch to update manifest).
-2. **Analyst is read-only on game code.** Analyst may only write to `assets/manifest.json`. It must not modify any .gd/.tscn/.tres files.
-3. **Use the Agent Call template above.** Read `analyst_model` from `.godotmaker/config.yaml` (default: `sonnet`).
-4. **Style summary feeds `/gm-asset`.** Copy the art_style.summary from manifest.json into the asset generation prompts when creating source-generation specs.
+1. Read only the candidate paths listed in the brief.
+2. Write only `assets/manifest.json`.
+3. Do not modify ASSETS.md.
+4. Do not modify game code.
+5. Do not generate new visual assets.
+6. Do not create STYLE.md or update visual style direction.
+7. Use `candidate_for` only for high-confidence row matches.
+8. Use `handoff: direct_runtime` only for single files that already match a
+   final ASSETS.md runtime path.
+9. Use `handoff: source_for_processing` for sprite sheets, tilesets, UI kits,
+   prop sheets, and references that need extraction or selection.

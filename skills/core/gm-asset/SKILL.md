@@ -114,8 +114,9 @@ When image candidates exist:
 
 1. Dispatch `analyst` with only the candidate paths.
 2. Use the analyst report and `assets/manifest.json`.
-3. Update high-confidence current-tag rows to `provided`.
-4. Leave uncertain files unchanged.
+3. Update high-confidence `direct_runtime` current-tag rows to `provided`.
+4. Keep `source_for_processing` rows in the generated visual production plan.
+5. Leave uncertain files unchanged.
 
 For audio candidates:
 

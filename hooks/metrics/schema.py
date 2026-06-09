@@ -72,7 +72,7 @@ REPORT_PATTERNS = {
 }
 
 REPORT_FALLBACK = {
-    ROLE_ANALYST: re.compile(r"###\s*Asset\s+Summary", re.IGNORECASE),
+    ROLE_ANALYST: re.compile(r"###\s*Candidate\s+Summary", re.IGNORECASE),
     ROLE_WORKER: re.compile(r"###\s*Status:\s*(DONE|PARTIAL|FAILED)", re.IGNORECASE),
     ROLE_VERIFIER: re.compile(r"###\s*Overall:\s*(PASS|FAIL|PARTIAL)", re.IGNORECASE),
     ROLE_REVIEWER: re.compile(r"###\s*Reviewers?\s*Matched", re.IGNORECASE),
@@ -100,9 +100,11 @@ REPORT_REQUIRED_SECTIONS = {
     ],
     ROLE_ANALYST: [
         ("Status", r"### Status:\s*(DONE|PARTIAL|FAILED)"),
-        ("Asset Summary", r"### Asset Summary"),
-        ("Art Style Summary", r"### Art Style Summary"),
-        ("Files Generated", r"### Files Generated"),
+        ("Candidate Summary", r"### Candidate Summary"),
+        ("Manifest", r"### Manifest"),
+        ("Row Matches", r"### Row Matches"),
+        ("Processing Sources", r"### Processing Sources"),
+        ("Uncertain Files", r"### Uncertain Files"),
     ],
     ROLE_ASSET_PRODUCER: [
         ("Status", r"### Status:\s*(DONE|PARTIAL|FAILED)"),
