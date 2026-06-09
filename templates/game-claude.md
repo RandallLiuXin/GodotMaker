@@ -36,7 +36,7 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 | Current tag's task list / progress | `PLAN.md` (`**Tag:**` header at top) |
 | Current tag's systems / components / archetypes | `STRUCTURE.md` |
 | Current tag's scene layouts | `SCENES.md` |
-| Visual prompt style guide | `STYLE.md` |
+| Initial visual seed | `STYLE.md` |
 | Asset manifest (cross-tag, with introducing-tag column) | `ASSETS.md` |
 | What a previous tag shipped | `docs/tags/<prev_tag>/` |
 | Past discoveries + gotchas (cross-tag) | `MEMORY.md` (index) |

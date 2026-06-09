@@ -205,7 +205,7 @@ Every publish overwrites:
 | Directory | Content |
 |-----------|---------|
 | `.claude/skills/` | All skills (flattened from core + reviewer) |
-| `.claude/agents/` | Agent definitions (worker, verifier, reviewer, analyst) |
+| `.claude/agents/` | Agent definitions (worker, verifier, reviewer, analyst, asset-producer) |
 | `.godotmaker/hooks/` | All hook scripts |
 | `.claude/config/` | Config files (settings.json only with `--force`) |
 | `.claude/templates/` | Document templates |

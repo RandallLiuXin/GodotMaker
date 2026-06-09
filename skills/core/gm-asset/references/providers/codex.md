@@ -1,6 +1,6 @@
 # Codex Image Provider
 
-Read this file only when `.godotmaker/config.yaml` sets
+Use this file only when `.godotmaker/config.yaml` sets
 `asset_image_model: codex`.
 
 ## Saved-Path Contract
@@ -29,19 +29,28 @@ Saved-path report shape:
 }
 ```
 
+## Claim Step
+
+After saved paths are reported, run:
+
+```bash
+python tools/codex_image_claim.py --plan <batch_plan.json> --report <saved_paths.json> --project-root .
+```
+
+Then verify each planned source path exists.
+
 ## Active Codex Runtime
 
 For each generation group:
 
-1. Use one subagent per asset when Codex subagents are available.
+1. Use one subagent per asset when isolated subagents are available.
 2. Give each subagent exactly one asset input record.
 3. Save the saved-path report under `.godotmaker/asset-generation/reports/`.
-4. Run `tools/codex_image_claim.py --plan <batch_plan.json> --report <saved_paths.json> --project-root .`.
-5. Verify each claimed source exists.
-6. Finalize each claimed source into its project target path.
-7. If isolated generation groups are unavailable, run the batch sequentially.
-8. Write the sequential fallback reason in
-   `.godotmaker/asset-generation/reports/<group_id>.summary.txt`.
+4. Claim the saved paths into planned source paths.
+5. Finalize or process the planned source paths according to the production
+   unit.
+6. If isolated generation is unavailable, run sequentially.
+7. Write the sequential fallback reason in the unit report.
 
 ## Claude Code To Codex
 
@@ -51,9 +60,7 @@ For each generation group:
 2. Run one `codex exec` call from the project root.
 3. Ask Codex to spawn one subagent per asset, at most 3 concurrent.
 4. Save the Codex saved-path report under `.godotmaker/asset-generation/reports/`.
-5. Run `tools/codex_image_claim.py --plan <batch_plan.json> --report <saved_paths.json> --project-root .`.
-6. Verify each claimed source exists.
-7. Finalize each claimed source into its project target path.
+5. Claim the saved paths into planned source paths.
 
 Batch prompt shape:
 
@@ -70,24 +77,15 @@ For each asset:
 5. Do not copy files.
 
 Assets:
-- id: <asset_id_1>
-  source_path: .godotmaker/asset-generation/sources/<asset_id_1>_source.png
-  prompt: <prompt 1>
-- id: <asset_id_2>
-  source_path: .godotmaker/asset-generation/sources/<asset_id_2>_source.png
-  prompt: <prompt 2>
+- id: <asset_id>
+  source_path: .godotmaker/asset-generation/sources/<asset_id>_source.png
+  prompt: <prompt>
 
 If built-in image generation is unavailable, report the failure.
 ```
 
-Run `codex exec` from the project root with JSON output enabled, the batch
-prompt on stdin, and the final message written under
-`.godotmaker/asset-generation/reports/`.
+Run:
 
 ```bash
-codex exec --json -C <project_root> \
-  --output-last-message <summary_path> \
-  - < <batch_prompt_path>
+codex exec --json -C <project_root> --output-last-message <summary_path> - < <batch_prompt_path>
 ```
-
-Use the configured provider only.

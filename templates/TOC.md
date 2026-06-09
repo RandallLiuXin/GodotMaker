@@ -5,7 +5,7 @@
 ## Cross-Tag (live, accumulating)
 - `GDD.md` — Game Design Document, the design "north star" updated each tag (produced by `/gm-gdd`)
 - `ROADMAP.md` — Tag-by-tag release plan (produced by `/gm-gdd` first run, edited by /gm-gdd subsequent runs)
-- `STYLE.md` — Visual prompt style guide for image generation (produced by `/gm-gdd`)
+- `STYLE.md` — Initial visual seed for first reference and canonical image generation (produced by `/gm-gdd`)
 - `MEMORY.md` — Knowledge base index, append-only across tags
 - `memory/` — Per-system memory subsystem files
 - `ASSETS.md` — Asset manifest (produced by `/gm-asset`)

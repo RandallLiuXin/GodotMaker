@@ -18,7 +18,8 @@ from .collector import record_event, read_events, read_current_events, start_ses
 from .schema import (
     EventType, REPORT_MARKERS, detect_report_type, event_has_role,
     REPORT_REQUIRED_SECTIONS, REPORT_FORMAT_HINTS, REPORT_REQUIRED_LABELS,
-    ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST, ROLE_UNKNOWN,
+    ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST,
+    ROLE_ASSET_PRODUCER, ROLE_UNKNOWN,
     KNOWN_ROLES,
 )
 from . import state
@@ -145,7 +146,8 @@ __all__ = [
     "record_event", "read_events", "read_current_events", "start_session",
     "EventType", "REPORT_MARKERS", "detect_report_type", "event_has_role",
     "REPORT_REQUIRED_SECTIONS", "REPORT_FORMAT_HINTS", "REPORT_REQUIRED_LABELS",
-    "ROLE_WORKER", "ROLE_VERIFIER", "ROLE_REVIEWER", "ROLE_ANALYST", "ROLE_UNKNOWN",
+    "ROLE_WORKER", "ROLE_VERIFIER", "ROLE_REVIEWER", "ROLE_ANALYST",
+    "ROLE_ASSET_PRODUCER", "ROLE_UNKNOWN",
     "KNOWN_ROLES",
     "state",
     "PIPELINE_ROLES",

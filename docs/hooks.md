@@ -53,15 +53,16 @@ skill) and applies that role's write rules. Per-role summary:
 |------|-----------|
 | `scaffold` | anything (project bootstrap) |
 | `gdd` | `.md` planning docs, `project.godot`, `.godotmaker/` (no `assets/`) |
-| `asset` | `ASSETS.md`, `.godotmaker/` (image files go through asset tools or analyst subagent) |
+| `asset` | `ASSETS.md`, `.godotmaker/` (generated images go through asset-producer or asset tools; user-provided image analysis goes through analyst) |
 | `build` / `fixgap` | nothing in `e2e/`; nothing in game code (`.gd` / `.tscn` / `.tres`) directly — must dispatch a Worker |
 | `verify` | `.godotmaker/stage.jsonl`, `.godotmaker/current_role`, and `.godotmaker/verify_report.json` only (read-only otherwise) |
 | `evaluate` | `e2e/`, `.godotmaker/evaluation.json`, `.godotmaker/stage.jsonl`, `.godotmaker/current_role` |
 | `accept` / `finalize` | anything except `e2e/` and game code (`.gd` / `.tscn` / `.tres`) |
 
-During an active pipeline role, subagents are blocked from `e2e/`
-(Evaluator-owned) and from planning docs (`PLAN.md` / `STRUCTURE.md` /
-`ASSETS.md` / `GAP.md`); they report changes in their report instead.
+During an active pipeline role, general subagents are blocked from `e2e/`
+and from planning docs (`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` /
+`GAP.md`). `asset-producer` may write `assets/`, `references/`, and
+`.godotmaker/asset-generation/`.
 
 When no role is set, no `/gm-*` pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
@@ -114,7 +115,8 @@ The hook also re-validates the prerequisite role's `files` from
 `STRUCTURE.md` still exist on disk, and for `fixgap` it confirms
 `.godotmaker/evaluation.json` is still there.
 
-Other dispatching roles (e.g. `asset` → analyst) self-validate via their
+Other dispatching roles (e.g. `asset` dispatches analyst or asset-producer)
+self-validate via their
 SKILL.md Resume Check; their preconditions don't fit this hook's
 role-completion model. Only checks the main agent (the gm-* skill itself),
 not sub-subagent dispatches.
@@ -144,16 +146,18 @@ subagent instead of consuming context with raw image data.
 
 Role detection order:
 1. **Runtime-provided `agent_type`** — if Claude Code passes an `agent_type`
-   that matches `KNOWN_ROLES` (`worker`, `verifier`, `reviewer`, `analyst`),
+   that matches `KNOWN_ROLES` (`worker`, `verifier`, `reviewer`, `analyst`,
+   `asset-producer`),
    that's the role. This is the structural identity Claude Code stamps when
    you call `Agent({subagent_type: "verifier", ...})` and the agent can't
    forge it.
 2. **Description prefix fallback** — if `agent_type` is generic, fall back to
    `detect_role_from_description`:
-   1. `analyst:` → analyst
-   2. `worker:` → worker
-   3. `verifier:` / `verify:` → verifier
-   4. `reviewer:` / `review:` → reviewer
+   1. `asset-producer:` → asset-producer
+   2. `analyst:` → analyst
+   3. `worker:` → worker
+   4. `verifier:` / `verify:` → verifier
+   5. `reviewer:` / `review:` → reviewer
 
 **handle_stop:** invoked from `on_subagent_stop.py`. Extracts report type,
 status, files changed from the assistant message. Looks up role from the
@@ -199,6 +203,7 @@ subagent conversations are allowed and this hook does not block.
 | verifier | Overall, Results, Adversarial Probes |
 | reviewer | Reviewers Matched, ECS Review, Issues Found, Summary |
 | analyst | Status, Asset Summary, Art Style Summary, Files Generated |
+| asset-producer | Status, Production Unit, Outputs, Tools, Validation, Handoff |
 
 **Worker-specific deep checks:**
 - `check_test_substance()` — Tests section must include unittest results with actual pass/fail output

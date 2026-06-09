@@ -1,20 +1,22 @@
-# Visual Style: {Project Name}
+# Visual Style Seed: {Project Name}
 
-<!-- Cross-tag visual prompt guide. Keep this short and reusable. -->
+<!-- Short text seed for first reference and canonical image generation. Once
+     reference or canonical images exist, use visible images as the primary
+     style anchors. -->
 
-## Style Anchor
+## Initial Visual Seed
 
 {one compact phrase, e.g. "polished vertical mobile card game UI with chunky rounded shapes"}
 
-## Prompt Suffix
+## Prompt Hints
 
-{1-3 short sentences appended to image prompts}
+{1-3 short sentences for prompts before a visual reference exists}
 
-## UI / Asset Rules
+## Reference Priority
 
-- {short concrete generation rule}
-- {short concrete generation rule}
-- {short concrete generation rule}
+- Use visible scene references and canonical asset references before this text.
+- Use this file when no reference image exists.
+- Use this file when a prompt needs compact style language.
 
 ## Avoid
 
@@ -23,4 +25,4 @@
 
 ## Reference Notes
 
-- {optional source image or generated reference note}
+- {optional generated reference or canonical asset note}

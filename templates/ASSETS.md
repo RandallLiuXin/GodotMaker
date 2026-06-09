@@ -12,7 +12,9 @@
 
 ## Visual Style Source
 
-Visual prompt language lives in `STYLE.md`.
+Initial visual seed text lives in `STYLE.md`. Generated scene references,
+canonical asset references, and manifest source relationships are the primary
+style anchors after they exist.
 
 ## Asset Table
 

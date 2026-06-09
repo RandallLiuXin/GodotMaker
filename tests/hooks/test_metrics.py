@@ -174,6 +174,12 @@ class TestRoleDetection:
     def test_analyst_case_insensitive(self):
         assert detect_role_from_description("ANALYST: check assets") == "analyst"
 
+    def test_asset_producer_prefix(self):
+        assert detect_role_from_description("Asset Producer: make ui kit") == "asset-producer"
+
+    def test_asset_producer_keyword(self):
+        assert detect_role_from_description("asset-producer ui kit task") == "asset-producer"
+
     def test_unknown_description(self):
         assert detect_role_from_description("Run some general task") == "unknown"
 
@@ -188,6 +194,7 @@ class TestRoleDetection:
         assert detect_role_from_description("VERIFIER: check stuff") == "verifier"
         assert detect_role_from_description("REVIEWER: look at stuff") == "reviewer"
         assert detect_role_from_description("ANALYST: check assets") == "analyst"
+        assert detect_role_from_description("ASSET-PRODUCER: make assets") == "asset-producer"
 
 
 class TestRoleLookup:

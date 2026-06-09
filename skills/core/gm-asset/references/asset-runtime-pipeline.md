@@ -1,226 +1,183 @@
 # Asset Runtime Pipeline Reference
 
-This file describes how `/gm-asset` turns a planned visual asset into fixed
-source, final, diagnostic, and manifest paths. Use `asset-planner.md` for planning
-and `asset-prompt-contracts.md` for prompt shapes.
+Use this file for common paths, manager-to-producer handoff, and manifest
+registration. Use production-unit docs for prompts, finalization, extraction,
+processing, and curation commands.
 
-## Provider Paths
+## Fixed Paths
 
-Project default is controlled by `.godotmaker/config.yaml` `asset_image_model`.
+For each generated visual production unit, reserve:
 
-### API-backed providers
+1. Source images under `.godotmaker/asset-generation/sources/`.
+2. Prompt files under `.godotmaker/asset-generation/prompts/`.
+3. Reports under `.godotmaker/asset-generation/reports/`.
+4. Curation reports under `.godotmaker/asset-generation/curation/`.
+5. Processed previews and derived files under
+   `.godotmaker/asset-generation/processed/`.
+6. Manifest entry files under
+   `.godotmaker/asset-generation/work/manifest-entries/`.
+7. Final runtime assets under `assets/`.
+8. Scene references under `references/`.
 
-API-backed providers are valid `tools/asset_source_generate.py --spec
-<spec.json>` backends.
+## Provider Docs
 
-| Selector | Backend |
-|----------|---------|
-| `gemini:<model>` or `gemini` | Gemini image generation |
-| `openai:<model>` or `openai` | OpenAI image generation/editing |
-| `grok:<model>` or `grok` | xAI Grok image generation |
+Use exactly one provider doc per production unit:
 
-Use API-backed providers only when the required API key is configured. Missing
-API keys are hard failures.
+1. `references/providers/native.md`
+2. `references/providers/codex.md`
+3. `references/providers/gemini.md`
 
-### Runtime-native providers
+## Production Shapes
 
-Runtime-native providers are not valid `tools/asset_source_generate.py`
-backends.
+| Shape | Use for | Required fields |
+|-------|---------|-----------------|
+| `single_image` | Backgrounds, panels, canonicals, large props | `source_path`, `final_path` |
+| `grid_sheet` | Source sheet for compact components or deliberate equal-cell layouts | `source_path`, `expected_items` |
+| `action_sheet` | One character or FX action | `source_path`, `action`, `frames`, `anchor` |
+| `frame_sequence` | Extracted animation frames | `source_path`, `frame_dir`, `fps`, `loop` |
+| `delivery_sheet` | Runtime-ready sheet assembled from processed frames | `source_path`, `final_path`, `derived_from` |
+| `reference_only` | Screen/style references | `source_path` or `final_path`, `contract_summary` |
+| `curation_required` | Irregular sheets or references needing selection | `source_path`, `curation_reason` |
 
-1. `native`: use the active coding-agent runtime's native image-generation
-   provider/tool.
-2. `codex`: read `references/providers/codex-image.md`.
+## Processing Status
 
-## API Source Generation
+1. `source_only`
+2. `needs_curation`
+3. `processed`
+4. `ready`
+5. `deferred`
+6. `rejected`
 
-Write one spec per generated source under
-`.godotmaker/asset-generation/specs/`:
+## Extraction Status
+
+1. `not_required`
+2. `pending`
+3. `source_sheet`
+4. `extracted`
+5. `processed`
+6. `needs_curation`
+7. `rejected`
+
+## Manifest Handoff
+
+Upsert manifest entries with:
+
+```bash
+python tools/asset_generation_manifest_update.py --entry-file <entry.json>
+```
+
+Validate the manifest with:
+
+```bash
+python tools/asset_generation_manifest_check.py --check-files
+```
+
+Manifest entry shape:
 
 ```json
 {
   "asset_id": "<asset_id>",
-  "model": "<gemini|openai|grok selector>",
-  "prompt": "<full prompt>",
+  "tag": "<tag>",
+  "family": "<family>",
+  "production_shape": "<shape>",
+  "runtime_role": "<role>",
+  "source_path": ".godotmaker/asset-generation/sources/<source>.png",
+  "final_path": "assets/<path>.png",
+  "target_size": null,
+  "target_aspect": null,
+  "derived_from": null,
+  "canonical_reference": null,
   "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
-  "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
-  "size": "1K",
-  "aspect_ratio": "1:1",
-  "reference_images": [],
-  "report_path": ".godotmaker/asset-generation/reports/<asset_id>_source.json"
+  "processing_status": "ready",
+  "extraction_status": "processed",
+  "qc": {},
+  "curation": {
+    "status": "not_required",
+    "strategy": "none",
+    "report_path": null
+  },
+  "preview_path": null,
+  "notes": ""
 }
 ```
 
-Run:
+Append entries for new current-tag assets. Preserve prior entries unless the
+same current-tag asset is being regenerated.
 
-```bash
-python tools/asset_source_generate.py --spec <spec.json>
-```
+## Curation Field
 
-## Layout Guides
+Allowed `curation.status` values:
 
-Create layout guides before fixed-grid image generation.
+1. `not_required`
+2. `pending`
+3. `candidate_extracted`
+4. `selected`
+5. `needs_curation`
+6. `needs_regeneration`
+7. `rejected`
 
-```bash
-python tools/asset_layout_guide.py \
-  --out <guide.png> \
-  --rows <rows> \
-  --cols <cols> \
-  --labels <labels>
-```
+Allowed `curation.strategy` values:
 
-Store guides under `.godotmaker/asset-generation/guides/`.
+1. `none`
+2. `transparent_grid`
+3. `solid_background_grid`
+4. `transparent_autoslice`
+5. `solid_background_autoslice`
+6. `row_column_grid`
+7. `explicit_boxes`
+8. `manual_selection`
+9. `regenerate_source`
 
-Use guides for:
+Required curation fields:
 
-1. UI component sheets.
-2. Icon packs.
-3. Compact prop packs.
-4. Character or FX action sheets.
+1. `status`
+2. `strategy`
+3. `report_path` when `status` is not `not_required`
 
-Make the guide visible to the selected image-generation runtime before calling
-the provider. Treat the guide as layout control only.
+## Production Unit Plan Shape
 
-## Finalization
-
-Finalize accepted source images with `tools/asset_image_finalize.py`. Provide
-the source path, final path, asset label, and optional resize.
-
-```bash
-python tools/asset_image_finalize.py \
-  --source <source_path> \
-  --out <final_path> \
-  --label <asset_id>
-```
-
-For scene references, backgrounds, parallax plates, and fixed-viewport sources,
-validate the source aspect before resize:
-
-```bash
-python tools/asset_image_finalize.py \
-  --source <source_path> \
-  --out <final_path> \
-  --label <asset_id> \
-  --require-aspect <WIDTH:HEIGHT> \
-  --resize <WIDTHxHEIGHT>
-```
-
-If aspect validation fails, do not use the finalized output. Regenerate the
-source or leave the asset incomplete.
-
-If the source is a sheet, atlas, UI kit, action sheet, or irregular reference,
-send it through `asset-curation.md` before marking runtime asset rows
-`generated`.
-
-## Manifest Handoff
-
-Upsert manifest entries with `tools/asset_generation_manifest_update.py`.
-Validate the handoff manifest with `tools/asset_generation_manifest_check.py
---check-files`.
-
-```bash
-python tools/asset_generation_manifest_update.py --entry-file <entry.json>
-python tools/asset_generation_manifest_check.py --check-files
-```
-
-Use `--check-files` after source generation, finalization, and curation
-selection.
-
-## Art Asset Batch
-
-Use this input schema for non-scene visual assets:
+Use this shape for manager-to-producer handoff:
 
 ```json
 {
-  "group_id": "assets_001",
-  "kind": "art_asset",
+  "unit_id": "<unit_id>",
+  "unit_doc": "references/production-units/<unit>.md",
+  "provider_doc": "references/providers/<provider>.md",
   "provider": "<asset_image_model>",
+  "dependencies": [],
   "items": [
     {
       "asset_id": "<asset_id>",
-      "family": "<asset family>",
-      "production_shape": "<production shape>",
+      "family": "<family>",
+      "production_shape": "<shape>",
       "target_size": "<WIDTHxHEIGHT or null>",
       "target_aspect": "<WIDTH:HEIGHT or null>",
-      "prompt": "<prompt>",
       "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
       "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
-      "final_path": "assets/img/<asset_id>.png",
-      "resize": null
+      "final_path": "assets/<path>.png",
+      "manifest_entry_path": ".godotmaker/asset-generation/work/manifest-entries/<asset_id>.json"
     }
   ],
-  "report_path": ".godotmaker/asset-generation/reports/assets_001.json"
+  "report_path": ".godotmaker/asset-generation/reports/<unit_id>.json"
 }
 ```
 
-Run each group through the selected provider path. Finalize each accepted
-source into its project target path and write one flat finalize JSON entry per
-asset.
+## Report Shape
 
-Diagnostic report shape:
+Each production unit writes one report:
 
 ```json
 {
   "ok": true,
+  "unit_id": "<unit_id>",
   "provider": "<asset_image_model>",
-  "sequential_fallback_reason": "<reason or null>",
-  "assets": [
-    {
-      "ok": true,
-      "source": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
-      "path": "<final_path>",
-      "asset_id": "<asset_id>",
-      "bytes": 12345,
-      "width": 64,
-      "height": 64,
-      "format": "PNG"
-    }
-  ]
+  "status": "done",
+  "sequential_fallback_reason": null,
+  "sources": [],
+  "finals": [],
+  "prompts": [],
+  "manifest_entries": [],
+  "curation_reports": [],
+  "failures": []
 }
 ```
-
-## Scene Reference Batch
-
-Scene references use the same provider paths, claim/finalize steps, and
-diagnostic entry shape as art assets.
-
-Input schema:
-
-```json
-{
-  "group_id": "scene_refs_001",
-  "kind": "scene_reference",
-  "provider": "<asset_image_model>",
-  "anchor_item": {
-    "asset_id": "scene_main",
-    "family": "screen_reference",
-    "production_shape": "reference_only",
-    "target_size": "1280x720",
-    "target_aspect": "16:9",
-    "prompt": "<prompt>",
-    "prompt_path": ".godotmaker/asset-generation/prompts/scene_main.txt",
-    "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
-    "final_path": "references/scene_main.png",
-    "resize": null
-  },
-  "parallel_items": [
-    {
-      "asset_id": "scene_shop",
-      "family": "screen_reference",
-      "production_shape": "reference_only",
-      "target_size": "1280x720",
-      "target_aspect": "16:9",
-      "prompt": "<prompt>",
-      "prompt_path": ".godotmaker/asset-generation/prompts/scene_shop.txt",
-      "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",
-      "final_path": "references/scene_shop.png",
-      "resize": null
-    }
-  ],
-  "report_path": ".godotmaker/asset-generation/reports/scene_refs_001.json"
-}
-```
-
-If `anchor_item` is present, generate and finalize it first. Then generate
-`parallel_items` in batches of up to 3. If no scene needs to anchor style, set
-`anchor_item` to `null` and put all missing scene references in
-`parallel_items`.

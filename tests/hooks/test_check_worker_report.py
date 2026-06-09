@@ -31,6 +31,16 @@ COMPLETE_REVIEWER = (
     "### Summary\n1 minor issue found, no critical blockers"
 )
 
+COMPLETE_ASSET_PRODUCER = (
+    "## Asset Producer Report: ui_kit\n\n"
+    "### Status: DONE\n\n"
+    "### Production Unit\n- First Entry Document: references/production-units/ui-kit.md\n\n"
+    "### Outputs\n- Sources: .godotmaker/asset-generation/sources/ui_source.png\n\n"
+    "### Tools\n- python tools/asset_sheet_process.py --snap-mode autoslice\n\n"
+    "### Validation\n- File existence: PASS\n\n"
+    "### Handoff\nUpdate ASSETS.md row ui_kit to generated."
+)
+
 
 @pytest.fixture(autouse=True)
 def clean():
@@ -131,6 +141,31 @@ class TestReviewerReport:
         _, _, parsed = run_hook(HOOK, {
             "hook_event_name": "SubagentStop",
             "agent_id": "r1",
+            "last_assistant_message": msg,
+        })
+        assert is_blocked(parsed)
+
+
+class TestAssetProducerReport:
+    def test_complete_report_allowed(self):
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "ap1",
+            "agent_type": "asset-producer",
+            "last_assistant_message": COMPLETE_ASSET_PRODUCER,
+        })
+        assert not is_blocked(parsed)
+
+    @pytest.mark.parametrize("section", [
+        "### Production Unit", "### Outputs", "### Tools",
+        "### Validation", "### Handoff",
+    ])
+    def test_missing_section_blocked(self, section):
+        msg = COMPLETE_ASSET_PRODUCER.replace(section, "### REMOVED")
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "ap1",
+            "agent_type": "asset-producer",
             "last_assistant_message": msg,
         })
         assert is_blocked(parsed)

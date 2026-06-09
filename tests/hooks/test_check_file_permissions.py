@@ -541,3 +541,37 @@ class TestSubagentInRole:
             "agent_id": "worker-1",
         })
         assert is_blocked(parsed)
+
+    @pytest.mark.parametrize("path", [
+        ".godotmaker/asset-generation/reports/unit.json",
+        ".godotmaker/asset-generation/sources/player_source.png",
+        "assets/sprites/player.png",
+        "references/scene_main.png",
+    ])
+    def test_asset_producer_can_write_asset_outputs(self, project_dir, path):
+        write_current_role("asset")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "asset-producer-1",
+            "agent_type": "asset-producer",
+        })
+        assert not is_blocked(parsed), f"asset-producer should write {path}"
+
+    @pytest.mark.parametrize("path", [
+        "ASSETS.md",
+        "PLAN.md",
+        "project.godot",
+        "scripts/player.gd",
+        "e2e/test_game.py",
+        ".godotmaker/stage.jsonl",
+    ])
+    def test_asset_producer_blocks_non_asset_outputs(self, project_dir, path):
+        write_current_role("asset")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "asset-producer-1",
+            "agent_type": "asset-producer",
+        })
+        assert is_blocked(parsed), f"asset-producer should block {path}"

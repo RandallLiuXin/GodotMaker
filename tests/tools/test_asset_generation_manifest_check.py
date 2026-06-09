@@ -276,6 +276,31 @@ def test_check_manifest_rejects_unknown_curation_status(tmp_path):
         check_manifest(manifest, project_root=tmp_path)
 
 
+def test_check_manifest_accepts_autoslice_curation_strategy(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "ui_component_sheet",
+            "production_shape": "grid_sheet",
+            "curation": {
+                "status": "candidate_extracted",
+                "strategy": "solid_background_autoslice",
+                "report_path": ".godotmaker/asset-generation/curation/ui_kit.json",
+                "selected_count": 0,
+                "rejected_count": 0,
+            },
+            "processing_status": "needs_curation",
+            "extraction_status": "extracted",
+            "final_path": None,
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
+
+
 def test_check_manifest_allows_needs_curation_status(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_manifest(

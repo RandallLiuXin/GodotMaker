@@ -26,6 +26,7 @@ PLANNING_DOCS = {"plan.md", "structure.md", "style.md", "assets.md", "gap.md",
 PROJECT_GODOT = "project.godot"
 E2E_DIR_PREFIX = "e2e/"
 ASSETS_DIR_PREFIX = "assets/"
+REFERENCES_DIR_PREFIX = "references/"
 GODOTMAKER_DIR = ".godotmaker/"
 # Subagent types whose entire purpose is writing planning docs — exempt
 # from the general subagent block on PLANNING_DOCS and PROJECT_GODOT.
@@ -53,8 +54,19 @@ def _is_assets_path(path_lower: str) -> bool:
     return path_lower.startswith(ASSETS_DIR_PREFIX) or f"/{ASSETS_DIR_PREFIX}" in path_lower
 
 
+def _is_references_path(path_lower: str) -> bool:
+    return path_lower.startswith(REFERENCES_DIR_PREFIX) or f"/{REFERENCES_DIR_PREFIX}" in path_lower
+
+
 def _is_godotmaker_path(path_lower: str) -> bool:
     return path_lower.startswith(GODOTMAKER_DIR) or f"/{GODOTMAKER_DIR}" in path_lower
+
+
+def _is_asset_generation_path(path_lower: str) -> bool:
+    return (
+        path_lower.startswith(".godotmaker/asset-generation/")
+        or "/.godotmaker/asset-generation/" in path_lower
+    )
 
 
 def _matches_allowed_gm(path_lower: str, allowed: set[str]) -> bool:
@@ -180,6 +192,24 @@ def _lookup_agent_type(agent_id: str) -> str:
 def _check_subagent(path_lower: str, file_name: str, agent_id: str,
                     agent_type: str) -> None:
     """Apply subagent rules. Calls _block on violation."""
+    if agent_type == "asset-producer":
+        if (_is_asset_generation_path(path_lower)
+                or _is_assets_path(path_lower)
+                or _is_references_path(path_lower)):
+            return
+        if file_name in PLANNING_DOCS or file_name == PROJECT_GODOT:
+            _block(f"Asset producers cannot modify planning documents or project.godot ({file_name}).",
+                   file_name, agent_id)
+        if _is_e2e_path(path_lower):
+            _block(f"Asset producers cannot write to e2e/ ({file_name}).",
+                   file_name, agent_id)
+        _, ext = os.path.splitext(path_lower)
+        if ext in GAME_CODE_EXTENSIONS:
+            _block(f"Asset producers cannot modify game code ({file_name}).",
+                   file_name, agent_id)
+        _block(f"Asset producers can only write asset outputs and .godotmaker/asset-generation/ ({file_name}).",
+               file_name, agent_id)
+
     if _is_e2e_path(path_lower):
         _block(f"Workers cannot write to e2e/ ({file_name}). "
                "E2E tests are owned by the Evaluator.", file_name, agent_id)

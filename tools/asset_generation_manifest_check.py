@@ -70,6 +70,8 @@ ALLOWED_CURATION_STRATEGIES = {
     "none",
     "transparent_grid",
     "solid_background_grid",
+    "transparent_autoslice",
+    "solid_background_autoslice",
     "row_column_grid",
     "explicit_boxes",
     "manual_selection",

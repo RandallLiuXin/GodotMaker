@@ -36,7 +36,7 @@ def source_entry():
         "extraction_status": "extracted",
         "curation": {
             "status": "candidate_extracted",
-            "strategy": "solid_background_grid",
+            "strategy": "solid_background_autoslice",
             "report_path": ".godotmaker/asset-generation/curation/ui_kit_source.json",
             "selected_count": 1,
             "rejected_count": 1,
@@ -53,7 +53,7 @@ def selected_report():
         "asset_id": "ui_kit_source",
         "tag": "v0.1.0",
         "source_path": ".godotmaker/asset-generation/sources/ui_kit_source.png",
-        "strategy": "solid_background_grid",
+        "strategy": "solid_background_autoslice",
         "status": "selected",
         "selected_count": 1,
         "rejected_count": 1,

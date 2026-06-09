@@ -31,7 +31,7 @@ python tools\publish.py C:\Games\my-game
 | 位置 | 说明 |
 |----------|------------|
 | `.claude/skills/` | 所有 GodotMaker 斜杠命令（`/gm-*` 系列命令及配套技能） |
-| `.claude/agents/` | worker、verifier、reviewer、analyst 等 helper 的定义文件 |
+| `.claude/agents/` | worker、verifier、reviewer、analyst、asset-producer 等 helper 的定义文件 |
 | `.claude/settings.json` | 告知 Claude Code 要运行哪些 hook 脚本以及何时运行 |
 | `.claude/godotmaker.yaml` | 你的 Godot 可执行文件路径（仅对本机有效） |
 | `.godotmaker/hooks/` | 让 AI 保持正轨的约束脚本 |

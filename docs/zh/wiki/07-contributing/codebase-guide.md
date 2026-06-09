@@ -7,7 +7,7 @@
 ```
 GodotMaker/
 ├── hooks/                   8 个 hook 脚本 + hooks/metrics/ 子系统
-├── agents/                  5 个子 Agent 定义（worker、verifier、reviewer、analyst、gdd-auditor）
+├── agents/                  子 Agent 定义（worker、verifier、reviewer、analyst、asset-producer、gdd-auditor）
 ├── skills/
 │   ├── core/                角色技能 + 辅助技能 + _shared/
 │   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
@@ -77,9 +77,10 @@ Hook 注册关系（哪个脚本响应哪个事件）存储在
 | `verifier.md` | 对 Worker 的产出进行机械校验（构建、测试、文件存在性） | `/gm-build`、`/gm-fixgap` |
 | `reviewer.md` | 对照 `skills/reviewer/<domain>` 的 checklist 审查代码并报告问题 | `/gm-build`、`/gm-fixgap` |
 | `analyst.md` | 分析用户提供的资源并输出 manifest | `/gm-asset` |
+| `asset-producer.md` | 生成一个视觉资源生产单元 | `/gm-asset` |
 | `gdd-auditor.md` | 独立审计 GDD 草稿，对照 9 类 checklist 每轮返回 5–8 个补问 | `game-planner`（Rounds 6 + 7） |
 
-派发协议（调用格式和 brief 模板）位于 `skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md`。`gdd-auditor` 直接由 `skills/core/game-planner/SKILL.md` 内联调用。
+派发协议（调用格式和 brief 模板）位于 `skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md` 或所属角色技能内。`gdd-auditor` 直接由 `skills/core/game-planner/SKILL.md` 内联调用。
 
 ### 两轮 GDD 审计
 

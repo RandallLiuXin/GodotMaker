@@ -31,7 +31,7 @@ The first time you run this, the script will ask you for the full path to your G
 | Location | What it is |
 |----------|------------|
 | `.claude/skills/` | All GodotMaker slash commands (the `/gm-*` commands and supporting skills) |
-| `.claude/agents/` | Definitions for the worker, verifier, reviewer, and analyst helpers |
+| `.claude/agents/` | Definitions for worker, verifier, reviewer, analyst, and asset-producer helpers |
 | `.claude/settings.json` | Tells Claude Code which hook scripts to run and when |
 | `.claude/godotmaker.yaml` | Your Godot executable path (specific to this machine) |
 | `.godotmaker/hooks/` | The enforcement scripts that keep the AI on track |

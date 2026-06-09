@@ -233,7 +233,7 @@ them into the new PLAN.md's Inherited Mechanics section verbatim}
 {exact list of files this decomposer may write}
 ```
 
-The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the current tag's scope. For `STYLE.md` it writes the initial visual prompt guide and updates it only for confirmed visual-direction changes. For `ASSETS.md` it operates differently: in **initial mode** it writes the skeleton; in **subsequent mode** it APPENDS new rows for assets this tag introduces (with `Tag = <current tag>`) and never modifies prior-tag rows. It does NOT touch `GDD.md`, `ROADMAP.md`, `MEMORY.md`, or any `docs/tags/` archive. It returns a short report; do NOT relay raw decomposer output to the user — run the gate first.
+The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the current tag's scope. For `STYLE.md` it writes the initial visual seed and updates it only for confirmed visual-direction changes. For `ASSETS.md` it operates differently: in **initial mode** it writes the skeleton; in **subsequent mode** it APPENDS new rows for assets this tag introduces (with `Tag = <current tag>`) and never modifies prior-tag rows. It does NOT touch `GDD.md`, `ROADMAP.md`, `MEMORY.md`, or any `docs/tags/` archive. It returns a short report; do NOT relay raw decomposer output to the user — run the gate first.
 
 **Gate 1c-B:**
 - [ ] Phase B packages used the finalized PLAN.md as the source of task IDs, mechanic IDs, affected files, asset mappings, and verify expectations

@@ -18,7 +18,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metrics import (
     record_event, EventType, detect_report_type,
-    ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST, ROLE_UNKNOWN,
+    ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST,
+    ROLE_ASSET_PRODUCER, ROLE_UNKNOWN,
     KNOWN_ROLES,
 )
 from check_worker_report import extract_files_changed
@@ -62,6 +63,8 @@ def detect_role_from_description(description: str) -> str:
         return ROLE_UNKNOWN
     desc_lower = description.lower()
     # Prefix checks
+    if desc_lower.startswith("asset-producer:") or desc_lower.startswith("asset producer:"):
+        return ROLE_ASSET_PRODUCER
     if desc_lower.startswith("analyst:"):
         return ROLE_ANALYST
     if desc_lower.startswith("worker:"):
@@ -71,6 +74,8 @@ def detect_role_from_description(description: str) -> str:
     if desc_lower.startswith("reviewer:") or desc_lower.startswith("review:"):
         return ROLE_REVIEWER
     # Keyword fallback — specific roles first to avoid false matches
+    if "asset-producer" in desc_lower or "asset producer" in desc_lower:
+        return ROLE_ASSET_PRODUCER
     if "analyst" in desc_lower or "analyze" in desc_lower:
         return ROLE_ANALYST
     if "reviewer" in desc_lower or "review" in desc_lower:

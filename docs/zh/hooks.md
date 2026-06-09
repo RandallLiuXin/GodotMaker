@@ -14,7 +14,7 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 | Hook | 事件 | 匹配器 | 是否阻止？ | 用途 |
 |------|------|--------|-----------|------|
 | `session_start.py` | SessionStart | — | 否 | 清除会话指标，重置状态 |
-| `check_file_permissions.py` | PreToolUse | Write\|Edit | 是 | 由 `.godotmaker/current_role` 驱动的每角色写规则 |
+| `check_file_permissions.py` | PreToolUse | Write\|Edit | 是 | 由 `.godotmaker/current_role` 驱动的角色与子代理写规则 |
 | `stage_reminder.py` | PreToolUse | Write\|Edit | 是 | 检测 `stage.jsonl` 追加操作，验证角色输出，注入下一角色提示 |
 | `check_stage_prerequisites.py` | PreToolUse | Agent | 是 | Worker 派发前，验证前置角色已完成且其产出存在 |
 | `check_asset_access.py` | PreToolUse | Read | 是 | 在活跃角色期间，阻止主代理读取 `assets/` 中的图片文件 |
@@ -48,13 +48,13 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 |------|----------|
 | `scaffold` | 任何内容（项目初始化） |
 | `gdd` | `.md` 规划文档、`project.godot`、`.godotmaker/`（不含 `assets/`） |
-| `asset` | `ASSETS.md`、`.godotmaker/`（图片文件通过 asset tools 或 Analyst 子代理处理） |
+| `asset` | `ASSETS.md`、`.godotmaker/`（生成图片通过 asset-producer 或 asset tools；用户提供的图片分析通过 Analyst） |
 | `build` / `fixgap` | `e2e/` 中不可写；游戏代码（`.gd` / `.tscn` / `.tres`）不可直接写——必须派发 Worker |
 | `verify` | 仅 `.godotmaker/stage.jsonl`、`.godotmaker/current_role` 和 `.godotmaker/verify_report.json`（其他地方只读） |
 | `evaluate` | `e2e/`、`.godotmaker/evaluation.json`、`.godotmaker/stage.jsonl`、`.godotmaker/current_role` |
 | `accept` / `finalize` | 除 `e2e/` 和游戏代码（`.gd` / `.tscn` / `.tres`）外的任何内容 |
 
-在流水线角色活跃期间，子代理会被阻止写入 `e2e/`（评估器专属）和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）；它们通过报告来记录变更。
+在流水线角色活跃期间，通用子代理会被阻止写入 `e2e/` 和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）。`asset-producer` 可以写入 `assets/`、`references/` 和 `.godotmaker/asset-generation/`。
 
 未设置角色时，表示当前没有活跃的 `/gm-*` 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。
 
@@ -98,7 +98,7 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 
 Hook 还会重新验证前置角色在 `config/stage_schemas.json` 中的 `files`——对于 `build`，确认 `GDD.md`、`PLAN.md`、`STRUCTURE.md` 仍在磁盘上；对于 `fixgap`，确认 `.godotmaker/evaluation.json` 仍存在。
 
-其他有派发行为的角色（如 `asset` → Analyst）通过 SKILL.md 的 Resume Check 进行自我验证；其前置条件不适合这个 Hook 的角色完成模型。仅检查主代理（gm-* 技能本身），不检查子-子代理的派发。
+其他有派发行为的角色（如 `asset` 派发 Analyst 或 asset-producer）通过 SKILL.md 的 Resume Check 进行自我验证；其前置条件不适合这个 Hook 的角色完成模型。仅检查主代理（gm-* 技能本身），不检查子-子代理的派发。
 
 ### check_asset_access.py
 
@@ -120,12 +120,13 @@ Hook 还会重新验证前置角色在 `config/stage_schemas.json` 中的 `files
 **SubagentStart：** 检测角色并记录 `SUBAGENT_START` 指标，包括 `agent_id`、`agent_type`、`role`、`description`。
 
 角色检测顺序：
-1. **运行时提供的 `agent_type`** — 如果 Claude Code 传入的 `agent_type` 匹配 `KNOWN_ROLES`（`worker`、`verifier`、`reviewer`、`analyst`），则使用该值。这是 Claude Code 在调用 `Agent({subagent_type: "verifier", ...})` 时加上的结构化标识，代理无法伪造。
+1. **运行时提供的 `agent_type`** — 如果 Claude Code 传入的 `agent_type` 匹配 `KNOWN_ROLES`（`worker`、`verifier`、`reviewer`、`analyst`、`asset-producer`），则使用该值。这是 Claude Code 在调用 `Agent({subagent_type: "verifier", ...})` 时加上的结构化标识，代理无法伪造。
 2. **描述前缀回退** — 如果 `agent_type` 是通用值，则回退到 `detect_role_from_description`：
-   1. `analyst:` → analyst
-   2. `worker:` → worker
-   3. `verifier:` / `verify:` → verifier
-   4. `reviewer:` / `review:` → reviewer
+   1. `asset-producer:` → asset-producer
+   2. `analyst:` → analyst
+   3. `worker:` → worker
+   4. `verifier:` / `verify:` → verifier
+   5. `reviewer:` / `review:` → reviewer
 
 **handle_stop：** 由 `on_subagent_stop.py` 调用。从助手消息中提取报告类型、状态、变更文件。从匹配的启动事件中查找角色。记录 `SUBAGENT_STOP` 指标以及结果特定事件：`WORKER_DONE`、`VERIFIER_PASS` 等。
 
@@ -161,6 +162,7 @@ Hook 还会重新验证前置角色在 `config/stage_schemas.json` 中的 `files
 | verifier | Overall, Results, Adversarial Probes |
 | reviewer | Reviewers Matched, ECS Review, Issues Found, Summary |
 | analyst | Status, Asset Summary, Art Style Summary, Files Generated |
+| asset-producer | Status, Production Unit, Outputs, Tools, Validation, Handoff |
 
 **Worker 专项深度检查：**
 - `check_test_substance()` — Tests 章节必须包含单元测试的实际通过/失败输出

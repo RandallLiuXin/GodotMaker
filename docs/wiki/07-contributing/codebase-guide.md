@@ -7,7 +7,7 @@ This page gives a folder-by-folder tour of the GodotMaker repository, with enoug
 ```
 GodotMaker/
 ├── hooks/                   8 hook scripts + hooks/metrics/ subsystem
-├── agents/                  5 sub-agent definitions (worker, verifier, reviewer, analyst, gdd-auditor)
+├── agents/                  sub-agent definitions (worker, verifier, reviewer, analyst, asset-producer, gdd-auditor)
 ├── skills/
 │   ├── core/                Role skills + supporting skills + _shared/
 │   └── reviewer/            8 reviewer skills (gotchas.md + checklist.md each)
@@ -77,9 +77,10 @@ Sub-agent definitions, one Markdown file per agent. Each file has YAML front-mat
 | `verifier.md` | Mechanically checks a worker's output (build, tests, file presence) | `/gm-build`, `/gm-fixgap` |
 | `reviewer.md` | Reads code against `skills/reviewer/<domain>` checklists and reports issues | `/gm-build`, `/gm-fixgap` |
 | `analyst.md` | Analyses user-provided assets and produces a manifest | `/gm-asset` |
+| `asset-producer.md` | Produces one generated visual asset production unit | `/gm-asset` |
 | `gdd-auditor.md` | Independently audits a draft GDD against a 9-category checklist and returns 5–8 follow-up questions per pass | `game-planner` (Rounds 6 + 7) |
 
-The dispatch protocols (call format and brief templates) live in `skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md`. `gdd-auditor` is invoked inline from `skills/core/game-planner/SKILL.md`.
+The dispatch protocols (call format and brief templates) live in `skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md` or in the owning role skill. `gdd-auditor` is invoked inline from `skills/core/game-planner/SKILL.md`.
 
 ### The two-pass GDD audit
 

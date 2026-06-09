@@ -628,6 +628,11 @@ def process_sheet(
     finally:
         image.close()
 
+    if snap_mode == "autoslice":
+        strategy = "solid_background_autoslice" if background == "magenta" else "transparent_autoslice"
+    else:
+        strategy = "solid_background_grid" if background == "magenta" else "transparent_grid"
+
     result: dict[str, object] = {
         "version": 1,
         "ok": True,
@@ -635,7 +640,7 @@ def process_sheet(
         "tag": tag,
         "source": str(source),
         "source_path": str(source),
-        "strategy": "solid_background_grid" if background == "magenta" else "transparent_grid",
+        "strategy": strategy,
         "status": "candidate_extracted" if accepted else "needs_regeneration",
         "background": background,
         "cleanup": cleanup,

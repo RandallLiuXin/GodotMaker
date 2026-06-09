@@ -1,12 +1,10 @@
 ---
 name: gm-asset
 description: |
-  Asset collection + generation. Reads ASSETS.md MISSING entries (rows
-  whose Tag matches the current tag), dispatches an analyst subagent for
-  image inspection, generates AI images through the configured
-  asset_image_model path, updates ASSETS.md status. ASSETS.md is cross-tag — every
-  row carries a Tag column marking the introducing tag. Re-runnable any
-  time during a tag. Explicit invocation only — use /gm-asset.
+  Asset stage manager. Reads current-tag ASSETS.md gaps, accepts user-provided
+  assets, plans visual production units, dispatches asset-producer subagents,
+  collects reports, updates ASSETS.md and the asset-generation manifest.
+  Explicit invocation only - use /gm-asset.
 disable-model-invocation: true
 ---
 
@@ -14,420 +12,238 @@ disable-model-invocation: true
 
 $ARGUMENTS
 
-You are filling in the missing assets in `ASSETS.md` for the **current tag** (read the tag from `PLAN.md`'s `**Tag:**` header). `ASSETS.md` is a cross-tag accumulating manifest: every row has a `Tag` column marking the tag that introduced it. Process only rows whose `Tag` matches the current tag AND whose `Status` is `MISSING`. Previous tags' assets stay on disk and stay listed in `ASSETS.md` with their original `Tag` value — do not re-list, re-generate, or relabel them. Image analysis runs in an analyst subagent (context isolation for image binaries); AI generation follows `.godotmaker/config.yaml`'s `asset_image_model`.
-
-This skill is **per-tag re-runnable**: a user can call `/gm-asset` between build batches when they add new art files. Each invocation processes whatever is currently `MISSING` for the current tag.
-
-Read `references/asset-planner.md`,
-`references/asset-family-contract.md`, and `references/asset-curation.md`
-before planning generated visual assets. Read
-`references/asset-runtime-pipeline.md` and
-`references/asset-prompt-contracts.md` before generation.
+You manage the asset stage for the current tag. Read the tag from `PLAN.md`'s
+`**Tag:**` header. Process only `ASSETS.md` rows whose `Tag` matches the current
+tag and whose `Status` is `MISSING`.
 
 ## Session Setup
 
-**FIRST ACTION — before anything else:** Write `asset` to `.godotmaker/current_role`.
+Write `asset` to `.godotmaker/current_role` before any other action.
 
 ## Resume Check
 
-Asset is re-runnable per tag, so the gate is the current state of `ASSETS.md` plus the scene-reference snapshot under `references/`, not events in `stage.jsonl`.
+Asset is re-runnable per tag. Use the current state of `ASSETS.md`,
+`SCENES.md`, `references/`, and `.godotmaker/asset-generation/`.
 
-- If `project.godot` does not exist → STOP. Tell user to run `/gm-scaffold` first.
-- If `ROADMAP.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
-- If `STYLE.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
-- If `ASSETS.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
-- If `SCENES.md` does not exist → STOP. Tell user to run `/gm-gdd` first.
-- If `PLAN.md` is missing the `**Tag:**` header → STOP. Tell user the file is stale and to re-run `/gm-gdd` to regenerate it for the current tag.
-- Build two work-pending checks for the current tag:
-  1. **ASSETS.md gap:** any current-tag row in the Asset Table whose status is `MISSING` (i.e. not `provided` / `generated` / `N/A` / `deferred`).
-  2. **Scene-reference gap:** any scene listed in `SCENES.md` for the current tag whose `references/scene_{name}.png` is absent on disk, whose scene-reference report is missing, or whose report contract summary no longer matches the scene's Asset bindings / matching Visual Asset Contract rows.
-- If **both** checks come back empty → STOP. Tell the user:
-  > "No MISSING assets and no missing scene references for the current tag. Recommended next: /gm-build.
-  > If you've added new art files or scenes since last run, just tell me and I'll re-scan."
-- If either check has work → proceed.
+Stop when any required input is missing:
 
-## Hard Rules
+1. `project.godot`: tell user to run `/gm-scaffold`.
+2. `ROADMAP.md`, `STYLE.md`, `ASSETS.md`, `SCENES.md`, or `PLAN.md`: tell user
+   to run `/gm-gdd`.
+3. Missing `**Tag:**` header in `PLAN.md`: tell user to re-run `/gm-gdd`.
 
-1. **Direct Write/Edit by you (main agent) is restricted to project-root `ASSETS.md` and files under `.godotmaker/`.** Files in `assets/` and `references/` reach disk only via:
-   - `tools/asset_source_generate.py` invoked through Bash for API-backed generation.
-   - provider-specific source claim tools followed by `tools/asset_image_finalize.py`.
-   - Runtime-native generation followed by `tools/asset_image_finalize.py`.
-   - The analyst subagent (Step 2).
-   Do NOT write image files with direct Write/Edit calls.
-2. **Image analysis MUST go through the analyst subagent.** Do NOT Read image binaries from `assets/` or `references/` yourself. Dispatch analyst when you need style/dimension/role extraction.
-3. **You CANNOT modify PLAN.md, GAP.md, STRUCTURE.md, SCENES.md, STYLE.md.**
-4. **You CANNOT write game code.**
-5. **Audio MUST be user-provided.** Mark audio as deferred and remind the user.
+Proceed when either check has current-tag work:
 
-## Model Selection
+1. Current-tag Asset Table rows with status `MISSING`.
+2. Current-tag scene references whose `references/scene_{name}.png` or report
+   is missing or stale against `SCENES.md` and the Visual Asset Contract.
 
-Read `.godotmaker/config.yaml` before generation. Use `asset_image_model` for image assets and scene references:
+If both checks are empty, stop with:
 
-- `native`: use the active agent runtime's native image-generation provider/tool.
-- `codex`: read `references/providers/codex-image.md`.
-- `gemini:<model>`, `openai:<model>`, `grok:<model>`: write a source-generation spec and call `tools/asset_source_generate.py --spec <spec.json>`.
+```text
+No MISSING assets and no missing scene references for the current tag. Recommended next: /gm-build.
+If you've added new art files or scenes since last run, just tell me and I'll re-scan.
+```
 
-If the selected provider is unavailable, STOP and ask the user to choose another `asset_image_model`.
+## Manager Rules
+
+1. Write directly only to project-root `ASSETS.md` and `.godotmaker/`.
+2. Do not read image binaries from `assets/` or `references/`.
+3. Dispatch `analyst` for user-provided asset inspection.
+4. Dispatch `asset-producer` for generated visual production units.
+5. Do not generate raw visual art in the manager context.
+6. Do not write generated image files with direct Write/Edit.
+7. Do not modify `GDD.md`, `PLAN.md`, `GAP.md`, `STRUCTURE.md`, `SCENES.md`, or
+   `STYLE.md`.
+8. Do not write game code.
+9. Mark audio rows `deferred` unless the user provided matching files.
+10. Do not modify prior-tag rows.
+
+## Provider Selection
+
+Read `.godotmaker/config.yaml` and use `asset_image_model`.
+
+| `asset_image_model` | Provider doc |
+| --- | --- |
+| `native` | `references/providers/native.md` |
+| `codex` | `references/providers/codex.md` |
+| `gemini:<model>` or `gemini` | `references/providers/gemini.md` |
+
+If the configured provider is unavailable, stop and ask the user to choose
+another `asset_image_model`.
+
+Include the selected provider doc in every `asset-producer` brief.
+
+## Production Unit Entry Points
+
+Use `references/asset-planner.md` for production-unit selection.
+
+| Production unit | First entry document |
+| --- | --- |
+| `screen-reference` | `references/production-units/screen-reference.md` |
+| `character-bundle` | `references/production-units/character-bundle.md` |
+| `fx-bundle` | `references/production-units/fx-bundle.md` |
+| `ui-kit` | `references/production-units/ui-kit.md` |
+| `compact-prop-pack` | `references/production-units/compact-prop-pack.md` |
+| `background-map` | `references/production-units/background-map.md` |
+| `platform-strip` | `references/production-units/platform-strip.md` |
+| `scene-prop-set` | `references/production-units/scene-prop-set.md` |
 
 ## Process
 
-### Step 1 — Inventory MISSING (current tag only)
+### Step 1 - Inventory Current-Tag Work
 
-Read `ASSETS.md` Asset Table. Filter to rows whose `Tag` matches the current tag. Among those, build a list of MISSING items grouped by type:
-- **Art (sprites, textures, references):** can be user-provided or AI-generated
-- **Audio:** must be user-provided
-- **Scene reference images:** AI-generated based on SCENES.md descriptions
+1. Read `ASSETS.md`.
+2. Read `PLAN.md`, `STYLE.md`, `SCENES.md`, and `STRUCTURE.md`.
+3. Build a current-tag missing list.
+4. Split the list into audio, user-provided candidates, scene references, and
+   generated visual production units.
+5. Keep prior-tag rows unchanged.
 
-Do NOT touch rows from prior tags. New rows you add for newly-discovered assets must carry the current tag in their `Tag` column.
+### Step 2 - Detect User-Provided Files
 
-### Step 1.5 - Plan Asset Families
+Read `references/analyst-dispatch.md`.
 
-Before generation, write manifest entry JSON files under
-`.godotmaker/asset-generation/work/manifest-entries/` using
-`references/asset-family-contract.md` and `references/asset-curation.md`, then
-upsert them with `tools/asset_generation_manifest_update.py`.
+Run:
 
-Choose one production strategy for each visual row:
-
-1. `component_sheet`: UI pieces, icons, compact props, pickups, badges, and
-   other similarly sized objects.
-2. `action_sheet`: one body action or one FX loop.
-3. `map_or_stage_reference`: layered-map or side-scroll visual planning
-   artifact plus derived asset list.
-4. `single_image`: background, panel, card frame, large prop, canonical,
-   texture, or runtime sprite.
-
-For each current-tag visual row, record:
-
-1. `asset_id`
-2. `family`
-3. `production_shape`
-4. `runtime_role`
-5. `source_path`
-6. `final_path`
-7. `derived_from`
-8. `canonical_reference`
-9. `prompt_path`
-10. `processing_status`
-11. `extraction_status`
-12. `curation`
-
-Generate canonical references before derivative assets. Mark source sheets,
-component sheets, and irregular references as `needs_curation` until their
-final runtime assets are selected or processed.
-
-For character, enemy, NPC, summon, and recurring creature assets, plan a bundle:
-
-1. One `character_canonical` source.
-2. One `character_action_source` per required body action.
-3. Separate `projectile_fx_source` or `impact_fx_source` entries for detached
-   effects.
-4. `character_frame_output` entries for processed runtime frames or delivery
-   grid sheets.
-
-### Step 2 — Detect User-Provided Files
-
-Run `tools/asset_user_preflight.py --project-root .` before any AI generation.
-
-The script scans supported file suffixes under `assets/`, excludes paths already
-consumed by completed ASSETS.md rows or `assets/manifest.json`, and prints JSON:
-
-```json
-{
-  "ok": true,
-  "candidate_count": 2,
-  "image_candidate_count": 1,
-  "audio_candidate_count": 1,
-  "needs_analyst": true,
-  "candidates": [
-    {"path": "assets/player.png", "kind_hint": "image", "reason": "..."},
-    {"path": "assets/audio/hit.ogg", "kind_hint": "audio", "reason": "..."}
-  ]
-}
+```bash
+python tools/asset_user_preflight.py --project-root .
 ```
 
-Candidates can include `match_kind: "exact_path"` with `matched_asset_id`,
-`matched_asset_type`, and `matched_status` when the file path exactly matches an
-unfilled ASSETS.md row.
+When image candidates exist:
 
-If `candidate_count > 0`, treat the listed files as user-provided candidates
-already placed on disk:
+1. Dispatch `analyst` with only the candidate paths.
+2. Use the analyst report and `assets/manifest.json`.
+3. Update high-confidence current-tag rows to `provided`.
+4. Leave uncertain files unchanged.
 
-1. For image candidates, dispatch an **analyst subagent**
-   (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`) to
-   inspect only the listed candidate paths and generate/update
-   `assets/manifest.json`.
-   - **Do NOT read image files yourself.** All image analysis goes through the analyst.
-   - Analyst extracts: type, role, dimensions, palette, style characteristics.
-2. For audio candidates, do not dispatch analyst. Prefer preflight candidates
-   with `match_kind: "exact_path"`; if absent, match only by clear
-   filename/asset-id match.
-3. After analyst reports, update ASSETS.md: change high-confidence matching
-   `MISSING` / `deferred` rows to `provided`.
-4. Leave uncertain candidates in `assets/manifest.json` or on disk without
-   changing ASSETS.md. Do not guess.
+For audio candidates:
 
-If no candidates are found, continue to generation. In an interactive session
-you may still ask the user whether they want to add files before generation,
-but CLI-driven runs must not depend on that question being answered.
+1. Match exact paths first.
+2. Use clear filename or asset-id matches only.
+3. Update matching current-tag rows to `provided`.
 
-### Step 3 — Generate Scene Reference Images (if MISSING)
+### Step 3 - Build Production Plan
 
-Build the missing scene-reference list from SCENES.md. For each missing scene,
-plan a fixed source path, final path, and report path:
+Read:
 
-```json
-{
-  "group_id": "scene_refs_001",
-  "kind": "scene_reference",
-  "provider": "<asset_image_model>",
-  "contract_summary": "<SCENES.md Asset bindings + ASSETS.md Visual Asset Contract rows used>",
-  "anchor_item": {
-    "asset_id": "scene_main",
-    "family": "screen_reference",
-    "production_shape": "reference_only",
-    "target_size": "1280x720",
-    "target_aspect": "16:9",
-    "prompt": "<prompt>",
-    "prompt_path": ".godotmaker/asset-generation/prompts/scene_main.txt",
-    "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
-    "final_path": "references/scene_main.png"
-  },
-  "parallel_items": [
-    {
-      "asset_id": "scene_shop",
-      "family": "screen_reference",
-      "production_shape": "reference_only",
-      "target_size": "1280x720",
-      "target_aspect": "16:9",
-      "prompt": "<prompt>",
-      "prompt_path": ".godotmaker/asset-generation/prompts/scene_shop.txt",
-      "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",
-      "final_path": "references/scene_shop.png"
-    }
-  ],
-  "report_path": ".godotmaker/asset-generation/reports/scene_refs_001.json"
-}
+1. `references/asset-planner.md`
+2. `references/asset-runtime-pipeline.md`
+
+Write plan artifacts under `.godotmaker/asset-generation/work/`.
+
+Use `references/asset-planner.md` for grouping, dependencies, batch rules, and
+plan artifact fields.
+
+### Step 4 - Dispatch Asset Producers
+
+Dispatch `asset-producer` for every generated visual production unit.
+
+Read `references/asset-curation.md` when the selected production unit produces
+source sheets, candidates, extracted frames, or selected final assets.
+
+Brief shape:
+
+```text
+## Asset Production Unit: {unit_id}
+
+### Objective
+{one concrete generated visual production unit}
+
+### First Entry Document
+- {references/production-units/<unit>.md}
+
+### Provider
+- {references/providers/<provider>.md}
+
+### Shared Docs
+- {references/asset-runtime-pipeline.md}
+- {references/asset-curation.md when needed}
+
+### Inputs
+- ASSETS.md rows: {row ids or names}
+- Style seed: STYLE.md
+- Scene docs: SCENES.md sections or references
+- Canonical references: {paths}
+
+### Outputs
+- Source paths: {paths under .godotmaker/asset-generation/sources/}
+- Final paths: {paths under assets/ or references/}
+- Prompt paths: {paths}
+- Report path: {path}
+- Manifest entry files: {paths}
+
+### Scope
+- Write only the listed outputs.
+- Use only the first entry document and docs it references.
+- Return the required Asset Producer Report.
 ```
 
-If one scene should anchor the visual style for the rest, generate that anchor
-scene first. Then generate the remaining missing scene references in parallel
-groups of up to 3. If isolated generation groups are unavailable, run
-sequentially and write the fallback reason in the report and summary.
+Do not dispatch one subagent per ASSETS.md row when the work is one bundle.
+Dispatch one subagent per production unit.
 
-For each missing scene:
+### Step 5 - Collect Reports
 
-1. Build the prompt for this scene using inputs from `SCENES.md` (Elements + Mood + Asset bindings) + matching ASSETS.md Visual Asset Contract rows + `STYLE.md` + `GDD.md` section 4. If the user provided art in `assets/`, also reference the analyst's style summary from `assets/manifest.json`.
-   Include the target aspect ratio in the prompt, such as `wide 16:9
-   landscape composition` or `vertical 9:16 portrait composition`.
-2. Write the prompt text to `prompt_path`.
-3. Generate the scene source using the selected `asset_image_model` path:
-   - API-backed selector: write the source-generation spec, then run `python tools/asset_source_generate.py --spec <spec.json>`.
-   - `asset_image_model: codex`: follow `references/providers/codex-image.md`.
-   - Other runtime-native provider: generate a source image path.
-4. Finalize the source image with `python tools/asset_image_finalize.py
-   --source <source_path> --out <final_path> --label scene_{name}
-   --require-aspect <target_aspect> --resize <target_size>`.
-5. Write the scene's flat finalize JSON entry and contract summary to the scene-reference diagnostic report.
-6. If source aspect validation fails, regenerate with a tightened prompt. If it
-   still fails, write the failed diagnostic entry and leave the scene reference
-   incomplete.
-7. Show the result to the user. If rejected, regenerate with a tightened prompt.
+Read `references/asset-runtime-pipeline.md`.
 
-### Step 4 — Generate Remaining MISSING Art
+For each `asset-producer` report:
 
-For all remaining MISSING art assets in ASSETS.md (excluding audio):
+1. Confirm status is `DONE`, `PARTIAL`, or `FAILED`.
+2. Confirm listed source, final, prompt, report, and manifest-entry files exist
+   when claimed.
+3. Upsert manifest entries:
 
-Read `STYLE.md` before crafting generation prompts.
-
-Generate each asset through the selected `asset_image_model` path. Use
-`asset-planner.md` for batch shape,
-`asset-prompt-contracts.md` for prompts, and
-`asset-runtime-pipeline.md` for provider execution.
-
-Generate character and enemy bundles in this order:
-
-1. Generate `character_canonical` sources first.
-2. Finalize accepted canonicals to their reference or runtime paths.
-3. Load or view the accepted canonical image before writing derivative prompts.
-4. Generate `character_action_source` sheets from the canonical reference.
-5. Generate detached projectile, impact, slash, muzzle, dust, pickup, and aura
-   sources as separate effect sources.
-6. Leave `character_frame_output` entries pending until Step 4.5 processes the
-   action sources.
-7. Do not generate raw mixed-action atlases for important characters.
-8. Do not generate raw single-row body sheets for characters, enemies, NPCs,
-   summons, or animated props.
-
-For maps and side-scroll stages, produce visual planning assets and asset
-lists:
-
-1. Layered map: foundation or background, dressed reference, object list,
-   compact prop packs or separate prop sources.
-2. Side-scroll stage: scenery or parallax reference, stage reference, platform,
-   object, hazard, pickup, door, gate, and checkpoint asset list.
-
-Run generation groups in batches of up to 3 art assets. Each group uses this
-input schema:
-
-```json
-{
-  "group_id": "assets_001",
-  "kind": "art_asset",
-  "provider": "<asset_image_model>",
-  "items": [
-    {
-      "asset_id": "<asset_id>",
-      "family": "<asset family>",
-      "production_shape": "<production shape>",
-      "target_size": "<WIDTHxHEIGHT or null>",
-      "target_aspect": "<WIDTH:HEIGHT or null>",
-      "prompt": "<prompt>",
-      "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
-      "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
-      "final_path": "assets/img/<asset_id>.png or null for source-only entries",
-      "resize": null
-    }
-  ],
-  "report_path": ".godotmaker/asset-generation/reports/assets_001.json"
-}
+```bash
+python tools/asset_generation_manifest_update.py --entry-file <entry.json>
 ```
 
-If isolated generation groups are unavailable, run the batch sequentially and
-write the fallback reason in the diagnostic summary.
+4. Run manifest validation:
 
-Use the selected `asset_image_model` path:
+```bash
+python tools/asset_generation_manifest_check.py --check-files
+```
 
-- API-backed selector: each group writes one source-generation spec per asset and runs `python tools/asset_source_generate.py --spec <spec.json>`. Finalize only entries that already have a runtime `final_path`.
-- `asset_image_model: codex`: follow `references/providers/codex-image.md`.
-- Other runtime-native provider: generate each source image path. Finalize only entries that already have a runtime `final_path`.
+5. Redispatch failed or incomplete production units once when the failure is
+   actionable from the report.
 
-For fixed-grid `component_sheet` and `action_sheet` sources, create a layout
-guide with `tools/asset_layout_guide.py`, store it under
-`.godotmaker/asset-generation/guides/`, and make it visible to the image
-generation runtime before generating the source.
+### Step 6 - Update ASSETS.md
 
-Each group may write one diagnostic JSON report under
-`.godotmaker/asset-generation/reports/`. Use it for troubleshooting provider
-calls, fallback notes, and finalize JSON. The manifest is the handoff contract.
+For current-tag rows only:
 
-For `background` entries with a fixed viewport or parallax plate size, include
-`target_size` and `target_aspect` in the batch item and prompt. Finalize with
-`--require-aspect <target_aspect> --resize <target_size>`. If source aspect
-validation fails, regenerate or leave the row `MISSING`.
+1. Mark final generated runtime assets `generated`.
+2. Mark provided files `provided`.
+3. Mark unprovided audio `deferred`.
+4. Keep rows with incomplete curation or missing final paths as `MISSING`.
+5. Update `Generation Params` with provider, production unit, prompt path,
+   source path, final path, curation report, and manifest entry.
+6. Update the Visual Asset Contract for gameplay-visible generated assets.
 
-### Step 4.5 - Curate Generated Visual Sources
-
-Read `references/asset-curation.md`.
-
-For every generated source whose manifest entry has `production_shape:
-grid_sheet`, `action_sheet`, `frame_sequence`, or `curation_required`, or whose
-`processing_status` is `needs_curation`:
-
-1. Decide the extraction strategy from `references/asset-curation.md`.
-2. For character action sources, run `tools/asset_action_process.py` with
-   explicit grid, frame names, `kind`, alignment, and final runtime directory.
-3. Use `kind: body` for body-only character, enemy, NPC, summon, and animated
-   prop actions.
-4. Use `kind: fx` for projectile, impact, slash, aura, dust, pickup, and
-   detached effect sources.
-5. For later body actions, pass the accepted idle or run `pipeline-meta.json`
-   as the scale reference.
-6. Reject action outputs with non-empty `edge_touch_frames`.
-7. For UI, icon, and compact prop sheets, run `tools/asset_sheet_process.py`
-   with explicit grid, names, snap mode, component policy, and curation report.
-8. For unsuitable sources, write a curation report with
-   `status: needs_regeneration` or `status: rejected`.
-9. Select canonical candidates for character, enemy, UI, prop, and environment
-   families.
-10. Finalize selected candidates into runtime paths with
-   `tools/asset_curation_select.py`.
-11. Generate selected-candidate manifest entries with
-   `tools/asset_curation_manifest_entry.py`.
-12. Generate `character_frame_output` manifest entries with
-   `tools/asset_action_manifest_entry.py`.
-13. Update the manifest entry's `curation`, `processing_status`,
-   `extraction_status`, `final_path`, `derived_from`, and
-   `canonical_reference`.
-14. Upsert generated manifest entries with
-   `tools/asset_generation_manifest_update.py`.
-
-Do not update an ASSETS.md row to `generated` while its manifest entry still has
-`processing_status: needs_curation` or `curation.status` other than `selected`
-or `not_required`.
-
-### Step 5 - Update ASSETS.md
-
-After all generation calls return:
-- Change generated rows from `MISSING` to `generated` with file path + generation params
-- Audio rows that user did not provide: mark `deferred` (with user acknowledgment)
-- Update `.godotmaker/asset-generation/manifest.json` with source path, final
-  path, prompt path, family, production shape, processing status, extraction
-  status, canonical reference, and curation object for every generated visual asset.
-  Use `python tools/asset_generation_manifest_update.py --entry-file <entry.json>`.
-- Run `python tools/asset_generation_manifest_check.py --check-files`
-- Re-dispatch one follow-up batch for missing or invalid generated images
-- Verify total MISSING count for the current tag is zero (or all remaining are deferred audio with user OK)
-- New rows added this tag must carry the current tag in their `Tag` column
-- Update `ASSETS.md` Visual Asset Contract for generated or provided visual
-  assets. Bind each gameplay-visible object to its scene/mechanic use,
-  runtime size, visual role, readability requirement, and final runtime asset.
+Do not mark source sheets, references, or curation candidates as final runtime
+assets unless the production-unit report selected them as final outputs.
 
 ## Plan Discipline
 
-ASSETS.md is the only document you may modify. Status transitions are forward-only:
+ASSETS.md status transitions are forward-only:
 
 ```text
 MISSING -> provided | generated | N/A | deferred
 ```
 
-Never revert a `provided`/`generated` row back to `MISSING`; if the user wants to regenerate, treat it as a NEW row (with the current tag in its `Tag` column) or note in MEMORY.md.
+If the user wants to regenerate an accepted prior asset, add a current-tag row
+or leave a fix task for a later role.
 
-**Tag scope:** Only modify rows whose `Tag` matches the current tag, and only add new rows tagged with the current tag. Prior tags' rows are immutable from this skill. If a prior-tag asset is broken, raise it as a fix task in `/gm-fixgap`; do not relabel the row's `Tag` column.
+## Completion
 
-## Available Skills & Tools
+After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 
-**Skills:**
-| Skill | Purpose |
-|-------|---------|
-| screenshot | Capture for visual cross-check |
-| visual-qa | Style consistency check |
+1. Run:
 
-**CLI tools (call via Bash):**
-| Tool | Purpose |
-|------|---------|
-| `tools/asset_source_generate.py` | API-backed source image generation (Gemini / OpenAI / Grok) |
-| `tools/asset_layout_guide.py` | Create layout-only guides for fixed-grid source images |
-| `tools/asset_user_preflight.py` | Find unconsumed user-provided asset candidates under `assets/` |
-| `tools/asset_image_finalize.py` | Copy, resize, and validate generated image assets |
-| `tools/asset_generation_manifest_update.py` | Upsert asset-generation manifest entries |
-| `tools/asset_generation_manifest_check.py` | Validate asset-generation manifest schema and handoff files |
-| `tools/asset_action_process.py` | Process character action sheets into normalized frames, sheet, GIF, and metadata |
-| `tools/asset_action_manifest_entry.py` | Build character frame-output manifest entries from action metadata |
-| `tools/asset_sheet_process.py` | Split production-shaped 2D source sheets and write processing reports |
-| `tools/asset_curation_select.py` | Finalize selected curation candidates into runtime asset paths |
-| `tools/asset_curation_manifest_entry.py` | Build runtime manifest entries from selected curation candidates |
+```bash
+python tools/append_stage_event.py asset
+```
 
-**Reference docs (read for prompt construction):**
-- `references/asset-planner.md` — generation brief template
-- `references/asset-runtime-pipeline.md` — source, final, batch, and manifest handoff contract
-- `references/asset-prompt-contracts.md` — visual source prompt contracts
-- `references/asset-family-contract.md` — asset family, production shape, and
-  manifest contract
-- `references/asset-curation.md` — curation, canonical selection, and rejected
-  candidate records
+2. Inform the user:
 
-**Asset analysis:** Dispatch an Analyst subagent (`subagent_type: "analyst"`, see `references/analyst-dispatch.md`).
-
-## Context Management
-
-Keep `ASSETS.md` state and the MISSING list in context. Delegate image binaries to the analyst subagent (do NOT Read images directly). Generation prompts can stay in context — they're cheap text.
-
-## When Done
-
-After ASSETS.md has no MISSING rows (or all remaining are deferred audio with user acknowledgment):
-
-1. From the project root run `python tools/append_stage_event.py asset` to append a `{"role": "asset", "ts": "<server-generated UTC>"}` line to `.godotmaker/stage.jsonl`. Do NOT hand-write the JSON or the timestamp — the helper exists so the timestamp comes from the system clock, not your own output.
-   (The Resume Check above reads `ASSETS.md`, not this event — the stage.jsonl entry exists so `stage_reminder.py` can suggest `/gm-build` next.)
-2. `git add -A && git commit -m "chore(asset): <Tag>"`
-3. Inform the user: `Asset complete. Recommended next: /gm-build` (or re-invoke /gm-asset later if you add more art).
+```text
+Asset complete. Recommended next: /gm-build
+```

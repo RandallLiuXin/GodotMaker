@@ -197,6 +197,7 @@ def test_process_sheet_autoslice_keeps_cross_cell_object_intact(tmp_path):
     )
 
     assert result["snap_mode"] == "autoslice"
+    assert result["strategy"] == "transparent_autoslice"
     assert result["accepted_count"] == 2
     wide = result["accepted"][0]
     icon = result["accepted"][1]

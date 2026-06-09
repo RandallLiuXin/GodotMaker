@@ -181,7 +181,7 @@ schema 变更，请从 VCS 快照恢复目标项目。
 | 目录 | 内容 |
 |------|------|
 | `.claude/skills/` | 所有技能（从 core + reviewer 展平） |
-| `.claude/agents/` | 代理定义（worker、verifier、reviewer、analyst） |
+| `.claude/agents/` | 代理定义（worker、verifier、reviewer、analyst、asset-producer） |
 | `.godotmaker/hooks/` | 所有 Hook 脚本 |
 | `.claude/config/` | 配置文件（仅 `--force` 时覆盖 settings.json） |
 | `.claude/templates/` | 文档模板 |
