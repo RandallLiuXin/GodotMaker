@@ -20,7 +20,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - (WIP) Diagnostic log at `.godotmaker/log_agent_tool_debug.log` that records every phase of `log_agent_tool.py` so the next failure mode is localizable from artifacts.
 - Added an ASSETS.md update helper so generated-art runs can update rows after each completed production unit.
 - Added source-aspect validation to `asset_image_finalize.py` so generated scene references and fixed-viewport backgrounds can fail before resize when the source image has the wrong orientation.
-- Added batch mode to the Codex saved-path claim helper so `/gm-asset` can claim only planned image outputs.
+- Added batch mode to the Codex image claim helper so `/gm-asset` can claim only planned image outputs.
+- Added authoritative Codex image claim reports for generated-art provider runs.
 - Added validation for asset-generation handoff manifests so generated-art runs can detect missing fields and files.
 - Added a manifest update helper so generated-art runs can upsert handoff entries through a validated tool.
 - Added a layout-guide helper for fixed-grid UI, prop, icon, and action source generation.

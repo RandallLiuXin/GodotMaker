@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Claim a Codex-generated image from an explicit saved_path.
+"""Claim a Codex-generated image from an explicit generated image path.
 
-The caller must pass the concrete path returned by Codex ImageGenerationEnd.
-This script never scans generated_images or guesses the newest file.
+The caller must pass the concrete generated image path reported by Codex.
+This script never scans Codex image directories or guesses the newest file.
 """
 from __future__ import annotations
 
@@ -66,13 +66,34 @@ def _copy_atomic(source: Path, output: Path) -> None:
             tmp_path.unlink()
 
 
-def claim_codex_image(source: str, output: Path, *, asset_id: str | None = None) -> dict[str, object]:
-    source_path = _path_from_arg(source)
+def _write_atomic_json(path: Path, data: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        dir=str(path.parent),
+        suffix=".json",
+        mode="w",
+        encoding="utf-8",
+    ) as handle:
+        tmp_path = Path(handle.name)
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+    try:
+        tmp_path.replace(path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
+def claim_codex_image(generated_path: str, output: Path, *, asset_id: str | None = None) -> dict[str, object]:
+    source_path = _path_from_arg(generated_path)
     output = Path(output)
     if not source_path.exists():
-        raise CodexImageClaimError(f"Source image not found: {source_path}")
+        raise CodexImageClaimError(f"Generated image not found: {source_path}")
     if not source_path.is_file():
-        raise CodexImageClaimError(f"Source image is not a file: {source_path}")
+        raise CodexImageClaimError(f"Generated image is not a file: {source_path}")
+    if source_path.resolve() == output.resolve():
+        raise CodexImageClaimError(f"generated_path must not be the output path: {output}")
 
     image = _load_image(source_path)
     try:
@@ -83,11 +104,14 @@ def claim_codex_image(source: str, output: Path, *, asset_id: str | None = None)
         image.close()
 
     _copy_atomic(source_path, output)
+    if not output.exists() or not output.is_file():
+        raise CodexImageClaimError(f"Claimed image was not written: {output}")
 
     result: dict[str, object] = {
         "ok": True,
-        "source": str(source_path),
-        "path": str(output),
+        "generated_path": str(source_path),
+        "claimed_path": str(output),
+        "exists": output.exists(),
         "bytes": output.stat().st_size,
         "width": width,
         "height": height,
@@ -146,12 +170,12 @@ def _planned_items(plan: Any) -> dict[str, dict[str, str]]:
     return planned
 
 
-def _reported_saved_paths(report: Any) -> dict[str, str]:
+def _reported_generated_paths(report: Any) -> dict[str, str]:
     if isinstance(report, list):
         raw_items = report
     elif isinstance(report, dict):
         if report.get("ok") is False:
-            raise CodexImageClaimError(f"Codex saved-path report failed: {report.get('error') or 'unknown error'}")
+            raise CodexImageClaimError(f"Codex generation report failed: {report.get('error') or 'unknown error'}")
         failures = report.get("failures")
         if isinstance(failures, list) and failures:
             first = failures[0]
@@ -159,64 +183,81 @@ def _reported_saved_paths(report: Any) -> dict[str, str]:
                 asset = first.get("asset_id") or "unknown asset"
                 error = first.get("error") or "unknown error"
                 raise CodexImageClaimError(f"Codex generation failed for {asset}: {error}")
-            raise CodexImageClaimError("Codex saved-path report contains failures")
+            raise CodexImageClaimError("Codex generation report contains failures")
         raw_items = report.get("assets")
     else:
-        raise CodexImageClaimError("Saved-path report must be a JSON object or array")
+        raise CodexImageClaimError("Generation report must be a JSON object or array")
 
     if not isinstance(raw_items, list) or not raw_items:
-        raise CodexImageClaimError("Saved-path report must contain a non-empty assets list")
+        raise CodexImageClaimError("Generation report must contain a non-empty assets list")
 
-    saved_paths: dict[str, str] = {}
+    generated_paths: dict[str, str] = {}
     for index, item in enumerate(raw_items):
         if not isinstance(item, dict):
             raise CodexImageClaimError(f"report asset {index} must be an object")
         label = f"report asset {index}"
         asset_id = _string(item.get("asset_id"), "asset_id", item_label=label)
-        saved_path = _string(item.get("saved_path"), "saved_path", item_label=label)
-        if asset_id in saved_paths:
+        generated_path = _string(item.get("generated_path"), "generated_path", item_label=label)
+        if asset_id in generated_paths:
             raise CodexImageClaimError(f"Duplicate reported asset_id: {asset_id}")
-        saved_paths[asset_id] = saved_path
-    return saved_paths
+        generated_paths[asset_id] = generated_path
+    return generated_paths
 
 
-def claim_codex_image_batch(plan_path: Path, report_path: Path, *, project_root: Path) -> dict[str, Any]:
+def claim_codex_image_batch(
+    plan_path: Path,
+    report_path: Path,
+    *,
+    project_root: Path,
+    out_report: Path | None = None,
+) -> dict[str, Any]:
+    project_root = Path(project_root).resolve()
     planned = _planned_items(_load_json(plan_path, "Plan"))
-    saved_paths = _reported_saved_paths(_load_json(report_path, "Saved-path report"))
+    generated_paths = _reported_generated_paths(_load_json(report_path, "Generation report"))
 
-    unknown = sorted(set(saved_paths) - set(planned))
+    unknown = sorted(set(generated_paths) - set(planned))
     if unknown:
-        raise CodexImageClaimError(f"Saved-path report contains unknown asset_id: {', '.join(unknown)}")
+        raise CodexImageClaimError(f"Generation report contains unknown asset_id: {', '.join(unknown)}")
 
-    missing = sorted(set(planned) - set(saved_paths))
+    missing = sorted(set(planned) - set(generated_paths))
     if missing:
-        raise CodexImageClaimError(f"Saved-path report is missing asset_id: {', '.join(missing)}")
+        raise CodexImageClaimError(f"Generation report is missing asset_id: {', '.join(missing)}")
 
     results = []
     for asset_id, item in planned.items():
         output = project_root / item["source_path"]
-        result = claim_codex_image(saved_paths[asset_id], output, asset_id=asset_id)
+        generated_path = _path_from_arg(generated_paths[asset_id])
+        if generated_path.resolve() == output.resolve():
+            raise CodexImageClaimError(
+                f"generated_path for {asset_id} must not be the planned source_path: {output}"
+            )
+        result = claim_codex_image(str(generated_path), output, asset_id=asset_id)
         result["source_path"] = item["source_path"]
         results.append(result)
 
-    return {
+    batch_result = {
         "ok": True,
         "plan": str(plan_path),
-        "report": str(report_path),
+        "generation_report": str(report_path),
         "assets": results,
     }
+    if out_report is not None:
+        batch_result["claim_report"] = str(out_report)
+        _write_atomic_json(Path(out_report), batch_result)
+    return batch_result
 
 
 def _main() -> int:
     parser = argparse.ArgumentParser(
-        description="Claim Codex ImageGenerationEnd saved_path outputs"
+        description="Claim Codex generated image outputs"
     )
-    parser.add_argument("--source", help="Codex ImageGenerationEnd saved_path")
+    parser.add_argument("--source", help="Codex generated image path")
     parser.add_argument("--out", help="Project-local claimed source image path")
     parser.add_argument("--asset-id", default=None, help="Optional asset id for JSON output")
     parser.add_argument("--plan", help="Planned generation batch JSON")
-    parser.add_argument("--report", help="Codex saved-path report JSON")
+    parser.add_argument("--report", help="Codex generated-path report JSON")
     parser.add_argument("--project-root", default=".", help="Project root for relative batch source_path outputs")
+    parser.add_argument("--out-report", help="Authoritative claim result JSON path")
     args = parser.parse_args()
 
     try:
@@ -225,12 +266,17 @@ def _main() -> int:
                 raise CodexImageClaimError("Batch mode cannot be combined with --source, --out, or --asset-id")
             if not args.plan or not args.report:
                 raise CodexImageClaimError("Batch mode requires --plan and --report")
+            if not args.out_report:
+                raise CodexImageClaimError("Batch mode requires --out-report")
             result = claim_codex_image_batch(
                 Path(args.plan),
                 Path(args.report),
                 project_root=Path(args.project_root),
+                out_report=Path(args.out_report),
             )
         else:
+            if args.out_report:
+                raise CodexImageClaimError("Single-image mode cannot be combined with --out-report")
             if not args.source or not args.out:
                 raise CodexImageClaimError("Single-image mode requires --source and --out")
             result = claim_codex_image(args.source, Path(args.out), asset_id=args.asset_id)

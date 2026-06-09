@@ -14,14 +14,22 @@ def test_provider_contracts_are_separate_from_generic_asset_docs():
     codex = _read("skills/core/gm-asset/references/providers/codex.md")
     native = _read("skills/core/gm-asset/references/providers/native.md")
     gemini = _read("skills/core/gm-asset/references/providers/gemini.md")
+    codex_runtime = _read("agent-runtimes/codex/references/runtime-mapping.md")
+    claude_runtime = _read("agent-runtimes/claude-code/references/runtime-mapping.md")
 
     assert "references/providers/codex.md" in runtime
     assert "references/providers/native.md" in skill
     assert "references/providers/gemini.md" in skill
-    assert "ImageGenerationEnd.saved_path" in codex
+    assert "generated_path" in codex
+    assert "--out-report" in codex
+    assert "exactly one new image file" in codex
     assert "tools/codex_image_claim.py --plan" in codex
     assert "active coding-agent runtime's native image-generation path" in native
     assert "tools/asset_source_generate.py --spec" in gemini
+    assert "generated-path claim protocol" in codex_runtime
+    assert "generated-path claim protocol" in claude_runtime
+    assert "--out-report" in codex_runtime
+    assert "--out-report" in claude_runtime
 
     forbidden = [
         "ImageGenerationEnd.saved_path",
@@ -34,6 +42,11 @@ def test_provider_contracts_are_separate_from_generic_asset_docs():
     for token in forbidden:
         assert token not in runtime
         assert token not in skill
+
+    assert "ImageGenerationEnd.saved_path" not in codex
+    assert "\"saved_path\"" not in codex
+    assert "saved_path claim protocol" not in codex_runtime
+    assert "saved_path claim protocol" not in claude_runtime
 
 
 def test_gm_asset_manager_dispatches_asset_producer_units():
