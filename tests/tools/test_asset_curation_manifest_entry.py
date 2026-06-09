@@ -113,6 +113,7 @@ def test_build_curation_manifest_entry(tmp_path):
 
     assert entry["asset_id"] == "battle_button"
     assert entry["family"] == "ui_component_sheet"
+    assert entry["runtime_artifact"] == "single"
     assert entry["production_shape"] == "grid_sheet"
     assert entry["runtime_role"] == "primary battle button"
     assert entry["final_path"] == "assets/ui/battle_button.png"

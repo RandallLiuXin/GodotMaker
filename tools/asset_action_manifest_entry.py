@@ -140,6 +140,7 @@ def build_action_manifest_entry(
         "derived_from": source_asset_id,
         "canonical_reference": canonical_reference,
         "prompt_path": prompt_path,
+        "runtime_artifact": "grid_sheet",
         "processing_status": "ready",
         "extraction_status": "processed",
         "curation": {

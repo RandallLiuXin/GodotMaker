@@ -13,12 +13,15 @@ flashes, slash arcs, aura loops, dust, and detached effects.
 ## Steps
 
 1. Choose one coherent effect action per source.
-2. Write a prompt with exact frame count or grid.
+2. Write a prompt with exact frame count, grid, or one-item source.
 3. Generate the source through the provider doc.
 4. Process action sources with `tools/asset_action_process.py` using
    `kind: fx`.
-5. Finalize single-image effects when no frame extraction is needed.
-6. Write manifest entries for final frames, sheets, or single images.
+5. Process single projectiles, pickups, and one-frame effects with
+   `tools/asset_sheet_process.py --snap-mode autoslice`.
+6. Use action metadata for animated frames or delivery sheets.
+7. Use selected transparent PNGs for one-frame foreground effects.
+8. Write manifest entries.
 
 ## Prompt Contract
 
@@ -28,7 +31,7 @@ State:
 2. gameplay role
 3. frame count or single-image target
 4. travel or impact direction
-5. solid `#FF00FF` background for extracted sources
+5. separated foreground effect on solid `#FF00FF`
 6. consistent scale
 7. no text or UI
 
@@ -52,12 +55,28 @@ runtime frame files as `<final-prefix>_<frame-name>.png` unless the frame name
 already starts with `<final-prefix>_`.
 
 Use `align: center` for floating effects, projectiles, and detached FX.
-Finalize single-image effects with `tools/asset_image_finalize.py`.
+
+Process one-frame foreground effects:
+
+```bash
+python tools/asset_sheet_process.py \
+  --source <fx_source.png> \
+  --out-dir <curation_dir> \
+  --background magenta \
+  --snap-mode autoslice \
+  --component-mode largest
+```
+
+Select one-frame foreground effects with `tools/asset_curation_select.py`.
+Write `runtime_artifact: single` in selected one-frame manifest entries.
+Write `runtime_artifact: grid_sheet` in animated FX manifest entries.
+Do not use a source sheet as an independent final effect.
 
 ## Outputs
 
 1. source image
-2. processed frames or final image
+2. processed frames, delivery sheet, or selected foreground image
 3. GIF preview when animated
 4. processing report
-5. manifest entry JSON
+5. action metadata for animated FX
+6. manifest entry JSON

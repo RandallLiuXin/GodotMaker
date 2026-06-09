@@ -117,6 +117,7 @@ def test_build_action_manifest_entry(tmp_path):
 
     assert entry["asset_id"] == "player_idle_delivery"
     assert entry["family"] == "character_frame_output"
+    assert entry["runtime_artifact"] == "grid_sheet"
     assert entry["derived_from"] == "player_idle"
     assert entry["canonical_reference"] == "player_canonical"
     assert entry["final_path"] == "assets/sprites/player_idle_sheet.png"

@@ -18,8 +18,12 @@ pieces, and icons that share one interface style.
 4. Run `tools/asset_sheet_process.py --snap-mode autoslice` for separated
    components.
 5. Use `--snap-mode grid` only for deliberate equal-cell layouts.
-6. Select final candidates with `tools/asset_curation_select.py`.
-7. Write selected-candidate manifest entries.
+6. Choose the final artifact shape: selected component PNGs or processed UI
+   atlas.
+7. For selected component PNGs, run `tools/asset_curation_select.py`.
+8. For processed UI atlases, write atlas metadata with named regions and rects.
+9. Write manifest entries.
+10. Mark rows generated only after final UI artifacts and metadata are ready.
 
 ## Prompt Contract
 
@@ -47,8 +51,9 @@ python tools/asset_sheet_process.py \
 ```
 
 Use `--snap-mode grid` only for deliberate equal-cell layouts.
+Do not use a source kit or source panel as an independent final UI artifact.
 
-Select final candidates:
+Final selected component PNG:
 
 ```bash
 python tools/asset_curation_select.py \
@@ -62,10 +67,19 @@ python tools/asset_curation_select.py \
 Create selected-candidate manifest entries with
 `tools/asset_curation_manifest_entry.py`.
 
+Final processed UI atlas:
+
+1. Write a transparent processed atlas to the final path.
+2. Write atlas metadata beside the atlas.
+3. Write `runtime_artifact: region_atlas` in the manifest entry.
+4. Write `qc.atlas_metadata.metadata_path` in the manifest entry.
+5. Write named `qc.atlas_metadata.regions` in the manifest entry.
+
 ## Outputs
 
 1. UI kit source
 2. extracted candidates
-3. selected final UI assets
-4. curation report
-5. manifest entry JSON
+3. selected final UI PNGs or processed UI atlas
+4. atlas metadata when final is an atlas
+5. curation report
+6. manifest entry JSON

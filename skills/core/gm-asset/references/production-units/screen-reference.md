@@ -19,6 +19,7 @@ targets.
 5. Write one report entry per scene.
 6. Write manifest entries with `family: screen_reference` and
    `production_shape: reference_only`.
+7. Write `runtime_artifact: reference` in the manifest entry.
 
 ## Prompt Contract
 

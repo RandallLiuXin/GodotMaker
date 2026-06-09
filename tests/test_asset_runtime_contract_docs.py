@@ -98,3 +98,79 @@ def test_ui_and_prop_units_default_to_autoslice():
     assert "--snap-mode grid" in ui
     assert "--snap-mode grid" in props
     assert "Use the assigned production-unit doc for extraction" in curation
+
+
+def test_foreground_production_units_do_not_finalize_source_images():
+    fx = _read("skills/core/gm-asset/references/production-units/fx-bundle.md")
+    ui = _read("skills/core/gm-asset/references/production-units/ui-kit.md")
+    props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
+    scene_props = _read("skills/core/gm-asset/references/production-units/scene-prop-set.md")
+    platform = _read("skills/core/gm-asset/references/production-units/platform-strip.md")
+    character = _read("skills/core/gm-asset/references/production-units/character-bundle.md")
+
+    foreground_docs = [fx, ui, props, scene_props]
+    for doc in foreground_docs:
+        assert "--background magenta" in doc
+        assert "--snap-mode autoslice" in doc
+        assert "Do not use a source" in doc
+        assert "asset_image_finalize.py" not in doc
+
+    assert "tools/asset_curation_select.py" in fx
+    assert "tools/asset_curation_select.py" in ui
+    assert "tools/asset_curation_select.py" in props
+    assert "tools/asset_curation_select.py" in scene_props
+    assert "runtime_artifact: region_atlas" in ui
+    assert "qc.atlas_metadata.metadata_path" in ui
+    assert "runtime_artifact: single" in fx
+    assert "runtime_artifact: grid_sheet" in fx
+    assert "--snap-mode grid" in platform
+    assert "--background magenta" in platform
+    assert "runtime_artifact: region_atlas" in platform
+    assert "tools/asset_action_process.py" in character
+    assert "runtime_artifact: grid_sheet" in character
+
+
+def test_single_image_units_keep_finalize_path():
+    screen = _read("skills/core/gm-asset/references/production-units/screen-reference.md")
+    background = _read("skills/core/gm-asset/references/production-units/background-map.md")
+
+    assert "tools/asset_image_finalize.py" in screen
+    assert "--require-aspect" in screen
+    assert "tools/asset_image_finalize.py" in background
+    assert "--require-aspect" in background
+
+
+def test_asset_planner_routes_foreground_sprites_to_extraction_units():
+    planner = _read("skills/core/gm-asset/references/asset-planner.md")
+
+    assert "| `runtime_sprite` | `compact-prop-pack` |" in planner
+    assert "foreground gameplay sprite with effect behavior" in planner
+    assert "uncut single-image foreground sprites" in planner
+
+
+def test_runtime_pipeline_documents_runtime_ready_gate():
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+
+    assert "## Runtime Artifact Types" in runtime
+    assert "## Runtime Ready Gate" in runtime
+    assert "`projectile_fx_source`" in runtime
+    assert "`ui_component_sheet`" in runtime
+    assert "`runtime_sprite`" in runtime
+    assert "`region_atlas`" in runtime
+    assert "`grid_sheet`" in runtime
+    assert "qc.atlas_metadata.metadata_path" in runtime
+    assert "\"rect\": [0, 0, 256, 96]" in runtime
+
+
+def test_asset_stage_runs_manifest_gate_before_assets_update():
+    skill = _read("skills/core/gm-asset/SKILL.md")
+    producer = _read("agents/asset-producer.md")
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+
+    assert "Confirm every ready manifest entry contains `runtime_artifact`." in skill
+    assert "python tools/asset_generation_manifest_update.py --entry-file <entry.json>" in skill
+    assert "python tools/asset_generation_manifest_check.py --check-files" in skill
+    assert "Update the matching ASSETS.md rows only after manifest validation passes" in skill
+    assert "runtime artifact" in skill
+    assert "Validate manifest entry content and referenced files." in producer
+    assert "manager upserts entries and" in runtime

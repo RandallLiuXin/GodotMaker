@@ -16,7 +16,9 @@ terrain chunks, and collision-aligned horizontal pieces.
 2. Create a layout guide when fixed cells are needed.
 3. Generate the source through the provider doc.
 4. Process with `tools/asset_sheet_process.py --snap-mode grid`.
-5. Write final segments and manifest entries.
+5. Choose final segments or a processed strip atlas.
+6. Write segment metadata when final is a processed strip atlas.
+7. Write manifest entries.
 
 ## Prompt Contract
 
@@ -46,10 +48,14 @@ python tools/asset_sheet_process.py \
 ```
 
 Use one selected final segment per cap, repeat middle, end, slope, or variant.
+Use a processed strip atlas only with named segment metadata.
+Write `runtime_artifact: single` in segment PNG manifest entries.
+Write `runtime_artifact: region_atlas` in strip atlas manifest entries.
 
 ## Outputs
 
 1. strip source
-2. final strip segments
-3. processing report
-4. manifest entry JSON
+2. final strip segments or processed strip atlas
+3. segment metadata when final is an atlas
+4. processing report
+5. manifest entry JSON

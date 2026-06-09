@@ -59,7 +59,25 @@ Use exactly one provider doc per production unit:
 6. `needs_curation`
 7. `rejected`
 
+## Runtime Artifact Types
+
+Use `runtime_artifact` to describe the ready asset shape:
+
+| Type | Use for | Required manifest data |
+|------|---------|------------------------|
+| `reference` | Style, screen, and planning references | `final_path` or `source_path`, contract summary |
+| `single` | One runtime image | `final_path`, target geometry or extraction data |
+| `grid_sheet` | Regular grid sheet for animation, FX, or fixed cells | grid/action metadata |
+| `region_atlas` | Irregular UI, icon, prop, strip, or tileset atlas | `final_path`, `qc.atlas_metadata.metadata_path`, atlas regions |
+
 ## Manifest Handoff
+
+Each ready entry writes `runtime_artifact` as one of:
+
+1. `reference`
+2. `single`
+3. `grid_sheet`
+4. `region_atlas`
 
 Upsert manifest entries with:
 
@@ -72,6 +90,9 @@ Validate the manifest with:
 ```bash
 python tools/asset_generation_manifest_check.py --check-files
 ```
+
+Producer reports include manifest entry paths. The manager upserts entries and
+runs full manifest validation before updating ASSETS.md.
 
 Update matching ASSETS.md rows with:
 
@@ -95,6 +116,7 @@ Manifest entry shape:
   "derived_from": null,
   "canonical_reference": null,
   "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
+  "runtime_artifact": "single",
   "processing_status": "ready",
   "extraction_status": "processed",
   "qc": {},
@@ -141,6 +163,50 @@ Required curation fields:
 2. `strategy`
 3. `report_path` when `status` is not `not_required`
 
+## Runtime Ready Gate
+
+Foreground runtime asset families:
+
+1. `projectile_fx_source`
+2. `impact_fx_source`
+3. `compact_prop_pack`
+4. `ui_component_sheet`
+5. `icon_pack`
+6. `panel_source`
+7. `scene_prop_set`
+8. `platform_strip`
+9. `runtime_sprite`
+
+When one of these families is `ready`, set `runtime_artifact` to one of:
+
+1. `single`
+2. `grid_sheet`
+3. `region_atlas`
+
+Ready gate by artifact:
+
+1. `single`: use one runtime-ready image.
+2. `grid_sheet`: include grid/action metadata.
+3. `region_atlas`: include atlas metadata with named regions and rects.
+4. `reference`: do not mark ASSETS runtime rows generated from this entry.
+
+Atlas metadata shape:
+
+```json
+{
+  "metadata_path": "assets/ui/main_atlas.json",
+  "region_count": 8,
+  "regions": [
+    {
+      "name": "battle_button",
+      "rect": [0, 0, 256, 96],
+      "pivot": [0.5, 0.5],
+      "nine_slice": null
+    }
+  ]
+}
+```
+
 ## Production Unit Plan Shape
 
 Use this shape for manager-to-producer handoff:
@@ -162,6 +228,7 @@ Use this shape for manager-to-producer handoff:
       "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
       "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
       "final_path": "assets/<path>.png",
+      "runtime_artifact": "<reference|single|grid_sheet|region_atlas>",
       "manifest_entry_path": ".godotmaker/asset-generation/work/manifest-entries/<asset_id>.json"
     }
   ],

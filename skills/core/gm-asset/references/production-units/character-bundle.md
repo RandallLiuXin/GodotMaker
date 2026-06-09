@@ -13,7 +13,7 @@ recurring creatures.
 ## Steps
 
 1. Generate or use one canonical identity source.
-2. Finalize the accepted canonical reference with
+2. Finalize the accepted canonical reference for identity reuse with
    `tools/asset_image_finalize.py`.
 3. Make the canonical visible before derivative actions when the provider
    supports image references.
@@ -24,6 +24,9 @@ recurring creatures.
 7. Build frame-output manifest entries with
    `tools/asset_action_manifest_entry.py`.
 8. Write one report with canonical, action, frame, GIF, and manifest paths.
+9. Use processed action frames or delivery sheets as runtime character assets.
+10. Write `runtime_artifact: grid_sheet` in runtime character animation
+    manifest entries.
 
 ## Prompt Contract
 

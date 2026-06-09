@@ -195,25 +195,26 @@ For each `asset-producer` report:
 1. Confirm status is `DONE`, `PARTIAL`, or `FAILED`.
 2. Confirm listed source, final, prompt, report, and manifest-entry files exist
    when claimed.
-3. Upsert manifest entries:
+3. Confirm every ready manifest entry contains `runtime_artifact`.
+4. Upsert manifest entries:
 
 ```bash
 python tools/asset_generation_manifest_update.py --entry-file <entry.json>
 ```
 
-4. Run manifest validation:
+5. Run full manifest validation:
 
 ```bash
 python tools/asset_generation_manifest_check.py --check-files
 ```
 
-5. Update the matching ASSETS.md rows:
+6. Update the matching ASSETS.md rows only after manifest validation passes:
 
 ```bash
 python tools/asset_assets_md_update.py --entry-file <entry.json>
 ```
 
-6. Redispatch failed or incomplete production units once when the failure is
+7. Redispatch failed or incomplete production units once when the failure is
    actionable from the report.
 
 ### Step 6 - Update ASSETS.md
@@ -225,7 +226,8 @@ For current-tag rows only:
 3. Mark unprovided audio `deferred`.
 4. Keep rows with incomplete curation or missing final paths as `MISSING`.
 5. Confirm `Generation Params` include provider, production unit, prompt path,
-   source path, final path, curation report, and manifest entry.
+   source path, final path, runtime artifact, metadata path when present,
+   curation report, and manifest entry.
 6. Update the Visual Asset Contract for gameplay-visible generated assets.
 
 Do not mark source sheets, references, or curation candidates as final runtime

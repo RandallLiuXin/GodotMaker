@@ -143,6 +143,33 @@ def test_check_manifest_requires_background_target_geometry(tmp_path):
         check_manifest(manifest, project_root=tmp_path)
 
 
+def test_check_manifest_accepts_scene_prop_and_platform_families(tmp_path):
+    for family in ("scene_prop_set", "platform_strip"):
+        manifest = tmp_path / family / ".godotmaker" / "asset-generation" / "manifest.json"
+        write_manifest(
+            manifest,
+            {
+                "asset_id": f"{family}_source",
+                "family": family,
+                "production_shape": "grid_sheet",
+                "processing_status": "needs_curation",
+                "extraction_status": "extracted",
+                "final_path": None,
+                "curation": {
+                    "status": "candidate_extracted",
+                    "strategy": "solid_background_autoslice",
+                    "report_path": f".godotmaker/asset-generation/curation/{family}.json",
+                    "selected_count": 0,
+                    "rejected_count": 0,
+                },
+            },
+        )
+
+        result = check_manifest(manifest, project_root=tmp_path / family)
+
+        assert result["asset_count"] == 1
+
+
 def test_check_manifest_allows_deferred_background_without_target_geometry(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_manifest(
@@ -340,6 +367,170 @@ def test_check_manifest_rejects_ready_asset_with_unselected_curation(tmp_path):
     )
 
     with pytest.raises(ManifestCheckError, match="must be selected or not_required"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_foreground_ready_without_curation(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "runtime_sprite",
+            "production_shape": "single_image",
+            "extraction_status": "not_required",
+            "curation": None,
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="single"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_foreground_ready_with_not_required_curation(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "projectile_fx_source",
+            "production_shape": "single_image",
+            "extraction_status": "not_required",
+            "curation": {
+                "status": "not_required",
+                "strategy": "none",
+                "report_path": None,
+                "selected_count": 0,
+                "rejected_count": 0,
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="single"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_accepts_foreground_ready_with_selected_curation(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "icon_pack",
+            "production_shape": "single_image",
+            "runtime_artifact": "single",
+            "extraction_status": "processed",
+            "curation": {
+                "status": "selected",
+                "strategy": "solid_background_autoslice",
+                "report_path": ".godotmaker/asset-generation/curation/icon_pack.json",
+                "selected_count": 1,
+                "rejected_count": 0,
+            },
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
+
+
+def test_check_manifest_accepts_foreground_ready_region_atlas(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "ui_component_sheet",
+            "production_shape": "grid_sheet",
+            "runtime_artifact": "region_atlas",
+            "extraction_status": "processed",
+            "curation": {
+                "status": "selected",
+                "strategy": "solid_background_autoslice",
+                "report_path": ".godotmaker/asset-generation/curation/ui_kit.json",
+                "selected_count": 8,
+                "rejected_count": 0,
+            },
+            "qc": {
+                "atlas_metadata": {
+                    "metadata_path": "assets/ui/main_atlas.json",
+                    "region_count": 2,
+                    "regions": [
+                        {"name": "battle_button", "rect": [0, 0, 256, 96]},
+                        {"name": "quest_tile", "rect": [256, 0, 256, 96]},
+                    ],
+                }
+            },
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
+
+
+def test_check_manifest_rejects_foreground_ready_region_atlas_without_metadata(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "ui_component_sheet",
+            "production_shape": "grid_sheet",
+            "runtime_artifact": "region_atlas",
+            "extraction_status": "processed",
+            "curation": {
+                "status": "selected",
+                "strategy": "solid_background_autoslice",
+                "report_path": ".godotmaker/asset-generation/curation/ui_kit.json",
+                "selected_count": 8,
+                "rejected_count": 0,
+            },
+            "qc": {},
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="atlas_metadata"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_foreground_ready_with_unprocessed_extraction(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "ui_component_sheet",
+            "production_shape": "curation_required",
+            "runtime_artifact": "single",
+            "extraction_status": "source_sheet",
+            "curation": {
+                "status": "selected",
+                "strategy": "solid_background_autoslice",
+                "report_path": ".godotmaker/asset-generation/curation/ui_kit.json",
+                "selected_count": 1,
+                "rejected_count": 0,
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="extraction_status"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_foreground_ready_reference_artifact(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "family": "runtime_sprite",
+            "production_shape": "single_image",
+            "runtime_artifact": "reference",
+            "extraction_status": "not_required",
+            "curation": {
+                "status": "not_required",
+                "strategy": "none",
+                "report_path": None,
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="runtime_artifact"):
         check_manifest(manifest, project_root=tmp_path)
 
 

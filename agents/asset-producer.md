@@ -38,8 +38,9 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 5. Generate or claim source images.
 6. Run required processing tools.
 7. Write prompt files, reports, and manifest entry files.
-8. Verify listed output files exist.
-9. Write the Asset Producer Report.
+8. Validate manifest entry content and referenced files.
+9. Verify listed output files exist.
+10. Write the Asset Producer Report.
 
 ## Prompt Rules
 

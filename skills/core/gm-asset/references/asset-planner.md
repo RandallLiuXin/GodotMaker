@@ -65,12 +65,12 @@ Choose the first matching unit.
 | --- | --- | --- |
 | `screen-reference` | Missing `references/scene_*.png`, style anchor, or evaluation visual target. | Runtime backgrounds, map bases, parallax plates, final props, or playable scene objects. |
 | `character-bundle` | Player, enemy, NPC, summon, boss, portrait, bust, or recurring creature identity. | Detached projectiles, impact bursts, UI pieces, props, or terrain. |
-| `fx-bundle` | Projectile, impact, pickup effect, slash, muzzle, aura, explosion, or detached effect sequence. | Character body animation, UI icons, props, or map scenery. |
+| `fx-bundle` | Projectile, impact, pickup effect, slash, muzzle, aura, explosion, detached effect sequence, or foreground gameplay sprite with effect behavior. | Character body animation, UI icons, props, or map scenery. |
 | `ui-kit` | Buttons, panels, tabs, counters, badges, card frames, HUD pieces, map markers, cursors, and icons that share one interface style. | Full composite screens, readable text, logos, fonts, scene backgrounds, or runtime props. |
-| `compact-prop-pack` | Small props, pickups, crates, stones, bushes, pots, debris, lamps, and signs that can share one source sheet. | Wide, tall, collision-bearing, platform, floor, bridge, wall, ladder, gate, door, terrain, or tileset assets. |
+| `compact-prop-pack` | Small props, collectable pickups, crates, stones, bushes, pots, debris, lamps, and signs that can share one source sheet. | Wide, tall, collision-bearing, platform, floor, bridge, wall, ladder, gate, door, terrain, or tileset assets. |
 | `background-map` | Runtime background, map base, parallax plate, fixed battle background, title/splash illustration, or fixed-viewport scenic asset. | Scene references, extracted props, character actors, UI kits, or collision-bearing strips. |
 | `platform-strip` | Floors, bridges, platforms, rails, pipes, long hazards, terrain chunks, and collision-aligned horizontal pieces. | Compact props, characters, FX, UI pieces, or full backgrounds. |
-| `scene-prop-set` | Final runtime objects derived from a scene, map, or stage reference. | Generic prop packs without a scene reference, backgrounds, UI, characters, or FX. |
+| `scene-prop-set` | Final runtime foreground objects derived from a scene, map, or stage reference. | Generic prop packs without a scene reference, backgrounds, UI, characters, FX, or uncut single-image foreground sprites. |
 
 Default font, logo, and wordmark rows to `provided` or `deferred` unless the
 user explicitly requested generated image assets.
@@ -106,7 +106,7 @@ user explicitly requested generated image assets.
 | `background` | `background-map` |
 | `platform_strip` | `platform-strip` |
 | `scene_prop_set` | `scene-prop-set` |
-| `runtime_sprite` | `scene-prop-set` |
+| `runtime_sprite` | `compact-prop-pack` |
 | `texture` | `background-map` |
 | `audio` | no generated production unit |
 
@@ -124,6 +124,8 @@ Record these fields for each generated visual production unit:
 8. `prompt_paths`
 9. `report_path`
 10. `manifest_entry_paths`
+11. `runtime_artifacts`
+12. `metadata_paths`
 
 ## Dependency Order
 
@@ -159,8 +161,10 @@ Update `Generation Params` with:
 2. production unit
 3. source path
 4. final path
-5. prompt path
-6. curation report
-7. manifest entry
+5. runtime artifact
+6. metadata path when final is an atlas, strip, or animation
+7. prompt path
+8. curation report
+9. manifest entry
 
 Update the Visual Asset Contract for gameplay-visible final assets.

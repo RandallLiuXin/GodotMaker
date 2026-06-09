@@ -18,8 +18,11 @@ small signs, lamps, and compact environmental dressing.
 4. Run `tools/asset_sheet_process.py --snap-mode autoslice`.
 5. Use `tools/asset_sheet_process.py --snap-mode grid` only when every prop has
    a deliberate fixed cell.
-6. Select final prop candidates.
-7. Write manifest entries.
+6. Select final prop PNGs by default.
+7. Use a processed prop atlas only when the ASSETS row asks for a pack or atlas.
+8. Write atlas metadata when final is a processed atlas.
+9. Write manifest entries.
+10. Mark rows generated only after final prop artifacts are ready.
 
 ## Prompt Contract
 
@@ -50,15 +53,26 @@ python tools/asset_sheet_process.py \
 ```
 
 Use `--snap-mode grid` only for deliberate equal-cell prop packs.
+Use the same autoslice path for one-item pickup, collectable, and small-prop
+sources.
+Do not use a source pack as an independent final prop artifact.
 
 Select final props with `tools/asset_curation_select.py`.
 Create selected-candidate manifest entries with
 `tools/asset_curation_manifest_entry.py`.
 
+For a requested prop atlas:
+
+1. Write a transparent processed atlas to the final path.
+2. Write atlas metadata with named prop regions.
+3. Write `runtime_artifact: region_atlas` in the manifest entry.
+4. Write `qc.atlas_metadata.metadata_path` in the manifest entry.
+
 ## Outputs
 
 1. prop source sheet
 2. extracted candidates
-3. selected final prop assets
-4. curation report
-5. manifest entry JSON
+3. selected final prop PNGs or processed prop atlas
+4. atlas metadata when final is an atlas
+5. curation report
+6. manifest entry JSON

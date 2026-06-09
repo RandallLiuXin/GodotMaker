@@ -22,9 +22,41 @@ ALLOWED_FAMILIES = {
     "icon_pack",
     "panel_source",
     "background",
+    "scene_prop_set",
+    "platform_strip",
     "runtime_sprite",
     "texture",
     "audio",
+}
+
+FOREGROUND_CURATED_FAMILIES = {
+    "projectile_fx_source",
+    "impact_fx_source",
+    "compact_prop_pack",
+    "ui_component_sheet",
+    "icon_pack",
+    "panel_source",
+    "scene_prop_set",
+    "platform_strip",
+    "runtime_sprite",
+}
+
+ALLOWED_RUNTIME_ARTIFACTS = {
+    "reference",
+    "single",
+    "grid_sheet",
+    "region_atlas",
+}
+
+FOREGROUND_READY_ARTIFACTS = {
+    "single",
+    "grid_sheet",
+    "region_atlas",
+}
+
+REFERENCE_FAMILIES = {
+    "screen_reference",
+    "style_reference",
 }
 
 ALLOWED_PRODUCTION_SHAPES = {
@@ -319,6 +351,116 @@ def _check_character_frame_output(
     return extra_file_paths
 
 
+def _check_action_runtime_metadata(
+    item: dict[str, Any],
+    *,
+    index: int,
+    issues: list[str],
+    require_sheet: bool,
+) -> list[str]:
+    extra_file_paths: list[str] = []
+    qc = item.get("qc")
+    if not isinstance(qc, dict):
+        issues.append(f"assets[{index}].qc must be an object for animation runtime artifact")
+        return extra_file_paths
+    action = qc.get("action_processing")
+    if not isinstance(action, dict):
+        issues.append(
+            f"assets[{index}].qc.action_processing is required for animation runtime artifact"
+        )
+        return extra_file_paths
+
+    frame_paths = action.get("frame_paths")
+    if not isinstance(frame_paths, list) or not frame_paths:
+        issues.append(f"assets[{index}].qc.action_processing.frame_paths must be a non-empty list")
+    else:
+        for frame_index, frame_path in enumerate(frame_paths):
+            if not isinstance(frame_path, str) or not frame_path.strip():
+                issues.append(
+                    f"assets[{index}].qc.action_processing.frame_paths[{frame_index}] "
+                    "must be a non-empty string"
+                )
+                continue
+            extra_file_paths.append(frame_path)
+
+    metadata_path = action.get("metadata_path")
+    if not isinstance(metadata_path, str) or not metadata_path.strip():
+        issues.append(f"assets[{index}].qc.action_processing.metadata_path must be a non-empty string")
+    else:
+        extra_file_paths.append(metadata_path)
+
+    if require_sheet:
+        sheet_path = action.get("sheet_path")
+        if not isinstance(sheet_path, str) or not sheet_path.strip():
+            issues.append(f"assets[{index}].qc.action_processing.sheet_path must be a non-empty string")
+        else:
+            extra_file_paths.append(sheet_path)
+
+    edge_touch = action.get("edge_touch_frames")
+    if edge_touch is not None and not isinstance(edge_touch, list):
+        issues.append(f"assets[{index}].qc.action_processing.edge_touch_frames must be a list")
+    if isinstance(edge_touch, list) and edge_touch:
+        issues.append(f"assets[{index}].qc.action_processing.edge_touch_frames must be empty")
+
+    return extra_file_paths
+
+
+def _check_atlas_metadata(
+    item: dict[str, Any],
+    *,
+    index: int,
+    issues: list[str],
+) -> str | None:
+    qc = item.get("qc")
+    if not isinstance(qc, dict):
+        issues.append(f"assets[{index}].qc must be an object for region_atlas")
+        return None
+    atlas = qc.get("atlas_metadata")
+    if not isinstance(atlas, dict):
+        issues.append(f"assets[{index}].qc.atlas_metadata is required for region_atlas")
+        return None
+
+    metadata_path = atlas.get("metadata_path")
+    if not isinstance(metadata_path, str) or not metadata_path.strip():
+        issues.append(f"assets[{index}].qc.atlas_metadata.metadata_path must be a non-empty string")
+        metadata_path = None
+
+    region_count = atlas.get("region_count")
+    regions = atlas.get("regions")
+    has_region_count = isinstance(region_count, int) and region_count > 0
+    has_regions = isinstance(regions, list) and len(regions) > 0
+    if not has_region_count and not has_regions:
+        issues.append(
+            f"assets[{index}].qc.atlas_metadata must include positive region_count or regions"
+        )
+
+    if isinstance(regions, list):
+        for region_index, region in enumerate(regions):
+            if not isinstance(region, dict):
+                issues.append(
+                    f"assets[{index}].qc.atlas_metadata.regions[{region_index}] must be an object"
+                )
+                continue
+            name = region.get("name")
+            if not isinstance(name, str) or not name.strip():
+                issues.append(
+                    f"assets[{index}].qc.atlas_metadata.regions[{region_index}].name "
+                    "must be a non-empty string"
+                )
+            rect = region.get("rect")
+            if (
+                not isinstance(rect, list)
+                or len(rect) != 4
+                or any(not isinstance(value, int) or value < 0 for value in rect)
+            ):
+                issues.append(
+                    f"assets[{index}].qc.atlas_metadata.regions[{region_index}].rect "
+                    "must be four non-negative integers"
+                )
+
+    return metadata_path if isinstance(metadata_path, str) and metadata_path.strip() else None
+
+
 def check_manifest(
     manifest_path: Path,
     *,
@@ -363,6 +505,13 @@ def check_manifest(
         source_path = _string_field(item, "source_path", issues, index=index, required=False)
         final_path = _string_field(item, "final_path", issues, index=index, required=False)
         prompt_path = _string_field(item, "prompt_path", issues, index=index, required=False)
+        runtime_artifact = _string_field(
+            item,
+            "runtime_artifact",
+            issues,
+            index=index,
+            required=False,
+        )
         processing_status = _string_field(item, "processing_status", issues, index=index)
         extraction_status = _string_field(item, "extraction_status", issues, index=index)
         curation_report_path, curation_status = _check_curation(item, index=index, issues=issues)
@@ -415,6 +564,10 @@ def check_manifest(
             issues.append(
                 f"assets[{index}].production_shape is not allowed: {production_shape}"
             )
+        if runtime_artifact and runtime_artifact not in ALLOWED_RUNTIME_ARTIFACTS:
+            issues.append(
+                f"assets[{index}].runtime_artifact is not allowed: {runtime_artifact}"
+            )
         if processing_status and processing_status not in ALLOWED_PROCESSING_STATUSES:
             issues.append(
                 f"assets[{index}].processing_status is not allowed: {processing_status}"
@@ -442,6 +595,93 @@ def check_manifest(
                 f"for {processing_status}"
             )
 
+        extra_file_paths: list[str] = []
+        runtime_artifact_checked = False
+        if family in FOREGROUND_CURATED_FAMILIES and processing_status == "ready":
+            clean_artifact = runtime_artifact
+            if clean_artifact is None:
+                if production_shape in {"action_sheet", "delivery_sheet", "frame_sequence"}:
+                    clean_artifact = "grid_sheet"
+                elif production_shape in {"grid_sheet", "curation_required"}:
+                    clean_artifact = "region_atlas"
+                else:
+                    clean_artifact = "single"
+            if clean_artifact not in FOREGROUND_READY_ARTIFACTS:
+                issues.append(
+                    f"assets[{index}].runtime_artifact is not valid for runtime-ready foreground: "
+                    f"{clean_artifact}"
+                )
+            if clean_artifact == "single":
+                curation = item.get("curation")
+                if curation is None:
+                    issues.append(f"assets[{index}] missing selected curation for single")
+                elif curation_status != "selected":
+                    issues.append(
+                        f"assets[{index}].curation.status must be selected for single"
+                    )
+                elif curation.get("strategy") == "none":
+                    issues.append(
+                        f"assets[{index}].curation.strategy must not be none for single"
+                    )
+                if extraction_status not in {"extracted", "processed"}:
+                    issues.append(
+                        f"assets[{index}].extraction_status must be extracted or processed "
+                        "for single"
+                    )
+            elif clean_artifact == "region_atlas":
+                runtime_artifact_checked = True
+                atlas_metadata_path = _check_atlas_metadata(item, index=index, issues=issues)
+                if atlas_metadata_path:
+                    extra_file_paths.append(atlas_metadata_path)
+                if extraction_status not in {"extracted", "processed"}:
+                    issues.append(
+                        f"assets[{index}].extraction_status must be extracted or processed "
+                        "for region_atlas"
+                    )
+            elif clean_artifact == "grid_sheet":
+                runtime_artifact_checked = True
+                extra_file_paths.extend(
+                    _check_action_runtime_metadata(
+                        item,
+                        index=index,
+                        issues=issues,
+                        require_sheet=True,
+                    )
+                )
+                if extraction_status != "processed":
+                    issues.append(
+                        f"assets[{index}].extraction_status must be processed for {clean_artifact}"
+                    )
+
+        if runtime_artifact == "reference" and family not in REFERENCE_FAMILIES:
+            issues.append(
+                f"assets[{index}].runtime_artifact reference is not allowed for family {family}"
+            )
+
+        if (
+            runtime_artifact == "region_atlas"
+            and processing_status in {"processed", "ready"}
+            and not runtime_artifact_checked
+        ):
+            atlas_metadata_path = _check_atlas_metadata(item, index=index, issues=issues)
+            if atlas_metadata_path:
+                extra_file_paths.append(atlas_metadata_path)
+
+        if (
+            runtime_artifact == "grid_sheet"
+            and processing_status in {"processed", "ready"}
+            and family != "character_frame_output"
+            and not runtime_artifact_checked
+        ):
+            extra_file_paths.extend(
+                _check_action_runtime_metadata(
+                    item,
+                    index=index,
+                    issues=issues,
+                    require_sheet=True,
+                )
+            )
+
         if (
             production_shape in {
                 "grid_sheet",
@@ -457,9 +697,10 @@ def check_manifest(
         if processing_status == "needs_curation" and item.get("curation") is None:
             issues.append(f"assets[{index}] missing curation for needs_curation")
 
-        extra_file_paths: list[str] = []
         if family == "character_frame_output":
-            extra_file_paths = _check_character_frame_output(item, index=index, issues=issues)
+            extra_file_paths.extend(
+                _check_character_frame_output(item, index=index, issues=issues)
+            )
 
         if check_files:
             if source_path and processing_status in {"source_only", "needs_curation", "processed", "ready"}:

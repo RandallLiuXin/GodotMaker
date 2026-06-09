@@ -16,7 +16,8 @@ scenic assets.
 2. Include fixed viewport, target aspect, and composition.
 3. Generate source images through the provider doc.
 4. Finalize with aspect validation when target size is fixed.
-5. Write manifest entries.
+5. Write `runtime_artifact: single` in the manifest entry.
+6. Write manifest entries.
 
 ## Prompt Contract
 
