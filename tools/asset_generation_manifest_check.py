@@ -21,6 +21,9 @@ ALLOWED_FAMILIES = {
     "ui_component_sheet",
     "icon_pack",
     "panel_source",
+    "card_component_sheet",
+    "card_frame_source",
+    "portrait_frame_source",
     "background",
     "scene_prop_set",
     "platform_strip",
@@ -36,6 +39,9 @@ FOREGROUND_CURATED_FAMILIES = {
     "ui_component_sheet",
     "icon_pack",
     "panel_source",
+    "card_component_sheet",
+    "card_frame_source",
+    "portrait_frame_source",
     "scene_prop_set",
     "platform_strip",
     "runtime_sprite",
@@ -52,6 +58,12 @@ FOREGROUND_READY_ARTIFACTS = {
     "single",
     "grid_sheet",
     "region_atlas",
+}
+
+DIRECT_SINGLE_FAMILIES = {
+    "panel_source",
+    "card_frame_source",
+    "portrait_frame_source",
 }
 
 REFERENCE_FAMILIES = {
@@ -683,20 +695,33 @@ def check_manifest(
                     f"{clean_artifact}"
                 )
             if clean_artifact == "single":
-                curation = item.get("curation")
-                if curation is None:
-                    issues.append(f"assets[{index}] missing selected curation for single")
-                elif curation_status != "selected":
+                if production_shape == "single_image" and family in DIRECT_SINGLE_FAMILIES:
+                    if curation_status not in {None, "not_required", "selected"}:
+                        issues.append(
+                            f"assets[{index}].curation.status must be not_required "
+                            "or selected for single_image"
+                        )
+                else:
+                    curation = item.get("curation")
+                    if curation is None:
+                        issues.append(f"assets[{index}] missing selected curation for single")
+                    elif curation_status != "selected":
+                        issues.append(
+                            f"assets[{index}].curation.status must be selected for single"
+                        )
+                    elif curation.get("strategy") == "none":
+                        issues.append(
+                            f"assets[{index}].curation.strategy must not be none for single"
+                        )
+                allowed_extraction = (
+                    {"not_required", "processed", "extracted"}
+                    if production_shape == "single_image" and family in DIRECT_SINGLE_FAMILIES
+                    else {"extracted", "processed"}
+                )
+                if extraction_status not in allowed_extraction:
                     issues.append(
-                        f"assets[{index}].curation.status must be selected for single"
-                    )
-                elif curation.get("strategy") == "none":
-                    issues.append(
-                        f"assets[{index}].curation.strategy must not be none for single"
-                    )
-                if extraction_status not in {"extracted", "processed"}:
-                    issues.append(
-                        f"assets[{index}].extraction_status must be extracted or processed "
+                        f"assets[{index}].extraction_status must be one of "
+                        f"{sorted(allowed_extraction)} "
                         "for single"
                     )
             elif clean_artifact == "region_atlas":

@@ -48,7 +48,8 @@ When no visual anchor exists:
 1. Plan only one foundation `screen-reference` production unit.
 2. Use the primary current-tag scene from `SCENES.md`.
 3. Do not dispatch `background-map`, `character-bundle`, `fx-bundle`,
-   `ui-kit`, `compact-prop-pack`, `platform-strip`, or `scene-prop-set`.
+   `ui-kit`, `card-kit`, `compact-prop-pack`, `platform-strip`, or
+   `scene-prop-set`.
 4. Collect the foundation reference report.
 5. Rebuild the production plan.
 
@@ -66,7 +67,8 @@ Choose the first matching unit.
 | `screen-reference` | Missing `references/scene_*.png`, style anchor, or evaluation visual target. | Runtime backgrounds, map bases, parallax plates, final props, or playable scene objects. |
 | `character-bundle` | Player, enemy, NPC, summon, boss, portrait, bust, or recurring creature identity. | Detached projectiles, impact bursts, UI pieces, props, or terrain. |
 | `fx-bundle` | Projectile, impact, pickup effect, slash, muzzle, aura, explosion, detached effect sequence, or foreground gameplay sprite with effect behavior. | Character body animation, UI icons, props, or map scenery. |
-| `ui-kit` | Buttons, panels, tabs, counters, badges, card frames, HUD pieces, map markers, cursors, and icons that share one interface style. | Full composite screens, readable text, logos, fonts, scene backgrounds, or runtime props. |
+| `ui-kit` | Buttons, panels, tabs, counters, HUD pieces, map markers, cursors, icons, progress bars, and scalable UI pieces that share one interface style. | Full composite screens, readable text, logos, fonts, card frames, portrait frames, scene backgrounds, or runtime props. |
+| `card-kit` | Card frames, portrait frames, rarity frames, card slots, deck slots, card markers, and card-game-specific UI pieces. | Generic HUD controls, character portraits, full composite screens, readable text, logos, fonts, scene backgrounds, or runtime props. |
 | `compact-prop-pack` | Small props, collectable pickups, crates, stones, bushes, pots, debris, lamps, and signs that can share one source sheet. | Wide, tall, collision-bearing, platform, floor, bridge, wall, ladder, gate, door, terrain, or tileset assets. |
 | `background-map` | Runtime background, map base, parallax plate, fixed battle background, title/splash illustration, or fixed-viewport scenic asset. | Scene references, extracted props, character actors, UI kits, or collision-bearing strips. |
 | `platform-strip` | Floors, bridges, platforms, rails, pipes, long hazards, terrain chunks, and collision-aligned horizontal pieces. | Compact props, characters, FX, UI pieces, or full backgrounds. |
@@ -83,6 +85,7 @@ user explicitly requested generated image assets.
 | `character-bundle` | `references/production-units/character-bundle.md` |
 | `fx-bundle` | `references/production-units/fx-bundle.md` |
 | `ui-kit` | `references/production-units/ui-kit.md` |
+| `card-kit` | `references/production-units/card-kit.md` |
 | `compact-prop-pack` | `references/production-units/compact-prop-pack.md` |
 | `background-map` | `references/production-units/background-map.md` |
 | `platform-strip` | `references/production-units/platform-strip.md` |
@@ -103,6 +106,9 @@ user explicitly requested generated image assets.
 | `ui_component_sheet` | `ui-kit` |
 | `icon_pack` | `ui-kit` |
 | `panel_source` | `ui-kit` |
+| `card_component_sheet` | `card-kit` |
+| `card_frame_source` | `card-kit` |
+| `portrait_frame_source` | `card-kit` |
 | `background` | `background-map` |
 | `platform_strip` | `platform-strip` |
 | `scene_prop_set` | `scene-prop-set` |
@@ -133,7 +139,7 @@ Use this order when units depend on each other:
 
 1. `screen-reference` and style anchors.
 2. `background-map`.
-3. `character-bundle` canonicals and `ui-kit` source sheets.
+3. `character-bundle` canonicals, `ui-kit`, and `card-kit` source sheets.
 4. `character-bundle` actions, `fx-bundle`, `compact-prop-pack`,
    `platform-strip`, and `scene-prop-set`.
 5. Curation and manifest update.

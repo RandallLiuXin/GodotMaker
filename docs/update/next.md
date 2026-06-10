@@ -38,6 +38,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added a curation manifest-entry helper so selected source-sheet candidates can produce validated runtime handoff entries.
 - Split the asset generation reference into runtime pipeline and prompt-contract references.
 - Added character animation asset contracts for canonical sources, per-action source sheets, processed frame outputs, action processing metadata, and final runtime handoff validation.
+- Added a dedicated card-kit production unit so card frames, portrait frames, rarity frames, card slots, and card-game UI assets no longer share the generic UI component path.
 
 ## Changed
 

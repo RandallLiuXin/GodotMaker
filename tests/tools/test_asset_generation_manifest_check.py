@@ -204,8 +204,14 @@ def test_check_manifest_requires_background_target_geometry(tmp_path):
         check_manifest(manifest, project_root=tmp_path)
 
 
-def test_check_manifest_accepts_scene_prop_and_platform_families(tmp_path):
-    for family in ("scene_prop_set", "platform_strip"):
+def test_check_manifest_accepts_scene_prop_platform_and_card_families(tmp_path):
+    for family in (
+        "scene_prop_set",
+        "platform_strip",
+        "card_component_sheet",
+        "card_frame_source",
+        "portrait_frame_source",
+    ):
         manifest = tmp_path / family / ".godotmaker" / "asset-generation" / "manifest.json"
         write_manifest(
             manifest,
@@ -229,6 +235,34 @@ def test_check_manifest_accepts_scene_prop_and_platform_families(tmp_path):
         result = check_manifest(manifest, project_root=tmp_path / family)
 
         assert result["asset_count"] == 1
+
+
+def test_check_manifest_accepts_card_frame_single_image_without_curation(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "card_frame_gold",
+            "family": "card_frame_source",
+            "production_shape": "single_image",
+            "runtime_artifact": "single",
+            "runtime_role": "card frame",
+            "source_path": ".godotmaker/asset-generation/sources/card_frame_gold_source.png",
+            "final_path": "assets/ui/card_frame_gold.png",
+            "prompt_path": ".godotmaker/asset-generation/prompts/card_frame_gold.txt",
+            "processing_status": "ready",
+            "extraction_status": "not_required",
+            "curation": {
+                "status": "not_required",
+                "strategy": "none",
+                "report_path": None,
+            },
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
 
 
 def test_check_manifest_allows_deferred_background_without_target_geometry(tmp_path):

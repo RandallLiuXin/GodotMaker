@@ -1,18 +1,21 @@
 # UI Kit Production Unit
 
-Use this unit for buttons, panels, tabs, badges, counters, card frames, HUD
-pieces, and icons that share one interface style.
+Use this unit for reusable interface components such as buttons, panels, tabs,
+badges, counters, HUD pieces, icons, progress bars, and scalable UI pieces.
+Do not use this unit for card frames, portrait frames, rarity frames, card
+slots, or card-game-specific UI assets.
 
 ## Inputs
 
-1. Visible UI references or `STYLE.md` seed
+1. Visible UI references or style seed
 2. UI rows in ASSETS.md
 3. Scene references that show the UI context
 4. Required component names and final paths
 
 ## Steps
 
-1. Group related UI pieces into one kit source when style consistency matters.
+1. Group related UI pieces into one kit source when they share one interface
+   style.
 2. Use separated components on solid `#FF00FF` by default.
 3. Generate the source through the provider doc.
 4. Run `tools/asset_sheet_process.py --snap-mode autoslice` for separated
@@ -36,7 +39,8 @@ State:
 4. clear spacing
 5. no text or numbers
 6. no composite screen
-7. solid `#FF00FF` background
+7. no card frame or portrait-frame layout
+8. solid `#FF00FF` background
 
 ## Post-Processing
 

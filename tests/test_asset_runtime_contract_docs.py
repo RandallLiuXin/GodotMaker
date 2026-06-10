@@ -78,6 +78,7 @@ def test_production_unit_docs_are_first_entry_points():
         "character-bundle",
         "fx-bundle",
         "ui-kit",
+        "card-kit",
         "compact-prop-pack",
         "background-map",
         "platform-strip",
@@ -97,14 +98,31 @@ def test_production_unit_docs_are_first_entry_points():
 
 def test_ui_and_prop_units_default_to_autoslice():
     ui = _read("skills/core/gm-asset/references/production-units/ui-kit.md")
+    card = _read("skills/core/gm-asset/references/production-units/card-kit.md")
     props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
     curation = _read("skills/core/gm-asset/references/asset-curation.md")
 
     assert "--snap-mode autoslice" in ui
+    assert "--snap-mode autoslice" in card
     assert "--snap-mode autoslice" in props
     assert "--snap-mode grid" in ui
+    assert "--snap-mode grid" in card
     assert "--snap-mode grid" in props
     assert "Use the assigned production-unit doc for extraction" in curation
+
+
+def test_card_kit_is_separate_from_generic_ui_components():
+    planner = _read("skills/core/gm-asset/references/asset-planner.md")
+    ui = _read("skills/core/gm-asset/references/production-units/ui-kit.md")
+    card = _read("skills/core/gm-asset/references/production-units/card-kit.md")
+
+    assert "| `card-kit` | `references/production-units/card-kit.md` |" in planner
+    assert "| `card_frame_source` | `card-kit` |" in planner
+    assert "| `portrait_frame_source` | `card-kit` |" in planner
+    assert "Do not use this unit for card frames" in ui
+    assert "no card frame or portrait-frame layout" in ui
+    assert "card-game-specific visual assets" in card
+    assert "empty portrait windows and card art windows" in card
 
 
 def test_foreground_production_units_do_not_finalize_source_images():
@@ -169,6 +187,9 @@ def test_runtime_pipeline_documents_runtime_ready_gate():
     assert "## Runtime Ready Gate" in runtime
     assert "`projectile_fx_source`" in runtime
     assert "`ui_component_sheet`" in runtime
+    assert "`card_component_sheet`" in runtime
+    assert "`card_frame_source`" in runtime
+    assert "`portrait_frame_source`" in runtime
     assert "`runtime_sprite`" in runtime
     assert "`region_atlas`" in runtime
     assert "`grid_sheet`" in runtime

@@ -173,9 +173,12 @@ Foreground runtime asset families:
 4. `ui_component_sheet`
 5. `icon_pack`
 6. `panel_source`
-7. `scene_prop_set`
-8. `platform_strip`
-9. `runtime_sprite`
+7. `card_component_sheet`
+8. `card_frame_source`
+9. `portrait_frame_source`
+10. `scene_prop_set`
+11. `platform_strip`
+12. `runtime_sprite`
 
 When one of these families is `ready`, set `runtime_artifact` to one of:
 
