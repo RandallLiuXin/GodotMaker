@@ -50,6 +50,16 @@ For each body action:
 
 ## Post-Processing
 
+Finalize the canonical source:
+
+```bash
+python tools/asset_image_finalize.py \
+  --source <canonical_source.png> \
+  --out <canonical_final.png> \
+  --background magenta \
+  --resize <WIDTHxHEIGHT>
+```
+
 Process each action source:
 
 ```bash

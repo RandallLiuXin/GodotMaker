@@ -137,6 +137,13 @@ def test_foreground_production_units_do_not_finalize_source_images():
     assert "runtime_artifact: grid_sheet" in character
 
 
+def test_character_canonical_uses_magenta_finalize():
+    character = _read("skills/core/gm-asset/references/production-units/character-bundle.md")
+
+    assert "tools/asset_image_finalize.py" in character
+    assert "--background magenta" in character
+
+
 def test_single_image_units_keep_finalize_path():
     screen = _read("skills/core/gm-asset/references/production-units/screen-reference.md")
     background = _read("skills/core/gm-asset/references/production-units/background-map.md")

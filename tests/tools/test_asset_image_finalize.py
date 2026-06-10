@@ -17,6 +17,28 @@ def make_png(path: Path, size=(8, 6), color=(255, 200, 0, 255)):
     Image.new("RGBA", size, color).save(path)
 
 
+def make_magenta_foreground_png(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (8, 8), (255, 0, 255, 255))
+    for x in range(2, 6):
+        for y in range(2, 6):
+            image.putpixel((x, y), (20, 60, 120, 255))
+    image.save(path)
+
+
+def make_magenta_with_internal_detail_png(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (10, 10), (255, 0, 255, 255))
+    for x in range(2, 8):
+        for y in range(2, 8):
+            image.putpixel((x, y), (20, 60, 120, 255))
+    for x in range(4, 6):
+        for y in range(4, 6):
+            image.putpixel((x, y), (255, 0, 255, 255))
+    image.putpixel((0, 5), (250, 20, 250, 255))
+    image.save(path)
+
+
 def test_finalize_copies_and_reports_image_metadata(tmp_path):
     source = tmp_path / "generated" / "coin.png"
     output = tmp_path / "assets" / "coin.png"
@@ -124,6 +146,53 @@ def test_finalize_keeps_matching_aspect_without_padding(tmp_path):
         )
 
 
+def test_finalize_keeps_magenta_background_by_default(tmp_path):
+    source = tmp_path / "generated" / "boss.png"
+    output = tmp_path / "assets" / "sprites" / "boss.png"
+    make_magenta_foreground_png(source)
+
+    result = finalize_image_asset(source, output)
+
+    assert result["width"] == 8
+    assert "background_cleanup" not in result
+    with Image.open(output) as image:
+        rgba = image.convert("RGBA")
+        assert rgba.getpixel((0, 0)) == (255, 0, 255, 255)
+        assert rgba.getpixel((3, 3)) == (20, 60, 120, 255)
+
+
+def test_finalize_removes_magenta_background_when_requested(tmp_path):
+    source = tmp_path / "generated" / "boss.png"
+    output = tmp_path / "assets" / "sprites" / "boss.png"
+    make_magenta_foreground_png(source)
+
+    result = finalize_image_asset(source, output, background="magenta", resize="8x8")
+
+    assert result["background"] == "magenta"
+    assert result["background_cleanup"]["removed_pixels"] == 48
+    with Image.open(output) as image:
+        rgba = image.convert("RGBA")
+        assert rgba.getpixel((0, 0))[3] == 0
+        assert rgba.getpixel((7, 7))[3] == 0
+        assert rgba.getpixel((3, 3)) == (20, 60, 120, 255)
+
+
+def test_finalize_keeps_internal_magenta_details(tmp_path):
+    source = tmp_path / "generated" / "boss.png"
+    output = tmp_path / "assets" / "sprites" / "boss.png"
+    make_magenta_with_internal_detail_png(source)
+
+    result = finalize_image_asset(source, output, background="magenta")
+
+    assert result["background_cleanup"]["removed_pixels"] == 64
+    with Image.open(output) as image:
+        rgba = image.convert("RGBA")
+        assert rgba.getpixel((0, 0))[3] == 0
+        assert rgba.getpixel((0, 5))[3] == 0
+        assert rgba.getpixel((4, 4)) == (255, 0, 255, 255)
+        assert rgba.getpixel((3, 3)) == (20, 60, 120, 255)
+
+
 def test_finalize_accepts_required_source_aspect_before_resize(tmp_path):
     source = tmp_path / "generated" / "scene.png"
     output = tmp_path / "references" / "scene_main.png"
@@ -222,6 +291,34 @@ def test_cli_no_origin_flag(tmp_path):
     data = json.loads(result.stdout)
     assert "origin" not in data
     assert not (tmp_path / "assets" / "origin" / "coin.png").exists()
+
+
+def test_cli_removes_magenta_background_when_requested(tmp_path):
+    source = tmp_path / "generated" / "boss.png"
+    output = tmp_path / "assets" / "sprites" / "boss.png"
+    make_magenta_foreground_png(source)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_image_finalize.py"),
+            "--source",
+            str(source),
+            "--out",
+            str(output),
+            "--background",
+            "magenta",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    data = json.loads(result.stdout)
+    assert data["background"] == "magenta"
+    with Image.open(output) as image:
+        assert image.convert("RGBA").getpixel((0, 0))[3] == 0
 
 
 def test_cli_rejects_required_source_aspect_mismatch(tmp_path):

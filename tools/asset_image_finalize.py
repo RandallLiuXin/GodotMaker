@@ -11,11 +11,15 @@ import json
 import shutil
 import sys
 import tempfile
+from collections import deque
 from pathlib import Path
 
 
 class ImageFinalizeError(Exception):
     """Raised when an image cannot be finalized."""
+
+
+MAGENTA_RGB = (255, 0, 255)
 
 
 def _parse_size(value: str | None) -> tuple[int, int] | None:
@@ -72,6 +76,60 @@ def _load_image(path: Path):
         return image
     except Exception as exc:
         raise ImageFinalizeError(f"Source is not a readable image: {path}") from exc
+
+
+def _color_distance(rgb: tuple[int, int, int], target: tuple[int, int, int] = MAGENTA_RGB) -> float:
+    red, green, blue = rgb
+    target_red, target_green, target_blue = target
+    return (
+        (red - target_red) ** 2
+        + (green - target_green) ** 2
+        + (blue - target_blue) ** 2
+    ) ** 0.5
+
+
+def _remove_magenta_background(
+    image,
+    *,
+    edge_threshold: int,
+) -> tuple[object, dict[str, int]]:
+    if edge_threshold < 0:
+        raise ImageFinalizeError("--magenta-edge-threshold must be zero or positive")
+    converted = image.convert("RGBA")
+    pixels = converted.load()
+    removed = 0
+    width, height = converted.size
+
+    visited: set[tuple[int, int]] = set()
+    queue: deque[tuple[int, int]] = deque()
+    for x in range(width):
+        queue.append((x, 0))
+        queue.append((x, height - 1))
+    for y in range(height):
+        queue.append((0, y))
+        queue.append((width - 1, y))
+
+    while queue:
+        x, y = queue.popleft()
+        if (x, y) in visited or x < 0 or x >= width or y < 0 or y >= height:
+            continue
+        visited.add((x, y))
+        red, green, blue, alpha = pixels[x, y]
+        should_expand = alpha == 0
+        if alpha > 0 and _color_distance((red, green, blue)) < edge_threshold:
+            pixels[x, y] = (0, 0, 0, 0)
+            removed += 1
+            should_expand = True
+        if should_expand:
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    next_pixel = (x + dx, y + dy)
+                    if next_pixel not in visited:
+                        queue.append(next_pixel)
+
+    return converted, {"removed_pixels": removed}
 
 
 def _atomic_save(image, output: Path, image_format: str) -> None:
@@ -140,6 +198,8 @@ def finalize_image_asset(
     image_format: str = "png",
     label: str | None = None,
     archive_original: bool = True,
+    background: str = "none",
+    magenta_edge_threshold: int = 150,
 ) -> dict[str, object]:
     """Copy or transform a generated source image into its final path."""
     source = Path(source)
@@ -151,10 +211,13 @@ def finalize_image_asset(
 
     requested_size = _parse_size(resize)
     required_aspect = _parse_aspect(require_aspect)
+    if background not in {"none", "magenta"}:
+        raise ImageFinalizeError("--background must be none or magenta")
     if aspect_tolerance < 0:
         raise ImageFinalizeError("--aspect-tolerance must be non-negative")
     image = _load_image(source)
     origin_saved: str | None = None
+    background_cleanup: dict[str, int] | None = None
     try:
         original_width, original_height = image.size
         aspect_delta: float | None = None
@@ -172,6 +235,7 @@ def finalize_image_asset(
         source_format = (image.format or source.suffix.lstrip(".")).lower()
         changed = (
             requested_size is not None
+            or background != "none"
             or output.suffix.lower() != source.suffix.lower()
             or source_format != image_format.lower()
         )
@@ -187,6 +251,11 @@ def finalize_image_asset(
                 )
             _atomic_save(origin_image, origin_path, "png")
             origin_saved = str(origin_path)
+        if background == "magenta":
+            image, background_cleanup = _remove_magenta_background(
+                image,
+                edge_threshold=magenta_edge_threshold,
+            )
         if requested_size is not None:
             image = _fit_with_padding(image, requested_size)
         if image_format.lower() == "png" and image.mode not in {"RGB", "RGBA"}:
@@ -227,6 +296,9 @@ def finalize_image_asset(
         result["origin"] = origin_saved
     if requested_size is not None:
         result["resize"] = f"{requested_size[0]}x{requested_size[1]}"
+    if background_cleanup is not None:
+        result["background"] = "magenta"
+        result["background_cleanup"] = background_cleanup
     if required_aspect is not None:
         result["required_aspect"] = aspect_label
         result["aspect_delta"] = aspect_delta
@@ -256,6 +328,18 @@ def _main() -> int:
     parser.add_argument("--format", default="png", choices=["png"], help="Output format")
     parser.add_argument("--label", default=None, help="Optional asset label for JSON output")
     parser.add_argument(
+        "--background",
+        default="none",
+        choices=["none", "magenta"],
+        help="Optional source background cleanup mode",
+    )
+    parser.add_argument(
+        "--magenta-edge-threshold",
+        type=int,
+        default=150,
+        help="RGB distance threshold for edge-connected magenta cleanup",
+    )
+    parser.add_argument(
         "--no-origin",
         dest="archive_original",
         action="store_false",
@@ -273,6 +357,8 @@ def _main() -> int:
             image_format=args.format,
             label=args.label,
             archive_original=args.archive_original,
+            background=args.background,
+            magenta_edge_threshold=args.magenta_edge_threshold,
         )
     except ImageFinalizeError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
