@@ -97,5 +97,5 @@ If built-in image generation is unavailable, report the failure.
 Run:
 
 ```bash
-codex exec --json -C <project_root> --output-last-message <summary_path> - < <batch_prompt_path>
+codex exec --json --dangerously-bypass-approvals-and-sandbox -C <project_root> --output-last-message <summary_path> - < <batch_prompt_path>
 ```
