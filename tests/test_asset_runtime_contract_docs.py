@@ -57,6 +57,7 @@ def test_gm_asset_manager_dispatches_asset_producer_units():
     producer = _read("agents/asset-producer.md")
 
     assert "Dispatch `asset-producer`" in skill
+    assert "asset_producer_model from .godotmaker/config.yaml, default: sonnet" in skill
     assert "Do not generate raw visual art in the manager context." in skill
     assert "Dispatch one subagent per production unit." in skill
     assert "## Asset Producer Report:" in producer

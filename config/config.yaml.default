@@ -35,3 +35,4 @@ reviewer_model: sonnet
 analyst_model: sonnet
 auditor_model: sonnet
 decomposer_model: sonnet
+asset_producer_model: sonnet

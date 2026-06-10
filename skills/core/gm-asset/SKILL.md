@@ -74,6 +74,11 @@ another `asset_image_model`.
 
 Include the selected provider doc in every `asset-producer` brief.
 
+## Asset Producer Model
+
+Read `asset_producer_model` from `.godotmaker/config.yaml` and include it as
+`model:` in every `asset-producer` Agent call.
+
 ## Production Unit Entry Points
 
 Use `references/asset-planner.md` for production-unit selection.
@@ -142,6 +147,17 @@ dispatching generated visual work.
 ### Step 4 - Dispatch Asset Producers
 
 Dispatch `asset-producer` for every generated visual production unit.
+
+Agent call shape:
+
+```text
+Agent({
+  subagent_type: "asset-producer",
+  description: "Asset Producer: {unit_id}",
+  model: "{asset_producer_model from .godotmaker/config.yaml, default: sonnet}",
+  prompt: "{brief below}"
+})
+```
 
 Read `references/asset-curation.md` when the selected production unit produces
 source sheets, candidates, extracted frames, or selected final assets.

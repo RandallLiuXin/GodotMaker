@@ -53,6 +53,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `asset_action_process.py` now exposes a smaller CLI surface built around `body` and `fx` action kinds, rejects edge-touch frames by default, and records body-scale reference checks.
 - Worker visual briefs now require final runtime asset paths from ASSETS.md or the manifest and prohibit replacing available assets with placeholders.
 - `/gm-asset` now creates a foundation screen reference before parallel visual production when a tag has no visual anchor.
+- `/gm-asset` now reads `asset_producer_model` from project config so asset production subagents can run on Sonnet by default.
 - `/gm-asset` now keeps ASSETS.md generation params as manifest pointers while storing atlas and animation details in runtime metadata JSON files.
 - Claude Code orchestration now starts Codex asset-image subprocesses with full unattended permissions for generated-path reporting.
 - `/gm-asset` now treats exhausted image-provider failures as asset-production failures instead of allowing placeholder sources to be marked generated.
