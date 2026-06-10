@@ -20,7 +20,7 @@ small signs, lamps, and compact environmental dressing.
    a deliberate fixed cell.
 6. Select final prop PNGs by default.
 7. Use a processed prop atlas only when the ASSETS row asks for a pack or atlas.
-8. Write atlas metadata when final is a processed atlas.
+8. Write runtime atlas metadata when final is a processed atlas.
 9. Write manifest entries.
 10. Mark rows generated only after final prop artifacts are ready.
 
@@ -64,15 +64,16 @@ Create selected-candidate manifest entries with
 For a requested prop atlas:
 
 1. Write a transparent processed atlas to the final path.
-2. Write atlas metadata with named prop regions.
+2. Write runtime atlas metadata with named prop regions beside the final atlas.
 3. Write `runtime_artifact: region_atlas` in the manifest entry.
-4. Write `qc.atlas_metadata.metadata_path` in the manifest entry.
+4. Write `qc.atlas_metadata.metadata_path` and `region_count` in the manifest
+   entry.
 
 ## Outputs
 
 1. prop source sheet
 2. extracted candidates
 3. selected final prop PNGs or processed prop atlas
-4. atlas metadata when final is an atlas
+4. runtime atlas metadata when final is an atlas
 5. curation report
 6. manifest entry JSON

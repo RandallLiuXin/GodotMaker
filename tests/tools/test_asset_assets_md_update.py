@@ -71,9 +71,9 @@ def test_update_assets_md_updates_matching_row_only(tmp_path):
     assert "| 1 | v0.1.0 | player_idle | sprite | 128x128 |" in text
     assert "| generated |" in text
     assert "manifest_entry=" in text
-    assert "source_path=.godotmaker/asset-generation/sources/player_idle_source.png" in text
-    assert "final_path=assets/sprites/player_idle_sheet.png" in text
-    assert "curation_report=.godotmaker/asset-generation/curation/player_idle.json" in text
+    assert "source_path=" not in text
+    assert "final_path=" not in text
+    assert "curation_report=" not in text
     assert "| 3 | v0.2.0 | player_idle | sprite | 128x128 | — | assets/sprites/player_idle_v2.png | MISSING |" in text
 
 

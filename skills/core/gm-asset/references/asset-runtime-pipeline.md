@@ -67,8 +67,8 @@ Use `runtime_artifact` to describe the ready asset shape:
 |------|---------|------------------------|
 | `reference` | Style, screen, and planning references | `final_path` or `source_path`, contract summary |
 | `single` | One runtime image | `final_path`, target geometry or extraction data |
-| `grid_sheet` | Regular grid sheet for animation, FX, or fixed cells | grid/action metadata |
-| `region_atlas` | Irregular UI, icon, prop, strip, or tileset atlas | `final_path`, `qc.atlas_metadata.metadata_path`, atlas regions |
+| `grid_sheet` | Regular grid sheet for animation, FX, or fixed cells | `final_path`, `qc.action_processing.metadata_path`, frame count |
+| `region_atlas` | Irregular UI, icon, prop, strip, or tileset atlas | `final_path`, `qc.atlas_metadata.metadata_path`, region count |
 
 ## Manifest Handoff
 
@@ -186,16 +186,29 @@ When one of these families is `ready`, set `runtime_artifact` to one of:
 Ready gate by artifact:
 
 1. `single`: use one runtime-ready image.
-2. `grid_sheet`: include grid/action metadata.
-3. `region_atlas`: include atlas metadata with named regions and rects.
+2. `grid_sheet`: include action metadata path and frame count.
+3. `region_atlas`: include atlas metadata path and region count.
 4. `reference`: do not mark ASSETS runtime rows generated from this entry.
 
-Atlas metadata shape:
+Keep detailed runtime metadata under `assets/**/*.json`, not embedded in the
+asset-generation manifest.
+
+Atlas manifest summary:
 
 ```json
 {
   "metadata_path": "assets/ui/main_atlas.json",
-  "region_count": 8,
+  "region_count": 8
+}
+```
+
+Atlas runtime metadata shape:
+
+```json
+{
+  "version": 1,
+  "runtime_artifact": "region_atlas",
+  "atlas_path": "assets/ui/main_atlas.png",
   "regions": [
     {
       "name": "battle_button",
@@ -204,6 +217,32 @@ Atlas metadata shape:
       "nine_slice": null
     }
   ]
+}
+```
+
+Action manifest summary:
+
+```json
+{
+  "frame_count": 4,
+  "metadata_path": "assets/sprites/player_idle.json"
+}
+```
+
+Action runtime metadata shape:
+
+```json
+{
+  "version": 1,
+  "runtime_artifact": "grid_sheet",
+  "sheet_path": "assets/sprites/player_idle.png",
+  "frame_count": 4,
+  "frame_paths": [
+    "assets/sprites/player_idle_01.png"
+  ],
+  "align": "feet",
+  "shared_scale": true,
+  "edge_touch_frames": []
 }
 ```
 

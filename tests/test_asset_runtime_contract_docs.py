@@ -171,6 +171,6 @@ def test_asset_stage_runs_manifest_gate_before_assets_update():
     assert "python tools/asset_generation_manifest_update.py --entry-file <entry.json>" in skill
     assert "python tools/asset_generation_manifest_check.py --check-files" in skill
     assert "Update the matching ASSETS.md rows only after manifest validation passes" in skill
-    assert "runtime artifact" in skill
+    assert "runtime_artifact" in skill
     assert "Validate manifest entry content and referenced files." in producer
     assert "manager upserts entries and" in runtime

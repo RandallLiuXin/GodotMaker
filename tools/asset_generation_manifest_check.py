@@ -204,6 +204,53 @@ def _path_exists(project_root: Path, raw_path: str, issues: list[str], message: 
         issues.append(f"{message}: {raw_path}")
 
 
+def _runtime_metadata(
+    project_root: Path,
+    raw_path: str,
+    issues: list[str],
+    *,
+    index: int,
+    label: str,
+) -> dict[str, Any] | None:
+    path = Path(raw_path)
+    if not path.is_absolute():
+        path = project_root / path
+    if not path.exists():
+        issues.append(f"assets[{index}].{label} not found: {raw_path}")
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        issues.append(f"assets[{index}].{label} is not readable JSON: {raw_path}: {exc}")
+        return None
+    if not isinstance(data, dict):
+        issues.append(f"assets[{index}].{label} must be a JSON object: {raw_path}")
+        return None
+    return data
+
+
+def _normalized_project_path(raw_path: object) -> str | None:
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        return None
+    return Path(raw_path).as_posix()
+
+
+def _check_runtime_identity(
+    metadata: dict[str, Any],
+    item: dict[str, Any],
+    *,
+    artifact: str,
+    index: int,
+    issues: list[str],
+    label: str,
+) -> None:
+    if metadata.get("runtime_artifact") != artifact:
+        issues.append(f"assets[{index}].{label}.runtime_artifact must be {artifact}")
+    for field in ("asset_id", "tag"):
+        if metadata.get(field) != item.get(field):
+            issues.append(f"assets[{index}].{label}.{field} must match manifest")
+
+
 def _track_unique_path(
     seen_paths: dict[tuple[str, str], tuple[int, str]],
     raw_path: str | None,
@@ -278,6 +325,7 @@ def _check_curation(
 
 def _check_character_frame_output(
     item: dict[str, Any],
+    project_root: Path,
     *,
     index: int,
     issues: list[str],
@@ -288,71 +336,18 @@ def _check_character_frame_output(
         if not isinstance(value, str) or not value.strip():
             issues.append(f"assets[{index}].{field} is required for character_frame_output")
 
-    qc = item.get("qc")
-    if not isinstance(qc, dict):
-        issues.append(f"assets[{index}].qc must be an object for character_frame_output")
-        return extra_file_paths
-    action = qc.get("action_processing")
-    if not isinstance(action, dict):
-        issues.append(f"assets[{index}].qc.action_processing is required for character_frame_output")
-        return extra_file_paths
-
-    frame_count = action.get("frame_count")
-    if not isinstance(frame_count, int) or frame_count <= 0:
-        issues.append(f"assets[{index}].qc.action_processing.frame_count must be positive")
-
-    frame_paths = action.get("frame_paths")
-    if not isinstance(frame_paths, list) or not frame_paths:
-        issues.append(f"assets[{index}].qc.action_processing.frame_paths must be a non-empty list")
-    else:
-        clean_frame_paths = []
-        for frame_index, frame_path in enumerate(frame_paths):
-            if not isinstance(frame_path, str) or not frame_path.strip():
-                issues.append(
-                    f"assets[{index}].qc.action_processing.frame_paths[{frame_index}] "
-                    "must be a non-empty string"
-                )
-                continue
-            clean_frame_paths.append(frame_path)
-        if isinstance(frame_count, int) and frame_count > 0 and len(clean_frame_paths) != frame_count:
-            issues.append(
-                f"assets[{index}].qc.action_processing.frame_paths length must match frame_count"
-            )
-        extra_file_paths.extend(clean_frame_paths)
-
-    align = action.get("align")
-    if align not in ALLOWED_ACTION_ALIGNS:
-        issues.append(f"assets[{index}].qc.action_processing.align is not allowed: {align}")
-
-    if not isinstance(action.get("shared_scale"), bool):
-        issues.append(f"assets[{index}].qc.action_processing.shared_scale must be boolean")
-
-    for field in ("sheet_path", "gif_path", "metadata_path"):
-        value = action.get(field)
-        if not isinstance(value, str) or not value.strip():
-            issues.append(f"assets[{index}].qc.action_processing.{field} must be a non-empty string")
-        else:
-            extra_file_paths.append(value)
-
-    edge_touch = action.get("edge_touch_frames")
-    if edge_touch is not None and not isinstance(edge_touch, list):
-        issues.append(f"assets[{index}].qc.action_processing.edge_touch_frames must be a list")
-    if isinstance(edge_touch, list) and edge_touch:
-        issues.append(f"assets[{index}].qc.action_processing.edge_touch_frames must be empty")
-
-    scale_reference = action.get("scale_reference")
-    if not isinstance(scale_reference, dict):
-        issues.append(f"assets[{index}].qc.action_processing.scale_reference must be an object")
-    elif not isinstance(scale_reference.get("checked"), bool):
-        issues.append(
-            f"assets[{index}].qc.action_processing.scale_reference.checked must be boolean"
-        )
-
-    return extra_file_paths
+    return _check_action_runtime_metadata(
+        item,
+        project_root,
+        index=index,
+        issues=issues,
+        require_sheet=True,
+    )
 
 
 def _check_action_runtime_metadata(
     item: dict[str, Any],
+    project_root: Path,
     *,
     index: int,
     issues: list[str],
@@ -370,43 +365,92 @@ def _check_action_runtime_metadata(
         )
         return extra_file_paths
 
-    frame_paths = action.get("frame_paths")
-    if not isinstance(frame_paths, list) or not frame_paths:
-        issues.append(f"assets[{index}].qc.action_processing.frame_paths must be a non-empty list")
-    else:
-        for frame_index, frame_path in enumerate(frame_paths):
-            if not isinstance(frame_path, str) or not frame_path.strip():
-                issues.append(
-                    f"assets[{index}].qc.action_processing.frame_paths[{frame_index}] "
-                    "must be a non-empty string"
-                )
-                continue
-            extra_file_paths.append(frame_path)
+    frame_count = action.get("frame_count")
+    if not isinstance(frame_count, int) or frame_count <= 0:
+        issues.append(f"assets[{index}].qc.action_processing.frame_count must be positive")
 
     metadata_path = action.get("metadata_path")
     if not isinstance(metadata_path, str) or not metadata_path.strip():
         issues.append(f"assets[{index}].qc.action_processing.metadata_path must be a non-empty string")
+        return extra_file_paths
+
+    extra_file_paths.append(metadata_path)
+    metadata = _runtime_metadata(
+        project_root,
+        metadata_path,
+        issues,
+        index=index,
+        label="qc.action_processing.metadata_path",
+    )
+    if metadata is None:
+        return extra_file_paths
+
+    _check_runtime_identity(
+        metadata,
+        item,
+        artifact="grid_sheet",
+        index=index,
+        issues=issues,
+        label="runtime metadata",
+    )
+
+    metadata_frame_count = metadata.get("frame_count")
+    if metadata_frame_count != frame_count:
+        issues.append(
+            f"assets[{index}].qc.action_processing.frame_count must match runtime metadata"
+        )
+
+    frame_paths = metadata.get("frame_paths")
+    if not isinstance(frame_paths, list) or not frame_paths:
+        issues.append(f"assets[{index}].runtime metadata frame_paths must be a non-empty list")
     else:
-        extra_file_paths.append(metadata_path)
+        clean_frame_paths = []
+        for frame_index, frame_path in enumerate(frame_paths):
+            if not isinstance(frame_path, str) or not frame_path.strip():
+                issues.append(
+                    f"assets[{index}].runtime metadata frame_paths[{frame_index}] "
+                    "must be a non-empty string"
+                )
+                continue
+            clean_frame_paths.append(frame_path)
+            extra_file_paths.append(frame_path)
+        if isinstance(frame_count, int) and frame_count > 0 and len(clean_frame_paths) != frame_count:
+            issues.append(
+                f"assets[{index}].runtime metadata frame_paths length must match frame_count"
+            )
 
+    align = metadata.get("align")
+    if align not in ALLOWED_ACTION_ALIGNS:
+        issues.append(f"assets[{index}].runtime metadata align is not allowed: {align}")
+
+    if not isinstance(metadata.get("shared_scale"), bool):
+        issues.append(f"assets[{index}].runtime metadata shared_scale must be boolean")
+
+    sheet_path = metadata.get("sheet_path")
     if require_sheet:
-        sheet_path = action.get("sheet_path")
         if not isinstance(sheet_path, str) or not sheet_path.strip():
-            issues.append(f"assets[{index}].qc.action_processing.sheet_path must be a non-empty string")
-        else:
-            extra_file_paths.append(sheet_path)
+            issues.append(f"assets[{index}].runtime metadata sheet_path must be a non-empty string")
+        elif _normalized_project_path(sheet_path) != _normalized_project_path(item.get("final_path")):
+            issues.append(f"assets[{index}].runtime metadata sheet_path must match final_path")
 
-    edge_touch = action.get("edge_touch_frames")
+    edge_touch = metadata.get("edge_touch_frames")
     if edge_touch is not None and not isinstance(edge_touch, list):
-        issues.append(f"assets[{index}].qc.action_processing.edge_touch_frames must be a list")
+        issues.append(f"assets[{index}].runtime metadata edge_touch_frames must be a list")
     if isinstance(edge_touch, list) and edge_touch:
-        issues.append(f"assets[{index}].qc.action_processing.edge_touch_frames must be empty")
+        issues.append(f"assets[{index}].runtime metadata edge_touch_frames must be empty")
+
+    scale_reference = metadata.get("scale_reference")
+    if not isinstance(scale_reference, dict):
+        issues.append(f"assets[{index}].runtime metadata scale_reference must be an object")
+    elif not isinstance(scale_reference.get("checked"), bool):
+        issues.append(f"assets[{index}].runtime metadata scale_reference.checked must be boolean")
 
     return extra_file_paths
 
 
 def _check_atlas_metadata(
     item: dict[str, Any],
+    project_root: Path,
     *,
     index: int,
     issues: list[str],
@@ -426,37 +470,64 @@ def _check_atlas_metadata(
         metadata_path = None
 
     region_count = atlas.get("region_count")
-    regions = atlas.get("regions")
     has_region_count = isinstance(region_count, int) and region_count > 0
-    has_regions = isinstance(regions, list) and len(regions) > 0
-    if not has_region_count and not has_regions:
-        issues.append(
-            f"assets[{index}].qc.atlas_metadata must include positive region_count or regions"
-        )
+    if not has_region_count:
+        issues.append(f"assets[{index}].qc.atlas_metadata.region_count must be positive")
 
-    if isinstance(regions, list):
-        for region_index, region in enumerate(regions):
-            if not isinstance(region, dict):
-                issues.append(
-                    f"assets[{index}].qc.atlas_metadata.regions[{region_index}] must be an object"
-                )
-                continue
-            name = region.get("name")
-            if not isinstance(name, str) or not name.strip():
-                issues.append(
-                    f"assets[{index}].qc.atlas_metadata.regions[{region_index}].name "
-                    "must be a non-empty string"
-                )
-            rect = region.get("rect")
-            if (
-                not isinstance(rect, list)
-                or len(rect) != 4
-                or any(not isinstance(value, int) or value < 0 for value in rect)
-            ):
-                issues.append(
-                    f"assets[{index}].qc.atlas_metadata.regions[{region_index}].rect "
-                    "must be four non-negative integers"
-                )
+    if isinstance(metadata_path, str) and metadata_path.strip():
+        metadata = _runtime_metadata(
+            project_root,
+            metadata_path,
+            issues,
+            index=index,
+            label="qc.atlas_metadata.metadata_path",
+        )
+        if isinstance(metadata, dict):
+            _check_runtime_identity(
+                metadata,
+                item,
+                artifact="region_atlas",
+                index=index,
+                issues=issues,
+                label="atlas runtime metadata",
+            )
+            atlas_path = metadata.get("atlas_path")
+            if not isinstance(atlas_path, str) or not atlas_path.strip():
+                issues.append(f"assets[{index}].atlas runtime metadata atlas_path must be a non-empty string")
+            elif _normalized_project_path(atlas_path) != _normalized_project_path(item.get("final_path")):
+                issues.append(f"assets[{index}].atlas runtime metadata atlas_path must match final_path")
+
+            regions = metadata.get("regions")
+            if not isinstance(regions, list) or not regions:
+                issues.append(f"assets[{index}].atlas runtime metadata regions must be a non-empty list")
+            else:
+                if isinstance(region_count, int) and region_count > 0 and len(regions) != region_count:
+                    issues.append(
+                        f"assets[{index}].qc.atlas_metadata.region_count must match runtime metadata"
+                    )
+                for region_index, region in enumerate(regions):
+                    if not isinstance(region, dict):
+                        issues.append(
+                            f"assets[{index}].atlas runtime metadata regions[{region_index}] "
+                            "must be an object"
+                        )
+                        continue
+                    name = region.get("name")
+                    if not isinstance(name, str) or not name.strip():
+                        issues.append(
+                            f"assets[{index}].atlas runtime metadata regions[{region_index}].name "
+                            "must be a non-empty string"
+                        )
+                    rect = region.get("rect")
+                    if (
+                        not isinstance(rect, list)
+                        or len(rect) != 4
+                        or any(not isinstance(value, int) or value < 0 for value in rect)
+                    ):
+                        issues.append(
+                            f"assets[{index}].atlas runtime metadata regions[{region_index}].rect "
+                            "must be four non-negative integers"
+                        )
 
     return metadata_path if isinstance(metadata_path, str) and metadata_path.strip() else None
 
@@ -630,7 +701,7 @@ def check_manifest(
                     )
             elif clean_artifact == "region_atlas":
                 runtime_artifact_checked = True
-                atlas_metadata_path = _check_atlas_metadata(item, index=index, issues=issues)
+                atlas_metadata_path = _check_atlas_metadata(item, root, index=index, issues=issues)
                 if atlas_metadata_path:
                     extra_file_paths.append(atlas_metadata_path)
                 if extraction_status not in {"extracted", "processed"}:
@@ -643,6 +714,7 @@ def check_manifest(
                 extra_file_paths.extend(
                     _check_action_runtime_metadata(
                         item,
+                        root,
                         index=index,
                         issues=issues,
                         require_sheet=True,
@@ -663,7 +735,7 @@ def check_manifest(
             and processing_status in {"processed", "ready"}
             and not runtime_artifact_checked
         ):
-            atlas_metadata_path = _check_atlas_metadata(item, index=index, issues=issues)
+            atlas_metadata_path = _check_atlas_metadata(item, root, index=index, issues=issues)
             if atlas_metadata_path:
                 extra_file_paths.append(atlas_metadata_path)
 
@@ -676,6 +748,7 @@ def check_manifest(
             extra_file_paths.extend(
                 _check_action_runtime_metadata(
                     item,
+                    root,
                     index=index,
                     issues=issues,
                     require_sheet=True,
@@ -699,7 +772,7 @@ def check_manifest(
 
         if family == "character_frame_output":
             extra_file_paths.extend(
-                _check_character_frame_output(item, index=index, issues=issues)
+                _check_character_frame_output(item, root, index=index, issues=issues)
             )
 
         if check_files:

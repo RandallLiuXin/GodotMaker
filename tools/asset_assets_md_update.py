@@ -107,19 +107,7 @@ def _merge_generation_params(current: str, additions: dict[str, str]) -> str:
 
 
 def _entry_params(entry_path: Path, entry: dict[str, Any]) -> dict[str, str]:
-    params: dict[str, str] = {
-        "manifest_entry": str(entry_path).replace("\\", "/"),
-    }
-    for field in ("prompt_path", "source_path", "final_path"):
-        value = _optional_string(entry, field)
-        if value:
-            params[field] = value
-    curation = entry.get("curation")
-    if isinstance(curation, dict):
-        report_path = curation.get("report_path")
-        if isinstance(report_path, str) and report_path.strip():
-            params["curation_report"] = report_path.strip()
-    return params
+    return {"manifest_entry": str(entry_path).replace("\\", "/")}
 
 
 def update_assets_md(

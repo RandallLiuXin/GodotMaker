@@ -99,6 +99,7 @@ def test_update_manifest_allows_entries_from_one_source_sheet(tmp_path):
         source_path=".godotmaker/asset-generation/sources/ui_main_kit_source.png",
         final_path="assets/ui/battle_button.png",
         prompt_path=".godotmaker/asset-generation/prompts/ui_main_kit_source.txt",
+        runtime_artifact="single",
         curation={
             "status": "selected",
             "strategy": "solid_background_grid",
@@ -115,6 +116,7 @@ def test_update_manifest_allows_entries_from_one_source_sheet(tmp_path):
         source_path=".godotmaker/asset-generation/sources/ui_main_kit_source.png",
         final_path="assets/ui/resource_panel.png",
         prompt_path=".godotmaker/asset-generation/prompts/ui_main_kit_source.txt",
+        runtime_artifact="single",
         curation={
             "status": "selected",
             "strategy": "solid_background_grid",

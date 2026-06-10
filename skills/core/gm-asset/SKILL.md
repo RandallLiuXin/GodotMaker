@@ -225,9 +225,7 @@ For current-tag rows only:
 2. Mark provided files `provided`.
 3. Mark unprovided audio `deferred`.
 4. Keep rows with incomplete curation or missing final paths as `MISSING`.
-5. Confirm `Generation Params` include provider, production unit, prompt path,
-   source path, final path, runtime artifact, metadata path when present,
-   curation report, and manifest entry.
+5. Confirm `Generation Params` include the manifest entry pointer only.
 6. Update the Visual Asset Contract for gameplay-visible generated assets.
 
 Do not mark source sheets, references, or curation candidates as final runtime

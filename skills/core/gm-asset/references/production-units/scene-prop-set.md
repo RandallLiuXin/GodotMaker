@@ -18,7 +18,7 @@ reference.
 4. Generate the chosen sources through the provider doc.
 5. Run curation for source sheets.
 6. Select final runtime objects from processed candidates.
-7. Use processed atlases only with named region metadata.
+7. Use processed atlases only with runtime region metadata.
 8. Write manifest entries for final runtime props.
 
 ## Prompt Contract
@@ -40,7 +40,8 @@ Use the post-processing path selected for each generated object:
    autoslice`.
 2. Fixed strips: use `tools/asset_sheet_process.py --snap-mode grid`.
 3. Selected candidates: use `tools/asset_curation_select.py`.
-4. Processed atlases: write atlas metadata with named regions.
+4. Processed atlases: write runtime atlas metadata with named regions beside
+   the final atlas.
 
 Process one-item foreground object sources with autoslice:
 
@@ -59,6 +60,6 @@ Do not use a source image or reference mockup as an independent final prop.
 
 1. object source images
 2. selected final props, segments, or processed object atlases
-3. atlas metadata when final is an atlas
+3. runtime atlas metadata when final is an atlas
 4. curation reports
 5. manifest entry JSON

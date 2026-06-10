@@ -123,13 +123,17 @@ def test_build_action_manifest_entry(tmp_path):
     assert entry["final_path"] == "assets/sprites/player_idle_sheet.png"
     action = entry["qc"]["action_processing"]
     assert action["frame_count"] == 4
-    assert action["frame_paths"] == [
+    assert action["metadata_path"] == "assets/sprites/player_idle_sheet.json"
+    runtime_metadata_path = tmp_path / action["metadata_path"]
+    assert runtime_metadata_path.exists()
+    runtime_metadata = json.loads(runtime_metadata_path.read_text(encoding="utf-8"))
+    assert runtime_metadata["frame_paths"] == [
         "assets/sprites/player_idle_01.png",
         "assets/sprites/player_idle_02.png",
         "assets/sprites/player_idle_03.png",
         "assets/sprites/player_idle_04.png",
     ]
-    assert action["metadata_path"] == ".godotmaker/asset-generation/processed/player_idle/pipeline-meta.json"
+    assert runtime_metadata["source_metadata_path"] == ".godotmaker/asset-generation/processed/player_idle/pipeline-meta.json"
 
 
 def test_build_action_manifest_entry_passes_manifest_check_files(tmp_path):
@@ -150,7 +154,7 @@ def test_build_action_manifest_entry_passes_manifest_check_files(tmp_path):
     result = check_manifest(manifest, project_root=tmp_path, check_files=True)
 
     assert result["ok"] is True
-    assert result["file_checks"] == 11
+    assert result["file_checks"] == 9
 
 
 def test_build_action_manifest_entry_rejects_edge_touch(tmp_path):
@@ -203,3 +207,4 @@ def test_cli_writes_entry_file(tmp_path):
     assert out_path.exists()
     entry = json.loads(out_path.read_text(encoding="utf-8"))
     assert entry["asset_id"] == "player_idle_delivery"
+    assert (tmp_path / "assets" / "sprites" / "player_idle_sheet.json").exists()

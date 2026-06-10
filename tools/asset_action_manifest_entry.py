@@ -83,6 +83,7 @@ def build_action_manifest_entry(
     asset_id: str,
     project_root: Path,
     final_path: str | None = None,
+    runtime_metadata_path: str | None = None,
     notes: str = "",
 ) -> dict[str, Any]:
     """Build one character_frame_output entry from processed action metadata."""
@@ -116,6 +117,10 @@ def build_action_manifest_entry(
     if sheet_path is None:
         raise ActionManifestEntryError("metadata.final_sheet_path is required")
     clean_sheet_path = _as_project_path(sheet_path, project_root)
+    clean_runtime_metadata_path = _as_project_path(
+        runtime_metadata_path or str((project_root / clean_sheet_path).with_suffix(".json")),
+        project_root,
+    )
 
     gif_path = _as_project_path(_string(metadata, "gif_path", "metadata") or "", project_root)
     clean_metadata_path = _as_project_path(str(metadata_path), project_root)
@@ -128,6 +133,26 @@ def build_action_manifest_entry(
     scale_reference = metadata.get("scale_reference")
     if not isinstance(scale_reference, dict) or not isinstance(scale_reference.get("checked"), bool):
         raise ActionManifestEntryError("metadata.scale_reference.checked must be boolean")
+
+    runtime_metadata = {
+        "version": 1,
+        "runtime_artifact": "grid_sheet",
+        "asset_id": asset_id,
+        "tag": tag,
+        "sheet_path": clean_sheet_path,
+        "frame_count": frame_count,
+        "frame_paths": frame_paths,
+        "frame_labels": metadata.get("frame_labels", []),
+        "grid": metadata.get("grid"),
+        "align": align,
+        "shared_scale": shared_scale,
+        "duration": metadata.get("duration"),
+        "loop": True,
+        "edge_touch_frames": edge_touch_frames,
+        "scale_reference": scale_reference,
+        "source_metadata_path": clean_metadata_path,
+    }
+    _write_atomic(project_root / clean_runtime_metadata_path, runtime_metadata)
 
     return {
         "asset_id": asset_id,
@@ -153,14 +178,7 @@ def build_action_manifest_entry(
         "qc": {
             "action_processing": {
                 "frame_count": frame_count,
-                "frame_paths": frame_paths,
-                "align": align,
-                "shared_scale": shared_scale,
-                "sheet_path": clean_sheet_path,
-                "gif_path": gif_path,
-                "metadata_path": clean_metadata_path,
-                "edge_touch_frames": edge_touch_frames,
-                "scale_reference": scale_reference,
+                "metadata_path": clean_runtime_metadata_path,
             }
         },
         "preview_path": gif_path,
@@ -175,6 +193,7 @@ def _main() -> int:
     parser.add_argument("--asset-id", required=True)
     parser.add_argument("--project-root", default=".", type=Path)
     parser.add_argument("--final-path")
+    parser.add_argument("--runtime-metadata-path")
     parser.add_argument("--notes", default="")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
@@ -186,6 +205,7 @@ def _main() -> int:
             asset_id=args.asset_id,
             project_root=args.project_root,
             final_path=args.final_path,
+            runtime_metadata_path=args.runtime_metadata_path,
             notes=args.notes,
         )
         if args.out is not None:

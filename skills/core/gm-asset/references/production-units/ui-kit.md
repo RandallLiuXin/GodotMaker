@@ -21,7 +21,8 @@ pieces, and icons that share one interface style.
 6. Choose the final artifact shape: selected component PNGs or processed UI
    atlas.
 7. For selected component PNGs, run `tools/asset_curation_select.py`.
-8. For processed UI atlases, write atlas metadata with named regions and rects.
+8. For processed UI atlases, write runtime atlas metadata with named regions
+   and rects beside the final atlas.
 9. Write manifest entries.
 10. Mark rows generated only after final UI artifacts and metadata are ready.
 
@@ -70,16 +71,16 @@ Create selected-candidate manifest entries with
 Final processed UI atlas:
 
 1. Write a transparent processed atlas to the final path.
-2. Write atlas metadata beside the atlas.
+2. Write runtime atlas metadata beside the atlas.
 3. Write `runtime_artifact: region_atlas` in the manifest entry.
-4. Write `qc.atlas_metadata.metadata_path` in the manifest entry.
-5. Write named `qc.atlas_metadata.regions` in the manifest entry.
+4. Write `qc.atlas_metadata.metadata_path` and `region_count` in the manifest
+   entry.
 
 ## Outputs
 
 1. UI kit source
 2. extracted candidates
 3. selected final UI PNGs or processed UI atlas
-4. atlas metadata when final is an atlas
+4. runtime atlas metadata when final is an atlas
 5. curation report
 6. manifest entry JSON

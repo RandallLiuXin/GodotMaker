@@ -157,14 +157,9 @@ Update current-tag rows after producer reports:
 
 Update `Generation Params` with:
 
-1. provider
-2. production unit
-3. source path
-4. final path
-5. runtime artifact
-6. metadata path when final is an atlas, strip, or animation
-7. prompt path
-8. curation report
-9. manifest entry
+1. manifest entry pointer
+
+Do not duplicate prompt paths, source paths, runtime artifact, metadata paths,
+or curation reports in `ASSETS.md`.
 
 Update the Visual Asset Contract for gameplay-visible final assets.

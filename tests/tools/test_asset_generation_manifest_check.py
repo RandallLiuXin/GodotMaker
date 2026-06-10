@@ -50,6 +50,67 @@ def touch(path: Path):
     path.write_text("x", encoding="utf-8")
 
 
+def write_action_runtime_metadata(
+    project_root: Path,
+    *,
+    path: str = "assets/sprites/player_idle.json",
+    asset_id: str = "player_idle_delivery",
+    tag: str = "v0.1.0",
+    runtime_artifact: str = "grid_sheet",
+    sheet_path: str = "assets/sprites/player_idle.png",
+    frame_count: int = 4,
+    edge_touch_frames=None,
+):
+    edge_touch_frames = edge_touch_frames or []
+    metadata = {
+        "version": 1,
+        "runtime_artifact": runtime_artifact,
+        "asset_id": asset_id,
+        "tag": tag,
+        "sheet_path": sheet_path,
+        "frame_count": frame_count,
+        "frame_paths": [
+            "assets/sprites/player_idle_01.png",
+            "assets/sprites/player_idle_02.png",
+            "assets/sprites/player_idle_03.png",
+            "assets/sprites/player_idle_04.png",
+        ][:frame_count],
+        "align": "feet",
+        "shared_scale": True,
+        "edge_touch_frames": edge_touch_frames,
+        "scale_reference": {"checked": False},
+    }
+    target = project_root / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(metadata), encoding="utf-8")
+
+
+def write_atlas_runtime_metadata(
+    project_root: Path,
+    *,
+    path: str = "assets/ui/main_atlas.json",
+    asset_id: str = "ui_main_kit",
+    tag: str = "v0.1.0",
+    runtime_artifact: str = "region_atlas",
+    atlas_path: str | None = "assets/ui/main_atlas.png",
+):
+    metadata = {
+        "version": 1,
+        "runtime_artifact": runtime_artifact,
+        "asset_id": asset_id,
+        "tag": tag,
+        "regions": [
+            {"name": "battle_button", "rect": [0, 0, 256, 96]},
+            {"name": "quest_tile", "rect": [256, 0, 256, 96]},
+        ],
+    }
+    if atlas_path is not None:
+        metadata["atlas_path"] = atlas_path
+    target = project_root / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(metadata), encoding="utf-8")
+
+
 def test_check_manifest_accepts_valid_schema(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_manifest(manifest)
@@ -193,6 +254,7 @@ def test_check_manifest_allows_deferred_background_without_target_geometry(tmp_p
 
 def test_check_manifest_accepts_character_frame_output_delivery_sheet(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_action_runtime_metadata(tmp_path)
     write_manifest(
         manifest,
         {
@@ -206,19 +268,7 @@ def test_check_manifest_accepts_character_frame_output_delivery_sheet(tmp_path):
             "qc": {
                 "action_processing": {
                     "frame_count": 4,
-                    "frame_paths": [
-                        "assets/sprites/player_idle_01.png",
-                        "assets/sprites/player_idle_02.png",
-                        "assets/sprites/player_idle_03.png",
-                        "assets/sprites/player_idle_04.png",
-                    ],
-                    "align": "feet",
-                    "shared_scale": True,
-                    "sheet_path": "assets/sprites/player_idle.png",
-                    "gif_path": ".godotmaker/asset-generation/processed/player_idle/animation.gif",
-                    "metadata_path": ".godotmaker/asset-generation/processed/player_idle/pipeline-meta.json",
-                    "edge_touch_frames": [],
-                    "scale_reference": {"checked": False},
+                    "metadata_path": "assets/sprites/player_idle.json",
                 }
             },
         },
@@ -249,6 +299,7 @@ def test_check_manifest_requires_character_frame_output_action_metadata(tmp_path
 
 def test_check_manifest_rejects_character_frame_output_edge_touch(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_action_runtime_metadata(tmp_path, frame_count=1, edge_touch_frames=["player_idle.idle_01"])
     write_manifest(
         manifest,
         {
@@ -262,20 +313,65 @@ def test_check_manifest_rejects_character_frame_output_edge_touch(tmp_path):
             "qc": {
                 "action_processing": {
                     "frame_count": 1,
-                    "frame_paths": ["assets/sprites/player_idle_01.png"],
-                    "align": "feet",
-                    "shared_scale": True,
-                    "sheet_path": "assets/sprites/player_idle.png",
-                    "gif_path": ".godotmaker/asset-generation/processed/player_idle/animation.gif",
-                    "metadata_path": ".godotmaker/asset-generation/processed/player_idle/pipeline-meta.json",
-                    "edge_touch_frames": ["player_idle.idle_01"],
-                    "scale_reference": {"checked": False},
+                    "metadata_path": "assets/sprites/player_idle.json",
                 }
             },
         },
     )
 
     with pytest.raises(ManifestCheckError, match="edge_touch_frames must be empty"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_action_runtime_metadata_identity_mismatch(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_action_runtime_metadata(tmp_path, asset_id="enemy_idle_delivery")
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "player_idle_delivery",
+            "family": "character_frame_output",
+            "production_shape": "delivery_sheet",
+            "source_path": ".godotmaker/asset-generation/curation/player_idle/sheet.png",
+            "final_path": "assets/sprites/player_idle.png",
+            "derived_from": "player_idle",
+            "canonical_reference": "player_canonical",
+            "qc": {
+                "action_processing": {
+                    "frame_count": 4,
+                    "metadata_path": "assets/sprites/player_idle.json",
+                }
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="asset_id must match manifest"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_action_runtime_metadata_sheet_mismatch(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_action_runtime_metadata(tmp_path, sheet_path="assets/sprites/other_sheet.png")
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "player_idle_delivery",
+            "family": "character_frame_output",
+            "production_shape": "delivery_sheet",
+            "source_path": ".godotmaker/asset-generation/curation/player_idle/sheet.png",
+            "final_path": "assets/sprites/player_idle.png",
+            "derived_from": "player_idle",
+            "canonical_reference": "player_canonical",
+            "qc": {
+                "action_processing": {
+                    "frame_count": 4,
+                    "metadata_path": "assets/sprites/player_idle.json",
+                }
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="sheet_path must match final_path"):
         check_manifest(manifest, project_root=tmp_path)
 
 
@@ -434,12 +530,17 @@ def test_check_manifest_accepts_foreground_ready_with_selected_curation(tmp_path
 
 def test_check_manifest_accepts_foreground_ready_region_atlas(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_atlas_runtime_metadata(tmp_path)
     write_manifest(
         manifest,
         {
+            "asset_id": "ui_main_kit",
             "family": "ui_component_sheet",
             "production_shape": "grid_sheet",
             "runtime_artifact": "region_atlas",
+            "source_path": ".godotmaker/asset-generation/sources/ui_main_kit_source.png",
+            "final_path": "assets/ui/main_atlas.png",
+            "prompt_path": ".godotmaker/asset-generation/prompts/ui_main_kit_source.txt",
             "extraction_status": "processed",
             "curation": {
                 "status": "selected",
@@ -452,10 +553,6 @@ def test_check_manifest_accepts_foreground_ready_region_atlas(tmp_path):
                 "atlas_metadata": {
                     "metadata_path": "assets/ui/main_atlas.json",
                     "region_count": 2,
-                    "regions": [
-                        {"name": "battle_button", "rect": [0, 0, 256, 96]},
-                        {"name": "quest_tile", "rect": [256, 0, 256, 96]},
-                    ],
                 }
             },
         },
@@ -487,6 +584,102 @@ def test_check_manifest_rejects_foreground_ready_region_atlas_without_metadata(t
     )
 
     with pytest.raises(ManifestCheckError, match="atlas_metadata"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_region_atlas_runtime_metadata_identity_mismatch(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_atlas_runtime_metadata(tmp_path, runtime_artifact="grid_sheet")
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "ui_main_kit",
+            "family": "ui_component_sheet",
+            "production_shape": "grid_sheet",
+            "runtime_artifact": "region_atlas",
+            "extraction_status": "processed",
+            "curation": {
+                "status": "selected",
+                "strategy": "solid_background_autoslice",
+                "report_path": ".godotmaker/asset-generation/curation/ui_kit.json",
+                "selected_count": 8,
+                "rejected_count": 0,
+            },
+            "final_path": "assets/ui/main_atlas.png",
+            "qc": {
+                "atlas_metadata": {
+                    "metadata_path": "assets/ui/main_atlas.json",
+                    "region_count": 2,
+                }
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="runtime_artifact must be region_atlas"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_region_atlas_runtime_metadata_path_mismatch(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_atlas_runtime_metadata(tmp_path, atlas_path="assets/ui/other_atlas.png")
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "ui_main_kit",
+            "family": "ui_component_sheet",
+            "production_shape": "grid_sheet",
+            "runtime_artifact": "region_atlas",
+            "extraction_status": "processed",
+            "curation": {
+                "status": "selected",
+                "strategy": "solid_background_autoslice",
+                "report_path": ".godotmaker/asset-generation/curation/ui_kit.json",
+                "selected_count": 8,
+                "rejected_count": 0,
+            },
+            "final_path": "assets/ui/main_atlas.png",
+            "qc": {
+                "atlas_metadata": {
+                    "metadata_path": "assets/ui/main_atlas.json",
+                    "region_count": 2,
+                }
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="atlas_path must match final_path"):
+        check_manifest(manifest, project_root=tmp_path)
+
+
+def test_check_manifest_rejects_region_atlas_runtime_metadata_missing_atlas_path(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_atlas_runtime_metadata(tmp_path, atlas_path=None)
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "ui_main_kit",
+            "family": "ui_component_sheet",
+            "production_shape": "grid_sheet",
+            "runtime_artifact": "region_atlas",
+            "extraction_status": "processed",
+            "curation": {
+                "status": "selected",
+                "strategy": "solid_background_autoslice",
+                "report_path": ".godotmaker/asset-generation/curation/ui_kit.json",
+                "selected_count": 8,
+                "rejected_count": 0,
+            },
+            "final_path": "assets/ui/main_atlas.png",
+            "qc": {
+                "atlas_metadata": {
+                    "metadata_path": "assets/ui/main_atlas.json",
+                    "region_count": 2,
+                }
+            },
+        },
+    )
+
+    with pytest.raises(ManifestCheckError, match="atlas_path must be a non-empty string"):
         check_manifest(manifest, project_root=tmp_path)
 
 
