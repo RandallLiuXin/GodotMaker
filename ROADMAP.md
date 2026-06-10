@@ -38,18 +38,26 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 - [x] `R-071` **Pipeline decomposition** — Split monolithic orchestrator skill into 9 role-based skills (`/gm-scaffold`, `/gm-gdd`, `/gm-asset`, `/gm-build`, `/gm-verify`, `/gm-evaluate`, `/gm-fixgap`, `/gm-accept`, `/gm-finalize`). Each role owns a single phase and write-permission scope; `gm-evaluate` owns `e2e/` exclusively.
 - [x] `R-072` **Shared reference docs (`_shared/`)** — Cross-skill reference docs (worker/verifier/reviewer/analyst dispatch) live as a single source of truth and are reverse-deployed by `publish_shared_refs()` into each consumer's `references/` with an `<!-- AUTO-GENERATED -->` header.
 
-## In Progress
-
-### v0.x - Playability and Visual Contracts
+### v0.x — Playability validation
 
 - [x] `R-080` **Playable Unit contract** - Make one minimal playable unit the core planning unit for `/gm-gdd`, the decomposer, and `PLAN.md`. Each unit must describe the player experience, the unit outcome, scenes involved, and each mechanic's player operation/content, expected effect, required visible content, and evidence.
 - [x] `R-081` **Playability scenario contract** - Turn each Playable Unit into evaluate-owned runtime coverage: player-facing operations, state assertions, visible-content checkpoints, and explicit failure criteria. Scope excludes a general AI player or RL system; the first target is deterministic proof that every required unit row can actually be played.
-- [x] `R-082` **Visual prompt style guide** - Add a stable `STYLE.md` artifact used as the source of truth for later image prompts. It should capture a compact style anchor, prompt suffix, UI/asset generation rules, avoid list, and reference notes. Evaluation does not judge style drift.
-- [ ] `R-083` **Reference object curation and asset integration** - Turn generated scene references into a usable asset source before build: decide which references are suitable, regenerate extraction atlases when needed, crop objects with the appropriate tool, select canonical references when multiple candidates conflict, record rejected/variant candidates, map accepted objects into `ASSETS.md` / `assets/manifest.json`, and protect the resulting contracts from build/fixgap shortcuts.
 - [x] `R-084` **Best-effort evaluate evidence archive** - When a tag is finalized, archive the existing E2E tests and screenshots under `docs/tags/<Tag>/evidence/` when available and summarize them in `final_report.json`. Evidence archive gaps are warnings, not finalize blockers.
-- [ ] `R-085` **Interactive art generation workflow** - Add an operator-facing workflow for generating, reviewing, curating, replacing, and approving visual references and game assets before they are consumed by build/fixgap. The workflow should expose generated candidates, extraction atlases, crop/split results, rejected variants, canonical selections, manifest mappings, and regeneration actions through an interactive surface rather than relying only on autonomous skill text. Scope includes the framework contracts and tool outputs needed by such a UI; the exact desktop/web host can live outside this repository.
+
+## In Progress
+
+### v0.x — Art Asset Pipeline
+
+- [x] `R-082` **Asset production pipeline** - Rebuild `/gm-asset` around production units, provider-specific source claiming, deterministic image processing, asset manifests, and per-unit reports instead of prompt-only missing-row generation.
+- [x] `R-083` **Character and unit asset production** - Produce canonical character art and action sources for heroes, enemies, NPCs, and gameplay units.
+- [x] `R-085` **VFX and projectile asset production** - Produce projectiles, impacts, slashes, pickups, explosions, trails, and other gameplay effects.
+- [x] `R-088` **Prop and scene-object asset production** - Produce props, pickups, chests, obstacles, decorations, and scene object sets.
+- [x] `R-089` **Background and platform asset production** - Produce flat backgrounds, parallax-style layers, platform strips, terrain strips, and large scene backdrops.
+- [ ] `R-090` **UI component asset production** - Produce buttons, panels, tabs, progress bars, badges, icons, scalable UI pieces, and nine-slice-style sources.
+- [ ] `R-091` **Card and portrait asset production** - Produce card frames, portrait frames, rarity frames, resource badges, card slots, and card-game-specific UI assets.
+- [ ] `R-092` **Generated asset usage in gameplay** - Make build, fixgap, reviewer, and evaluate consume generated asset manifests so accepted assets appear in playable scenes.
 - [ ] `R-086` **Common UI motion skill** - Add a focused skill for common game UI motion such as panel transitions, button feedback, popups, score changes, health/XP feedback, modal entrance/exit, and state-change emphasis. The goal is to make UI feedback readable and reusable across generated games instead of relying on static controls.
-- [ ] `R-087` **Character animation component skill** - Add a focused skill for character animation components and animation-state wiring, including idle/move/attack/hit/death style state mapping, sprite-sheet or AnimationPlayer setup, and gameplay-facing animation triggers.
+- [ ] `R-087` **Character animation runtime integration** - Use generated character action assets in Godot runtime animation setup, including idle/move/attack/hit/death state mapping, AnimationPlayer or sprite-sheet wiring, and gameplay-facing animation triggers.
 
 ### v0.5 — Plugin Skills
 
@@ -79,6 +87,8 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 
 Items below are ideas under consideration — not committed to a timeline.
 
+- `R-093` **Map and stage art-to-runtime handoff** — Turn generated backgrounds, props, platforms, and scene references into map or stage runtime structure.
+- `R-094` **Interactive art generation workflow** — Add a future operator-facing workflow for reviewing generated sources, crop results, rejected variants, canonical choices, manifest mappings, and regenerate/replace/accept actions.
 - `R-100` **TileMap support** — Terrain systems, tileset asset generation, and TileMap-based level design. Currently deferred; sprite-placement is the recommended terrain approach until this ships.
 - `R-101` **ECS framework migration** — Migrate tindercore (C++ GDExtension) from EnTT to flecs, then adopt tindercore as the ECS runtime replacing gecs.
 - `R-102` **Scene-markers skill** — Marker type → component composition mapping for ECS entity spawning.
@@ -90,7 +100,6 @@ Items below are ideas under consideration — not committed to a timeline.
 - `R-108` **Tester subagent** — Dedicated E2E and gameplay testing role in the multi-agent pipeline.
 - `R-109` **GDD quality review** — Automated completeness and consistency checks on generated Game Design Documents.
 - `R-110` **Android build workflow** — APK/AAB export with signing, versioning, and store-ready packaging.
-- `R-111` **Sprite sheet animation pipeline** — Generate multi-frame sprite sheets from single-frame AI-generated sprites.
 - `R-112` **Re-evaluate gdtoolkit (gdlint / gdformat)** *(low priority)* — Disabled in v0.3.4 due to recurring `gdtoolkit/linter/class_checks.py:144 NotImplementedError` crashes on ECS-style class shapes. Rationale + restore guide in [`docs/decisions/disable-gdtoolkit.md`](docs/decisions/disable-gdtoolkit.md).
 - `R-113` **3D game support** *(low priority)* — Extend planning, asset, build, verification, and evaluation contracts beyond the current 2D-first pipeline so generated projects can target 3D scenes, cameras, physics, controls, and content.
 - `R-114` **Audio asset generation** *(low priority)* — Add an audio generation and curation workflow for music, ambience, and sound effects, including provider selection, manifest mapping, import settings, and validation. Until this ships, audio remains user-provided or manually added.
