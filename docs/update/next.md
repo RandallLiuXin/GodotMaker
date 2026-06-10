@@ -61,6 +61,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - (WIP) Rewire Agent prompt/output trace capture to `PreToolUse`/`PostToolUse` because the `SubagentStart` payload has no `prompt` field and silently wrote 0-byte traces.
+- Clarified `/gm-asset` asset-producer provider handoff rules.
 - Made `asset_action_process.py` write runtime action frames with the final prefix so different characters cannot overwrite shared names like `idle_0.png`.
 - `/gm-asset` now requires runtime-ready foreground artifacts for UI, icon, prop, projectile, pickup, and scene-object assets, with atlas or animation metadata when the final output is a sheet.
 

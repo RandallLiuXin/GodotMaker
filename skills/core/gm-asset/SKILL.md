@@ -175,6 +175,7 @@ Brief shape:
 
 ### Provider
 - {references/providers/<provider>.md}
+- Configured provider: {provider from plan.provider}
 
 ### Shared Docs
 - {references/asset-runtime-pipeline.md}

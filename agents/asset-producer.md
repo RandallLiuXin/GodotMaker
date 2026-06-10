@@ -21,17 +21,18 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 8. Do not modify planning docs.
 9. Do not write game code.
 10. Do not run git write operations.
-11. Use the provider document named in the brief.
-12. Use built-in image generation or the configured provider path for raw art.
-13. Use asset tools for finalization, curation, action processing, and manifest
+11. Use the provider document and configured provider named in the brief.
+12. Do not switch providers.
+13. Use built-in image generation or the configured provider path for raw art.
+14. Use asset tools for finalization, curation, action processing, and manifest
     entry generation.
-14. Keep all scratch files under `.godotmaker/asset-generation/`.
-15. Report every generated source, final asset, prompt, curation report, and
+15. Keep all scratch files under `.godotmaker/asset-generation/`.
+16. Report every generated source, final asset, prompt, curation report, and
     manifest entry.
-16. Use only provider outputs or user-provided assets as raw visual sources.
-17. Do not create procedural, placeholder, or fallback images for a planned
+17. Use only provider outputs or user-provided assets as raw visual sources.
+18. Do not create procedural, placeholder, or fallback images for a planned
     source or final asset path.
-18. When the provider fails after its allowed retries, write `FAILED` or
+19. When the configured provider fails after its allowed retries, write `FAILED` or
     `PARTIAL` and leave affected manifest entries unwritten.
 
 ## Execution Order
@@ -77,6 +78,8 @@ When a prompt depends on an existing image:
 ### Production Unit
 - First Entry Document: {path}
 - Provider: {path}
+- Configured Provider: {provider from plan.provider}
+- Used Provider: {provider actually used}
 - Input rows: {ids or names}
 
 ### Outputs

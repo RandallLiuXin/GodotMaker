@@ -180,4 +180,7 @@ def test_asset_stage_runs_manifest_gate_before_assets_update():
     assert "Update the matching ASSETS.md rows only after manifest validation passes" in skill
     assert "runtime_artifact" in skill
     assert "Validate manifest entry content and referenced files." in producer
+    assert "Do not switch providers." in producer
+    assert "Configured Provider:" in producer
+    assert "Used Provider:" in producer
     assert "manager upserts entries and" in runtime
