@@ -263,13 +263,26 @@ or leave a fix task for a later role.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 
-1. Run:
+1. From the project root run:
 
 ```bash
 python tools/append_stage_event.py asset
 ```
 
-2. Inform the user:
+2. Check whether the project working tree is dirty:
+
+```bash
+git status --porcelain
+```
+
+3. If the command prints any rows, commit the asset-stage outputs:
+
+```bash
+git add -A
+git commit -m "chore(asset): <Tag>"
+```
+
+4. Inform the user:
 
 ```text
 Asset complete. Recommended next: /gm-build
