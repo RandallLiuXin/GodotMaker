@@ -47,6 +47,9 @@ def test_provider_contracts_are_separate_from_generic_asset_docs():
     assert "\"saved_path\"" not in codex
     assert "saved_path claim protocol" not in codex_runtime
     assert "saved_path claim protocol" not in claude_runtime
+    assert "Retry transient tool or provider failures at most 2 times." in codex
+    assert "Do not create placeholder or procedural images" in codex
+    assert '"ok": false' in codex
 
 
 def test_gm_asset_manager_dispatches_asset_producer_units():
@@ -59,6 +62,9 @@ def test_gm_asset_manager_dispatches_asset_producer_units():
     assert "## Asset Producer Report:" in producer
     assert "Write only the output paths listed in the brief." in producer
     assert "Use visible scene references and canonical asset references" in producer
+    assert "Use only provider outputs or user-provided assets as raw visual sources." in producer
+    assert "Do not create procedural, placeholder, or fallback images" in producer
+    assert "leave affected manifest entries unwritten" in producer
 
 
 def test_production_unit_docs_are_first_entry_points():

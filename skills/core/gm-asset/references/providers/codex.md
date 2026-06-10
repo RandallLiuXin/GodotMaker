@@ -7,17 +7,19 @@ Use this file only when `.godotmaker/config.yaml` sets
 
 For each generated image:
 
-1. Call `image_gen` once for the assigned asset.
+1. Call `image_gen` once per attempt for the assigned asset.
 2. Identify the generated image path from the current Codex turn. If the
    turn output does not expose a path, compare the current `CODEX_THREAD_ID`
    image directory before and after this one call. Report failure if
    `CODEX_THREAD_ID` is missing or the directory delta is not exactly one new
    image file.
-3. Report `asset_id` and `generated_path`.
-4. Do not inspect unrelated Codex threads.
-5. Do not choose files by modified time.
-6. Do not copy image files from a Codex subagent.
-7. Do not report a project `source_path` as `generated_path`.
+3. Retry transient tool or provider failures at most 2 times.
+4. Report `asset_id` and `generated_path`.
+5. Do not inspect unrelated Codex threads.
+6. Do not choose files by modified time.
+7. Do not copy image files from a Codex subagent.
+8. Do not report a project `source_path` as `generated_path`.
+9. Do not create placeholder or procedural images when generation fails.
 
 Generated-path report shape:
 
@@ -31,6 +33,21 @@ Generated-path report shape:
     }
   ],
   "failures": []
+}
+```
+
+Failure report shape:
+
+```json
+{
+  "ok": false,
+  "assets": [],
+  "failures": [
+    {
+      "asset_id": "<asset_id>",
+      "error": "<provider or tool failure>"
+    }
+  ]
 }
 ```
 
@@ -51,11 +68,12 @@ For each generation group:
 1. Use one subagent per asset when isolated subagents are available.
 2. Give each subagent exactly one asset input record.
 3. Save the generated-path report under `.godotmaker/asset-generation/reports/`.
-4. Claim the generated paths into planned source paths.
-5. Finalize or process the planned source paths according to the production
+4. Stop affected assets when the report is failed or incomplete.
+5. Claim the generated paths into planned source paths.
+6. Finalize or process the planned source paths according to the production
    unit.
-6. If isolated generation is unavailable, run sequentially.
-7. Write the sequential fallback reason in the unit report.
+7. If isolated generation is unavailable, run sequentially.
+8. Write the sequential fallback reason in the unit report.
 
 ## Claude Code To Codex
 
@@ -65,8 +83,9 @@ For each generation group:
 2. Run one `codex exec` call from the project root.
 3. Ask Codex to spawn one subagent per asset, at most 3 concurrent.
 4. Save the Codex generated-path report under `.godotmaker/asset-generation/reports/`.
-5. Claim the generated paths into planned source paths.
-6. Save the claim result under `.godotmaker/asset-generation/reports/`.
+5. Stop affected assets when the report is failed or incomplete.
+6. Claim the generated paths into planned source paths.
+7. Save the claim result under `.godotmaker/asset-generation/reports/`.
 
 Batch prompt shape:
 
@@ -76,22 +95,25 @@ Spawn one subagent per asset and run them in parallel, at most 3 at a time.
 Wait for all subagents to finish.
 
 For each asset:
-1. Call image_gen once for this asset.
+1. Call image_gen once per attempt for this asset.
 2. Identify the generated image path from this Codex turn. If the turn output
    does not expose a path, compare this `CODEX_THREAD_ID` image directory
    before and after this one call. Report failure if `CODEX_THREAD_ID` is
    missing or the directory delta is not exactly one new image file.
-3. Report asset_id and generated_path.
-4. Do not inspect unrelated Codex threads.
-5. Do not choose files by modified time.
-6. Do not copy files.
+3. Retry transient tool or provider failures at most 2 times.
+4. Report asset_id and generated_path.
+5. Do not inspect unrelated Codex threads.
+6. Do not choose files by modified time.
+7. Do not copy files.
+8. Do not create placeholder or procedural images.
 
 Assets:
 - id: <asset_id>
   source_path: .godotmaker/asset-generation/sources/<asset_id>_source.png
   prompt: <prompt>
 
-If built-in image generation is unavailable, report the failure.
+If built-in image generation is unavailable or retries fail, report failure
+with ok=false and failures.
 ```
 
 Run:

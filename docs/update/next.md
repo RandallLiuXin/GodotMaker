@@ -55,6 +55,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `/gm-asset` now creates a foundation screen reference before parallel visual production when a tag has no visual anchor.
 - `/gm-asset` now keeps ASSETS.md generation params as manifest pointers while storing atlas and animation details in runtime metadata JSON files.
 - Claude Code orchestration now starts Codex asset-image subprocesses with full unattended permissions for generated-path reporting.
+- `/gm-asset` now treats exhausted image-provider failures as asset-production failures instead of allowing placeholder sources to be marked generated.
 
 ## Fixed
 

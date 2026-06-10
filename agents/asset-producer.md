@@ -28,6 +28,11 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 14. Keep all scratch files under `.godotmaker/asset-generation/`.
 15. Report every generated source, final asset, prompt, curation report, and
     manifest entry.
+16. Use only provider outputs or user-provided assets as raw visual sources.
+17. Do not create procedural, placeholder, or fallback images for a planned
+    source or final asset path.
+18. When the provider fails after its allowed retries, write `FAILED` or
+    `PARTIAL` and leave affected manifest entries unwritten.
 
 ## Execution Order
 
@@ -36,11 +41,12 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 3. Read the provider document.
 4. Read listed shared docs.
 5. Generate or claim source images.
-6. Run required processing tools.
-7. Write prompt files, reports, and manifest entry files.
-8. Validate manifest entry content and referenced files.
-9. Verify listed output files exist.
-10. Write the Asset Producer Report.
+6. Stop the affected asset path when source generation or claim fails.
+7. Run required processing tools for claimed or provided sources.
+8. Write prompt files, reports, and manifest entry files.
+9. Validate manifest entry content and referenced files.
+10. Verify listed output files exist.
+11. Write the Asset Producer Report.
 
 ## Prompt Rules
 
