@@ -32,21 +32,21 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 - [x] `R-032` Wiki documentation (30 pages)
 - [x] `R-033` CI workflow (lint, test, gitleaks)
 
-### v0.x — Role-based pipeline
+### v0.5 — Role-based pipeline
 
 - [x] `R-070` **Permission isolation — file-lock baseline** — Each role's write scope is enforced by `check_file_permissions.py` reading `.godotmaker/current_role` (set as the first action of every `/gm-*` skill). Hooks reject out-of-scope writes (e.g. only `/gm-evaluate` may write `e2e/`). The file-lock + hook approach was chosen over heavier alternatives after evaluation; harder isolation is tracked as `R-073`.
 - [x] `R-071` **Pipeline decomposition** — Split monolithic orchestrator skill into 9 role-based skills (`/gm-scaffold`, `/gm-gdd`, `/gm-asset`, `/gm-build`, `/gm-verify`, `/gm-evaluate`, `/gm-fixgap`, `/gm-accept`, `/gm-finalize`). Each role owns a single phase and write-permission scope; `gm-evaluate` owns `e2e/` exclusively.
 - [x] `R-072` **Shared reference docs (`_shared/`)** — Cross-skill reference docs (worker/verifier/reviewer/analyst dispatch) live as a single source of truth and are reverse-deployed by `publish_shared_refs()` into each consumer's `references/` with an `<!-- AUTO-GENERATED -->` header.
 
-### v0.x — Playability validation
+### v0.5 — Playability validation
 
 - [x] `R-080` **Playable Unit contract** - Make one minimal playable unit the core planning unit for `/gm-gdd`, the decomposer, and `PLAN.md`. Each unit must describe the player experience, the unit outcome, scenes involved, and each mechanic's player operation/content, expected effect, required visible content, and evidence.
 - [x] `R-081` **Playability scenario contract** - Turn each Playable Unit into evaluate-owned runtime coverage: player-facing operations, state assertions, visible-content checkpoints, and explicit failure criteria. Scope excludes a general AI player or RL system; the first target is deterministic proof that every required unit row can actually be played.
 - [x] `R-084` **Best-effort evaluate evidence archive** - When a tag is finalized, archive the existing E2E tests and screenshots under `docs/tags/<Tag>/evidence/` when available and summarize them in `final_report.json`. Evidence archive gaps are warnings, not finalize blockers.
 
-## In Progress
+### v0.7.0 — Art Asset Pipeline
 
-### v0.x — Art Asset Pipeline
+> Completed in the current development branch; expected to ship with the next `v0.7.0` tag after final validation.
 
 - [x] `R-082` **Asset production pipeline** - Rebuild `/gm-asset` around production units, provider-specific source claiming, deterministic image processing, asset manifests, and per-unit reports instead of prompt-only missing-row generation.
 - [x] `R-083` **Character and unit asset production** - Produce canonical character art and action sources for heroes, enemies, NPCs, and gameplay units.
@@ -58,7 +58,9 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 - [x] `R-092` **Generated asset usage in gameplay** - Make build and fixgap hand final generated assets to workers, keep reviewer asset-use checks lightweight, and let evaluate judge scene-contract screenshots instead of asset-manifest internals.
 - [x] `R-087` **Character animation runtime integration** - Use generated character action assets in Godot runtime animation setup, including idle/move/attack/hit/death state mapping, AnimationPlayer or sprite-sheet wiring, and gameplay-facing animation triggers.
 
-### v0.5 — Plugin Skills
+## In Progress
+
+### v0.x — Plugin Skills
 
 - [ ] `R-050` [Phantom Camera](https://github.com/ramokz/phantom-camera) — Camera management (inspired by Cinemachine)
 - [ ] `R-051` [Dialogic](https://github.com/dialogic-godot/dialogic) — Dialogue and visual novel system
