@@ -64,8 +64,16 @@ Agent({
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
 - DO NOT write files outside the project tree (system temp dirs, home directory, etc.). If you genuinely need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p the directory if missing) and delete it before reporting DONE. Claude Code's own scratchpad system is gated behind a feature flag we cannot rely on, so this rule is what guarantees clean tear-down.
 
-### Assets Available                                     [OPTIONAL]
-{Asset paths and descriptions}
+### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
+{Copy the matching ready entries from assets/manifest.json and ASSETS.md.
+Include: asset_id, final_path, runtime_artifact, runtime_role, target size,
+and metadata path for `grid_sheet` or `region_atlas`.
+Use cwd-relative final paths and metadata paths.
+Use final runtime assets only.
+Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
+prompt files, or scene references as runtime assets.
+If a required final asset or metadata file is missing, report PARTIAL or
+FAILED with the missing path.}
 
 ### Visual Asset Contract                                [REQUIRED for visual tasks]
 {Copy the relevant PLAN.md Runtime Asset Assignments, SCENES.md Asset
@@ -111,7 +119,8 @@ Agent({
 14. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
 15. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`).
 16. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
-17. **Visual tasks require asset contract rows.** Fill the `Visual Asset Contract` section for visual tasks.
+17. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
+`Visual Asset Contract` for visual tasks.
 18. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
 
 ## Worker Utility Convention

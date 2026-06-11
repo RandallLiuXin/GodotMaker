@@ -31,6 +31,10 @@ Agent({
 
 ### Specific Concerns                                    [OPTIONAL]
 {Anything you want the reviewer to pay special attention to}
+
+### Asset Runtime Snapshot                               [REQUIRED when files use visual assets]
+{Final asset paths, runtime_artifact values, and metadata paths used by the
+implementation.}
 ```
 
 ## Handling the Reviewer's Report

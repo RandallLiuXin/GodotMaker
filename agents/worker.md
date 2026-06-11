@@ -79,8 +79,9 @@ The lead agent provides your brief with these fields. REQUIRED fields are always
 ### Gotchas                                              [OPTIONAL]
 {Known pitfalls from reviewer skills}
 
-### Assets Available                                     [OPTIONAL]
-{Asset paths and descriptions}
+### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
+{Final runtime asset paths from ASSETS.md or assets/manifest.json.
+Include metadata paths for grid sheets and region atlases.}
 
 ### Visual Self-Check                                  [OPTIONAL]
 - Source: {evaluation.json.visual_checks scene and blocking finding}
@@ -98,6 +99,19 @@ Your brief lists the files you own. You may:
 - **CREATE** new files only if listed in your Deliverables
 
 If you need to modify a file not in your deliverables, report this in your Notes — do NOT modify it.
+
+## Runtime Asset Rules
+
+- Use final runtime asset paths from `Asset Runtime Snapshot`.
+- For `grid_sheet`, read the listed action metadata JSON and wire animation
+  frames from it.
+- For `region_atlas`, read the listed atlas metadata JSON and wire named
+  regions from it.
+- Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
+  prompt files, or scene references as runtime assets.
+- Do not replace listed final assets with placeholders, procedural shapes, or
+  freshly drawn stand-ins.
+- If a final asset or metadata path is missing, report `PARTIAL` or `FAILED`.
 
 ## Error Handling
 

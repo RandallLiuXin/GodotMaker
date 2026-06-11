@@ -102,3 +102,12 @@ def test_visual_qa_limits_visibility_findings_to_verify_criteria():
 
     for text in (static_prompt, dynamic_prompt, question_prompt, skill):
         assert "**Objective reason:**" not in text
+
+
+def test_visual_qa_question_mode_returns_verdict():
+    question_prompt = VQA_QUESTION_PROMPT.read_text(encoding="utf-8")
+    skill = VQA_SKILL.read_text(encoding="utf-8")
+
+    assert "### Verdict: {pass | fail | warning}" in question_prompt
+    assert "### Question Mode" in skill
+    assert "### Verdict: {pass | fail | warning}" in skill

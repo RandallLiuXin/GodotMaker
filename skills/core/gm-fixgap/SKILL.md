@@ -39,6 +39,7 @@ Then read context:
 - `.godotmaker/verify_report.json` → mechanical-layer failures from the most recent verify
 - `PLAN.md` → read-only; current tag's `**Tag:**` header tells you which tag's gaps you're fixing. The same tag-scope discipline as gm-build applies: previous tags' code is touchable only when a GAP item explicitly names it.
 - `STRUCTURE.md` → architecture (fixes need to respect existing system boundaries)
+- `ASSETS.md` and `assets/manifest.json` → final runtime asset paths, `runtime_artifact`, and runtime metadata paths for visual tasks
 - `MEMORY.md` index + sub-files → past decisions and known gotchas
 
 ## Hard Rules
@@ -156,7 +157,10 @@ Worker-dispatch tasks only — Step 1b classified main-agent-direct and escalate
 - Dispatch verify-source before evaluation-source within `pending`.
 - Use `subagent_type: "worker"`. Max 3 in parallel with disjoint file sets via `isolation: "worktree"`.
 - In each brief, paste the specific finding from GAP.md, the file(s) to modify, and the correct behavior from GDD.md.
-- For blocking evaluation-source visual tasks, fill `Visual Asset Contract` and `Visual Self-Check` from `references/worker-dispatch.md`.
+- For visual tasks, fill `Asset Runtime Snapshot` from
+  `references/worker-dispatch.md`.
+- For blocking evaluation-source visual tasks, fill `Visual Asset Contract` and
+  `Visual Self-Check` from `references/worker-dispatch.md`.
 - Update task status `pending` → `in_progress` when dispatched, `in_progress` → `completed` when worker reports DONE.
 
 ### Step 4 — Final Verify + Review (single pass after all fixes)
@@ -183,6 +187,7 @@ decision.
 **Reviewer** (after verifier passes):
 - Read `references/reviewer-dispatch.md` for the brief template
 - Use `subagent_type: "reviewer"`. Reviewer reports back; do not let it modify project files.
+- Include `Asset Runtime Snapshot` when reviewed files use visual assets.
 - Triage each finding per `references/reviewer-finding-triage.md` into one of three options:
   - **ACCEPT** → add NEW `pending` task to GAP.md.
   - **REJECT** → finding is wrong; append a record to MEMORY.md "Reviewer Triage Log" section (citation required for critical/major).

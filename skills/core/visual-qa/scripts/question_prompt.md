@@ -6,6 +6,8 @@ If the screenshots show a sequence (multiple frames), they are in chronological 
 
 ## Output Format
 
+### Verdict: {pass | fail | warning}
+
 ### Answer
 
 {Direct answer to the question. Be specific and actionable — if the question is about a bug, describe exactly what's wrong and where. If about behavior, describe what you observe frame by frame.}

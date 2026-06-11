@@ -39,6 +39,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Split the asset generation reference into runtime pipeline and prompt-contract references.
 - Added character animation asset contracts for canonical sources, per-action source sheets, processed frame outputs, action processing metadata, and final runtime handoff validation.
 - Added a dedicated card-kit production unit so card frames, portrait frames, rarity frames, card slots, and card-game UI assets no longer share the generic UI component path.
+- Added runtime asset handoff rules so build and fixgap stages pass generated final assets and metadata to workers while evaluate checks screenshots against scene contracts.
 
 ## Changed
 

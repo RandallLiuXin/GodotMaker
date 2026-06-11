@@ -184,6 +184,8 @@ cosmetic/style-only, can ship.
 ### Question Mode
 
 ```text
+### Verdict: {pass | fail | warning}
+
 ### Answer
 {Direct, specific, actionable answer. Reference locations, frames, colors, objects.}
 

@@ -212,3 +212,39 @@ def test_asset_stage_runs_manifest_gate_before_assets_update():
     assert "Configured Provider:" in producer
     assert "Used Provider:" in producer
     assert "manager upserts entries and" in runtime
+
+
+def test_build_and_fixgap_handoff_runtime_assets_to_workers():
+    build = _read("skills/core/gm-build/SKILL.md")
+    fixgap = _read("skills/core/gm-fixgap/SKILL.md")
+    worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
+    worker = _read("agents/worker.md")
+
+    for doc in (build, fixgap):
+        assert "`ASSETS.md` and `assets/manifest.json`" in doc
+        assert "Asset Runtime Snapshot" in doc
+
+    assert "### Asset Runtime Snapshot" in worker_dispatch
+    assert "Use final runtime assets only." in worker_dispatch
+    assert "`grid_sheet` or `region_atlas`" in worker_dispatch
+    assert "Do not use `.godotmaker/asset-generation/sources/`" in worker_dispatch
+    assert "## Runtime Asset Rules" in worker
+    assert "For `grid_sheet`, read the listed action metadata JSON" in worker
+    assert "For `region_atlas`, read the listed atlas metadata JSON" in worker
+
+
+def test_reviewer_checks_runtime_asset_usage_and_evaluate_uses_scene_contract():
+    reviewer_dispatch = _read("skills/core/_shared/reviewer-dispatch.md")
+    reviewer = _read("agents/reviewer.md")
+    evaluate = _read("skills/core/gm-evaluate/SKILL.md")
+
+    assert "### Asset Runtime Snapshot" in reviewer_dispatch
+    assert "**Review runtime asset usage.**" in reviewer
+    assert "### Asset Usage Review" in reviewer
+    assert "No generation source or curation candidate is used at runtime" in reviewer
+    assert "`visual-qa` skill in Question mode" in evaluate
+    assert "Do not compare screenshots against" in evaluate
+    assert "--question \"Does this screenshot satisfy the scene contract?" in evaluate
+    assert "`assets/manifest.json` — runtime asset handoff manifest" not in evaluate
+    assert "**Runtime asset preflight.**" not in evaluate
+    assert '"reference": "references/scene_<name>.png"' not in evaluate

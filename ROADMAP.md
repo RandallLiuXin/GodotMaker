@@ -53,11 +53,10 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 - [x] `R-085` **VFX and projectile asset production** - Produce projectiles, impacts, slashes, pickups, explosions, trails, and other gameplay effects.
 - [x] `R-088` **Prop and scene-object asset production** - Produce props, pickups, chests, obstacles, decorations, and scene object sets.
 - [x] `R-089` **Background and platform asset production** - Produce flat backgrounds, parallax-style layers, platform strips, terrain strips, and large scene backdrops.
-- [ ] `R-090` **UI component asset production** - Produce buttons, panels, tabs, progress bars, badges, icons, scalable UI pieces, and nine-slice-style sources.
-- [ ] `R-091` **Card and portrait asset production** - Produce card frames, portrait frames, rarity frames, resource badges, card slots, and card-game-specific UI assets.
-- [ ] `R-092` **Generated asset usage in gameplay** - Make build, fixgap, reviewer, and evaluate consume generated asset manifests so accepted assets appear in playable scenes.
-- [ ] `R-086` **Common UI motion skill** - Add a focused skill for common game UI motion such as panel transitions, button feedback, popups, score changes, health/XP feedback, modal entrance/exit, and state-change emphasis. The goal is to make UI feedback readable and reusable across generated games instead of relying on static controls.
-- [ ] `R-087` **Character animation runtime integration** - Use generated character action assets in Godot runtime animation setup, including idle/move/attack/hit/death state mapping, AnimationPlayer or sprite-sheet wiring, and gameplay-facing animation triggers.
+- [x] `R-090` **UI component asset production** - Produce buttons, panels, tabs, progress bars, badges, icons, scalable UI pieces, and nine-slice-style sources.
+- [x] `R-091` **Card and portrait asset production** - Produce card frames, portrait frames, rarity frames, resource badges, card slots, and card-game-specific UI assets.
+- [x] `R-092` **Generated asset usage in gameplay** - Make build and fixgap hand final generated assets to workers, keep reviewer asset-use checks lightweight, and let evaluate judge scene-contract screenshots instead of asset-manifest internals.
+- [x] `R-087` **Character animation runtime integration** - Use generated character action assets in Godot runtime animation setup, including idle/move/attack/hit/death state mapping, AnimationPlayer or sprite-sheet wiring, and gameplay-facing animation triggers.
 
 ### v0.5 — Plugin Skills
 
@@ -89,6 +88,7 @@ Items below are ideas under consideration — not committed to a timeline.
 
 - `R-093` **Map and stage art-to-runtime handoff** — Turn generated backgrounds, props, platforms, and scene references into map or stage runtime structure.
 - `R-094` **Interactive art generation workflow** — Add a future operator-facing workflow for reviewing generated sources, crop results, rejected variants, canonical choices, manifest mappings, and regenerate/replace/accept actions.
+- `R-086` **Common UI motion skill** — Add a focused skill for common game UI motion such as panel transitions, button feedback, popups, score changes, health/XP feedback, modal entrance/exit, and state-change emphasis.
 - `R-100` **TileMap support** — Terrain systems, tileset asset generation, and TileMap-based level design. Currently deferred; sprite-placement is the recommended terrain approach until this ships.
 - `R-101` **ECS framework migration** — Migrate tindercore (C++ GDExtension) from EnTT to flecs, then adopt tindercore as the ECS runtime replacing gecs.
 - `R-102` **Scene-markers skill** — Marker type → component composition mapping for ECS entity spawning.
