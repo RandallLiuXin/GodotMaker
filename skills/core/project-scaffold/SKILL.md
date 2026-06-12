@@ -30,12 +30,12 @@ minimum — use genre defaults for everything else.
 | `{{game_name}}` | user input, snake_case, used as directory name | *required* |
 | `{{game_title}}` | user input or Title Case of game_name | *required* |
 | `{{genre}}` | Game Plan "Genre" or user | `"platformer"` |
-| `{{perspective}}` | Game Plan "Perspective" or genre default | `"2D"` |
+| `{{perspective}}` | Fixed framework target | `"2D"` |
 | `{{viewport_width}}` | genre defaults table | `1280` |
 | `{{viewport_height}}` | genre defaults table | `720` |
-| `{{rendering_method}}` | perspective | `"gl_compatibility"` (2D) / `"forward_plus"` (3D) |
-| `{{root_node_type}}` | perspective | `"Node2D"` (2D) / `"Node3D"` (3D) |
-| `{{camera_type}}` | perspective | `"Camera2D"` (2D) / `"Camera3D"` (3D) |
+| `{{rendering_method}}` | fixed 2D renderer | `"gl_compatibility"` |
+| `{{root_node_type}}` | fixed 2D root | `"Node2D"` |
+| `{{camera_type}}` | fixed 2D camera | `"Camera2D"` |
 | `{{game_description}}` | Game Plan summary or one-line from user | genre name + " game" |
 
 **Genre defaults:**
@@ -46,7 +46,6 @@ minimum — use genre defaults for everything else.
 | Top-down | 1280x720 | none | move_up, move_down, move_left, move_right |
 | Puzzle | 1280x720 | none | select, confirm, cancel |
 | Endless runner | 720x1280 | 980.0 | jump |
-| 3D game | 1280x720 | 9.8 | move_forward, move_back, strafe_left, strafe_right, jump |
 
 ## Step 2 — Create Directory Structure
 
@@ -97,8 +96,8 @@ Remove any template comments (lines starting with `; TEMPLATE:`) from the output
 | `project.godot.tmpl` | `project.godot` | Must be valid Godot ConfigFile |
 | `claude.md.tmpl` | `CLAUDE.md` | Fill game info + ECS reference |
 | `gitignore.tmpl` | `.gitignore` | Use as-is, no placeholders |
-| `main_scene.tmpl` | `scenes/main.tscn` | Swap root node type for perspective |
-| `world_scene.tmpl` | `scenes/game_world.tscn` | Swap node + camera types; gameplay scene gets a World child node added during `/gm-build` |
+| `main_scene.tmpl` | `scenes/main.tscn` | Use a 2D root node |
+| `world_scene.tmpl` | `scenes/game_world.tscn` | Use 2D node + camera types; gameplay scene gets a World child node added during `/gm-build` |
 | `test_example.tmpl` | `test/test_example.gd` | Replace `{{GameNamePascal}}` |
 | `component.tmpl` | `src/components/c_example.gd` | Example stub |
 | `system.tmpl` | `src/systems/example_system.gd` | Example stub |
@@ -144,11 +143,6 @@ After writing base template files, apply genre-specific modifications to `projec
 **Top-down**:
 - No `[physics]` section
 - Add `[input]` section with 4-directional movement
-
-**3D**:
-- Change `renderer/rendering_method` to `"forward_plus"`
-- Use `Node3D` / `Camera3D` in scene templates
-- Add `[physics]` section: `3d/default_gravity=9.8`
 
 For input action serialization format, read `references/project_settings.md`
 — it has the exact Object() syntax and key code table.

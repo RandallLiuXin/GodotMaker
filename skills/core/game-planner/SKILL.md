@@ -67,6 +67,9 @@ Round 8 is the user's final review (Ask Maker mode). Pass 1 is mandatory; do not
 Cover: Genre, perspective, core mechanic, win/lose conditions, session length,
 core gameplay loop (moment-to-moment, session arc, progression).
 
+GodotMaker currently targets 2D games. Choose the appropriate 2D perspective
+for the genre; do not ask the user to choose a project dimension.
+
 Before asking, load **smart defaults** for the genre:
 
 | Genre | Perspective | Camera | Input | Physics | Typical Scope |
@@ -79,8 +82,8 @@ Before asking, load **smart defaults** for the genre:
 | Bullet hell | 2D top-down | Fixed on player | Keyboard / Gamepad | Projectile collision, no gravity | Stage-based |
 | Endless runner | 2D side-view | Auto-scroll | One-button / Tap | Gravity, obstacle collision | Infinite, score-based |
 | Fighting game | 2D side-view | Fixed arena | Gamepad + Keyboard | Hitbox/hurtbox, gravity | Character roster |
-| RTS | 2D/3D top-down | Free pan + zoom | Mouse + Keyboard | Pathfinding, unit collision | Campaign or skirmish |
-| Survival | 2D/3D | Follow player | WASD + Mouse | World collision, resource interaction | Open-ended |
+| RTS | 2D top-down | Free pan + zoom | Mouse + Keyboard | Pathfinding, unit collision | Campaign or skirmish |
+| Survival | 2D top-down or side-view | Follow player | WASD + Mouse | World collision, resource interaction | Open-ended |
 
 **How to present Round 1:** State what you already know (from user's input + genre
 defaults), then ask only the gaps. Example:

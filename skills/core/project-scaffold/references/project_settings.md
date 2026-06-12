@@ -26,11 +26,7 @@ window/stretch/mode="canvas_items"
 ### [rendering]
 
 ```ini
-# 2D projects
 renderer/rendering_method="gl_compatibility"
-
-# 3D projects
-renderer/rendering_method="forward_plus"
 ```
 
 ### [physics]
@@ -39,11 +35,9 @@ renderer/rendering_method="forward_plus"
 # 2D gravity (platformers, endless runners)
 2d/default_gravity=980.0
 
-# 3D gravity
-3d/default_gravity=9.8
 ```
 
-Only include this section for games that use gravity.
+Only include this section for 2D games that use gravity.
 
 ## [input] — Action Mapping
 

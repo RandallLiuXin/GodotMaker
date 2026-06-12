@@ -50,7 +50,9 @@ Scaffold is **lifetime-once** — its event gets cleared after each tag's finali
 
 Use `AskUserQuestion` to ask for:
 - **Game name** (snake_case, used as project directory name)
-- **Perspective** (`2D` | `3D`) — defaults to `2D` if user is unsure
+
+Use 2D defaults. GodotMaker currently generates 2D games only; do not ask the
+user to choose a dimension during scaffold.
 
 Other settings (genre, art style, mechanics) are deferred to `/gm-gdd`.
 

@@ -6,7 +6,7 @@
 
 **Tag:** {vX.Y.Z}
 
-## Dimension: {2D or 3D}
+## Dimension: 2D
 
 ## Input Actions
 
