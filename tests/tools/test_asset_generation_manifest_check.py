@@ -265,6 +265,35 @@ def test_check_manifest_accepts_card_frame_single_image_without_curation(tmp_pat
     assert result["asset_count"] == 1
 
 
+def test_check_manifest_accepts_character_portrait_single_image(tmp_path):
+    manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
+    write_manifest(
+        manifest,
+        {
+            "asset_id": "player_portrait",
+            "family": "character_portrait",
+            "production_shape": "single_image",
+            "runtime_artifact": "single",
+            "runtime_role": "character select portrait",
+            "source_path": ".godotmaker/asset-generation/sources/player_portrait_source.png",
+            "final_path": "assets/portraits/player.png",
+            "prompt_path": ".godotmaker/asset-generation/prompts/player_portrait.txt",
+            "processing_status": "ready",
+            "extraction_status": "not_required",
+            "derived_from": "player_canonical",
+            "curation": {
+                "status": "not_required",
+                "strategy": "none",
+                "report_path": None,
+            },
+        },
+    )
+
+    result = check_manifest(manifest, project_root=tmp_path)
+
+    assert result["asset_count"] == 1
+
+
 def test_check_manifest_allows_deferred_background_without_target_geometry(tmp_path):
     manifest = tmp_path / ".godotmaker" / "asset-generation" / "manifest.json"
     write_manifest(

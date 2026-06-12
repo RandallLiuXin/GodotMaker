@@ -13,6 +13,7 @@ ALLOWED_FAMILIES = {
     "screen_reference",
     "style_reference",
     "character_canonical",
+    "character_portrait",
     "character_action_source",
     "character_frame_output",
     "projectile_fx_source",
@@ -36,6 +37,7 @@ FOREGROUND_CURATED_FAMILIES = {
     "projectile_fx_source",
     "impact_fx_source",
     "compact_prop_pack",
+    "character_portrait",
     "ui_component_sheet",
     "icon_pack",
     "panel_source",
@@ -61,6 +63,7 @@ FOREGROUND_READY_ARTIFACTS = {
 }
 
 DIRECT_SINGLE_FAMILIES = {
+    "character_portrait",
     "panel_source",
     "card_frame_source",
     "portrait_frame_source",

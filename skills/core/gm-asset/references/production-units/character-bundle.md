@@ -9,6 +9,7 @@ recurring creatures.
 2. Current-tag ASSETS.md rows
 3. Character role and required actions
 4. Canonical reference paths when available
+5. `character_portrait` rows when present
 
 ## Steps
 
@@ -27,6 +28,7 @@ recurring creatures.
 9. Use processed action frames or delivery sheets as runtime character assets.
 10. Write `runtime_artifact: grid_sheet` in runtime character animation
     manifest entries.
+11. Generate display-sized single images for `character_portrait` rows.
 
 ## Prompt Contract
 
@@ -110,9 +112,10 @@ recovery is used.
 ## Outputs
 
 1. canonical source and final reference
-2. action source sheets
-3. processed frame PNGs
-4. delivery sheet or frame sequence
-5. GIF preview
-6. action metadata
-7. manifest entry JSON files
+2. portrait or display-slot final images when `character_portrait` rows exist
+3. action source sheets
+4. processed frame PNGs
+5. delivery sheet or frame sequence
+6. GIF preview
+7. action metadata
+8. manifest entry JSON files

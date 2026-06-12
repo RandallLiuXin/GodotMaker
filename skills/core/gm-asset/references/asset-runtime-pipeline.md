@@ -170,15 +170,16 @@ Foreground runtime asset families:
 1. `projectile_fx_source`
 2. `impact_fx_source`
 3. `compact_prop_pack`
-4. `ui_component_sheet`
-5. `icon_pack`
-6. `panel_source`
-7. `card_component_sheet`
-8. `card_frame_source`
-9. `portrait_frame_source`
-10. `scene_prop_set`
-11. `platform_strip`
-12. `runtime_sprite`
+4. `character_portrait`
+5. `ui_component_sheet`
+6. `icon_pack`
+7. `panel_source`
+8. `card_component_sheet`
+9. `card_frame_source`
+10. `portrait_frame_source`
+11. `scene_prop_set`
+12. `platform_strip`
+13. `runtime_sprite`
 
 When one of these families is `ready`, set `runtime_artifact` to one of:
 

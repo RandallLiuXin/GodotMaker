@@ -25,8 +25,12 @@ For current-tag gameplay actors:
    from the canonical reference.
 3. Add one or more `character_frame_output` rows for processed runtime frames
    or grid sheets.
-4. Set action names from current-tag gameplay behavior and artifact mappings.
-5. Use static single-image rows only for explicitly static, non-gameplay,
+4. Add `character_portrait` rows when a current-tag character appears in a
+   large UI display slot.
+5. Bind gameplay runtime rows and UI display rows separately in the Visual
+   Asset Contract.
+6. Set action names from current-tag gameplay behavior and artifact mappings.
+7. Use static single-image rows only for explicitly static, non-gameplay,
    UI-only, locked-preview, statue, or abstract-token roles.
 
 ## Asset Table
@@ -39,8 +43,9 @@ For current-tag gameplay actors:
 | 1 | v0.1.0 | player_canonical | reference | full body | family=character_canonical; role=player | references/characters/player_canonical.png | MISSING |
 | 2 | v0.1.0 | player_action_source | sprite_sheet | action set | family=character_action_source; derived_from=player_canonical; actions=from_current_tag_behavior; curation=.godotmaker/asset-generation/curation/player_actions.json | .godotmaker/asset-generation/sources/player_actions.png | MISSING |
 | 3 | v0.1.0 | player_animation_runtime | animation | frame output | family=character_frame_output; derived_from=player_action_source; runtime_artifact=grid_sheet; metadata=assets/sprites/player/player_actions.json | assets/sprites/player/player_actions.png | MISSING |
-| 4 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button; selected_candidate=ui_kit.action_button | assets/ui/action_button.png | MISSING |
-| 5 | v0.1.0 | background_sky | background | 1280x720 | family=background; shape=single_image | assets/backgrounds/sky.png | MISSING |
+| 4 | v0.1.0 | player_portrait | portrait | 256x256 px | family=character_portrait; role=player; derived_from=player_canonical; use=character_select_card; required_if=large_ui_display | assets/portraits/player.png | MISSING |
+| 5 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button; selected_candidate=ui_kit.action_button | assets/ui/action_button.png | MISSING |
+| 6 | v0.1.0 | background_sky | background | 1280x720 | family=background; shape=single_image | assets/backgrounds/sky.png | MISSING |
 | ... | ... | ... | ... | ... | ... | ... | ... |
 
 ## Visual Asset Contract
@@ -54,6 +59,7 @@ For current-tag gameplay actors:
 | Tag | Scene / Mechanic | Visible Object | Asset Row / Path | Runtime Size | Visual Role | Readability Requirement | Source |
 |-----|------------------|----------------|------------------|--------------|-------------|-------------------------|--------|
 | v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_animation_runtime / assets/sprites/player/player_actions.png | gameplay actor scale | controllable player | readable silhouette and current-tag actions visible in frame sequences | derived from player_canonical |
+| v0.1.0 | Character Select | player portrait | player_portrait / assets/portraits/player.png | 140x140 px card slot | selectable character identity | readable when displayed larger than gameplay actor scale | derived from player_canonical |
 | v0.1.0 | Main Menu | title text | UI text | viewport-relative | menu identity | readable at target resolution | procedural/UI |
 | v0.1.0 | HUD / [v0.1.0-M1] | action button | action_button / assets/ui/action_button.png | 96x48 px target | HUD control | readable touch target at target resolution | derived from UI component sheet |
 

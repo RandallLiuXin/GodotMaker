@@ -244,6 +244,8 @@ The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the c
 - [ ] `ASSETS.md` Visual Asset Contract covers current-tag gameplay-visible objects with runtime size, scene/mechanic use, readability requirement, and source relationship
 - [ ] `ASSETS.md` applies the Gameplay Actor Asset Rows contract to gameplay
       actors introduced or changed in this tag
+- [ ] `ASSETS.md` Visual Asset Contract binds large character UI display slots
+      to portrait/display rows instead of gameplay runtime frame rows
 - [ ] `TOC.md` updated (if decomposer touched it)
 - [ ] Parallel-only consistency check: PLAN task IDs referenced by STRUCTURE/SCENES/ASSETS exist in PLAN.md; every PLAN task's affected scene/system/asset appears in the corresponding artifact or is intentionally marked deferred.
 - [ ] Parallel-only mechanic ID check: every current-tag mechanic ID referenced by STRUCTURE/SCENES/ASSETS exists in final PLAN.md Tag Mechanics; no artifact references a guessed, renumbered, or stale current-tag mechanic ID.

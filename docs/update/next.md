@@ -62,6 +62,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `/gm-asset` now treats exhausted image-provider failures as asset-production failures instead of allowing placeholder sources to be marked generated.
 - Scaffold and planning now default to 2D project structure instead of asking for unsupported project dimensions.
 - Character planning now requires gameplay actors to include character art and action-source assets instead of static-only sprite rows.
+- Character UI display assets now use dedicated portrait rows instead of reusing small gameplay runtime sprites.
 
 ## Fixed
 

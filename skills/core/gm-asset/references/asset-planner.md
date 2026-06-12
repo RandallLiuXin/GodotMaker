@@ -65,7 +65,7 @@ Choose the first matching unit.
 | Unit | Use when | Do not use for |
 | --- | --- | --- |
 | `screen-reference` | Missing `references/scene_*.png`, style anchor, or evaluation visual target. | Runtime backgrounds, map bases, parallax plates, final props, or playable scene objects. |
-| `character-bundle` | Player, enemy, NPC, summon, boss, portrait, bust, or recurring creature identity. | Detached projectiles, impact bursts, UI pieces, props, or terrain. |
+| `character-bundle` | Player, enemy, NPC, summon, boss, character portrait, character bust, character card display image, or recurring creature identity. | Detached projectiles, impact bursts, UI pieces, props, or terrain. |
 | `fx-bundle` | Projectile, impact, pickup effect, slash, muzzle, aura, explosion, detached effect sequence, or foreground gameplay sprite with effect behavior. | Character body animation, UI icons, props, or map scenery. |
 | `ui-kit` | Buttons, panels, tabs, counters, HUD pieces, map markers, cursors, icons, progress bars, and scalable UI pieces that share one interface style. | Full composite screens, readable text, logos, fonts, card frames, portrait frames, scene backgrounds, or runtime props. |
 | `card-kit` | Card frames, portrait frames, rarity frames, card slots, deck slots, card markers, and card-game-specific UI pieces. | Generic HUD controls, character portraits, full composite screens, readable text, logos, fonts, scene backgrounds, or runtime props. |
@@ -98,6 +98,7 @@ user explicitly requested generated image assets.
 | `screen_reference` | `screen-reference` |
 | `style_reference` | `screen-reference` |
 | `character_canonical` | `character-bundle` |
+| `character_portrait` | `character-bundle` |
 | `character_action_source` | `character-bundle` |
 | `character_frame_output` | `character-bundle` |
 | `projectile_fx_source` | `fx-bundle` |
