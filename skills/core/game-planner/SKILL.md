@@ -109,6 +109,20 @@ Ask about the relationship between mechanics and entities:
 - "What enemies would challenge the wall-jump mechanic? Climbers? Flyers?"
 - "Should the dash be a dodge (invincible frames) or an attack (damage on contact)?"
 
+For gameplay actors, record target screen presence as viewport-height percent
+and target pixels at the chosen viewport:
+
+| Game shape | Default actor height |
+|------------|----------------------|
+| Top-down exploration / RPG | 8% viewport height |
+| Survivor / twin-stick / bullet hell | 6% viewport height |
+| Side-view platformer | 12% viewport height |
+| Action platformer / brawler | 16% viewport height |
+| Fighting / duel arena | 45% viewport height |
+
+For pixel art, snap target actor heights to common source sizes such as 16,
+24, 32, 48, 64, or 96 px.
+
 ### Round 3 — World, Levels & Feel (GDD §4, §6, §7)
 
 **Goal:** Define the visual/emotional identity and structural design.

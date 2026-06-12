@@ -54,12 +54,14 @@ For current-tag gameplay actors:
      UI element, and scene reference should map to an ASSETS.md row or to
      `procedural`, `UI text`, or `not required this tag`.
      Use `asset_name / assets/...` for concrete asset bindings.
+     `Runtime Size` uses concrete px, `% viewport height`, or both.
+     Gameplay actors use both `% viewport height` and target px.
      `not required this tag` needs a deferral reason in Readability Requirement. -->
 
 | Tag | Scene / Mechanic | Visible Object | Asset Row / Path | Runtime Size | Visual Role | Readability Requirement | Source |
 |-----|------------------|----------------|------------------|--------------|-------------|-------------------------|--------|
-| v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_animation_runtime / assets/sprites/player/player_actions.png | gameplay actor scale | controllable player | readable silhouette and current-tag actions visible in frame sequences | derived from player_canonical |
-| v0.1.0 | Character Select | player portrait | player_portrait / assets/portraits/player.png | 140x140 px card slot | selectable character identity | readable when displayed larger than gameplay actor scale | derived from player_canonical |
+| v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_animation_runtime / assets/sprites/player/player_actions.png | 8% viewport height / 58px tall at 1280x720 | controllable player | readable silhouette and current-tag actions visible in frame sequences | derived from player_canonical |
+| v0.1.0 | Character Select | player portrait | player_portrait / assets/portraits/player.png | 140x140 px card slot | selectable character identity | readable in UI slots larger than gameplay runtime frames | derived from player_canonical |
 | v0.1.0 | Main Menu | title text | UI text | viewport-relative | menu identity | readable at target resolution | procedural/UI |
 | v0.1.0 | HUD / [v0.1.0-M1] | action button | action_button / assets/ui/action_button.png | 96x48 px target | HUD control | readable touch target at target resolution | derived from UI component sheet |
 

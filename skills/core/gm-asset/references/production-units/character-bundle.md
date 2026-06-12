@@ -10,6 +10,7 @@ recurring creatures.
 3. Character role and required actions
 4. Canonical reference paths when available
 5. `character_portrait` rows when present
+6. Visual Asset Contract runtime size for gameplay display
 
 ## Steps
 
@@ -29,6 +30,8 @@ recurring creatures.
 10. Write `runtime_artifact: grid_sheet` in runtime character animation
     manifest entries.
 11. Generate display-sized single images for `character_portrait` rows.
+12. Keep runtime body frames at or above the Visual Asset Contract gameplay
+    display size.
 
 ## Prompt Contract
 
