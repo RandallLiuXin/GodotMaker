@@ -46,7 +46,9 @@
 
 - **Theme / Setting:** {fantasy forest, sci-fi space station, etc.}
 - **Mood / Atmosphere:** {dark and tense, bright and cheerful, etc.}
-- **Art style:** {pixel art / vector / hand-painted / low-poly / placeholder}
+- **Art style:** {pixel art / vector / hand-painted / cartoon / placeholder}
+- **Visual mode:** {pixel art / non-pixel 2D}
+- **Target viewport:** {e.g., 1280x720 for non-pixel 2D, 480x270 for pixel art}
 - **Color palette:** {dominant colors, warm/cool}
 - **Visual references:** {description of intended look, or "see user-provided assets"}
 

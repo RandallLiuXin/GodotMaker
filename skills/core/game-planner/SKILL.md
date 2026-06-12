@@ -113,8 +113,15 @@ Ask about the relationship between mechanics and entities:
 
 **Goal:** Define the visual/emotional identity and structural design.
 
-Cover: Theme/setting, art style, mood, level/scene design, difficulty progression,
-UI elements (HUD, menus), juice/feedback (particles, screen shake, hit flash).
+Cover: Theme/setting, art style, visual mode, target viewport, mood,
+level/scene design, difficulty progression, UI elements (HUD, menus),
+juice/feedback (particles, screen shake, hit flash).
+
+Record display specs in GDD §4:
+
+1. Visual mode: `pixel art` or `non-pixel 2D`.
+2. Target viewport: default to `1280x720` for non-pixel 2D when unspecified.
+3. Pixel base resolution: default to `480x270` for pixel art when unspecified.
 
 For games with environments/levels (platformer, tower defense, RPG, top-down):
 ask about terrain construction: "Should terrain use TileMap (tile-based grids,

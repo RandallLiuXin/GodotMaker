@@ -148,7 +148,23 @@ Run this step only when `project.godot` is in `Owned Files`, or when no `Work Pa
 
 If the GDD or this tag's ROADMAP entry implies project-level config changes (viewport size, rendering method, new autoload), update `project.godot` accordingly. Skip if defaults still fit. Never overwrite the whole file — use targeted Edit. `main_scene` is not in this list.
 
-**Art-style preset.** If GDD §4 "Art style" describes pixel art (semantic match, not literal) AND `renderer/rendering_method == "gl_compatibility"`, apply the **pixel preset** below.
+Read GDD §4 `Visual mode` and `Target viewport` before editing `project.godot`.
+Apply the pixel profile first when GDD says pixel art in either "Visual mode"
+or "Art style".
+
+**Non-pixel 2D profile.** If GDD §4 is not pixel art, apply the profile below.
+Use `1280x720` when target viewport is missing.
+
+| Field | Non-pixel value |
+|---|---|
+| `display/window/size/viewport_width` | GDD target viewport width, default `1280` |
+| `display/window/size/viewport_height` | GDD target viewport height, default `720` |
+| `display/window/stretch/mode` | `"canvas_items"` |
+| `display/window/stretch/aspect` | `"keep"` |
+
+**Pixel profile.** If GDD §4 "Visual mode" or "Art style" describes pixel art
+AND `renderer/rendering_method == "gl_compatibility"`, apply the pixel profile
+below.
 
 | Field | Pixel value |
 |---|---|

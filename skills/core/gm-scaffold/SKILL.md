@@ -39,10 +39,11 @@ Scaffold is **lifetime-once** — its event gets cleared after each tag's finali
 
 ## Hard Rules
 
-1. **Do NOT design the game here.** Game design is `/gm-gdd`'s job. Scaffold creates an empty, generic project. Non-gameplay project settings (resolution, rendering method, viewport defaults) are config choices scaffold may make — those are not game design.
-2. **Do NOT create Component/System stubs.** STRUCTURE.md doesn't exist yet, so there's nothing to derive from. Workers in `/gm-build` create code files on demand.
-3. **All addons MUST come from `.claude/config/addon_versions.json`** — do not guess versions.
-4. **Initial git commit is mandatory and must include import metadata.** Run `<godot_path> --headless --import` before the commit to generate and stage the `.uid` files. Worker worktree isolation in `/gm-build` requires `HEAD` to resolve.
+1. **Do NOT design the game here.**
+2. **Use fixed 2D defaults.** Use the project-scaffold default viewport (`1280x720`) and rendering method.
+3. **Do NOT create Component/System stubs.**
+4. **All addons MUST come from `.claude/config/addon_versions.json`** — do not guess versions.
+5. **Initial git commit is mandatory and must include import metadata.** Run `<godot_path> --headless --import` before the commit and include generated `.uid` files.
 
 ## Scaffold Steps
 
@@ -58,9 +59,10 @@ Other settings (genre, art style, mechanics) are deferred to `/gm-gdd`.
 
 ### 2a. Run project-scaffold skill
 
-Invoke `.claude/skills/project-scaffold/SKILL.md` with the gathered inputs.
-Tell it to run Steps 1, 2, and 3, and from Step 3's template table fill
-just these four templates:
+Invoke `.claude/skills/project-scaffold/SKILL.md` with only the gathered game
+name. Use project-scaffold defaults for every other template variable. Run only
+Steps 1, 2, and 3. Do not run genre adaptations. From Step 3's template table,
+fill just these four templates:
 
 - `project.godot.tmpl` → `project.godot`
 - `main_scene.tmpl` → `scenes/main.tscn`
