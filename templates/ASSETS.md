@@ -16,6 +16,19 @@ Initial visual seed text lives in `STYLE.md`. Generated scene references,
 canonical asset references, and manifest source relationships are the primary
 style anchors after they exist.
 
+## Gameplay Actor Asset Rows
+
+For current-tag gameplay actors:
+
+1. Add a `character_canonical` row for the canonical full-body reference.
+2. Add one or more `character_action_source` rows for action sheets derived
+   from the canonical reference.
+3. Add one or more `character_frame_output` rows for processed runtime frames
+   or grid sheets.
+4. Set action names from current-tag gameplay behavior and artifact mappings.
+5. Use static single-image rows only for explicitly static, non-gameplay,
+   UI-only, locked-preview, statue, or abstract-token roles.
+
 ## Asset Table
 
 <!-- Master manifest of all visual assets across all tags. Each row's
@@ -23,9 +36,9 @@ style anchors after they exist.
 
 | # | Tag | Name | Type | Size | Generation Params | File Path | Status |
 |---|-----|------|------|------|-------------------|-----------|--------|
-| 1 | v0.1.0 | player_idle | sprite | 64x64 px | family=runtime_sprite; derived_from=player_canonical | assets/sprites/player_idle.png | MISSING |
-| 2 | v0.1.0 | player_run | sprite_sheet | 6 frames | family=character_action_source; action=run; derived_from=player_canonical; curation=.godotmaker/asset-generation/curation/player_run.json | assets/sprites/player_run.png | MISSING |
-| 3 | v0.1.0 | enemy_basic | sprite | 64x64 px | family=runtime_sprite; derived_from=enemy_canonical | assets/sprites/enemy_basic.png | MISSING |
+| 1 | v0.1.0 | player_canonical | reference | full body | family=character_canonical; role=player | references/characters/player_canonical.png | MISSING |
+| 2 | v0.1.0 | player_action_source | sprite_sheet | action set | family=character_action_source; derived_from=player_canonical; actions=from_current_tag_behavior; curation=.godotmaker/asset-generation/curation/player_actions.json | .godotmaker/asset-generation/sources/player_actions.png | MISSING |
+| 3 | v0.1.0 | player_animation_runtime | animation | frame output | family=character_frame_output; derived_from=player_action_source; runtime_artifact=grid_sheet; metadata=assets/sprites/player/player_actions.json | assets/sprites/player/player_actions.png | MISSING |
 | 4 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button; selected_candidate=ui_kit.action_button | assets/ui/action_button.png | MISSING |
 | 5 | v0.1.0 | background_sky | background | 1280x720 | family=background; shape=single_image | assets/backgrounds/sky.png | MISSING |
 | ... | ... | ... | ... | ... | ... | ... | ... |
@@ -40,8 +53,7 @@ style anchors after they exist.
 
 | Tag | Scene / Mechanic | Visible Object | Asset Row / Path | Runtime Size | Visual Role | Readability Requirement | Source |
 |-----|------------------|----------------|------------------|--------------|-------------|-------------------------|--------|
-| v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_idle / assets/sprites/player_idle.png | 64x64 px on screen | controllable player | readable silhouette against gameplay background | derived from player_canonical |
-| v0.1.0 | Gameplay / [v0.1.0-M2] | enemy_basic | enemy_basic / assets/sprites/enemy_basic.png | 64x64 px on screen | enemy pressure | readable in normal gameplay captures | canonical |
+| v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_animation_runtime / assets/sprites/player/player_actions.png | gameplay actor scale | controllable player | readable silhouette and current-tag actions visible in frame sequences | derived from player_canonical |
 | v0.1.0 | Main Menu | title text | UI text | viewport-relative | menu identity | readable at target resolution | procedural/UI |
 | v0.1.0 | HUD / [v0.1.0-M1] | action button | action_button / assets/ui/action_button.png | 96x48 px target | HUD control | readable touch target at target resolution | derived from UI component sheet |
 
@@ -49,23 +61,23 @@ style anchors after they exist.
 
 <!-- Source sheets and selected runtime outputs for animated 2D assets. -->
 
-### player_idle_source (tag: v0.1.0)
+### player_action_source (tag: v0.1.0)
 - **Family:** character_action_source
-- **Output:** assets/sprites/player_idle.png
+- **Output:** assets/sprites/player/player_actions.png
 - **Derived from:** player_canonical
-- **Action:** idle
-- **Frames:** 4
+- **Actions:** current-tag player behavior
+- **Frames:** per action metadata
 - **FPS:** 8
-- **Loop:** true
-- **Curation report:** .godotmaker/asset-generation/curation/player_idle.json
-- **Selected candidate:** player_idle.idle_loop
+- **Loop:** per action metadata
+- **Curation report:** .godotmaker/asset-generation/curation/player_actions.json
+- **Selected candidate:** accepted character action sheet
 - **Processing status:** ready
 
 ### {action_source_name} (tag: vX.Y.Z)
 - **Family:** character_action_source
 - **Output:** ...
 - **Derived from:** ...
-- **Action:** ...
+- **Actions:** ...
 - **Frames:** ...
 - **FPS:** ...
 - **Loop:** ...

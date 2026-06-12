@@ -17,7 +17,7 @@ recurring creatures.
    `tools/asset_image_finalize.py`.
 3. Make the canonical visible before derivative actions when the provider
    supports image references.
-4. Generate one body action source per action.
+4. Generate one body action source per required action.
 5. Generate detached projectile, slash, muzzle, dust, aura, pickup, and impact
    effects as separate FX sources.
 6. Process body actions with `tools/asset_action_process.py`.
@@ -100,12 +100,12 @@ recovery is used.
 
 ## Defaults
 
-1. idle: `2x2`, body, feet or bottom anchor
-2. run/walk: `2x2` or `2x3`, body, feet anchor
-3. attack/shoot/cast body: `2x2` or `2x3`, body
-4. hurt: `2x2`, body
-5. death/transformation: `2x3`, `2x4`, or `3x3`
-6. four-direction top-down locomotion: `4x4`
+1. Use `2x4` or larger grids for body loops.
+2. Use `3x4`, `4x4`, or larger grids for locomotion.
+3. Use `3x4`, `4x4`, or larger grids for expressive body actions.
+4. Use `2x3` or larger grids for short reactions.
+5. Record `fps`, `loop`, and frame names in action metadata.
+6. Choose frame names from the brief and ASSETS rows.
 
 ## Outputs
 
