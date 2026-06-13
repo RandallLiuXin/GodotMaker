@@ -65,6 +65,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Character UI display assets now use dedicated portrait rows instead of reusing small gameplay runtime sprites.
 - GDD display specs now determine pixel/non-pixel mode and target viewport while scaffold keeps a neutral 2D default.
 - GDD and asset planning now record gameplay actor screen presence so generated character art is sized for runtime display.
+- Evaluate and fixgap now separate E2E test-interface requests from normal gameplay changes.
 
 ## Fixed
 

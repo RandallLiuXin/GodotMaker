@@ -81,6 +81,24 @@ E2E tests live in a flat `e2e/` directory (no per-tag subdirectories). Each test
 8. Run the full suite: `godot-e2e e2e/ -v`
 9. Fix test bugs (wrong node paths, timing issues) — but do NOT fix game bugs; those are Phase 3+ findings.
 
+**E2E repair boundary:**
+- E2E tests verify observable gameplay requirements. Do NOT prescribe fixgap's
+  implementation strategy.
+- When a state cannot be reached reliably in E2E, record the observed gap and
+  request the deterministic test interface needed to exercise it.
+- Test interfaces include `simulate_*` methods, scene setup helpers, fixed
+  seeds, public state setup, or debug-safe setup paths that call real runtime
+  code.
+- Do NOT ask fixgap to change normal gameplay behavior, balance, progression,
+  content, or timing only to satisfy a test assertion.
+- If normal gameplay itself violates GDD/PLAN, cite the design source and
+  record the gameplay failure.
+
+When requesting a test interface, write both evidence entries:
+
+- `observed_gap: <observable state or behavior not proven by E2E>`
+- `requested_test_interface: <bounded setup or simulate interface needed>`
+
 After this phase the `e2e/` directory must contain exactly one test file per mechanic id in the expected-mechanics checklist (Phase 1), Playable Unit coverage for every Playable Unit table row, plus scene-transition tests. Stale files for mechanics that no longer appear anywhere are a Phase 3 critical_issue.
 
 Before completing `/gm-evaluate`, write one `playable_unit.rows` entry for
@@ -200,7 +218,11 @@ Write evaluation results to `.godotmaker/evaluation.json`:
       "<mechanic_id_or_row_name>": {
         "result": "pass | fail",
         "test": "e2e/test_<tag_slug>_playable_unit_<slug>.gd",
-        "evidence": ["<runtime behavior, assertion, screenshot, video frame, or log path>"]
+        "evidence": [
+          "<runtime behavior, assertion, screenshot, video frame, or log path>",
+          "observed_gap: <observable state or behavior not proven by E2E>",
+          "requested_test_interface: <bounded setup or simulate interface needed>"
+        ]
       }
     }
   },

@@ -95,6 +95,21 @@ entry with `result == "fail"`. Include the row key, test path, and evidence
 entries. Fix the game code or runtime path. Do not reduce the `PLAN.md` or
 `e2e/` contract.
 
+For each E2E-sourced issue, decide the repair path before writing GAP tasks:
+
+- Fix runtime behavior when the observable gameplay requirement is missing.
+- Add or expose deterministic test interfaces when evidence includes
+  `requested_test_interface:`.
+- Escalate back to `/gm-evaluate` when the E2E assertion or scenario is wrong.
+- Change normal gameplay behavior, balance, progression, content, or timing
+  only when the evaluation evidence cites a GDD.md or PLAN.md requirement.
+
+Copy `observed_gap:` and `requested_test_interface:` evidence entries into the
+GAP task when present.
+
+GAP tasks must preserve the normal gameplay flow while satisfying the
+observable requirement or requested test interface.
+
 - `critical_issues` — must fix all (→ task IDs `C1`, `C2`, …)
 - `major_issues` — fix as many as possible (→ task IDs `J1`, `J2`, …)
 - `gameplay_issues` — fix only if related to a critical/major (→ `G1`, `G2`, …)
