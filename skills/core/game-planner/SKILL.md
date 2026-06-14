@@ -138,9 +138,10 @@ Record display specs in GDD §4:
 3. Pixel base resolution: default to `480x270` for pixel art when unspecified.
 
 For games with environments/levels (platformer, tower defense, RPG, top-down):
-ask about terrain construction: "Should terrain use TileMap (tile-based grids,
-good for repeating patterns) or Sprite-based placement (unique hand-placed
-elements)?" Most platformers and tower defense games benefit from TileMap.
+ask what terrain, paths, blockers, hazards, exits, build pads, and landmarks
+the player should see and use. Plan current playable units with sprite-based
+placement, collision shapes, and scene-object metadata. Record TileMap requests
+as deferred scope.
 
 **Skip §4 (Game World)** for abstract games.
 **Skip §6 (Level Design)** for endless/procedural games — instead ask about generation rules.

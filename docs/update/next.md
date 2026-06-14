@@ -66,6 +66,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - GDD display specs now determine pixel/non-pixel mode and target viewport while scaffold keeps a neutral 2D default.
 - GDD and asset planning now record gameplay actor screen presence so generated character art is sized for runtime display.
 - Evaluate and fixgap now separate E2E test-interface requests from normal gameplay changes.
+- Game planning now keeps TileMap terrain deferred and uses sprite-based placement for current playable units.
 
 ## Fixed
 
