@@ -2829,7 +2829,7 @@
 <td>PreToolUse</td>
 <td>Write|Edit</td>
 <td>是</td>
-<td>由 <code>.godotmaker/current_role</code> 驱动的每角色写规则</td>
+<td>由 <code>.godotmaker/current_role</code> 驱动的角色与子代理写规则</td>
 </tr>
 <tr>
 <td><code>stage_reminder.py</code></td>
@@ -2908,7 +2908,7 @@
 </tr>
 <tr>
 <td><code>asset</code></td>
-<td><code>ASSETS.md</code>、<code>.godotmaker/</code>（图片文件通过 <code>asset_gen.py</code> Bash 或 Analyst 子代理处理）</td>
+<td><code>ASSETS.md</code>、<code>.godotmaker/</code>（生成图片通过 asset-producer 或 asset tools；用户提供的图片分析通过 Analyst）</td>
 </tr>
 <tr>
 <td><code>build</code> / <code>fixgap</code></td>
@@ -2928,7 +2928,7 @@
 </tr>
 </tbody>
 </table>
-<p>在流水线角色活跃期间，子代理会被阻止写入 <code>e2e/</code>（评估器专属）和规划文档（<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> / <code>GAP.md</code>）；它们通过报告来记录变更。</p>
+<p>在流水线角色活跃期间，通用子代理会被阻止写入 <code>e2e/</code> 和规划文档（<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> / <code>GAP.md</code>）。<code>asset-producer</code> 可以写入 <code>assets/</code>、<code>references/</code> 和 <code>.godotmaker/asset-generation/</code>。</p>
 <p>未设置角色时，表示当前没有活跃的 <code>/gm-*</code> 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。</p>
 <p>同时为每次文件操作记录 <code>FILE_WRITE</code> / <code>FILE_EDIT</code> 指标事件。</p>
 <h3 id="stage_reminderpy">stage_reminder.py<a class="headerlink" href="#stage_reminderpy" title="Permanent link">&para;</a></h3>
@@ -2993,7 +2993,7 @@
 </tbody>
 </table>
 <p>Hook 还会重新验证前置角色在 <code>config/stage_schemas.json</code> 中的 <code>files</code>——对于 <code>build</code>，确认 <code>GDD.md</code>、<code>PLAN.md</code>、<code>STRUCTURE.md</code> 仍在磁盘上；对于 <code>fixgap</code>，确认 <code>.godotmaker/evaluation.json</code> 仍存在。</p>
-<p>其他有派发行为的角色（如 <code>asset</code> → Analyst）通过 SKILL.md 的 Resume Check 进行自我验证；其前置条件不适合这个 Hook 的角色完成模型。仅检查主代理（gm-* 技能本身），不检查子-子代理的派发。</p>
+<p>其他有派发行为的角色（如 <code>asset</code> 派发 Analyst 或 asset-producer）通过 SKILL.md 的 Resume Check 进行自我验证；其前置条件不适合这个 Hook 的角色完成模型。仅检查主代理（gm-* 技能本身），不检查子-子代理的派发。</p>
 <h3 id="check_asset_accesspy">check_asset_access.py<a class="headerlink" href="#check_asset_accesspy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> PreToolUse（Read）
 <strong>是否阻止：</strong> 是</p>
@@ -3006,12 +3006,13 @@
 <strong>是否阻止：</strong> 从不</p>
 <p><strong>SubagentStart：</strong> 检测角色并记录 <code>SUBAGENT_START</code> 指标，包括 <code>agent_id</code>、<code>agent_type</code>、<code>role</code>、<code>description</code>。</p>
 <p>角色检测顺序：
-1. <strong>运行时提供的 <code>agent_type</code></strong> — 如果 Claude Code 传入的 <code>agent_type</code> 匹配 <code>KNOWN_ROLES</code>（<code>worker</code>、<code>verifier</code>、<code>reviewer</code>、<code>analyst</code>），则使用该值。这是 Claude Code 在调用 <code>Agent({subagent_type: "verifier", ...})</code> 时加上的结构化标识，代理无法伪造。
+1. <strong>运行时提供的 <code>agent_type</code></strong> — 如果 Claude Code 传入的 <code>agent_type</code> 匹配 <code>KNOWN_ROLES</code>（<code>worker</code>、<code>verifier</code>、<code>reviewer</code>、<code>analyst</code>、<code>asset-producer</code>），则使用该值。这是 Claude Code 在调用 <code>Agent({subagent_type: "verifier", ...})</code> 时加上的结构化标识，代理无法伪造。
 2. <strong>描述前缀回退</strong> — 如果 <code>agent_type</code> 是通用值，则回退到 <code>detect_role_from_description</code>：
-   1. <code>analyst:</code> → analyst
-   2. <code>worker:</code> → worker
-   3. <code>verifier:</code> / <code>verify:</code> → verifier
-   4. <code>reviewer:</code> / <code>review:</code> → reviewer</p>
+   1. <code>asset-producer:</code> → asset-producer
+   2. <code>analyst:</code> → analyst
+   3. <code>worker:</code> → worker
+   4. <code>verifier:</code> / <code>verify:</code> → verifier
+   5. <code>reviewer:</code> / <code>review:</code> → reviewer</p>
 <p><strong>handle_stop：</strong> 由 <code>on_subagent_stop.py</code> 调用。从助手消息中提取报告类型、状态、变更文件。从匹配的启动事件中查找角色。记录 <code>SUBAGENT_STOP</code> 指标以及结果特定事件：<code>WORKER_DONE</code>、<code>VERIFIER_PASS</code> 等。</p>
 <h3 id="on_subagent_stoppy">on_subagent_stop.py<a class="headerlink" href="#on_subagent_stoppy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> SubagentStop
@@ -3054,6 +3055,10 @@
 <tr>
 <td>analyst</td>
 <td>Status, Asset Summary, Art Style Summary, Files Generated</td>
+</tr>
+<tr>
+<td>asset-producer</td>
+<td>Status, Production Unit, Outputs, Tools, Validation, Handoff</td>
 </tr>
 </tbody>
 </table>

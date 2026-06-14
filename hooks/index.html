@@ -2913,7 +2913,7 @@ skill) and applies that role's write rules. Per-role summary:</p>
 </tr>
 <tr>
 <td><code>asset</code></td>
-<td><code>ASSETS.md</code>, <code>.godotmaker/</code> (image files go through asset tools or analyst subagent)</td>
+<td><code>ASSETS.md</code>, <code>.godotmaker/</code> (generated images go through asset-producer or asset tools; user-provided image analysis goes through analyst)</td>
 </tr>
 <tr>
 <td><code>build</code> / <code>fixgap</code></td>
@@ -2933,9 +2933,10 @@ skill) and applies that role's write rules. Per-role summary:</p>
 </tr>
 </tbody>
 </table>
-<p>During an active pipeline role, subagents are blocked from <code>e2e/</code>
-(Evaluator-owned) and from planning docs (<code>PLAN.md</code> / <code>STRUCTURE.md</code> /
-<code>ASSETS.md</code> / <code>GAP.md</code>); they report changes in their report instead.</p>
+<p>During an active pipeline role, general subagents are blocked from <code>e2e/</code>
+and from planning docs (<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> /
+<code>GAP.md</code>). <code>asset-producer</code> may write <code>assets/</code>, <code>references/</code>, and
+<code>.godotmaker/asset-generation/</code>.</p>
 <p>When no role is set, no <code>/gm-*</code> pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
 conversations in a GodotMaker project directory.</p>
@@ -3009,7 +3010,8 @@ conversations in a GodotMaker project directory.</p>
 <code>config/stage_schemas.json</code> — so for <code>build</code> it confirms <code>GDD.md</code>, <code>PLAN.md</code>,
 <code>STRUCTURE.md</code> still exist on disk, and for <code>fixgap</code> it confirms
 <code>.godotmaker/evaluation.json</code> is still there.</p>
-<p>Other dispatching roles (e.g. <code>asset</code> → analyst) self-validate via their
+<p>Other dispatching roles (e.g. <code>asset</code> dispatches analyst or asset-producer)
+self-validate via their
 SKILL.md Resume Check; their preconditions don't fit this hook's
 role-completion model. Only checks the main agent (the gm-* skill itself),
 not sub-subagent dispatches.</p>
@@ -3030,16 +3032,18 @@ subagent instead of consuming context with raw image data.</p>
 <code>agent_id</code>, <code>agent_type</code>, <code>role</code>, <code>description</code>.</p>
 <p>Role detection order:
 1. <strong>Runtime-provided <code>agent_type</code></strong> — if Claude Code passes an <code>agent_type</code>
-   that matches <code>KNOWN_ROLES</code> (<code>worker</code>, <code>verifier</code>, <code>reviewer</code>, <code>analyst</code>),
+   that matches <code>KNOWN_ROLES</code> (<code>worker</code>, <code>verifier</code>, <code>reviewer</code>, <code>analyst</code>,
+   <code>asset-producer</code>),
    that's the role. This is the structural identity Claude Code stamps when
    you call <code>Agent({subagent_type: "verifier", ...})</code> and the agent can't
    forge it.
 2. <strong>Description prefix fallback</strong> — if <code>agent_type</code> is generic, fall back to
    <code>detect_role_from_description</code>:
-   1. <code>analyst:</code> → analyst
-   2. <code>worker:</code> → worker
-   3. <code>verifier:</code> / <code>verify:</code> → verifier
-   4. <code>reviewer:</code> / <code>review:</code> → reviewer</p>
+   1. <code>asset-producer:</code> → asset-producer
+   2. <code>analyst:</code> → analyst
+   3. <code>worker:</code> → worker
+   4. <code>verifier:</code> / <code>verify:</code> → verifier
+   5. <code>reviewer:</code> / <code>review:</code> → reviewer</p>
 <p><strong>handle_stop:</strong> invoked from <code>on_subagent_stop.py</code>. Extracts report type,
 status, files changed from the assistant message. Looks up role from the
 matching start event. Records <code>SUBAGENT_STOP</code> metric plus outcome-specific
@@ -3092,6 +3096,10 @@ subagent conversations are allowed and this hook does not block.</p>
 <tr>
 <td>analyst</td>
 <td>Status, Asset Summary, Art Style Summary, Files Generated</td>
+</tr>
+<tr>
+<td>asset-producer</td>
+<td>Status, Production Unit, Outputs, Tools, Validation, Handoff</td>
 </tr>
 </tbody>
 </table>

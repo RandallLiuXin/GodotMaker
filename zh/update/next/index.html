@@ -2624,17 +2624,70 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Diagnostic log at <code>.godotmaker/log_agent_tool_debug.log</code> that records every phase of <code>log_agent_tool.py</code> so the next failure mode is localizable from artifacts.</li>
+<li>Added magenta-background cleanup to <code>asset_image_finalize.py</code> for single-image generated assets.</li>
+<li>Added an ASSETS.md update helper so generated-art runs can update rows after each completed production unit.</li>
+<li>Added source-aspect validation to <code>asset_image_finalize.py</code> so generated scene references and fixed-viewport backgrounds can fail before resize when the source image has the wrong orientation.</li>
+<li>Added batch mode to the Codex image claim helper so <code>/gm-asset</code> can claim only planned image outputs.</li>
+<li>Added authoritative Codex image claim reports for generated-art provider runs.</li>
+<li>Added validation for asset-generation handoff manifests so generated-art runs can detect missing fields and files.</li>
+<li>Added a manifest update helper so generated-art runs can upsert handoff entries through a validated tool.</li>
+<li>Added a layout-guide helper for fixed-grid UI, prop, icon, and action source generation.</li>
+<li>Added a character action processor that turns raw action sheets into normalized frames, transparent sheets, GIF previews, and pipeline metadata.</li>
+<li>Added a character action manifest-entry helper so processed action metadata can produce validated frame-output handoff entries.</li>
+<li>Added a 2D source-sheet processor so generated grids can produce cropped assets and processing reports.</li>
+<li>Added magenta-background and edge-fringe processing support to the 2D source-sheet processor for production-shaped extraction sheets.</li>
+<li>Added action-sheet edge-touch recovery that archives the previous source and repacks autosliced frames into the active source path.</li>
+<li>Added an asset-producer subagent and production-unit entry docs for generated visual asset work.</li>
+<li>Added separate native, Codex, and Gemini image-provider docs for <code>/gm-asset</code>.</li>
+<li>Added a first-pass asset curation contract for generated source sheets, canonical selections, and rejected candidates.</li>
+<li>Added a curation selection helper so accepted candidates can be finalized into runtime asset paths.</li>
+<li>Added a curation manifest-entry helper so selected source-sheet candidates can produce validated runtime handoff entries.</li>
+<li>Split the asset generation reference into runtime pipeline and prompt-contract references.</li>
+<li>Added character animation asset contracts for canonical sources, per-action source sheets, processed frame outputs, action processing metadata, and final runtime handoff validation.</li>
+<li>Added a dedicated card-kit production unit so card frames, portrait frames, rarity frames, card slots, and card-game UI assets no longer share the generic UI component path.</li>
+<li>Added runtime asset handoff rules so build and fixgap stages pass generated final assets and metadata to workers while evaluate checks screenshots against scene contracts.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Clarified README preview-feature scope and roadmap priorities for art production, Codex runner fallback, 3D support, and audio generation.</li>
 <li><code>/gm-asset</code> now runs a lightweight user-asset preflight before generation so CLI-driven runs can notice files already placed under <code>assets/</code>.</li>
+<li><code>/gm-asset</code> now plans generated art as source, final, and curation artifacts so runs keep clearer asset handoff records.</li>
+<li><code>/gm-asset</code> now acts as an asset-stage manager that dispatches generated visual production units instead of producing raw art in the manager context.</li>
+<li>Reframed <code>rembg_matting.py</code> as an optional curation utility instead of a primary asset-generation path.</li>
+<li><code>asset_sheet_process.py</code> can now extract the largest connected component from UI, icon, and prop sheets to avoid neighboring-cell fragments.</li>
+<li><code>asset_sheet_process.py</code> can now autoslice separated source sheets before assigning candidates back to grid names.</li>
+<li><code>/gm-asset</code> now routes visual source planning through asset-family pipelines so UI, icon, and prop sheets default to autoslice curation instead of fixed-grid slicing.</li>
+<li>Asset-generation manifests now allow multiple runtime assets to share one source sheet and prompt.</li>
+<li><code>/gm-asset</code> now plans important character and enemy art as canonical references plus one action source per body action, with detached FX generated separately.</li>
+<li><code>asset_action_process.py</code> now exposes a smaller CLI surface built around <code>body</code> and <code>fx</code> action kinds, rejects edge-touch frames by default, and records body-scale reference checks.</li>
+<li>Worker visual briefs now require final runtime asset paths from ASSETS.md or the manifest and prohibit replacing available assets with placeholders.</li>
+<li><code>/gm-asset</code> now creates a foundation screen reference before parallel visual production when a tag has no visual anchor.</li>
+<li><code>/gm-asset</code> now reads <code>asset_producer_model</code> from project config so asset production subagents can run on Sonnet by default.</li>
+<li><code>/gm-asset</code> now keeps ASSETS.md generation params as manifest pointers while storing atlas and animation details in runtime metadata JSON files.</li>
+<li>Claude Code orchestration now starts Codex asset-image subprocesses with full unattended permissions for generated-path reporting.</li>
+<li><code>/gm-asset</code> now treats exhausted image-provider failures as asset-production failures instead of allowing placeholder sources to be marked generated.</li>
+<li>Scaffold and planning now default to 2D project structure instead of asking for unsupported project dimensions.</li>
+<li>Character planning now requires gameplay actors to include character art and action-source assets instead of static-only sprite rows.</li>
+<li>Character UI display assets now use dedicated portrait rows instead of reusing small gameplay runtime sprites.</li>
+<li>GDD display specs now determine pixel/non-pixel mode and target viewport while scaffold keeps a neutral 2D default.</li>
+<li>GDD and asset planning now record gameplay actor screen presence so generated character art is sized for runtime display.</li>
+<li>Evaluate and fixgap now separate E2E test-interface requests from normal gameplay changes.</li>
+<li>Game planning now keeps TileMap terrain deferred and uses sprite-based placement for current playable units.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>(WIP) Rewire Agent prompt/output trace capture to <code>PreToolUse</code>/<code>PostToolUse</code> because the <code>SubagentStart</code> payload has no <code>prompt</code> field and silently wrote 0-byte traces.</li>
+<li>Clarified <code>/gm-asset</code> asset-producer provider handoff rules.</li>
+<li><code>/gm-asset</code> now commits asset-stage outputs before completion so the clean-workspace stop hook can advance to <code>/gm-build</code>.</li>
+<li>Made <code>asset_action_process.py</code> write runtime action frames with the final prefix so different characters cannot overwrite shared names like <code>idle_0.png</code>.</li>
+<li><code>/gm-asset</code> now requires runtime-ready foreground artifacts for UI, icon, prop, projectile, pickup, and scene-object assets, with atlas or animation metadata when the final output is a sheet.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Removed the legacy <code>tools/asset_gen.py</code> helper in favor of the spec-driven asset source generator.</li>
+<li>Removed the legacy asset group report checker and standalone grid slicer from the active asset pipeline.</li>
+<li>Removed stale gm-asset reference pages for scene visual targets and rembg-specific guidance.</li>
+</ul>
 
 
 

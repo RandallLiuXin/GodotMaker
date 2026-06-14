@@ -2750,7 +2750,7 @@
 <ul>
 <li>Python 3.10 or later is running this script.</li>
 <li>Core packages are installed: <code>requests</code>, <code>pillow</code>, <code>numpy</code>.</li>
-<li>Provider packages are checked based on <code>.godotmaker/config.yaml</code>: <code>google-genai</code> for Gemini, <code>openai</code> for OpenAI, and <code>xai-sdk</code> for Grok image or video generation.</li>
+<li>Provider packages are checked based on <code>.godotmaker/config.yaml</code>: <code>google-genai</code> for Gemini, <code>openai</code> for OpenAI, and <code>xai-sdk</code> for Grok image generation.</li>
 </ul>
 <h3 id="nodejs">Node.js<a class="headerlink" href="#nodejs" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2789,16 +2789,11 @@
 <tr>
 <td><code>XAI_API_KEY</code></td>
 <td>Required when selected</td>
-<td>xAI Grok image or video generation</td>
-</tr>
-<tr>
-<td><code>TRIPO3D_API_KEY</code></td>
-<td>Optional</td>
-<td>3D model generation (3D games only)</td>
+<td>xAI Grok image generation</td>
 </tr>
 </tbody>
 </table>
-<p>API-backed selectors fail when the matching key is absent. <code>asset_image_model: native</code> passes for Codex and warns for Claude Code because the checker cannot prove a Claude-side native generation tool is available. <code>asset_image_model: codex</code> in a Claude Code project passes when the Codex CLI is on PATH. <code>asset_video_model: none</code> does not require <code>XAI_API_KEY</code>.</p>
+<p>API-backed selectors fail when the matching key is absent. <code>asset_image_model: native</code> passes for Codex and warns for Claude Code because the checker cannot prove a Claude-side native generation tool is available. <code>asset_image_model: codex</code> in a Claude Code project passes when the Codex CLI is on PATH.</p>
 <p>The checker also verifies that the selected provider package can be imported, catching installation issues that version checks alone would miss.</p>
 <h2 id="reading-the-output">Reading the output<a class="headerlink" href="#reading-the-output" title="Permanent link">&para;</a></h2>
 <p>Each line starts with one of three markers:</p>

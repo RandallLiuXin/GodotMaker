@@ -2927,11 +2927,11 @@
 <h2 id="_2">仓库目录结构<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>GodotMaker/
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── hooks/                   8 个 hook 脚本 + hooks/metrics/ 子系统
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── agents/                  5 个子 Agent 定义（worker、verifier、reviewer、analyst、gdd-auditor）
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── agents/                  子 Agent 定义（worker、verifier、reviewer、analyst、asset-producer、gdd-auditor）
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── skills/
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   ├── core/                角色技能 + 辅助技能 + _shared/
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── tools/                   publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── agent-runtimes/          runner 专属 reference、template 和 hook config
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
@@ -3070,13 +3070,18 @@
 <td><code>/gm-asset</code></td>
 </tr>
 <tr>
+<td><code>asset-producer.md</code></td>
+<td>生成一个视觉资源生产单元</td>
+<td><code>/gm-asset</code></td>
+</tr>
+<tr>
 <td><code>gdd-auditor.md</code></td>
 <td>独立审计 GDD 草稿，对照 9 类 checklist 每轮返回 5–8 个补问</td>
 <td><code>game-planner</code>（Rounds 6 + 7）</td>
 </tr>
 </tbody>
 </table>
-<p>派发协议（调用格式和 brief 模板）位于 <code>skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md</code>。<code>gdd-auditor</code> 直接由 <code>skills/core/game-planner/SKILL.md</code> 内联调用。</p>
+<p>派发协议（调用格式和 brief 模板）位于 <code>skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md</code> 或所属角色技能内。<code>gdd-auditor</code> 直接由 <code>skills/core/game-planner/SKILL.md</code> 内联调用。</p>
 <h3 id="gdd">两轮 GDD 审计<a class="headerlink" href="#gdd" title="Permanent link">&para;</a></h3>
 <p><code>gdd-auditor</code> 是唯一一个派发协议<strong>不</strong>放在 <code>_shared/</code> 里的子 Agent。它只在 <code>game-planner</code> 的 Round 6 + Round 7 调用，派发逻辑离开那段访谈脚本就没意义。把它提到 <code>_shared/</code> 只会增加跳转，不会带来复用。</p>
 <p>两轮，全部在新上下文中跑，使用同一个 <code>subagent_type</code>：</p>
@@ -3154,8 +3159,32 @@
 <td>检验已生成项目中的缺失文件和损坏路径</td>
 </tr>
 <tr>
-<td><code>asset_gen.py</code></td>
-<td>通过 Gemini / OpenAI / xAI 生成 API 后端美术资源（由 <code>/gm-asset</code> 调用，也可独立运行）</td>
+<td><code>asset_source_generate.py</code></td>
+<td>根据 <code>/gm-asset</code> spec 生成 API 后端 source 图片</td>
+</tr>
+<tr>
+<td><code>asset_layout_guide.py</code></td>
+<td>为固定网格 source 图片创建 layout guide</td>
+</tr>
+<tr>
+<td><code>asset_action_process.py</code></td>
+<td>将角色动作 sheet 处理成规范化 frames 和 metadata</td>
+</tr>
+<tr>
+<td><code>asset_action_manifest_entry.py</code></td>
+<td>根据已处理动作 metadata 生成 frame-output manifest entry</td>
+</tr>
+<tr>
+<td><code>asset_sheet_process.py</code></td>
+<td>将生产形态的 2D source sheet 拆成 curation candidate</td>
+</tr>
+<tr>
+<td><code>asset_curation_select.py</code></td>
+<td>将选中的 curation candidate finalize 到运行时素材路径</td>
+</tr>
+<tr>
+<td><code>asset_curation_manifest_entry.py</code></td>
+<td>根据已选中的 curation candidate 生成运行时 manifest entry</td>
 </tr>
 <tr>
 <td><code>migrate.py</code></td>

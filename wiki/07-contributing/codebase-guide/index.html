@@ -2927,11 +2927,11 @@
 <h2 id="repository-layout">Repository layout<a class="headerlink" href="#repository-layout" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>GodotMaker/
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── hooks/                   8 hook scripts + hooks/metrics/ subsystem
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── agents/                  5 sub-agent definitions (worker, verifier, reviewer, analyst, gdd-auditor)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── agents/                  sub-agent definitions (worker, verifier, reviewer, analyst, asset-producer, gdd-auditor)
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── skills/
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   ├── core/                Role skills + supporting skills + _shared/
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   └── reviewer/            8 reviewer skills (gotchas.md + checklist.md each)
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── tools/                   publish.py, check_env.py, check_project.py, asset_gen.py, migrate.py
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── agent-runtimes/          Runner-specific references, templates, and hook config
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC)
@@ -3070,13 +3070,18 @@ project-local hook config (<code>.claude/settings.json</code> or <code>.codex/ho
 <td><code>/gm-asset</code></td>
 </tr>
 <tr>
+<td><code>asset-producer.md</code></td>
+<td>Produces one generated visual asset production unit</td>
+<td><code>/gm-asset</code></td>
+</tr>
+<tr>
 <td><code>gdd-auditor.md</code></td>
 <td>Independently audits a draft GDD against a 9-category checklist and returns 5–8 follow-up questions per pass</td>
 <td><code>game-planner</code> (Rounds 6 + 7)</td>
 </tr>
 </tbody>
 </table>
-<p>The dispatch protocols (call format and brief templates) live in <code>skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md</code>. <code>gdd-auditor</code> is invoked inline from <code>skills/core/game-planner/SKILL.md</code>.</p>
+<p>The dispatch protocols (call format and brief templates) live in <code>skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md</code> or in the owning role skill. <code>gdd-auditor</code> is invoked inline from <code>skills/core/game-planner/SKILL.md</code>.</p>
 <h3 id="the-two-pass-gdd-audit">The two-pass GDD audit<a class="headerlink" href="#the-two-pass-gdd-audit" title="Permanent link">&para;</a></h3>
 <p><code>gdd-auditor</code> is the only sub-agent whose dispatch protocol does <strong>not</strong> live in <code>_shared/</code>. It is invoked from one place (<code>game-planner</code> Rounds 6 + 7) and the dispatch only makes sense as part of that interview script. Promoting it to <code>_shared/</code> would add indirection without buying reuse.</p>
 <p>Two passes, both fresh-context, both invoked with the same <code>subagent_type</code>:</p>
@@ -3154,8 +3159,32 @@ project-local hook config (<code>.claude/settings.json</code> or <code>.codex/ho
 <td>Validate a generated project for missing files and broken paths</td>
 </tr>
 <tr>
-<td><code>asset_gen.py</code></td>
-<td>Generate API-backed art via Gemini / OpenAI / xAI (called by <code>/gm-asset</code>, can run standalone)</td>
+<td><code>asset_source_generate.py</code></td>
+<td>Generate API-backed source images from <code>/gm-asset</code> specs</td>
+</tr>
+<tr>
+<td><code>asset_layout_guide.py</code></td>
+<td>Create layout-only guides for fixed-grid source images</td>
+</tr>
+<tr>
+<td><code>asset_action_process.py</code></td>
+<td>Process character action sheets into normalized frames and metadata</td>
+</tr>
+<tr>
+<td><code>asset_action_manifest_entry.py</code></td>
+<td>Build frame-output manifest entries from processed action metadata</td>
+</tr>
+<tr>
+<td><code>asset_sheet_process.py</code></td>
+<td>Split production-shaped 2D source sheets into curation candidates</td>
+</tr>
+<tr>
+<td><code>asset_curation_select.py</code></td>
+<td>Finalize selected curation candidates into runtime asset paths</td>
+</tr>
+<tr>
+<td><code>asset_curation_manifest_entry.py</code></td>
+<td>Build runtime manifest entries from selected curation candidates</td>
 </tr>
 <tr>
 <td><code>migrate.py</code></td>
