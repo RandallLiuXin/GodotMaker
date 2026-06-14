@@ -47,7 +47,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `/gm-asset` now runs a lightweight user-asset preflight before generation so CLI-driven runs can notice files already placed under `assets/`.
 - `/gm-asset` now plans generated art as source, final, and curation artifacts so runs keep clearer asset handoff records.
 - `/gm-asset` now acts as an asset-stage manager that dispatches generated visual production units instead of producing raw art in the manager context.
-- Reframed `rembg_matting.py` as an optional curation utility instead of a primary asset-generation path.
 - `asset_sheet_process.py` can now extract the largest connected component from UI, icon, and prop sheets to avoid neighboring-cell fragments.
 - `asset_sheet_process.py` can now autoslice separated source sheets before assigning candidates back to grid names.
 - `/gm-asset` now routes visual source planning through asset-family pipelines so UI, icon, and prop sheets default to autoslice curation instead of fixed-grid slicing.
@@ -81,3 +80,4 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Removed the legacy `tools/asset_gen.py` helper in favor of the spec-driven asset source generator.
 - Removed the legacy asset group report checker and standalone grid slicer from the active asset pipeline.
 - Removed stale gm-asset reference pages for scene visual targets and rembg-specific guidance.
+- Removed unused rembg and loop-frame helpers from the active toolchain, which also removes the heavy rembg / onnxruntime dependency chain from default tool installation.

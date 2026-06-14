@@ -130,6 +130,5 @@ For current-tag gameplay actors:
 
 <!-- Any manual steps needed after generation. -->
 
-- {asset} (v0.1.0): needs background removal (rembg)
 - {source_sheet} (v0.1.0): select usable frames or components
 - {source_sheet} (v0.1.0): select final runtime sprites and update the asset table

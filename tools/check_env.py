@@ -144,7 +144,7 @@ def check_python(r: EnvCheck, config: dict[str, str] | None = None):
         r.fail(f"Python {version} too old (>= 3.9 required)")
 
     config = config or {}
-    packages = {"pillow": "PIL", "numpy": "numpy", "requests": "requests"}
+    packages = {"pillow": "PIL", "requests": "requests"}
     image_provider, _ = split_model_selector(image_model_from_config(config), "gemini")
     vqa_provider, _ = split_model_selector(
         config.get("vqa_model") or "native", "gemini"

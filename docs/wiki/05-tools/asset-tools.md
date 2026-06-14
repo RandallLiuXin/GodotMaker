@@ -14,10 +14,6 @@ Primary pipeline tools:
 6. `asset_curation_select.py`
 7. `asset_curation_manifest_entry.py`
 
-Optional curation utility:
-
-1. `rembg_matting.py`
-
 ## asset_source_generate.py
 
 `asset_source_generate.py` generates API-backed source images from a JSON spec.
@@ -56,26 +52,6 @@ python tools/asset_layout_guide.py \
 
 The guide controls slot count, centering, and safe padding for image
 generation. It is not runtime art.
-
-## rembg_matting.py
-
-`rembg_matting.py` is an optional curation utility for removing solid-color
-backgrounds before source-sheet processing.
-
-Manual entry points:
-
-```bash
-python tools/rembg_matting.py <input.png> -o <output.png>
-python tools/rembg_matting.py --batch <input_dir> -o <output_dir>
-python tools/rembg_matting.py <input.png> --preview
-```
-
-The tool uses a neural network (BiRefNet) to identify the subject and color
-matting to clean up the edges. You can force a mode with `-m trust`,
-`-m adapt`, or `-m color`.
-
-GPU acceleration is used automatically if an NVIDIA GPU with CUDA is available.
-On CPU it is slower but still works.
 
 ## asset_sheet_process.py
 
@@ -215,10 +191,9 @@ Manual use cases:
 3. Process one character action sheet while debugging animation output.
 4. Build one character frame-output manifest entry from action metadata.
 5. Test a provider, size, or aspect ratio before a full `/gm-asset` run.
-6. Remove a solid background before source-sheet curation.
-7. Process one source sheet while debugging extraction.
-8. Select one extracted candidate into a runtime asset path.
-9. Build one runtime manifest entry from a selected curation candidate.
+6. Process one source sheet while debugging extraction.
+7. Select one extracted candidate into a runtime asset path.
+8. Build one runtime manifest entry from a selected curation candidate.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.

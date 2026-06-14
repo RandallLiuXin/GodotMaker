@@ -24,7 +24,7 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 ### Python
 
 - Python 3.10 or later is running this script.
-- Core packages are installed: `requests`, `pillow`, `numpy`.
+- Core packages are installed: `requests`, `pillow`.
 - Provider packages are checked based on `.godotmaker/config.yaml`: `google-genai` for Gemini, `openai` for OpenAI, and `xai-sdk` for Grok image generation.
 
 ### Node.js

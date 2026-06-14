@@ -16,7 +16,7 @@
 - 8 个 Hook 脚本，执行每角色文件写权限控制、阶段前置条件门控、子代理报告校验以及完成严谨性检查。
 - `tools/publish.py` 将框架部署到目标 Godot 项目，支持语义版本追踪和升级提示。
 - 静态检查：`check_project.py` 检查项目完整性，`check_classname.py` 检查与 Godot 内置名称的冲突。
-- 资源流水线：`asset_source_generate.py`（Gemini / OpenAI / xAI source 生成）、`rembg_matting.py`。
+- 资源流水线：`asset_source_generate.py`（Gemini / OpenAI / xAI source 生成）和 sprite-processing 辅助工具。
 - 覆盖 8 个分区的 Wiki 文档。
 - 193 个以上针对 Hook 和工具的单元测试。
 

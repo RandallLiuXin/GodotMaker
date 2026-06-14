@@ -12,10 +12,6 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 6. `asset_curation_select.py`
 7. `asset_curation_manifest_entry.py`
 
-可选 curation 工具：
-
-1. `rembg_matting.py`
-
 ## asset_source_generate.py
 
 `asset_source_generate.py` 会根据 JSON spec 生成 API 后端 source 图片，支持 Gemini、OpenAI 和 xAI Grok selector。运行时原生的 `native` 和 `codex` 图片生成由 `/gm-asset` 选择，不由这个脚本调用。
@@ -45,22 +41,6 @@ python tools/asset_layout_guide.py \
 ```
 
 guide 用于约束 image generation 的 slot 数量、居中和安全边距。它不是运行时美术资源。
-
-## rembg_matting.py
-
-`rembg_matting.py` 是可选 curation 工具，用于在 source sheet 处理前移除纯色背景。
-
-手动入口：
-
-```bash
-python tools/rembg_matting.py <input.png> -o <output.png>
-python tools/rembg_matting.py --batch <input_dir> -o <output_dir>
-python tools/rembg_matting.py <input.png> --preview
-```
-
-工具使用神经网络（BiRefNet）识别主体，并结合颜色 matting 清理边缘。可以用 `-m trust`、`-m adapt` 或 `-m color` 指定模式。
-
-如果有支持 CUDA 的 NVIDIA GPU，会自动启用 GPU 加速。在 CPU 上会更慢，但仍可使用。
 
 ## asset_sheet_process.py
 
@@ -186,9 +166,8 @@ python tools/asset_curation_manifest_entry.py \
 3. 调试动画输出时单独处理一个角色动作 sheet。
 4. 从 action metadata 生成一个 character frame-output manifest entry。
 5. 在完整运行 `/gm-asset` 前试验不同的提供商、尺寸或宽高比。
-6. 在 source sheet curation 前移除纯色背景。
-7. 调试 extraction 时单独处理一个 source sheet。
-8. 把某个 extracted candidate 选入运行时素材路径。
-9. 从已选中的 curation candidate 生成一个运行时 manifest entry。
+6. 调试 extraction 时单独处理一个 source sheet。
+7. 把某个 extracted candidate 选入运行时素材路径。
+8. 从已选中的 curation candidate 生成一个运行时 manifest entry。
 
 如果想更新 `/gm-evaluate` 用于对比的视觉目标，请重新运行 `/gm-asset`，不要直接编辑已生成的图片。

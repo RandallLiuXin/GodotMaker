@@ -2,9 +2,4 @@ xai-sdk
 google-genai
 openai
 requests
-numpy
 pillow
-rembg
-pymatting
-onnxruntime-gpu
-nvidia-cudnn-cu12==9.*
