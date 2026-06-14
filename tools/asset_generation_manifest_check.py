@@ -345,7 +345,6 @@ def _check_character_frame_output(
     index: int,
     issues: list[str],
 ) -> list[str]:
-    extra_file_paths: list[str] = []
     for field in ("derived_from", "canonical_reference"):
         value = item.get(field)
         if not isinstance(value, str) or not value.strip():
