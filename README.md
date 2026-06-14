@@ -49,6 +49,10 @@ During a run, GodotMaker agents keep moving the design forward:
 
 A small game usually takes about **3-5 hours of agent runtime**. You do not need to manually drive each stage or keep an eye on it the whole time; the workflow is designed to keep going on its own.
 
+## Community
+
+- [Discord](https://discord.gg/rjhP9Z9PHP)
+
 ## Quick Start
 
 ```bash

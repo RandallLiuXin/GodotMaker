@@ -49,6 +49,10 @@ Claude Code、Codex、Gemini、OpenAI、xAI、Tripo 等外部 runtime 或模型 
 
 一个小型游戏通常需要 **3-5 小时的 Agent 运行时间**。不过你不需要手动驱动每个阶段，也不需要一直守在电脑前，工作流会自己持续推进。
 
+## 社区
+
+- 【GodotMaker】：https://qm.qq.com/q/z6huEnumru
+
 ## 快速开始
 
 ```bash
