@@ -2653,7 +2653,6 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li><code>/gm-asset</code> now runs a lightweight user-asset preflight before generation so CLI-driven runs can notice files already placed under <code>assets/</code>.</li>
 <li><code>/gm-asset</code> now plans generated art as source, final, and curation artifacts so runs keep clearer asset handoff records.</li>
 <li><code>/gm-asset</code> now acts as an asset-stage manager that dispatches generated visual production units instead of producing raw art in the manager context.</li>
-<li>Reframed <code>rembg_matting.py</code> as an optional curation utility instead of a primary asset-generation path.</li>
 <li><code>asset_sheet_process.py</code> can now extract the largest connected component from UI, icon, and prop sheets to avoid neighboring-cell fragments.</li>
 <li><code>asset_sheet_process.py</code> can now autoslice separated source sheets before assigning candidates back to grid names.</li>
 <li><code>/gm-asset</code> now routes visual source planning through asset-family pipelines so UI, icon, and prop sheets default to autoslice curation instead of fixed-grid slicing.</li>
@@ -2687,6 +2686,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Removed the legacy <code>tools/asset_gen.py</code> helper in favor of the spec-driven asset source generator.</li>
 <li>Removed the legacy asset group report checker and standalone grid slicer from the active asset pipeline.</li>
 <li>Removed stale gm-asset reference pages for scene visual targets and rembg-specific guidance.</li>
+<li>Removed unused rembg and loop-frame helpers from the active toolchain, which also removes the heavy rembg / onnxruntime dependency chain from default tool installation.</li>
 </ul>
 
 

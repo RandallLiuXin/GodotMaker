@@ -1148,17 +1148,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rembg_mattingpy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        rembg_matting.py
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#asset_sheet_processpy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2602,17 +2591,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rembg_mattingpy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        rembg_matting.py
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#asset_sheet_processpy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2712,10 +2690,6 @@ debugging one source, one action sheet, or one curation decision.</p>
 <li><code>asset_curation_select.py</code></li>
 <li><code>asset_curation_manifest_entry.py</code></li>
 </ol>
-<p>Optional curation utility:</p>
-<ol>
-<li><code>rembg_matting.py</code></li>
-</ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> generates API-backed source images from a JSON spec.
 It supports Gemini, OpenAI, and xAI Grok selectors. Runtime-native <code>native</code> and
@@ -2742,19 +2716,6 @@ action sheets.</p>
 </code></pre></div>
 <p>The guide controls slot count, centering, and safe padding for image
 generation. It is not runtime art.</p>
-<h2 id="rembg_mattingpy">rembg_matting.py<a class="headerlink" href="#rembg_mattingpy" title="Permanent link">&para;</a></h2>
-<p><code>rembg_matting.py</code> is an optional curation utility for removing solid-color
-backgrounds before source-sheet processing.</p>
-<p>Manual entry points:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/rembg_matting.py<span class="w"> </span>&lt;input.png&gt;<span class="w"> </span>-o<span class="w"> </span>&lt;output.png&gt;
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>tools/rembg_matting.py<span class="w"> </span>--batch<span class="w"> </span>&lt;input_dir&gt;<span class="w"> </span>-o<span class="w"> </span>&lt;output_dir&gt;
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>python<span class="w"> </span>tools/rembg_matting.py<span class="w"> </span>&lt;input.png&gt;<span class="w"> </span>--preview
-</code></pre></div>
-<p>The tool uses a neural network (BiRefNet) to identify the subject and color
-matting to clean up the edges. You can force a mode with <code>-m trust</code>,
-<code>-m adapt</code>, or <code>-m color</code>.</p>
-<p>GPU acceleration is used automatically if an NVIDIA GPU with CUDA is available.
-On CPU it is slower but still works.</p>
 <h2 id="asset_sheet_processpy">asset_sheet_process.py<a class="headerlink" href="#asset_sheet_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_sheet_process.py</code> splits non-character 2D source sheets into cropped
 candidates and writes a curation report. It supports transparent sheets and
@@ -2771,13 +2732,13 @@ non-character source sheets.</p>
    fragments</li>
 </ol>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/asset_sheet_process.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;source.png&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;curation_dir&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;names&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>--snap-mode<span class="w"> </span>&lt;autoslice<span class="p">|</span>grid&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/asset_sheet_process.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;source.png&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;curation_dir&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;names&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--snap-mode<span class="w"> </span>&lt;autoslice<span class="p">|</span>grid&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;
 </code></pre></div>
 <h2 id="asset_action_processpy">asset_action_process.py<a class="headerlink" href="#asset_action_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_process.py</code> processes character, enemy, NPC, summon, and animated
@@ -2797,41 +2758,41 @@ prop action sources. It writes normalized frame PNGs, <code>sheet-transparent.pn
 and <code>--final-prefix</code> options only copy processed frames and the delivery grid
 sheet into runtime paths; they do not assemble mixed atlases or row strips.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>tools/asset_action_process.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;action_source.png&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;processed_dir&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;frame_names&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span>--kind<span class="w"> </span>&lt;body<span class="p">|</span>fx&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span>--final-dir<span class="w"> </span>&lt;runtime_dir&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">  </span>--final-prefix<span class="w"> </span>&lt;asset_id&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/asset_action_process.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;action_source.png&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;processed_dir&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;frame_names&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>--kind<span class="w"> </span>&lt;body<span class="p">|</span>fx&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>--final-dir<span class="w"> </span>&lt;runtime_dir&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span>--final-prefix<span class="w"> </span>&lt;asset_id&gt;
 </code></pre></div>
 <p>For later body actions, add:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>--scale-reference-metadata<span class="w"> </span>&lt;accepted_action_pipeline_meta.json&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>--scale-reference-metadata<span class="w"> </span>&lt;accepted_action_pipeline_meta.json&gt;
 </code></pre></div>
 <h2 id="asset_action_manifest_entrypy">asset_action_manifest_entry.py<a class="headerlink" href="#asset_action_manifest_entrypy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_manifest_entry.py</code> turns one processed action
 <code>pipeline-meta.json</code> plus its <code>character_action_source</code> entry into a
 <code>character_frame_output</code> manifest entry.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>tools/asset_action_manifest_entry.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--metadata<span class="w"> </span>&lt;processed_dir&gt;/pipeline-meta.json<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--source-entry<span class="w"> </span>&lt;character_action_source_entry.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;frame_output_asset_id&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span>--out<span class="w"> </span>&lt;frame_output_entry.json&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/asset_action_manifest_entry.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--metadata<span class="w"> </span>&lt;processed_dir&gt;/pipeline-meta.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--source-entry<span class="w"> </span>&lt;character_action_source_entry.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;frame_output_asset_id&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span>--out<span class="w"> </span>&lt;frame_output_entry.json&gt;
 </code></pre></div>
 <p>Upsert the generated entry with <code>asset_generation_manifest_update.py</code>.</p>
 <h2 id="asset_curation_selectpy">asset_curation_select.py<a class="headerlink" href="#asset_curation_selectpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_curation_select.py</code> selects one candidate from a curation report and
 finalizes it into a runtime asset path.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/asset_curation_select.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--candidate<span class="w"> </span>&lt;candidate_id_or_name&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--final-path<span class="w"> </span>&lt;final_path&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;final_asset_id&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>tools/asset_curation_select.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--candidate<span class="w"> </span>&lt;candidate_id_or_name&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>--final-path<span class="w"> </span>&lt;final_path&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;final_asset_id&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.
 </code></pre></div>
 <p>The tool updates the report status to <code>selected</code>, stores the candidate's final
 path, and prints the same finalize metadata as <code>asset_image_finalize.py</code>.</p>
@@ -2839,13 +2800,13 @@ path, and prints the same finalize metadata as <code>asset_image_finalize.py</co
 <p><code>asset_curation_manifest_entry.py</code> turns one selected curation candidate plus
 its source-sheet manifest entry into a validated runtime manifest entry.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>python<span class="w"> </span>tools/asset_curation_manifest_entry.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--source-entry<span class="w"> </span>&lt;source_sheet_entry.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--candidate<span class="w"> </span>&lt;candidate_id_or_name&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;final_asset_id&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">  </span>--out<span class="w"> </span>&lt;final_asset_entry.json&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/asset_curation_manifest_entry.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--source-entry<span class="w"> </span>&lt;source_sheet_entry.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--candidate<span class="w"> </span>&lt;candidate_id_or_name&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;final_asset_id&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span>--out<span class="w"> </span>&lt;final_asset_entry.json&gt;
 </code></pre></div>
 <p>Upsert the generated entry with <code>asset_generation_manifest_update.py</code>.</p>
 <h2 id="calling-these-by-hand">Calling these by hand<a class="headerlink" href="#calling-these-by-hand" title="Permanent link">&para;</a></h2>
@@ -2858,7 +2819,6 @@ them based on <code>ASSETS.md</code> and the source-generation manifest.</p>
 <li>Process one character action sheet while debugging animation output.</li>
 <li>Build one character frame-output manifest entry from action metadata.</li>
 <li>Test a provider, size, or aspect ratio before a full <code>/gm-asset</code> run.</li>
-<li>Remove a solid background before source-sheet curation.</li>
 <li>Process one source sheet while debugging extraction.</li>
 <li>Select one extracted candidate into a runtime asset path.</li>
 <li>Build one runtime manifest entry from a selected curation candidate.</li>

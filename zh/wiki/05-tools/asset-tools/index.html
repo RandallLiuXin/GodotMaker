@@ -1148,17 +1148,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rembg_mattingpy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        rembg_matting.py
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#asset_sheet_processpy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2602,17 +2591,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rembg_mattingpy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        rembg_matting.py
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#asset_sheet_processpy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2710,10 +2688,6 @@
 <li><code>asset_curation_select.py</code></li>
 <li><code>asset_curation_manifest_entry.py</code></li>
 </ol>
-<p>可选 curation 工具：</p>
-<ol>
-<li><code>rembg_matting.py</code></li>
-</ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> 会根据 JSON spec 生成 API 后端 source 图片，支持 Gemini、OpenAI 和 xAI Grok selector。运行时原生的 <code>native</code> 和 <code>codex</code> 图片生成由 <code>/gm-asset</code> 选择，不由这个脚本调用。</p>
 <p>带提供方前缀的 selector 需要对应 key：Gemini 需要 <code>GOOGLE_API_KEY</code> / <code>GEMINI_API_KEY</code>，OpenAI 需要 <code>OPENAI_API_KEY</code>，Grok 需要 <code>XAI_API_KEY</code>。要设置 <code>/gm-asset</code> 使用哪个提供方，请在 <a href="../../06-configuration/project-config/"><code>../06-configuration/project-config.md</code></a> 中配置 <code>asset_image_model</code>。</p>
@@ -2731,15 +2705,6 @@
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span>--labels<span class="w"> </span>&lt;labels&gt;
 </code></pre></div>
 <p>guide 用于约束 image generation 的 slot 数量、居中和安全边距。它不是运行时美术资源。</p>
-<h2 id="rembg_mattingpy">rembg_matting.py<a class="headerlink" href="#rembg_mattingpy" title="Permanent link">&para;</a></h2>
-<p><code>rembg_matting.py</code> 是可选 curation 工具，用于在 source sheet 处理前移除纯色背景。</p>
-<p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/rembg_matting.py<span class="w"> </span>&lt;input.png&gt;<span class="w"> </span>-o<span class="w"> </span>&lt;output.png&gt;
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>tools/rembg_matting.py<span class="w"> </span>--batch<span class="w"> </span>&lt;input_dir&gt;<span class="w"> </span>-o<span class="w"> </span>&lt;output_dir&gt;
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>python<span class="w"> </span>tools/rembg_matting.py<span class="w"> </span>&lt;input.png&gt;<span class="w"> </span>--preview
-</code></pre></div>
-<p>工具使用神经网络（BiRefNet）识别主体，并结合颜色 matting 清理边缘。可以用 <code>-m trust</code>、<code>-m adapt</code> 或 <code>-m color</code> 指定模式。</p>
-<p>如果有支持 CUDA 的 NVIDIA GPU，会自动启用 GPU 加速。在 CPU 上会更慢，但仍可使用。</p>
 <h2 id="asset_sheet_processpy">asset_sheet_process.py<a class="headerlink" href="#asset_sheet_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_sheet_process.py</code> 会把非角色 2D source sheet 拆成裁剪后的候选对象，并写出 curation report。它支持透明 sheet，也支持通过 <code>--background magenta</code> 处理纯 <code>#FF00FF</code> 背景 sheet。</p>
 <p>它适用于 icon pack、小型道具包、UI 组件 sheet 和其他非角色 source sheet。</p>
@@ -2752,13 +2717,13 @@
 <li>紧凑 UI、icon、prop cell 中有零散碎片时使用 <code>--component-mode largest</code></li>
 </ol>
 <p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/asset_sheet_process.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;source.png&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;curation_dir&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;names&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>--snap-mode<span class="w"> </span>&lt;autoslice<span class="p">|</span>grid&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/asset_sheet_process.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;source.png&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;curation_dir&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;names&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--snap-mode<span class="w"> </span>&lt;autoslice<span class="p">|</span>grid&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;
 </code></pre></div>
 <h2 id="asset_action_processpy">asset_action_process.py<a class="headerlink" href="#asset_action_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_process.py</code> 用于处理角色、敌人、NPC、召唤物和动画道具的动作 source。它会写出规范化 frame PNG、<code>sheet-transparent.png</code>、<code>animation.gif</code>、<code>pipeline-meta.json</code> 和中间 curation report。</p>
@@ -2774,50 +2739,50 @@
 </ol>
 <p>这个工具会拒绝碰到 source cell 边缘的动作帧。<code>--final-dir</code> 和 <code>--final-prefix</code> 只会把处理后的 frames 和 delivery grid sheet 复制到运行时路径；它们不会组装 mixed atlas 或 row strip。</p>
 <p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>tools/asset_action_process.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;action_source.png&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;processed_dir&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;frame_names&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span>--kind<span class="w"> </span>&lt;body<span class="p">|</span>fx&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span>--final-dir<span class="w"> </span>&lt;runtime_dir&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">  </span>--final-prefix<span class="w"> </span>&lt;asset_id&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/asset_action_process.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;action_source.png&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;processed_dir&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;frame_names&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>--kind<span class="w"> </span>&lt;body<span class="p">|</span>fx&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>--final-dir<span class="w"> </span>&lt;runtime_dir&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span>--final-prefix<span class="w"> </span>&lt;asset_id&gt;
 </code></pre></div>
 <p>后续 body action 追加：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>--scale-reference-metadata<span class="w"> </span>&lt;accepted_action_pipeline_meta.json&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>--scale-reference-metadata<span class="w"> </span>&lt;accepted_action_pipeline_meta.json&gt;
 </code></pre></div>
 <h2 id="asset_action_manifest_entrypy">asset_action_manifest_entry.py<a class="headerlink" href="#asset_action_manifest_entrypy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_manifest_entry.py</code> 会把一个已处理动作的 <code>pipeline-meta.json</code> 和对应的 <code>character_action_source</code> entry 转换成 <code>character_frame_output</code> manifest entry。</p>
 <p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>tools/asset_action_manifest_entry.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--metadata<span class="w"> </span>&lt;processed_dir&gt;/pipeline-meta.json<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--source-entry<span class="w"> </span>&lt;character_action_source_entry.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;frame_output_asset_id&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span>--out<span class="w"> </span>&lt;frame_output_entry.json&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/asset_action_manifest_entry.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--metadata<span class="w"> </span>&lt;processed_dir&gt;/pipeline-meta.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--source-entry<span class="w"> </span>&lt;character_action_source_entry.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;frame_output_asset_id&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span>--out<span class="w"> </span>&lt;frame_output_entry.json&gt;
 </code></pre></div>
 <p>生成的 entry 继续交给 <code>asset_generation_manifest_update.py</code> upsert。</p>
 <h2 id="asset_curation_selectpy">asset_curation_select.py<a class="headerlink" href="#asset_curation_selectpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_curation_select.py</code> 会从 curation report 中选择一个 candidate，并 finalize 到运行时素材路径。</p>
 <p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/asset_curation_select.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--candidate<span class="w"> </span>&lt;candidate_id_or_name&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--final-path<span class="w"> </span>&lt;final_path&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;final_asset_id&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>tools/asset_curation_select.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--candidate<span class="w"> </span>&lt;candidate_id_or_name&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>--final-path<span class="w"> </span>&lt;final_path&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;final_asset_id&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.
 </code></pre></div>
 <p>工具会把 report 状态更新为 <code>selected</code>，记录 candidate 的 final path，并输出与 <code>asset_image_finalize.py</code> 相同的 finalize metadata。</p>
 <h2 id="asset_curation_manifest_entrypy">asset_curation_manifest_entry.py<a class="headerlink" href="#asset_curation_manifest_entrypy" title="Permanent link">&para;</a></h2>
 <p><code>asset_curation_manifest_entry.py</code> 会把一个已选中的 curation candidate 和它对应的 source-sheet manifest entry 转换成已校验的运行时 manifest entry。</p>
 <p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>python<span class="w"> </span>tools/asset_curation_manifest_entry.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--source-entry<span class="w"> </span>&lt;source_sheet_entry.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--candidate<span class="w"> </span>&lt;candidate_id_or_name&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;final_asset_id&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">  </span>--out<span class="w"> </span>&lt;final_asset_entry.json&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/asset_curation_manifest_entry.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--source-entry<span class="w"> </span>&lt;source_sheet_entry.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--candidate<span class="w"> </span>&lt;candidate_id_or_name&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;final_asset_id&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span>--out<span class="w"> </span>&lt;final_asset_entry.json&gt;
 </code></pre></div>
 <p>生成的 entry 继续交给 <code>asset_generation_manifest_update.py</code> upsert。</p>
 <h2 id="_2">手动调用这些脚本<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
@@ -2829,7 +2794,6 @@
 <li>调试动画输出时单独处理一个角色动作 sheet。</li>
 <li>从 action metadata 生成一个 character frame-output manifest entry。</li>
 <li>在完整运行 <code>/gm-asset</code> 前试验不同的提供商、尺寸或宽高比。</li>
-<li>在 source sheet curation 前移除纯色背景。</li>
 <li>调试 extraction 时单独处理一个 source sheet。</li>
 <li>把某个 extracted candidate 选入运行时素材路径。</li>
 <li>从已选中的 curation candidate 生成一个运行时 manifest entry。</li>
