@@ -2663,7 +2663,8 @@
 <h1 id="project-config">Project config<a class="headerlink" href="#project-config" title="Permanent link">&para;</a></h1>
 <p><code>.godotmaker/config.yaml</code> is per-project: it selects the agent runtime, role models, visual QA model, and asset generation model for a game project. It lives inside the project folder, so different games can use different settings.</p>
 <h2 id="how-it-gets-created">How it gets created<a class="headerlink" href="#how-it-gets-created" title="Permanent link">&para;</a></h2>
-<p>The first time you run <code>python tools/publish.py &lt;project&gt;</code>, the publish script copies GodotMaker's defaults into <code>.godotmaker/config.yaml</code>. On every subsequent publish the file is left untouched except for the <code>agent</code> field, which is updated to the selected runtime.</p>
+<p>For normal users, <code>godotmaker-cli</code> creates <code>.godotmaker/config.yaml</code> during the first project publish. The preflight panel points to the file so you can edit model and provider settings before continuing.</p>
+<p>Framework developers and manual-mode users can still create the same file with <code>python tools/publish.py &lt;project&gt;</code>. On subsequent publishes the file is left untouched except for the <code>agent</code> field, which is updated to the selected runtime.</p>
 <h2 id="common-fields">Common fields<a class="headerlink" href="#common-fields" title="Permanent link">&para;</a></h2>
 <p><strong><code>agent</code></strong> — selected coding-agent runtime, such as <code>claude-code</code> or <code>codex</code>.</p>
 <p><strong><code>worker_model</code></strong> — which Claude model writes game code. Defaults to <code>sonnet</code>; set it to <code>opus</code> for games that need heavier implementation reasoning.</p>
@@ -2671,6 +2672,7 @@
 <p><strong><code>vqa_model</code></strong> — primary visual QA selector. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, and <code>openai:&lt;model&gt;</code>. <code>native</code> means the active agent runtime inspects the images directly. <code>codex</code> means Codex supplies the image inspection. API-backed selectors run <code>visual_qa.py</code>.</p>
 <p><strong><code>vqa_fallback_model</code></strong> — fallback when the primary VQA backend is unavailable. Supported values are <code>native</code>, <code>codex</code>, and <code>none</code>.</p>
 <p><strong><code>asset_image_model</code></strong> — image generation selector for <code>/gm-asset</code>. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, <code>openai:&lt;model&gt;</code>, and <code>grok:&lt;model&gt;</code>. <code>native</code> is handled by the active agent runtime. <code>codex</code> is handled by Codex native image generation. API-backed selectors run <code>tools/asset_source_generate.py --spec &lt;spec.json&gt;</code>; the script rejects runtime providers.</p>
+<p><strong><code>asset_producer_model</code></strong> — model used by generated-art producer subagents. Defaults to <code>sonnet</code>.</p>
 <p>The default config looks like this:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># GodotMaker project configuration</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># Edit these values to customize behavior</span>
@@ -2683,12 +2685,13 @@
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nt">worker_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nt">verifier_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nt">reviewer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nt">analyst_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="nt">auditor_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="nt">decomposer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nt">asset_producer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nt">worker_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nt">verifier_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nt">reviewer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="nt">analyst_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="nt">auditor_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="nt">decomposer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
 </code></pre></div>
 <h2 id="runtime-native-image-generation">Runtime-native image generation<a class="headerlink" href="#runtime-native-image-generation" title="Permanent link">&para;</a></h2>
 <p><code>native</code> is not an API provider. It means the active agent runtime supplies image inspection or image generation.</p>
@@ -2725,11 +2728,18 @@ PATH and does not require an image API key.</p>
 </table>
 <p>Asset generation does not silently fall back when a key is missing. VQA can fall back only through the explicit <code>vqa_fallback_model</code> setting.</p>
 <h2 id="how-to-change-a-setting">How to change a setting<a class="headerlink" href="#how-to-change-a-setting" title="Permanent link">&para;</a></h2>
-<p>Open <code>.godotmaker/config.yaml</code> and change the value after the colon. For example, to use Codex image generation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
+<p>Open <code>.godotmaker/config.yaml</code> and change the value after the colon. For example, to switch the project runner:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
+</code></pre></div>
+<p>Launch-time <code>--agent</code> still wins for that run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
+</code></pre></div>
+<p>To use Codex image generation:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
 </code></pre></div>
 <p>To use OpenAI for API-backed image generation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai:gpt-image-2</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai:gpt-image-2</span>
 </code></pre></div>
 <p>The next <code>/gm-*</code> command picks up the new value. A command already running will not see changes until the next session or stage invocation.</p>
 <h2 id="about-claudesettingsjson">About <code>.claude/settings.json</code><a class="headerlink" href="#about-claudesettingsjson" title="Permanent link">&para;</a></h2>

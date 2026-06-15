@@ -473,6 +473,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#choose-an-agent-runner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choose an agent runner
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2603,6 +2614,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#choose-an-agent-runner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choose an agent runner
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2721,7 +2743,7 @@
 </tr>
 <tr>
 <td>Node.js</td>
-<td>18+</td>
+<td>22+</td>
 <td>Runs <code>godotmaker-cli</code> and Godot MCP tooling</td>
 <td>https://nodejs.org</td>
 </tr>
@@ -2739,7 +2761,13 @@
 </tr>
 </tbody>
 </table>
-<p>Install each one, then continue.</p>
+<p>Install each one, then continue. You only need one authenticated agent runtime for the first run: Claude Code or Codex.</p>
+<h2 id="choose-an-agent-runner">Choose an agent runner<a class="headerlink" href="#choose-an-agent-runner" title="Permanent link">&para;</a></h2>
+<p>GodotMaker is normally launched through <code>godotmaker-cli</code>. Pick the runner at launch time:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
+</code></pre></div>
+<p><code>--agent</code> is the safest way to switch runners for one run. If it is omitted, the CLI resolves the runner from the project config, then the CLI-global config, then the default runner.</p>
 <h2 id="api-keys">API Keys<a class="headerlink" href="#api-keys" title="Permanent link">&para;</a></h2>
 <p>GodotMaker can use runtime-native image and vision capabilities or API-backed providers depending on <code>.godotmaker/config.yaml</code>.</p>
 <p>API keys are required only when the project selects an API-backed provider. GodotMaker itself does not provide the external model service. If you want Codex to provide image generation in a Claude Code project, set <code>asset_image_model: codex</code>; this requires Codex CLI on PATH and does not require an image API key.</p>
@@ -2770,29 +2798,32 @@
 </tbody>
 </table>
 <h3 id="windows-powershell">Windows PowerShell<a class="headerlink" href="#windows-powershell" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="no">[System.Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;GOOGLE_API_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;your-key-here&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="no">[System.Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;GOOGLE_API_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;your-key-here&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p>Repeat for any optional key you use, then close and reopen your terminal.</p>
 <h3 id="macos-or-linux">macOS or Linux<a class="headerlink" href="#macos-or-linux" title="Permanent link">&para;</a></h3>
 <p>Add the relevant lines to your shell profile, then restart your terminal:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-key-here&quot;</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Optional:</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># export OPENAI_API_KEY=&quot;your-key-here&quot;</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># export XAI_API_KEY=&quot;your-key-here&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-key-here&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># Optional:</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># export OPENAI_API_KEY=&quot;your-key-here&quot;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># export XAI_API_KEY=&quot;your-key-here&quot;</span>
 </code></pre></div>
 <h2 id="install-godotmaker">Install GodotMaker<a class="headerlink" href="#install-godotmaker" title="Permanent link">&para;</a></h2>
 <p>Install the CLI:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>godotmaker-cli
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>godotmaker-cli
+</code></pre></div>
+<p>Check the installed command:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>godotmaker-cli<span class="w"> </span>--help
 </code></pre></div>
 <p>For framework development or manual publishing, clone the repository:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/RandallLiuXin/GodotMaker.git
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">cd</span><span class="w"> </span>GodotMaker
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>tools/requirements.txt
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>python<span class="w"> </span>tools/check_env.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/RandallLiuXin/GodotMaker.git
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">cd</span><span class="w"> </span>GodotMaker
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>tools/requirements.txt
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>python<span class="w"> </span>tools/check_env.py
 </code></pre></div>
 <p>Set your Git identity if you have never done it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;Your Name&quot;</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;you@example.com&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;Your Name&quot;</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;you@example.com&quot;</span>
 </code></pre></div>
 <h2 id="what-the-environment-check-means">What the Environment Check Means<a class="headerlink" href="#what-the-environment-check-means" title="Permanent link">&para;</a></h2>
 <p><code>python tools/check_env.py</code> verifies local tools and selected providers.</p>

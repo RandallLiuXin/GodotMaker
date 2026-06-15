@@ -2691,7 +2691,7 @@
 <ul>
 <li>已安装 <code>godotmaker-cli</code></li>
 <li>Godot、Git、Node.js、Python 可用</li>
-<li>Claude Code 已登录</li>
+<li>已选择的 Agent runtime 已安装并登录</li>
 <li>只有当配置选择 API provider 时，才需要可选 API key</li>
 </ul>
 <h2 id="_3">创建游戏文件夹<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
@@ -2706,9 +2706,13 @@
 <p>之后你可以继续把设计写得更详细。GodotMaker 会把整理后的 GDD 当作本轮运行的设计契约。</p>
 <h2 id="godotmaker">运行 GodotMaker<a class="headerlink" href="#godotmaker" title="Permanent link">&para;</a></h2>
 <p>在游戏文件夹中运行：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>godotmaker
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
+</code></pre></div>
+<p>同一个项目也可以使用 Codex：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
 </code></pre></div>
 <p>CLI 会在需要时把框架发布进项目，协助把想法整理成 GDD，然后驱动规划、构建、验证、评估和修复循环，直到当前设计范围完成。</p>
+<p>第一次发布时，CLI 会创建 <code>.godotmaker/config.yaml</code>。继续运行前你可以打开它检查或修改 <code>agent</code>、角色模型、VQA 模型和素材生成模型。</p>
 <h2 id="_4">运行中会发生什么<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <p>GodotMaker 会：</p>
 <ol>
@@ -2738,16 +2742,16 @@
 </ul>
 <h2 id="_6">验收结果<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
 <p>用 Godot 打开项目：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godot<span class="w"> </span>--editor<span class="w"> </span>--path<span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>godot<span class="w"> </span>--editor<span class="w"> </span>--path<span class="w"> </span>.
 </code></pre></div>
 <p>或者直接运行：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>godot<span class="w"> </span>--path<span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>godot<span class="w"> </span>--path<span class="w"> </span>.
 </code></pre></div>
-<p>如果结果需要设计调整，修改 <code>GDD.md</code> 或补充新想法，然后再次运行 <code>godotmaker</code>。下一轮会基于更新后的设计规划，并从现有项目状态继续。</p>
+<p>如果结果需要设计调整，修改 <code>GDD.md</code> 或补充新想法，然后再次运行 <code>godotmaker-cli</code>。下一轮会基于更新后的设计规划，并从现有项目状态继续。</p>
 <h2 id="_7">手动角色命令<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
 <p>CLI 会替你驱动这些角色：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gm-scaffold -&gt; gm-gdd -&gt; gm-asset -&gt; gm-build -&gt; gm-verify
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>-&gt; gm-evaluate -&gt; gm-fixgap loop -&gt; gm-accept -&gt; gm-finalize
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>gm-scaffold -&gt; gm-gdd -&gt; gm-asset -&gt; gm-build -&gt; gm-verify
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>-&gt; gm-evaluate -&gt; gm-fixgap loop -&gt; gm-accept -&gt; gm-finalize
 </code></pre></div>
 <p>高级用户可以用 <code>/gm-*</code> 运行。手动模式适合调试、框架开发或审查中间阶段，但已经不是推荐的新手首跑路径。</p>
 <p>想了解项目文件夹里每个东西的含义，见<a href="../project-layout/">项目结构</a>。</p>

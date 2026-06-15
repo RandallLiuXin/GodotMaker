@@ -3224,7 +3224,7 @@
 <h3 id="tag">什么是 tag？<a class="headerlink" href="#tag" title="Permanent link">&para;</a></h3>
 <p>一个 <strong>tag</strong> 是一次完整的流水线通关：<code>/gm-gdd</code>、<code>/gm-asset</code>、<code>/gm-build</code>、<code>/gm-verify</code>、<code>/gm-evaluate</code>、必要时 <code>/gm-fixgap</code>、<code>/gm-accept</code>、<code>/gm-finalize</code>。Tag 采用 SemVer 命名——第一个 tag 永远是 <code>v0.1.0</code>，必须交付可玩闭环；后续每个 tag 添加一组功能或重构已有系统。<code>ROADMAP.md</code> 列出计划中的所有 tag，最早一个还没有 <code>git tag</code> 的就是当前 tag。正常运行时由 CLI 驱动这个流程；高级用户仍然可以手动用 <code>/gm-gdd</code> 开启下一个 tag。<code>/gm-scaffold</code> 每个项目只运行一次，不在 tag 之间重复。</p>
 <h3 id="_6">如果我想中途停下来怎么办？<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
-<p>随时可以停。下次打开项目时，GodotMaker 会读取 <code>.godotmaker/stage.jsonl</code> 来确认你上次到哪一步。正常 CLI 路径下，再次运行 <code>godotmaker</code> 即可恢复；手动角色命令模式下，再次运行同一个 <code>/gm-*</code> 角色即可从中断处继续。</p>
+<p>随时可以停。下次打开项目时，GodotMaker 会读取 <code>.godotmaker/stage.jsonl</code> 来确认你上次到哪一步。正常 CLI 路径下，再次运行 <code>godotmaker-cli</code> 即可恢复；手动角色命令模式下，再次运行同一个 <code>/gm-*</code> 角色即可从中断处继续。</p>
 <p>详细的恢复场景说明见 <a href="../../04-troubleshooting/recovery-and-resume/">恢复与续跑</a>。</p>
 <h3 id="_7">我可以同时运行两个角色吗？<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
 <p>不行。每个角色启动时会将自己的名字写入 <code>.godotmaker/current_role</code>，Hook 脚本利用这个文件执行写权限控制。如果第二个角色在第一个还在运行时尝试启动，文件权限 Hook 会立刻开始拦截意外的写操作。让 CLI 管理顺序即可；如果手动运行角色，请一次只运行一个，等它完成再开始下一个。</p>

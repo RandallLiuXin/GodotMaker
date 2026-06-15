@@ -2691,7 +2691,7 @@
 <ul>
 <li><code>godotmaker-cli</code> installed</li>
 <li>Godot, Git, Node.js, and Python available</li>
-<li>Claude Code authenticated</li>
+<li>one selected agent runtime installed and authenticated: Claude Code or Codex</li>
 <li>optional API keys only if your config selects API-backed providers</li>
 </ul>
 <h2 id="create-a-game-folder">Create a Game Folder<a class="headerlink" href="#create-a-game-folder" title="Permanent link">&para;</a></h2>
@@ -2706,9 +2706,12 @@
 <p>You can make the design more detailed later. GodotMaker treats the resulting GDD as the design contract for the run.</p>
 <h2 id="run-godotmaker">Run GodotMaker<a class="headerlink" href="#run-godotmaker" title="Permanent link">&para;</a></h2>
 <p>From the game folder:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>godotmaker
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
 </code></pre></div>
-<p>The CLI publishes the framework into the project if needed, helps capture the idea as a GDD, then drives planning, build, verification, evaluation, and fix loops until the current design scope is complete.</p>
+<p>Use Codex for the same project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
+</code></pre></div>
+<p>The CLI publishes the framework into the project if needed, creates the editable <code>.godotmaker/config.yaml</code> project config on first publish, helps capture the idea as a GDD, then drives planning, build, verification, evaluation, and fix loops until the current design scope is complete.</p>
 <h2 id="what-happens-during-the-run">What Happens During the Run<a class="headerlink" href="#what-happens-during-the-run" title="Permanent link">&para;</a></h2>
 <p>GodotMaker will:</p>
 <ol>
@@ -2738,16 +2741,16 @@
 </ul>
 <h2 id="review-the-result">Review the Result<a class="headerlink" href="#review-the-result" title="Permanent link">&para;</a></h2>
 <p>Open the project in Godot:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godot<span class="w"> </span>--editor<span class="w"> </span>--path<span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>godot<span class="w"> </span>--editor<span class="w"> </span>--path<span class="w"> </span>.
 </code></pre></div>
 <p>Or run it directly:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>godot<span class="w"> </span>--path<span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>godot<span class="w"> </span>--path<span class="w"> </span>.
 </code></pre></div>
-<p>If the result needs a design change, refine the idea in <code>GDD.md</code> or add new notes, then run <code>godotmaker</code> again. The next run plans from the updated design and continues from the existing project state.</p>
+<p>If the result needs a design change, refine the idea in <code>GDD.md</code> or add new notes, then run <code>godotmaker-cli</code> again. The next run plans from the updated design and continues from the existing project state.</p>
 <h2 id="manual-role-commands">Manual Role Commands<a class="headerlink" href="#manual-role-commands" title="Permanent link">&para;</a></h2>
 <p>The CLI drives these roles for you:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gm-scaffold -&gt; gm-gdd -&gt; gm-asset -&gt; gm-build -&gt; gm-verify
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>-&gt; gm-evaluate -&gt; gm-fixgap loop -&gt; gm-accept -&gt; gm-finalize
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>gm-scaffold -&gt; gm-gdd -&gt; gm-asset -&gt; gm-build -&gt; gm-verify
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>-&gt; gm-evaluate -&gt; gm-fixgap loop -&gt; gm-accept -&gt; gm-finalize
 </code></pre></div>
 <p>Advanced users can run them as <code>/gm-*</code>. Manual mode is useful for debugging, framework development, or reviewing an intermediate stage, but it is no longer the recommended first-run path.</p>
 <p>For a tour of what every project file means, see <a href="../project-layout/">Project layout</a>.</p>
