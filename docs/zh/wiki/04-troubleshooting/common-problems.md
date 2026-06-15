@@ -87,7 +87,7 @@ npm install -g @anthropic-ai/claude-code
 claude --version   # should print a version number
 ```
 
-如果连 `npm` 都没有，先去 https://nodejs.org 安装 Node.js 18+。
+如果连 `npm` 都没有，先去 https://nodejs.org 安装 Node.js 22+。
 
 ---
 

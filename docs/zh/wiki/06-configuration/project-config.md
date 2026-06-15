@@ -4,7 +4,7 @@
 
 ## 文件如何创建
 
-第一次运行 `python tools/publish.py <project>` 时，发布脚本会把 GodotMaker 默认配置复制到 `.godotmaker/config.yaml`。之后再次发布不会覆盖你的配置；只有 `agent` 字段会更新为当前选择的运行时。
+普通用户第一次运行 `godotmaker-cli` 时，CLI 会在发布框架文件的同时把默认配置复制到 `.godotmaker/config.yaml`，并在继续前让你看到这个路径。手动使用框架的高级用户也可以运行 `python tools/publish.py <project>` 创建同一个文件。之后再次发布不会覆盖你的配置；只有 `agent` 字段会更新为当前选择的运行时。
 
 ## 常用字段
 
@@ -20,6 +20,8 @@
 
 **`asset_image_model`** — `/gm-asset` 使用的图片生成选择器。支持 `native`、`codex`、`gemini:<model>`、`openai:<model>` 和 `grok:<model>`。`native` 由当前运行时处理；`codex` 由 Codex 原生图片生成处理；API 后端会运行 `tools/asset_source_generate.py --spec <spec.json>`，脚本会拒绝运行时提供方。
 
+**`asset_producer_model`** — `/gm-asset` 中负责单个素材生产单元的子 Agent 模型。Claude Code 项目通常可以设为 `sonnet`，需要更强视觉推理时再提高。
+
 
 默认配置大致如下：
 
@@ -31,6 +33,7 @@ vqa_fallback_model: native
 
 asset_image_model: native
 
+asset_producer_model: sonnet
 worker_model: sonnet
 verifier_model: sonnet
 reviewer_model: sonnet
@@ -79,6 +82,19 @@ asset_image_model: codex
 
 ```yaml
 asset_image_model: openai:gpt-image-2
+```
+
+切换项目默认 Agent runtime：
+
+```yaml
+agent: codex
+```
+
+如果启动时传了 `--agent`，本次运行会优先使用启动参数：
+
+```bash
+godotmaker-cli --agent claude-code
+godotmaker-cli --agent codex
 ```
 
 下一次运行 `/gm-*` 命令时会读取新配置。已经运行中的命令不会自动感知修改，需要下一次会话或阶段调用才会生效。

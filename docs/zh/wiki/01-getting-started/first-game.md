@@ -12,7 +12,7 @@
 
 - 已安装 `godotmaker-cli`
 - Godot、Git、Node.js、Python 可用
-- Claude Code 已登录
+- 已选择的 Agent runtime 已安装并登录
 - 只有当配置选择 API provider 时，才需要可选 API key
 
 ## 创建游戏文件夹
@@ -38,10 +38,18 @@ cd my-first-game
 在游戏文件夹中运行：
 
 ```bash
-godotmaker
+godotmaker-cli --agent claude-code
+```
+
+同一个项目也可以使用 Codex：
+
+```bash
+godotmaker-cli --agent codex
 ```
 
 CLI 会在需要时把框架发布进项目，协助把想法整理成 GDD，然后驱动规划、构建、验证、评估和修复循环，直到当前设计范围完成。
+
+第一次发布时，CLI 会创建 `.godotmaker/config.yaml`。继续运行前你可以打开它检查或修改 `agent`、角色模型、VQA 模型和素材生成模型。
 
 ## 运行中会发生什么
 
@@ -87,7 +95,7 @@ godot --editor --path .
 godot --path .
 ```
 
-如果结果需要设计调整，修改 `GDD.md` 或补充新想法，然后再次运行 `godotmaker`。下一轮会基于更新后的设计规划，并从现有项目状态继续。
+如果结果需要设计调整，修改 `GDD.md` 或补充新想法，然后再次运行 `godotmaker-cli`。下一轮会基于更新后的设计规划，并从现有项目状态继续。
 
 ## 手动角色命令
 

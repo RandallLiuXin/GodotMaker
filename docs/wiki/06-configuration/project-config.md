@@ -4,7 +4,9 @@
 
 ## How it gets created
 
-The first time you run `python tools/publish.py <project>`, the publish script copies GodotMaker's defaults into `.godotmaker/config.yaml`. On every subsequent publish the file is left untouched except for the `agent` field, which is updated to the selected runtime.
+For normal users, `godotmaker-cli` creates `.godotmaker/config.yaml` during the first project publish. The preflight panel points to the file so you can edit model and provider settings before continuing.
+
+Framework developers and manual-mode users can still create the same file with `python tools/publish.py <project>`. On subsequent publishes the file is left untouched except for the `agent` field, which is updated to the selected runtime.
 
 ## Common fields
 
@@ -20,6 +22,8 @@ The first time you run `python tools/publish.py <project>`, the publish script c
 
 **`asset_image_model`** — image generation selector for `/gm-asset`. Supported values are `native`, `codex`, `gemini:<model>`, `openai:<model>`, and `grok:<model>`. `native` is handled by the active agent runtime. `codex` is handled by Codex native image generation. API-backed selectors run `tools/asset_source_generate.py --spec <spec.json>`; the script rejects runtime providers.
 
+**`asset_producer_model`** — model used by generated-art producer subagents. Defaults to `sonnet`.
+
 The default config looks like this:
 
 ```yaml
@@ -34,6 +38,7 @@ vqa_fallback_model: native
 
 asset_image_model: native
 
+asset_producer_model: sonnet
 worker_model: sonnet
 verifier_model: sonnet
 reviewer_model: sonnet
@@ -73,7 +78,20 @@ Asset generation does not silently fall back when a key is missing. VQA can fall
 
 ## How to change a setting
 
-Open `.godotmaker/config.yaml` and change the value after the colon. For example, to use Codex image generation:
+Open `.godotmaker/config.yaml` and change the value after the colon. For example, to switch the project runner:
+
+```yaml
+agent: codex
+```
+
+Launch-time `--agent` still wins for that run:
+
+```bash
+godotmaker-cli --agent claude-code
+godotmaker-cli --agent codex
+```
+
+To use Codex image generation:
 
 ```yaml
 asset_image_model: codex

@@ -8,11 +8,27 @@ GodotMaker 能把你的游戏想法变成一个可以运行的 Godot 4 项目。
 |------|----------|------------------------|---------|
 | Godot | 4.5+ | 编译并运行生成的游戏 | https://godotengine.org/download |
 | Git | 2.30+ | 追踪改动并启用隔离 Agent worktree | https://git-scm.com/downloads |
-| Node.js | 18+ | 运行 `godotmaker-cli` 和 Godot MCP 工具 | https://nodejs.org |
+| Node.js | 22+ | 运行 `godotmaker-cli` 和 Godot MCP 工具 | https://nodejs.org |
 | Python | 3.10+ | 运行 GodotMaker 辅助脚本和验证工具 | https://python.org/downloads |
 | Claude Code 或 Codex | 最新版 | 实现和评估游戏的 Agent runtime | https://claude.ai/code 或 https://openai.com/codex/ |
 
-先安装上面的工具，然后继续。
+先安装上面的工具，然后继续。Claude Code 和 Codex 不需要同时安装；选择一个已登录的 Agent runtime 即可。
+
+## 选择 Agent runner
+
+选择 Claude Code：
+
+```bash
+godotmaker-cli --agent claude-code
+```
+
+选择 Codex：
+
+```bash
+godotmaker-cli --agent codex
+```
+
+Agent 选择优先级是：启动参数 `--agent`、项目 `.godotmaker/config.yaml`、CLI 全局配置、默认值。
 
 ## API Key
 
@@ -51,6 +67,12 @@ export GOOGLE_API_KEY="your-key-here"
 
 ```bash
 npm install -g godotmaker-cli
+```
+
+确认 CLI 可用：
+
+```bash
+godotmaker-cli --help
 ```
 
 如果你要开发 GodotMaker 框架本身，或者手动发布框架文件，克隆仓库：

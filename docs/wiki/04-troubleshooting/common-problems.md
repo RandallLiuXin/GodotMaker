@@ -87,7 +87,7 @@ npm install -g @anthropic-ai/claude-code
 claude --version   # should print a version number
 ```
 
-If `npm` itself is missing, install Node.js 18+ from https://nodejs.org first.
+If `npm` itself is missing, install Node.js 22+ from https://nodejs.org first.
 
 ---
 

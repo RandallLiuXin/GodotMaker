@@ -8,11 +8,22 @@ GodotMaker turns a game idea into a playable Godot 4 project. The normal path is
 |------|-----------------|-------------------------|-----------------|
 | Godot | 4.5+ | Compiles and runs the generated game | https://godotengine.org/download |
 | Git | 2.30+ | Tracks changes and enables isolated agent worktrees | https://git-scm.com/downloads |
-| Node.js | 18+ | Runs `godotmaker-cli` and Godot MCP tooling | https://nodejs.org |
+| Node.js | 22+ | Runs `godotmaker-cli` and Godot MCP tooling | https://nodejs.org |
 | Python | 3.10+ | Runs GodotMaker helper scripts and verification tools | https://python.org/downloads |
 | Claude Code or Codex | Latest | Agent runtime used to implement and evaluate the game | https://claude.ai/code or https://openai.com/codex/ |
 
-Install each one, then continue.
+Install each one, then continue. You only need one authenticated agent runtime for the first run: Claude Code or Codex.
+
+## Choose an agent runner
+
+GodotMaker is normally launched through `godotmaker-cli`. Pick the runner at launch time:
+
+```bash
+godotmaker-cli --agent claude-code
+godotmaker-cli --agent codex
+```
+
+`--agent` is the safest way to switch runners for one run. If it is omitted, the CLI resolves the runner from the project config, then the CLI-global config, then the default runner.
 
 ## API Keys
 
@@ -51,6 +62,12 @@ Install the CLI:
 
 ```bash
 npm install -g godotmaker-cli
+```
+
+Check the installed command:
+
+```bash
+godotmaker-cli --help
 ```
 
 For framework development or manual publishing, clone the repository:

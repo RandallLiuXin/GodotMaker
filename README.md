@@ -62,10 +62,16 @@ mkdir my-game
 cd my-game
 
 # Bring your game idea, then run:
-godotmaker
+godotmaker-cli --agent claude-code
 ```
 
-The CLI drives the workflow from idea capture and GDD planning to a playable Godot project. Advanced users can still run the underlying role commands directly in Claude Code (`/gm-*`) or Codex (`$gm-*`).
+Use `--agent codex` to run the same workflow through Codex:
+
+```bash
+godotmaker-cli --agent codex
+```
+
+The CLI drives the workflow from idea capture and GDD planning to a playable Godot project. Agent selection resolves in this order: `--agent`, project `.godotmaker/config.yaml`, CLI-global `~/.godotmaker/cli/config.yaml`, then the default runner. Advanced users can still run the underlying role commands directly in Claude Code (`/gm-*`) or Codex (`$gm-*`).
 
 For framework development:
 
@@ -82,7 +88,7 @@ python tools/check_env.py
 |---|---|
 | [Godot 4.5+](https://godotengine.org) | Runs the generated game |
 | [Claude Code](https://claude.ai/code) or [Codex](https://openai.com/codex/) | Agent runtime |
-| Node.js 18+ | Runs `godotmaker-cli` and Godot MCP tooling |
+| Node.js 22+ | Runs `godotmaker-cli` and Godot MCP tooling |
 | Python 3.10+ | Runs GodotMaker helper scripts |
 | Git 2.30+ | Enables local history and agent worktrees |
 
@@ -105,8 +111,7 @@ Preview features and practical fallbacks:
 
 | Area | Current status | If you need predictability |
 |---|---|---|
-| Codex runner | Preview. It is useful for experimenting with native image generation and Codex-driven runs, but the path is still newer than the Claude Code workflow. | Use Claude Code for the main pipeline run. |
-| Art-production pipeline | Preview. The workflow can generate references, canonical character sources, action source sheets, UI sheets, and draft runtime assets, but characters, animation, UI pieces, UI motion, and visual consistency still need human review and may need manual replacement. | Put your own visual assets under `assets/`, then run `/gm-asset` so the workflow can inspect them, update `assets/manifest.json`, and mark matching `ASSETS.md` rows as `provided`. |
+| Art-production pipeline | The workflow can generate references, canonical character sources, action source sheets, UI sheets, and draft runtime assets, but characters, animation, UI pieces, UI motion, and visual consistency still need human review and may need manual replacement. | Put your own visual assets under `assets/`, then run `/gm-asset` so the workflow can inspect them, update `assets/manifest.json`, and mark matching `ASSETS.md` rows as `provided`. |
 | 3D games | Not supported by the current pipeline. The workflow targets 2D games. | Build 2D games for now, or add 3D work manually after generation. |
 | Audio generation | Not supported by the current pipeline. Audio rows are treated as user-provided or deferred. | Provide music/SFX manually and wire them into the project yourself until the audio workflow ships. |
 

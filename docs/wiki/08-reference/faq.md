@@ -38,7 +38,7 @@ A **tag** is one complete pass through the pipeline: `/gm-gdd`, `/gm-asset`, `/g
 
 ### What if I want to stop halfway through?
 
-You can stop at any point. The next time you open the project, GodotMaker reads `.godotmaker/stage.jsonl` to see where you left off. In the normal CLI path, run `godotmaker` again to resume. In manual role-command mode, run the same `/gm-*` role again to pick up where you stopped.
+You can stop at any point. The next time you open the project, GodotMaker reads `.godotmaker/stage.jsonl` to see where you left off. In the normal CLI path, run `godotmaker-cli` again to resume. In manual role-command mode, run the same `/gm-*` role again to pick up where you stopped.
 
 For a full walkthrough of recovery scenarios, see [Recovery & Resume](../04-troubleshooting/recovery-and-resume.md).
 

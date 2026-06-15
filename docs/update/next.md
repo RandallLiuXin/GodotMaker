@@ -19,6 +19,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Updated README and wiki first-run docs to use the current `godotmaker-cli` command, runner selection flags, Node.js requirement, and project config flow.
+
 ## Fixed
 
 ## Removed

@@ -12,7 +12,7 @@ Complete [Installation](installation.md) first. You need:
 
 - `godotmaker-cli` installed
 - Godot, Git, Node.js, and Python available
-- Claude Code authenticated
+- one selected agent runtime installed and authenticated: Claude Code or Codex
 - optional API keys only if your config selects API-backed providers
 
 ## Create a Game Folder
@@ -38,10 +38,16 @@ You can make the design more detailed later. GodotMaker treats the resulting GDD
 From the game folder:
 
 ```bash
-godotmaker
+godotmaker-cli --agent claude-code
 ```
 
-The CLI publishes the framework into the project if needed, helps capture the idea as a GDD, then drives planning, build, verification, evaluation, and fix loops until the current design scope is complete.
+Use Codex for the same project:
+
+```bash
+godotmaker-cli --agent codex
+```
+
+The CLI publishes the framework into the project if needed, creates the editable `.godotmaker/config.yaml` project config on first publish, helps capture the idea as a GDD, then drives planning, build, verification, evaluation, and fix loops until the current design scope is complete.
 
 ## What Happens During the Run
 
@@ -87,7 +93,7 @@ Or run it directly:
 godot --path .
 ```
 
-If the result needs a design change, refine the idea in `GDD.md` or add new notes, then run `godotmaker` again. The next run plans from the updated design and continues from the existing project state.
+If the result needs a design change, refine the idea in `GDD.md` or add new notes, then run `godotmaker-cli` again. The next run plans from the updated design and continues from the existing project state.
 
 ## Manual Role Commands
 
