@@ -952,6 +952,46 @@ def register_codex_mcp(target: Path, godot_path: str) -> bool:
         return False
 
 
+def register_opencode_mcp(target: Path, godot_path: str) -> bool:
+    """Register godot-mcp for OpenCode via `opencode mcp`."""
+    opencode_cmd = (
+        shutil.which("opencode")
+        or shutil.which("opencode.cmd")
+        or shutil.which("opencode.exe")
+    )
+    if not opencode_cmd:
+        print("ERROR: OpenCode CLI not found. Cannot register godot-mcp.")
+        print("  Install OpenCode, then run manually:")
+        print(f'  opencode mcp add godot --env GODOT_PATH="{godot_path}" -- npx @coding-solo/godot-mcp')
+        return False
+
+    if not shutil.which("npx"):
+        print("ERROR: npx not found. Cannot register godot-mcp.")
+        print("  Install Node.js, then run manually:")
+        print(f'  opencode mcp add godot --env GODOT_PATH="{godot_path}" -- npx @coding-solo/godot-mcp')
+        return False
+
+    print("Registering godot-mcp MCP server for OpenCode...")
+    cmd = [opencode_cmd, "mcp", "add", "godot",
+           "--env", f"GODOT_PATH={godot_path}", "--"]
+
+    if sys.platform == "win32":
+        cmd.extend(["cmd", "/c", "npx", "@coding-solo/godot-mcp"])
+    else:
+        cmd.extend(["npx", "@coding-solo/godot-mcp"])
+
+    try:
+        result = subprocess.run(cmd, cwd=str(target), timeout=60)
+        if result.returncode == 0:
+            print("godot-mcp registered for OpenCode")
+            return True
+        print("ERROR: OpenCode godot-mcp registration failed.")
+        return False
+    except (subprocess.TimeoutExpired, OSError):
+        print("ERROR: OpenCode godot-mcp registration failed.")
+        return False
+
+
 def _escape_permission_rule_content(content: str) -> str:
     """Mirror claude-code's permissionRuleParser.ts `escapeRuleContent`.
 
@@ -1297,6 +1337,13 @@ def main():
                   "registration can run.")
             sys.exit(1)
         if not register_codex_mcp(target, godot_path):
+            sys.exit(1)
+    elif adapter.agent_id == AGENT_OPENCODE:
+        if not config_ready:
+            print("ERROR: OpenCode publish requires godotmaker.yaml before MCP "
+                  "registration can run.")
+            sys.exit(1)
+        if not register_opencode_mcp(target, godot_path):
             sys.exit(1)
     if adapter.register_godot_permissions:
         register_godot_permissions(config_dir / "settings.json", godot_path)

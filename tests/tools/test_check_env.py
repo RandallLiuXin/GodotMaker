@@ -190,6 +190,16 @@ class TestCheckFunctions:
         check_selected_agent(r, tmp_path)
         mock_codex.assert_called_once_with(r, tmp_path)
 
+    @patch("check_env.check_opencode")
+    @patch("check_env.detect_agent", return_value="opencode")
+    def test_check_selected_agent_uses_opencode(
+        self, mock_detect, mock_opencode, tmp_path
+    ):
+        from check_env import check_selected_agent
+        r = EnvCheck()
+        check_selected_agent(r, tmp_path)
+        mock_opencode.assert_called_once_with(r, tmp_path)
+
     @patch("check_env.check_claude")
     @patch("check_env.detect_agent", return_value="claude-code")
     def test_check_selected_agent_uses_claude(self, mock_detect, mock_claude, tmp_path):
@@ -216,6 +226,31 @@ class TestCheckFunctions:
 
         assert any("Codex CLI found" in p for p in r.passed)
         assert any("Codex MCP server 'godot' configured" in p for p in r.passed)
+        assert len(r.failed) == 0
+
+    @patch("check_env.get_version", return_value="1.17.7")
+    @patch("check_env.shutil.which", return_value="/usr/bin/opencode")
+    @patch("check_env.subprocess.run")
+    def test_check_opencode_validates_runtime_files_and_mcp(
+        self, mock_run, mock_which, mock_ver, tmp_path: Path
+    ):
+        from check_env import check_opencode
+        (tmp_path / ".opencode" / "skills").mkdir(parents=True)
+        (tmp_path / ".opencode" / "agents").mkdir()
+        (tmp_path / ".opencode" / "references").mkdir()
+        (
+            tmp_path / ".opencode" / "references" / "runtime-mapping.md"
+        ).write_text("")
+        (
+            tmp_path / ".opencode" / "godotmaker.yaml"
+        ).write_text("godot_path: /opt/godot\n")
+        mock_run.return_value = MagicMock(returncode=0, stdout="godot\n", stderr="")
+
+        r = EnvCheck()
+        check_opencode(r, tmp_path)
+
+        assert any("OpenCode CLI found" in p for p in r.passed)
+        assert any("OpenCode MCP server 'godot' configured" in p for p in r.passed)
         assert len(r.failed) == 0
 
     @patch.dict(os.environ, {"GOOGLE_API_KEY": "AIzaSyTestKey12345678"}, clear=False)
@@ -312,6 +347,22 @@ class TestCheckFunctions:
 
         assert not r.failed
         assert any("native image generation for Claude Code" in w for w in r.warnings)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_opencode_native_image_generation_fails_until_supported(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "native",
+                "vqa_model": "native",
+            },
+            agent="opencode",
+        )
+
+        assert any("native image provider is unsupported" in f for f in r.failed)
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True)
     def test_claude_native_vqa_inspection_can_pass(self):

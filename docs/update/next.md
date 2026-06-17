@@ -18,6 +18,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Added
 
 - Added the initial OpenCode publish target with `.opencode` skills, agents, runtime references, and project instructions.
+- Added OpenCode `godot` MCP registration during publish and environment checks for the published `.opencode` runtime tree.
 
 ## Changed
 

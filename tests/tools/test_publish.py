@@ -30,6 +30,7 @@ from publish import (
     publish_agents,
     publish_skills,
     register_codex_mcp,
+    register_opencode_mcp,
     register_godot_permissions,
     rmtree_force,
     _verify_godot_path,
@@ -187,6 +188,8 @@ def _publish_opencode_project(tmp_path, monkeypatch, before_publish=None):
         lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)),
     )
     monkeypatch.setattr(publish, "register_codex_mcp",
+                        lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(publish, "register_opencode_mcp",
                         lambda *_args, **_kwargs: True)
     monkeypatch.setattr(publish, "register_mcp",
                         lambda *_args, **_kwargs: None)
@@ -510,6 +513,41 @@ class TestRegisterCodexMcp:
             "npx", "@coding-solo/godot-mcp",
         ]
         assert calls[1][1]["cwd"] == str(tmp_path)
+
+
+class TestRegisterOpenCodeMcp:
+    def test_fails_when_opencode_missing(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(publish.shutil, "which", lambda name: None)
+        assert register_opencode_mcp(tmp_path, "/usr/bin/godot") is False
+        out = capsys.readouterr().out
+        assert "OpenCode CLI not found" in out
+        assert "opencode mcp add godot" in out
+
+    def test_invokes_opencode_mcp_add(self, tmp_path, monkeypatch):
+        calls = []
+
+        def _which(name):
+            if name in ("opencode", "npx"):
+                return name
+            return None
+
+        def _run(cmd, **kwargs):
+            calls.append((cmd, kwargs))
+            return subprocess.CompletedProcess(args=cmd, returncode=0)
+
+        monkeypatch.setattr(publish.shutil, "which", _which)
+        monkeypatch.setattr(publish.subprocess, "run", _run)
+        monkeypatch.setattr(publish.sys, "platform", "linux")
+
+        assert register_opencode_mcp(tmp_path, "/usr/bin/godot") is True
+
+        assert calls == [
+            ([
+                "opencode", "mcp", "add", "godot",
+                "--env", "GODOT_PATH=/usr/bin/godot", "--",
+                "npx", "@coding-solo/godot-mcp",
+            ], {"cwd": str(tmp_path), "timeout": 60})
+        ]
 
 
 class TestCreateProjectConfig:
@@ -1357,7 +1395,8 @@ class TestPublishMainAgentBranches:
             "publish_directory",
             "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
-            "register_mcp", "register_codex_mcp", "register_godot_permissions", "ensure_gitignore",
+            "register_mcp", "register_codex_mcp", "register_opencode_mcp",
+            "register_godot_permissions", "ensure_gitignore",
             "ensure_gitattributes",
             "ensure_worktreeinclude", "ensure_git_repo", "write_target_version",
             "deploy_agent_hook_config",
@@ -1441,7 +1480,8 @@ class TestPublishMainAgentBranches:
             "publish_directory",
             "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
-            "register_mcp", "register_codex_mcp", "register_godot_permissions", "ensure_gitignore",
+            "register_mcp", "register_codex_mcp", "register_opencode_mcp",
+            "register_godot_permissions", "ensure_gitignore",
             "ensure_gitattributes",
             "ensure_worktreeinclude", "ensure_git_repo", "write_target_version",
             "deploy_agent_hook_config",
@@ -1459,7 +1499,7 @@ class TestPublishMainAgentBranches:
         assert "register_godot_permissions" in calls
         assert "ensure_worktreeinclude" in calls
 
-    def test_opencode_publish_skips_claude_and_codex_specific_integrations(
+    def test_opencode_publish_registers_opencode_mcp_and_skips_other_integrations(
         self, tmp_path, monkeypatch
     ):
         from _version import SemVer
@@ -1471,7 +1511,7 @@ class TestPublishMainAgentBranches:
         def _record(name):
             def _inner(*_args, **_kwargs):
                 calls.append(name)
-                if name == "create_godotmaker_yaml":
+                if name in ("create_godotmaker_yaml", "register_opencode_mcp"):
                     return True
                 return None
             return _inner
@@ -1486,7 +1526,8 @@ class TestPublishMainAgentBranches:
             "publish_directory", "deploy_agent_instructions",
             "create_godotmaker_yaml", "create_project_config",
             "deploy_stage_schemas", "create_project_dirs", "register_mcp",
-            "register_codex_mcp", "register_godot_permissions",
+            "register_codex_mcp", "register_opencode_mcp",
+            "register_godot_permissions",
             "ensure_gitignore", "ensure_gitattributes",
             "ensure_worktreeinclude", "ensure_git_repo", "write_target_version",
             "deploy_agent_hook_config", "baseline_applied",
@@ -1505,6 +1546,7 @@ class TestPublishMainAgentBranches:
         assert "deploy_agent_hook_config" not in calls
         assert "register_mcp" not in calls
         assert "register_codex_mcp" not in calls
+        assert "register_opencode_mcp" in calls
         assert "register_godot_permissions" not in calls
         assert "ensure_worktreeinclude" not in calls
 
@@ -1544,7 +1586,8 @@ class TestPublishMainForceRmtree:
             "publish_directory",
             "deploy_agent_hook_config", "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas",
-            "create_project_dirs", "register_mcp", "register_codex_mcp", "register_godot_permissions",
+            "create_project_dirs", "register_mcp", "register_codex_mcp",
+            "register_opencode_mcp", "register_godot_permissions",
             "ensure_gitignore", "ensure_gitattributes",
             "ensure_worktreeinclude", "ensure_git_repo", "write_target_version",
         ):
