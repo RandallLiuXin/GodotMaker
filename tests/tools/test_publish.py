@@ -27,6 +27,7 @@ from publish import (
     ensure_gitattributes,
     ensure_gitignore,
     ensure_worktreeinclude,
+    publish_agents,
     publish_skills,
     register_codex_mcp,
     register_godot_permissions,
@@ -158,6 +159,49 @@ def _publish_claude_project(tmp_path, monkeypatch, before_publish=None):
     monkeypatch.setattr(sys, "argv",
                         [
                             "publish.py",
+                            "--force",
+                            "--no-config-review",
+                            str(target),
+                        ])
+
+    publish.main()
+    return target
+
+
+def _publish_opencode_project(tmp_path, monkeypatch, before_publish=None):
+    from _version import SemVer
+
+    target = tmp_path / "target"
+    config_dir = target / ".opencode"
+    config_dir.mkdir(parents=True)
+    (config_dir / "godotmaker.yaml").write_text(
+        'godot_path: "/test/godot"\n',
+        encoding="utf-8",
+    )
+    if before_publish is not None:
+        before_publish(target)
+
+    monkeypatch.setattr(
+        publish,
+        "check_version_upgrade",
+        lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)),
+    )
+    monkeypatch.setattr(publish, "register_codex_mcp",
+                        lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(publish, "register_mcp",
+                        lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(publish, "register_godot_permissions",
+                        lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(publish, "ensure_git_repo",
+                        lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(publish, "baseline_applied",
+                        lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(publish, "run_migrations",
+                        lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(sys, "argv",
+                        [
+                            "publish.py",
+                            "--agent", "opencode",
                             "--force",
                             "--no-config-review",
                             str(target),
@@ -509,6 +553,25 @@ class TestCreateProjectConfig:
         )
         assert agent_runtime.read_godot_path(tmp_path) == "/opt/godot"
 
+    def test_published_opencode_agent_selects_opencode_runtime_config(self, tmp_path):
+        create_project_config(tmp_path, publish.AGENT_OPENCODE)
+        (tmp_path / ".opencode").mkdir()
+        (tmp_path / ".opencode" / "godotmaker.yaml").write_text(
+            "godot_path: /opt/opencode-godot\n", encoding="utf-8"
+        )
+
+        assert agent_runtime.detect_agent(tmp_path) == publish.AGENT_OPENCODE
+        assert agent_runtime.godotmaker_yaml(tmp_path) == (
+            tmp_path / ".opencode" / "godotmaker.yaml"
+        )
+        assert agent_runtime.agent_skill_root(tmp_path) == (
+            tmp_path / ".opencode" / "skills"
+        )
+        assert agent_runtime.agent_runtime_mapping(tmp_path) == (
+            tmp_path / ".opencode" / "references" / "runtime-mapping.md"
+        )
+        assert agent_runtime.read_godot_path(tmp_path) == "/opt/opencode-godot"
+
     def test_default_config_template_is_valid_yaml(self):
         assert DEFAULT_CONFIG_TEMPLATE.exists(), "config.yaml.default template must exist"
         content = DEFAULT_CONFIG_TEMPLATE.read_text(encoding="utf-8")
@@ -819,6 +882,50 @@ class TestPublishSkills:
         assert (target / "gecs" / "SKILL.md").read_text() == "# updated\n"
 
 
+class TestPublishAgents:
+    def test_opencode_agent_render_adds_subagent_mode_and_paths(self, tmp_path):
+        repo = tmp_path / "repo"
+        agents = repo / "agents"
+        agents.mkdir(parents=True)
+        (agents / "reviewer.md").write_text(
+            "---\n"
+            "name: reviewer\n"
+            "description: Reviews code\n"
+            "model: inherit\n"
+            "---\n\n"
+            "Glob `.claude/skills/*/checklist.md`.\n",
+            encoding="utf-8",
+        )
+
+        target = tmp_path / "target" / ".opencode" / "agents"
+        assert publish_agents(repo, target, publish.AGENT_OPENCODE) == 1
+
+        content = (target / "reviewer.md").read_text(encoding="utf-8")
+        assert "mode: subagent" in content
+        assert ".opencode/skills/*/checklist.md" in content
+        assert ".claude/skills" not in content
+
+    def test_non_opencode_agent_render_preserves_source(self, tmp_path):
+        repo = tmp_path / "repo"
+        agents = repo / "agents"
+        agents.mkdir(parents=True)
+        (agents / "worker.md").write_text(
+            "---\n"
+            "name: worker\n"
+            "description: Implements tasks\n"
+            "---\n\n"
+            "Read `.claude/godotmaker.yaml`.\n",
+            encoding="utf-8",
+        )
+
+        target = tmp_path / "target" / ".agents" / "agents"
+        assert publish_agents(repo, target, publish.AGENT_CODEX) == 1
+
+        content = (target / "worker.md").read_text(encoding="utf-8")
+        assert "mode: subagent" not in content
+        assert ".claude/godotmaker.yaml" in content
+
+
 class TestDeployAgentInstructions:
     def _make_repo(self, tmp_path):
         repo = tmp_path / "repo"
@@ -835,6 +942,13 @@ class TestDeployAgentInstructions:
         (codex_templates / "agents-bootstrap.md").write_text(
             "Before executing any `$gm-*` skill, apply the GodotMaker Codex "
             "runtime mapping at `.agents/references/runtime-mapping.md`.\n\n",
+            encoding="utf-8",
+        )
+        opencode_templates = repo / "agent-runtimes" / "opencode" / "templates"
+        opencode_templates.mkdir(parents=True)
+        (opencode_templates / "agents-bootstrap.md").write_text(
+            "Before executing any GodotMaker stage skill in OpenCode, apply "
+            "the runtime mapping at `.opencode/references/runtime-mapping.md`.\n\n",
             encoding="utf-8",
         )
         return repo
@@ -869,6 +983,17 @@ class TestDeployAgentInstructions:
         assert ".agents/references/runtime-mapping.md" in content
         assert "$gm-" in content
         assert "`/gm-*`" in content
+
+    def test_opencode_derives_agents_md_from_claude_template(self, tmp_path):
+        repo = self._make_repo(tmp_path)
+        target = tmp_path / "target"
+        target.mkdir()
+        deploy_agent_instructions(repo, target, publish.AGENT_OPENCODE)
+        content = (target / "AGENTS.md").read_text(encoding="utf-8")
+        assert content.startswith("# AGENTS.md")
+        assert "OpenCode" in content
+        assert ".opencode/references/runtime-mapping.md" in content
+        assert not (target / "CLAUDE.md").exists()
 
     def test_claude_instructions_do_not_include_codex_bootstrap(self):
         content = render_agent_instructions(
@@ -1135,6 +1260,78 @@ class TestCodexPublishParity:
         assert "PreToolUse" not in deployed["hooks"]
 
 
+class TestOpenCodePublishParity:
+    def test_opencode_publish_outputs_required_runtime_contract(
+        self, tmp_path, monkeypatch
+    ):
+        target = _publish_opencode_project(tmp_path, monkeypatch)
+
+        for skill_name in PRIMARY_ROLE_SKILLS:
+            assert (
+                target / ".opencode" / "skills" / skill_name / "SKILL.md"
+            ).exists(), f"missing OpenCode skill: {skill_name}"
+
+        assert (target / ".opencode" / "agents" / "worker.md").exists()
+        assert (target / ".opencode" / "references" / "runtime-mapping.md").exists()
+        assert (target / ".opencode" / "templates" / "ROADMAP.md").exists()
+        assert (target / ".opencode" / "config" / "config.yaml.default").exists()
+        assert (target / ".opencode" / "godotmaker.yaml").exists()
+        assert (target / "AGENTS.md").exists()
+        assert not (target / "CLAUDE.md").exists()
+        assert not (target / ".codex" / "hooks.json").exists()
+        assert not (target / ".agents" / "skills").exists()
+
+    def test_published_opencode_mapping_uses_opencode_paths(
+        self, tmp_path, monkeypatch
+    ):
+        target = _publish_opencode_project(tmp_path, monkeypatch)
+        mapping = (
+            target / ".opencode" / "references" / "runtime-mapping.md"
+        ).read_text(encoding="utf-8")
+
+        assert "`/gm-*`" in mapping
+        assert ".opencode/skills" in mapping
+        assert ".opencode/agents" in mapping
+        assert ".opencode/templates" in mapping
+        assert ".opencode/godotmaker.yaml" in mapping
+        assert ".codex" not in mapping
+
+    def test_published_opencode_agents_are_native_subagents(
+        self, tmp_path, monkeypatch
+    ):
+        target = _publish_opencode_project(tmp_path, monkeypatch)
+
+        worker = (target / ".opencode" / "agents" / "worker.md").read_text(
+            encoding="utf-8"
+        )
+        reviewer = (target / ".opencode" / "agents" / "reviewer.md").read_text(
+            encoding="utf-8"
+        )
+
+        assert "mode: subagent" in worker
+        assert "mode: subagent" in reviewer
+        assert ".opencode/skills/*/checklist.md" in reviewer
+        assert ".claude/skills/*/checklist.md" not in reviewer
+
+    def test_opencode_agents_md_indexes_runtime_mapping(self, tmp_path, monkeypatch):
+        target = _publish_opencode_project(tmp_path, monkeypatch)
+        content = (target / "AGENTS.md").read_text(encoding="utf-8")
+
+        assert "OpenCode" in content
+        assert ".opencode/references/runtime-mapping.md" in content
+        assert "CLAUDE.md" not in content
+
+    def test_opencode_publish_updates_project_config_agent(
+        self, tmp_path, monkeypatch
+    ):
+        target = _publish_opencode_project(tmp_path, monkeypatch)
+        config = (target / ".godotmaker" / "config.yaml").read_text(
+            encoding="utf-8"
+        )
+
+        assert "agent: opencode" in config
+
+
 class TestPublishMainAgentBranches:
     def test_codex_publish_registers_mcp_by_default(
         self, tmp_path, monkeypatch
@@ -1156,7 +1353,8 @@ class TestPublishMainAgentBranches:
         monkeypatch.setattr(publish, "check_version_upgrade",
                             lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)))
         for name in (
-            "publish_skills", "publish_shared_refs", "publish_directory",
+            "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_directory",
             "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
             "register_mcp", "register_codex_mcp", "register_godot_permissions", "ensure_gitignore",
@@ -1197,7 +1395,8 @@ class TestPublishMainAgentBranches:
             lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)),
         )
         for name in (
-            "publish_skills", "publish_shared_refs", "publish_directory",
+            "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_directory",
             "deploy_agent_instructions",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
             "register_mcp", "register_godot_permissions", "ensure_gitignore",
@@ -1238,7 +1437,8 @@ class TestPublishMainAgentBranches:
         monkeypatch.setattr(publish, "check_version_upgrade",
                             lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)))
         for name in (
-            "publish_skills", "publish_shared_refs", "publish_directory",
+            "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_directory",
             "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
             "register_mcp", "register_codex_mcp", "register_godot_permissions", "ensure_gitignore",
@@ -1258,6 +1458,55 @@ class TestPublishMainAgentBranches:
         assert "register_codex_mcp" not in calls
         assert "register_godot_permissions" in calls
         assert "ensure_worktreeinclude" in calls
+
+    def test_opencode_publish_skips_claude_and_codex_specific_integrations(
+        self, tmp_path, monkeypatch
+    ):
+        from _version import SemVer
+
+        target = tmp_path / "target"
+        target.mkdir()
+        calls: list[str] = []
+
+        def _record(name):
+            def _inner(*_args, **_kwargs):
+                calls.append(name)
+                if name == "create_godotmaker_yaml":
+                    return True
+                return None
+            return _inner
+
+        monkeypatch.setattr(
+            publish,
+            "check_version_upgrade",
+            lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)),
+        )
+        for name in (
+            "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_directory", "deploy_agent_instructions",
+            "create_godotmaker_yaml", "create_project_config",
+            "deploy_stage_schemas", "create_project_dirs", "register_mcp",
+            "register_codex_mcp", "register_godot_permissions",
+            "ensure_gitignore", "ensure_gitattributes",
+            "ensure_worktreeinclude", "ensure_git_repo", "write_target_version",
+            "deploy_agent_hook_config", "baseline_applied",
+        ):
+            monkeypatch.setattr(publish, name, _record(name))
+        monkeypatch.setattr(publish, "read_godot_path", lambda *_args, **_kwargs: "godot")
+        monkeypatch.setattr(
+            sys, "argv",
+            ["publish.py", "--agent", "opencode", "--force", str(target)],
+        )
+
+        publish.main()
+
+        assert "publish_agents" in calls
+        assert "deploy_agent_instructions" in calls
+        assert "deploy_agent_hook_config" not in calls
+        assert "register_mcp" not in calls
+        assert "register_codex_mcp" not in calls
+        assert "register_godot_permissions" not in calls
+        assert "ensure_worktreeinclude" not in calls
 
 
 class TestPublishMainForceRmtree:
@@ -1291,7 +1540,8 @@ class TestPublishMainForceRmtree:
             return None
 
         for name in (
-            "publish_skills", "publish_shared_refs", "publish_directory",
+            "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_directory",
             "deploy_agent_hook_config", "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas",
             "create_project_dirs", "register_mcp", "register_codex_mcp", "register_godot_permissions",

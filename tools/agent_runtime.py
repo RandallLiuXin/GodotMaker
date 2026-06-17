@@ -6,6 +6,7 @@ from pathlib import Path
 
 AGENT_CLAUDE_CODE = "claude-code"
 AGENT_CODEX = "codex"
+AGENT_OPENCODE = "opencode"
 
 
 def _read_yaml_scalar(path: Path, key: str) -> str | None:
@@ -28,6 +29,8 @@ def normalize_agent(value: str | None) -> str | None:
     normalized = value.strip().lower().replace("_", "-")
     if normalized in {"codex", "openai-codex"}:
         return AGENT_CODEX
+    if normalized in {"opencode", "open-code"}:
+        return AGENT_OPENCODE
     if normalized in {"claude", "claude-code", "anthropic-claude-code"}:
         return AGENT_CLAUDE_CODE
     return None
@@ -44,6 +47,8 @@ def detect_agent(project_dir: Path) -> str:
     # Backward-compatible fallback for older projects without `agent`.
     if (project_dir / ".agents").exists():
         return AGENT_CODEX
+    if (project_dir / ".opencode").exists():
+        return AGENT_OPENCODE
     return AGENT_CLAUDE_CODE
 
 
@@ -51,6 +56,8 @@ def agent_config_root(project_dir: Path, agent: str | None = None) -> Path:
     selected = normalize_agent(agent) or detect_agent(project_dir)
     if selected == AGENT_CODEX:
         return project_dir / ".agents"
+    if selected == AGENT_OPENCODE:
+        return project_dir / ".opencode"
     return project_dir / ".claude"
 
 
@@ -62,6 +69,8 @@ def agent_runtime_mapping(project_dir: Path, agent: str | None = None) -> Path:
     selected = normalize_agent(agent) or detect_agent(project_dir)
     if selected == AGENT_CODEX:
         return project_dir / ".agents" / "references" / "runtime-mapping.md"
+    if selected == AGENT_OPENCODE:
+        return project_dir / ".opencode" / "references" / "runtime-mapping.md"
     return project_dir / ".claude" / "references" / "runtime-mapping.md"
 
 

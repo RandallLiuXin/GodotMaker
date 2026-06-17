@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(
 from publish import (
     AGENT_CLAUDE_CODE,
     AGENT_CODEX,
+    AGENT_OPENCODE,
     render_agent_instructions,
     publish_skills,
     publish_shared_refs,
@@ -92,7 +93,11 @@ def _root_instruction_indexes(
     """
     if agent is not None:
         content = render_agent_instructions(REPO_ROOT, agent) or ""
-        runtime_root = ".agents" if agent == AGENT_CODEX else ".claude"
+        runtime_root = {
+            AGENT_CLAUDE_CODE: ".claude",
+            AGENT_CODEX: ".agents",
+            AGENT_OPENCODE: ".opencode",
+        }[agent]
         return (
             f"{runtime_root}/skills/{skill_name}/references/{filename}"
             in content
@@ -101,6 +106,7 @@ def _root_instruction_indexes(
     deployed_paths = [
         f".claude/skills/{skill_name}/references/{filename}",
         f".agents/skills/{skill_name}/references/{filename}",
+        f".opencode/skills/{skill_name}/references/{filename}",
     ]
     for template_path in ROOT_INSTRUCTION_TEMPLATES:
         if not template_path.exists():

@@ -2,7 +2,8 @@
 """Publish GodotMaker skills into a target Godot project directory.
 
 Flattens skills/core/* and skills/reviewer/* into the selected agent-native
-skill location: .claude/skills/ for Claude Code or .agents/skills/ for Codex.
+skill location: .claude/skills/ for Claude Code, .agents/skills/ for Codex,
+or .opencode/skills/ for OpenCode.
 Also copies tools, config, hooks, templates, and sets up agent-specific files.
 
 Supports versioned upgrades: compares source VERSION against the
@@ -11,6 +12,7 @@ target's .godotmaker/version and prompts accordingly.
 Usage:
     python tools/publish.py <target_godot_project_dir>
     python tools/publish.py --agent codex <target_godot_project_dir>
+    python tools/publish.py --agent opencode <target_godot_project_dir>
     python tools/publish.py --force <target_godot_project_dir>
 """
 import argparse
@@ -25,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX
+from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE
 from project_config import (
     ProjectConfigResult,
     create_project_config as create_project_config_file,
@@ -47,19 +49,24 @@ class VersionCheckResult(NamedTuple):
     source_ver: SemVer | None
 
 EXCLUDE_DIRS = {"__pycache__", "doc_source", ".workspace"}
-AGENT_CHOICES = (AGENT_CLAUDE_CODE, AGENT_CODEX)
+AGENT_CHOICES = (AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE)
 AGENT_RUNTIME_SOURCE_ROOTS = {
     AGENT_CLAUDE_CODE: Path("agent-runtimes") / "claude-code",
     AGENT_CODEX: Path("agent-runtimes") / "codex",
+    AGENT_OPENCODE: Path("agent-runtimes") / "opencode",
 }
 AGENT_RUNTIME_REFERENCES = {
     AGENT_CODEX: (
         Path("references") / "runtime-mapping.md",
         Path("references") / "delegation-worktree.md",
     ),
+    AGENT_OPENCODE: (
+        Path("references") / "runtime-mapping.md",
+    ),
 }
 AGENT_ROOT_BOOTSTRAP_TEMPLATES = {
     AGENT_CODEX: Path("templates") / "agents-bootstrap.md",
+    AGENT_OPENCODE: Path("templates") / "agents-bootstrap.md",
 }
 AGENT_HOOK_CONFIGS = {
     AGENT_CLAUDE_CODE: (
@@ -131,6 +138,19 @@ AGENT_ADAPTERS = {
         config_root=".agents/config",
         templates_root=".agents/templates",
         runtime_references_root=".agents/references",
+        root_instruction_filename="AGENTS.md",
+        register_claude_mcp=False,
+        register_godot_permissions=False,
+        ensure_worktreeinclude=False,
+    ),
+    AGENT_OPENCODE: AgentPublishAdapter(
+        agent_id=AGENT_OPENCODE,
+        project_config_root=".opencode",
+        skill_root=".opencode/skills",
+        agents_root=".opencode/agents",
+        config_root=".opencode/config",
+        templates_root=".opencode/templates",
+        runtime_references_root=".opencode/references",
         root_instruction_filename="AGENTS.md",
         register_claude_mcp=False,
         register_godot_permissions=False,
@@ -534,6 +554,76 @@ def publish_directory(
     print(f"Published {label} ({count} files)")
 
 
+def _ensure_frontmatter_scalar(text: str, key: str, value: str) -> str:
+    """Set a simple top-level YAML frontmatter scalar."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return text
+
+    end = None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            end = i
+            break
+    if end is None:
+        return text
+
+    updated = False
+    for i in range(1, end):
+        stripped = lines[i].strip()
+        if not stripped or stripped.startswith("#") or ":" not in stripped:
+            continue
+        current_key = stripped.split(":", 1)[0].strip()
+        if current_key == key:
+            lines[i] = f"{key}: {value}"
+            updated = True
+            break
+
+    if not updated:
+        lines.insert(end, f"{key}: {value}")
+
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+
+def render_agent_role_text(text: str, agent: str) -> str:
+    """Render a shared GodotMaker role definition for a selected runtime."""
+    if agent != AGENT_OPENCODE:
+        return text
+
+    rendered = _ensure_frontmatter_scalar(text, "mode", "subagent")
+    replacements = {
+        ".claude/skills": ".opencode/skills",
+        ".claude/agents": ".opencode/agents",
+        ".claude/templates": ".opencode/templates",
+        ".claude/config": ".opencode/config",
+        ".claude/godotmaker.yaml": ".opencode/godotmaker.yaml",
+    }
+    for old, new in replacements.items():
+        rendered = rendered.replace(old, new)
+    return rendered
+
+
+def publish_agents(repo_root: Path, agents_target: Path,
+                   agent: str = AGENT_CLAUDE_CODE) -> int:
+    """Publish GodotMaker role definitions for the selected runtime."""
+    src = repo_root / "agents"
+    if not src.exists():
+        return 0
+
+    if agents_target.exists():
+        rmtree_force(agents_target)
+    agents_target.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+    for file in sorted(src.glob("*.md")):
+        rendered = render_agent_role_text(file.read_text(encoding="utf-8"), agent)
+        (agents_target / file.name).write_text(rendered, encoding="utf-8")
+        count += 1
+
+    print(f"Published agents/ ({count} files)")
+    return count
+
+
 def deploy_agent_hook_config(repo_root: Path, target: Path, agent: str, force: bool):
     """Deploy selected-agent hook config."""
     spec = AGENT_HOOK_CONFIGS.get(agent)
@@ -577,8 +667,7 @@ def render_agent_instructions(repo_root: Path, agent: str) -> str | None:
         return None
     content = template.read_text(encoding="utf-8")
     rendered = render_root_instruction_text(content, adapter)
-    if adapter.agent_id == AGENT_CODEX:
-        rendered = _inject_agent_root_bootstrap(repo_root, rendered, adapter)
+    rendered = _inject_agent_root_bootstrap(repo_root, rendered, adapter)
     return rendered
 
 
@@ -1173,8 +1262,7 @@ def main():
     publish_skills(repo_root, skills_target, agent)
     publish_shared_refs(repo_root, skills_target, agent)
     publish_runtime_references(repo_root, target, agent)
-    publish_directory(repo_root / "agents", adapter.agents_dir(target),
-                      "agents/", "*.md")
+    publish_agents(repo_root, adapter.agents_dir(target), agent)
     publish_directory(repo_root / "tools", target / "tools", "tools/")
     publish_directory(repo_root / "config", adapter.config_dir(target),
                       "config/", "*")

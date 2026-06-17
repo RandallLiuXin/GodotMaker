@@ -3,6 +3,7 @@
 # Deployed to .godotmaker/config.yaml by publish script
 
 # Selected coding-agent runtime for this project.
+# Supported values: claude-code, codex, opencode
 # publish.py updates this value on each publish.
 agent: claude-code
 
