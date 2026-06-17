@@ -1,6 +1,6 @@
 # 编写 Hook
 
-Hook 是 coding-agent runtime 在会话特定事件发生时调用的小型 Python 脚本。它们强制执行 AI 自身无法绕过的规则——文件权限边界、角色完成前的必要输出、报告质量门禁。Hook 列表按 runner 注册在 `agent-runtimes/<agent>/config/` 下；脚本存放在 `hooks/` 下，由 `publish.py` 部署到 `.godotmaker/hooks/`。
+Hook 是 coding-agent runtime 在会话特定事件发生时调用的小型 Python 脚本。它们强制执行 AI 自身无法绕过的规则——文件权限边界、角色完成前的必要输出、报告质量门禁。Hook 注册按 runner 区分：Claude Code 和 Codex 使用配置文件，OpenCode 使用 plugin adapter。脚本存放在 `hooks/` 下，由 `publish.py` 部署到 `.godotmaker/hooks/`。
 
 关于每个 hook 的完整参考（精确的 payload、拦截条件、边界情况），请参阅 [../../hooks.md](../../hooks.md)。本页专注于如何编写新的 hook，而不是讲解每个现有 hook 的工作原理。
 
@@ -26,7 +26,7 @@ def main():
         return
 
     # 拦截——向 stdout 写入结构化 JSON，exit 0
-    # （Claude Code 读取 stdout 来做决策，而不是依赖退出码）
+    # （runner hook 入口读取 stdout 来做决策，而不是依赖退出码）
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": data.get("hook_event_name", "PreToolUse"),
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 | 放行并附带提示 | Exit 0，向 stdout 输出带 `additionalContext` 的 JSON |
 | 拦截操作 | Exit 0，向 stdout 输出带 `permissionDecision: "deny"`（PreToolUse）或 `decision: "block"`（Stop / SubagentStop）的 JSON |
 
-Claude Code 读取 stdout 来做决策，不使用退出码来执行拦截。如果 hook 崩溃（非零退出，或 stdout 输出格式错误的 JSON），Claude Code 会记录错误并继续执行——hook 绝不能因崩溃而静默地破坏流水线。
+runner hook 入口读取 stdout 来做决策，不使用退出码来执行拦截。如果 hook 崩溃（非零退出，或 stdout 输出格式错误的 JSON），runtime 可能只记录错误并继续执行——hook 绝不能因崩溃而静默地破坏流水线。
 
 ### PreToolUse 的拦截格式
 
@@ -87,7 +87,7 @@ Claude Code 读取 stdout 来做决策，不使用退出码来执行拦截。如
 
 | 事件 | 触发时机 | 关键 payload 字段 |
 |-------|--------------|-------------------|
-| `SessionStart` | 每次 Claude Code 会话开始时 | `hook_event_name` |
+| `SessionStart` | 受支持的 root runtime 会话开始时 | `hook_event_name` |
 | `PreToolUse` (Write\|Edit) | 每次文件写入或编辑之前 | `tool_name`, `tool_input.file_path`, `tool_input.content`, `agent_id` |
 | `PreToolUse` (Agent) | 每次分发子 Agent 之前 | `tool_name`, `tool_input.description`, `agent_id` |
 | `PreToolUse` (Read) | 每次文件读取之前 | `tool_name`, `tool_input.file_path`, `agent_id` |
@@ -191,9 +191,10 @@ value = state.get("my_flag", default=False)
 
 1. 在 `hooks/<my_hook>.py` 创建 hook 脚本。
 
-2. 在对应 runner 的 hook config 中将其添加到对应事件下：Claude Code 使用
+2. 将它添加到需要触发该 hook 的 runner 入口：Claude Code 使用
    `agent-runtimes/claude-code/config/settings.json`，Codex 使用
-   `agent-runtimes/codex/config/hooks.json`。
+   `agent-runtimes/codex/config/hooks.json`，OpenCode 使用
+   `agent-runtimes/opencode/plugins/godotmaker-hooks.js`。
 
    ```json
    {

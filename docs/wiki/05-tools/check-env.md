@@ -44,7 +44,8 @@ If Godot is not on your PATH, this check shows a warning rather than a hard fail
 - Codex projects check that `codex` is installed, the `.agents` runtime tree is
   present, and the `godot` MCP server is configured.
 - OpenCode projects check that `opencode` is installed, the `.opencode`
-  runtime tree is present, and the `godot` MCP server is configured.
+  runtime tree and hook adapter are present, and the `godot` MCP server is
+  configured.
 
 ### API keys
 

@@ -74,19 +74,21 @@ work. Otherwise stop and report the missing capability before editing files.
   not deadlock on expected file edits, shell commands, git operations, and
   Godot invocations. For OpenCode CLI runs, this normally means
   `--dangerously-skip-permissions`.
-- Hooks: OpenCode does not use Claude Code's `.claude/settings.json` hook
-  format. GodotMaker's deterministic hook scripts remain under
-  `.godotmaker/hooks`, but OpenCode hook/plugin parity is not assumed by this
-  mapping. When no runtime hook exists, stages must rely on explicit validators
-  or stop at the relevant gate.
+- Hooks: OpenCode uses `.opencode/plugins/godotmaker-hooks.js`, which publish
+  deploys from the OpenCode runtime package. The plugin adapts OpenCode
+  `tool.execute.before`, `tool.execute.after`, session, and compaction events
+  to GodotMaker's Python hook scripts under `.godotmaker/hooks`.
+- Lifecycle hooks are best-effort where OpenCode event semantics differ from
+  Claude Code. File gates, asset read gates, task dispatch gates, subagent
+  report gates, completion gates, and compaction metrics must still go through
+  the deployed plugin adapter.
 
 ## Image And VQA Capability
 
-OpenCode as a coding-agent runtime does not automatically provide native image
-generation or native image inspection. If a project config selects `native` for
-`asset_image_model` or `vqa_model`, continue only when the active OpenCode
-environment has that capability and the stage contract documents how to use it.
-Otherwise require an API-backed image or VQA provider.
+OpenCode as a coding-agent runtime does not provide native image generation or
+native image inspection in the GodotMaker contract. If a project config selects
+`native` for `asset_image_model` or `vqa_model`, stop and ask the user to switch
+that field to `codex` or an API-backed selector before the dependent stage runs.
 
 ## Unsupported Capability Rule
 

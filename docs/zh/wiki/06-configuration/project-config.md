@@ -118,6 +118,9 @@ godotmaker-cli --agent opencode
 
 下一次运行 `/gm-*` 命令时会读取新配置。已经运行中的命令不会自动感知修改，需要下一次会话或阶段调用才会生效。
 
-## 关于 `.claude/settings.json`
+## 关于 hook config 文件
 
-Claude Code 项目还会有 `.claude/settings.json`，它负责注册 GodotMaker hook 脚本。这个文件由框架管理；如果升级后 hook 不再触发，可以运行 `python tools/publish.py --force <project>` 重新发布。
+GodotMaker 会通过所选 runner 的入口注册 hook 脚本：Claude Code 使用
+`.claude/settings.json`，Codex 使用 `.codex/hooks.json`，OpenCode 使用
+`.opencode/plugins/godotmaker-hooks.js`。这些文件由框架管理；如果升级后
+hook 不再触发，可以运行 `python tools/publish.py --force <project>` 重新发布所选 runner 的 hook 入口。

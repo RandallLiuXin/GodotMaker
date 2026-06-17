@@ -238,18 +238,23 @@ class TestCheckFunctions:
         (tmp_path / ".opencode" / "skills").mkdir(parents=True)
         (tmp_path / ".opencode" / "agents").mkdir()
         (tmp_path / ".opencode" / "references").mkdir()
+        (tmp_path / ".opencode" / "plugins").mkdir()
         (
             tmp_path / ".opencode" / "references" / "runtime-mapping.md"
         ).write_text("")
         (
             tmp_path / ".opencode" / "godotmaker.yaml"
         ).write_text("godot_path: /opt/godot\n")
+        (
+            tmp_path / ".opencode" / "plugins" / "godotmaker-hooks.js"
+        ).write_text("export const GodotMakerHooks = async () => ({})\n")
         mock_run.return_value = MagicMock(returncode=0, stdout="godot\n", stderr="")
 
         r = EnvCheck()
         check_opencode(r, tmp_path)
 
         assert any("OpenCode CLI found" in p for p in r.passed)
+        assert any(".opencode/plugins/godotmaker-hooks.js present" in p for p in r.passed)
         assert any("OpenCode MCP server 'godot' configured" in p for p in r.passed)
         assert len(r.failed) == 0
 

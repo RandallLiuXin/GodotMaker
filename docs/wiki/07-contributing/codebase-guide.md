@@ -13,7 +13,7 @@ GodotMaker/
 │   └── reviewer/            8 reviewer skills (gotchas.md + checklist.md each)
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 ├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
-├── agent-runtimes/          Runner-specific references, templates, and hook config
+├── agent-runtimes/          Runner-specific references, templates, hook config, and plugin adapters
 ├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC)
 ├── tests/                   ~320 unit tests for hooks and tools
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
@@ -43,9 +43,10 @@ Scripts and the events they handle:
 | `check_worker_report.py` | Called by on_subagent_stop.py | Yes |
 | `check_completion.py` | Stop | Yes |
 
-Hook registration (which script fires on which event) lives under
-`agent-runtimes/<agent>/config/` and is deployed into the selected runner's
-project-local hook config (`.claude/settings.json` or `.codex/hooks.json`).
+Hook registration (which script fires on which event) is runner-specific.
+Claude Code and Codex use config files under `agent-runtimes/<agent>/config/`;
+OpenCode uses `agent-runtimes/opencode/plugins/godotmaker-hooks.js` as a
+plugin adapter.
 
 ### hooks/metrics/
 
@@ -163,7 +164,7 @@ When you run `python tools/publish.py <target>`:
 4. Copy tools to `<target>/tools/`.
 5. Copy templates to the selected agent template directory.
 6. Copy `config/stage_schemas.json` to `<target>/.godotmaker/stage_schemas.json`.
-7. On fresh install (or `--force`): write agent-specific instructions (`CLAUDE.md` or `AGENTS.md`), prompt for `godotmaker.yaml`, and write the selected runner's hook config.
+7. On fresh install (or `--force`): write agent-specific instructions (`CLAUDE.md` or `AGENTS.md`), prompt for `godotmaker.yaml`, and write the selected runner's hook config or plugin adapter.
 8. Stamp `<target>/.godotmaker/version` with the current version.
 
 ---

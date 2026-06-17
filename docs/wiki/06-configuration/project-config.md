@@ -126,6 +126,11 @@ asset_image_model: openai:gpt-image-2
 
 The next `/gm-*` command picks up the new value. A command already running will not see changes until the next session or stage invocation.
 
-## About `.claude/settings.json`
+## About hook config files
 
-Claude Code projects also have `.claude/settings.json`, which registers GodotMaker hook scripts. It is framework-managed; running `python tools/publish.py --force <project>` republishes it if hooks stop firing after an upgrade.
+GodotMaker registers hook scripts through the selected runner surface:
+`.claude/settings.json` for Claude Code, `.codex/hooks.json` for Codex, and
+`.opencode/plugins/godotmaker-hooks.js` for OpenCode. These files are
+framework-managed; running `python tools/publish.py --force <project>`
+republishes the selected runner's hook surface if hooks stop firing after an
+upgrade.

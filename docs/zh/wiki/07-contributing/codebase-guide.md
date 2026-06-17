@@ -13,7 +13,7 @@ GodotMaker/
 │   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 ├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
-├── agent-runtimes/          runner 专属 reference、template 和 hook config
+├── agent-runtimes/          runner 专属 reference、template、hook config 和 plugin adapter
 ├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
 ├── tests/                   ~320 个 hook 和工具的单元测试
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
@@ -43,9 +43,9 @@ GodotMaker/
 | `check_worker_report.py` | 由 on_subagent_stop.py 调用 | 是 |
 | `check_completion.py` | Stop | 是 |
 
-Hook 注册关系（哪个脚本响应哪个事件）存储在
-`agent-runtimes/<agent>/config/` 下，并发布到所选 runner 的项目级 hook
-配置（`.claude/settings.json` 或 `.codex/hooks.json`）。
+Hook 注册关系（哪个脚本响应哪个事件）按 runner 区分。Claude Code 和
+Codex 使用 `agent-runtimes/<agent>/config/` 下的配置文件；OpenCode 使用
+`agent-runtimes/opencode/plugins/godotmaker-hooks.js` 作为 plugin adapter。
 
 ### hooks/metrics/
 
@@ -163,7 +163,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 4. 复制 tools → `<target>/tools/`。
 5. 复制 templates 到所选 agent 的模板目录。
 6. 复制 `config/stage_schemas.json` → `<target>/.godotmaker/stage_schemas.json`。
-7. 首次安装（或使用 `--force`）时：写入对应 agent 的项目指令文件（`CLAUDE.md` 或 `AGENTS.md`），提示配置 `godotmaker.yaml`；Claude Code 目标还会写入 `.claude/settings.json`。
+7. 首次安装（或使用 `--force`）时：写入对应 agent 的项目指令文件（`CLAUDE.md` 或 `AGENTS.md`），提示配置 `godotmaker.yaml`，并写入所选 runner 的 hook config 或 plugin adapter。
 8. 将当前版本号写入 `<target>/.godotmaker/version`。
 
 ---

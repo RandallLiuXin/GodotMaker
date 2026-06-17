@@ -56,7 +56,7 @@ Codex hook 注册写入 `.codex/hooks.json`。共享框架状态仍然位于
 `.godotmaker/`。Codex 的 approval 与 sandbox 策略由 Codex 运行时处理；
 publish 不会创建 `.agents/settings.json` 等价文件。
 
-使用 `--agent opencode` 时，agent 相关文件会改用 OpenCode 的项目本地布局：技能写入 `.opencode/skills/`，agent 定义写入 `.opencode/agents/`，模板和配置写入 `.opencode/`，`godotmaker.yaml` 位于 `.opencode/godotmaker.yaml`，并创建指向 OpenCode runtime mapping 的 `AGENTS.md`。publish 不默认假设 OpenCode plugin / hook 与 Claude Code 或 Codex 等价。
+使用 `--agent opencode` 时，agent 相关文件会改用 OpenCode 的项目本地布局：技能写入 `.opencode/skills/`，agent 定义写入 `.opencode/agents/`，模板和配置写入 `.opencode/`，`godotmaker.yaml` 位于 `.opencode/godotmaker.yaml`，并创建指向 OpenCode runtime mapping 的 `AGENTS.md`。OpenCode hook adapter 会写入 `.opencode/plugins/godotmaker-hooks.js`，并调用 `.godotmaker/hooks/` 中的共享 GodotMaker hook 脚本。
 
 ### Codex 权限
 
@@ -107,7 +107,7 @@ python tools/publish.py --agent opencode --force /path/to/my-game
 `--force` 同时做四件事：
 
 1. 重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。
-2. 即使你已自定义过所选 runner 的 hook config（`.claude/settings.json` 或 `.codex/hooks.json`），也会强制覆盖。
+2. 即使你已自定义过所选 runner 的 hook config 或 adapter（`.claude/settings.json`、`.codex/hooks.json` 或 `.opencode/plugins/godotmaker-hooks.js`），也会强制覆盖。
 3. 跳过 minor 和 major 升级的确认提示。
 4. 允许降级。
 
@@ -120,7 +120,7 @@ python tools/publish.py --agent opencode --force /path/to/my-game
 | 文件 | 保留原因 |
 |------|---------------|
 | `CLAUDE.md` / `AGENTS.md` | 你可能添加了项目专属指令 |
-| `.claude/settings.json` / `.codex/hooks.json` | 你可能调整过 hook 行为 |
+| `.claude/settings.json` / `.codex/hooks.json` / `.opencode/plugins/godotmaker-hooks.js` | 你可能调整过 hook 行为 |
 | `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` | 包含本机专属的 Godot 路径 |
 | `.godotmaker/config.yaml` | 包含项目专属的偏好设置 |
 

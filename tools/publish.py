@@ -89,6 +89,7 @@ class AgentPublishAdapter:
     agents_root: str
     config_root: str
     templates_root: str
+    plugins_root: str | None
     runtime_references_root: str | None
     root_instruction_filename: str
     register_claude_mcp: bool
@@ -110,6 +111,11 @@ class AgentPublishAdapter:
     def templates_dir(self, target: Path) -> Path:
         return target / self.templates_root
 
+    def plugins_dir(self, target: Path) -> Path | None:
+        if self.plugins_root is None:
+            return None
+        return target / self.plugins_root
+
     def runtime_references_dir(self, target: Path) -> Path | None:
         if self.runtime_references_root is None:
             return None
@@ -124,6 +130,7 @@ AGENT_ADAPTERS = {
         agents_root=".claude/agents",
         config_root=".claude/config",
         templates_root=".claude/templates",
+        plugins_root=None,
         runtime_references_root=None,
         root_instruction_filename="CLAUDE.md",
         register_claude_mcp=True,
@@ -137,6 +144,7 @@ AGENT_ADAPTERS = {
         agents_root=".agents/agents",
         config_root=".agents/config",
         templates_root=".agents/templates",
+        plugins_root=None,
         runtime_references_root=".agents/references",
         root_instruction_filename="AGENTS.md",
         register_claude_mcp=False,
@@ -150,6 +158,7 @@ AGENT_ADAPTERS = {
         agents_root=".opencode/agents",
         config_root=".opencode/config",
         templates_root=".opencode/templates",
+        plugins_root=".opencode/plugins",
         runtime_references_root=".opencode/references",
         root_instruction_filename="AGENTS.md",
         register_claude_mcp=False,
@@ -621,6 +630,33 @@ def publish_agents(repo_root: Path, agents_target: Path,
         count += 1
 
     print(f"Published agents/ ({count} files)")
+    return count
+
+
+def publish_agent_plugins(repo_root: Path, target: Path,
+                          agent: str = AGENT_CLAUDE_CODE,
+                          force: bool = False) -> int:
+    """Publish selected-runtime plugin adapters, when the runtime uses them."""
+    adapter = get_agent_adapter(agent)
+    plugins_target = adapter.plugins_dir(target)
+    if plugins_target is None:
+        return 0
+
+    source_root = AGENT_RUNTIME_SOURCE_ROOTS.get(agent)
+    if source_root is None:
+        return 0
+    plugins_src = repo_root / source_root / "plugins"
+    if not plugins_src.exists():
+        return 0
+
+    if plugins_target.exists() and not force:
+        relative = plugins_target.relative_to(target)
+        print(f"{relative} already exists, skipping (use --force to overwrite)")
+        return 0
+
+    copy_tree(plugins_src, plugins_target)
+    count = len([p for p in plugins_target.rglob("*") if p.is_file()])
+    print(f"Published {agent} plugins/ ({count} files)")
     return count
 
 
@@ -1274,6 +1310,10 @@ def main():
             if d.exists():
                 print(f"  Cleaning {d}")
                 rmtree_force(d)
+        plugins_dir = adapter.plugins_dir(target)
+        if plugins_dir is not None and plugins_dir.exists():
+            print(f"  Cleaning {plugins_dir}")
+            rmtree_force(plugins_dir)
         runtime_refs_dir = adapter.runtime_references_dir(target)
         if runtime_refs_dir is not None and runtime_refs_dir.exists():
             print(f"  Cleaning {runtime_refs_dir}")
@@ -1303,6 +1343,7 @@ def main():
     publish_shared_refs(repo_root, skills_target, agent)
     publish_runtime_references(repo_root, target, agent)
     publish_agents(repo_root, adapter.agents_dir(target), agent)
+    publish_agent_plugins(repo_root, target, agent, args.force)
     publish_directory(repo_root / "tools", target / "tools", "tools/")
     publish_directory(repo_root / "config", adapter.config_dir(target),
                       "config/", "*")

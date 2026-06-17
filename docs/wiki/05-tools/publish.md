@@ -65,7 +65,9 @@ When published with `--agent opencode`, the agent-owned files use the OpenCode
 layout instead: skills go under `.opencode/skills/`, agents under
 `.opencode/agents/`, templates/config under `.opencode/`, `godotmaker.yaml` is
 stored at `.opencode/godotmaker.yaml`, and `AGENTS.md` points to the OpenCode
-runtime mapping. OpenCode plugin/hook parity is not assumed by publish.
+runtime mapping. The OpenCode hook adapter is written to
+`.opencode/plugins/godotmaker-hooks.js`; it calls the shared GodotMaker hook
+scripts in `.godotmaker/hooks/`.
 
 ### Codex permissions
 
@@ -120,7 +122,7 @@ python tools/publish.py --agent opencode --force /path/to/my-game
 `--force` does four things at once:
 
 1. Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.
-2. Overwrites the selected runner's hook config (`.claude/settings.json` or `.codex/hooks.json`) even if you've already customized it.
+2. Overwrites the selected runner's hook config or adapter (`.claude/settings.json`, `.codex/hooks.json`, or `.opencode/plugins/godotmaker-hooks.js`) even if you've already customized it.
 3. Skips the confirmation prompts for minor and major upgrades.
 4. Allows downgrades.
 
@@ -133,7 +135,7 @@ These files are never overwritten by a normal publish (only `--force` can change
 | File | Why it is kept |
 |------|---------------|
 | `CLAUDE.md` / `AGENTS.md` | You may have added project-specific instructions |
-| `.claude/settings.json` / `.codex/hooks.json` | You may have adjusted hook behavior |
+| `.claude/settings.json` / `.codex/hooks.json` / `.opencode/plugins/godotmaker-hooks.js` | You may have adjusted hook behavior |
 | `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` | Contains your machine-specific Godot path |
 | `.godotmaker/config.yaml` | Contains your project-specific preferences |
 

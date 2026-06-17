@@ -42,7 +42,7 @@ All required checks passed! Ready to use GodotMaker.
 
 - Claude Code 项目会检查 `claude` 是否已安装。
 - Codex 项目会检查 `codex` 是否已安装、`.agents` runtime tree 是否存在，以及 `godot` MCP server 是否已配置。
-- OpenCode 项目会检查 `opencode` 是否已安装、`.opencode` runtime tree 是否存在，以及 `godot` MCP server 是否已配置。
+- OpenCode 项目会检查 `opencode` 是否已安装、`.opencode` runtime tree 和 hook adapter 是否存在，以及 `godot` MCP server 是否已配置。
 
 ### API 密钥
 

@@ -134,15 +134,16 @@ by incremental migration. `publish.py` refuses to upgrade across MAJOR
 boundaries without `--force`, which performs a clean re-initialization.
 
 Full rebuild cleans all framework-managed content:
-- `.claude/skills/`, `.claude/agents/`, `.claude/config/`, `.claude/templates/`
+- The selected runner's `skills/`, `agents/`, `config/`, and `templates/`
 - `.godotmaker/hooks/`, `.godotmaker/stage_schemas.json`
 - `.godotmaker/state.json`, `.godotmaker/metrics*.jsonl`
 - `.godotmaker/applied_migrations.json` (re-baselined after re-deploy)
 - `tools/`
-- `.claude/settings.json` (force-overwritten)
+- The selected runner's hook config or plugin adapter (force-overwritten)
 
 Preserved (user configuration):
-- `CLAUDE.md`, `.claude/godotmaker.yaml`, `.godotmaker/config.yaml`
+- `CLAUDE.md` / `AGENTS.md`, the selected runner's `godotmaker.yaml`,
+  `.godotmaker/config.yaml`
 
 After re-deploy, `publish.py` calls `baseline_applied()` to mark every
 current migration as applied without running it — same as a fresh install.
@@ -173,10 +174,11 @@ picking up local changes during development.
 
 ## Session Version Display
 
-When a Claude Code session starts in a published project, the
+When a supported coding-agent session starts in a published project, the
 `session_start.py` hook reads `.godotmaker/version` and injects
-`[GodotMaker vX.Y.Z]` into the session context. This helps the
-active role skill (and the user) know which framework version is deployed.
+`[GodotMaker vX.Y.Z]` into the session context where the runtime supports that
+hook context. This helps the active role skill know which framework version is
+deployed.
 
 ## Workflow for Releasing a New Version
 
@@ -204,20 +206,20 @@ Every publish overwrites:
 
 | Directory | Content |
 |-----------|---------|
-| `.claude/skills/` | All skills (flattened from core + reviewer) |
-| `.claude/agents/` | Agent definitions (worker, verifier, reviewer, analyst, asset-producer) |
+| Selected runner `skills/` | All skills (flattened from core + reviewer) |
+| Selected runner `agents/` | Agent definitions (worker, verifier, reviewer, analyst, asset-producer) |
 | `.godotmaker/hooks/` | All hook scripts |
-| `.claude/config/` | Config files (settings.json only with `--force`) |
-| `.claude/templates/` | Document templates |
+| Selected runner `config/` | Config files |
+| Selected runner `templates/` | Document templates |
 | `tools/` | Python tools (check_project, check_env, etc.) |
 
 These are **not** overwritten (created only on fresh install):
 
 | File | Reason |
 |------|--------|
-| `CLAUDE.md` | User may have customized it |
-| `.claude/settings.json` | User hook configuration (overwritten only with `--force`) |
-| `.claude/godotmaker.yaml` | Host-specific paths |
+| `CLAUDE.md` / `AGENTS.md` | User may have customized it |
+| Selected runner hook config or plugin adapter | User hook behavior (overwritten only with `--force`) |
+| Selected runner `godotmaker.yaml` | Host-specific paths |
 | `.godotmaker/config.yaml` | Project-specific settings |
 
 ## Note on addon_versions.json

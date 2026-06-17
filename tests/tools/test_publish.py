@@ -28,6 +28,7 @@ from publish import (
     ensure_gitignore,
     ensure_worktreeinclude,
     publish_agents,
+    publish_agent_plugins,
     publish_skills,
     register_codex_mcp,
     register_opencode_mcp,
@@ -1359,6 +1360,42 @@ class TestOpenCodePublishParity:
         assert ".opencode/references/runtime-mapping.md" in content
         assert "CLAUDE.md" not in content
 
+    def test_opencode_publish_deploys_hook_adapter_plugin(
+        self, tmp_path, monkeypatch
+    ):
+        target = _publish_opencode_project(tmp_path, monkeypatch)
+        plugin = target / ".opencode" / "plugins" / "godotmaker-hooks.js"
+        content = plugin.read_text(encoding="utf-8")
+
+        assert plugin.exists()
+        assert '"tool.execute.before"' in content
+        assert '"tool.execute.after"' in content
+        assert "check_file_permissions.py" in content
+        assert "stage_reminder.py" in content
+        assert "on_subagent_stop.py" in content
+
+    def test_publish_agent_plugins_noops_for_non_plugin_runtimes(self, tmp_path):
+        repo = Path(__file__).resolve().parents[2]
+        target = tmp_path / "target"
+
+        assert publish_agent_plugins(repo, target, publish.AGENT_CLAUDE_CODE) == 0
+        assert publish_agent_plugins(repo, target, publish.AGENT_CODEX) == 0
+        assert not (target / ".claude" / "plugins").exists()
+        assert not (target / ".agents" / "plugins").exists()
+
+    def test_publish_agent_plugins_preserves_existing_without_force(self, tmp_path):
+        repo = Path(__file__).resolve().parents[2]
+        target = tmp_path / "target"
+        plugin = target / ".opencode" / "plugins" / "godotmaker-hooks.js"
+        plugin.parent.mkdir(parents=True)
+        plugin.write_text("custom\n", encoding="utf-8")
+
+        assert publish_agent_plugins(repo, target, publish.AGENT_OPENCODE) == 0
+        assert plugin.read_text(encoding="utf-8") == "custom\n"
+
+        assert publish_agent_plugins(repo, target, publish.AGENT_OPENCODE, force=True) == 1
+        assert "GodotMakerHooks" in plugin.read_text(encoding="utf-8")
+
     def test_opencode_publish_updates_project_config_agent(
         self, tmp_path, monkeypatch
     ):
@@ -1392,6 +1429,7 @@ class TestPublishMainAgentBranches:
                             lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)))
         for name in (
             "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_agent_plugins",
             "publish_directory",
             "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
@@ -1435,6 +1473,7 @@ class TestPublishMainAgentBranches:
         )
         for name in (
             "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_agent_plugins",
             "publish_directory",
             "deploy_agent_instructions",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
@@ -1477,6 +1516,7 @@ class TestPublishMainAgentBranches:
                             lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)))
         for name in (
             "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_agent_plugins",
             "publish_directory",
             "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas", "create_project_dirs",
@@ -1523,6 +1563,7 @@ class TestPublishMainAgentBranches:
         )
         for name in (
             "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_agent_plugins",
             "publish_directory", "deploy_agent_instructions",
             "create_godotmaker_yaml", "create_project_config",
             "deploy_stage_schemas", "create_project_dirs", "register_mcp",
@@ -1542,6 +1583,7 @@ class TestPublishMainAgentBranches:
         publish.main()
 
         assert "publish_agents" in calls
+        assert "publish_agent_plugins" in calls
         assert "deploy_agent_instructions" in calls
         assert "deploy_agent_hook_config" not in calls
         assert "register_mcp" not in calls
@@ -1583,6 +1625,7 @@ class TestPublishMainForceRmtree:
 
         for name in (
             "publish_skills", "publish_shared_refs", "publish_agents",
+            "publish_agent_plugins",
             "publish_directory",
             "deploy_agent_hook_config", "deploy_agent_instructions", "create_godotmaker_yaml",
             "create_project_config", "deploy_stage_schemas",

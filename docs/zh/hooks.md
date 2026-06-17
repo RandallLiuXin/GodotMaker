@@ -1,11 +1,12 @@
 # Hooks 参考手册
 
-GodotMaker 所有 Hook 的完整参考。Hook 是 Python 脚本，在 Claude Code 事件上自动运行，用于执行流水线规则。
+GodotMaker 所有 Hook 的完整参考。Hook 是 Python 脚本，在 coding-agent runtime 事件上自动运行，用于执行流水线规则。
 
 Hook 注册关系按 runner 分开维护：Claude Code 使用
 `agent-runtimes/claude-code/config/settings.json`，Codex 使用
-`agent-runtimes/codex/config/hooks.json`。脚本通过发布流程部署到
-`.godotmaker/hooks/`。
+`agent-runtimes/codex/config/hooks.json`。OpenCode 使用
+`agent-runtimes/opencode/plugins/godotmaker-hooks.js` 作为 adapter plugin。
+脚本通过发布流程部署到 `.godotmaker/hooks/`。
 
 ---
 

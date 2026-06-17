@@ -1,6 +1,6 @@
 # Writing a Hook
 
-Hooks are small Python scripts that the coding-agent runtime calls on specific events during a session. They enforce rules that the AI cannot bypass on its own — file permission boundaries, required outputs before a role can finish, report quality gates. The hook list is registered per runner in `agent-runtimes/<agent>/config/`; the scripts live in `hooks/` and are deployed to `.godotmaker/hooks/` by `publish.py`.
+Hooks are small Python scripts that the coding-agent runtime calls on specific events during a session. They enforce rules that the AI cannot bypass on its own — file permission boundaries, required outputs before a role can finish, report quality gates. Hook registration is runner-specific: Claude Code and Codex use config files, while OpenCode uses a plugin adapter. The scripts live in `hooks/` and are deployed to `.godotmaker/hooks/` by `publish.py`.
 
 For the full per-hook reference (exact payloads, block conditions, edge cases), see [../../hooks.md](../../hooks.md). This page covers how to write a new hook, not how every existing hook works.
 
@@ -26,7 +26,7 @@ def main():
         return
 
     # Block — write structured JSON to stdout, exit 0
-    # (Claude Code reads stdout, not the exit code, for the decision)
+    # (The runner hook surface reads stdout, not the exit code, for the decision)
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": data.get("hook_event_name", "PreToolUse"),
@@ -47,7 +47,10 @@ Three outcomes:
 | Allow with a reminder | Exit 0, print JSON with `additionalContext` |
 | Block the action | Exit 0, print JSON with `permissionDecision: "deny"` (PreToolUse) or `decision: "block"` (Stop / SubagentStop) |
 
-Claude Code reads stdout for the decision; it does not use the exit code to block. If a hook crashes (non-zero exit, or malformed JSON on stdout), Claude Code logs the error and continues — hooks must never silently break the pipeline by crashing.
+The runner hook surface reads stdout for the decision; it does not use the exit
+code to block. If a hook crashes (non-zero exit, or malformed JSON on stdout),
+the runtime may log the error and continue — hooks must never silently break the
+pipeline by crashing.
 
 ### Block format for PreToolUse
 
@@ -87,7 +90,7 @@ Claude Code reads stdout for the decision; it does not use the exit code to bloc
 
 | Event | When it fires | Key payload fields |
 |-------|--------------|-------------------|
-| `SessionStart` | At the start of every Claude Code session | `hook_event_name` |
+| `SessionStart` | At the start of a supported root runtime session | `hook_event_name` |
 | `PreToolUse` (Write\|Edit) | Before every file write or edit | `tool_name`, `tool_input.file_path`, `tool_input.content`, `agent_id` |
 | `PreToolUse` (Agent) | Before every sub-agent dispatch | `tool_name`, `tool_input.description`, `agent_id` |
 | `PreToolUse` (Read) | Before every file read | `tool_name`, `tool_input.file_path`, `agent_id` |
@@ -191,9 +194,10 @@ State is stored in `.godotmaker/state.json` and reset on every `SessionStart`.
 
 1. Create your hook script in `hooks/<my_hook>.py`.
 
-2. Add it to the appropriate runner hook config under the appropriate event:
-   `agent-runtimes/claude-code/config/settings.json` for Claude Code or
-   `agent-runtimes/codex/config/hooks.json` for Codex.
+2. Add it to every supported runner surface that should trigger it:
+   `agent-runtimes/claude-code/config/settings.json` for Claude Code,
+   `agent-runtimes/codex/config/hooks.json` for Codex, or
+   `agent-runtimes/opencode/plugins/godotmaker-hooks.js` for OpenCode.
 
    ```json
    {

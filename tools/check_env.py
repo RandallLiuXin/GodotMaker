@@ -306,11 +306,13 @@ def check_opencode(r: EnvCheck, project_dir: Path):
     skills = project_dir / ".opencode" / "skills"
     agents = project_dir / ".opencode" / "agents"
     config = project_dir / ".opencode" / "godotmaker.yaml"
+    hook_adapter = project_dir / ".opencode" / "plugins" / "godotmaker-hooks.js"
     for path, label in [
         (skills, ".opencode/skills"),
         (agents, ".opencode/agents"),
         (mapping, ".opencode/references/runtime-mapping.md"),
         (config, ".opencode/godotmaker.yaml"),
+        (hook_adapter, ".opencode/plugins/godotmaker-hooks.js"),
     ]:
         if path.exists():
             r.ok(f"{label} present")

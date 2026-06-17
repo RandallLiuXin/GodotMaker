@@ -119,15 +119,15 @@ python tools/migrate.py --new fix-state-path
 MAJOR 版本变更意味着无法通过增量迁移处理的破坏性变更。`publish.py` 拒绝跨 MAJOR 边界升级，除非使用 `--force`，该选项会执行干净的重新初始化。
 
 全量重建会清除所有框架管理的内容：
-- `.claude/skills/`、`.claude/agents/`、`.claude/config/`、`.claude/templates/`
+- 所选 runner 的 `skills/`、`agents/`、`config/`、`templates/`
 - `.godotmaker/hooks/`、`.godotmaker/stage_schemas.json`
 - `.godotmaker/state.json`、`.godotmaker/metrics*.jsonl`
 - `.godotmaker/applied_migrations.json`（重新部署后会重建 baseline）
 - `tools/`
-- `.claude/settings.json`（强制覆盖）
+- 所选 runner 的 hook config 或 plugin adapter（强制覆盖）
 
 保留（用户配置）：
-- `CLAUDE.md`、`.claude/godotmaker.yaml`、`.godotmaker/config.yaml`
+- `CLAUDE.md` / `AGENTS.md`、所选 runner 的 `godotmaker.yaml`、`.godotmaker/config.yaml`
 
 重新部署完后，`publish.py` 调用 `baseline_applied()` 把所有当前迁移
 标记为已应用而不执行——跟全新安装一样。迁移时间戳序列本身是单调全局的，
@@ -153,7 +153,7 @@ schema 变更，请从 VCS 快照恢复目标项目。
 
 ## 会话中的版本显示
 
-在已发布的项目中启动 Claude Code 会话时，`session_start.py` Hook 读取 `.godotmaker/version` 并将 `[GodotMaker vX.Y.Z]` 注入会话上下文。这让当前角色技能和用户都能知道部署的是哪个框架版本。
+在已发布的项目中启动受支持的 coding-agent 会话时，`session_start.py` Hook 会读取 `.godotmaker/version`，并在 runtime 支持注入上下文时写入 `[GodotMaker vX.Y.Z]`。这让当前角色技能知道部署的是哪个框架版本。
 
 ## 发布新版本的工作流程
 
@@ -180,20 +180,20 @@ schema 变更，请从 VCS 快照恢复目标项目。
 
 | 目录 | 内容 |
 |------|------|
-| `.claude/skills/` | 所有技能（从 core + reviewer 展平） |
-| `.claude/agents/` | 代理定义（worker、verifier、reviewer、analyst、asset-producer） |
+| 所选 runner 的 `skills/` | 所有技能（从 core + reviewer 展平） |
+| 所选 runner 的 `agents/` | 代理定义（worker、verifier、reviewer、analyst、asset-producer） |
 | `.godotmaker/hooks/` | 所有 Hook 脚本 |
-| `.claude/config/` | 配置文件（仅 `--force` 时覆盖 settings.json） |
-| `.claude/templates/` | 文档模板 |
+| 所选 runner 的 `config/` | 配置文件 |
+| 所选 runner 的 `templates/` | 文档模板 |
 | `tools/` | Python 工具（check_project、check_env 等） |
 
 以下**不会**被覆盖（仅在全新安装时创建）：
 
 | 文件 | 原因 |
 |------|------|
-| `CLAUDE.md` | 用户可能已自定义 |
-| `.claude/settings.json` | 用户 Hook 配置（仅 `--force` 时覆盖） |
-| `.claude/godotmaker.yaml` | 主机特定路径 |
+| `CLAUDE.md` / `AGENTS.md` | 用户可能已自定义 |
+| 所选 runner 的 hook config 或 plugin adapter | 用户 Hook 行为（仅 `--force` 时覆盖） |
+| 所选 runner 的 `godotmaker.yaml` | 主机特定路径 |
 | `.godotmaker/config.yaml` | 项目特定设置 |
 
 ## 关于 addon_versions.json 的说明
