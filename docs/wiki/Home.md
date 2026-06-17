@@ -17,7 +17,7 @@ GodotMaker turns a game idea into a playable Godot 4 prototype. The normal path 
 | [Skills](03-skills/skill-system.md) | What the role / supporting / reviewer skills are and which one does what |
 | [Troubleshooting](04-troubleshooting/common-problems.md) | A run stopped, was blocked, or behaved oddly - find a fix here |
 | [Tools](05-tools/publish.md) | Reference for `publish.py`, `check_env.py`, `check_project.py`, asset helpers |
-| [Configuration](06-configuration/project-config.md) | Per-project preferences, host paths, addon version pinning |
+| [Configuration](06-configuration/project-config.md) | Per-project preferences, provider setup, host paths, addon version pinning |
 | [Contributing](07-contributing/development-setup.md) | You want to add a skill, hook, or tool, or cut a release |
 | [Reference](08-reference/glossary.md) | Glossary, FAQ, and pointer to the changelog |
 

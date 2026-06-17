@@ -8,7 +8,7 @@
 
 ## 常用字段
 
-**`agent`** — 当前项目选择的编码智能体运行时，例如 `claude-code` 或 `codex`。
+**`agent`** — 当前项目选择的编码智能体运行时，例如 `claude-code`、`codex` 或 `opencode`。
 
 **`worker_model`** — 编写游戏代码的 Claude 模型。默认是 `sonnet`；需要更强实现推理的游戏可改为 `opus`。
 
@@ -50,6 +50,8 @@ decomposer_model: sonnet
 
 对于 Codex 项目，`asset_image_model: native` 映射到 Codex 原生图片生成，前提是当前宿主暴露了这个能力。对于 Claude Code 项目，`native` 需要 Claude 侧有原生生图工具。没有原生路径时，`/gm-asset` 必须停止并要求你改用 `codex` 或 API 后端。
 
+对于 OpenCode 项目，框架不使用 `native` 生图或 `native` VQA。运行完整流水线前，请把 `asset_image_model` 和 `vqa_model` 改成 `codex` 或 API 后端 selector。
+
 如果 Claude Code 项目希望使用 Codex 图片生成：
 
 ```yaml
@@ -57,6 +59,22 @@ asset_image_model: codex
 ```
 
 这会选择 Codex 作为图片生成 provider。它需要 Codex CLI 位于 PATH 中，不需要图片 API key。
+
+## Provider 配置页面
+
+Coding-agent runtime：
+
+- [Claude Code](providers/agent-runtimes/claude-code.md)
+- [Codex](providers/agent-runtimes/codex.md)
+- [OpenCode](providers/agent-runtimes/opencode.md)
+
+图片和 VQA provider：
+
+- [native](providers/image-vqa/native.md)
+- [codex](providers/image-vqa/codex.md)
+- [gemini](providers/image-vqa/gemini.md)
+- [openai](providers/image-vqa/openai.md)
+- [grok](providers/image-vqa/grok.md)
 
 ## API Key
 
@@ -95,6 +113,7 @@ agent: codex
 ```bash
 godotmaker-cli --agent claude-code
 godotmaker-cli --agent codex
+godotmaker-cli --agent opencode
 ```
 
 下一次运行 `/gm-*` 命令时会读取新配置。已经运行中的命令不会自动感知修改，需要下一次会话或阶段调用才会生效。

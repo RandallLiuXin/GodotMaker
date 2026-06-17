@@ -362,7 +362,8 @@ class TestCheckFunctions:
             agent="opencode",
         )
 
-        assert any("native image provider is unsupported" in f for f in r.failed)
+        assert any("asset_image_model" in f for f in r.failed)
+        assert any("vqa_model" in f for f in r.failed)
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True)
     def test_claude_native_vqa_inspection_can_pass(self):

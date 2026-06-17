@@ -38,9 +38,13 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 
 If Godot is not on your PATH, this check shows a warning rather than a hard failure — you can still provide the full path to the executable when you run `publish.py`, and it will be saved in `.claude/godotmaker.yaml` for future use.
 
-### Claude Code
+### Selected coding agent
 
-- The `claude` command-line tool is installed and on your PATH.
+- Claude Code projects check that `claude` is installed.
+- Codex projects check that `codex` is installed, the `.agents` runtime tree is
+  present, and the `godot` MCP server is configured.
+- OpenCode projects check that `opencode` is installed, the `.opencode`
+  runtime tree is present, and the `godot` MCP server is configured.
 
 ### API keys
 
@@ -50,7 +54,12 @@ If Godot is not on your PATH, this check shows a warning rather than a hard fail
 | `OPENAI_API_KEY` | Required when selected | OpenAI image generation or VQA |
 | `XAI_API_KEY` | Required when selected | xAI Grok image generation |
 
-API-backed selectors fail when the matching key is absent. `asset_image_model: native` passes for Codex and warns for Claude Code because the checker cannot prove a Claude-side native generation tool is available. `asset_image_model: codex` in a Claude Code project passes when the Codex CLI is on PATH.
+API-backed selectors fail when the matching key is absent. `asset_image_model:
+native` passes for Codex and warns for Claude Code because the checker cannot
+prove a Claude-side native generation tool is available. OpenCode projects fail
+on `native` image generation or `native` VQA until you switch those fields to
+`codex` or an API-backed selector. `asset_image_model: codex` in a Claude Code
+or OpenCode project passes when the Codex CLI is on PATH.
 
 The checker also verifies that the selected provider package can be imported, catching installation issues that version checks alone would miss.
 

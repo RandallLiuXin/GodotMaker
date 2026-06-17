@@ -16,6 +16,11 @@ claude
 python tools/publish.py --agent codex /path/to/my-game
 cd /path/to/my-game
 codex
+
+# OpenCode
+python tools/publish.py --agent opencode /path/to/my-game
+cd /path/to/my-game
+opencode
 ```
 
 On Windows:
@@ -43,10 +48,10 @@ The first time you run this, the script will ask you for the full path to your G
 | `assets/sprites`, `assets/audio`, `assets/fonts`, `assets/ui`, `references/` | Standard asset folders |
 
 The script also registers the `godot-mcp` server for the selected agent (Claude
-Code via `claude mcp`, Codex via `codex mcp`), initializes a git repository if
-one doesn't exist, and creates a `.gitignore` with the right entries. For Codex,
-MCP registration is required because the GodotMaker runtime depends on the
-Godot MCP tools.
+Code via `claude mcp`, Codex via `codex mcp`, OpenCode via `opencode mcp`),
+initializes a git repository if one doesn't exist, and creates a `.gitignore`
+with the right entries. MCP registration is required because the GodotMaker
+runtime depends on the Godot MCP tools.
 
 When published with `--agent codex`, the agent-owned files use the Codex
 layout instead: skills go under `.agents/skills/`, templates/config under
@@ -55,6 +60,12 @@ layout instead: skills go under `.agents/skills/`, templates/config under
 written to `.codex/hooks.json`. Shared framework state still lives under
 `.godotmaker/`. Codex approval and sandbox policy are handled by Codex at
 runtime; publish does not create a `.agents/settings.json` equivalent.
+
+When published with `--agent opencode`, the agent-owned files use the OpenCode
+layout instead: skills go under `.opencode/skills/`, agents under
+`.opencode/agents/`, templates/config under `.opencode/`, `godotmaker.yaml` is
+stored at `.opencode/godotmaker.yaml`, and `AGENTS.md` points to the OpenCode
+runtime mapping. OpenCode plugin/hook parity is not assumed by publish.
 
 ### Codex permissions
 
@@ -103,6 +114,7 @@ For the full upgrade policy and migration script details, see [`../../versioning
 ```bash
 python tools/publish.py --force /path/to/my-game
 python tools/publish.py --agent codex --force /path/to/my-game
+python tools/publish.py --agent opencode --force /path/to/my-game
 ```
 
 `--force` does four things at once:
@@ -122,7 +134,7 @@ These files are never overwritten by a normal publish (only `--force` can change
 |------|---------------|
 | `CLAUDE.md` / `AGENTS.md` | You may have added project-specific instructions |
 | `.claude/settings.json` / `.codex/hooks.json` | You may have adjusted hook behavior |
-| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` | Contains your machine-specific Godot path |
+| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` | Contains your machine-specific Godot path |
 | `.godotmaker/config.yaml` | Contains your project-specific preferences |
 
 Your game code, scenes, assets, and planning documents (`GDD.md`, `PLAN.md`, etc.) are not touched by publish — it only manages the framework layer.

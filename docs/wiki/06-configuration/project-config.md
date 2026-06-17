@@ -10,7 +10,7 @@ Framework developers and manual-mode users can still create the same file with `
 
 ## Common fields
 
-**`agent`** — selected coding-agent runtime, such as `claude-code` or `codex`.
+**`agent`** — selected coding-agent runtime, such as `claude-code`, `codex`, or `opencode`.
 
 **`worker_model`** — which Claude model writes game code. Defaults to `sonnet`; set it to `opus` for games that need heavier implementation reasoning.
 
@@ -55,6 +55,10 @@ The template uses native image inspection and native image generation by default
 
 For Codex projects, `asset_image_model: native` maps to Codex native image generation when the host exposes that capability. For Claude Code projects, `native` requires a Claude-side native image tool. If no native path is available, `/gm-asset` must stop and ask you to configure a supported provider or switch to an API-backed selector.
 
+For OpenCode projects, `native` image generation and `native` VQA are not used.
+Set `asset_image_model` and `vqa_model` to `codex` or an API-backed
+selector before running the full pipeline.
+
 For a Claude Code project that should use Codex image generation:
 
 ```yaml
@@ -63,6 +67,22 @@ asset_image_model: codex
 
 This selects Codex as the image-generation provider. It requires Codex CLI on
 PATH and does not require an image API key.
+
+## Provider setup pages
+
+Coding-agent runtimes:
+
+- [Claude Code](providers/agent-runtimes/claude-code.md)
+- [Codex](providers/agent-runtimes/codex.md)
+- [OpenCode](providers/agent-runtimes/opencode.md)
+
+Image and VQA providers:
+
+- [native](providers/image-vqa/native.md)
+- [codex](providers/image-vqa/codex.md)
+- [gemini](providers/image-vqa/gemini.md)
+- [openai](providers/image-vqa/openai.md)
+- [grok](providers/image-vqa/grok.md)
 
 ## API keys
 
@@ -89,6 +109,7 @@ Launch-time `--agent` still wins for that run:
 ```bash
 godotmaker-cli --agent claude-code
 godotmaker-cli --agent codex
+godotmaker-cli --agent opencode
 ```
 
 To use Codex image generation:

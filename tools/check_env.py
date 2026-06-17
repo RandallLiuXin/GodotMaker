@@ -356,6 +356,19 @@ def check_runtime_model_provider(
 ):
     print("\n--- Runtime Image Provider ---")
     if provider == "native":
+        if agent == AGENT_OPENCODE:
+            if capability == "image_generation":
+                r.fail(
+                    "native image generation is unsupported for OpenCode; "
+                    "set asset_image_model to codex, gemini:<model>, "
+                    "openai:<model>, or grok:<model>"
+                )
+            else:
+                r.fail(
+                    "native image inspection is unsupported for OpenCode; "
+                    "set vqa_model to codex, gemini:<model>, or openai:<model>"
+                )
+            return
         if capability == "image_inspection" and agent in {AGENT_CODEX, AGENT_CLAUDE_CODE}:
             r.ok("native image inspection uses the active agent runtime")
         elif capability == "image_generation" and agent == AGENT_CODEX:
@@ -402,8 +415,7 @@ def check_api_keys(
     if vqa_provider in {"native", "codex"}:
         required.discard("native")
         required.discard("codex")
-        if vqa_provider != image_provider:
-            check_runtime_model_provider(r, vqa_provider, agent, "image_inspection")
+        check_runtime_model_provider(r, vqa_provider, agent, "image_inspection")
 
     google_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
     if "gemini" in required:

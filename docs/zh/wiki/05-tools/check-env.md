@@ -38,9 +38,11 @@ All required checks passed! Ready to use GodotMaker.
 
 如果 Godot 不在 PATH 中，这项检查会显示警告而非硬性失败——你仍可以在运行 `publish.py` 时手动输入可执行文件的完整路径，它会被保存到 `.claude/godotmaker.yaml` 供后续使用。
 
-### Claude Code
+### 所选 coding agent
 
-- `claude` 命令行工具已安装且在 PATH 中可用。
+- Claude Code 项目会检查 `claude` 是否已安装。
+- Codex 项目会检查 `codex` 是否已安装、`.agents` runtime tree 是否存在，以及 `godot` MCP server 是否已配置。
+- OpenCode 项目会检查 `opencode` 是否已安装、`.opencode` runtime tree 是否存在，以及 `godot` MCP server 是否已配置。
 
 ### API 密钥
 
@@ -50,6 +52,8 @@ All required checks passed! Ready to use GodotMaker.
 | `OPENAI_API_KEY` | 选中时必填 | OpenAI 图片生成或 VQA |
 | `XAI_API_KEY` | 选中时必填 | xAI Grok 图片生成 |
 
+
+API 后端 selector 在缺少对应 key 时会失败。`asset_image_model: native` 对 Codex 会通过，对 Claude Code 会给出警告，因为检查工具无法证明 Claude 侧一定有原生生图能力。OpenCode 项目如果使用 `native` 生图或 `native` VQA 会失败，直到你把这些字段改成 `codex` 或 API 后端 selector。Claude Code 或 OpenCode 项目使用 `asset_image_model: codex` 时，需要 `codex` CLI 位于 PATH 中。
 
 检查工具还会验证被选中提供方的 Python 包能否正常导入，从而捕获单靠版本号检查无法发现的安装问题。
 

@@ -10,9 +10,10 @@ GodotMaker turns a game idea into a playable Godot 4 project. The normal path is
 | Git | 2.30+ | Tracks changes and enables isolated agent worktrees | https://git-scm.com/downloads |
 | Node.js | 22+ | Runs `godotmaker-cli` and Godot MCP tooling | https://nodejs.org |
 | Python | 3.10+ | Runs GodotMaker helper scripts and verification tools | https://python.org/downloads |
-| Claude Code or Codex | Latest | Agent runtime used to implement and evaluate the game | https://claude.ai/code or https://openai.com/codex/ |
+| Claude Code, Codex, or OpenCode | Latest | Agent runtime used to implement and evaluate the game | https://claude.ai/code, https://openai.com/codex/, or https://opencode.ai/ |
 
-Install each one, then continue. You only need one authenticated agent runtime for the first run: Claude Code or Codex.
+Install each one, then continue. You only need one authenticated agent runtime
+for the first run: Claude Code, Codex, or OpenCode.
 
 ## Choose an agent runner
 
@@ -21,6 +22,7 @@ GodotMaker is normally launched through `godotmaker-cli`. Pick the runner at lau
 ```bash
 godotmaker-cli --agent claude-code
 godotmaker-cli --agent codex
+godotmaker-cli --agent opencode
 ```
 
 `--agent` is the safest way to switch runners for one run. If it is omitted, the CLI resolves the runner from the project config, then the CLI-global config, then the default runner.
@@ -29,7 +31,13 @@ godotmaker-cli --agent codex
 
 GodotMaker can use runtime-native image and vision capabilities or API-backed providers depending on `.godotmaker/config.yaml`.
 
-API keys are required only when the project selects an API-backed provider. GodotMaker itself does not provide the external model service. If you want Codex to provide image generation in a Claude Code project, set `asset_image_model: codex`; this requires Codex CLI on PATH and does not require an image API key.
+API keys are required only when the project selects an API-backed provider.
+GodotMaker itself does not provide the external model service. If you want
+Codex to provide image generation in a Claude Code or OpenCode project, set
+`asset_image_model: codex`; this requires Codex CLI on PATH and does not
+require an image API key. OpenCode does not currently default to native image
+generation or native VQA; configure `codex` or an API-backed provider for those
+fields before running the full pipeline.
 
 | Key | Required when | What it unlocks |
 |-----|---------------|-----------------|
