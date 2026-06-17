@@ -1,8 +1,10 @@
 # GodotMaker
 
-**Bring a game idea. Let GodotMaker turn it into a playable Godot project.**
+**Bring your idea. Give it to GodotMaker. Get a playable game.**
 
-GodotMaker turns a game idea into a playable Godot 4 project through a no-human-in-the-loop run driven by `godotmaker-cli`. It helps shape the idea into a GDD, then plans, builds, tests, runs, screenshots, evaluates, and fixes until the current design scope is complete. The result is a local Godot project rather than a hosted black box. The underlying `/gm-*` role commands remain available for advanced users.
+## Why I Built This
+
+In game development, especially early ideation and market validation stages, teams often come up with more ideas than they can develop. The usual approach is to discuss and pick one idea for development, only to find out after a couple of weeks that the idea is not viable, making the previous discussion and development efforts wasted. I built GodotMaker to allow individuals to turn their ideas into playable prototypes quickly, validating the feasibility and fun of their ideas. This will significantly speed up the early stages of game development, helping developers find truly worthwhile game concepts faster.
 
 ## What You Get
 
@@ -17,7 +19,7 @@ GodotMaker turns a game idea into a playable Godot 4 project through a no-human-
 ## Start Here
 
 1. [Installation](wiki/01-getting-started/installation.md) - required tools, optional API keys, and environment checks.
-2. [Your first game](wiki/01-getting-started/first-game.md) - the CLI-driven idea-to-playable workflow.
+2. [Your first game](wiki/01-getting-started/first-game.md) - the CLI-driven idea-to-prototype workflow.
 3. [How it works](wiki/02-concepts/how-it-works.md) - the roles, quality gates, and fix loops behind the CLI.
 
 ## Other Links

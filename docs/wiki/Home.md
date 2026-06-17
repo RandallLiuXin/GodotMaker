@@ -1,11 +1,11 @@
 # GodotMaker Wiki
 
-GodotMaker turns a game idea into a playable Godot 4 project. The normal path is `godotmaker-cli`: it helps shape the idea into a GDD, then drives the same `/gm-*` role commands through planning, implementation, tests, gameplay runs, screenshots, evaluation, and fixes until the current design scope is complete.
+GodotMaker turns a game idea into a playable Godot 4 prototype. The normal path is `godotmaker-cli`: it helps shape the idea into a GDD, then drives the same `/gm-*` role commands through planning, implementation, tests, gameplay runs, screenshots, evaluation, and fixes until the current design scope is complete.
 
 ## New here? Start with these three pages
 
 1. [Installation](01-getting-started/installation.md) - required tools, optional API keys, and environment checks.
-2. [Your first game](01-getting-started/first-game.md) - the CLI-driven idea-to-playable workflow.
+2. [Your first game](01-getting-started/first-game.md) - the CLI-driven idea-to-prototype workflow.
 3. [How it works](02-concepts/how-it-works.md) - the roles, quality gates, and fix loops behind the CLI.
 
 ## Wiki sections
@@ -26,7 +26,7 @@ GodotMaker turns a game idea into a playable Godot 4 project. The normal path is
 | Capability | What it means for you |
 |------------|----------------------|
 | **Bring an idea, not a finished spec** | Describe the game in natural language; GodotMaker helps turn it into a GDD and planning docs |
-| **Let the workflow keep moving** | A small game can take 3-5 hours of agent runtime, but you do not manually drive every role command |
+| **Let the workflow keep moving** | A small prototype can take 3-5 hours of agent runtime, but you do not manually drive every role command |
 | **Keep the local Godot project** | The generated code, scenes, assets, tests, screenshots, and reports live in your project folder |
 | **Get tested code by default** | Unit tests and end-to-end gameplay tests are written alongside game code |
 | **Use visual QA as feedback** | Automated screenshots and visual assessment turn UI and scene issues into fix tasks |

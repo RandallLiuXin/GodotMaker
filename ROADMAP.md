@@ -46,8 +46,6 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 
 ### v0.7.0 — Art Asset Pipeline
 
-> Completed in the current development branch; expected to ship with the next `v0.7.0` tag after final validation.
-
 - [x] `R-082` **Asset production pipeline** - Rebuild `/gm-asset` around production units, provider-specific source claiming, deterministic image processing, asset manifests, and per-unit reports instead of prompt-only missing-row generation.
 - [x] `R-083` **Character and unit asset production** - Produce canonical character art and action sources for heroes, enemies, NPCs, and gameplay units.
 - [x] `R-085` **VFX and projectile asset production** - Produce projectiles, impacts, slashes, pickups, explosions, trails, and other gameplay effects.
@@ -59,6 +57,10 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 - [x] `R-087` **Character animation runtime integration** - Use generated character action assets in Godot runtime animation setup, including idle/move/attack/hit/death state mapping, AnimationPlayer or sprite-sheet wiring, and gameplay-facing animation triggers.
 
 ## In Progress
+
+### v0.x - Model and Runner Evaluation
+
+- [ ] `R-115` **OpenCode compatibility and DeepSeek/GLM evaluation** - Validate GodotMaker's `/gm-*` skill chain under OpenCode and compare DeepSeek, GLM, and other candidate models across GDD quality, build/fixgap behavior, visual-asset generation, E2E reliability, runtime cost, and failure modes.
 
 ### v0.x — Plugin Skills
 
@@ -81,7 +83,6 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 - `R-073` **Tamper-proof role identity via external harness** — `R-070`'s file-lock relies on each `/gm-*` skill honestly writing `.godotmaker/current_role`; nothing structurally prevents the main agent from rewriting the file mid-session. A separate harness process (tracked outside this repo, in a separate automation host) drives each role as its own Claude Code subprocess with the role injected via env var, so hooks can read identity from the runtime instead of the filesystem.
 - `R-074` **SKILL-shared scripts as `_shared_scripts/`** — Mirror `R-072`'s pattern for executable scripts. `tools/asset_source_generate.py` / `check_project.py` / `append_stage_event.py` are invoked from one or more SKILLs but live at top-level `tools/`, drifting from the official Claude Code "SKILL self-contained" convention. Move them to a new `skills/core/_shared_scripts/` source-of-truth and have `publish.py` fan them out into each consumer's `<skill>/scripts/` at deploy time (manifest-driven, sibling to `_shared/manifest.json`). After this lands, top-level `tools/` is reserved for user/CI-invoked scripts (`migrate.py`, `publish.py`, `check_classname.py`).
 - `R-075` **Cross-session resume contract** — Today, when a predecessor `claude -p` session dies mid-`/gm-fixgap` (e.g. quota cut-off after worker DONE but before main agent wrote MEMORY / advanced GAP / archived / appended stage event), the next session's startup recovery is 100% agent improvisation: no spec, no tests, no canonical decision table. The 0509 e2e run made it work by luck — iter 2's startup archived iter 1's GAP "in absentia" because the model happened to read the right tea leaves. **Scope**: write a formal resume contract for each `/gm-*` SKILL — given (last stage event, GAP.md status, evaluation.json status, current_role file), what's the canonical next step? Add tests covering at minimum: predecessor died after worker DONE before archive; predecessor died after archive before stage event append; predecessor died mid-evaluate; ts corruption in last stage event. Lives at the SKILL contract layer, not the agent prompt layer — so the resume behavior is reproducible across model swaps.
-
 - `R-076` **Coding-agent hook contract audit** — Audit every GodotMaker hook against each supported coding agent runtime. For Claude Code, Codex, and future supported agents, verify hook registration coverage, input payloads, output schemas, block semantics, reminder/context injection support, and failure behavior. Fix or remove hook outputs that are not supported by a runtime, and keep runner-specific differences documented instead of assuming one hook API works everywhere.
 
 ### Framework Features
@@ -102,6 +103,7 @@ Items below are ideas under consideration — not committed to a timeline.
 - `R-108` **Tester subagent** — Dedicated E2E and gameplay testing role in the multi-agent pipeline.
 - `R-109` **GDD quality review** — Automated completeness and consistency checks on generated Game Design Documents.
 - `R-110` **Android build workflow** — APK/AAB export with signing, versioning, and store-ready packaging.
+- `R-111` **Post-fixgap targeted E2E rerun** — Let `/gm-evaluate` rerun the E2E files that failed in the previous evaluation before spending time on the full suite, screenshots, and VQA.
 - `R-112` **Re-evaluate gdtoolkit (gdlint / gdformat)** *(low priority)* — Disabled in v0.3.4 due to recurring `gdtoolkit/linter/class_checks.py:144 NotImplementedError` crashes on ECS-style class shapes. Rationale + restore guide in [`docs/decisions/disable-gdtoolkit.md`](docs/decisions/disable-gdtoolkit.md).
 - `R-113` **3D game support** *(low priority)* — Extend planning, asset, build, verification, and evaluation contracts beyond the current 2D-first pipeline so generated projects can target 3D scenes, cameras, physics, controls, and content.
 - `R-114` **Audio asset generation** *(low priority)* — Add an audio generation and curation workflow for music, ambience, and sound effects, including provider selection, manifest mapping, import settings, and validation. Until this ships, audio remains user-provided or manually added.

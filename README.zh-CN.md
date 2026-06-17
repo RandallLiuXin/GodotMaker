@@ -9,7 +9,11 @@
 
 > **带着你的想法来，交给 GodotMaker，得到一个可运行的游戏。**
 
-## 为什么需要它
+## 为什么做这个
+
+在游戏开发中，尤其是早期立项/市场验证阶段，一个团队往往会同时提出大于团队人数的idea。之前的做法是通过开发反复讨论最终选定一个idea，然后进行开发验证。结果还常常开发两周后才发现这个idea根本不行，之前的讨论和开发都白费了。因此我开发了 GodotMaker，希望能让单人把想法变成可玩的原型，快速验证想法的可行性和有趣程度。这将极大地加速游戏开发的前期阶段，让开发者更快地找到真正值得投入的游戏创意。
+
+## 为什么是GodotMaker
 
 很多工具都在承诺“AI 帮你做游戏”，但真正开始用之后，经常会遇到这些问题：
 
@@ -20,7 +24,7 @@
 
 GodotMaker 选择另一条路：你带着游戏想法来，它协助你整理成 GDD，然后自动驱动 Agent 完成规划、实现、测试、运行、截图评估和修复。几个小时后，你验收的是一个真正落在本地的 Godot 项目。
 
-项目代码在你手里，框架工作流源码可用、本地优先，并可在 Business Source License 允许的范围内免费运行。想继续打磨，就继续完善想法或 GDD，再跑下一轮。
+项目代码在你手里，框架工作流源码可用、本地优先。想继续打磨，就继续完善想法或 GDD，再跑下一轮。
 
 ## 它有什么不同
 
@@ -39,7 +43,7 @@ Claude Code、Codex、Gemini、OpenAI、xAI、Tripo 等外部 runtime 或模型 
 
 一次运行中，GodotMaker Agent 会持续把设计往前推进：
 
-- 把你的想法整理成 `GDD.md`、任务、场景、系统和验收标准
+- 把你的想法整理成 `GDD.md`、任务、场景、资产、系统和验收标准
 - 在 Godot 中实现玩法
 - 写代码的同时编写 gdUnit4 单元测试
 - 编写像玩家一样操作游戏的端到端测试
@@ -47,7 +51,7 @@ Claude Code、Codex、Gemini、OpenAI、xAI、Tripo 等外部 runtime 或模型 
 - 对照 GDD 检查结果
 - 把缺失玩法、UI 问题、视觉问题送回修复循环
 
-一个小型游戏通常需要 **3-5 小时的 Agent 运行时间**。不过你不需要手动驱动每个阶段，也不需要一直守在电脑前，工作流会自己持续推进。
+一个小型原型通常需要 **5-8 小时的 Agent 运行时间**。不过你不需要手动驱动每个阶段，也不需要一直守在电脑前，工作流会自己持续推进。
 
 ## 社区
 
@@ -71,7 +75,7 @@ godotmaker-cli --agent claude-code
 godotmaker-cli --agent codex
 ```
 
-CLI 会从 idea 梳理和 GDD 规划开始驱动工作流，直到生成一个可玩的 Godot tag。Agent 选择顺序是：`--agent`、项目 `.godotmaker/config.yaml`、CLI 全局配置 `~/.godotmaker/cli/config.yaml`、默认 runner。高级用户仍然可以直接在 Claude Code 中运行 `/gm-*`，或在 Codex 中运行 `$gm-*`。
+CLI 会从 idea 梳理和 GDD 规划开始驱动工作流，直到生成一个可玩的 Godot 原型。Agent 选择顺序是：`--agent`、项目 `.godotmaker/config.yaml`、CLI 全局配置 `~/.godotmaker/cli/config.yaml`、默认 runner。高级用户仍然可以直接在 Claude Code 中运行 `/gm-*`，或在 Codex 中运行 `$gm-*`。
 
 如果你要开发 GodotMaker 框架本身：
 
@@ -86,7 +90,7 @@ python tools/check_env.py
 
 | 工具 | 用途 |
 |---|---|
-| [Godot 4.5+](https://godotengine.org) | 运行生成出的游戏 |
+| [Godot 4.5+](https://godotengine.org) | 运行生成出的项目 |
 | [Claude Code](https://claude.ai/code) 或 [Codex](https://openai.com/codex/) | Agent runtime |
 | Node.js 22+ | 运行 `godotmaker-cli` 和 Godot MCP 工具 |
 | Python 3.10+ | 运行 GodotMaker 辅助脚本 |

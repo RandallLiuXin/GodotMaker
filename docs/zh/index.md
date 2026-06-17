@@ -1,8 +1,10 @@
 # GodotMaker
 
-**带着你的想法来，交给 GodotMaker，得到一个可运行的 Godot 4 项目。**
+**带着你的想法来，交给 GodotMaker，得到一个可运行的游戏。**
 
-GodotMaker 通过 `godotmaker-cli` 把你的游戏想法变成可运行的 Godot 4 项目。它会协助把想法整理成 GDD，然后自动规划、构建、测试、运行、截图、评估和修复，直到当前设计范围完成。结果是本地 Godot 项目，不是托管平台里的黑盒。底层 `/gm-*` 角色命令仍然保留给高级用户。
+## 为什么做这个
+
+在游戏开发中，尤其是早期立项/市场验证阶段，一个团队往往会同时提出大于团队人数的idea。之前的做法是通过开发反复讨论最终选定一个idea，然后进行开发验证。结果还常常开发两周后才发现这个idea根本不行，之前的讨论和开发都白费了。因此我开发了 GodotMaker，希望能让单人把想法变成可玩的原型，快速验证想法的可行性和有趣程度。这将极大地加速游戏开发的前期阶段，让开发者更快地找到真正值得投入的游戏创意。
 
 ## 你能得到什么
 
@@ -17,7 +19,7 @@ GodotMaker 通过 `godotmaker-cli` 把你的游戏想法变成可运行的 Godot
 ## 从这里开始
 
 1. [安装](wiki/01-getting-started/installation.md) — 必需工具、可选 API key 和环境检查
-2. [做你的第一个游戏](wiki/01-getting-started/first-game.md) — CLI 驱动的 idea 到可运行游戏流程
+2. [做你的第一个游戏](wiki/01-getting-started/first-game.md) — CLI 驱动的 idea 到原型流程
 3. [它是怎么工作的](wiki/02-concepts/how-it-works.md) — CLI 背后的角色、质量门禁和修复循环
 
 ## 其他快速入口

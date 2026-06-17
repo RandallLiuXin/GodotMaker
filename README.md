@@ -9,7 +9,11 @@
 
 > **Bring your idea. Give it to GodotMaker. Get a playable game.**
 
-## Why It Exists
+## Why I Built This
+
+In game development, especially early ideation and market validation stages, teams often come up with more ideas than they can develop. The usual approach is to discuss and pick one idea for development, only to find out after a couple of weeks that the idea is not viable, making the previous discussion and development efforts wasted. I built GodotMaker to allow individuals to turn their ideas into playable prototypes quickly, validating the feasibility and fun of their ideas. This will significantly speed up the early stages of game development, helping developers find truly worthwhile game concepts faster.
+
+## Why Choose GodotMaker
 
 Many tools promise that AI can help you make games. Once you actually try to build with them, the same problems tend to show up:
 
@@ -20,7 +24,7 @@ Many tools promise that AI can help you make games. Once you actually try to bui
 
 GodotMaker takes a different path: bring the game idea, let it shape that idea into a GDD, then let agents run through planning, implementation, tests, gameplay runs, screenshots, evaluation, and fixes. When the run finishes, you review a real Godot project on your disk.
 
-The code is yours. The GodotMaker framework is source-available, the workflow is local-first, and permitted uses are free under the Business Source License. Want a better game? Refine the idea or GDD and run another iteration.
+The code is yours. The GodotMaker framework is source-available, the workflow is local-first. Want a better game? Refine the idea or GDD and run another iteration.
 
 ## What Makes It Different
 
@@ -39,7 +43,7 @@ External agent runtimes and model providers, such as Claude Code, Codex, Gemini,
 
 During a run, GodotMaker agents keep moving the design forward:
 
-- turn your idea into `GDD.md`, tasks, scenes, systems, and acceptance criteria
+- turn your idea into `GDD.md`, tasks, scenes, systems, assets, and acceptance criteria
 - implement gameplay in Godot
 - write gdUnit4 unit tests while writing code
 - create end-to-end tests that operate the game like a player
@@ -47,7 +51,7 @@ During a run, GodotMaker agents keep moving the design forward:
 - compare the result against the GDD
 - route missing behavior, broken UI, and visual problems back into the fix loop
 
-A small game usually takes about **3-5 hours of agent runtime**. You do not need to manually drive each stage or keep an eye on it the whole time; the workflow is designed to keep going on its own.
+A small prototype usually takes about **5-8 hours of agent runtime**. You do not need to manually drive each stage or keep an eye on it the whole time; the workflow is designed to keep going on its own.
 
 ## Community
 
@@ -71,7 +75,7 @@ Use `--agent codex` to run the same workflow through Codex:
 godotmaker-cli --agent codex
 ```
 
-The CLI drives the workflow from idea capture and GDD planning to a playable Godot project. Agent selection resolves in this order: `--agent`, project `.godotmaker/config.yaml`, CLI-global `~/.godotmaker/cli/config.yaml`, then the default runner. Advanced users can still run the underlying role commands directly in Claude Code (`/gm-*`) or Codex (`$gm-*`).
+The CLI drives the workflow from idea capture and GDD planning to a playable Godot prototype. Agent selection resolves in this order: `--agent`, project `.godotmaker/config.yaml`, CLI-global `~/.godotmaker/cli/config.yaml`, then the default runner. Advanced users can still run the underlying role commands directly in Claude Code (`/gm-*`) or Codex (`$gm-*`).
 
 For framework development:
 
@@ -86,7 +90,7 @@ python tools/check_env.py
 
 | Tool | Why |
 |---|---|
-| [Godot 4.5+](https://godotengine.org) | Runs the generated game |
+| [Godot 4.5+](https://godotengine.org) | Runs the generated project |
 | [Claude Code](https://claude.ai/code) or [Codex](https://openai.com/codex/) | Agent runtime |
 | Node.js 22+ | Runs `godotmaker-cli` and Godot MCP tooling |
 | Python 3.10+ | Runs GodotMaker helper scripts |
