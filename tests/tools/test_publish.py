@@ -1376,6 +1376,7 @@ class TestOpenCodePublishParity:
         assert "check_file_permissions.py" in content
         assert "stage_reminder.py" in content
         assert "on_subagent_stop.py" in content
+        assert "runStopHook" in content
 
     def test_publish_agent_plugins_noops_for_non_plugin_runtimes(self, tmp_path):
         repo = Path(__file__).resolve().parents[2]

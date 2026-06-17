@@ -50,6 +50,7 @@ function runHook(projectRoot, script, payload, options = {}) {
   const parsed = parseJson(result.stdout)
   const reason = blockReason(parsed)
   if (reason) {
+    if (options.blockDecision === "return") return parsed
     throw new Error(reason)
   }
   if (result.error) {
@@ -60,6 +61,54 @@ function runHook(projectRoot, script, payload, options = {}) {
     throw new Error(`GodotMaker hook ${script} exited ${result.status}${stderr ? `: ${stderr}` : ""}`)
   }
   return parsed
+}
+
+function runStopHook(projectRoot, script, payload) {
+  const parsed = runHook(projectRoot, script, payload, {
+    blockDecision: "return",
+    failOnNonZero: false,
+  })
+  const reason = blockReason(parsed)
+  return reason ? { script, reason } : null
+}
+
+function stopNoticeText(blocks) {
+  const details = blocks.map((block) => `- ${block.script}: ${block.reason}`).join("\n\n")
+  return [
+    "GodotMaker Stop hooks blocked this stage from finishing.",
+    "",
+    details,
+    "",
+    "Address the hook feedback, then finish the active GodotMaker stage again.",
+  ].join("\n")
+}
+
+async function sendStopNotice(client, sessionID, blocks) {
+  if (!blocks.length || !sessionID) return
+  const text = stopNoticeText(blocks)
+  try {
+    await client?.session?.prompt?.({
+      path: { id: sessionID },
+      body: {
+        parts: [{ type: "text", text }],
+      },
+    })
+    return
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.warn(`[GodotMaker] failed to send Stop hook prompt: ${message}`)
+  }
+  try {
+    await client?.tui?.showToast?.({
+      body: {
+        title: "GodotMaker Stop hook blocked",
+        message: text.slice(0, 1800),
+        variant: "warning",
+      },
+    })
+  } catch {
+    // Toast is best-effort. The log line above is the final fallback.
+  }
 }
 
 function claudeToolName(tool) {
@@ -154,7 +203,7 @@ function runPostToolHooks(projectRoot, input, output) {
   })
 }
 
-function runSessionEventHooks(projectRoot, event, rootSessions) {
+async function runSessionEventHooks(projectRoot, client, event, rootSessions) {
   const type = event?.type || ""
   if (type === "session.created") {
     const info = asObject(event?.properties?.info)
@@ -177,17 +226,21 @@ function runSessionEventHooks(projectRoot, event, rootSessions) {
       session_id: sessionID,
       agent_id: "",
     }
-    runHook(projectRoot, "check_completion.py", payload)
-    runHook(projectRoot, "check_clean_workspace.py", payload, { failOnNonZero: false })
+    const blocks = [
+      runStopHook(projectRoot, "check_completion.py", payload),
+      runStopHook(projectRoot, "check_clean_workspace.py", payload),
+    ].filter(Boolean)
+    await sendStopNotice(client, sessionID, blocks)
   }
 }
 
 export const GodotMakerHooks = async (ctx) => {
   const projectRoot = ctx.directory
+  const client = ctx.client
   const rootSessions = new Set()
   return {
     event: async (input) => {
-      runSessionEventHooks(projectRoot, input.event, rootSessions)
+      await runSessionEventHooks(projectRoot, client, input.event, rootSessions)
     },
     "tool.execute.before": async (input, output) => {
       runPreToolHooks(projectRoot, input, output)
