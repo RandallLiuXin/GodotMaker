@@ -68,6 +68,7 @@ Read `.godotmaker/config.yaml` and use `asset_image_model`.
 | `native` | `references/providers/native.md` |
 | `codex` | `references/providers/codex.md` |
 | `gemini:<model>` or `gemini` | `references/providers/gemini.md` |
+| `openai:<model>` or `openai` | `references/providers/openai.md` |
 
 If the configured provider is unavailable, stop and ask the user to choose
 another `asset_image_model`.

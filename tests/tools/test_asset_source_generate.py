@@ -72,6 +72,33 @@ def test_generate_source_writes_prompt_source_and_report(tmp_path, monkeypatch):
     assert report["source_path"] == result["source_path"]
 
 
+def test_generate_source_supports_openai_selector(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    spec = source_generate.load_spec(
+        make_spec(
+            tmp_path,
+            model="openai:gpt-image-2",
+            report_path=".godotmaker/asset-generation/reports/coin_source.json",
+        )
+    )
+
+    def fake_openai(spec_data, output, model_name):
+        assert model_name == "gpt-image-2"
+        assert spec_data["aspect_ratio"] == "1:1"
+        write_png(output)
+
+    monkeypatch.setattr(source_generate, "_generate_openai", fake_openai)
+
+    result = source_generate.generate_source(spec)
+
+    assert result["ok"] is True
+    assert result["provider"] == "openai"
+    assert result["model"] == "gpt-image-2"
+    assert result["cost_cents"] == 5
+    assert (tmp_path / result["source_path"]).exists()
+    assert (tmp_path / result["report_path"]).exists()
+
+
 def test_generate_source_does_not_write_report_when_validation_fails(
     tmp_path,
     monkeypatch,

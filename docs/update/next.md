@@ -21,6 +21,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added OpenCode `godot` MCP registration during publish and environment checks for the published `.opencode` runtime tree.
 - Added provider setup docs for agent runtimes and image/VQA selectors, including OpenCode image/VQA capability gates.
 - Added an OpenCode hook adapter plugin that runs the shared GodotMaker hook contract through OpenCode runtime events.
+- Added `/gm-asset` provider routing for OpenAI image generation selectors.
 
 ## Changed
 

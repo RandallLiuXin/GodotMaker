@@ -27,6 +27,7 @@ Use exactly one provider doc per production unit:
 1. `references/providers/native.md`
 2. `references/providers/codex.md`
 3. `references/providers/gemini.md`
+4. `references/providers/openai.md`
 
 ## Production Shapes
 
