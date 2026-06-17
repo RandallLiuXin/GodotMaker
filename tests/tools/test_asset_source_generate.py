@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -32,6 +33,21 @@ def make_spec(tmp_path: Path, **overrides):
 def write_png(path: Path, size=(12, 10)):
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.new("RGB", size, (255, 210, 40)).save(path, format="PNG")
+
+
+def png_bytes(size=(12, 10)):
+    buf = source_generate.io.BytesIO()
+    Image.new("RGB", size, (255, 210, 40)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def write_refs(tmp_path: Path, count: int) -> list[str]:
+    refs = []
+    for index in range(count):
+        path = tmp_path / f"ref-{index}.png"
+        write_png(path)
+        refs.append(str(path))
+    return refs
 
 
 def test_load_spec_requires_explicit_model(tmp_path, monkeypatch):
@@ -97,6 +113,65 @@ def test_generate_source_supports_openai_selector(tmp_path, monkeypatch):
     assert result["cost_cents"] == 5
     assert (tmp_path / result["source_path"]).exists()
     assert (tmp_path / result["report_path"]).exists()
+
+
+def test_openai_uses_all_reference_images_for_edit(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    spec = source_generate.load_spec(
+        make_spec(
+            tmp_path,
+            model="openai:gpt-image-2",
+            reference_images=write_refs(tmp_path, 2),
+        )
+    )
+    seen = {}
+    image_b64 = source_generate.base64.b64encode(png_bytes()).decode()
+    output = Path(spec["source_path"])
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    class FakeImages:
+        def edit(self, **kwargs):
+            seen.update(kwargs)
+            assert all(not image.closed for image in kwargs["image"])
+            assert [Path(image.name).name for image in kwargs["image"]] == [
+                "ref-0.png",
+                "ref-1.png",
+            ]
+            return SimpleNamespace(data=[SimpleNamespace(b64_json=image_b64)])
+
+        def generate(self, **_kwargs):
+            raise AssertionError("reference image specs must use images.edit")
+
+    class FakeOpenAI:
+        def __init__(self):
+            self.images = FakeImages()
+
+    monkeypatch.setitem(
+        sys.modules,
+        "openai",
+        SimpleNamespace(OpenAI=FakeOpenAI),
+    )
+
+    source_generate._generate_openai(spec, output, "gpt-image-2")
+
+    assert seen["model"] == "gpt-image-2"
+    assert seen["prompt"] == spec["prompt"]
+    assert seen["size"] == "1024x1024"
+    assert (tmp_path / spec["source_path"]).exists()
+
+
+def test_openai_rejects_more_than_sixteen_reference_images(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    spec = source_generate.load_spec(
+        make_spec(
+            tmp_path,
+            model="openai:gpt-image-2",
+            reference_images=write_refs(tmp_path, 17),
+        )
+    )
+
+    with pytest.raises(source_generate.SourceGenerateError, match="at most 16"):
+        source_generate._generate_openai(spec, Path(spec["source_path"]), "gpt-image-2")
 
 
 def test_generate_source_does_not_write_report_when_validation_fails(

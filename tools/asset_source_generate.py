@@ -6,6 +6,7 @@ import base64
 import io
 import json
 import sys
+from contextlib import ExitStack
 from pathlib import Path
 
 from asset_image_finalize import ImageFinalizeError, finalize_image_asset
@@ -58,6 +59,7 @@ GROK_ASPECT_RATIOS = [
 ALL_SIZES = ["512", "1K", "2K", "4K"]
 ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS))
 OPENAI_MODEL = "gpt-image-2"
+OPENAI_MAX_REFERENCE_IMAGES = 16
 OPENAI_COSTS = {"1:1": 5, "portrait": 7, "landscape": 7}
 
 
@@ -227,17 +229,23 @@ def _save_openai_b64(response, output: Path):
 
 
 def _generate_openai(spec, output: Path, model_name: str):
+    if len(spec["reference_images"]) > OPENAI_MAX_REFERENCE_IMAGES:
+        raise SourceGenerateError(
+            f"OpenAI image editing supports at most {OPENAI_MAX_REFERENCE_IMAGES} reference images"
+        )
+
     from openai import OpenAI
 
     api_size, _ = _openai_size(spec["size"], spec["aspect_ratio"])
     client = OpenAI()
     try:
         if spec["reference_images"]:
-            ref_path = spec["reference_images"][0]
-            with ref_path.open("rb") as image_file:
+            with ExitStack() as stack:
+                image_files = [stack.enter_context(path.open("rb")) for path in spec["reference_images"]]
+                image = image_files[0] if len(image_files) == 1 else image_files
                 response = client.images.edit(
                     model=model_name,
-                    image=image_file,
+                    image=image,
                     prompt=spec["prompt"],
                     size=api_size,
                 )

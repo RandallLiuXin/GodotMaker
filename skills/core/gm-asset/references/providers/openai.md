@@ -33,11 +33,16 @@ python tools/asset_source_generate.py --spec <spec.json>
 1. `OPENAI_API_KEY` is set.
 2. The Python `openai` package is installed.
 3. `size` is `1K`.
+4. Use at most 16 reference images.
 
 ## Reference Images
 
 Put every required local reference path in `reference_images`. Use only images
 listed by the production-unit brief or selected by the manager.
+
+When `reference_images` is non-empty, the source generator uses the OpenAI image
+edit endpoint and sends every listed reference image. One reference is sent as a
+single image file; multiple references are sent as an image-file list.
 
 ## Handoff
 

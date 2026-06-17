@@ -30,5 +30,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - Fixed OpenCode subagents so delegated roles inherit the active session model correctly.
+- Fixed the API-backed OpenAI image provider so supported reference images are
+  all passed to the generation call instead of silently using only the first one.
 
 ## Removed
