@@ -22,6 +22,13 @@ agent: opencode
 OpenCode 项目使用 `.opencode/skills`、`.opencode/agents`、
 `.opencode/templates`、`.opencode/references` 和 `AGENTS.md`。
 
+## 角色模型
+
+OpenCode 子 Agent 会继承当前父 OpenCode 会话的模型。`.godotmaker/config.yaml`
+中的按角色模型设置，例如 `worker_model` 和 `asset_producer_model`，目前用于
+Claude Code 项目，不会覆盖 OpenCode 子 Agent 模型。请用你希望委派角色继承
+的模型启动 OpenCode 会话。
+
 ## 图片和 VQA
 
 OpenCode 支持不使用 runtime 原生生图或读图能力。运行完整流水线前，请把这两个字段

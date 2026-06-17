@@ -23,6 +23,14 @@ agent: opencode
 OpenCode projects use `.opencode/skills`, `.opencode/agents`,
 `.opencode/templates`, `.opencode/references`, and `AGENTS.md`.
 
+## Role models
+
+OpenCode subagents inherit the active parent OpenCode session model. The
+per-role model settings in `.godotmaker/config.yaml`, such as `worker_model`
+and `asset_producer_model`, currently apply to Claude Code projects and do not
+override OpenCode subagent models. Start the OpenCode session with the model you
+want delegated roles to use.
+
 ## Image and VQA
 
 OpenCode support does not use runtime-native image generation or image

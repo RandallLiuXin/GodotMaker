@@ -594,12 +594,42 @@ def _ensure_frontmatter_scalar(text: str, key: str, value: str) -> str:
     return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
 
 
+def _remove_frontmatter_scalar(text: str, key: str, value: str | None = None) -> str:
+    """Remove a simple top-level YAML frontmatter scalar."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return text
+
+    end = None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            end = i
+            break
+    if end is None:
+        return text
+
+    for i in range(1, end):
+        stripped = lines[i].strip()
+        if not stripped or stripped.startswith("#") or ":" not in stripped:
+            continue
+        current_key, current_value = stripped.split(":", 1)
+        if current_key.strip() != key:
+            continue
+        if value is not None and current_value.strip() != value:
+            continue
+        del lines[i]
+        return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+    return text
+
+
 def render_agent_role_text(text: str, agent: str) -> str:
     """Render a shared GodotMaker role definition for a selected runtime."""
     if agent != AGENT_OPENCODE:
         return text
 
-    rendered = _ensure_frontmatter_scalar(text, "mode", "subagent")
+    rendered = _remove_frontmatter_scalar(text, "model", "inherit")
+    rendered = _ensure_frontmatter_scalar(rendered, "mode", "subagent")
     replacements = {
         ".claude/skills": ".opencode/skills",
         ".claude/agents": ".opencode/agents",

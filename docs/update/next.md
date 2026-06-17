@@ -28,4 +28,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Fixed OpenCode subagents so delegated roles inherit the active session model correctly.
+
 ## Removed

@@ -47,6 +47,13 @@ project-root files.
 ## Delegated Roles
 
 OpenCode project agents are published under `.opencode/agents/*.md`.
+Published OpenCode subagents omit the `model` field so OpenCode inherits the
+active parent session model.
+
+For OpenCode, ignore `model:` fields shown in shared `Agent(...)` examples.
+Do not pass per-call model fields to the OpenCode task/subagent tool. Treat
+`worker_model`, `asset_producer_model`, and other role model fields as
+unsupported for OpenCode subagents.
 
 Use the OpenCode task/subagent mechanism for delegated GodotMaker roles when
 available. The delegate must receive the current brief and follow the matching

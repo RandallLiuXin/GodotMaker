@@ -941,6 +941,7 @@ class TestPublishAgents:
 
         content = (target / "reviewer.md").read_text(encoding="utf-8")
         assert "mode: subagent" in content
+        assert "model: inherit" not in content
         assert ".opencode/skills/*/checklist.md" in content
         assert ".claude/skills" not in content
 
@@ -1349,6 +1350,8 @@ class TestOpenCodePublishParity:
 
         assert "mode: subagent" in worker
         assert "mode: subagent" in reviewer
+        assert "model: inherit" not in worker
+        assert "model: inherit" not in reviewer
         assert ".opencode/skills/*/checklist.md" in reviewer
         assert ".claude/skills/*/checklist.md" not in reviewer
 
