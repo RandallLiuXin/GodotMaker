@@ -602,6 +602,10 @@ def _frontmatter_without_key(lines: list[str], key: str) -> list[str]:
     return result
 
 
+OPENCODE_BASE_AGENT_PERMISSION: dict[str, object] = {
+    "external_directory": "allow",
+}
+
 OPENCODE_AGENT_PERMISSION_POLICIES: dict[str, dict[str, object]] = {
     # OpenCode uses one `edit` permission for write, edit, and apply_patch.
     # These reviewer-style agents must not mutate project files.
@@ -631,9 +635,11 @@ def render_opencode_agent_role_text(text: str, role_name: str) -> str:
     updated = _frontmatter_without_key(updated, "mode")
     updated = _frontmatter_without_key(updated, "permission")
     _append_yaml_value(updated, "mode", "subagent")
-    permission = OPENCODE_AGENT_PERMISSION_POLICIES.get(role_name)
-    if permission:
-        _append_yaml_value(updated, "permission", permission)
+    permission = {
+        **OPENCODE_BASE_AGENT_PERMISSION,
+        **OPENCODE_AGENT_PERMISSION_POLICIES.get(role_name, {}),
+    }
+    _append_yaml_value(updated, "permission", permission)
     rendered = "---\n" + "\n".join(updated) + "\n---\n" + body
 
     replacements = {

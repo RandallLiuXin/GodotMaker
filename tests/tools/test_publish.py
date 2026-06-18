@@ -970,7 +970,10 @@ class TestPublishAgents:
         content = (target / "reviewer.md").read_text(encoding="utf-8")
         frontmatter = _parse_simple_frontmatter(content)
         assert frontmatter["mode"] == "subagent"
-        assert frontmatter["permission"] == {"edit": "deny"}
+        assert frontmatter["permission"] == {
+            "external_directory": "allow",
+            "edit": "deny",
+        }
         assert "model: inherit" not in content
         assert ".opencode/skills/*/checklist.md" in content
         assert ".claude/skills" not in content
@@ -992,7 +995,10 @@ class TestPublishAgents:
         content = (target / "verifier.md").read_text(encoding="utf-8")
         frontmatter = _parse_simple_frontmatter(content)
         assert frontmatter["mode"] == "subagent"
-        assert frontmatter["permission"] == {"edit": "deny"}
+        assert frontmatter["permission"] == {
+            "external_directory": "allow",
+            "edit": "deny",
+        }
         assert ".opencode/skills/*/checklist.md" in content
         assert ".claude/skills" not in content
 
@@ -1418,10 +1424,21 @@ class TestOpenCodePublishParity:
         assert reviewer_frontmatter["mode"] == "subagent"
         assert verifier_frontmatter["mode"] == "subagent"
         assert auditor_frontmatter["mode"] == "subagent"
-        assert "permission" not in worker_frontmatter
-        assert reviewer_frontmatter["permission"] == {"edit": "deny"}
-        assert verifier_frontmatter["permission"] == {"edit": "deny"}
-        assert auditor_frontmatter["permission"] == {"edit": "deny"}
+        assert worker_frontmatter["permission"] == {
+            "external_directory": "allow",
+        }
+        assert reviewer_frontmatter["permission"] == {
+            "external_directory": "allow",
+            "edit": "deny",
+        }
+        assert verifier_frontmatter["permission"] == {
+            "external_directory": "allow",
+            "edit": "deny",
+        }
+        assert auditor_frontmatter["permission"] == {
+            "external_directory": "allow",
+            "edit": "deny",
+        }
         assert "model" not in worker_frontmatter
         assert "model" not in reviewer_frontmatter
         assert "model: inherit" not in worker
