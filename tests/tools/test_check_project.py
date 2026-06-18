@@ -47,9 +47,24 @@ def _seed_scaffolded_project(project_dir: str):
             '"res://addons/godot_e2e/plugin.cfg"'
             ')\n'
         )
-    # Required addon dirs
-    for addon in ("gecs", "gdUnit4", "godot_e2e"):
-        os.makedirs(os.path.join(project_dir, "addons", addon), exist_ok=True)
+    # Required addon dirs with minimal addon-only shape.
+    required_files = {
+        "gecs": ("plugin.cfg",),
+        "gdUnit4": (
+            "plugin.cfg",
+            os.path.join("bin", "GdUnitCmdTool.gd"),
+            os.path.join("src", "core", "runners", "GdUnitTestCIRunner.gd"),
+        ),
+        "godot_e2e": ("plugin.cfg", "automation_server.gd"),
+    }
+    for addon, files in required_files.items():
+        addon_dir = os.path.join(project_dir, "addons", addon)
+        os.makedirs(addon_dir, exist_ok=True)
+        for rel_path in files:
+            path = os.path.join(addon_dir, rel_path)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("# fixture\n")
     # e2e/conftest.py with GodotE2E import
     e2e_dir = os.path.join(project_dir, "e2e")
     os.makedirs(e2e_dir, exist_ok=True)
@@ -106,6 +121,7 @@ class TestBuildCheck:
         assert "[application] section" in stdout
         for addon in ("gecs", "gdUnit4", "godot_e2e"):
             assert f"addons/{addon}/ present" in stdout
+            assert f"addons/{addon}/plugin.cfg present" in stdout
         assert "godot-e2e plugin enabled" in stdout
         assert "AutomationServer autoload registered" in stdout
         assert "e2e/conftest.py imports GodotE2E" in stdout
@@ -128,6 +144,70 @@ class TestBuildCheck:
         stdout, code = run_check(project_dir, "--build")
         assert code == 1
         assert "addons/gecs/ missing" in stdout
+
+    def test_addon_without_plugin_cfg_fails(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+        _write_godot_config(project_dir, _write_fake_godot(project_dir))
+        os.remove(os.path.join(project_dir, "addons", "gecs", "plugin.cfg"))
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 1
+        assert "addons/gecs/plugin.cfg missing" in stdout
+
+    @pytest.mark.parametrize("addon", ("gecs", "gdUnit4", "godot_e2e"))
+    def test_full_repo_addon_with_nested_project_godot_fails(self, project_dir, addon):
+        _seed_scaffolded_project(project_dir)
+        _write_godot_config(project_dir, _write_fake_godot(project_dir))
+        with open(
+            os.path.join(project_dir, "addons", addon, "project.godot"),
+            "w",
+            encoding="utf-8",
+        ) as f:
+            f.write("[application]\nconfig/name=\"Nested\"\n")
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 1
+        assert f"addons/{addon}/ contains nested project.godot" in stdout
+
+    def test_gdunit_without_cmd_tool_fails(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+        _write_godot_config(project_dir, _write_fake_godot(project_dir))
+        os.remove(
+            os.path.join(
+                project_dir,
+                "addons",
+                "gdUnit4",
+                "bin",
+                "GdUnitCmdTool.gd",
+            )
+        )
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 1
+        assert "addons/gdUnit4/bin/GdUnitCmdTool.gd missing" in stdout
+
+    def test_gdunit_without_cmd_runner_fails(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+        _write_godot_config(project_dir, _write_fake_godot(project_dir))
+        os.remove(
+            os.path.join(
+                project_dir,
+                "addons",
+                "gdUnit4",
+                "src",
+                "core",
+                "runners",
+                "GdUnitTestCIRunner.gd",
+            )
+        )
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 1
+        assert "addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd missing" in stdout
 
     def test_godot_e2e_plugin_not_enabled_fails(self, project_dir):
         _seed_scaffolded_project(project_dir)

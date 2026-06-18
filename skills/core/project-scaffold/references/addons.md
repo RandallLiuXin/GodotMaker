@@ -5,8 +5,15 @@ Install them after scaffold, before running headless-build or tests.
 
 ## Version Compatibility — MANDATORY
 
-Read `.claude/config/addon_versions.json` to determine the correct version for each addon.
-The JSON maps Godot versions to compatible addon versions. You MUST use the exact tag specified.
+Read the active runtime's `config/addon_versions.json` to determine the
+correct version for each addon:
+
+- Claude Code: `.claude/config/addon_versions.json`
+- Codex: `.agents/config/addon_versions.json`
+- OpenCode: `.opencode/config/addon_versions.json`
+
+The JSON maps Godot versions to compatible addon versions. You MUST use the
+exact tag specified.
 
 **Steps:**
 1. Detect Godot version: `godot --version` (e.g., "4.4.stable")
@@ -18,14 +25,30 @@ If the Godot version is not in the mapping, use the closest lower version. If no
 
 ## Download Method
 
-For each addon in the version mapping:
+For each addon in the version mapping, install the addon-only directory:
 
 ```bash
-# Clone specific tag, copy addon directory, clean up
-git clone --depth 1 --branch {tag} https://github.com/{repo}.git /tmp/{addon_name}
-cp -r /tmp/{addon_name}/{install_path}/ {install_path}/
-rm -rf /tmp/{addon_name}
+# Clone specific tag outside addons/, copy addon subdirectory, clean up.
+git clone --depth 1 --branch {tag} https://github.com/{repo}.git .godotmaker/scratch/{addon_name}
+cp -r .godotmaker/scratch/{addon_name}/{install_path}/ {install_path}/
+rm -rf .godotmaker/scratch/{addon_name}
 ```
+
+Required copy sources:
+
+- `addons/gecs/` from the source repo's `addons/gecs/`
+- `addons/gdUnit4/` from the source repo's `addons/gdUnit4/`
+- `addons/godot_e2e/` from the source repo's `addons/godot_e2e/`
+
+Do not clone the full source repository directly into `addons/gecs/`,
+`addons/gdUnit4/`, or `addons/godot_e2e/`.
+
+After copying each addon:
+
+1. Confirm `plugin.cfg` exists in the copied addon root.
+2. Confirm `project.godot` does not exist in the copied addon root.
+3. For gdUnit4, confirm `bin/GdUnitCmdTool.gd` and
+   `src/core/runners/GdUnitTestCIRunner.gd` exist.
 
 ## Post-Download Configuration
 
@@ -54,7 +77,11 @@ If `"plugin": true` in the mapping:
   enabled=PackedStringArray("res://addons/gecs/plugin.cfg", "res://addons/gdUnit4/plugin.cfg", "res://addons/godot_e2e/plugin.cfg")
   ```
 
-The plugin automatically registers the `AutomationServer` autoload.
+Ensure `AutomationServer` is registered once in `[autoload]`:
+
+```
+AutomationServer="*res://addons/godot_e2e/automation_server.gd"
+```
 
 ## godot-mcp (Runtime Debug Server)
 
@@ -77,4 +104,6 @@ godot --headless --quit 2>&1
 No `SCRIPT ERROR:` lines means success. Common errors:
 - `World` class not found → gecs not installed or not enabled
 - `GdUnitRunner` error → gdUnit4 version mismatch with Godot version
+- `GdUnitTestCIRunner` not found -> reinstall the gdUnit4 addon-only
+  directory and run `godot --headless --import`
 - `AutomationServer` error → godot-e2e plugin not enabled or addon files missing

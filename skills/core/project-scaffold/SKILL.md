@@ -159,9 +159,9 @@ After all files are written, tell the user what to do next:
    (prompts for Godot executable path on first run), and creates
    `.godotmaker/config.yaml` with default project settings.
 
-2. **Install addons** — pick the row matching your Godot version from
-   `.claude/config/addon_versions.json` (the source of truth for repo
-   + tag + install path), then clone each into the listed install path:
+2. **Install addons** — pick the row matching your Godot version from the
+   active runtime's `config/addon_versions.json` (the source of truth for repo,
+   tag, and install path), then install addon-only directories:
    - gecs -> `addons/gecs/`
    - gdUnit4 -> `addons/gdUnit4/`
    - godot_e2e -> `addons/godot_e2e/`
@@ -169,7 +169,7 @@ After all files are written, tell the user what to do next:
    `tools/check_project.py --e2e` and the gm-* skills expect those
    exact paths (note `gdUnit4/` is capital U — matches the upstream
    repo layout). See `references/addons.md` for the step-by-step
-   clone commands.
+   installation contract.
 
 3. **Register godot-mcp** for runtime debugging:
    ```bash

@@ -42,7 +42,7 @@ Scaffold is **lifetime-once** — its event gets cleared after each tag's finali
 1. **Do NOT design the game here.**
 2. **Use fixed 2D defaults.** Use the project-scaffold default viewport (`1280x720`) and rendering method.
 3. **Do NOT create Component/System stubs.**
-4. **All addons MUST come from `.claude/config/addon_versions.json`** — do not guess versions.
+4. **All addons MUST come from the active runtime's `config/addon_versions.json`** — do not guess versions.
 5. **Initial git commit is mandatory and must include import metadata.** Run `<godot_path> --headless --import` before the commit and include generated `.uid` files.
 
 ## Scaffold Steps
@@ -81,23 +81,23 @@ The remaining items in project-scaffold belong to other parts of the pipeline:
 | Post-Scaffold publish (Step 5) | already done by `tools/publish.py` before scaffold runs |
 | Addon install | step 2b below |
 
-### 2b. Install addons and enable godot-e2e plugin
+### 2b. Install addon-only directories
 
-For each entry in `.claude/config/addon_versions.json` matching the chosen
-Godot version, clone the repo at the listed tag into the listed `install_path`:
+Install required addons from the active runtime's `config/addon_versions.json`.
+Follow `project-scaffold/references/addons.md`.
 
-- `addons/gecs/` (csprance/gecs)
-- `addons/gdUnit4/` (MikeSchulze/gdUnit4)
-- `addons/godot_e2e/` (RandallLiuXin/godot-e2e)
+Required result:
 
-Then enable each addon in `[editor_plugins]` of `project.godot` by
-listing its `plugin.cfg` (consult the `plugin: true|false` flag in
-`addon_versions.json` — at the time of writing, gecs / gdUnit4 /
-godot-e2e are all plugin-enabled).
+1. `addons/gecs/plugin.cfg`
+2. `addons/gdUnit4/plugin.cfg`
+3. `addons/gdUnit4/bin/GdUnitCmdTool.gd`
+4. `addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd`
+5. `addons/godot_e2e/plugin.cfg`
+6. `addons/godot_e2e/automation_server.gd`
+7. no `addons/*/project.godot`
 
-Ensure `AutomationServer` is registered once in `[autoload]` for
-`res://addons/godot_e2e/automation_server.gd`; do not add a second entry
-if the template or plugin already registered it.
+Then enable plugin entries in `project.godot` and register
+`AutomationServer`.
 
 `.godotmaker/config.yaml` is created by `tools/publish.py` before this skill
 runs — verify it exists and move on.
@@ -168,6 +168,10 @@ python tools/check_project.py <project_dir> --build
 
 - `project.godot` exists with `[application]`
 - `addons/gecs/`, `addons/gdUnit4/`, `addons/godot_e2e/` present
+- each required addon has `plugin.cfg`
+- no required addon contains a nested `project.godot`
+- `addons/gdUnit4/bin/GdUnitCmdTool.gd` and
+  `addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd` exist
 - `godot-e2e` plugin enabled in `[editor_plugins]`
 - `AutomationServer` autoload registered for `godot-e2e`
 - `e2e/conftest.py` imports `GodotE2E`
@@ -176,9 +180,7 @@ python tools/check_project.py <project_dir> --build
   (godot_path read from `.claude/godotmaker.yaml`, validated at publish time)
 
 All entries must report `[PASS]` for scaffold to be considered done.
-If `.claude/godotmaker.yaml` lacks `godot_path` the headless check
-emits `[FAIL]` because headless parse is part of the build gate. Re-run
-`tools/publish.py` to set the path.
+If `.claude/godotmaker.yaml` lacks `godot_path`, re-run `tools/publish.py`.
 
 ## Available Skills & Tools
 

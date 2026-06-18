@@ -68,7 +68,24 @@ def find_gd_files(project_dir: Path, pattern: str) -> list[Path]:
     return results
 
 
-SCAFFOLD_REQUIRED_ADDONS = ("gecs", "gdUnit4", "godot_e2e")
+SCAFFOLD_ADDON_CONTRACTS = {
+    "gecs": {
+        "path": "addons/gecs",
+        "required_files": ("plugin.cfg",),
+    },
+    "gdUnit4": {
+        "path": "addons/gdUnit4",
+        "required_files": (
+            "plugin.cfg",
+            "bin/GdUnitCmdTool.gd",
+            "src/core/runners/GdUnitTestCIRunner.gd",
+        ),
+    },
+    "godot_e2e": {
+        "path": "addons/godot_e2e",
+        "required_files": ("plugin.cfg", "automation_server.gd"),
+    },
+}
 
 
 def _run_headless_godot(godot_path: str, project_dir: Path
@@ -91,7 +108,7 @@ def check_build(project_dir: Path, result: CheckResult):
 
     Verifies (in order):
       1. project.godot exists with `[application]`.
-      2. addons/gecs, addons/gdUnit4, addons/godot_e2e directories.
+      2. addons/gecs, addons/gdUnit4, addons/godot_e2e addon shapes.
       3. godot-e2e plugin enabled in `[editor_plugins]`.
       4. AutomationServer autoload registered for godot-e2e.
       5. e2e/conftest.py imports GodotE2E.
@@ -114,13 +131,28 @@ def check_build(project_dir: Path, result: CheckResult):
     else:
         result.fail("project.godot missing [application] section")
 
-    # 2. Required addon directories
-    for addon in SCAFFOLD_REQUIRED_ADDONS:
-        addon_dir = project_dir / "addons" / addon
-        if addon_dir.exists():
-            result.ok(f"addons/{addon}/ present")
+    # 2. Required addon directories and addon-only shape
+    for addon, contract in SCAFFOLD_ADDON_CONTRACTS.items():
+        addon_path = contract["path"]
+        addon_dir = project_dir / addon_path
+        if addon_dir.is_dir():
+            result.ok(f"{addon_path}/ present")
         else:
-            result.fail(f"addons/{addon}/ missing")
+            result.fail(f"{addon_path}/ missing")
+            continue
+
+        if (addon_dir / "project.godot").exists():
+            result.fail(
+                f"{addon_path}/ contains nested project.godot; "
+                "install the addon subdirectory, not the full repository"
+            )
+
+        for rel_path in contract["required_files"]:
+            expected = addon_dir / rel_path
+            if expected.is_file():
+                result.ok(f"{addon_path}/{rel_path} present")
+            else:
+                result.fail(f"{addon_path}/{rel_path} missing")
 
     # 3. godot-e2e plugin enabled
     if "godot_e2e/plugin.cfg" in content or "godot-e2e/plugin.cfg" in content:

@@ -32,6 +32,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Fixed scaffold addon validation so full repository checkouts inside
+  `addons/*` are rejected before they can break Godot class scanning.
 - Fixed OpenCode subagents so delegated roles inherit the active session model correctly.
 - Fixed OpenCode worker deadlocks by publishing explicit external-directory
   permissions for subagents.
