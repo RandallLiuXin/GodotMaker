@@ -97,6 +97,11 @@ runner hook 入口读取 stdout 来做决策，不使用退出码来执行拦截
 
 `agent_id` 对主 Agent 为空，对子 Agent 为非空。Hook 通过这一字段区分角色技能和其 worker。
 
+不同 runner 的 payload 不完全一致。Claude Code 和 Codex 提供 Claude-style
+`agent_id`、`SubagentStart` 和 `SubagentStop` payload。OpenCode 使用 adapter
+plugin，不暴露同等的子 Agent 生命周期 payload；依赖这些字段的 hook 必须明确只支持
+Claude Code / Codex，或提供显式的 OpenCode fallback。
+
 ---
 
 ## 现有 Hook 概览

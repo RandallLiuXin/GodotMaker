@@ -9,6 +9,12 @@ Hook registration is runner-specific:
 `agent-runtimes/opencode/plugins/godotmaker-hooks.js` as an adapter plugin.
 The scripts are deployed to `.godotmaker/hooks/` via publish.
 
+OpenCode uses a degraded adapter for runner-level hooks; see the OpenCode
+runtime provider docs for its subagent permission boundary.
+In the inventory below, `SubagentStart` and `SubagentStop` entries apply to
+Claude Code / Codex hook payloads; the OpenCode adapter does not emit those
+Claude-style lifecycle events.
+
 ---
 
 ## Hook Inventory
@@ -19,9 +25,9 @@ The scripts are deployed to `.godotmaker/hooks/` via publish.
 | `check_file_permissions.py` | PreToolUse | Write\|Edit | Yes | Per-role write rules driven by `.godotmaker/current_role` |
 | `stage_reminder.py` | PreToolUse | Write\|Edit | Yes | Detect `stage.jsonl` appends, validate role outputs, inject next-role reminder |
 | `check_stage_prerequisites.py` | PreToolUse | Agent | Yes | Before worker dispatch, verify the prerequisite role completed and its outputs exist |
-| `check_asset_access.py` | PreToolUse | Read | Yes | During an active role, block the main agent from reading image files in `assets/` |
-| `log_subagent.py` | SubagentStart | — | No | Record subagent start metrics (role detection, agent_id) |
-| `on_subagent_stop.py` | SubagentStop | — | Yes | Dispatcher: serialise `log_subagent.handle_stop` + `check_worker_report` to avoid metrics-file race |
+| `check_asset_access.py` | PreToolUse | Read | Yes | During an active role, block the main/root agent from reading image files in `assets/` |
+| `log_subagent.py` | SubagentStart | — | No | Claude Code / Codex: record subagent start metrics (role detection, agent_id). OpenCode does not emit this lifecycle hook. |
+| `on_subagent_stop.py` | SubagentStop | — | Yes | Claude Code / Codex: serialise `log_subagent.handle_stop` + `check_worker_report` to avoid metrics-file race. OpenCode does not emit this lifecycle hook. |
 | `check_completion.py` | Stop | — | Yes | Final gate: for `build` / `fixgap` only, blocks if workers were dispatched without verifier + reviewer |
 
 ---
@@ -64,6 +70,11 @@ During an active pipeline role, general subagents are blocked from `e2e/`
 and from planning docs (`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` /
 `GAP.md`). `asset-producer` may write `assets/`, `references/`, and
 `.godotmaker/asset-generation/`.
+
+Runner note: this subagent write gate requires a runtime-provided `agent_id`.
+OpenCode child sessions do not expose that payload, so the OpenCode adapter
+does not run this Python subagent write gate for child sessions; it relies on
+OpenCode-native agent edit permissions for that boundary.
 
 When no role is set, no `/gm-*` pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
@@ -131,8 +142,10 @@ Blocks the main agent from reading image files in `assets/` only while a
 pipeline role is active (`.godotmaker/current_role` exists).
 Image extensions: .png, .jpg, .jpeg, .svg, .webp, .gif, .bmp, .tga.
 
-Regular conversations with no active role are allowed. Subagents (analyst) are
-allowed. Non-image files (.json, .ogg) are allowed.
+Regular conversations with no active role are allowed. Subagents are allowed
+when the runtime provides a subagent identity. OpenCode child sessions do not
+expose the same `agent_id` payload, so its adapter keeps this gate on the root
+stage session only. Non-image files (.json, .ogg) are allowed.
 
 Purpose: force the main agent to delegate asset analysis to the analyst
 subagent instead of consuming context with raw image data.
@@ -141,6 +154,9 @@ subagent instead of consuming context with raw image data.
 
 **Event:** SubagentStart (and called by `on_subagent_stop.py` for SubagentStop)
 **Blocks:** Never
+
+Runner support: Claude Code / Codex only. The OpenCode adapter does not emit
+Claude-style subagent lifecycle hooks.
 
 **SubagentStart:** Detects role and records `SUBAGENT_START` metric with
 `agent_id`, `agent_type`, `role`, `description`.
@@ -169,6 +185,9 @@ events: `WORKER_DONE`, `VERIFIER_PASS`, etc.
 
 **Event:** SubagentStop
 **Blocks:** Yes (delegates to `check_worker_report`)
+
+Runner support: Claude Code / Codex only. The OpenCode adapter does not emit
+Claude-style subagent lifecycle hooks.
 
 Single dispatcher for the `SubagentStop` event. Reads stdin once and runs
 serially:
@@ -262,10 +281,10 @@ PreToolUse(Read)
   └── check_asset_access.py (block main agent from reading assets/ images)
 
 SubagentStart
-  └── log_subagent.py (record start + role)
+  └── log_subagent.py (Claude Code / Codex: record start + role)
 
 SubagentStop
-  └── on_subagent_stop.py (serial: log_subagent.handle_stop → check_worker_report)
+  └── on_subagent_stop.py (Claude Code / Codex: serial report gate)
 
 Stop
   └── check_completion.py (build/fixgap diligence check only; no-op for other roles)

@@ -31,6 +31,25 @@ and `asset_producer_model`, currently apply to Claude Code projects and do not
 override OpenCode subagent models. Start the OpenCode session with the model you
 want delegated roles to use.
 
+## Hooks and permissions
+
+OpenCode does not expose the same subagent lifecycle payloads as Claude Code.
+GodotMaker therefore does not treat OpenCode hooks as full Claude Code hook
+parity.
+
+The OpenCode adapter still runs root-stage and lifecycle gates, including
+stage prerequisites, completion checks, clean-workspace checks, session start,
+and compaction metrics. Known child-session read/write operations are not
+passed through GodotMaker's `agent_id`-based Python subagent gates because
+OpenCode does not expose the same subagent identity payload.
+
+Subagent write boundaries are handled by OpenCode-native
+`.opencode/agents/*.md` `permission` frontmatter. Read-only review-style
+agents such as `reviewer`, `verifier`, and `gdd-auditor` are published with
+`permission.edit: deny`; implementation agents such as `worker` keep the edit
+permissions they need to do their assigned work. This only covers edit
+permissions; it is not a replacement for Claude-style read-access hooks.
+
 ## Image and VQA
 
 OpenCode support does not use runtime-native image generation or image

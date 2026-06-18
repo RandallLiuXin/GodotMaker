@@ -100,6 +100,12 @@ pipeline by crashing.
 
 `agent_id` is empty for the main agent and non-empty for sub-agents. This is how hooks distinguish between the role skill and its workers.
 
+Runner payloads are not identical. Claude Code and Codex provide
+Claude-style `agent_id`, `SubagentStart`, and `SubagentStop` payloads.
+OpenCode uses an adapter plugin and does not expose the same subagent
+lifecycle payloads, so hooks that depend on those fields must either declare
+Claude Code / Codex support only or provide an explicit OpenCode fallback.
+
 ---
 
 ## Existing hooks

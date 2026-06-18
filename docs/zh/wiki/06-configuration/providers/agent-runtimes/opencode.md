@@ -29,6 +29,22 @@ OpenCode 子 Agent 会继承当前父 OpenCode 会话的模型。`.godotmaker/co
 Claude Code 项目，不会覆盖 OpenCode 子 Agent 模型。请用你希望委派角色继承
 的模型启动 OpenCode 会话。
 
+## Hooks 和权限
+
+OpenCode 不暴露与 Claude Code 等价的子 Agent 生命周期 payload。因此，
+GodotMaker 不把 OpenCode hooks 视为完整的 Claude Code hook parity。
+
+OpenCode adapter 仍会运行主阶段和生命周期 gate，包括阶段前置检查、完成检查、
+工作区清洁检查、会话启动和 compaction 指标。已知的子会话读写操作不会再进入
+GodotMaker 基于 `agent_id` 的 Python 子 Agent gate，因为 OpenCode 不暴露
+同等的子 Agent 身份 payload。
+
+子 Agent 的写入边界由 OpenCode 原生的 `.opencode/agents/*.md`
+`permission` frontmatter 处理。`reviewer`、`verifier`、`gdd-auditor`
+这类只读审查角色会发布为 `permission.edit: deny`；`worker` 这类实现角色
+保留完成任务所需的编辑权限。这个边界只覆盖 edit permission；它不是
+Claude-style 读取访问 hook 的替代品。
+
 ## 图片和 VQA
 
 OpenCode 支持不使用 runtime 原生生图或读图能力。运行完整流水线前，请把这两个字段

@@ -563,11 +563,11 @@ def publish_directory(
     print(f"Published {label} ({count} files)")
 
 
-def _ensure_frontmatter_scalar(text: str, key: str, value: str) -> str:
-    """Set a simple top-level YAML frontmatter scalar."""
+def _split_frontmatter(text: str) -> tuple[list[str] | None, str]:
+    """Return YAML frontmatter lines and markdown body."""
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
-        return text
+        return None, text
 
     end = None
     for i in range(1, len(lines)):
@@ -575,61 +575,67 @@ def _ensure_frontmatter_scalar(text: str, key: str, value: str) -> str:
             end = i
             break
     if end is None:
-        return text
+        return None, text
 
-    updated = False
-    for i in range(1, end):
-        stripped = lines[i].strip()
-        if not stripped or stripped.startswith("#") or ":" not in stripped:
-            continue
-        current_key = stripped.split(":", 1)[0].strip()
-        if current_key == key:
-            lines[i] = f"{key}: {value}"
-            updated = True
-            break
-
-    if not updated:
-        lines.insert(end, f"{key}: {value}")
-
-    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+    body = "\n".join(lines[end + 1:])
+    if text.endswith("\n"):
+        body += "\n"
+    return lines[1:end], body
 
 
-def _remove_frontmatter_scalar(text: str, key: str, value: str | None = None) -> str:
-    """Remove a simple top-level YAML frontmatter scalar."""
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return text
-
-    end = None
-    for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
-            end = i
-            break
-    if end is None:
-        return text
-
-    for i in range(1, end):
-        stripped = lines[i].strip()
-        if not stripped or stripped.startswith("#") or ":" not in stripped:
-            continue
-        current_key, current_value = stripped.split(":", 1)
-        if current_key.strip() != key:
-            continue
-        if value is not None and current_value.strip() != value:
-            continue
-        del lines[i]
-        return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
-
-    return text
+def _frontmatter_without_key(lines: list[str], key: str) -> list[str]:
+    """Remove a top-level scalar or simple block key from frontmatter."""
+    result: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if stripped and not line.startswith((" ", "\t")) and ":" in stripped:
+            current_key = stripped.split(":", 1)[0].strip()
+            if current_key == key:
+                i += 1
+                while i < len(lines) and lines[i].startswith((" ", "\t")):
+                    i += 1
+                continue
+        result.append(line)
+        i += 1
+    return result
 
 
-def render_agent_role_text(text: str, agent: str) -> str:
-    """Render a shared GodotMaker role definition for a selected runtime."""
-    if agent != AGENT_OPENCODE:
-        return text
+OPENCODE_AGENT_PERMISSION_POLICIES: dict[str, dict[str, object]] = {
+    # OpenCode uses one `edit` permission for write, edit, and apply_patch.
+    # These reviewer-style agents must not mutate project files.
+    "reviewer": {"edit": "deny"},
+    "verifier": {"edit": "deny"},
+    "gdd-auditor": {"edit": "deny"},
+}
 
-    rendered = _remove_frontmatter_scalar(text, "model", "inherit")
-    rendered = _ensure_frontmatter_scalar(rendered, "mode", "subagent")
+
+def _append_yaml_value(lines: list[str], key: str, value: object) -> None:
+    """Append a small YAML scalar or mapping value."""
+    if isinstance(value, dict):
+        lines.append(f"{key}:")
+        for child_key, child_value in value.items():
+            lines.append(f"  {child_key}: {child_value}")
+        return
+    lines.append(f"{key}: {value}")
+
+
+def render_opencode_agent_role_text(text: str, role_name: str) -> str:
+    """Render a shared role definition as an OpenCode native subagent."""
+    frontmatter, body = _split_frontmatter(text)
+    updated = list(frontmatter or [])
+    if frontmatter is None:
+        body = text
+    updated = _frontmatter_without_key(updated, "model")
+    updated = _frontmatter_without_key(updated, "mode")
+    updated = _frontmatter_without_key(updated, "permission")
+    _append_yaml_value(updated, "mode", "subagent")
+    permission = OPENCODE_AGENT_PERMISSION_POLICIES.get(role_name)
+    if permission:
+        _append_yaml_value(updated, "permission", permission)
+    rendered = "---\n" + "\n".join(updated) + "\n---\n" + body
+
     replacements = {
         ".claude/skills": ".opencode/skills",
         ".claude/agents": ".opencode/agents",
@@ -655,7 +661,11 @@ def publish_agents(repo_root: Path, agents_target: Path,
 
     count = 0
     for file in sorted(src.glob("*.md")):
-        rendered = render_agent_role_text(file.read_text(encoding="utf-8"), agent)
+        source = file.read_text(encoding="utf-8")
+        if agent == AGENT_OPENCODE:
+            rendered = render_opencode_agent_role_text(source, file.stem)
+        else:
+            rendered = source
         (agents_target / file.name).write_text(rendered, encoding="utf-8")
         count += 1
 

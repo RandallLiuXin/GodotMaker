@@ -8,6 +8,11 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 `agent-runtimes/opencode/plugins/godotmaker-hooks.js` 作为 adapter plugin。
 脚本通过发布流程部署到 `.godotmaker/hooks/`。
 
+OpenCode 使用降级版 runner hook adapter；它的子 Agent 权限边界见
+OpenCode runtime provider 文档。
+下方清单中的 `SubagentStart` 和 `SubagentStop` 适用于 Claude Code / Codex
+hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事件。
+
 ---
 
 ## Hook 清单
@@ -18,9 +23,9 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 | `check_file_permissions.py` | PreToolUse | Write\|Edit | 是 | 由 `.godotmaker/current_role` 驱动的角色与子代理写规则 |
 | `stage_reminder.py` | PreToolUse | Write\|Edit | 是 | 检测 `stage.jsonl` 追加操作，验证角色输出，注入下一角色提示 |
 | `check_stage_prerequisites.py` | PreToolUse | Agent | 是 | Worker 派发前，验证前置角色已完成且其产出存在 |
-| `check_asset_access.py` | PreToolUse | Read | 是 | 在活跃角色期间，阻止主代理读取 `assets/` 中的图片文件 |
-| `log_subagent.py` | SubagentStart | — | 否 | 记录子代理启动指标（角色检测、agent_id） |
-| `on_subagent_stop.py` | SubagentStop | — | 是 | 分发器：串行执行 `log_subagent.handle_stop` + `check_worker_report`，避免指标文件竞态 |
+| `check_asset_access.py` | PreToolUse | Read | 是 | 在活跃角色期间，阻止主代理/root session 读取 `assets/` 中的图片文件 |
+| `log_subagent.py` | SubagentStart | — | 否 | Claude Code / Codex：记录子代理启动指标（角色检测、agent_id）。OpenCode 不发出这个生命周期 hook。 |
+| `on_subagent_stop.py` | SubagentStop | — | 是 | Claude Code / Codex：串行执行 `log_subagent.handle_stop` + `check_worker_report`，避免指标文件竞态。OpenCode 不发出这个生命周期 hook。 |
 | `check_completion.py` | Stop | — | 是 | 最终门控：仅针对 `build` / `fixgap`，若派发了 Worker 但未运行 Verifier + Reviewer 则阻止结束 |
 
 ---
@@ -56,6 +61,10 @@ Hook 注册关系按 runner 分开维护：Claude Code 使用
 | `accept` / `finalize` | 除 `e2e/` 和游戏代码（`.gd` / `.tscn` / `.tres`）外的任何内容 |
 
 在流水线角色活跃期间，通用子代理会被阻止写入 `e2e/` 和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）。`asset-producer` 可以写入 `assets/`、`references/` 和 `.godotmaker/asset-generation/`。
+
+Runner 说明：这个子代理写入 gate 需要 runtime 提供 `agent_id`。OpenCode child
+session 不暴露该 payload，因此 OpenCode adapter 不会对 child session 运行这个
+Python 子代理写入 gate；该边界依赖 OpenCode 原生 agent edit permission。
 
 未设置角色时，表示当前没有活跃的 `/gm-*` 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。
 
@@ -109,7 +118,9 @@ Hook 还会重新验证前置角色在 `config/stage_schemas.json` 中的 `files
 仅在流水线角色活跃时（存在 `.godotmaker/current_role`），阻止主代理读取 `assets/` 中的图片文件。
 图片扩展名：.png、.jpg、.jpeg、.svg、.webp、.gif、.bmp、.tga。
 
-没有活跃角色的普通对话被允许。子代理（Analyst）被允许。非图片文件（.json、.ogg）被允许。
+没有活跃角色的普通对话被允许。runtime 提供子代理身份时，子代理被允许。
+OpenCode child session 不暴露同等的 `agent_id` payload，因此它的 adapter 只在
+root stage session 上保留这个 gate。非图片文件（.json、.ogg）被允许。
 
 目的：强制主代理将资源分析委托给 Analyst 子代理，而不是消耗上下文来读取原始图片数据。
 
@@ -117,6 +128,9 @@ Hook 还会重新验证前置角色在 `config/stage_schemas.json` 中的 `files
 
 **事件：** SubagentStart（以及 `on_subagent_stop.py` 调用它处理 SubagentStop）
 **是否阻止：** 从不
+
+Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-style
+子代理生命周期 hook。
 
 **SubagentStart：** 检测角色并记录 `SUBAGENT_START` 指标，包括 `agent_id`、`agent_type`、`role`、`description`。
 
@@ -135,6 +149,9 @@ Hook 还会重新验证前置角色在 `config/stage_schemas.json` 中的 `files
 
 **事件：** SubagentStop
 **是否阻止：** 是（委托给 `check_worker_report`）
+
+Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-style
+子代理生命周期 hook。
 
 `SubagentStop` 事件的单一分发器。读取一次 stdin 后串行运行：
 
@@ -210,10 +227,10 @@ PreToolUse(Read)
   └── check_asset_access.py (活跃角色期间阻止主代理读取 assets/ 中的图片)
 
 SubagentStart
-  └── log_subagent.py (记录启动 + 角色)
+  └── log_subagent.py (Claude Code / Codex：记录启动 + 角色)
 
 SubagentStop
-  └── on_subagent_stop.py (串行：log_subagent.handle_stop → check_worker_report)
+  └── on_subagent_stop.py (Claude Code / Codex：串行报告 gate)
 
 Stop
   └── check_completion.py (仅 build/fixgap 的严谨性检查；其他角色为空操作)

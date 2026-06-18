@@ -50,6 +50,34 @@ PRIMARY_ROLE_SKILLS = [
     "gm-finalize",
 ]
 
+def _parse_simple_frontmatter(content: str) -> dict:
+    lines = content.splitlines()
+    assert lines and lines[0] == "---"
+    end = lines.index("---", 1)
+    result: dict[str, object] = {}
+    i = 1
+    while i < end:
+        line = lines[i]
+        if not line.strip() or line.startswith((" ", "\t")):
+            i += 1
+            continue
+        key, raw_value = line.split(":", 1)
+        key = key.strip()
+        value = raw_value.strip()
+        if value:
+            result[key] = value
+            i += 1
+            continue
+        nested: dict[str, str] = {}
+        i += 1
+        while i < end and lines[i].startswith("  "):
+            child_key, child_value = lines[i].strip().split(":", 1)
+            nested[child_key.strip()] = child_value.strip()
+            i += 1
+        result[key] = nested
+    return result
+
+
 CODEX_RUNTIME_TEXT_SUFFIXES = {
     ".md",
     ".yaml",
@@ -940,8 +968,31 @@ class TestPublishAgents:
         assert publish_agents(repo, target, publish.AGENT_OPENCODE) == 1
 
         content = (target / "reviewer.md").read_text(encoding="utf-8")
-        assert "mode: subagent" in content
+        frontmatter = _parse_simple_frontmatter(content)
+        assert frontmatter["mode"] == "subagent"
+        assert frontmatter["permission"] == {"edit": "deny"}
         assert "model: inherit" not in content
+        assert ".opencode/skills/*/checklist.md" in content
+        assert ".claude/skills" not in content
+
+    def test_opencode_agent_without_frontmatter_keeps_readonly_permission(
+        self, tmp_path
+    ):
+        repo = tmp_path / "repo"
+        agents = repo / "agents"
+        agents.mkdir(parents=True)
+        (agents / "verifier.md").write_text(
+            "Read `.claude/skills/*/checklist.md`.\n",
+            encoding="utf-8",
+        )
+
+        target = tmp_path / "target" / ".opencode" / "agents"
+        assert publish_agents(repo, target, publish.AGENT_OPENCODE) == 1
+
+        content = (target / "verifier.md").read_text(encoding="utf-8")
+        frontmatter = _parse_simple_frontmatter(content)
+        assert frontmatter["mode"] == "subagent"
+        assert frontmatter["permission"] == {"edit": "deny"}
         assert ".opencode/skills/*/checklist.md" in content
         assert ".claude/skills" not in content
 
@@ -964,6 +1015,11 @@ class TestPublishAgents:
         content = (target / "worker.md").read_text(encoding="utf-8")
         assert "mode: subagent" not in content
         assert ".claude/godotmaker.yaml" in content
+
+        claude_target = tmp_path / "target" / ".claude" / "agents"
+        assert publish_agents(repo, claude_target, publish.AGENT_CLAUDE_CODE) == 1
+        claude_content = (claude_target / "worker.md").read_text(encoding="utf-8")
+        assert claude_content == content
 
 
 class TestDeployAgentInstructions:
@@ -1347,9 +1403,27 @@ class TestOpenCodePublishParity:
         reviewer = (target / ".opencode" / "agents" / "reviewer.md").read_text(
             encoding="utf-8"
         )
+        verifier = (target / ".opencode" / "agents" / "verifier.md").read_text(
+            encoding="utf-8"
+        )
+        gdd_auditor = (
+            target / ".opencode" / "agents" / "gdd-auditor.md"
+        ).read_text(encoding="utf-8")
 
-        assert "mode: subagent" in worker
-        assert "mode: subagent" in reviewer
+        worker_frontmatter = _parse_simple_frontmatter(worker)
+        reviewer_frontmatter = _parse_simple_frontmatter(reviewer)
+        verifier_frontmatter = _parse_simple_frontmatter(verifier)
+        auditor_frontmatter = _parse_simple_frontmatter(gdd_auditor)
+        assert worker_frontmatter["mode"] == "subagent"
+        assert reviewer_frontmatter["mode"] == "subagent"
+        assert verifier_frontmatter["mode"] == "subagent"
+        assert auditor_frontmatter["mode"] == "subagent"
+        assert "permission" not in worker_frontmatter
+        assert reviewer_frontmatter["permission"] == {"edit": "deny"}
+        assert verifier_frontmatter["permission"] == {"edit": "deny"}
+        assert auditor_frontmatter["permission"] == {"edit": "deny"}
+        assert "model" not in worker_frontmatter
+        assert "model" not in reviewer_frontmatter
         assert "model: inherit" not in worker
         assert "model: inherit" not in reviewer
         assert ".opencode/skills/*/checklist.md" in reviewer
@@ -1375,8 +1449,9 @@ class TestOpenCodePublishParity:
         assert '"tool.execute.after"' in content
         assert "check_file_permissions.py" in content
         assert "stage_reminder.py" in content
-        assert "on_subagent_stop.py" in content
-        assert "runStopHook" in content
+        assert "log_agent_tool.py" in content
+        assert "on_subagent_stop.py" not in content
+        assert "log_subagent.py" not in content
 
     def test_publish_agent_plugins_noops_for_non_plugin_runtimes(self, tmp_path):
         repo = Path(__file__).resolve().parents[2]

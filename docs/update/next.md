@@ -25,6 +25,9 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Downgraded OpenCode hook support to root-stage lifecycle gates plus
+  OpenCode-native subagent permissions, instead of claiming full Claude
+  Code-style subagent hook parity.
 - Updated README and wiki first-run docs to use the current `godotmaker-cli` command, runner selection flags, Node.js requirement, and project config flow.
 
 ## Fixed

@@ -149,18 +149,29 @@ function taskPayload(input, args) {
   return payload
 }
 
-function runPreToolHooks(projectRoot, input, output) {
+function runPreToolHooks(projectRoot, input, output, childSessions) {
   const tool = String(input.tool || "").toLowerCase()
   const args = asObject(output.args)
+  const isChildSession = childSessions.has(input.sessionID || "")
 
   if (tool === "write" || tool === "edit") {
+    // OpenCode tool hooks do not expose a reliable subagent identity.
     const payload = basePayload("PreToolUse", input, args)
-    runHook(projectRoot, "check_file_permissions.py", payload)
+    // Child sessions are governed by native `.opencode/agents/*.md` edit
+    // permissions. Running the Python role gate without an agent_id would
+    // misclassify the child as the root stage agent and block valid worker
+    // edits, but stage completion writes still need schema validation below.
+    if (!isChildSession) {
+      runHook(projectRoot, "check_file_permissions.py", payload)
+    }
     runHook(projectRoot, "stage_reminder.py", payload)
     return
   }
 
   if (tool === "read") {
+    // OpenCode child sessions do not expose the agent_id required by the
+    // Python asset-read gate. Keep the gate on the root stage session only.
+    if (isChildSession) return
     runHook(projectRoot, "check_asset_access.py", basePayload("PreToolUse", input, args))
     return
   }
@@ -169,12 +180,6 @@ function runPreToolHooks(projectRoot, input, output) {
     const payload = taskPayload(input, args)
     runHook(projectRoot, "check_stage_prerequisites.py", payload)
     runHook(projectRoot, "log_agent_tool.py", payload, { failOnNonZero: false })
-    runHook(projectRoot, "log_subagent.py", {
-      ...payload,
-      hook_event_name: "SubagentStart",
-      agent_id: input.callID || "",
-      agent_type: payload.agent_type || "",
-    }, { failOnNonZero: false })
   }
 }
 
@@ -194,13 +199,6 @@ function runPostToolHooks(projectRoot, input, output) {
     tool_response: response,
   }
   runHook(projectRoot, "log_agent_tool.py", payload, { failOnNonZero: false })
-  runHook(projectRoot, "on_subagent_stop.py", {
-    ...payload,
-    hook_event_name: "SubagentStop",
-    agent_id: input.callID || "",
-    agent_type: args.subagent_type || "",
-    last_assistant_message: response.output || "",
-  })
 }
 
 async function runSessionEventHooks(projectRoot, client, event, rootSessions) {
@@ -238,12 +236,19 @@ export const GodotMakerHooks = async (ctx) => {
   const projectRoot = ctx.directory
   const client = ctx.client
   const rootSessions = new Set()
+  const childSessions = new Set()
   return {
     event: async (input) => {
-      await runSessionEventHooks(projectRoot, client, input.event, rootSessions)
+      const event = input.event
+      if (event?.type === "session.created") {
+        const info = asObject(event?.properties?.info)
+        const sessionID = info.id || event?.properties?.sessionID || ""
+        if (info.parentID && sessionID) childSessions.add(sessionID)
+      }
+      await runSessionEventHooks(projectRoot, client, event, rootSessions)
     },
     "tool.execute.before": async (input, output) => {
-      runPreToolHooks(projectRoot, input, output)
+      runPreToolHooks(projectRoot, input, output, childSessions)
     },
     "tool.execute.after": async (input, output) => {
       runPostToolHooks(projectRoot, input, output)

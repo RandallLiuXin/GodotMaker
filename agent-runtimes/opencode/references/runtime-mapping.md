@@ -73,29 +73,23 @@ If OpenCode subagent execution is unavailable, use a sequential fallback only
 when the current stage explicitly allows the lead session to perform that role's
 work. Otherwise stop and report the missing capability before editing files.
 
-## MCP, Permissions, And Hooks
+## Runtime Boundaries
 
-- MCP: OpenCode must have a configured `godot` MCP server before stages that
-  depend on Godot MCP tools. If it is missing, stop with a setup handoff.
-- Permissions: unattended GodotMaker runs require OpenCode permissions that do
-  not deadlock on expected file edits, shell commands, git operations, and
-  Godot invocations. For OpenCode CLI runs, this normally means
-  `--dangerously-skip-permissions`.
-- Hooks: OpenCode uses `.opencode/plugins/godotmaker-hooks.js`, which publish
-  deploys from the OpenCode runtime package. The plugin adapts OpenCode
-  `tool.execute.before`, `tool.execute.after`, session, and compaction events
-  to GodotMaker's Python hook scripts under `.godotmaker/hooks`.
-- Lifecycle hooks are best-effort where OpenCode event semantics differ from
-  Claude Code. File gates, asset read gates, task dispatch gates, subagent
-  report gates, completion gates, and compaction metrics must still go through
-  the deployed plugin adapter.
+- Use the configured OpenCode `godot` MCP server for Godot operations. If it is
+  missing, stop with a setup handoff.
+- Root-stage hooks remain active through `.opencode/plugins/godotmaker-hooks.js`.
+- Child-session edit boundaries are governed by `.opencode/agents/*.md`
+  `permission` frontmatter, not by Claude-style `agent_id` hook payloads.
+- OpenCode child sessions do not provide the `agent_id` payload required by
+  GodotMaker's Python subagent read/write gates. Treat unsupported child-session
+  gates as degraded instead of claiming Claude Code hook parity.
 
 ## Image And VQA Capability
 
 OpenCode as a coding-agent runtime does not provide native image generation or
-native image inspection in the GodotMaker contract. If a project config selects
-`native` for `asset_image_model` or `vqa_model`, stop and ask the user to switch
-that field to `codex` or an API-backed selector before the dependent stage runs.
+native image inspection in the GodotMaker contract. If a dependent stage sees
+`native` for `asset_image_model` or `vqa_model`, stop and ask for `codex` or an
+API-backed selector.
 
 ## Unsupported Capability Rule
 
