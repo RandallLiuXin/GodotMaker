@@ -90,6 +90,115 @@ def test_check_build_fail_with_errors_and_locations():
     assert note is None
 
 
+def test_check_build_ignores_headless_shutdown_diagnostics():
+    output = "ERROR: 7 resources still in use at exit (run with --verbose for details).\n"
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout=output, returncode=0)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result == {"result": "pass", "errors": []}
+    assert note is None
+
+
+def test_check_build_shutdown_note_plus_real_error_fails():
+    output = (
+        "ERROR: 7 resources still in use at exit (run with --verbose for details).\n"
+        "ERROR: Failed loading resource: res://scenes/main.tscn.\n"
+    )
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout=output, returncode=0)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result["result"] == "fail"
+    assert result["errors"] == [{
+        "file": "",
+        "line": 0,
+        "message": "Failed loading resource: res://scenes/main.tscn.",
+    }]
+    assert note is None
+
+
+def test_check_build_shutdown_note_plus_nonzero_exit_fails():
+    output = "ERROR: 7 resources still in use at exit (run with --verbose for details).\n"
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout=output, returncode=1)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result["result"] == "fail"
+    assert result["errors"] == [{
+        "file": "",
+        "line": 0,
+        "message": "godot exited 1 without a recognized blocking diagnostic",
+    }]
+    assert note is None
+
+
+def test_check_build_script_error_still_fails():
+    output = (
+        "SCRIPT ERROR: Parse Error: Identifier 'BirdController' not declared.\n"
+        "   at: GDScript::reload (src/bird.gd:12)\n"
+    )
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stderr=output, returncode=0)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result["result"] == "fail"
+    assert result["errors"] == [{
+        "file": "src/bird.gd",
+        "line": 12,
+        "message": "Parse Error: Identifier 'BirdController' not declared.",
+    }]
+    assert note is None
+
+
+def test_check_build_unknown_error_with_zero_exit_fails():
+    output = "ERROR: Provider emitted an uncategorized runtime diagnostic.\n"
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stderr=output, returncode=0)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result["result"] == "fail"
+    assert result["errors"] == [{
+        "file": "",
+        "line": 0,
+        "message": "Provider emitted an uncategorized runtime diagnostic.",
+    }]
+    assert note is None
+
+
+def test_check_build_shader_error_with_zero_exit_fails():
+    output = (
+        "SHADER ERROR: Invalid shader code.\n"
+        "   at: GDScript::reload (res://shaders/card.gdshader:3)\n"
+    )
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stderr=output, returncode=0)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result["result"] == "fail"
+    assert result["errors"] == [{
+        "file": "res://shaders/card.gdshader",
+        "line": 3,
+        "message": "Invalid shader code.",
+    }]
+    assert note is None
+
+
+def test_check_build_unknown_error_with_nonzero_exit_fails():
+    output = "ERROR: Provider emitted an uncategorized runtime diagnostic.\n"
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stderr=output, returncode=1)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result["result"] == "fail"
+    assert result["errors"] == [{
+        "file": "",
+        "line": 0,
+        "message": "Provider emitted an uncategorized runtime diagnostic.",
+    }]
+    assert note is None
+
+
 def test_check_build_locations_are_scoped_to_each_error():
     """A GDScript location after ERROR_B must not be attributed to ERROR_A."""
     output = (
@@ -548,6 +657,29 @@ def test_build_report_all_pass_is_schema_valid(project_dir: Path):
     assert report["result"] == "pass"
     assert report["tooling_notes"] == []
     assert report["checks"]["lint"]["format_drift"] is None
+    assert validate_report(report) == []
+
+
+def test_build_report_shutdown_note_keeps_overall_pass(project_dir: Path):
+    base_fake = _fake_run_factory()
+
+    def fake_run(cmd, *args, **kwargs):
+        cmd_str = " ".join(str(c) for c in cmd)
+        if "GdUnitCmdTool" not in cmd_str and "check_project.py" not in cmd_str:
+            return _make_proc(
+                stdout=(
+                    "ERROR: 7 resources still in use at exit "
+                    "(run with --verbose for details).\n"
+                ),
+                returncode=0,
+            )
+        return base_fake(cmd, *args, **kwargs)
+
+    with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+        report = run_verify.build_report(project_dir)
+
+    assert report["result"] == "pass"
+    assert report["checks"]["build"] == {"result": "pass", "errors": []}
     assert validate_report(report) == []
 
 

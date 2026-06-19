@@ -44,6 +44,7 @@ from agent_runtime import (
     prefer_console_godot_path,
     read_godot_path,
 )
+from godot_output import classify_godot_headless_output
 
 
 # Same flags as gm-verify/SKILL.md Section 4. `--all` deliberately not
@@ -90,22 +91,14 @@ def _tooling_note(tool: str, crashed_on: str, error: str,
 # 1. Build
 # ---------------------------------------------------------------------------
 
-_BUILD_ERROR_LINE = re.compile(r"^\s*ERROR:\s+(.+)$", re.MULTILINE)
-_GD_LOC = re.compile(r"\s+at:\s+GDScript::\w+\s+\(([^:()]+):(\d+)\)")
-
-
-def _next_error_offset(text: str, start: int) -> int:
-    nxt = _BUILD_ERROR_LINE.search(text, start)
-    return nxt.start() if nxt else len(text)
-
-
 def check_build(godot_path: str, project_dir: Path
                 ) -> tuple[dict, dict | None]:
-    """Run `<godot_path> --headless --quit` and parse ERROR lines."""
+    """Run `<godot_path> --headless --quit` and parse blocking diagnostics."""
     try:
         proc = subprocess.run(
             [godot_path, "--headless", "--path", str(project_dir), "--quit"],
-            capture_output=True, text=True, timeout=BUILD_TIMEOUT,
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=BUILD_TIMEOUT,
         )
     except subprocess.TimeoutExpired:
         return (
@@ -130,16 +123,14 @@ def check_build(godot_path: str, project_dir: Path
         )
 
     combined = (proc.stdout or "") + (proc.stderr or "")
-    errors: list[dict] = []
-    for m in _BUILD_ERROR_LINE.finditer(combined):
-        bound = _next_error_offset(combined, m.end())
-        loc_match = _GD_LOC.search(combined, m.end(), bound)
-        entry: dict = {
-            "file": loc_match.group(1) if loc_match else "",
-            "line": int(loc_match.group(2)) if loc_match else 0,
-            "message": m.group(1).strip(),
-        }
-        errors.append(entry)
+    classified = classify_godot_headless_output(
+        combined,
+        returncode=proc.returncode,
+    )
+    errors = [
+        {"file": item.file, "line": item.line, "message": item.message}
+        for item in classified.blockers
+    ]
 
     result = "fail" if errors else "pass"
     return ({"result": result, "errors": errors}, None)
@@ -328,8 +319,14 @@ def check_unit_tests(godot_path: str, project_dir: Path
             "--report-directory", str(report_path),
         ]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True,
-                                  timeout=UNIT_TIMEOUT)
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=UNIT_TIMEOUT,
+            )
         except subprocess.TimeoutExpired:
             return (
                 {"result": "error", "passed": 0, "failed": 0, "failures": []},
@@ -458,8 +455,14 @@ def check_static(project_dir: Path) -> tuple[dict, dict | None]:
 
     cmd = [sys.executable, str(check_project), str(project_dir)] + STATIC_CHECK_FLAGS
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True,
-                              timeout=STATIC_TIMEOUT)
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=STATIC_TIMEOUT,
+        )
     except subprocess.TimeoutExpired:
         return (
             {"result": "error", "issues": []},

@@ -26,6 +26,7 @@ from agent_runtime import (
     prefer_console_godot_path,
     read_godot_path,
 )
+from godot_output import classify_godot_headless_output
 
 PLACEHOLDER_KEYWORDS = ["placeholder", "todo", "stub", "not implemented"]
 
@@ -98,7 +99,8 @@ def _run_headless_godot(godot_path: str, project_dir: Path
     """
     proc = subprocess.run(
         [godot_path, "--headless", "--path", str(project_dir), "--quit"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True, text=True, encoding="utf-8",
+        errors="replace", timeout=60,
     )
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
@@ -113,7 +115,7 @@ def check_build(project_dir: Path, result: CheckResult):
       4. AutomationServer autoload registered for godot-e2e.
       5. e2e/conftest.py imports GodotE2E.
       6. .git/ resolves HEAD (worker worktree isolation requires it).
-      7. `<godot_path> --headless --quit` exits 0 with no ERROR lines.
+      7. `<godot_path> --headless --quit` exits 0 with no blocking diagnostics.
          Missing `godot_path` is a FAIL because this is a build gate.
     """
     print("\n--- Build Readiness ---")
@@ -220,16 +222,21 @@ def check_build(project_dir: Path, result: CheckResult):
     except subprocess.TimeoutExpired:
         result.fail("godot --headless --quit did not finish within 60s")
         return
-    error_lines = [ln for ln in output.splitlines()
-                   if "ERROR" in ln.upper() and "0 ERROR" not in ln.upper()]
-    if rc == 0 and not error_lines:
-        result.ok("godot --headless --quit produces no ERROR lines")
-    elif error_lines:
-        result.fail(f"godot --headless produced {len(error_lines)} ERROR "
-                    f"line(s); first: {error_lines[0][:120]}")
-    else:
-        result.fail(f"godot --headless --quit exited {rc} (no ERROR lines "
-                    "but non-zero return — check for crashes / segfaults)")
+    classified = classify_godot_headless_output(output, returncode=rc)
+    if not classified.blockers:
+        result.ok("godot --headless --quit produced no blocking diagnostics")
+        if classified.shutdown_notes:
+            result.warn(
+                "godot --headless emitted shutdown notes; first: "
+                f"{classified.shutdown_notes[0][:120]}"
+            )
+    elif classified.blockers:
+        first = classified.blockers[0]
+        result.fail(
+            "godot --headless produced "
+            f"{len(classified.blockers)} blocking diagnostic(s); "
+            f"first: {first.message[:120]}"
+        )
 
 
 def check_ecs(project_dir: Path, result: CheckResult):

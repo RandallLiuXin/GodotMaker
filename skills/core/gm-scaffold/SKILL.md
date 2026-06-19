@@ -176,10 +176,10 @@ python tools/check_project.py <project_dir> --build
 - `AutomationServer` autoload registered for `godot-e2e`
 - `e2e/conftest.py` imports `GodotE2E`
 - `.git/` resolves `HEAD` (worker worktree isolation needs it)
-- `<godot_path> --headless --quit` exits 0 with no `ERROR` lines
-  (godot_path read from `.claude/godotmaker.yaml`, validated at publish time)
+- `<godot_path> --headless --quit` exits 0 with no blocking Godot diagnostics
 
-All entries must report `[PASS]` for scaffold to be considered done.
+The command must exit 0 with no `[FAIL]` entries for scaffold to be
+considered done. Shutdown-note `[WARN]` entries do not block scaffold.
 If `.claude/godotmaker.yaml` lacks `godot_path`, re-run `tools/publish.py`.
 
 ## Available Skills & Tools

@@ -45,8 +45,8 @@ What the script does:
 - Reads `godot_path` from `.claude/godotmaker.yaml`; falls back to
   plain `godot` from PATH. A missing or broken binary surfaces as a
   `tooling_notes[].suggested_fallback = "escalate"` entry.
-- Runs `<godot_path> --headless --quit` and parses `ERROR:` lines into
-  `checks.build.errors[]`.
+- Runs `<godot_path> --headless --quit` and writes blocking Godot diagnostics
+  to `checks.build.errors[]`.
 - Runs `<godot_path> --headless ... res://addons/gdUnit4/bin/GdUnitCmdTool.gd
   --ignoreHeadlessMode --add res://test/ --report-directory <temp>` and
   parses the generated JUnit XML into

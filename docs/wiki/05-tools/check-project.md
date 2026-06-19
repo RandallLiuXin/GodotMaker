@@ -17,7 +17,7 @@ python tools/check_project.py /path/to/my-game --all
 
 | Flag | What it checks |
 |------|---------------|
-| `--build` | `project.godot` exists and has a valid `[application]` section |
+| `--build` | `project.godot` exists, required addons are installed, git `HEAD` resolves, and Godot headless parse has no blocking diagnostics |
 | `--ecs` | The gecs addon is present; game code has Component and System files |
 | `--tests` | The gdUnit4 addon is present; every System has a matching unit test file |
 | `--e2e` | The godot-e2e plugin is enabled; `e2e/` has real test functions, not placeholders |
@@ -27,7 +27,11 @@ python tools/check_project.py /path/to/my-game --all
 
 ## What it catches
 
-**Build readiness** — confirms `project.godot` is present and structurally valid. A missing project file means Godot cannot open the project at all.
+**Build readiness** — confirms `project.godot` is present and structurally
+valid, required addons have the expected addon-only shape, git `HEAD`
+resolves, and `<godot_path> --headless --quit` has no blocking diagnostics.
+Godot shutdown notes are reported separately; other Godot diagnostics fail the
+check.
 
 **ECS setup** — confirms that `addons/gecs/` is installed and that your game actually has GDScript files that `extend Component` and `extend System`. A project with neither has not been built yet (or the build was interrupted).
 

@@ -81,15 +81,32 @@ def _seed_scaffolded_project(project_dir: str):
     )
 
 
-def _write_fake_godot(project_dir: str, *, name: str = "fake-godot") -> str:
+def _write_fake_godot(
+    project_dir: str,
+    *,
+    name: str = "fake-godot",
+    output: str = "",
+    returncode: int = 0,
+) -> str:
     if os.name == "nt":
         path = os.path.join(project_dir, f"{name}.cmd")
         with open(path, "w", encoding="utf-8") as f:
-            f.write("@echo off\nexit /B 0\n")
+            lines = ["@echo off"]
+            if output:
+                for line in output.splitlines():
+                    lines.append(f"echo {line}")
+            lines.append(f"exit /B {returncode}")
+            f.write("\n".join(lines) + "\n")
     else:
         path = os.path.join(project_dir, name)
         with open(path, "w", encoding="utf-8") as f:
-            f.write("#!/bin/sh\nexit 0\n")
+            lines = ["#!/bin/sh"]
+            if output:
+                for line in output.splitlines():
+                    escaped = line.replace("'", "'\"'\"'")
+                    lines.append(f"printf '%s\\n' '{escaped}'")
+            lines.append(f"exit {returncode}")
+            f.write("\n".join(lines) + "\n")
         os.chmod(path, 0o755)
     return path
 
@@ -303,6 +320,62 @@ class TestBuildCheck:
         assert code == 1
         assert "godot executable not found" in stdout
         assert ".agents" in stdout
+
+    def test_headless_shutdown_note_does_not_block_headless_parse(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+        fake_godot = _write_fake_godot(
+            project_dir,
+            output="ERROR: 7 resources still in use at exit (run with --verbose for details).",
+        )
+        _write_godot_config(project_dir, fake_godot)
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 0, stdout
+        assert "no blocking diagnostics" in stdout
+        assert "shutdown notes" in stdout
+
+    def test_headless_script_error_is_blocking(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+        fake_godot = _write_fake_godot(
+            project_dir,
+            output="SCRIPT ERROR: Parse Error: Identifier 'BirdController' not declared.",
+        )
+        _write_godot_config(project_dir, fake_godot)
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 1
+        assert "blocking diagnostic" in stdout
+        assert "BirdController" in stdout
+
+    def test_headless_unknown_error_is_blocking_even_with_zero_exit(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+        fake_godot = _write_fake_godot(
+            project_dir,
+            output="ERROR: Provider emitted an uncategorized runtime diagnostic.",
+        )
+        _write_godot_config(project_dir, fake_godot)
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 1
+        assert "blocking diagnostic" in stdout
+        assert "uncategorized runtime diagnostic" in stdout
+
+    def test_headless_shader_error_is_blocking_even_with_zero_exit(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+        fake_godot = _write_fake_godot(
+            project_dir,
+            output="SHADER ERROR: Invalid shader code.",
+        )
+        _write_godot_config(project_dir, fake_godot)
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 1
+        assert "blocking diagnostic" in stdout
+        assert "Invalid shader code" in stdout
 
 
 class TestEcsCheck:
