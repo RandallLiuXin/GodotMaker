@@ -17,12 +17,8 @@ $ARGUMENTS
 Read the path from the project's config file. This avoids hardcoding paths that differ per machine.
 
 ```bash
-# From a skill script:
-GODOT=$(bash "${CLAUDE_SKILL_DIR}/../_read_config.sh" godot_path)
-
-# Or parse directly — .claude/godotmaker.yaml contains:
-#   godot_path: "C:/path/to/Godot.exe"
-# Fall back to "godot" if config is missing.
+# From the project root:
+python tools/agent_runtime.py godot_path
 ```
 
 ## 2. Run tests
@@ -31,16 +27,16 @@ The CLI runner across all supported versions (v4.x, v5.x, v6.x) is `addons/gdUni
 
 ```bash
 # Single file
-"$GODOT" --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+"<godot_path>" --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
   --add res://test/test_example.gd --ignoreHeadlessMode
 
 # Multiple files
-"$GODOT" --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+"<godot_path>" --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
   --add res://test/test_physics.gd --add res://test/test_spawner.gd \
   --ignoreHeadlessMode
 
 # All tests in a directory
-"$GODOT" --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+"<godot_path>" --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
   --add res://test/ --ignoreHeadlessMode
 ```
 
@@ -55,7 +51,7 @@ Notes:
 `GdUnitCmdTool.gd` supports C# test files too, but ensure `dotnet build` passes first — gdUnit4 runs compiled assemblies, not source files.
 
 ```bash
-dotnet build && "$GODOT" --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+dotnet build && "<godot_path>" --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
   --add res://test/csharp/TestExample.cs --ignoreHeadlessMode
 ```
 

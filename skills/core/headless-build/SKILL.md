@@ -15,8 +15,13 @@ Compile-check a Godot project. Fastest feedback loop: "did my code parse?"
 ## Run
 
 ```bash
-GODOT_PATH=$(bash "${CLAUDE_SKILL_DIR}/../_read_config.sh" godot_path)
-"${GODOT_PATH}" --headless --quit 2>&1
+python tools/agent_runtime.py godot_path
+```
+
+Then substitute the printed value for `<godot_path>`:
+
+```bash
+"<godot_path>" --headless --quit 2>&1
 ```
 
 Run from the project root (where `project.godot` lives). Should exit within 30 seconds.

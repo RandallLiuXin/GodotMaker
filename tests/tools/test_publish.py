@@ -639,6 +639,22 @@ class TestCreateProjectConfig:
         )
         assert agent_runtime.read_godot_path(tmp_path) == "/opt/opencode-godot"
 
+    def test_agent_runtime_cli_reads_config_from_project_subdir(
+        self, tmp_path, capsys
+    ):
+        create_project_config(tmp_path, publish.AGENT_OPENCODE)
+        (tmp_path / "project.godot").write_text("[application]\n", encoding="utf-8")
+        (tmp_path / ".opencode").mkdir()
+        (tmp_path / ".opencode" / "godotmaker.yaml").write_text(
+            "godot_path: /opt/opencode-godot\n", encoding="utf-8"
+        )
+        subdir = tmp_path / "src" / "systems"
+        subdir.mkdir(parents=True)
+        capsys.readouterr()
+
+        assert agent_runtime.main(["godot_path", "--project", str(subdir)]) == 0
+        assert capsys.readouterr().out.strip() == "/opt/opencode-godot"
+
     def test_default_config_template_is_valid_yaml(self):
         assert DEFAULT_CONFIG_TEMPLATE.exists(), "config.yaml.default template must exist"
         content = DEFAULT_CONFIG_TEMPLATE.read_text(encoding="utf-8")
@@ -1453,6 +1469,19 @@ class TestOpenCodePublishParity:
         assert "OpenCode" in content
         assert ".opencode/references/runtime-mapping.md" in content
         assert "CLAUDE.md" not in content
+
+    def test_opencode_runtime_test_skills_use_project_config_reader(
+        self, tmp_path, monkeypatch
+    ):
+        target = _publish_opencode_project(tmp_path, monkeypatch)
+
+        for skill_name in ("headless-build", "gdunit-driver"):
+            content = (
+                target / ".opencode" / "skills" / skill_name / "SKILL.md"
+            ).read_text(encoding="utf-8")
+            assert "python tools/agent_runtime.py godot_path" in content
+            assert "CLAUDE_SKILL_DIR" not in content
+            assert ".claude/godotmaker.yaml" not in content
 
     def test_opencode_publish_deploys_hook_adapter_plugin(
         self, tmp_path, monkeypatch
