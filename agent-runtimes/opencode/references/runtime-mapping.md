@@ -44,6 +44,14 @@ Project artifact paths are different: if a skill asks the stage to create or
 consume project assets such as `references/scene_<name>.png`, resolve those as
 project-root files.
 
+## Dot-Directory File Checks
+
+Do not use Glob to prove that a known dot-directory state file is missing.
+For exact paths such as `.godotmaker/evaluation.json`,
+`.godotmaker/verify_report.json`, `.godotmaker/stage.jsonl`, or
+`.opencode/godotmaker.yaml`, use direct Read when the file content is needed,
+or a shell existence check when only existence matters.
+
 ## Delegated Roles
 
 OpenCode project agents are published under `.opencode/agents/*.md`.

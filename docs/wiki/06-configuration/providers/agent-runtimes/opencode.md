@@ -23,6 +23,17 @@ agent: opencode
 OpenCode projects use `.opencode/skills`, `.opencode/agents`,
 `.opencode/templates`, `.opencode/references`, and `AGENTS.md`.
 
+## Known tool limitation
+
+OpenCode currently has a known file-discovery limitation for dot-directories
+such as `.godotmaker/` or `.opencode/`. GodotMaker publishes an OpenCode
+runtime workaround for project state files.
+
+- https://github.com/anomalyco/opencode/issues/11691
+- https://github.com/anomalyco/opencode/issues/10906
+
+Remove the workaround once OpenCode reliably discovers dot-directory files.
+
 ## Role models
 
 OpenCode subagents inherit the active parent OpenCode session model. The
@@ -42,6 +53,19 @@ stage prerequisites, completion checks, clean-workspace checks, session start,
 and compaction metrics. Known child-session read/write operations are not
 passed through GodotMaker's `agent_id`-based Python subagent gates because
 OpenCode does not expose the same subagent identity payload.
+
+This means OpenCode cannot currently reuse the full Claude Code / Codex
+subagent hook contract. Worker report lifecycle checks, subagent metrics, and
+Python read/write gates that depend on a stable subagent identity are degraded
+for OpenCode child sessions. Root-stage gates still run through the OpenCode
+adapter.
+
+Related upstream OpenCode issues:
+
+- https://github.com/anomalyco/opencode/issues/15403
+- https://github.com/anomalyco/opencode/issues/16626
+- https://github.com/anomalyco/opencode/issues/17412
+- https://github.com/anomalyco/opencode/issues/12566
 
 Subagent write boundaries are handled by OpenCode-native
 `.opencode/agents/*.md` `permission` frontmatter. Read-only review-style

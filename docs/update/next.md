@@ -45,5 +45,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
   all passed to the generation call instead of silently using only the first one.
 - Fixed OpenCode session-idle Stop hook handling so Stop hook block decisions
   are sent back to the active session instead of terminating the worker process.
+- Fixed OpenCode runtime guidance for dot-directory state files so agents do
+  not treat missing Glob results as authoritative for known project metadata.
 
 ## Removed
