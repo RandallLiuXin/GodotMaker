@@ -14,6 +14,12 @@ _GD_LOC = re.compile(r"\s+at:\s+[^()]+\((.+):(\d+)\)")
 _SHUTDOWN_NOTE_PATTERNS = (
     re.compile(r"\d+\s+resources?\s+still\s+in\s+use\s+at\s+exit", re.IGNORECASE),
     re.compile(r"Found\s+\d+\s+possible\s+orphan\s+nodes?\.?", re.IGNORECASE),
+    re.compile(r"ObjectDB\s+instances?\s+leaked\s+at\s+exit", re.IGNORECASE),
+    re.compile(r"Screen\s+index\s+\d+\s+is\s+invalid\.?", re.IGNORECASE),
+)
+
+_ENGINE_SOURCE_FILE = re.compile(
+    r"(?:^|[/\\])(?:core|drivers|editor|main|modules|platform|scene|servers)[/\\].+\.cpp$"
 )
 
 @dataclass(frozen=True)
@@ -38,6 +44,15 @@ def _is_shutdown_note(message: str) -> bool:
     return any(pattern.search(message) for pattern in _SHUTDOWN_NOTE_PATTERNS)
 
 
+def _diagnostic_location(loc_match: re.Match[str] | None) -> tuple[str, int]:
+    if not loc_match:
+        return "", 0
+    file = loc_match.group(1)
+    if _ENGINE_SOURCE_FILE.search(file.replace("\\", "/")):
+        return "", 0
+    return file, int(loc_match.group(2))
+
+
 def classify_godot_headless_output(
     output: str,
     *,
@@ -55,10 +70,11 @@ def classify_godot_headless_output(
             shutdown_notes.append(message)
             continue
 
+        file, line = _diagnostic_location(loc_match)
         blockers.append(GodotDiagnostic(
             message=message,
-            file=loc_match.group(1) if loc_match else "",
-            line=int(loc_match.group(2)) if loc_match else 0,
+            file=file,
+            line=line,
         ))
 
     if returncode != 0 and not blockers:

@@ -100,6 +100,37 @@ def test_check_build_ignores_headless_shutdown_diagnostics():
     assert note is None
 
 
+def test_check_build_ignores_headless_display_and_objectdb_noise():
+    output = (
+        "ERROR: Screen index 0 is invalid.\n"
+        "ERROR: ObjectDB instances leaked at exit (run with --verbose for details).\n"
+    )
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout=output, returncode=0)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result == {"result": "pass", "errors": []}
+    assert note is None
+
+
+def test_check_build_engine_cpp_location_remains_blocking_without_file_pointer():
+    output = (
+        "ERROR: Cannot open file 'res://bad_scene.tscn'.\n"
+        "   at: load (scene/resources/resource_format_text.cpp:123)\n"
+    )
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stderr=output, returncode=0)
+        result, note = run_verify.check_build("/usr/bin/godot", Path("/x"))
+
+    assert result["result"] == "fail"
+    assert result["errors"] == [{
+        "file": "",
+        "line": 0,
+        "message": "Cannot open file 'res://bad_scene.tscn'.",
+    }]
+    assert note is None
+
+
 def test_check_build_shutdown_note_plus_real_error_fails():
     output = (
         "ERROR: 7 resources still in use at exit (run with --verbose for details).\n"
@@ -566,6 +597,21 @@ def test_check_static_timeout_is_error():
     assert result["result"] == "error"
     assert result["issues"] == []
     assert note["tool"] == "check_project"
+
+
+def test_check_static_nonzero_without_fail_output_is_error():
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(
+            stderr="Traceback (most recent call last):\nImportError: broken\n",
+            returncode=2,
+        )
+        result, note = run_verify.check_static(Path("/x"))
+
+    assert result == {"result": "error", "issues": []}
+    assert note["tool"] == "check_project"
+    assert note["suggested_fallback"] == "escalate"
+    assert "exited with code 2" in note["error"]
+    assert "ImportError: broken" in note["error"]
 
 
 # ---------- godot_path resolution ----------

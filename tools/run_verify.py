@@ -483,6 +483,24 @@ def check_static(project_dir: Path) -> tuple[dict, dict | None]:
         else:
             issues.append({"check": "static_check", "detail": detail})
 
+    if proc.returncode != 0 and not issues:
+        excerpt = combined.strip()
+        if len(excerpt) > 800:
+            excerpt = excerpt[:797] + "..."
+        if not excerpt:
+            excerpt = "no stdout/stderr output"
+        return (
+            {"result": "error", "issues": []},
+            _tooling_note(
+                tool="check_project",
+                crashed_on=str(project_dir),
+                error=(
+                    f"check_project.py exited with code {proc.returncode} "
+                    f"without [FAIL] output: {excerpt}"
+                ),
+            ),
+        )
+
     result = "fail" if issues else "pass"
     return ({"result": result, "issues": issues}, None)
 

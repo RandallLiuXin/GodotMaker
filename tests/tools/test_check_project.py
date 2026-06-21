@@ -335,6 +335,25 @@ class TestBuildCheck:
         assert "no blocking diagnostics" in stdout
         assert "shutdown notes" in stdout
 
+    def test_headless_display_and_objectdb_noise_does_not_block_headless_parse(
+        self, project_dir
+    ):
+        _seed_scaffolded_project(project_dir)
+        fake_godot = _write_fake_godot(
+            project_dir,
+            output=(
+                "ERROR: Screen index 0 is invalid.\n"
+                "ERROR: ObjectDB instances leaked at exit (run with --verbose for details)."
+            ),
+        )
+        _write_godot_config(project_dir, fake_godot)
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 0, stdout
+        assert "no blocking diagnostics" in stdout
+        assert "shutdown notes" in stdout
+
     def test_headless_script_error_is_blocking(self, project_dir):
         _seed_scaffolded_project(project_dir)
         fake_godot = _write_fake_godot(

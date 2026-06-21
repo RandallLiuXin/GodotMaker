@@ -41,6 +41,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
   permissions for subagents.
 - Fixed headless-build and gdUnit guidance so workers read `godot_path` through
   the selected project-local agent config instead of Claude-specific paths.
+- Fixed verify static checks so `check_project.py` tool failures are reported as
+  tooling errors instead of static-check passes.
 - Fixed the API-backed OpenAI image provider so supported reference images are
   all passed to the generation call instead of silently using only the first one.
 - Fixed OpenCode session-idle Stop hook handling so Stop hook block decisions
