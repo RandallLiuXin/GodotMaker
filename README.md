@@ -69,13 +69,14 @@ cd my-game
 godotmaker-cli --agent claude-code
 ```
 
-Use `--agent codex` to run the same workflow through Codex:
+Use Codex or OpenCode for the same workflow:
 
 ```bash
 godotmaker-cli --agent codex
+godotmaker-cli --agent opencode
 ```
 
-The CLI drives the workflow from idea capture and GDD planning to a playable Godot prototype. Agent selection resolves in this order: `--agent`, project `.godotmaker/config.yaml`, CLI-global `~/.godotmaker/cli/config.yaml`, then the default runner. Advanced users can still run the underlying role commands directly in Claude Code (`/gm-*`) or Codex (`$gm-*`).
+The CLI drives the workflow from idea capture and GDD planning to a playable Godot prototype. Agent selection resolves in this order: `--agent`, project `.godotmaker/config.yaml`, CLI-global `~/.godotmaker/cli/config.yaml`, then the default runner. Advanced users can still run the underlying role commands directly in Claude Code (`/gm-*`), Codex (`$gm-*`), or OpenCode (`/gm-*`).
 
 For framework development:
 
@@ -91,12 +92,12 @@ python tools/check_env.py
 | Tool | Why |
 |---|---|
 | [Godot 4.5+](https://godotengine.org) | Runs the generated project |
-| [Claude Code](https://claude.ai/code) or [Codex](https://openai.com/codex/) | Agent runtime |
+| [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex/), or [OpenCode](https://opencode.ai/) | Agent runtime |
 | Node.js 22+ | Runs `godotmaker-cli` and Godot MCP tooling |
 | Python 3.10+ | Runs GodotMaker helper scripts |
 | Git 2.30+ | Enables local history and agent worktrees |
 
-You only need to set an API key when your project configuration selects an API provider. Image generation and visual QA can also use the selected agent runtime when the project is configured for runtime-native providers.
+You only need to set an API key when your project configuration selects an API provider. Image generation and visual QA can use runtime-native providers only when the selected agent runtime supports them; OpenCode projects should configure `codex` or API-backed image/VQA providers.
 
 ## Learn More
 
@@ -109,7 +110,7 @@ You only need to set an API key when your project configuration selects an API p
 
 ## Status
 
-GodotMaker is preparing for a public alpha under a source-available license. The CLI, Codex support, visual QA, and packaging workflow are evolving quickly.
+GodotMaker is preparing for a public alpha under a source-available license. The CLI, agent-runner support, visual QA, and packaging workflow are evolving quickly.
 
 Preview features and practical fallbacks:
 

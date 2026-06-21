@@ -26,13 +26,13 @@ GodotMaker turns a game idea into a playable Godot 4 prototype. The normal path 
 | Capability | What it means for you |
 |------------|----------------------|
 | **Bring an idea, not a finished spec** | Describe the game in natural language; GodotMaker helps turn it into a GDD and planning docs |
-| **Let the workflow keep moving** | A small prototype can take 3-5 hours of agent runtime, but you do not manually drive every role command |
+| **Let the workflow keep moving** | A small prototype can take 5-8 hours of agent runtime, but you do not manually drive every role command |
 | **Keep the local Godot project** | The generated code, scenes, assets, tests, screenshots, and reports live in your project folder |
 | **Get tested code by default** | Unit tests and end-to-end gameplay tests are written alongside game code |
 | **Use visual QA as feedback** | Automated screenshots and visual assessment turn UI and scene issues into fix tasks |
 | **Stay on a real engine** | The result lands in Godot, so you can keep debugging, extending, exporting, and shipping |
 
-Manual `/gm-*` role commands still exist for advanced users, debugging, and framework development. They are not the recommended first-run path.
+Manual `/gm-*` role commands still exist for advanced users, debugging, and framework development. They are not the recommended first-run path. The normal CLI path supports Claude Code, Codex, and OpenCode runners; see [Installation](01-getting-started/installation.md) for runner-specific setup notes.
 
 ## Project status
 

@@ -2,7 +2,7 @@
 
 This walkthrough takes you from a game idea to a playable Godot game. The normal path uses `godotmaker-cli`, which helps turn the idea into a GDD and then drives the workflow automatically until the current design scope is complete.
 
-**Time to expect:** a small game usually takes about **3-5 hours of agent runtime**. You do not need to supervise every step. Bring the idea, start the workflow, and review the playable result when it finishes.
+**Time to expect:** a small game usually takes about **5-8 hours of agent runtime**. You do not need to supervise every step. Bring the idea, start the workflow, and review the playable result when it finishes.
 
 Advanced users can still run the underlying `/gm-*` commands directly. This page focuses on the CLI path.
 
@@ -12,7 +12,7 @@ Complete [Installation](installation.md) first. You need:
 
 - `godotmaker-cli` installed
 - Godot, Git, Node.js, and Python available
-- one selected agent runtime installed and authenticated: Claude Code or Codex
+- one selected agent runtime installed and authenticated: Claude Code, Codex, or OpenCode
 - optional API keys only if your config selects API-backed providers
 
 ## Create a Game Folder
@@ -41,13 +41,16 @@ From the game folder:
 godotmaker-cli --agent claude-code
 ```
 
-Use Codex for the same project:
+Use Codex or OpenCode for the same project:
 
 ```bash
 godotmaker-cli --agent codex
+godotmaker-cli --agent opencode
 ```
 
 The CLI publishes the framework into the project if needed, creates the editable `.godotmaker/config.yaml` project config on first publish, helps capture the idea as a GDD, then drives planning, build, verification, evaluation, and fix loops until the current design scope is complete.
+
+OpenCode projects should configure image generation and visual QA to use `codex` or API-backed providers before running the full pipeline; OpenCode does not currently provide runtime-native image generation or image inspection for GodotMaker.
 
 ## What Happens During the Run
 

@@ -2,7 +2,7 @@
 
 这篇教程带你从一个游戏想法，走到一个可以运行的 Godot 游戏。正常路径使用 `godotmaker-cli`：它会协助把想法整理成 GDD，然后自动驱动工作流，直到当前设计范围完成。
 
-**大概要花多久：** 一个小型游戏通常需要 **3-5 小时 Agent 运行时间**。你不需要盯着每一步。带着想法来，启动工作流，结束后验收可运行结果。
+**大概要花多久：** 一个小型游戏通常需要 **5-8 小时 Agent 运行时间**。你不需要盯着每一步。带着想法来，启动工作流，结束后验收可运行结果。
 
 高级用户仍然可以直接运行底层 `/gm-*` 命令。本页聚焦 CLI 路径。
 
@@ -12,7 +12,7 @@
 
 - 已安装 `godotmaker-cli`
 - Godot、Git、Node.js、Python 可用
-- 已选择的 Agent runtime 已安装并登录
+- 已选择的 Agent runtime 已安装并登录：Claude Code、Codex 或 OpenCode
 - 只有当配置选择 API provider 时，才需要可选 API key
 
 ## 创建游戏文件夹
@@ -41,15 +41,18 @@ cd my-first-game
 godotmaker-cli --agent claude-code
 ```
 
-同一个项目也可以使用 Codex：
+同一个项目也可以使用 Codex 或 OpenCode：
 
 ```bash
 godotmaker-cli --agent codex
+godotmaker-cli --agent opencode
 ```
 
 CLI 会在需要时把框架发布进项目，协助把想法整理成 GDD，然后驱动规划、构建、验证、评估和修复循环，直到当前设计范围完成。
 
 第一次发布时，CLI 会创建 `.godotmaker/config.yaml`。继续运行前你可以打开它检查或修改 `agent`、角色模型、VQA 模型和素材生成模型。
+
+如果使用 OpenCode，请在完整运行前把图片生成和视觉 QA 配置为 `codex` 或 API 后端 provider；OpenCode 当前不提供 GodotMaker 可用的 runtime-native 生图或图片检查能力。
 
 ## 运行中会发生什么
 

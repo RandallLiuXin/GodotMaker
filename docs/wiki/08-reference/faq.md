@@ -10,7 +10,7 @@ No. GodotMaker is designed for people who have a game idea but are not game deve
 
 ### Do I need a paid API key?
 
-Only if your project config selects an API-backed provider. The default config uses native VQA and native image generation. `GOOGLE_API_KEY` or `GEMINI_API_KEY` is required for `gemini:<model>`, `OPENAI_API_KEY` for `openai:<model>`, and `XAI_API_KEY` for `grok:<model>`.
+Only if your project config selects an API-backed provider. Runtime-native image generation or VQA depends on the selected agent runtime; OpenCode projects should configure `codex` or API-backed image/VQA providers. `GOOGLE_API_KEY` or `GEMINI_API_KEY` is required for `gemini:<model>`, `OPENAI_API_KEY` for `openai:<model>`, and `XAI_API_KEY` for `grok:<model>`.
 
 Claude Code itself requires an Anthropic account with API access (or a Claude Pro / Team subscription with Claude Code enabled).
 
@@ -22,7 +22,7 @@ Godot 4.5 or later. GodotMaker does not support Godot 3.x or Godot 4.3 and below
 
 ### How long does it take to make a game?
 
-For a small game, expect roughly **3-5 hours of agent runtime**. Your own attention is usually front-loaded into clarifying the idea and later reviewing the result. After the design is clear, `godotmaker-cli` drives the same `/gm-*` roles through planning, build, verification, evaluation, screenshots, and fixes without you manually triggering every command. More ambitious games scale with the number of tasks in `PLAN.md`.
+For a small game, expect roughly **5-8 hours of agent runtime**. Your own attention is usually front-loaded into clarifying the idea and later reviewing the result. After the design is clear, `godotmaker-cli` drives the same `/gm-*` roles through planning, build, verification, evaluation, screenshots, and fixes without you manually triggering every command. More ambitious games scale with the number of tasks in `PLAN.md`.
 
 ### Can I use C# instead of GDScript?
 

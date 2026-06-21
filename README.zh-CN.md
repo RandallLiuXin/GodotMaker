@@ -69,13 +69,14 @@ cd my-game
 godotmaker-cli --agent claude-code
 ```
 
-如果要使用 Codex runner：
+同一个工作流也可以使用 Codex 或 OpenCode：
 
 ```bash
 godotmaker-cli --agent codex
+godotmaker-cli --agent opencode
 ```
 
-CLI 会从 idea 梳理和 GDD 规划开始驱动工作流，直到生成一个可玩的 Godot 原型。Agent 选择顺序是：`--agent`、项目 `.godotmaker/config.yaml`、CLI 全局配置 `~/.godotmaker/cli/config.yaml`、默认 runner。高级用户仍然可以直接在 Claude Code 中运行 `/gm-*`，或在 Codex 中运行 `$gm-*`。
+CLI 会从 idea 梳理和 GDD 规划开始驱动工作流，直到生成一个可玩的 Godot 原型。Agent 选择顺序是：`--agent`、项目 `.godotmaker/config.yaml`、CLI 全局配置 `~/.godotmaker/cli/config.yaml`、默认 runner。高级用户仍然可以直接在 Claude Code 中运行 `/gm-*`、在 Codex 中运行 `$gm-*`，或在 OpenCode 中运行 `/gm-*`。
 
 如果你要开发 GodotMaker 框架本身：
 
@@ -91,12 +92,12 @@ python tools/check_env.py
 | 工具 | 用途 |
 |---|---|
 | [Godot 4.5+](https://godotengine.org) | 运行生成出的项目 |
-| [Claude Code](https://claude.ai/code) 或 [Codex](https://openai.com/codex/) | Agent runtime |
+| [Claude Code](https://claude.ai/code)、[Codex](https://openai.com/codex/) 或 [OpenCode](https://opencode.ai/) | Agent runtime |
 | Node.js 22+ | 运行 `godotmaker-cli` 和 Godot MCP 工具 |
 | Python 3.10+ | 运行 GodotMaker 辅助脚本 |
 | Git 2.30+ | 提供本地历史和 Agent worktree |
 
-只有当项目配置选择 API provider 时，才需要设置对应 API key。native 图片或视觉路径可以使用你选择的 Agent runtime。
+只有当项目配置选择 API provider 时，才需要设置对应 API key。只有在当前 Agent runtime 支持时，图片生成和视觉 QA 才能走 runtime-native 路径；OpenCode 项目应配置为 `codex` 或 API 后端图片/VQA provider。
 
 ## 了解更多
 
@@ -109,7 +110,7 @@ python tools/check_env.py
 
 ## 状态
 
-GodotMaker 正在准备源码可见的 public alpha。CLI、Codex 支持、视觉 QA 和打包流程还会快速迭代。
+GodotMaker 正在准备源码可见的 public alpha。CLI、Agent runner 支持、视觉 QA 和打包流程还会快速迭代。
 
 抢鲜体验功能和建议备选方案：
 
