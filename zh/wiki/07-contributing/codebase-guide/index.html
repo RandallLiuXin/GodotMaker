@@ -2961,7 +2961,7 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── agent-runtimes/          runner 专属 reference、template 和 hook config
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── agent-runtimes/          runner 专属 reference、template、hook config 和 plugin adapter
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── tests/                   ~320 个 hook 和工具的单元测试
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
@@ -3030,9 +3030,9 @@
 </tr>
 </tbody>
 </table>
-<p>Hook 注册关系（哪个脚本响应哪个事件）存储在
-<code>agent-runtimes/&lt;agent&gt;/config/</code> 下，并发布到所选 runner 的项目级 hook
-配置（<code>.claude/settings.json</code> 或 <code>.codex/hooks.json</code>）。</p>
+<p>Hook 注册关系（哪个脚本响应哪个事件）按 runner 区分。Claude Code 和
+Codex 使用 <code>agent-runtimes/&lt;agent&gt;/config/</code> 下的配置文件；OpenCode 使用
+<code>agent-runtimes/opencode/plugins/godotmaker-hooks.js</code> 作为 plugin adapter。</p>
 <h3 id="hooksmetrics">hooks/metrics/<a class="headerlink" href="#hooksmetrics" title="Permanent link">&para;</a></h3>
 <p>一个用于记录会话期间发生事件的小型子系统。Hook 通过调用 <code>record_event()</code> 将 JSON 行追加到 <code>.godotmaker/metrics_current.jsonl</code>（当前会话）和 <code>.godotmaker/metrics_total.jsonl</code>（全量生命周期日志）。<code>state.py</code> 模块负责在 <code>.godotmaker/state.json</code> 中管理可变的会话内计数器（拦截次数等）。<code>session_start.py</code> 在每次新会话开始时重置两者。</p>
 <p>关于编写 hook 和使用 metrics API 的详细说明，请参阅 <a href="../writing-a-hook/">编写 Hook</a>。</p>
@@ -3229,7 +3229,7 @@
 <li>复制 tools → <code>&lt;target&gt;/tools/</code>。</li>
 <li>复制 templates 到所选 agent 的模板目录。</li>
 <li>复制 <code>config/stage_schemas.json</code> → <code>&lt;target&gt;/.godotmaker/stage_schemas.json</code>。</li>
-<li>首次安装（或使用 <code>--force</code>）时：写入对应 agent 的项目指令文件（<code>CLAUDE.md</code> 或 <code>AGENTS.md</code>），提示配置 <code>godotmaker.yaml</code>；Claude Code 目标还会写入 <code>.claude/settings.json</code>。</li>
+<li>首次安装（或使用 <code>--force</code>）时：写入对应 agent 的项目指令文件（<code>CLAUDE.md</code> 或 <code>AGENTS.md</code>），提示配置 <code>godotmaker.yaml</code>，并写入所选 runner 的 hook config 或 plugin adapter。</li>
 <li>将当前版本号写入 <code>&lt;target&gt;/.godotmaker/version</code>。</li>
 </ol>
 <hr />

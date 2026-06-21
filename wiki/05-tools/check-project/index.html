@@ -2657,7 +2657,7 @@
 <tbody>
 <tr>
 <td><code>--build</code></td>
-<td><code>project.godot</code> exists and has a valid <code>[application]</code> section</td>
+<td><code>project.godot</code> exists, required addons are installed, git <code>HEAD</code> resolves, and Godot headless parse has no blocking diagnostics</td>
 </tr>
 <tr>
 <td><code>--ecs</code></td>
@@ -2686,7 +2686,11 @@
 </tbody>
 </table>
 <h2 id="what-it-catches">What it catches<a class="headerlink" href="#what-it-catches" title="Permanent link">&para;</a></h2>
-<p><strong>Build readiness</strong> — confirms <code>project.godot</code> is present and structurally valid. A missing project file means Godot cannot open the project at all.</p>
+<p><strong>Build readiness</strong> — confirms <code>project.godot</code> is present and structurally
+valid, required addons have the expected addon-only shape, git <code>HEAD</code>
+resolves, and <code>&lt;godot_path&gt; --headless --quit</code> has no blocking diagnostics.
+Godot shutdown notes are reported separately; other Godot diagnostics fail the
+check.</p>
 <p><strong>ECS setup</strong> — confirms that <code>addons/gecs/</code> is installed and that your game actually has GDScript files that <code>extend Component</code> and <code>extend System</code>. A project with neither has not been built yet (or the build was interrupted).</p>
 <p><strong>Unit test coverage</strong> — checks that every System file has a corresponding test file. It looks for matches like <code>test_movement_system.gd</code>, <code>movement_system_test.gd</code>, or <code>testmovementsystem.gd</code>. Systems without tests are listed by name.</p>
 <p><strong>End-to-end tests</strong> — checks that <code>e2e/conftest.py</code> exists, that there are <code>test_*.py</code> files in the <code>e2e/</code> folder, and that those files contain real <code>def test_</code> functions and are not empty stubs. Placeholder files that are too short or contain "todo" / "stub" keywords trigger a warning.</p>

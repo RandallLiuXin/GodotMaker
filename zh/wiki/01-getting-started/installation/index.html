@@ -2754,14 +2754,14 @@
 <td>https://python.org/downloads</td>
 </tr>
 <tr>
-<td>Claude Code 或 Codex</td>
+<td>Claude Code、Codex 或 OpenCode</td>
 <td>最新版</td>
 <td>实现和评估游戏的 Agent runtime</td>
-<td>https://claude.ai/code 或 https://openai.com/codex/</td>
+<td>https://claude.ai/code、https://openai.com/codex/ 或 https://opencode.ai/</td>
 </tr>
 </tbody>
 </table>
-<p>先安装上面的工具，然后继续。Claude Code 和 Codex 不需要同时安装；选择一个已登录的 Agent runtime 即可。</p>
+<p>先安装上面的工具，然后继续。Claude Code、Codex 和 OpenCode 不需要同时安装；选择一个已登录的 Agent runtime 即可。</p>
 <h2 id="agent-runner">选择 Agent runner<a class="headerlink" href="#agent-runner" title="Permanent link">&para;</a></h2>
 <p>选择 Claude Code：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
@@ -2769,10 +2769,13 @@
 <p>选择 Codex：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
 </code></pre></div>
+<p>选择 OpenCode：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>opencode
+</code></pre></div>
 <p>Agent 选择优先级是：启动参数 <code>--agent</code>、项目 <code>.godotmaker/config.yaml</code>、CLI 全局配置、默认值。</p>
 <h2 id="api-key">API Key<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h2>
 <p>GodotMaker 可以根据 <code>.godotmaker/config.yaml</code> 使用 runtime 原生图片和视觉能力，或者使用 API 后端 provider。</p>
-<p>只有项目选择 API 后端 provider 时，才需要 API key。GodotMaker 本身不提供外部模型服务。如果你希望 Claude Code 项目由 Codex 负责生图，可以设置 <code>asset_image_model: codex</code>；这需要 Codex CLI 位于 PATH 中，不需要图片 API key。</p>
+<p>只有项目选择 API 后端 provider 时，才需要 API key。GodotMaker 本身不提供外部模型服务。如果你希望 Claude Code 或 OpenCode 项目由 Codex 负责生图，可以设置 <code>asset_image_model: codex</code>；这需要 Codex CLI 位于 PATH 中，不需要图片 API key。OpenCode 当前不默认使用 native 生图或 native VQA；运行完整流水线前，请把这些字段配置为 <code>codex</code> 或 API 后端 provider。</p>
 <table>
 <thead>
 <tr>
@@ -2800,32 +2803,32 @@
 </tbody>
 </table>
 <h3 id="windows-powershell">Windows PowerShell<a class="headerlink" href="#windows-powershell" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="no">[System.Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;GOOGLE_API_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;your-key-here&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="no">[System.Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;GOOGLE_API_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;your-key-here&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p>如果需要其他可选 key，替换变量名后重复执行。执行后关闭并重新打开终端。</p>
 <h3 id="macos-linux">macOS 或 Linux<a class="headerlink" href="#macos-linux" title="Permanent link">&para;</a></h3>
 <p>把需要的配置写入 shell profile，然后重启终端：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-key-here&quot;</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># Optional:</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># export OPENAI_API_KEY=&quot;your-key-here&quot;</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># export XAI_API_KEY=&quot;your-key-here&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-key-here&quot;</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># Optional:</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># export OPENAI_API_KEY=&quot;your-key-here&quot;</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># export XAI_API_KEY=&quot;your-key-here&quot;</span>
 </code></pre></div>
 <h2 id="godotmaker">安装 GodotMaker<a class="headerlink" href="#godotmaker" title="Permanent link">&para;</a></h2>
 <p>安装 CLI：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>godotmaker-cli
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>godotmaker-cli
 </code></pre></div>
 <p>确认 CLI 可用：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>godotmaker-cli<span class="w"> </span>--help
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>godotmaker-cli<span class="w"> </span>--help
 </code></pre></div>
 <p>如果你要开发 GodotMaker 框架本身，或者手动发布框架文件，克隆仓库：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/RandallLiuXin/GodotMaker.git
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nb">cd</span><span class="w"> </span>GodotMaker
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>tools/requirements.txt
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>python<span class="w"> </span>tools/check_env.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/RandallLiuXin/GodotMaker.git
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">cd</span><span class="w"> </span>GodotMaker
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>tools/requirements.txt
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>python<span class="w"> </span>tools/check_env.py
 </code></pre></div>
 <p>如果你从未设置过 Git 身份，运行：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;Your Name&quot;</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;you@example.com&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;Your Name&quot;</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;you@example.com&quot;</span>
 </code></pre></div>
 <h2 id="_3">环境检查是什么意思<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
 <p><code>python tools/check_env.py</code> 会检查本地工具和已选择的 provider。</p>

@@ -2663,6 +2663,11 @@
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>codex<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="nb">cd</span><span class="w"> </span>/path/to/my-game
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>codex
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># OpenCode</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>opencode<span class="w"> </span>/path/to/my-game
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nb">cd</span><span class="w"> </span>/path/to/my-game
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>opencode
 </code></pre></div>
 <p>Windows 上：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">python</span> <span class="n">tools</span><span class="p">\</span><span class="n">publish</span><span class="p">.</span><span class="n">py</span> <span class="n">C</span><span class="p">:\</span><span class="n">Games</span><span class="p">\</span><span class="n">my-game</span>
@@ -2723,13 +2728,14 @@
 </tr>
 </tbody>
 </table>
-<p>脚本还会为所选 agent 注册 <code>godot-mcp</code> 服务器（Claude Code 走 <code>claude mcp</code>，Codex 走 <code>codex mcp</code>）、在项目中尚无 git 仓库时自动初始化，并创建包含正确条目的 <code>.gitignore</code>。Codex 发布必须完成 MCP 注册，因为后续 GodotMaker 运行时依赖 Godot MCP 工具。</p>
+<p>脚本还会为所选 agent 注册 <code>godot-mcp</code> 服务器（Claude Code 走 <code>claude mcp</code>，Codex 走 <code>codex mcp</code>，OpenCode 走 <code>opencode mcp</code>）、在项目中尚无 git 仓库时自动初始化，并创建包含正确条目的 <code>.gitignore</code>。MCP 注册是必需的，因为后续 GodotMaker 运行时依赖 Godot MCP 工具。</p>
 <p>使用 <code>--agent codex</code> 时，agent 相关文件会改用 Codex 的项目本地布局：
 技能写入 <code>.agents/skills/</code>，模板和配置写入 <code>.agents/</code>，<code>godotmaker.yaml</code>
 位于 <code>.agents/godotmaker.yaml</code>，并创建 <code>AGENTS.md</code> 而不是 <code>CLAUDE.md</code>。
 Codex hook 注册写入 <code>.codex/hooks.json</code>。共享框架状态仍然位于
 <code>.godotmaker/</code>。Codex 的 approval 与 sandbox 策略由 Codex 运行时处理；
 publish 不会创建 <code>.agents/settings.json</code> 等价文件。</p>
+<p>使用 <code>--agent opencode</code> 时，agent 相关文件会改用 OpenCode 的项目本地布局：技能写入 <code>.opencode/skills/</code>，agent 定义写入 <code>.opencode/agents/</code>，模板和配置写入 <code>.opencode/</code>，<code>godotmaker.yaml</code> 位于 <code>.opencode/godotmaker.yaml</code>，并创建指向 OpenCode runtime mapping 的 <code>AGENTS.md</code>。OpenCode hook adapter 会写入 <code>.opencode/plugins/godotmaker-hooks.js</code>，并调用 <code>.godotmaker/hooks/</code> 中的共享 GodotMaker hook 脚本。</p>
 <h3 id="codex">Codex 权限<a class="headerlink" href="#codex" title="Permanent link">&para;</a></h3>
 <p>Codex 权限由 Codex 宿主进程控制，而不是由 <code>publish.py</code> 写入项目的文件控制。
 完整的 GodotMaker 流水线可能需要写入 Git 状态、创建或使用隔离工作区，并让
@@ -2785,11 +2791,12 @@ PATCH 和 MINOR 都会执行所有未应用的脚本。完整策略见
 <h2 id="_4">选项<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>codex<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>opencode<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 </code></pre></div>
 <p><code>--force</code> 同时做四件事：</p>
 <ol>
 <li>重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。</li>
-<li>即使你已自定义过所选 runner 的 hook config（<code>.claude/settings.json</code> 或 <code>.codex/hooks.json</code>），也会强制覆盖。</li>
+<li>即使你已自定义过所选 runner 的 hook config 或 adapter（<code>.claude/settings.json</code>、<code>.codex/hooks.json</code> 或 <code>.opencode/plugins/godotmaker-hooks.js</code>），也会强制覆盖。</li>
 <li>跳过 minor 和 major 升级的确认提示。</li>
 <li>允许降级。</li>
 </ol>
@@ -2809,11 +2816,11 @@ PATCH 和 MINOR 都会执行所有未应用的脚本。完整策略见
 <td>你可能添加了项目专属指令</td>
 </tr>
 <tr>
-<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code></td>
+<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code> / <code>.opencode/plugins/godotmaker-hooks.js</code></td>
 <td>你可能调整过 hook 行为</td>
 </tr>
 <tr>
-<td><code>.claude/godotmaker.yaml</code> / <code>.agents/godotmaker.yaml</code></td>
+<td><code>.claude/godotmaker.yaml</code> / <code>.agents/godotmaker.yaml</code> / <code>.opencode/godotmaker.yaml</code></td>
 <td>包含本机专属的 Godot 路径</td>
 </tr>
 <tr>

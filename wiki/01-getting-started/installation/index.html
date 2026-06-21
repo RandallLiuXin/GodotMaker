@@ -2754,23 +2754,31 @@
 <td>https://python.org/downloads</td>
 </tr>
 <tr>
-<td>Claude Code or Codex</td>
+<td>Claude Code, Codex, or OpenCode</td>
 <td>Latest</td>
 <td>Agent runtime used to implement and evaluate the game</td>
-<td>https://claude.ai/code or https://openai.com/codex/</td>
+<td>https://claude.ai/code, https://openai.com/codex/, or https://opencode.ai/</td>
 </tr>
 </tbody>
 </table>
-<p>Install each one, then continue. You only need one authenticated agent runtime for the first run: Claude Code or Codex.</p>
+<p>Install each one, then continue. You only need one authenticated agent runtime
+for the first run: Claude Code, Codex, or OpenCode.</p>
 <h2 id="choose-an-agent-runner">Choose an agent runner<a class="headerlink" href="#choose-an-agent-runner" title="Permanent link">&para;</a></h2>
 <p>GodotMaker is normally launched through <code>godotmaker-cli</code>. Pick the runner at launch time:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>opencode
 </code></pre></div>
 <p><code>--agent</code> is the safest way to switch runners for one run. If it is omitted, the CLI resolves the runner from the project config, then the CLI-global config, then the default runner.</p>
 <h2 id="api-keys">API Keys<a class="headerlink" href="#api-keys" title="Permanent link">&para;</a></h2>
 <p>GodotMaker can use runtime-native image and vision capabilities or API-backed providers depending on <code>.godotmaker/config.yaml</code>.</p>
-<p>API keys are required only when the project selects an API-backed provider. GodotMaker itself does not provide the external model service. If you want Codex to provide image generation in a Claude Code project, set <code>asset_image_model: codex</code>; this requires Codex CLI on PATH and does not require an image API key.</p>
+<p>API keys are required only when the project selects an API-backed provider.
+GodotMaker itself does not provide the external model service. If you want
+Codex to provide image generation in a Claude Code or OpenCode project, set
+<code>asset_image_model: codex</code>; this requires Codex CLI on PATH and does not
+require an image API key. OpenCode does not currently default to native image
+generation or native VQA; configure <code>codex</code> or an API-backed provider for those
+fields before running the full pipeline.</p>
 <table>
 <thead>
 <tr>

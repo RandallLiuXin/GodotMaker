@@ -2828,11 +2828,17 @@
 
 <h1 id="hooks-reference">Hooks Reference<a class="headerlink" href="#hooks-reference" title="Permanent link">&para;</a></h1>
 <p>Complete reference for all GodotMaker hooks. Hooks are Python scripts that run
-on Claude Code events to enforce pipeline rules.</p>
+on coding-agent runtime events to enforce pipeline rules.</p>
 <p>Hook registration is runner-specific:
 <code>agent-runtimes/claude-code/config/settings.json</code> for Claude Code and
-<code>agent-runtimes/codex/config/hooks.json</code> for Codex. The scripts are deployed to
-<code>.godotmaker/hooks/</code> via publish.</p>
+<code>agent-runtimes/codex/config/hooks.json</code> for Codex. OpenCode uses
+<code>agent-runtimes/opencode/plugins/godotmaker-hooks.js</code> as an adapter plugin.
+The scripts are deployed to <code>.godotmaker/hooks/</code> via publish.</p>
+<p>OpenCode uses a degraded adapter for runner-level hooks; see the OpenCode
+runtime provider docs for its subagent permission boundary.
+In the inventory below, <code>SubagentStart</code> and <code>SubagentStop</code> entries apply to
+Claude Code / Codex hook payloads; the OpenCode adapter does not emit those
+Claude-style lifecycle events.</p>
 <hr />
 <h2 id="hook-inventory">Hook Inventory<a class="headerlink" href="#hook-inventory" title="Permanent link">&para;</a></h2>
 <table>
@@ -2879,21 +2885,21 @@ on Claude Code events to enforce pipeline rules.</p>
 <td>PreToolUse</td>
 <td>Read</td>
 <td>Yes</td>
-<td>During an active role, block the main agent from reading image files in <code>assets/</code></td>
+<td>During an active role, block the main/root agent from reading image files in <code>assets/</code></td>
 </tr>
 <tr>
 <td><code>log_subagent.py</code></td>
 <td>SubagentStart</td>
 <td>—</td>
 <td>No</td>
-<td>Record subagent start metrics (role detection, agent_id)</td>
+<td>Claude Code / Codex: record subagent start metrics (role detection, agent_id). OpenCode does not emit this lifecycle hook.</td>
 </tr>
 <tr>
 <td><code>on_subagent_stop.py</code></td>
 <td>SubagentStop</td>
 <td>—</td>
 <td>Yes</td>
-<td>Dispatcher: serialise <code>log_subagent.handle_stop</code> + <code>check_worker_report</code> to avoid metrics-file race</td>
+<td>Claude Code / Codex: serialise <code>log_subagent.handle_stop</code> + <code>check_worker_report</code> to avoid metrics-file race. OpenCode does not emit this lifecycle hook.</td>
 </tr>
 <tr>
 <td><code>check_completion.py</code></td>
@@ -2965,6 +2971,10 @@ skill) and applies that role's write rules. Per-role summary:</p>
 and from planning docs (<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> /
 <code>GAP.md</code>). <code>asset-producer</code> may write <code>assets/</code>, <code>references/</code>, and
 <code>.godotmaker/asset-generation/</code>.</p>
+<p>Runner note: this subagent write gate requires a runtime-provided <code>agent_id</code>.
+OpenCode child sessions do not expose that payload, so the OpenCode adapter
+does not run this Python subagent write gate for child sessions; it relies on
+OpenCode-native agent edit permissions for that boundary.</p>
 <p>When no role is set, no <code>/gm-*</code> pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
 conversations in a GodotMaker project directory.</p>
@@ -3049,13 +3059,17 @@ not sub-subagent dispatches.</p>
 <p>Blocks the main agent from reading image files in <code>assets/</code> only while a
 pipeline role is active (<code>.godotmaker/current_role</code> exists).
 Image extensions: .png, .jpg, .jpeg, .svg, .webp, .gif, .bmp, .tga.</p>
-<p>Regular conversations with no active role are allowed. Subagents (analyst) are
-allowed. Non-image files (.json, .ogg) are allowed.</p>
+<p>Regular conversations with no active role are allowed. Subagents are allowed
+when the runtime provides a subagent identity. OpenCode child sessions do not
+expose the same <code>agent_id</code> payload, so its adapter keeps this gate on the root
+stage session only. Non-image files (.json, .ogg) are allowed.</p>
 <p>Purpose: force the main agent to delegate asset analysis to the analyst
 subagent instead of consuming context with raw image data.</p>
 <h3 id="log_subagentpy">log_subagent.py<a class="headerlink" href="#log_subagentpy" title="Permanent link">&para;</a></h3>
 <p><strong>Event:</strong> SubagentStart (and called by <code>on_subagent_stop.py</code> for SubagentStop)
 <strong>Blocks:</strong> Never</p>
+<p>Runner support: Claude Code / Codex only. The OpenCode adapter does not emit
+Claude-style subagent lifecycle hooks.</p>
 <p><strong>SubagentStart:</strong> Detects role and records <code>SUBAGENT_START</code> metric with
 <code>agent_id</code>, <code>agent_type</code>, <code>role</code>, <code>description</code>.</p>
 <p>Role detection order:
@@ -3079,6 +3093,8 @@ events: <code>WORKER_DONE</code>, <code>VERIFIER_PASS</code>, etc.</p>
 <h3 id="on_subagent_stoppy">on_subagent_stop.py<a class="headerlink" href="#on_subagent_stoppy" title="Permanent link">&para;</a></h3>
 <p><strong>Event:</strong> SubagentStop
 <strong>Blocks:</strong> Yes (delegates to <code>check_worker_report</code>)</p>
+<p>Runner support: Claude Code / Codex only. The OpenCode adapter does not emit
+Claude-style subagent lifecycle hooks.</p>
 <p>Single dispatcher for the <code>SubagentStop</code> event. Reads stdin once and runs
 serially:</p>
 <ol>
@@ -3174,10 +3190,10 @@ force-allow with a warning rather than re-block forever.</p>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  └── check_asset_access.py (block main agent from reading assets/ images)
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>SubagentStart
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  └── log_subagent.py (record start + role)
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  └── log_subagent.py (Claude Code / Codex: record start + role)
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>SubagentStop
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  └── on_subagent_stop.py (serial: log_subagent.handle_stop → check_worker_report)
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  └── on_subagent_stop.py (Claude Code / Codex: serial report gate)
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>Stop
 <a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  └── check_completion.py (build/fixgap diligence check only; no-op for other roles)

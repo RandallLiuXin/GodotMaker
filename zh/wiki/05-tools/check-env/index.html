@@ -1126,10 +1126,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#claude-code" class="md-nav__link">
+  <a href="#coding-agent" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Claude Code
+        所选 coding agent
       
     </span>
   </a>
@@ -2681,10 +2681,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#claude-code" class="md-nav__link">
+  <a href="#coding-agent" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Claude Code
+        所选 coding agent
       
     </span>
   </a>
@@ -2790,9 +2790,11 @@
 <li>Godot 4.5 或更高版本可通过 PATH 中的 <code>godot</code> 或 <code>godot4</code> 命令访问。</li>
 </ul>
 <p>如果 Godot 不在 PATH 中，这项检查会显示警告而非硬性失败——你仍可以在运行 <code>publish.py</code> 时手动输入可执行文件的完整路径，它会被保存到 <code>.claude/godotmaker.yaml</code> 供后续使用。</p>
-<h3 id="claude-code">Claude Code<a class="headerlink" href="#claude-code" title="Permanent link">&para;</a></h3>
+<h3 id="coding-agent">所选 coding agent<a class="headerlink" href="#coding-agent" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>claude</code> 命令行工具已安装且在 PATH 中可用。</li>
+<li>Claude Code 项目会检查 <code>claude</code> 是否已安装。</li>
+<li>Codex 项目会检查 <code>codex</code> 是否已安装、<code>.agents</code> runtime tree 是否存在，以及 <code>godot</code> MCP server 是否已配置。</li>
+<li>OpenCode 项目会检查 <code>opencode</code> 是否已安装、<code>.opencode</code> runtime tree 和 hook adapter 是否存在，以及 <code>godot</code> MCP server 是否已配置。</li>
 </ul>
 <h3 id="api">API 密钥<a class="headerlink" href="#api" title="Permanent link">&para;</a></h3>
 <table>
@@ -2821,6 +2823,7 @@
 </tr>
 </tbody>
 </table>
+<p>API 后端 selector 在缺少对应 key 时会失败。<code>asset_image_model: native</code> 对 Codex 会通过，对 Claude Code 会给出警告，因为检查工具无法证明 Claude 侧一定有原生生图能力。OpenCode 项目如果使用 <code>native</code> 生图或 <code>native</code> VQA 会失败，直到你把这些字段改成 <code>codex</code> 或 API 后端 selector。Claude Code 或 OpenCode 项目使用 <code>asset_image_model: codex</code> 时，需要 <code>codex</code> CLI 位于 PATH 中。</p>
 <p>检查工具还会验证被选中提供方的 Python 包能否正常导入，从而捕获单靠版本号检查无法发现的安装问题。</p>
 <h2 id="_3">读懂输出结果<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
 <p>每行以以下三种标记之一开头：</p>

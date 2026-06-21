@@ -1,6 +1,6 @@
 
 <!doctype html>
-<html lang="en" class="no-js">
+<html lang="zh" class="no-js">
   <head>
     
       <meta charset="utf-8">
@@ -12,35 +12,31 @@
         <meta name="author" content="RandallLiuXin">
       
       
-        <link rel="canonical" href="https://RandallLiuXin.github.io/GodotMaker/versioning/">
+        <link rel="canonical" href="https://RandallLiuXin.github.io/GodotMaker/zh/wiki/06-configuration/providers/image-vqa/gemini/">
       
       
-        <link rel="prev" href="../update/release-checklist/">
-      
-      
-        <link rel="next" href="../hooks/">
       
       
         
-          <link rel="alternate" href="./" hreflang="en">
+          <link rel="alternate" href="../../../../../../wiki/06-configuration/providers/image-vqa/gemini/" hreflang="en">
         
-          <link rel="alternate" href="../zh/versioning/" hreflang="zh">
+          <link rel="alternate" href="./" hreflang="zh">
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Versioning - GodotMaker</title>
+        <title>Gemini 图片和 VQA provider - GodotMaker</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -59,7 +55,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -84,8 +80,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#versioning-upgrades" class="md-skip">
-          Skip to content
+        <a href="#gemini-vqa-provider" class="md-skip">
+          跳转至
         </a>
       
     </div>
@@ -99,8 +95,8 @@
   
 
 <header class="md-header md-header--shadow" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="GodotMaker" class="md-header__button md-logo" aria-label="GodotMaker" data-md-component="logo">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../../../../" title="GodotMaker" class="md-header__button md-logo" aria-label="GodotMaker" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -120,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Versioning
+              Gemini 图片和 VQA provider
             
           </span>
         </div>
@@ -160,20 +156,20 @@
       <div class="md-header__option">
   <div class="md-select">
     
-    <button class="md-header__button md-icon" aria-label="Select language">
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
     </button>
     <div class="md-select__inner">
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="./" hreflang="en" class="md-select__link">
+            <a href="../../../../../../wiki/06-configuration/providers/image-vqa/gemini/" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
         
           <li class="md-select__item">
-            <a href="../zh/versioning/" hreflang="zh" class="md-select__link">
+            <a href="./" hreflang="zh" class="md-select__link">
               中文
             </a>
           </li>
@@ -194,16 +190,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Search">
+      <nav class="md-search__options" aria-label="查找">
         
-        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -216,7 +212,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Initializing search
+            正在初始化搜索引擎
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -228,7 +224,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/RandallLiuXin/GodotMaker" title="Go to repository" class="md-source" data-md-component="source">
+        <a href="https://github.com/RandallLiuXin/GodotMaker" title="前往仓库" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -262,9 +258,9 @@
 
 
 
-<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="GodotMaker" class="md-nav__button md-logo" aria-label="GodotMaker" data-md-component="logo">
+    <a href="../../../../../" title="GodotMaker" class="md-nav__button md-logo" aria-label="GodotMaker" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -274,7 +270,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/RandallLiuXin/GodotMaker" title="Go to repository" class="md-source" data-md-component="source">
+      <a href="https://github.com/RandallLiuXin/GodotMaker" title="前往仓库" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -294,14 +290,14 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../../../../../" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Home
+    首页
   
 
     
@@ -321,14 +317,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/Home/" class="md-nav__link">
+      <a href="../../../../Home/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Wiki Home
+    Wiki 首页
   
 
     
@@ -373,7 +369,7 @@
   <span class="md-ellipsis">
     
   
-    Getting Started
+    快速开始
   
 
     
@@ -389,7 +385,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Getting Started
+    快速开始
   
 
           </label>
@@ -402,14 +398,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/01-getting-started/installation/" class="md-nav__link">
+      <a href="../../../../01-getting-started/installation/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Installation
+    安装
   
 
     
@@ -430,14 +426,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/01-getting-started/first-game/" class="md-nav__link">
+      <a href="../../../../01-getting-started/first-game/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Your First Game
+    第一款游戏
   
 
     
@@ -458,14 +454,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/01-getting-started/project-layout/" class="md-nav__link">
+      <a href="../../../../01-getting-started/project-layout/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Project Layout
+    项目结构
   
 
     
@@ -518,7 +514,7 @@
   <span class="md-ellipsis">
     
   
-    Concepts
+    核心概念
   
 
     
@@ -534,7 +530,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Concepts
+    核心概念
   
 
           </label>
@@ -547,14 +543,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/02-concepts/how-it-works/" class="md-nav__link">
+      <a href="../../../../02-concepts/how-it-works/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    How It Works
+    工作原理
   
 
     
@@ -575,14 +571,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/02-concepts/the-9-roles/" class="md-nav__link">
+      <a href="../../../../02-concepts/the-9-roles/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    The 9 Roles
+    9 个角色
   
 
     
@@ -603,14 +599,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/02-concepts/ecs-in-plain-english/" class="md-nav__link">
+      <a href="../../../../02-concepts/ecs-in-plain-english/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    ECS in Plain English
+    大白话讲 ECS
   
 
     
@@ -631,14 +627,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/02-concepts/why-this-approach/" class="md-nav__link">
+      <a href="../../../../02-concepts/why-this-approach/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why This Approach
+    为什么这么设计
   
 
     
@@ -691,7 +687,7 @@
   <span class="md-ellipsis">
     
   
-    Skills
+    技能
   
 
     
@@ -707,7 +703,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Skills
+    技能
   
 
           </label>
@@ -720,14 +716,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/03-skills/skill-system/" class="md-nav__link">
+      <a href="../../../../03-skills/skill-system/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Skill System
+    技能体系
   
 
     
@@ -748,14 +744,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/03-skills/core-skills/" class="md-nav__link">
+      <a href="../../../../03-skills/core-skills/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Core Skills
+    核心技能
   
 
     
@@ -776,14 +772,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/03-skills/reviewer-skills/" class="md-nav__link">
+      <a href="../../../../03-skills/reviewer-skills/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Reviewer Skills
+    评审技能
   
 
     
@@ -836,7 +832,7 @@
   <span class="md-ellipsis">
     
   
-    Troubleshooting
+    故障排查
   
 
     
@@ -852,7 +848,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Troubleshooting
+    故障排查
   
 
           </label>
@@ -865,14 +861,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/04-troubleshooting/common-problems/" class="md-nav__link">
+      <a href="../../../../04-troubleshooting/common-problems/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Common Problems
+    常见问题
   
 
     
@@ -893,14 +889,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/04-troubleshooting/recovery-and-resume/" class="md-nav__link">
+      <a href="../../../../04-troubleshooting/recovery-and-resume/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Recovery & Resume
+    恢复与续跑
   
 
     
@@ -953,7 +949,7 @@
   <span class="md-ellipsis">
     
   
-    Tools
+    工具
   
 
     
@@ -969,7 +965,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Tools
+    工具
   
 
           </label>
@@ -982,14 +978,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/05-tools/publish/" class="md-nav__link">
+      <a href="../../../../05-tools/publish/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Publish
+    Publish 工具
   
 
     
@@ -1010,14 +1006,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/05-tools/check-env/" class="md-nav__link">
+      <a href="../../../../05-tools/check-env/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Check Env
+    环境检查
   
 
     
@@ -1038,14 +1034,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/05-tools/check-project/" class="md-nav__link">
+      <a href="../../../../05-tools/check-project/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Check Project
+    项目检查
   
 
     
@@ -1066,14 +1062,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/05-tools/asset-tools/" class="md-nav__link">
+      <a href="../../../../05-tools/asset-tools/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Asset Tools
+    资源工具
   
 
     
@@ -1126,7 +1122,7 @@
   <span class="md-ellipsis">
     
   
-    Configuration
+    配置
   
 
     
@@ -1142,7 +1138,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Configuration
+    配置
   
 
           </label>
@@ -1155,14 +1151,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/06-configuration/project-config/" class="md-nav__link">
+      <a href="../../../project-config/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Project Config
+    项目配置
   
 
     
@@ -1183,7 +1179,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/06-configuration/godotmaker-yaml/" class="md-nav__link">
+      <a href="../../../godotmaker-yaml/" class="md-nav__link">
         
   
   
@@ -1211,14 +1207,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/06-configuration/addon-versions/" class="md-nav__link">
+      <a href="../../../addon-versions/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Addon Versions
+    插件版本
   
 
     
@@ -1271,7 +1267,7 @@
   <span class="md-ellipsis">
     
   
-    Contributing
+    贡献指南
   
 
     
@@ -1287,7 +1283,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Contributing
+    贡献指南
   
 
           </label>
@@ -1300,14 +1296,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/07-contributing/development-setup/" class="md-nav__link">
+      <a href="../../../../07-contributing/development-setup/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Development Setup
+    开发环境
   
 
     
@@ -1328,14 +1324,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/07-contributing/codebase-guide/" class="md-nav__link">
+      <a href="../../../../07-contributing/codebase-guide/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Codebase Guide
+    代码导览
   
 
     
@@ -1356,14 +1352,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/07-contributing/writing-a-skill/" class="md-nav__link">
+      <a href="../../../../07-contributing/writing-a-skill/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Writing a Skill
+    编写 Skill
   
 
     
@@ -1384,14 +1380,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/07-contributing/writing-a-hook/" class="md-nav__link">
+      <a href="../../../../07-contributing/writing-a-hook/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Writing a Hook
+    编写 Hook
   
 
     
@@ -1412,14 +1408,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/07-contributing/testing/" class="md-nav__link">
+      <a href="../../../../07-contributing/testing/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Testing
+    测试
   
 
     
@@ -1440,14 +1436,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/07-contributing/release-process/" class="md-nav__link">
+      <a href="../../../../07-contributing/release-process/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Release Process
+    发布流程
   
 
     
@@ -1500,7 +1496,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    参考资料
   
 
     
@@ -1516,7 +1512,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Reference
+    参考资料
   
 
           </label>
@@ -1529,14 +1525,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/08-reference/glossary/" class="md-nav__link">
+      <a href="../../../../08-reference/glossary/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Glossary
+    术语表
   
 
     
@@ -1557,14 +1553,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/08-reference/faq/" class="md-nav__link">
+      <a href="../../../../08-reference/faq/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    FAQ
+    常见疑问
   
 
     
@@ -1585,14 +1581,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../wiki/08-reference/changelog/" class="md-nav__link">
+      <a href="../../../../08-reference/changelog/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Changelog
+    更新日志
   
 
     
@@ -1645,7 +1641,7 @@
   <span class="md-ellipsis">
     
   
-    Release Notes
+    发布说明
   
 
     
@@ -1661,7 +1657,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Release Notes
+    发布说明
   
 
           </label>
@@ -1674,14 +1670,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/next/" class="md-nav__link">
+      <a href="../../../../../update/next/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Latest
+    最新
   
 
     
@@ -1702,7 +1698,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.7.0/" class="md-nav__link">
+      <a href="../../../../../update/v0.7.0/" class="md-nav__link">
         
   
   
@@ -1730,7 +1726,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.6.5/" class="md-nav__link">
+      <a href="../../../../../update/v0.6.5/" class="md-nav__link">
         
   
   
@@ -1758,7 +1754,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.6.4/" class="md-nav__link">
+      <a href="../../../../../update/v0.6.4/" class="md-nav__link">
         
   
   
@@ -1786,7 +1782,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.6.3/" class="md-nav__link">
+      <a href="../../../../../update/v0.6.3/" class="md-nav__link">
         
   
   
@@ -1814,7 +1810,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.6.2/" class="md-nav__link">
+      <a href="../../../../../update/v0.6.2/" class="md-nav__link">
         
   
   
@@ -1842,7 +1838,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.6.1/" class="md-nav__link">
+      <a href="../../../../../update/v0.6.1/" class="md-nav__link">
         
   
   
@@ -1870,7 +1866,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.6.0/" class="md-nav__link">
+      <a href="../../../../../update/v0.6.0/" class="md-nav__link">
         
   
   
@@ -1898,7 +1894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.5.0/" class="md-nav__link">
+      <a href="../../../../../update/v0.5.0/" class="md-nav__link">
         
   
   
@@ -1926,7 +1922,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.4.1/" class="md-nav__link">
+      <a href="../../../../../update/v0.4.1/" class="md-nav__link">
         
   
   
@@ -1954,7 +1950,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.4.0/" class="md-nav__link">
+      <a href="../../../../../update/v0.4.0/" class="md-nav__link">
         
   
   
@@ -1982,7 +1978,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.3.5/" class="md-nav__link">
+      <a href="../../../../../update/v0.3.5/" class="md-nav__link">
         
   
   
@@ -2010,7 +2006,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.3.4/" class="md-nav__link">
+      <a href="../../../../../update/v0.3.4/" class="md-nav__link">
         
   
   
@@ -2038,7 +2034,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.3.3/" class="md-nav__link">
+      <a href="../../../../../update/v0.3.3/" class="md-nav__link">
         
   
   
@@ -2066,7 +2062,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.3.2/" class="md-nav__link">
+      <a href="../../../../../update/v0.3.2/" class="md-nav__link">
         
   
   
@@ -2094,7 +2090,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.3.1/" class="md-nav__link">
+      <a href="../../../../../update/v0.3.1/" class="md-nav__link">
         
   
   
@@ -2122,7 +2118,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.3.0/" class="md-nav__link">
+      <a href="../../../../../update/v0.3.0/" class="md-nav__link">
         
   
   
@@ -2150,7 +2146,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.2.2/" class="md-nav__link">
+      <a href="../../../../../update/v0.2.2/" class="md-nav__link">
         
   
   
@@ -2178,7 +2174,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.2.1/" class="md-nav__link">
+      <a href="../../../../../update/v0.2.1/" class="md-nav__link">
         
   
   
@@ -2206,7 +2202,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/v0.2.0/" class="md-nav__link">
+      <a href="../../../../../update/v0.2.0/" class="md-nav__link">
         
   
   
@@ -2234,14 +2230,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../update/release-checklist/" class="md-nav__link">
+      <a href="../../../../../update/release-checklist/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Release Checklist
+    发布清单
   
 
     
@@ -2266,8 +2262,6 @@
       
   
   
-    
-  
   
   
     
@@ -2280,11 +2274,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
         
           
           <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
@@ -2294,7 +2290,7 @@
   <span class="md-ellipsis">
     
   
-    Project Docs
+    项目文档
   
 
     
@@ -2305,12 +2301,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Project Docs
+    项目文档
   
 
           </label>
@@ -2320,269 +2316,17 @@
                 
   
   
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Versioning
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Versioning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#version-scheme" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Version Scheme
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Version Scheme">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-backward-compatible-means-in-this-project" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What "backward-compatible" means in this project
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#choosing-a-bump-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choosing a bump level
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-versions-live" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where Versions Live
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#publishing-upgrading" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Publishing &amp; Upgrading
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Publishing &amp; Upgrading">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fresh-install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fresh Install
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#upgrade-re-publish-to-existing-project" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Upgrade (re-publish to existing project)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#version-migrations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Version Migrations
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#major-upgrades" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MAJOR Upgrades
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#downgrade" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Downgrade
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#re-publish-same-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Re-publish Same Version
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#session-version-display" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Session Version Display
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#workflow-for-releasing-a-new-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workflow for Releasing a New Version
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-gets-overwritten-on-upgrade" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What Gets Overwritten on Upgrade
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#note-on-addon_versionsjson" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Note on addon_versions.json
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="../hooks/" class="md-nav__link">
+      <a href="../../../../../versioning/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Hooks Reference
+    版本管理
   
 
     
@@ -2603,14 +2347,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../tips/" class="md-nav__link">
+      <a href="../../../../../hooks/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Tips & Tricks
+    Hooks 参考
   
 
     
@@ -2631,14 +2375,42 @@
   
   
     <li class="md-nav__item">
-      <a href="../user-notice/" class="md-nav__link">
+      <a href="../../../../../tips/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    User Notice
+    小贴士
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../user-notice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    用户须知
   
 
     
@@ -2672,7 +2444,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+<nav class="md-nav md-nav--secondary" aria-label="目录">
   
   
   
@@ -2681,54 +2453,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Table of contents
+      目录
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#version-scheme" class="md-nav__link">
+  <a href="#_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Version Scheme
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Version Scheme">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-backward-compatible-means-in-this-project" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What "backward-compatible" means in this project
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#choosing-a-bump-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choosing a bump level
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-versions-live" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where Versions Live
+        项目配置
       
     </span>
   </a>
@@ -2736,126 +2469,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#publishing-upgrading" class="md-nav__link">
+  <a href="#_2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Publishing &amp; Upgrading
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Publishing &amp; Upgrading">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fresh-install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fresh Install
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#upgrade-re-publish-to-existing-project" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Upgrade (re-publish to existing project)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#version-migrations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Version Migrations
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#major-upgrades" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MAJOR Upgrades
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#downgrade" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Downgrade
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#re-publish-same-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Re-publish Same Version
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#session-version-display" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Session Version Display
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#workflow-for-releasing-a-new-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workflow for Releasing a New Version
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-gets-overwritten-on-upgrade" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What Gets Overwritten on Upgrade
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#note-on-addon_versionsjson" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Note on addon_versions.json
+        配置步骤
       
     </span>
   </a>
@@ -2882,292 +2499,28 @@
   
 
 
-<h1 id="versioning-upgrades">Versioning &amp; Upgrades<a class="headerlink" href="#versioning-upgrades" title="Permanent link">&para;</a></h1>
-<p>How GodotMaker tracks versions and handles upgrades between releases.</p>
-<h2 id="version-scheme">Version Scheme<a class="headerlink" href="#version-scheme" title="Permanent link">&para;</a></h2>
-<p>GodotMaker uses <a href="https://semver.org/">Semantic Versioning</a>: <code>MAJOR.MINOR.PATCH</code></p>
-<table>
-<thead>
-<tr>
-<th>Level</th>
-<th>Meaning</th>
-<th>Example</th>
-<th>Upgrade behavior</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>PATCH</strong></td>
-<td>Backward-compatible bug fixes, no new behavior</td>
-<td><code>0.3.0 → 0.3.1</code></td>
-<td>Auto-proceed; applies any pending migrations</td>
-</tr>
-<tr>
-<td><strong>MINOR</strong></td>
-<td>Backward-compatible new features or behavior changes</td>
-<td><code>0.3.0 → 0.4.0</code></td>
-<td>Show changelog, require confirmation; applies any pending migrations</td>
-</tr>
-<tr>
-<td><strong>MAJOR</strong></td>
-<td>Breaking changes (incompatible)</td>
-<td><code>0.x → 1.x</code></td>
-<td>Strong warning; requires <code>--force</code> clean re-init (skips migrations, baselines instead)</td>
-</tr>
-</tbody>
-</table>
-<h3 id="what-backward-compatible-means-in-this-project">What "backward-compatible" means in this project<a class="headerlink" href="#what-backward-compatible-means-in-this-project" title="Permanent link">&para;</a></h3>
-<p>GodotMaker is a framework that deploys files into a target project, not a library
-with a public API. So the compatibility contract has two specific clauses:</p>
-<ul>
-<li><strong>User-saved files keep their format.</strong> <code>CLAUDE.md</code>, <code>.claude/godotmaker.yaml</code>,
-  <code>.godotmaker/config.yaml</code>, and the user's own game code/scenes/assets are never
-  rewritten silently. Their schema/format from the previous version must still parse.</li>
-<li><strong>Runtime state stays readable.</strong> State files written by old hooks/skills
-  (<code>state.json</code> fields, <code>metrics*.jsonl</code> schema, <code>stage.jsonl</code>, <code>current_role</code>,
-  etc.) must still be readable by the new version — either directly, or via a
-  migration script that rewrites them on upgrade.</li>
-</ul>
-<p>Framework-managed files (skills, hooks, agents, templates, tools) are overwritten
-on every publish, so changes to <em>those</em> never count as "breaking" — they are
-simply re-deployed.</p>
-<h3 id="choosing-a-bump-level">Choosing a bump level<a class="headerlink" href="#choosing-a-bump-level" title="Permanent link">&para;</a></h3>
-<p>A short decision tree for contributors:</p>
+<h1 id="gemini-vqa-provider">Gemini 图片和 VQA provider<a class="headerlink" href="#gemini-vqa-provider" title="Permanent link">&para;</a></h1>
+<p>当你希望通过 API 后端生成图片或执行视觉 QA 时，可以使用 Gemini。</p>
+<h2 id="_1">项目配置<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini:gemini-3.1-flash-image-preview</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">vqa_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini:gemini-2.5-flash</span>
+</code></pre></div>
+<h2 id="_2">配置步骤<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Old projects work after re-publish, no user-saved file or runtime state
-   touched (or the change is a pure bug fix) → <strong>PATCH</strong>.</li>
-<li>New skill / hook / behavior added; old projects' user-saved files and
-   runtime state still parse and work → <strong>MINOR</strong>.</li>
-<li>Some user-saved file format or runtime state field changed in a way the
-   previous version's data cannot satisfy → <strong>MAJOR</strong>.</li>
+<li>创建 Gemini API key。</li>
+<li>设置以下任一环境变量：</li>
 </ol>
-<p><strong>Migrations are independent of the bump level.</strong> A migration is a tool for
-fixing or rewriting something in an existing target project; whether you need
-one is a separate question from which level to bump. The migration system
-itself is timestamp-driven (<code>migrations/&lt;YYYYMMDDhhmmss&gt;_&lt;slug&gt;.py</code>) and
-tracked per target in <code>.godotmaker/applied_migrations.json</code>; the product
-<code>VERSION</code> is not consulted. See "Version Migrations" below.</p>
-<h2 id="where-versions-live">Where Versions Live<a class="headerlink" href="#where-versions-live" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>File</th>
-<th>Location</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>VERSION</code></td>
-<td>GodotMaker repo root</td>
-<td>Source of truth for current release</td>
-</tr>
-<tr>
-<td><code>.godotmaker/version</code></td>
-<td>Target game project</td>
-<td>Records which version was last published</td>
-</tr>
-<tr>
-<td><code>CHANGELOG.md</code></td>
-<td>GodotMaker repo root</td>
-<td>Human-readable change log per version</td>
-</tr>
-<tr>
-<td><code>migrations/</code></td>
-<td>GodotMaker repo root</td>
-<td>Version migration scripts</td>
-</tr>
-</tbody>
-</table>
-<h2 id="publishing-upgrading">Publishing &amp; Upgrading<a class="headerlink" href="#publishing-upgrading" title="Permanent link">&para;</a></h2>
-<h3 id="fresh-install">Fresh Install<a class="headerlink" href="#fresh-install" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-game
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span>...
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GEMINI_API_KEY</span><span class="o">=</span>...
 </code></pre></div>
-<p>No version exists in the target — publish proceeds directly and stamps
-the version into <code>.godotmaker/version</code>.</p>
-<h3 id="upgrade-re-publish-to-existing-project">Upgrade (re-publish to existing project)<a class="headerlink" href="#upgrade-re-publish-to-existing-project" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-game
-</code></pre></div>
-<p>The publish script compares the source <code>VERSION</code> against the target's
-<code>.godotmaker/version</code> and behaves according to the upgrade level:</p>
-<table>
-<thead>
-<tr>
-<th>Level</th>
-<th>Behavior</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>PATCH</strong></td>
-<td>Proceeds automatically. Applies pending migrations (if any).</td>
-</tr>
-<tr>
-<td><strong>MINOR</strong></td>
-<td>Shows changelog, asks confirmation. Applies pending migrations (if any).</td>
-</tr>
-<tr>
-<td><strong>MAJOR</strong></td>
-<td>Blocks incremental migration. Requires <code>--force</code> for clean re-init.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="version-migrations">Version Migrations<a class="headerlink" href="#version-migrations" title="Permanent link">&para;</a></h3>
-<p>Migrations are timestamped scripts under <code>migrations/</code>, e.g.:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>migrations/20260429100000_fix_state_path.py
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>migrations/20260430153000_rename_metrics_field.py
-</code></pre></div>
-<p>Each target project records which migration IDs it has applied in
-<code>.godotmaker/applied_migrations.json</code>. On every publish, <code>migrate.py</code>
-discovers all scripts on disk, subtracts the ones already recorded as
-applied, and runs the rest in chronological order.</p>
-<p>The system is <strong>decoupled from MAJOR.MINOR.PATCH</strong>. The product version
-is not consulted when picking which migrations to run — the only inputs
-are "what's on disk" and "what's already applied". This means PATCH
-releases can ship migrations as a first-class case (e.g., a hook bug
-that left orphan files in old projects gets a fix-up migration in the
-PATCH that fixes the hook).</p>
-<p>Fresh installs and MAJOR <code>--force</code> re-inits <strong>baseline</strong> instead: every
-current migration is marked as applied without being executed, since the
-target starts at the latest format and has nothing to migrate from.</p>
-<p>If a migration fails, the chain aborts immediately. Already-successful
-scripts keep their entries in <code>applied_migrations.json</code>, so re-running
-publish picks up exactly where it left off.</p>
-<p>Migrations can also be applied standalone (without re-publishing):
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/migrate.py<span class="w"> </span>/path/to/my-game
-</code></pre></div></p>
-<p>To scaffold a new migration:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>tools/migrate.py<span class="w"> </span>--new<span class="w"> </span>fix-state-path
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># Creates migrations/&lt;current-utc-timestamp&gt;_fix_state_path.py</span>
-</code></pre></div></p>
-<p>Full details — naming convention, scripting rules, the legacy-target
-auto-bootstrap rules (empty tracker is auto-created on first contact;
-pending migrations run through the normal path) — live in
-<code>migrations/README.md</code>.</p>
-<h3 id="major-upgrades">MAJOR Upgrades<a class="headerlink" href="#major-upgrades" title="Permanent link">&para;</a></h3>
-<p>MAJOR version bumps indicate breaking changes that cannot be handled
-by incremental migration. <code>publish.py</code> refuses to upgrade across MAJOR
-boundaries without <code>--force</code>, which performs a clean re-initialization.</p>
-<p>Full rebuild cleans all framework-managed content:
-- The selected runner's <code>skills/</code>, <code>agents/</code>, <code>config/</code>, and <code>templates/</code>
-- <code>.godotmaker/hooks/</code>, <code>.godotmaker/stage_schemas.json</code>
-- <code>.godotmaker/state.json</code>, <code>.godotmaker/metrics*.jsonl</code>
-- <code>.godotmaker/applied_migrations.json</code> (re-baselined after re-deploy)
-- <code>tools/</code>
-- The selected runner's hook config or plugin adapter (force-overwritten)</p>
-<p>Preserved (user configuration):
-- <code>CLAUDE.md</code> / <code>AGENTS.md</code>, the selected runner's <code>godotmaker.yaml</code>,
-  <code>.godotmaker/config.yaml</code></p>
-<p>After re-deploy, <code>publish.py</code> calls <code>baseline_applied()</code> to mark every
-current migration as applied without running it — same as a fresh install.
-The migration timestamp series itself is monotonic and global; old
-scripts stay on disk as historical record.</p>
-<h3 id="downgrade">Downgrade<a class="headerlink" href="#downgrade" title="Permanent link">&para;</a></h3>
-<p>Downgrading (e.g., <code>0.4.0 → 0.3.0</code>) is blocked by default. Use <code>--force</code> to override:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
-</code></pre></div>
-<p>A forced downgrade still calls <code>run_migrations()</code> for routing consistency,
-but in practice the call is a no-op: <code>applied_migrations.json</code> already
-records every migration applied at the higher version, and the older
-release ships with a subset of those scripts on disk, so <code>pending = disk
-- applied</code> is empty. Migrations are not "rolled back" — that would
-require explicit down-migration scripts, which this system does not
-ship. If you need to roll back a schema change, restore the target
-project from a VCS snapshot.</p>
-<h3 id="re-publish-same-version">Re-publish Same Version<a class="headerlink" href="#re-publish-same-version" title="Permanent link">&para;</a></h3>
-<p>Re-publishing the same version is always allowed. This is useful for
-picking up local changes during development.</p>
-<h2 id="session-version-display">Session Version Display<a class="headerlink" href="#session-version-display" title="Permanent link">&para;</a></h2>
-<p>When a supported coding-agent session starts in a published project, the
-<code>session_start.py</code> hook reads <code>.godotmaker/version</code> and injects
-<code>[GodotMaker vX.Y.Z]</code> into the session context where the runtime supports that
-hook context. This helps the active role skill know which framework version is
-deployed.</p>
-<h2 id="workflow-for-releasing-a-new-version">Workflow for Releasing a New Version<a class="headerlink" href="#workflow-for-releasing-a-new-version" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Make your changes in the GodotMaker repo</li>
-<li>Decide the bump level using the decision tree above (PATCH / MINOR / MAJOR)</li>
-<li>If your changes require rewriting something in an existing target project,
-   scaffold a migration with <code>python tools/migrate.py --new &lt;slug&gt;</code> — see
-   <code>migrations/README.md</code> for details. This applies to any bump level.</li>
-<li>Update <code>CHANGELOG.md</code> — add a new <code>## [X.Y.Z]</code> section at the top</li>
-<li>Update <code>VERSION</code> — change to the new version number</li>
-<li>Commit and (optionally) tag:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>add<span class="w"> </span>VERSION<span class="w"> </span>CHANGELOG.md<span class="w"> </span>migrations/
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;release: vX.Y.Z&quot;</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z
-</code></pre></div></li>
-<li>Publish to target projects:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-game
-</code></pre></div></li>
+<li>安装 Python 包：</li>
 </ol>
-<h2 id="what-gets-overwritten-on-upgrade">What Gets Overwritten on Upgrade<a class="headerlink" href="#what-gets-overwritten-on-upgrade" title="Permanent link">&para;</a></h2>
-<p>Every publish overwrites:</p>
-<table>
-<thead>
-<tr>
-<th>Directory</th>
-<th>Content</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Selected runner <code>skills/</code></td>
-<td>All skills (flattened from core + reviewer)</td>
-</tr>
-<tr>
-<td>Selected runner <code>agents/</code></td>
-<td>Agent definitions (worker, verifier, reviewer, analyst, asset-producer)</td>
-</tr>
-<tr>
-<td><code>.godotmaker/hooks/</code></td>
-<td>All hook scripts</td>
-</tr>
-<tr>
-<td>Selected runner <code>config/</code></td>
-<td>Config files</td>
-</tr>
-<tr>
-<td>Selected runner <code>templates/</code></td>
-<td>Document templates</td>
-</tr>
-<tr>
-<td><code>tools/</code></td>
-<td>Python tools (check_project, check_env, etc.)</td>
-</tr>
-</tbody>
-</table>
-<p>These are <strong>not</strong> overwritten (created only on fresh install):</p>
-<table>
-<thead>
-<tr>
-<th>File</th>
-<th>Reason</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>CLAUDE.md</code> / <code>AGENTS.md</code></td>
-<td>User may have customized it</td>
-</tr>
-<tr>
-<td>Selected runner hook config or plugin adapter</td>
-<td>User hook behavior (overwritten only with <code>--force</code>)</td>
-</tr>
-<tr>
-<td>Selected runner <code>godotmaker.yaml</code></td>
-<td>Host-specific paths</td>
-</tr>
-<tr>
-<td><code>.godotmaker/config.yaml</code></td>
-<td>Project-specific settings</td>
-</tr>
-</tbody>
-</table>
-<h2 id="note-on-addon_versionsjson">Note on addon_versions.json<a class="headerlink" href="#note-on-addon_versionsjson" title="Permanent link">&para;</a></h2>
-<p><code>config/addon_versions.json</code> tracks Godot addon versions (gecs, gdUnit4, etc.)
-— this is separate from GodotMaker's own version. Addon versions are pinned
-per Godot engine version and managed independently.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>google-genai
+</code></pre></div>
+<ol>
+<li>运行 <code>python tools/check_env.py</code>。</li>
+</ol>
 
 
 
@@ -3191,7 +2544,7 @@ per Godot engine version and managed independently.</p>
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Back to top
+  回到页面顶部
 </button>
         
       </main>
@@ -3223,10 +2576,10 @@ per Godot engine version and managed independently.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

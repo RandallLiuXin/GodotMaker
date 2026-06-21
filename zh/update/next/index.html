@@ -2650,11 +2650,40 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <p>If no category fits, add a new one following <a href="https://keepachangelog.com/">Keep a Changelog</a> conventions.</p>
 <hr />
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Added the initial OpenCode publish target with <code>.opencode</code> skills, agents, runtime references, and project instructions.</li>
+<li>Added OpenCode <code>godot</code> MCP registration during publish and environment checks for the published <code>.opencode</code> runtime tree.</li>
+<li>Added provider setup docs for agent runtimes and image/VQA selectors, including OpenCode image/VQA capability gates.</li>
+<li>Added an OpenCode hook adapter plugin that runs the shared GodotMaker hook contract through OpenCode runtime events.</li>
+<li>Added <code>/gm-asset</code> provider routing for OpenAI image generation selectors.</li>
+</ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Downgraded OpenCode hook support to root-stage lifecycle gates plus
+  OpenCode-native subagent permissions, instead of claiming full Claude
+  Code-style subagent hook parity.</li>
 <li>Updated README and wiki first-run docs to use the current <code>godotmaker-cli</code> command, runner selection flags, Node.js requirement, and project config flow.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Fixed verify/build gates so Godot headless shutdown notes no longer block
+  the pipeline, while other Godot diagnostics fail closed.</li>
+<li>Fixed scaffold addon validation so full repository checkouts inside
+  <code>addons/*</code> are rejected before they can break Godot class scanning.</li>
+<li>Fixed OpenCode subagents so delegated roles inherit the active session model correctly.</li>
+<li>Fixed OpenCode worker deadlocks by publishing explicit external-directory
+  permissions for subagents.</li>
+<li>Fixed headless-build and gdUnit guidance so workers read <code>godot_path</code> through
+  the selected project-local agent config instead of Claude-specific paths.</li>
+<li>Fixed verify static checks so <code>check_project.py</code> tool failures are reported as
+  tooling errors instead of static-check passes.</li>
+<li>Fixed the API-backed OpenAI image provider so supported reference images are
+  all passed to the generation call instead of silently using only the first one.</li>
+<li>Fixed OpenCode session-idle Stop hook handling so Stop hook block decisions
+  are sent back to the active session instead of terminating the worker process.</li>
+<li>Fixed OpenCode runtime guidance for dot-directory state files so agents do
+  not treat missing Glob results as authoritative for known project metadata.</li>
+</ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
 

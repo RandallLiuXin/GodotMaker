@@ -2657,27 +2657,27 @@
 <tbody>
 <tr>
 <td><code>--build</code></td>
-<td><code>project.godot</code> 是否存在，且包含有效的 <code>[application]</code> 节</td>
+<td><code>project.godot</code> 存在、必需插件已安装、git <code>HEAD</code> 可解析，且 Godot 无头解析没有阻断性诊断</td>
 </tr>
 <tr>
 <td><code>--ecs</code></td>
-<td>gecs 插件是否存在；游戏代码中是否有 Component 和 System 文件</td>
+<td>gecs 插件存在；游戏代码中有 Component 和 System 文件</td>
 </tr>
 <tr>
 <td><code>--tests</code></td>
-<td>gdUnit4 插件是否存在；每个 System 是否都有对应的单元测试文件</td>
+<td>gdUnit4 插件存在；每个 System 都有对应的单元测试文件</td>
 </tr>
 <tr>
 <td><code>--e2e</code></td>
-<td>godot-e2e 插件是否已启用；<code>e2e/</code> 中是否有真实的测试函数而非占位符</td>
+<td>godot-e2e 插件已启用；<code>e2e/</code> 中有真实测试函数，而不是占位文件</td>
 </tr>
 <tr>
 <td><code>--plan</code></td>
-<td><code>PLAN.md</code> 和 <code>STRUCTURE.md</code> 是否存在且包含正确的章节</td>
+<td><code>PLAN.md</code> 和 <code>STRUCTURE.md</code> 存在，且包含正确章节</td>
 </tr>
 <tr>
 <td><code>--mcp</code></td>
-<td><code>godot-mcp</code> 服务器是否已注册到 <code>.mcp.json</code></td>
+<td><code>godot-mcp</code> 服务已注册到 <code>.mcp.json</code></td>
 </tr>
 <tr>
 <td><code>--all</code></td>
@@ -2686,16 +2686,16 @@
 </tbody>
 </table>
 <h2 id="_3">能发现哪些问题<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p><strong>构建就绪性</strong> — 确认 <code>project.godot</code> 存在且结构有效。项目文件缺失意味着 Godot 根本无法打开该项目。</p>
-<p><strong>ECS 配置</strong> — 确认 <code>addons/gecs/</code> 已安装，且游戏中确实存在 <code>extend Component</code> 和 <code>extend System</code> 的 GDScript 文件。两者都没有，说明项目尚未开始构建（或构建被中断了）。</p>
+<p><strong>构建就绪</strong> — 确认 <code>project.godot</code> 存在且结构有效，必需插件目录是正确的 addon-only 形态，git <code>HEAD</code> 可以解析，并且 <code>&lt;godot_path&gt; --headless --quit</code> 没有阻断性诊断。Godot shutdown notes 会单独报告；其他 Godot diagnostics 会让检查失败。</p>
+<p><strong>ECS 配置</strong> — 确认 <code>addons/gecs/</code> 已安装，并且游戏中确实存在 <code>extend Component</code> 和 <code>extend System</code> 的 GDScript 文件。两者都没有，说明项目尚未开始构建，或构建被中断。</p>
 <p><strong>单元测试覆盖率</strong> — 检查每个 System 文件是否都有对应的测试文件。匹配规则包括 <code>test_movement_system.gd</code>、<code>movement_system_test.gd</code>、<code>testmovementsystem.gd</code> 等形式。没有测试文件的 System 会按名称列出。</p>
-<p><strong>端到端测试</strong> — 检查 <code>e2e/conftest.py</code> 是否存在，<code>e2e/</code> 目录下是否有 <code>test_*.py</code> 文件，以及这些文件中是否包含真实的 <code>def test_</code> 函数而不是空的桩代码。文件过短或含有 "todo"/"stub" 关键字的占位文件会触发警告。</p>
+<p><strong>端到端测试</strong> — 检查 <code>e2e/conftest.py</code> 是否存在，<code>e2e/</code> 目录下是否有 <code>test_*.py</code> 文件，以及这些文件中是否包含真实的 <code>def test_</code> 函数，而不是空的桩代码。文件过短或含有 "todo" / "stub" 关键字的占位文件会触发警告。</p>
 <p><strong>规划文档</strong> — 确认 <code>PLAN.md</code> 存在且包含任务状态标记（<code>pending</code>、<code>in_progress</code>、<code>completed</code> 等），<code>STRUCTURE.md</code> 包含 Component Registry 和 System Schedule。这两份文档是 <code>/gm-build</code> 和 <code>/gm-fixgap</code> 的执行依据。</p>
-<p><strong>MCP 注册</strong> — 检查 <code>.mcp.json</code> 中是否包含 <code>"godot"</code> 服务器条目，这是由 <code>publish.py</code> 创建的。没有它，Claude Code 就无法向 Godot 编辑器发送命令。</p>
+<p><strong>MCP 注册</strong> — 检查 <code>.mcp.json</code> 中是否包含 <code>"godot"</code> 服务条目，这是由 <code>publish.py</code> 创建的。没有它，Claude Code 就无法向 Godot 编辑器发送命令。</p>
 <h2 id="_4">何时运行<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <ul>
 <li>构建出现报错或意外行为之后。</li>
-<li>运行 <code>/gm-finalize</code> 之前，确认项目已完整。</li>
+<li>运行 <code>/gm-finalize</code> 之前，确认项目已经完整。</li>
 <li>搁置较久后重新打开项目时，了解当前状态。</li>
 <li>手动添加或重命名文件之后，确认没有引入问题。</li>
 </ul>

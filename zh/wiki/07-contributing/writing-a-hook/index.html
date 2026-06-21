@@ -2795,7 +2795,7 @@
 
 
 <h1 id="hook">编写 Hook<a class="headerlink" href="#hook" title="Permanent link">&para;</a></h1>
-<p>Hook 是 coding-agent runtime 在会话特定事件发生时调用的小型 Python 脚本。它们强制执行 AI 自身无法绕过的规则——文件权限边界、角色完成前的必要输出、报告质量门禁。Hook 列表按 runner 注册在 <code>agent-runtimes/&lt;agent&gt;/config/</code> 下；脚本存放在 <code>hooks/</code> 下，由 <code>publish.py</code> 部署到 <code>.godotmaker/hooks/</code>。</p>
+<p>Hook 是 coding-agent runtime 在会话特定事件发生时调用的小型 Python 脚本。它们强制执行 AI 自身无法绕过的规则——文件权限边界、角色完成前的必要输出、报告质量门禁。Hook 注册按 runner 区分：Claude Code 和 Codex 使用配置文件，OpenCode 使用 plugin adapter。脚本存放在 <code>hooks/</code> 下，由 <code>publish.py</code> 部署到 <code>.godotmaker/hooks/</code>。</p>
 <p>关于每个 hook 的完整参考（精确的 payload、拦截条件、边界情况），请参阅 <a href="../../../hooks/">../../hooks.md</a>。本页专注于如何编写新的 hook，而不是讲解每个现有 hook 的工作原理。</p>
 <hr />
 <h2 id="hook_1">Hook 的结构<a class="headerlink" href="#hook_1" title="Permanent link">&para;</a></h2>
@@ -2815,7 +2815,7 @@
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        <span class="k">return</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="c1"># 拦截——向 stdout 写入结构化 JSON，exit 0</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="c1"># （Claude Code 读取 stdout 来做决策，而不是依赖退出码）</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="c1"># （runner hook 入口读取 stdout 来做决策，而不是依赖退出码）</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="s2">&quot;hookSpecificOutput&quot;</span><span class="p">:</span> <span class="p">{</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>            <span class="s2">&quot;hookEventName&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hook_event_name&quot;</span><span class="p">,</span> <span class="s2">&quot;PreToolUse&quot;</span><span class="p">),</span>
@@ -2850,7 +2850,7 @@
 </tr>
 </tbody>
 </table>
-<p>Claude Code 读取 stdout 来做决策，不使用退出码来执行拦截。如果 hook 崩溃（非零退出，或 stdout 输出格式错误的 JSON），Claude Code 会记录错误并继续执行——hook 绝不能因崩溃而静默地破坏流水线。</p>
+<p>runner hook 入口读取 stdout 来做决策，不使用退出码来执行拦截。如果 hook 崩溃（非零退出，或 stdout 输出格式错误的 JSON），runtime 可能只记录错误并继续执行——hook 绝不能因崩溃而静默地破坏流水线。</p>
 <h3 id="pretooluse">PreToolUse 的拦截格式<a class="headerlink" href="#pretooluse" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;hookSpecificOutput&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -2887,7 +2887,7 @@
 <tbody>
 <tr>
 <td><code>SessionStart</code></td>
-<td>每次 Claude Code 会话开始时</td>
+<td>受支持的 root runtime 会话开始时</td>
 <td><code>hook_event_name</code></td>
 </tr>
 <tr>
@@ -2923,6 +2923,10 @@
 </tbody>
 </table>
 <p><code>agent_id</code> 对主 Agent 为空，对子 Agent 为非空。Hook 通过这一字段区分角色技能和其 worker。</p>
+<p>不同 runner 的 payload 不完全一致。Claude Code 和 Codex 提供 Claude-style
+<code>agent_id</code>、<code>SubagentStart</code> 和 <code>SubagentStop</code> payload。OpenCode 使用 adapter
+plugin，不暴露同等的子 Agent 生命周期 payload；依赖这些字段的 hook 必须明确只支持
+Claude Code / Codex，或提供显式的 OpenCode fallback。</p>
 <hr />
 <h2 id="hook_2">现有 Hook 概览<a class="headerlink" href="#hook_2" title="Permanent link">&para;</a></h2>
 <p>以下为简要摘要。每个 hook 的完整说明见 <a href="../../../hooks/">../../hooks.md</a>。</p>
@@ -3042,9 +3046,10 @@
 <p>在 <code>hooks/&lt;my_hook&gt;.py</code> 创建 hook 脚本。</p>
 </li>
 <li>
-<p>在对应 runner 的 hook config 中将其添加到对应事件下：Claude Code 使用
+<p>将它添加到需要触发该 hook 的 runner 入口：Claude Code 使用
    <code>agent-runtimes/claude-code/config/settings.json</code>，Codex 使用
-   <code>agent-runtimes/codex/config/hooks.json</code>。</p>
+   <code>agent-runtimes/codex/config/hooks.json</code>，OpenCode 使用
+   <code>agent-runtimes/opencode/plugins/godotmaker-hooks.js</code>。</p>
 </li>
 </ol>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>

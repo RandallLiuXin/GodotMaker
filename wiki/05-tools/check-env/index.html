@@ -1126,10 +1126,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#claude-code" class="md-nav__link">
+  <a href="#selected-coding-agent" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Claude Code
+        Selected coding agent
       
     </span>
   </a>
@@ -2681,10 +2681,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#claude-code" class="md-nav__link">
+  <a href="#selected-coding-agent" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Claude Code
+        Selected coding agent
       
     </span>
   </a>
@@ -2790,9 +2790,14 @@
 <li>Godot 4.5 or later is reachable as <code>godot</code> or <code>godot4</code> on your PATH.</li>
 </ul>
 <p>If Godot is not on your PATH, this check shows a warning rather than a hard failure — you can still provide the full path to the executable when you run <code>publish.py</code>, and it will be saved in <code>.claude/godotmaker.yaml</code> for future use.</p>
-<h3 id="claude-code">Claude Code<a class="headerlink" href="#claude-code" title="Permanent link">&para;</a></h3>
+<h3 id="selected-coding-agent">Selected coding agent<a class="headerlink" href="#selected-coding-agent" title="Permanent link">&para;</a></h3>
 <ul>
-<li>The <code>claude</code> command-line tool is installed and on your PATH.</li>
+<li>Claude Code projects check that <code>claude</code> is installed.</li>
+<li>Codex projects check that <code>codex</code> is installed, the <code>.agents</code> runtime tree is
+  present, and the <code>godot</code> MCP server is configured.</li>
+<li>OpenCode projects check that <code>opencode</code> is installed, the <code>.opencode</code>
+  runtime tree and hook adapter are present, and the <code>godot</code> MCP server is
+  configured.</li>
 </ul>
 <h3 id="api-keys">API keys<a class="headerlink" href="#api-keys" title="Permanent link">&para;</a></h3>
 <table>
@@ -2821,7 +2826,12 @@
 </tr>
 </tbody>
 </table>
-<p>API-backed selectors fail when the matching key is absent. <code>asset_image_model: native</code> passes for Codex and warns for Claude Code because the checker cannot prove a Claude-side native generation tool is available. <code>asset_image_model: codex</code> in a Claude Code project passes when the Codex CLI is on PATH.</p>
+<p>API-backed selectors fail when the matching key is absent. <code>asset_image_model:
+native</code> passes for Codex and warns for Claude Code because the checker cannot
+prove a Claude-side native generation tool is available. OpenCode projects fail
+on <code>native</code> image generation or <code>native</code> VQA until you switch those fields to
+<code>codex</code> or an API-backed selector. <code>asset_image_model: codex</code> in a Claude Code
+or OpenCode project passes when the Codex CLI is on PATH.</p>
 <p>The checker also verifies that the selected provider package can be imported, catching installation issues that version checks alone would miss.</p>
 <h2 id="reading-the-output">Reading the output<a class="headerlink" href="#reading-the-output" title="Permanent link">&para;</a></h2>
 <p>Each line starts with one of three markers:</p>

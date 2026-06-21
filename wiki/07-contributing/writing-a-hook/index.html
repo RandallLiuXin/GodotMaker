@@ -2795,7 +2795,7 @@
 
 
 <h1 id="writing-a-hook">Writing a Hook<a class="headerlink" href="#writing-a-hook" title="Permanent link">&para;</a></h1>
-<p>Hooks are small Python scripts that the coding-agent runtime calls on specific events during a session. They enforce rules that the AI cannot bypass on its own — file permission boundaries, required outputs before a role can finish, report quality gates. The hook list is registered per runner in <code>agent-runtimes/&lt;agent&gt;/config/</code>; the scripts live in <code>hooks/</code> and are deployed to <code>.godotmaker/hooks/</code> by <code>publish.py</code>.</p>
+<p>Hooks are small Python scripts that the coding-agent runtime calls on specific events during a session. They enforce rules that the AI cannot bypass on its own — file permission boundaries, required outputs before a role can finish, report quality gates. Hook registration is runner-specific: Claude Code and Codex use config files, while OpenCode uses a plugin adapter. The scripts live in <code>hooks/</code> and are deployed to <code>.godotmaker/hooks/</code> by <code>publish.py</code>.</p>
 <p>For the full per-hook reference (exact payloads, block conditions, edge cases), see <a href="../../../hooks/">../../hooks.md</a>. This page covers how to write a new hook, not how every existing hook works.</p>
 <hr />
 <h2 id="anatomy-of-a-hook">Anatomy of a hook<a class="headerlink" href="#anatomy-of-a-hook" title="Permanent link">&para;</a></h2>
@@ -2815,7 +2815,7 @@
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        <span class="k">return</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="c1"># Block — write structured JSON to stdout, exit 0</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="c1"># (Claude Code reads stdout, not the exit code, for the decision)</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="c1"># (The runner hook surface reads stdout, not the exit code, for the decision)</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="s2">&quot;hookSpecificOutput&quot;</span><span class="p">:</span> <span class="p">{</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>            <span class="s2">&quot;hookEventName&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hook_event_name&quot;</span><span class="p">,</span> <span class="s2">&quot;PreToolUse&quot;</span><span class="p">),</span>
@@ -2850,7 +2850,10 @@
 </tr>
 </tbody>
 </table>
-<p>Claude Code reads stdout for the decision; it does not use the exit code to block. If a hook crashes (non-zero exit, or malformed JSON on stdout), Claude Code logs the error and continues — hooks must never silently break the pipeline by crashing.</p>
+<p>The runner hook surface reads stdout for the decision; it does not use the exit
+code to block. If a hook crashes (non-zero exit, or malformed JSON on stdout),
+the runtime may log the error and continue — hooks must never silently break the
+pipeline by crashing.</p>
 <h3 id="block-format-for-pretooluse">Block format for PreToolUse<a class="headerlink" href="#block-format-for-pretooluse" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;hookSpecificOutput&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -2887,7 +2890,7 @@
 <tbody>
 <tr>
 <td><code>SessionStart</code></td>
-<td>At the start of every Claude Code session</td>
+<td>At the start of a supported root runtime session</td>
 <td><code>hook_event_name</code></td>
 </tr>
 <tr>
@@ -2923,6 +2926,11 @@
 </tbody>
 </table>
 <p><code>agent_id</code> is empty for the main agent and non-empty for sub-agents. This is how hooks distinguish between the role skill and its workers.</p>
+<p>Runner payloads are not identical. Claude Code and Codex provide
+Claude-style <code>agent_id</code>, <code>SubagentStart</code>, and <code>SubagentStop</code> payloads.
+OpenCode uses an adapter plugin and does not expose the same subagent
+lifecycle payloads, so hooks that depend on those fields must either declare
+Claude Code / Codex support only or provide an explicit OpenCode fallback.</p>
 <hr />
 <h2 id="existing-hooks">Existing hooks<a class="headerlink" href="#existing-hooks" title="Permanent link">&para;</a></h2>
 <p>A condensed summary. For full detail on each hook, see <a href="../../../hooks/">../../hooks.md</a>.</p>
@@ -3042,9 +3050,10 @@
 <p>Create your hook script in <code>hooks/&lt;my_hook&gt;.py</code>.</p>
 </li>
 <li>
-<p>Add it to the appropriate runner hook config under the appropriate event:
-   <code>agent-runtimes/claude-code/config/settings.json</code> for Claude Code or
-   <code>agent-runtimes/codex/config/hooks.json</code> for Codex.</p>
+<p>Add it to every supported runner surface that should trigger it:
+   <code>agent-runtimes/claude-code/config/settings.json</code> for Claude Code,
+   <code>agent-runtimes/codex/config/hooks.json</code> for Codex, or
+   <code>agent-runtimes/opencode/plugins/godotmaker-hooks.js</code> for OpenCode.</p>
 </li>
 </ol>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>

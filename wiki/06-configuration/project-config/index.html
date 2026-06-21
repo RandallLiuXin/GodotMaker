@@ -1248,6 +1248,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#provider-setup-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider setup pages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1270,10 +1281,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#about-claudesettingsjson" class="md-nav__link">
+  <a href="#about-hook-config-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        About .claude/settings.json
+        About hook config files
       
     </span>
   </a>
@@ -2608,6 +2619,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#provider-setup-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider setup pages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2630,10 +2652,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#about-claudesettingsjson" class="md-nav__link">
+  <a href="#about-hook-config-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        About .claude/settings.json
+        About hook config files
       
     </span>
   </a>
@@ -2666,7 +2688,7 @@
 <p>For normal users, <code>godotmaker-cli</code> creates <code>.godotmaker/config.yaml</code> during the first project publish. The preflight panel points to the file so you can edit model and provider settings before continuing.</p>
 <p>Framework developers and manual-mode users can still create the same file with <code>python tools/publish.py &lt;project&gt;</code>. On subsequent publishes the file is left untouched except for the <code>agent</code> field, which is updated to the selected runtime.</p>
 <h2 id="common-fields">Common fields<a class="headerlink" href="#common-fields" title="Permanent link">&para;</a></h2>
-<p><strong><code>agent</code></strong> — selected coding-agent runtime, such as <code>claude-code</code> or <code>codex</code>.</p>
+<p><strong><code>agent</code></strong> — selected coding-agent runtime, such as <code>claude-code</code>, <code>codex</code>, or <code>opencode</code>.</p>
 <p><strong><code>worker_model</code></strong> — which Claude model writes game code. Defaults to <code>sonnet</code>; set it to <code>opus</code> for games that need heavier implementation reasoning.</p>
 <p><strong><code>verifier_model</code></strong>, <strong><code>reviewer_model</code></strong>, <strong><code>analyst_model</code></strong>, <strong><code>auditor_model</code></strong>, <strong><code>decomposer_model</code></strong> — role model defaults for validation, review, image analysis, audit, and GDD decomposition.</p>
 <p><strong><code>vqa_model</code></strong> — primary visual QA selector. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, and <code>openai:&lt;model&gt;</code>. <code>native</code> means the active agent runtime inspects the images directly. <code>codex</code> means Codex supplies the image inspection. API-backed selectors run <code>visual_qa.py</code>.</p>
@@ -2697,11 +2719,29 @@
 <p><code>native</code> is not an API provider. It means the active agent runtime supplies image inspection or image generation.</p>
 <p>The template uses native image inspection and native image generation by default.</p>
 <p>For Codex projects, <code>asset_image_model: native</code> maps to Codex native image generation when the host exposes that capability. For Claude Code projects, <code>native</code> requires a Claude-side native image tool. If no native path is available, <code>/gm-asset</code> must stop and ask you to configure a supported provider or switch to an API-backed selector.</p>
+<p>For OpenCode projects, <code>native</code> image generation and <code>native</code> VQA are not used.
+Set <code>asset_image_model</code> and <code>vqa_model</code> to <code>codex</code> or an API-backed
+selector before running the full pipeline.</p>
 <p>For a Claude Code project that should use Codex image generation:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
 </code></pre></div>
 <p>This selects Codex as the image-generation provider. It requires Codex CLI on
 PATH and does not require an image API key.</p>
+<h2 id="provider-setup-pages">Provider setup pages<a class="headerlink" href="#provider-setup-pages" title="Permanent link">&para;</a></h2>
+<p>Coding-agent runtimes:</p>
+<ul>
+<li><a href="../providers/agent-runtimes/claude-code/">Claude Code</a></li>
+<li><a href="../providers/agent-runtimes/codex/">Codex</a></li>
+<li><a href="../providers/agent-runtimes/opencode/">OpenCode</a></li>
+</ul>
+<p>Image and VQA providers:</p>
+<ul>
+<li><a href="../providers/image-vqa/native/">native</a></li>
+<li><a href="../providers/image-vqa/codex/">codex</a></li>
+<li><a href="../providers/image-vqa/gemini/">gemini</a></li>
+<li><a href="../providers/image-vqa/openai/">openai</a></li>
+<li><a href="../providers/image-vqa/grok/">grok</a></li>
+</ul>
 <h2 id="api-keys">API keys<a class="headerlink" href="#api-keys" title="Permanent link">&para;</a></h2>
 <p>Provider-prefixed selectors require the matching API key:</p>
 <table>
@@ -2734,6 +2774,7 @@ PATH and does not require an image API key.</p>
 <p>Launch-time <code>--agent</code> still wins for that run:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>opencode
 </code></pre></div>
 <p>To use Codex image generation:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
@@ -2742,8 +2783,13 @@ PATH and does not require an image API key.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai:gpt-image-2</span>
 </code></pre></div>
 <p>The next <code>/gm-*</code> command picks up the new value. A command already running will not see changes until the next session or stage invocation.</p>
-<h2 id="about-claudesettingsjson">About <code>.claude/settings.json</code><a class="headerlink" href="#about-claudesettingsjson" title="Permanent link">&para;</a></h2>
-<p>Claude Code projects also have <code>.claude/settings.json</code>, which registers GodotMaker hook scripts. It is framework-managed; running <code>python tools/publish.py --force &lt;project&gt;</code> republishes it if hooks stop firing after an upgrade.</p>
+<h2 id="about-hook-config-files">About hook config files<a class="headerlink" href="#about-hook-config-files" title="Permanent link">&para;</a></h2>
+<p>GodotMaker registers hook scripts through the selected runner surface:
+<code>.claude/settings.json</code> for Claude Code, <code>.codex/hooks.json</code> for Codex, and
+<code>.opencode/plugins/godotmaker-hooks.js</code> for OpenCode. These files are
+framework-managed; running <code>python tools/publish.py --force &lt;project&gt;</code>
+republishes the selected runner's hook surface if hooks stop firing after an
+upgrade.</p>
 
 
 
