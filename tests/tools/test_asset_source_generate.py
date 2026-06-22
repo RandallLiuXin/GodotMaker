@@ -160,6 +160,20 @@ def test_openai_uses_all_reference_images_for_edit(tmp_path, monkeypatch):
     assert (tmp_path / spec["source_path"]).exists()
 
 
+@pytest.mark.parametrize(
+    ("aspect_ratio", "expected_size"),
+    [
+        ("16:9", "1536x864"),
+        ("9:16", "864x1536"),
+        ("3:2", "1536x1024"),
+    ],
+)
+def test_openai_size_preserves_supported_aspect_ratios(aspect_ratio, expected_size):
+    size, _cost = source_generate._openai_size("1K", aspect_ratio)
+
+    assert size == expected_size
+
+
 def test_openai_rejects_more_than_sixteen_reference_images(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     spec = source_generate.load_spec(

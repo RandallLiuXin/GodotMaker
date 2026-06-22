@@ -45,6 +45,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
   tooling errors instead of static-check passes.
 - Fixed the API-backed OpenAI image provider so supported reference images are
   all passed to the generation call instead of silently using only the first one.
+- Fixed the API-backed OpenAI image provider so 16:9 and 9:16 source requests
+  preserve their requested aspect ratio instead of falling back to 3:2/2:3.
 - Fixed OpenCode session-idle Stop hook handling so Stop hook block decisions
   are sent back to the active session instead of terminating the worker process.
 - Fixed OpenCode runtime guidance for dot-directory state files so agents do

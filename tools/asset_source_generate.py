@@ -211,12 +211,28 @@ def _openai_size(size: str, aspect_ratio: str) -> tuple[str, int]:
         return "1024x1024", OPENAI_COSTS["1:1"]
     try:
         left, right = aspect_ratio.split(":", 1)
-        landscape = float(left) >= float(right)
-    except ValueError:
-        landscape = True
-    if landscape:
-        return "1536x1024", OPENAI_COSTS["landscape"]
-    return "1024x1536", OPENAI_COSTS["portrait"]
+        width_ratio = float(left)
+        height_ratio = float(right)
+    except ValueError as exc:
+        raise SourceGenerateError(f"Invalid OpenAI aspect ratio: {aspect_ratio}") from exc
+    if width_ratio <= 0 or height_ratio <= 0:
+        raise SourceGenerateError(f"Invalid OpenAI aspect ratio: {aspect_ratio}")
+
+    ratio = width_ratio / height_ratio
+    if ratio > 3 or ratio < 1 / 3:
+        raise SourceGenerateError("OpenAI aspect ratio must be between 1:3 and 3:1")
+
+    def align16(value: float) -> int:
+        return max(16, int(round(value / 16)) * 16)
+
+    if ratio >= 1:
+        width = 1536
+        height = align16(width / ratio)
+        return f"{width}x{height}", OPENAI_COSTS["landscape"]
+
+    height = 1536
+    width = align16(height * ratio)
+    return f"{width}x{height}", OPENAI_COSTS["portrait"]
 
 
 def _save_openai_b64(response, output: Path):
