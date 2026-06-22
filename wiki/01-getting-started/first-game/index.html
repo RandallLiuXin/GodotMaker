@@ -2684,14 +2684,14 @@
 
 <h1 id="your-first-game">Your First Game<a class="headerlink" href="#your-first-game" title="Permanent link">&para;</a></h1>
 <p>This walkthrough takes you from a game idea to a playable Godot game. The normal path uses <code>godotmaker-cli</code>, which helps turn the idea into a GDD and then drives the workflow automatically until the current design scope is complete.</p>
-<p><strong>Time to expect:</strong> a small game usually takes about <strong>3-5 hours of agent runtime</strong>. You do not need to supervise every step. Bring the idea, start the workflow, and review the playable result when it finishes.</p>
+<p><strong>Time to expect:</strong> a small game usually takes about <strong>5-8 hours of agent runtime</strong>. You do not need to supervise every step. Bring the idea, start the workflow, and review the playable result when it finishes.</p>
 <p>Advanced users can still run the underlying <code>/gm-*</code> commands directly. This page focuses on the CLI path.</p>
 <h2 id="before-you-start">Before You Start<a class="headerlink" href="#before-you-start" title="Permanent link">&para;</a></h2>
 <p>Complete <a href="../installation/">Installation</a> first. You need:</p>
 <ul>
 <li><code>godotmaker-cli</code> installed</li>
 <li>Godot, Git, Node.js, and Python available</li>
-<li>one selected agent runtime installed and authenticated: Claude Code or Codex</li>
+<li>one selected agent runtime installed and authenticated: Claude Code, Codex, or OpenCode</li>
 <li>optional API keys only if your config selects API-backed providers</li>
 </ul>
 <h2 id="create-a-game-folder">Create a Game Folder<a class="headerlink" href="#create-a-game-folder" title="Permanent link">&para;</a></h2>
@@ -2708,10 +2708,12 @@
 <p>From the game folder:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
 </code></pre></div>
-<p>Use Codex for the same project:</p>
+<p>Use Codex or OpenCode for the same project:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>opencode
 </code></pre></div>
 <p>The CLI publishes the framework into the project if needed, creates the editable <code>.godotmaker/config.yaml</code> project config on first publish, helps capture the idea as a GDD, then drives planning, build, verification, evaluation, and fix loops until the current design scope is complete.</p>
+<p>OpenCode projects should configure image generation and visual QA to use <code>codex</code> or API-backed providers before running the full pipeline; OpenCode does not currently provide runtime-native image generation or image inspection for GodotMaker.</p>
 <h2 id="what-happens-during-the-run">What Happens During the Run<a class="headerlink" href="#what-happens-during-the-run" title="Permanent link">&para;</a></h2>
 <p>GodotMaker will:</p>
 <ol>

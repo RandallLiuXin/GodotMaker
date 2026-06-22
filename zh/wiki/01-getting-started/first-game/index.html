@@ -2684,14 +2684,14 @@
 
 <h1 id="_1">你的第一款游戏<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
 <p>这篇教程带你从一个游戏想法，走到一个可以运行的 Godot 游戏。正常路径使用 <code>godotmaker-cli</code>：它会协助把想法整理成 GDD，然后自动驱动工作流，直到当前设计范围完成。</p>
-<p><strong>大概要花多久：</strong> 一个小型游戏通常需要 <strong>3-5 小时 Agent 运行时间</strong>。你不需要盯着每一步。带着想法来，启动工作流，结束后验收可运行结果。</p>
+<p><strong>大概要花多久：</strong> 一个小型游戏通常需要 <strong>5-8 小时 Agent 运行时间</strong>。你不需要盯着每一步。带着想法来，启动工作流，结束后验收可运行结果。</p>
 <p>高级用户仍然可以直接运行底层 <code>/gm-*</code> 命令。本页聚焦 CLI 路径。</p>
 <h2 id="_2">开始前<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <p>先完成<a href="../installation/">安装</a>。你需要：</p>
 <ul>
 <li>已安装 <code>godotmaker-cli</code></li>
 <li>Godot、Git、Node.js、Python 可用</li>
-<li>已选择的 Agent runtime 已安装并登录</li>
+<li>已选择的 Agent runtime 已安装并登录：Claude Code、Codex 或 OpenCode</li>
 <li>只有当配置选择 API provider 时，才需要可选 API key</li>
 </ul>
 <h2 id="_3">创建游戏文件夹<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
@@ -2708,11 +2708,13 @@
 <p>在游戏文件夹中运行：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
 </code></pre></div>
-<p>同一个项目也可以使用 Codex：</p>
+<p>同一个项目也可以使用 Codex 或 OpenCode：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>opencode
 </code></pre></div>
 <p>CLI 会在需要时把框架发布进项目，协助把想法整理成 GDD，然后驱动规划、构建、验证、评估和修复循环，直到当前设计范围完成。</p>
 <p>第一次发布时，CLI 会创建 <code>.godotmaker/config.yaml</code>。继续运行前你可以打开它检查或修改 <code>agent</code>、角色模型、VQA 模型和素材生成模型。</p>
+<p>如果使用 OpenCode，请在完整运行前把图片生成和视觉 QA 配置为 <code>codex</code> 或 API 后端 provider；OpenCode 当前不提供 GodotMaker 可用的 runtime-native 生图或图片检查能力。</p>
 <h2 id="_4">运行中会发生什么<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <p>GodotMaker 会：</p>
 <ol>

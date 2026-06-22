@@ -3210,13 +3210,13 @@
 <h3 id="_3">我需要懂游戏开发吗？<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
 <p>不需要。GodotMaker 专为有游戏想法但不是游戏开发者的人设计。你用白话描述自己想要什么，在设计展示给你时确认感觉对不对，然后让 AI 去实现。不过，你需要阅读生成的 <code>GDD.md</code>，并确认它是否准确表达了你的意图——AI 来写，但你来拍板。</p>
 <h3 id="api-key">我需要付费 API key 吗？<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h3>
-<p>只有当项目配置选择 API 后端时才需要对应 key。默认配置使用 native VQA 和 native 图片生成。<code>gemini:&lt;model&gt;</code> 需要 <code>GOOGLE_API_KEY</code> 或 <code>GEMINI_API_KEY</code>，<code>openai:&lt;model&gt;</code> 需要 <code>OPENAI_API_KEY</code>，<code>grok:&lt;model&gt;</code> 需要 <code>XAI_API_KEY</code>。</p>
+<p>只有当项目配置选择 API 后端时才需要对应 key。runtime-native 图片生成或 VQA 取决于你选择的 Agent runtime；OpenCode 项目应配置为 <code>codex</code> 或 API 后端图片/VQA provider。<code>gemini:&lt;model&gt;</code> 需要 <code>GOOGLE_API_KEY</code> 或 <code>GEMINI_API_KEY</code>，<code>openai:&lt;model&gt;</code> 需要 <code>OPENAI_API_KEY</code>，<code>grok:&lt;model&gt;</code> 需要 <code>XAI_API_KEY</code>。</p>
 <p>Claude Code 本身需要 Anthropic 账号并开通 API 访问（或已开通 Claude Code 的 Claude Pro / Team 订阅）。</p>
 <p>详细配置步骤见安装页面。</p>
 <h3 id="godot">我需要哪个版本的 Godot？<a class="headerlink" href="#godot" title="Permanent link">&para;</a></h3>
 <p>Godot 4.5 或更高版本。GodotMaker 不支持 Godot 3.x 或 Godot 4.3 及以下版本。</p>
 <h3 id="_4">做一个游戏要多长时间？<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
-<p>对于一个小游戏，通常需要 <strong>3-5 小时 Agent 运行时间</strong>。你自己的注意力主要花在前期澄清想法，以及结束后验收结果。设计清楚后，<code>godotmaker-cli</code> 会驱动同一套 <code>/gm-*</code> 角色完成规划、构建、验证、评估、截图和修复，而不是让你手动触发每条命令。游戏越复杂，<code>PLAN.md</code> 中的任务数越多，时间也相应增加。</p>
+<p>对于一个小游戏，通常需要 <strong>5-8 小时 Agent 运行时间</strong>。你自己的注意力主要花在前期澄清想法，以及结束后验收结果。设计清楚后，<code>godotmaker-cli</code> 会驱动同一套 <code>/gm-*</code> 角色完成规划、构建、验证、评估、截图和修复，而不是让你手动触发每条命令。游戏越复杂，<code>PLAN.md</code> 中的任务数越多，时间也相应增加。</p>
 <h3 id="c-gdscript">我可以用 C# 代替 GDScript 吗？<a class="headerlink" href="#c-gdscript" title="Permanent link">&para;</a></h3>
 <p>可以。GodotMaker 同时支持 GDScript 和 C#。ECS 组件和系统可以用任一语言编写。使用 C# 时，请确保你使用的是支持 .NET 的 Godot 构建版本。</p>
 <hr />
