@@ -100,7 +100,7 @@ python tools/check_env.py
 | 工具 | 用途 |
 |---|---|
 | [Godot 4.5+](https://godotengine.org) | 运行生成出的项目 |
-| [Claude Code](https://claude.ai/code)、[Codex](https://openai.com/codex/) 或 [OpenCode](https://opencode.ai/) | Agent runtime |
+| [Claude Code](https://claude.ai/code)、[Codex](https://openai.com/codex/) 或 [OpenCode](https://opencode.ai/) | CLI 驱动运行所需的命令行 Agent runtime；桌面聊天应用不够 |
 | Node.js 22+ | 运行 `godotmaker-cli` 和 Godot MCP 工具 |
 | Python 3.10+ | 运行 GodotMaker 辅助脚本 |
 | Git 2.30+ | 提供本地历史和 Agent worktree |

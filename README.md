@@ -100,7 +100,7 @@ python tools/check_env.py
 | Tool | Why |
 |---|---|
 | [Godot 4.5+](https://godotengine.org) | Runs the generated project |
-| [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex/), or [OpenCode](https://opencode.ai/) | Agent runtime |
+| [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex/), or [OpenCode](https://opencode.ai/) | Command-line agent runtime for CLI-driven runs; desktop chat apps are not sufficient |
 | Node.js 22+ | Runs `godotmaker-cli` and Godot MCP tooling |
 | Python 3.10+ | Runs GodotMaker helper scripts |
 | Git 2.30+ | Enables local history and agent worktrees |
