@@ -32,6 +32,15 @@ GodotMaker turns a game idea into a playable Godot 4 prototype. The normal path 
 | **Use visual QA as feedback** | Automated screenshots and visual assessment turn UI and scene issues into fix tasks |
 | **Stay on a real engine** | The result lands in Godot, so you can keep debugging, extending, exporting, and shipping |
 
+## Current boundaries
+
+- GodotMaker currently targets 2D Godot games. 3D game generation is not supported.
+- The art pipeline is still alpha and may need follow-up repair for atlas regions, animation setup, or asset binding.
+- Pixel art and TileMap support are planned but not currently supported.
+- Level layout, puzzle content, and numeric balance still need human judgment and manual refinement.
+- Audio generation is not supported yet.
+- Very long automated runs are cost-sensitive, and rare projects may fail to converge after repeated build/fix/evaluate loops.
+
 Manual `/gm-*` role commands still exist for advanced users, debugging, and framework development. They are not the recommended first-run path. The normal CLI path supports Claude Code, Codex, and OpenCode runners; see [Installation](01-getting-started/installation.md) for runner-specific setup notes.
 
 ## Project status

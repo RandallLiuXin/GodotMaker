@@ -1,13 +1,21 @@
-# GodotMaker
+<p align="center">
+  <img src="docs/assets/icon.png" alt="GodotMaker" width="128">
+</p>
 
-[![License: BUSL 1.1](https://img.shields.io/badge/License-BUSL_1.1-orange.svg)](LICENSE)
-[![Godot 4.x](https://img.shields.io/badge/Godot-4.x-blue?logo=godotengine)](https://godotengine.org)
-[![CI](https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml/badge.svg)](https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-online-teal)](https://RandallLiuXin.github.io/GodotMaker/)
+<h1 align="center">GodotMaker</h1>
+
+<p align="center">
+  Bring your idea. Give it to GodotMaker. Get a playable game.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BUSL_1.1-orange.svg" alt="License: BUSL 1.1"></a>
+  <a href="https://godotengine.org"><img src="https://img.shields.io/badge/Godot-4.x-blue?logo=godotengine" alt="Godot 4.x"></a>
+  <a href="https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml"><img src="https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://RandallLiuXin.github.io/GodotMaker/"><img src="https://img.shields.io/badge/docs-online-teal" alt="Docs"></a>
+</p>
 
 **English** | [中文](README.zh-CN.md)
-
-> **Bring your idea. Give it to GodotMaker. Get a playable game.**
 
 ## Why I Built This
 
@@ -108,17 +116,23 @@ You only need to set an API key when your project configuration selects an API p
 - [Roadmap](ROADMAP.md)
 - [Full docs](https://RandallLiuXin.github.io/GodotMaker/)
 
-## Status
+## Status And Boundaries
 
-GodotMaker is preparing for a public alpha under a source-available license. The CLI, agent-runner support, visual QA, and packaging workflow are evolving quickly.
+GodotMaker is preparing for a public alpha under a source-available license. The CLI, agent-runner support, visual QA, and packaging workflow are evolving quickly. Core gameplay generation is usually the most reliable part of the flow. Because AI output is still variable and the art pipeline is still alpha, a completed run may still need a follow-up pass with a coding agent to correct visual wiring issues such as the wrong atlas region, missing animation setup, or incomplete asset binding.
 
-Preview features and practical fallbacks:
+Current boundaries:
 
-| Area | Current status | If you need predictability |
+| Capability | Current status | Notes |
 |---|---|---|
-| Art-production pipeline | The workflow can generate references, canonical character sources, action source sheets, UI sheets, and draft runtime assets, but characters, animation, UI pieces, UI motion, and visual consistency still need human review and may need manual replacement. | Put your own visual assets under `assets/`, then run `/gm-asset` so the workflow can inspect them, update `assets/manifest.json`, and mark matching `ASSETS.md` rows as `provided`. |
-| 3D games | Not supported by the current pipeline. The workflow targets 2D games. | Build 2D games for now, or add 3D work manually after generation. |
+| 2D only | The current framework targets 2D Godot games. | Do not start with a 3D game prompt. Add 3D content manually after generation if needed. |
+| Level generation | Level-based games can be built, but automatic level design is still limited. | Treat generated levels as draft placeholders and expect to adjust layouts manually. |
+| Puzzle design and balance | The agent can implement puzzle mechanics, scoring rules, economy hooks, and win/loss logic, but it does not have human taste for whether a puzzle is clever or whether a numeric curve feels good. | Use GodotMaker to build the functional system, then fill in puzzle content, level data, and balance values yourself. |
+| Art pipeline | The art pipeline is alpha. It can generate and bind draft assets, but it may occasionally choose the wrong atlas region, miss an animation configuration, or need a follow-up coding-agent repair pass. | Review the generated project visually. Replace assets under `assets/` or rerun `/gm-asset` when the visual direction is important. |
+| Pixel art | Pixel art style is not currently supported by the art pipeline, but support is planned. | Use non-pixel 2D styles for generated art, or provide your own pixel art assets manually for now. |
+| TileMap | TileMap is not currently supported. Tile-based terrain, tilesets, tile atlases, and grid-based map generation may not be completed automatically. | Use hand-authored scenes or simple generated layouts for now. TileMap support is planned later. |
 | Audio generation | Not supported by the current pipeline. Audio rows are treated as user-provided or deferred. | Provide music/SFX manually and wire them into the project yourself until the audio workflow ships. |
+| Long automated runs | GodotMaker is cost-sensitive because it runs coding agents for a long time. The current internal baseline is that Codex Pro can handle long prototype runs comfortably, with capacity still left over in typical use. | If you are using a different runtime or plan, start with smaller prompts and watch the first full run. |
+| Non-converging runs | A very small number of projects may fail to converge. In this context, "not converging" means the project still cannot pass acceptance after at least 5 build/fix/evaluate loops. | Please share the local failure case if this happens. These reports are useful for improving the framework. |
 
 A dedicated art-production UI is planned to make curation, slicing, replacement, and review more reliable.
 

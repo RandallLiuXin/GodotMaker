@@ -19,6 +19,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Clarified README and docs landing-page boundaries for current game types, art-pipeline limits, and long-running prototype expectations.
+
 ## Fixed
 
 ## Removed

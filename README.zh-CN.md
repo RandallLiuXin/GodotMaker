@@ -1,13 +1,21 @@
-# GodotMaker
+<p align="center">
+  <img src="docs/assets/icon.png" alt="GodotMaker" width="128">
+</p>
 
-[![License: BUSL 1.1](https://img.shields.io/badge/License-BUSL_1.1-orange.svg)](LICENSE)
-[![Godot 4.x](https://img.shields.io/badge/Godot-4.x-blue?logo=godotengine)](https://godotengine.org)
-[![CI](https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml/badge.svg)](https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-online-teal)](https://RandallLiuXin.github.io/GodotMaker/zh/)
+<h1 align="center">GodotMaker</h1>
+
+<p align="center">
+  带着你的想法来，交给 GodotMaker，得到一个可运行的游戏。
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BUSL_1.1-orange.svg" alt="License: BUSL 1.1"></a>
+  <a href="https://godotengine.org"><img src="https://img.shields.io/badge/Godot-4.x-blue?logo=godotengine" alt="Godot 4.x"></a>
+  <a href="https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml"><img src="https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://RandallLiuXin.github.io/GodotMaker/zh/"><img src="https://img.shields.io/badge/docs-online-teal" alt="Docs"></a>
+</p>
 
 [English](README.md) | **中文**
-
-> **带着你的想法来，交给 GodotMaker，得到一个可运行的游戏。**
 
 ## 为什么做这个
 
@@ -108,17 +116,23 @@ python tools/check_env.py
 - [路线图](ROADMAP.md)
 - [完整文档](https://RandallLiuXin.github.io/GodotMaker/zh/)
 
-## 状态
+## 状态与边界
 
-GodotMaker 正在准备源码可见的 public alpha。CLI、Agent runner 支持、视觉 QA 和打包流程还会快速迭代。
+GodotMaker 正在准备源码可见的 public alpha。CLI、Agent runner 支持、视觉 QA 和打包流程还会快速迭代。当前功能生成通常是最稳定的部分。但由于 AI 产出仍然存在不稳定性，并且美术管线仍处于 alpha 阶段，完整运行结束后，项目可能仍需要通过 coding agent 做一轮后续调整，例如修复错误图集区域、补齐动画配置，或修正资源绑定问题。
 
-抢鲜体验功能和建议备选方案：
+当前边界：
 
-| 范围 | 当前状态 | 如果你更在意稳定可控 |
+| 能力项 | 当前状态 | 备注 |
 |---|---|---|
-| 美术生产线 | 当前流程可以生成参考图、角色 canonical source、动作 source sheet、UI sheet 和运行时素材草图，但角色、动画、UI 组件、UI 动效和视觉一致性仍需要人工审查，也可能需要手动替换。 | 把你自己准备的视觉资源放到 `assets/` 下，然后运行 `/gm-asset`，让工作流分析这些资源、更新 `assets/manifest.json`，并把匹配的 `ASSETS.md` 行标记为 `provided`。 |
-| 3D 游戏 | 当前 pipeline 暂不支持。工作流目前主要面向 2D 游戏。 | 现阶段优先制作 2D 游戏，或在生成后手动补充 3D 内容。 |
+| 仅支持 2D | 当前框架面向 2D Godot 游戏。 | 不建议从 3D 游戏 prompt 开始。如果需要 3D 内容，可以在生成后手动补充。 |
+| 关卡生成 | 关卡制游戏可以制作，但自动关卡设计能力还不稳定。 | 把生成出的关卡视为草稿或占位，后续仍需要手动调整布局。 |
+| 解谜设计与数值平衡 | Agent 可以实现解谜机制、计分规则、经济系统接口和胜负逻辑，但它没有人类对于“是否好玩”“谜题是否巧妙”“数值曲线是否舒服”的判断。 | 用 GodotMaker 搭出功能系统，再自己补充谜题内容、关卡数据和数值平衡。 |
+| 美术管线 | 美术管线仍处于 alpha 阶段。它可以生成并接入草稿资源，但偶尔会选错图集区域、漏掉动画配置，或需要后续 coding agent 修复资源绑定。 | 生成结束后建议实际打开项目检查视觉表现。视觉方向重要时，可以替换 `assets/` 下的资源，或重新运行 `/gm-asset`。 |
+| 像素画风 | 美术管线当前暂不支持像素画风，后续会支持。 | 现阶段建议使用非像素 2D 美术风格，或手动提供自己的像素资源。 |
+| TileMap | 当前暂不支持 TileMap。基于地块的地形、tileset、tile atlas 和网格地图生成不一定能自动完成。 | 现阶段优先使用手工场景或简单生成布局。TileMap 支持会在后续补充。 |
 | 音频生成 | 当前 pipeline 暂不支持。音频资源会被视为用户提供或延期。 | 手动准备音乐和音效，并在音频工作流完成前自行接入项目。 |
+| 长时间自动运行 | GodotMaker 对成本敏感，因为它会长时间调用 coding agent。当前内部基准是 Codex Pro 可以比较轻松地完成长时间原型运行，并且通常仍有不少剩余额度。 | 如果使用其他 runtime 或套餐，建议先从更小的 prompt 开始，并观察第一次完整运行。 |
+| 无法收敛 | 基于当前用户反馈，极小概率下会出现无法收敛的项目。这里的“不收敛”指至少运行 5 轮 build/fix/evaluate 循环后仍然无法通过验收。 | 如果遇到这种情况，欢迎把本地不收敛案例反馈给我，这类案例对后续迭代很有价值。 |
 
 后续计划提供专门的美术资源制作 UI，让筛选、裁剪、替换和审查更可靠。
 
