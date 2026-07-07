@@ -231,20 +231,51 @@ def test_build_and_fixgap_handoff_runtime_assets_to_workers():
     assert "## Runtime Asset Rules" in worker
     assert "For `grid_sheet`, read the listed action metadata JSON" in worker
     assert "For `region_atlas`, read the listed atlas metadata JSON" in worker
+    assert "wire animation playback from metadata" in worker_dispatch
+    assert "frame_count > 1" in worker_dispatch
+    assert "temporary animated FX" in worker_dispatch
+    assert "do not use the sheet as a static" in worker
+    assert "do not use only the first frame" in worker
+    assert "effect lifecycle" in worker
 
 
 def test_reviewer_checks_runtime_asset_usage_and_evaluate_uses_scene_contract():
     reviewer_dispatch = _read("skills/core/_shared/reviewer-dispatch.md")
     reviewer = _read("agents/reviewer.md")
     evaluate = _read("skills/core/gm-evaluate/SKILL.md")
+    animation_skill = _read("skills/reviewer/animation/SKILL.md")
+    animation_checklist = _read("skills/reviewer/animation/checklist.md")
 
     assert "### Asset Runtime Snapshot" in reviewer_dispatch
+    assert "frame_count" in reviewer_dispatch
+    assert "runtime animation/FX lifecycle" in reviewer_dispatch
     assert "**Review runtime asset usage.**" in reviewer
     assert "### Asset Usage Review" in reviewer
     assert "No generation source or curation candidate is used at runtime" in reviewer
+    assert "Missing expected animation is itself a review issue" in reviewer
+    assert "Multi-frame grid sheets are animated" in reviewer
+    assert "Temporary animated FX clear after playback" in reviewer
+    assert "omitted" in animation_skill
+    assert "expected animation is a finding" in animation_skill
+    assert "Expected multi-frame animation missing" in animation_checklist
+    assert "Static sheet or first-frame collapse" in animation_checklist
+    assert "Temporary animated FX lifecycle" in animation_checklist
     assert "`visual-qa` skill in Question mode" in evaluate
     assert "Do not compare screenshots against" in evaluate
     assert "--question \"Does this screenshot satisfy the scene contract?" in evaluate
     assert "`assets/manifest.json` — runtime asset handoff manifest" not in evaluate
     assert "**Runtime asset preflight.**" not in evaluate
     assert '"reference": "references/scene_<name>.png"' not in evaluate
+
+
+def test_gdd_templates_keep_multiframe_assets_dynamic():
+    decomposer = _read("agents/decomposer.md")
+    plan = _read("templates/PLAN.md")
+    scenes = _read("templates/SCENES.md")
+
+    assert "Do not reduce animation work" in decomposer
+    assert "expected disappearance or clear condition" in decomposer
+    assert "Multi-frame actor and FX assets play as animation" in plan
+    assert "frame sequence / dynamic evidence" in plan
+    assert "animation/lifecycle" in scenes
+    assert "multi-frame actors/FX" in scenes

@@ -40,6 +40,8 @@ Agent({
 - [ ] {file path}: {what it should contain}
 - [ ] {unit test file path}: {test scenarios — minimum 2 unit tests per changed system}
 - [ ] e2e-testable interface: public methods / signals / simulate_* helpers for affected systems/scenes/UI, with unit tests covering each one
+- [ ] If runtime assets include multi-frame `grid_sheet` entries: wire animation playback from metadata, not a static sheet or first frame
+- [ ] If runtime assets include temporary animated FX: implement end-of-life behavior (animation finished, timer, tween completion, or equivalent state clear)
 - [ ] Run headless-build and confirm compilation
 - [ ] Run unit tests and include pass/fail output
 - [ ] If `Visual Self-Check` is present: capture screenshot(s), run visual-qa, include output
@@ -68,11 +70,14 @@ Agent({
 ### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
 {Copy the matching ready entries from assets/manifest.json and ASSETS.md.
 Include: asset_id, final_path, runtime_artifact, runtime_role, target size,
-and metadata path for `grid_sheet` or `region_atlas`.
+frame_count, and metadata path for `grid_sheet` or `region_atlas`.
 Use cwd-relative final paths and metadata paths.
 Use final runtime assets only.
 Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
 prompt files, or scene references as runtime assets.
+For `grid_sheet` with frame_count > 1, include the action metadata path,
+frame_paths, fps/loop when present, and the expected runtime state or FX
+lifecycle that should play it.
 If a required final asset or metadata file is missing, report PARTIAL or
 FAILED with the missing path.}
 
@@ -80,7 +85,8 @@ FAILED with the missing path.}
 {Copy the relevant PLAN.md Runtime Asset Assignments, SCENES.md Asset
  bindings, and ASSETS.md Visual Asset Contract rows.
  Include: asset row/path, runtime size, visual role, readability requirement,
- anchor/derivative source, and final runtime asset path.
+ animation/lifecycle requirement when present, anchor/derivative source, and
+ final runtime asset path.
  Use existing final paths from ASSETS.md or assets/manifest.json.
  Do not use source sheets, curation candidates, prompt files, or scene
  references as runtime assets unless ASSETS.md explicitly lists that path as
@@ -128,7 +134,14 @@ PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
 18. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 19. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
 `Visual Asset Contract` for visual tasks.
-20. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
+20. **Multi-frame assets are runtime behavior.** If the snapshot lists a
+`grid_sheet` with frame_count > 1, the worker brief must require animated
+runtime playback from metadata. Do not collapse the task into "readable
+presentation" or static feedback.
+21. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
+slash, aura, or feedback effects must state how the effect starts and how it
+disappears or clears.
+22. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
 
 ## Worker Utility Convention
 

@@ -107,6 +107,14 @@ If you need to modify a file not in your deliverables, report this in your Notes
 - Use final runtime asset paths from `Asset Runtime Snapshot`.
 - For `grid_sheet`, read the listed action metadata JSON and wire animation
   frames from it.
+- If a `grid_sheet` has frame_count > 1, do not use the sheet as a static
+  `Sprite2D.texture` and do not use only the first frame. Create runtime
+  playback with `AnimatedSprite2D`/`SpriteFrames`, `AnimationPlayer`, or an
+  equivalent frame-advance system.
+- For gameplay actors, wire at least the default action playback and any
+  action/state switches named in the brief.
+- For temporary projectile, impact, pickup, slash, aura, or feedback FX, wire
+  the effect lifecycle so it disappears or clears after playback.
 - For `region_atlas`, read the listed atlas metadata JSON and wire named
   regions from it.
 - Do not use `.godotmaker/asset-generation/sources/`, curation candidates,

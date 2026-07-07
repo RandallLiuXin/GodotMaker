@@ -20,6 +20,10 @@ After animation-related code is written or modified. Look for:
 - SpriteFrames or Animation resource manipulation at runtime
 - `callback_mode_process` settings
 - Pool/spawn lifecycle involving animated entities
+- Briefs or asset snapshots that require multi-frame `grid_sheet` runtime
+  assets, dynamic-mode evidence, frame sequences, animated actors, or animated
+  FX. Trigger even if the implementation contains no animation API; omitted
+  expected animation is a finding.
 
 ## Review process
 

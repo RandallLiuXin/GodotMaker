@@ -65,6 +65,23 @@ You are STRICTLY PROHIBITED from:
 
 9. **Write your report** (exact format below).
 
+## Animation Asset Matching
+
+If the brief's `Asset Runtime Snapshot` lists a `grid_sheet` with frame_count
+> 1, match the animation reviewer even when the implementation contains no
+AnimationPlayer, AnimationTree, AnimatedSprite2D, SpriteFrames, or playback
+API. Missing expected animation is itself a review issue.
+
+Also match the animation reviewer when the brief mentions dynamic mode, frame
+sequence, animated character/actor, or animated FX.
+
+When `Asset Runtime Snapshot` is present, asset usage review must also check:
+
+- Multi-frame `grid_sheet` assets are not used as static sheets or collapsed
+  to only the first frame.
+- Animated temporary FX have an end-of-life path such as animation finished,
+  timer, tween completion, or explicit state clear.
+
 ## Brief Format (What You Receive)
 
 ```
@@ -113,6 +130,8 @@ You are STRICTLY PROHIBITED from:
 ### Asset Usage Review
 - [ ] Final asset paths are used: PASS/FAIL/N/A
 - [ ] Runtime metadata is used for grid sheets and atlases: PASS/FAIL/N/A
+- [ ] Multi-frame grid sheets are animated instead of static sheet/first-frame use: PASS/FAIL/N/A
+- [ ] Temporary animated FX clear after playback or state completion: PASS/FAIL/N/A
 - [ ] No generation source or curation candidate is used at runtime: PASS/FAIL/N/A
 - [ ] No final asset is replaced by placeholder or procedural art: PASS/FAIL/N/A
 

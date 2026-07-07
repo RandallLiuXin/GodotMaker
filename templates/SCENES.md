@@ -36,7 +36,7 @@
 
 | Element | Asset Row / Path | Runtime Size | Visual Contract |
 |---------|------------------|--------------|-----------------|
-| {element name} | {asset name / path, procedural, or UI text} | {px, %, or world units} | {readability, animation, or state requirement} |
+| {element name} | {asset name / path, procedural, or UI text} | {px, %, or world units} | {readability, animation/lifecycle, or state requirement} |
 
 ### Acceptance criteria
 
@@ -45,6 +45,8 @@
        - entities/elements that must be visible (or explicitly off-screen)
        - mechanic ids ([<Tag>-Mn]) this scene exercises, with how a frozen
          screenshot proves them (or "exercised in dynamic mode only")
+       - multi-frame actors/FX that need frame sequence or dynamic-mode
+         evidence instead of a frozen screenshot
        - camera framing constraints (e.g. "player at x=128 with keys/locks
          700+px off-screen to the right — intentional") -->
 
