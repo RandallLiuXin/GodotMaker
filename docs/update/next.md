@@ -25,5 +25,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - Tightened build and review contracts so multi-frame runtime assets are wired as animation/lifecycle behavior instead of static sheets or first-frame sprites.
+- Fixed agent tool-dispatch trace capture so prompts or responses containing invalid Unicode surrogates are recorded instead of being silently dropped.
 
 ## Removed

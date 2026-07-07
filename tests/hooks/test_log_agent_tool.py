@@ -202,6 +202,26 @@ class TestAtomicityAndPairing:
         leftovers = [n for n in os.listdir(TRACES) if n.startswith(".tmp_")]
         assert leftovers == []
 
+    def test_lone_surrogate_content_still_written(self, project_dir):
+        # A lone Unicode surrogate (e.g. a byte that got surrogate-escaped
+        # upstream and survived json.loads) makes a strict UTF-8 encoder raise
+        # UnicodeEncodeError. That used to silently drop the whole trace file.
+        # The write must succeed (backslashreplace) and leave no 0-byte stub,
+        # and the input.json must still be JSON-parseable.
+        _, code, _ = run_hook(HOOK, {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Agent",
+            "tool_use_id": "toolu_surrogate",
+            "tool_input": {"prompt": "bad byte here: \udce9 done"},
+        })
+        assert code == 0
+        path = _input_path("toolu_surrogate")
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+        # Valid UTF-8 on disk (strict read must not raise) and still JSON.
+        loaded = json.loads(open(path, encoding="utf-8").read())
+        assert "bad byte here" in loaded["prompt"]
+
     def test_path_traversal_in_tool_use_id_is_neutralized(self, project_dir):
         # tool_use_id is opaque and Anthropic-controlled in practice, but
         # treat it as untrusted: a `../` should never escape the traces

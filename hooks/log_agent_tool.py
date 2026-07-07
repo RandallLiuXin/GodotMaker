@@ -113,7 +113,15 @@ def _atomic_write(path: str, content: str, ctx: str) -> None:
         return
 
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
+        # errors="backslashreplace": Agent prompts / tool responses can carry
+        # lone Unicode surrogates (e.g. a byte that got surrogate-escaped
+        # upstream survives json.loads -> json.dumps(ensure_ascii=False) as a
+        # raw \udcXX char). A strict UTF-8 encoder raises UnicodeEncodeError on
+        # those, which used to silently drop the whole trace file. Escaping the
+        # un-encodable chars keeps the file valid UTF-8 and readable; for the
+        # input.json path the escape is exactly a JSON \uXXXX sequence, so the
+        # file still round-trips through json.loads.
+        with os.fdopen(fd, "w", encoding="utf-8", errors="backslashreplace") as f:
             f.write(content)
         _log(ctx, "write+close ok", "bytes_written=", len(content))
     except Exception as e:  # noqa: BLE001 — log then unlink, never block
