@@ -2684,6 +2684,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Clarified that README agent runtime requirements refer to CLI-based runners.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Fixed agent tool-dispatch trace capture so prompts or responses containing invalid Unicode surrogates are recorded instead of being silently dropped.</li>
+</ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
 
