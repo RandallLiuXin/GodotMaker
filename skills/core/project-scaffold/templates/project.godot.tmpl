@@ -15,6 +15,17 @@ config/features=PackedStringArray("4.4")
 
 AutomationServer="*res://addons/godot_e2e/automation_server.gd"
 
+[debug]
+
+; Disable Godot's default file logging. Unattended pipeline / E2E runs can
+; re-raise a GDScript error every frame with no human to stop them, and the
+; engine log has no per-file size cap, so the default user://logs/godot.log
+; (on the system drive) can grow without bound and fill the disk. Runtime
+; diagnostics still reach the tooling via stdout and the E2E log capture, and
+; verify passes an explicit --log-file (which overrides this setting), so
+; turning off the default file log is safe here.
+file_logging/enable_file_logging=false
+
 [display]
 
 window/size/viewport_width={{viewport_width}}

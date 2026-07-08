@@ -27,5 +27,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Improved multi-frame runtime asset handling so generated actors and FX are built and reviewed for animation playback and lifecycle behavior instead of static sheet or first-frame use.
 - Fixed agent tool-dispatch trace capture so prompts or responses containing invalid Unicode surrogates are recorded instead of being silently dropped.
 - Redirected headless Godot's log into `.godotmaker/logs/` (keeping the five most recent per check) so verify no longer fails when a sandbox cannot create Godot's default `user://logs` directory.
+- Scaffolded projects now disable Godot's default engine file log so an unattended run that floods errors can no longer fill the system drive with an unbounded `user://logs/godot.log`.
 
 ## Removed

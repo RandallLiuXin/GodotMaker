@@ -29,6 +29,19 @@ window/stretch/mode="canvas_items"
 renderer/rendering_method="gl_compatibility"
 ```
 
+### [debug]
+
+```ini
+file_logging/enable_file_logging=false
+```
+
+Always include this section. It turns off Godot's default engine file log
+(`user://logs/godot.log`, on the system drive), which has no per-file size cap
+and can grow without bound during unattended pipeline / E2E runs where a
+GDScript error is re-raised every frame. Diagnostics still reach the tooling
+via stdout and the E2E log capture; verify redirects its own headless log with
+an explicit `--log-file` (which overrides this setting).
+
 ### [physics]
 
 ```ini
