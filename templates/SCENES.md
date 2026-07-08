@@ -36,7 +36,7 @@
 
 | Element | Asset Row / Path | Runtime Size | Visual Contract |
 |---------|------------------|--------------|-----------------|
-| {element name} | {asset name / path, procedural, or UI text} | {px, %, or world units} | {readability, animation/lifecycle, or state requirement} |
+| {element name} | {asset name / path, procedural, or UI text} | {px, %, or world units} | {readability, animation, or state requirement} |
 
 ### Acceptance criteria
 
@@ -44,15 +44,13 @@
      alone (no GDD lookup). For each scene, list:
        - entities/elements that must be visible (or explicitly off-screen)
        - mechanic ids ([<Tag>-Mn]) this scene exercises, with how a frozen
-         screenshot proves them (or "exercised in dynamic mode only")
-       - multi-frame actors/FX that need frame sequence or dynamic-mode
-         evidence instead of a frozen screenshot
+         screenshot proves them
        - camera framing constraints (e.g. "player at x=128 with keys/locks
          700+px off-screen to the right — intentional") -->
 
 - {observable fact 1, e.g. "Player sprite visible centered-left, facing right"}
 - {observable fact 2, e.g. "HUD score counter visible top-right, value `0`"}
-- {observable fact 3, e.g. "Mechanic [<Tag>-M1] jump: not provable from frozen frame — exercised in dynamic-mode test only"}
+- {observable fact 3, e.g. "Mechanic [<Tag>-M1] locked door: door visible blocking exit"}
 
 ### Transitions
 - {Element} → Scene: {target scene name}

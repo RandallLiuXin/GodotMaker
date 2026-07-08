@@ -269,14 +269,15 @@ def test_reviewer_checks_runtime_asset_usage_and_evaluate_uses_scene_contract():
     assert '"reference": "references/scene_<name>.png"' not in evaluate
 
 
-def test_gdd_templates_keep_multiframe_assets_dynamic():
+def test_gdd_templates_do_not_add_weak_dynamic_visual_checks():
     decomposer = _read("agents/decomposer.md")
     plan = _read("templates/PLAN.md")
     scenes = _read("templates/SCENES.md")
 
-    assert "Do not reduce animation work" in decomposer
-    assert "expected disappearance or clear condition" in decomposer
-    assert "Multi-frame actor and FX assets play as animation" in plan
-    assert "frame sequence / dynamic evidence" in plan
-    assert "animation/lifecycle" in scenes
-    assert "multi-frame actors/FX" in scenes
+    assert "Do not reduce animation work" not in decomposer
+    assert "expected disappearance or clear condition" not in decomposer
+    assert "frame sequence / dynamic evidence" not in plan
+    assert "Multi-frame actor and FX assets play as animation" not in plan
+    assert "animation/lifecycle" not in scenes
+    assert "multi-frame actors/FX" not in scenes
+    assert "dynamic-mode test" not in scenes

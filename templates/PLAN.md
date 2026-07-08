@@ -107,9 +107,7 @@ the player-facing state, feedback, and presentation needed to play this tag.}
      outputs. Use `asset_name / assets/...` for concrete assets, or
      `procedural`, `UI text`, or `not required this tag`. `not required this tag`
      needs a deferral reason in Verification. Asset names and paths should match
-     ASSETS.md and SCENES.md. For multi-frame actors or FX, state that the
-     asset is animated and use frame sequence / dynamic evidence instead of a
-     static screenshot-only check. -->
+     ASSETS.md and SCENES.md. -->
 
 | Task / Mechanic | Visible Content | Asset Row / Path | Runtime Size | Verification |
 |-----------------|-----------------|------------------|--------------|--------------|
@@ -120,7 +118,6 @@ the player-facing state, feedback, and presentation needed to play this tag.}
 - Player input -> entity response feels correct
 - Movement direction matches input
 - Animation direction matches movement direction
-- Multi-frame actor and FX assets play as animation, not a static sheet or first frame
 - Physics entities respond to gravity/collision
 - UI readable, no overflow or overlap
 - No missing textures (magenta/checkerboard)
