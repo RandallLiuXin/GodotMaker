@@ -706,6 +706,7 @@ SELECTIVE_ENTRIES = [
     ".godotmaker/state.json",
     ".godotmaker/metrics.jsonl",
     ".godotmaker/metrics_current.jsonl",
+    ".godotmaker/logs/",
     "reports/",
     "__pycache__/",
     "*.pyc",

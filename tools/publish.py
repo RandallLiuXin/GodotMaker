@@ -1190,6 +1190,7 @@ def ensure_gitignore(target: Path, agent: str = AGENT_CLAUDE_CODE):
         ".godotmaker/metrics_current.jsonl",
         ".godotmaker/traces/",
         ".godotmaker/applied_migrations.json",
+        ".godotmaker/logs/",
         "reports/",
         "__pycache__/",
         "*.pyc",
