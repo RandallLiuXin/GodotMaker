@@ -117,6 +117,13 @@ If you need to modify a file not in your deliverables, report this in your Notes
   the effect lifecycle so it disappears or clears after playback.
 - For `region_atlas`, read the listed atlas metadata JSON and wire named
   regions from it.
+- A node that shows one element (a single button, icon, prop, or FX sprite)
+  from a `region_atlas` must reference its named region via `AtlasTexture` with
+  the region `rect` from the metadata (or an equivalent region binding). Do not
+  assign the whole atlas image as a `Sprite2D`/`TextureRect` texture where a
+  single region is required.
+- Do not use a whole `region_atlas` or `grid_sheet` image as one visible sprite
+  when the brief names a single region or frame to show.
 - Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
   prompt files, or scene references as runtime assets.
 - Do not replace listed final assets with placeholders, procedural shapes, or

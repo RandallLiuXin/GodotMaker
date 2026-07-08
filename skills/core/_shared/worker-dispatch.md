@@ -42,6 +42,7 @@ Agent({
 - [ ] e2e-testable interface: public methods / signals / simulate_* helpers for affected systems/scenes/UI, with unit tests covering each one
 - [ ] If runtime assets include multi-frame `grid_sheet` entries: wire animation playback from metadata, not a static sheet or first frame
 - [ ] If runtime assets include temporary animated FX: implement end-of-life behavior (animation finished, timer, tween completion, or equivalent state clear)
+- [ ] If runtime assets include `region_atlas` entries: bind each single-element node to its named region via AtlasTexture/region, not the whole atlas image
 - [ ] Run headless-build and confirm compilation
 - [ ] Run unit tests and include pass/fail output
 - [ ] If `Visual Self-Check` is present: capture screenshot(s), run visual-qa, include output
@@ -78,6 +79,8 @@ prompt files, or scene references as runtime assets.
 For `grid_sheet` with frame_count > 1, include the action metadata path,
 frame_paths, fps/loop when present, and the expected runtime state or FX
 lifecycle that should play it.
+For `region_atlas`, include the atlas metadata path, the region names/count,
+and which named region each node or binding must show.
 If a required final asset or metadata file is missing, report PARTIAL or
 FAILED with the missing path.}
 
@@ -141,7 +144,11 @@ presentation" or static feedback.
 21. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
 slash, aura, or feedback effects must state how the effect starts and how it
 disappears or clears.
-22. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
+22. **Region atlases are single regions.** If the snapshot lists a
+`region_atlas`, name which region each node must show and require selecting
+that region via AtlasTexture/region. Never assign the whole atlas image as one
+texture where a single element is required.
+23. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
 
 ## Worker Utility Convention
 

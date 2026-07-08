@@ -156,6 +156,14 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
    readability, layout, and motion/animation requirements. For deterministic
    setup screenshots, add `Visible state only; do not infer prior play history.`.
 
+   **Atlas misuse check.** When a scene's `Asset bindings` reference a
+   `region_atlas` (or a single element sourced from a `grid_sheet`), add to the
+   question whether each element shows only its intended region/sprite and not
+   the whole atlas or sheet. A visible full atlas or sheet where a single
+   button, icon, prop, or FX sprite is expected is a `critical_issue`; set this
+   scene's `visual_checks.<scene>.result` to `"fail"` and note the misused
+   binding in `visual_checks.<scene>.notes`.
+
    **VQA log path.** Ask `visual-qa` to write its debug log to `e2e/screenshots/vqa.log`.
 
    ```

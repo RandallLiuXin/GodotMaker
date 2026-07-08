@@ -281,3 +281,30 @@ def test_gdd_templates_do_not_add_weak_dynamic_visual_checks():
     assert "animation/lifecycle" not in scenes
     assert "multi-frame actors/FX" not in scenes
     assert "dynamic-mode test" not in scenes
+
+
+def test_region_atlas_single_region_contract():
+    worker = _read("agents/worker.md")
+    worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
+    reviewer_dispatch = _read("skills/core/_shared/reviewer-dispatch.md")
+    reviewer = _read("agents/reviewer.md")
+    evaluate = _read("skills/core/gm-evaluate/SKILL.md")
+
+    # Worker must select a single named region, not the whole atlas image.
+    assert "must reference its named region via `AtlasTexture`" in worker
+    assert "Do not use a whole `region_atlas` or `grid_sheet` image as one visible sprite" in worker
+
+    # Dispatch snapshots feed region info to worker and reviewer.
+    assert "bind each single-element node to its named region via AtlasTexture/region" in worker_dispatch
+    assert "Region atlases are single regions." in worker_dispatch
+    assert "which named region each node or binding must show" in worker_dispatch
+    assert "expected named region for each single-element node" in reviewer_dispatch
+
+    # Reviewer flags whole-atlas misuse as an issue.
+    assert "Region atlases bind single named regions instead of the whole atlas image" in reviewer
+    assert "Whole-atlas misuse is" in reviewer
+
+    # Evaluate covers whole-image-as-atlas/sub-image misuse via the VQA question.
+    assert "**Atlas misuse check.**" in evaluate
+    assert "the whole atlas or sheet." in evaluate
+    assert "is a `critical_issue`" in evaluate
