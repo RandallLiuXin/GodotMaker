@@ -268,6 +268,18 @@ def test_check_build_missing_binary_returns_escalate():
     assert note["crashed_on"] == "nope-godot"
 
 
+def test_check_build_redirects_log_into_godotmaker_logs(project_dir: Path):
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout="Done.\n")
+        run_verify.check_build("/usr/bin/godot", project_dir)
+    cmd = run.call_args.args[0]
+    assert "--log-file" in cmd
+    log_path = Path(cmd[cmd.index("--log-file") + 1])
+    assert log_path.parent == project_dir / ".godotmaker" / "logs"
+    assert log_path.name.startswith("godot-build-")
+    assert log_path.suffix == ".log"
+
+
 # ---------- unit tests ----------
 
 def test_check_unit_tests_pass_with_cases_summary():
@@ -293,6 +305,18 @@ def test_check_unit_tests_uses_official_gdunit_cmdtool_args():
     assert "--report-directory" in cmd
     assert "--run-tests" not in cmd
     assert "--test-case" not in cmd
+
+
+def test_check_unit_tests_redirects_log_into_godotmaker_logs(project_dir: Path):
+    output = "1 test case | 0 errors | 0 failures (1 suite, exit 0)\n"
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout=output)
+        run_verify.check_unit_tests("/usr/bin/godot", project_dir)
+    cmd = run.call_args.args[0]
+    assert "--log-file" in cmd
+    log_path = Path(cmd[cmd.index("--log-file") + 1])
+    assert log_path.parent == project_dir / ".godotmaker" / "logs"
+    assert log_path.name.startswith("godot-gdunit-")
 
 
 def test_check_unit_tests_prefers_xml_top_level_over_first_suite_summary():
@@ -828,3 +852,29 @@ def test_main_subprocess_invocation_real(project_dir: Path):
     # either pass or fail/error here — the assertion that matters is that
     # the script ran end-to-end and produced a schema-valid JSON.
     assert validate_report(parsed) == []
+
+
+# ---------- godot log-file retention ----------
+
+def test_godot_log_file_keeps_five_newest_per_kind(project_dir: Path):
+    logs = project_dir / ".godotmaker" / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    seeded = []
+    for i in range(6):
+        p = logs / f"godot-build-seed{i}.log"
+        p.write_text("x")
+        os.utime(p, (1000 + i, 1000 + i))  # ascending mtime: seed5 newest
+        seeded.append(p)
+    # A different kind must survive build-kind pruning.
+    untouched = logs / "godot-gdunit-seed.log"
+    untouched.write_text("x")
+
+    new_path = Path(run_verify.godot_log_file(project_dir, "build"))
+    new_path.write_text("new")  # the caller (godot) writes the returned path
+
+    build_logs = list(logs.glob("godot-build-*.log"))
+    assert len(build_logs) == 5  # 4 newest seeds + the new one
+    assert not seeded[0].exists()
+    assert not seeded[1].exists()
+    assert seeded[5].exists()
+    assert untouched.exists()

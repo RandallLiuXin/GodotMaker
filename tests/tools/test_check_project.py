@@ -335,6 +335,34 @@ class TestBuildCheck:
         assert "no blocking diagnostics" in stdout
         assert "shutdown notes" in stdout
 
+    def test_headless_build_redirects_log_into_godotmaker_logs(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+        os.makedirs(os.path.join(project_dir, ".godotmaker"), exist_ok=True)
+        argv_file = os.path.join(project_dir, "godot_argv.txt")
+        if os.name == "nt":
+            godot = os.path.join(project_dir, "record-godot.cmd")
+            with open(godot, "w", encoding="utf-8") as f:
+                f.write(f'@echo off\r\necho %* > "{argv_file}"\r\nexit /B 0\r\n')
+        else:
+            godot = os.path.join(project_dir, "record-godot")
+            with open(godot, "w", encoding="utf-8") as f:
+                f.write(
+                    '#!/bin/sh\n'
+                    f'printf "%s\\n" "$@" > "{argv_file}"\n'
+                    'exit 0\n'
+                )
+            os.chmod(godot, 0o755)
+        _write_godot_config(project_dir, godot)
+
+        stdout, code = run_check(project_dir, "--build")
+        assert code == 0, stdout
+
+        with open(argv_file, encoding="utf-8") as f:
+            recorded = f.read()
+        assert "--log-file" in recorded
+        assert ".godotmaker" in recorded
+        assert "godot-static-" in recorded
+
     def test_headless_display_and_objectdb_noise_does_not_block_headless_parse(
         self, project_dir
     ):

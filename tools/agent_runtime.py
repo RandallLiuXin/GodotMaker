@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 from pathlib import Path
 import sys
 
@@ -172,6 +173,61 @@ def prefer_console_godot_path(godot_path: str | None) -> str | None:
     except OSError:
         return godot_path
     return godot_path
+
+
+# Godot's `--log-file` disables the engine's built-in log rotation
+# (godotengine/godot PR #87373), so we manage retention here and keep the
+# newest MAX_GODOT_LOG_FILES per kind — mirroring Godot's own
+# `debug/file_logging/max_log_files` default of 5.
+MAX_GODOT_LOG_FILES = 5
+
+
+def _log_timestamp() -> str:
+    return dt.datetime.now(tz=dt.timezone.utc).strftime("%Y-%m-%dT%H.%M.%S")
+
+
+def _prune_godot_logs(logs_dir: Path, kind: str, *, keep: int) -> None:
+    """Delete the oldest `godot-<kind>-*.log` files so that once the caller
+    writes a new one, at most `keep` remain. Best-effort; never raises."""
+    try:
+        existing = sorted(
+            logs_dir.glob(f"godot-{kind}-*.log"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+    except OSError:
+        return
+    for stale in existing[max(keep - 1, 0):]:
+        try:
+            stale.unlink()
+        except OSError:
+            pass
+
+
+def godot_log_file(
+    project_dir: Path,
+    kind: str,
+    *,
+    keep: int = MAX_GODOT_LOG_FILES,
+) -> str:
+    """Return an absolute `--log-file` path under `<project>/.godotmaker/logs/`.
+
+    Redirecting Godot's headless log out of the default `user://logs/...`
+    lets verify run under sandboxes (e.g. Codex CLI) that cannot create the
+    engine's user-data directory. Older logs of the same `kind` are pruned to
+    the newest `keep`; `kind` (build / gdunit / static) keeps the concurrent
+    headless calls from clobbering each other.
+    """
+    logs_dir = project_dir / ".godotmaker" / "logs"
+    try:
+        # parents=False on purpose: only create `logs/` inside an existing
+        # `.godotmaker/` project. Outside one (e.g. unit-test stub paths) this
+        # raises FileNotFoundError, which we swallow so no stray dirs appear.
+        logs_dir.mkdir(exist_ok=True)
+    except OSError:
+        pass
+    _prune_godot_logs(logs_dir, kind, keep=keep)
+    return str(logs_dir / f"godot-{kind}-{_log_timestamp()}.log")
 
 
 if __name__ == "__main__":

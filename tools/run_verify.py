@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_runtime import (
+    godot_log_file,
     godotmaker_yaml,
     prefer_console_godot_path,
     read_godot_path,
@@ -94,9 +95,11 @@ def _tooling_note(tool: str, crashed_on: str, error: str,
 def check_build(godot_path: str, project_dir: Path
                 ) -> tuple[dict, dict | None]:
     """Run `<godot_path> --headless --quit` and parse blocking diagnostics."""
+    log_file = godot_log_file(project_dir, "build")
     try:
         proc = subprocess.run(
-            [godot_path, "--headless", "--path", str(project_dir), "--quit"],
+            [godot_path, "--headless", "--path", str(project_dir),
+             "--log-file", log_file, "--quit"],
             capture_output=True, text=True, encoding="utf-8",
             errors="replace", timeout=BUILD_TIMEOUT,
         )
@@ -313,6 +316,7 @@ def check_unit_tests(godot_path: str, project_dir: Path
         cmd = [
             godot_path, "--headless",
             "--path", str(project_dir),
+            "--log-file", godot_log_file(project_dir, "gdunit"),
             "-s", "res://addons/gdUnit4/bin/GdUnitCmdTool.gd",
             "--ignoreHeadlessMode",
             "--add", "res://test/",

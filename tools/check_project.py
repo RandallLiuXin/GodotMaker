@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 from agent_runtime import (
+    godot_log_file,
     godotmaker_yaml,
     prefer_console_godot_path,
     read_godot_path,
@@ -98,7 +99,8 @@ def _run_headless_godot(godot_path: str, project_dir: Path
     single function instead of subprocess.run directly.
     """
     proc = subprocess.run(
-        [godot_path, "--headless", "--path", str(project_dir), "--quit"],
+        [godot_path, "--headless", "--path", str(project_dir),
+         "--log-file", godot_log_file(project_dir, "static"), "--quit"],
         capture_output=True, text=True, encoding="utf-8",
         errors="replace", timeout=60,
     )
