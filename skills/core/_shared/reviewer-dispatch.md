@@ -35,9 +35,8 @@ Agent({
 ### Asset Runtime Snapshot                               [REQUIRED when files use visual assets]
 {Final asset paths, runtime_artifact values, frame_count, and metadata paths
 used by the implementation.
-For `grid_sheet` with frame_count > 1, include the action metadata path and the
-expected runtime animation/FX lifecycle so the reviewer can flag static-sheet or
-first-frame collapse and missing temporary-FX teardown.}
+For `grid_sheet` with frame_count > 1, include the action metadata path,
+expected runtime animation behavior, and temporary-FX teardown requirement.}
 ```
 
 ## Handling the Reviewer's Report

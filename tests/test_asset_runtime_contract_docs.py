@@ -248,7 +248,8 @@ def test_reviewer_checks_runtime_asset_usage_and_evaluate_uses_scene_contract():
 
     assert "### Asset Runtime Snapshot" in reviewer_dispatch
     assert "frame_count" in reviewer_dispatch
-    assert "runtime animation/FX lifecycle" in reviewer_dispatch
+    assert "expected runtime animation behavior" in reviewer_dispatch
+    assert "temporary-FX teardown requirement" in reviewer_dispatch
     assert "**Review runtime asset usage.**" in reviewer
     assert "### Asset Usage Review" in reviewer
     assert "No generation source or curation candidate is used at runtime" in reviewer
