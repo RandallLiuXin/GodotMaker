@@ -4,6 +4,22 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [0.8.1] - 2026-07-09
+
+### Changed
+
+- Clarified README and docs landing-page boundaries for current game types, art-pipeline limits, and long-running prototype expectations.
+- Clarified that README agent runtime requirements refer to CLI-based runners.
+- Updated the Godot 4.5+ godot-e2e addon pin to v1.3.0.
+
+### Fixed
+
+- Improved multi-frame runtime asset handling so generated actors and FX are built and reviewed for animation playback and lifecycle behavior instead of static sheet or first-frame use.
+- Fixed atlas asset usage so a generated button, icon, prop, or effect is built and reviewed to show its own image instead of the whole packed sheet it was cut from.
+- Fixed agent tool-dispatch trace capture so prompts or responses containing invalid Unicode surrogates are recorded instead of being silently dropped.
+- Redirected headless Godot's log into `.godotmaker/logs/` (keeping the five most recent per check) so verify no longer fails when a sandbox cannot create Godot's default `user://logs` directory.
+- New and existing projects now disable Godot's default engine file log (existing projects are updated by an upgrade migration) so an unattended run that floods errors can no longer fill the system drive with an unbounded `user://logs/godot.log`.
+
 ## [0.8.0] - 2026-06-22
 
 ### Added
