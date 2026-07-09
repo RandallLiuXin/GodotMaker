@@ -2697,16 +2697,16 @@
 <td>4.5</td>
 <td>v7.1.0</td>
 <td>v6.1.0</td>
-<td>v1.2.0</td>
+<td>v1.3.0</td>
 </tr>
 </tbody>
 </table>
 <p>Notable rules:</p>
 <ul>
 <li><strong>gdUnit4</strong> v5.x works with Godot 4.3 and 4.4; v6.x requires Godot 4.5 or later.</li>
-<li><strong>godot-e2e</strong> v1.2.0 requires Godot 4.5+; 4.3/4.4 stay on v1.1.0.</li>
+<li><strong>godot-e2e</strong> v1.3.0 is used for Godot 4.5+; 4.3/4.4 stay on v1.1.0.</li>
 </ul>
-<p>GodotMaker selects the right row automatically based on the Godot version you have installed. Godot 4.5 is the recommended target — it gets the latest addon line on every dimension.</p>
+<p>GodotMaker selects the right row automatically based on the Godot version you have installed. If a Godot version is not listed, scaffold uses the closest lower mapped version; if no lower mapping exists, it reports the issue instead of guessing. Godot 4.5+ gets the latest addon line on every dimension.</p>
 <h2 id="why-they-are-pinned">Why they are pinned<a class="headerlink" href="#why-they-are-pinned" title="Permanent link">&para;</a></h2>
 <p>Godot addons can change their API between releases. GodotMaker's skills and hooks call specific functions in <code>gecs</code> and specific CLI flags in <code>gdUnit4</code>. If an addon silently changes how those work, builds can start failing in ways that are hard to diagnose. Pinning to a known-good tag means you always get a tested combination.</p>
 <h2 id="what-happens-during-gm-scaffold">What happens during <code>/gm-scaffold</code><a class="headerlink" href="#what-happens-during-gm-scaffold" title="Permanent link">&para;</a></h2>

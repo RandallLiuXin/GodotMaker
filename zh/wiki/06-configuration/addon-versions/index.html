@@ -2697,16 +2697,16 @@
 <td>4.5</td>
 <td>v7.1.0</td>
 <td>v6.1.0</td>
-<td>v1.2.0</td>
+<td>v1.3.0</td>
 </tr>
 </tbody>
 </table>
 <p>重要规则：</p>
 <ul>
 <li><strong>gdUnit4</strong> v5.x 兼容 Godot 4.3 和 4.4；v6.x 需要 Godot 4.5 或更高版本。</li>
-<li><strong>godot-e2e</strong> v1.2.0 需要 Godot 4.5+；4.3/4.4 保持在 v1.1.0。</li>
+<li><strong>godot-e2e</strong> v1.3.0 用于 Godot 4.5+；4.3/4.4 保持在 v1.1.0。</li>
 </ul>
-<p>GodotMaker 会根据你安装的 Godot 版本自动选择对应的行。推荐使用 Godot 4.5——它在所有维度上都对应最新的 addon。</p>
+<p>GodotMaker 会根据你安装的 Godot 版本自动选择对应的行。如果某个 Godot 版本没有列出，scaffold 会使用最接近的更低映射版本；如果没有任何更低映射，则会向用户报告问题，而不是猜测版本。Godot 4.5+ 在所有维度上都对应最新的 addon。</p>
 <h2 id="_2">为什么要锁定版本<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <p>Godot addon 在不同版本之间可能会变更 API。GodotMaker 的 skill 和 hook 依赖 <code>gecs</code> 中的特定函数，以及 <code>gdUnit4</code> 中特定的 CLI 参数。如果某个 addon 悄悄改变了这些接口，构建就会以难以诊断的方式失败。锁定到已验证可用的 tag，意味着你拿到的始终是经过测试的组合。</p>
 <h2 id="gm-scaffold"><code>/gm-scaffold</code> 阶段会发生什么<a class="headerlink" href="#gm-scaffold" title="Permanent link">&para;</a></h2>
