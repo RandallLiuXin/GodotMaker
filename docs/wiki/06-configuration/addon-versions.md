@@ -12,14 +12,14 @@ The file maps each supported Godot version to a set of addon entries. Each entry
 |---|---|---|---|
 | 4.3 | v7.1.0 | v5.1.1 | v1.1.0 |
 | 4.4 | v7.1.0 | v5.1.1 | v1.1.0 |
-| 4.5 | v7.1.0 | v6.1.0 | v1.2.0 |
+| 4.5 | v7.1.0 | v6.1.0 | v1.3.0 |
 
 Notable rules:
 
 - **gdUnit4** v5.x works with Godot 4.3 and 4.4; v6.x requires Godot 4.5 or later.
-- **godot-e2e** v1.2.0 requires Godot 4.5+; 4.3/4.4 stay on v1.1.0.
+- **godot-e2e** v1.3.0 is used for Godot 4.5+; 4.3/4.4 stay on v1.1.0.
 
-GodotMaker selects the right row automatically based on the Godot version you have installed. Godot 4.5 is the recommended target — it gets the latest addon line on every dimension.
+GodotMaker selects the right row automatically based on the Godot version you have installed. If a Godot version is not listed, scaffold uses the closest lower mapped version; if no lower mapping exists, it reports the issue instead of guessing. Godot 4.5+ gets the latest addon line on every dimension.
 
 ## Why they are pinned
 

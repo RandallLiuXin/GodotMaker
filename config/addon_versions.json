@@ -69,10 +69,10 @@
       },
       "godot_e2e": {
         "repo": "RandallLiuXin/godot-e2e",
-        "tag": "v1.2.0",
+        "tag": "v1.3.0",
         "install_path": "addons/godot_e2e",
         "plugin": true,
-        "notes": "E2E testing. v1.2.0 requires Godot 4.5+; 4.3/4.4 stay on v1.1.0. Enable in Project Settings -> Plugins. Plugin auto-registers AutomationServer autoload."
+        "notes": "E2E testing. v1.3.0 is used for Godot 4.5+; 4.3/4.4 stay on v1.1.0. Enable in Project Settings -> Plugins. Plugin auto-registers AutomationServer autoload."
       }
     }
   }

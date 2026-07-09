@@ -21,6 +21,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Clarified README and docs landing-page boundaries for current game types, art-pipeline limits, and long-running prototype expectations.
 - Clarified that README agent runtime requirements refer to CLI-based runners.
+- Updated the Godot 4.5+ godot-e2e addon pin to v1.3.0.
 
 ## Fixed
 
