@@ -115,8 +115,9 @@ If you need to modify a file not in your deliverables, report this in your Notes
   action/state switches named in the brief.
 - For temporary projectile, impact, pickup, slash, aura, or feedback FX, wire
   the effect lifecycle so it disappears or clears after playback.
-- For `region_atlas`, read the listed atlas metadata JSON and wire named
-  regions from it.
+- For `region_atlas`, read the listed atlas metadata JSON and resolve the
+  matching region by name from it. Use the region named in the brief when given;
+  otherwise match the element to its region by name.
 - A node that shows one element (a single button, icon, prop, or FX sprite)
   from a `region_atlas` must reference its named region via `AtlasTexture` with
   the region `rect` from the metadata (or an equivalent region binding). Do not

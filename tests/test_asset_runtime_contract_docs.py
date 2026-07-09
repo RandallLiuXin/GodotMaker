@@ -290,15 +290,20 @@ def test_region_atlas_single_region_contract():
     reviewer = _read("agents/reviewer.md")
     evaluate = _read("skills/core/gm-evaluate/SKILL.md")
 
-    # Worker must select a single named region, not the whole atlas image.
+    # Worker resolves the region by name from metadata, not the whole atlas image.
+    assert "matching region by name from it" in worker
+    assert "Use the region named in the brief when given" in worker
     assert "must reference its named region via `AtlasTexture`" in worker
     assert "Do not use a whole `region_atlas` or `grid_sheet` image as one visible sprite" in worker
 
-    # Dispatch snapshots feed region info to worker and reviewer.
+    # Dispatch passes only the metadata path; region names come from metadata,
+    # and the target region is named only when the match is not obvious.
     assert "bind each single-element node to its named region via AtlasTexture/region" in worker_dispatch
     assert "Region atlases are single regions." in worker_dispatch
-    assert "which named region each node or binding must show" in worker_dispatch
-    assert "expected named region for each single-element node" in reviewer_dispatch
+    assert "the region and its rect from that metadata by name" in worker_dispatch
+    assert "the element-to-region match is not obvious" in worker_dispatch
+    assert "region names/count" not in worker_dispatch
+    assert "the element-to-region match is not obvious" in reviewer_dispatch
 
     # Reviewer flags whole-atlas misuse as an issue.
     assert "Region atlases bind single named regions instead of the whole atlas image" in reviewer

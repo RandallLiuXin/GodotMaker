@@ -37,8 +37,8 @@ Agent({
 used by the implementation.
 For `grid_sheet` with frame_count > 1, include the action metadata path,
 expected runtime animation behavior, and temporary-FX teardown requirement.
-For `region_atlas`, include the atlas metadata path, region names, and the
-expected named region for each single-element node.}
+For `region_atlas`, include the atlas metadata path; name the expected region
+only when the element-to-region match is not obvious from the binding.}
 ```
 
 ## Handling the Reviewer's Report

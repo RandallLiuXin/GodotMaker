@@ -79,8 +79,9 @@ prompt files, or scene references as runtime assets.
 For `grid_sheet` with frame_count > 1, include the action metadata path,
 frame_paths, fps/loop when present, and the expected runtime state or FX
 lifecycle that should play it.
-For `region_atlas`, include the atlas metadata path, the region names/count,
-and which named region each node or binding must show.
+For `region_atlas`, include the atlas metadata path and let the worker resolve
+the region and its rect from that metadata by name. Name the target region only
+when the element-to-region match is not obvious from the binding.
 If a required final asset or metadata file is missing, report PARTIAL or
 FAILED with the missing path.}
 
@@ -145,9 +146,10 @@ presentation" or static feedback.
 slash, aura, or feedback effects must state how the effect starts and how it
 disappears or clears.
 22. **Region atlases are single regions.** If the snapshot lists a
-`region_atlas`, name which region each node must show and require selecting
-that region via AtlasTexture/region. Never assign the whole atlas image as one
-texture where a single element is required.
+`region_atlas`, require selecting the element's named region from the atlas
+metadata via AtlasTexture/region. Name the target region only when the match is
+not obvious from the binding. Never assign the whole atlas image as one texture
+where a single element is required.
 23. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
 
 ## Worker Utility Convention
