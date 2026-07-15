@@ -8,9 +8,7 @@
 
 ## 常用字段
 
-**`pipeline.model`** — 可选的 `godotmaker-cli` 模型覆盖项，用于自动 build/evaluate 阶段。GodotMaker 框架会保留 `.godotmaker/config.yaml` 里的这个值，但不会直接消费它；请使用 `godotmaker-cli` / GodotMakerApp 文档中当前支持的模型 ID。
-
-**`pipeline.buildModel`** 和 **`pipeline.evalModel`** — 当 build 和 evaluation 需要使用不同模型时，可分别配置这两个覆盖项。两个值都应从当前 `godotmaker-cli` 模型文档中选择。
+**`pipeline.model`** — 可选的 `godotmaker-cli` 模型覆盖项，用于自动 build/evaluate 阶段。GodotMaker 框架会保留 `.godotmaker/config.yaml` 里的这个值，但不会直接消费它；请使用所选 agent runtime 支持的模型 ID，具体以 `godotmaker-cli` / GodotMakerApp 文档为准。
 
 **`agent`** — 当前项目选择的编码智能体运行时，例如 `claude-code`、`codex` 或 `opencode`。
 
@@ -34,7 +32,7 @@ agent: claude-code
 
 # 可选的 godotmaker-cli pipeline 模型覆盖项。
 # pipeline:
-#   model: <codex-model-id>
+#   model: <agent-model-id>
 
 vqa_model: native
 vqa_fallback_model: native
@@ -124,22 +122,13 @@ godotmaker-cli --agent codex
 godotmaker-cli --agent opencode
 ```
 
-覆盖自动 pipeline 阶段使用的 Codex 模型时，请使用当前 `godotmaker-cli` /
+覆盖自动 pipeline 阶段使用的所选 agent 模型时，请使用当前 `godotmaker-cli` /
 GodotMakerApp 文档中的具体模型 ID：
 
 ```yaml
 agent: codex
 pipeline:
-  model: <codex-model-id>
-```
-
-如果 build 和 evaluation 需要使用不同 Codex 模型：
-
-```yaml
-agent: codex
-pipeline:
-  buildModel: <build-model-id>
-  evalModel: <eval-model-id>
+  model: <agent-model-id>
 ```
 
 下一次运行 `/gm-*` 命令时会读取新配置。已经运行中的命令不会自动感知修改，需要下一次会话或阶段调用才会生效。

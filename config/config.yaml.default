@@ -12,17 +12,11 @@ agent: claude-code
 
 # Optional godotmaker-cli pipeline model override.
 # The GodotMaker framework preserves this block but does not consume it;
-# godotmaker-cli owns the supported model IDs and reads these keys.
+# godotmaker-cli owns the supported model IDs and reads this key.
 # Leave this commented to use the selected runtime's CLI default.
 #
 # pipeline:
-#   model: <codex-model-id>
-#
-# To split build and evaluation model choices:
-#
-# pipeline:
-#   buildModel: <build-model-id>
-#   evalModel: <eval-model-id>
+#   model: <agent-model-id>
 
 # Visual quality assessment model.
 # Supported values:

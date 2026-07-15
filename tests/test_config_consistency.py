@@ -72,7 +72,7 @@ def test_config_template_documents_cli_pipeline_model_override():
     assert "godotmaker-cli pipeline model override" in text
     assert "godotmaker-cli owns the supported model IDs" in text
     assert "pipeline:" in text
-    assert "model: <codex-model-id>" in text
-    assert "buildModel: <build-model-id>" in text
-    assert "evalModel: <eval-model-id>" in text
+    assert "model: <agent-model-id>" in text
+    assert "buildModel:" not in text
+    assert "evalModel:" not in text
     assert "gpt-5.6" not in text
