@@ -10,6 +10,10 @@ Framework developers and manual-mode users can still create the same file with `
 
 ## Common fields
 
+**`pipeline.model`** - optional `godotmaker-cli` model override for automated build/evaluate stages. The GodotMaker framework preserves this value in `.godotmaker/config.yaml` but does not consume it directly; use the current model IDs documented by `godotmaker-cli` / GodotMakerApp.
+
+**`pipeline.buildModel`** and **`pipeline.evalModel`** - optional split overrides when build and evaluation should use different models. Choose both values from the current `godotmaker-cli` model documentation.
+
 **`agent`** — selected coding-agent runtime, such as `claude-code`, `codex`, or `opencode`.
 
 **`worker_model`** — which Claude model writes game code. Defaults to `sonnet`; set it to `opus` for games that need heavier implementation reasoning.
@@ -32,6 +36,10 @@ The default config looks like this:
 # Deployed to .godotmaker/config.yaml by publish script
 
 agent: claude-code
+
+# Optional godotmaker-cli pipeline model override.
+# pipeline:
+#   model: <codex-model-id>
 
 vqa_model: native
 vqa_fallback_model: native
@@ -122,6 +130,24 @@ To use OpenAI for API-backed image generation:
 
 ```yaml
 asset_image_model: openai:gpt-image-2
+```
+
+To override the Codex model used for automated pipeline stages, use the concrete
+model ID from the current `godotmaker-cli` / GodotMakerApp documentation:
+
+```yaml
+agent: codex
+pipeline:
+  model: <codex-model-id>
+```
+
+To use different Codex models for build and evaluation:
+
+```yaml
+agent: codex
+pipeline:
+  buildModel: <build-model-id>
+  evalModel: <eval-model-id>
 ```
 
 The next `/gm-*` command picks up the new value. A command already running will not see changes until the next session or stage invocation.

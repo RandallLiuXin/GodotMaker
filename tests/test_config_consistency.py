@@ -63,3 +63,16 @@ def test_skill_referenced_defaults_match_config_default():
                 f"'{default}', but config.yaml.default has '{key}: {actual}'"
             )
     assert not mismatches, "Skill default hints disagree with config:\n" + "\n".join(mismatches)
+
+
+def test_config_template_documents_cli_pipeline_model_override():
+    """The project config template must show where godotmaker-cli model
+    overrides belong without pinning downstream-owned model variants."""
+    text = CONFIG_DEFAULT.read_text(encoding="utf-8")
+    assert "godotmaker-cli pipeline model override" in text
+    assert "godotmaker-cli owns the supported model IDs" in text
+    assert "pipeline:" in text
+    assert "model: <codex-model-id>" in text
+    assert "buildModel: <build-model-id>" in text
+    assert "evalModel: <eval-model-id>" in text
+    assert "gpt-5.6" not in text
