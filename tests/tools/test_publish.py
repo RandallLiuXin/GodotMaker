@@ -661,6 +661,7 @@ class TestCreateProjectConfig:
         assert "vqa_model:" in content
         assert "vqa_fallback_model:" in content
         assert "asset_image_model:" in content
+        assert "reasoning_effort:" in content
         assert "worker_model:" in content
         assert "asset_producer_model:" in content
         assert "agent:" in content
