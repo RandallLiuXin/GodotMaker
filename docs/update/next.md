@@ -19,6 +19,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Project config templates and docs now show where godotmaker-cli pipeline model overrides belong while leaving concrete model IDs to the CLI documentation (#81) - @Codex Worker
+
 ## Fixed
 
 ## Removed
