@@ -18,6 +18,13 @@ agent: claude-code
 # pipeline:
 #   model: <agent-model-id>
 
+# Optional reasoning level override for the selected coding-agent runtime.
+# Leave this commented to inherit the agent/user default. Common tested values
+# include low, medium, high, and xhigh; provider-specific values may also work
+# if the selected CLI accepts them.
+#
+# reasoning_effort: high
+
 # Visual quality assessment model.
 # Supported values:
 # - native: active agent runtime image inspection
