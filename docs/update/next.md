@@ -17,6 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- Added a Phantom Camera supporting skill for optional Godot camera addon guidance (#PR_NUMBER) — @RandallLuXin
+
 ## Changed
 
 ## Fixed

@@ -1,6 +1,6 @@
 # Core Skills
 
-Core skills come in two kinds: the nine role skills exposed as `/gm-*` commands, and twelve supporting skills that role skills load automatically. This page covers both.
+Core skills come in two kinds: the nine role skills exposed as `/gm-*` commands, and thirteen supporting skills that role skills load automatically. This page covers both.
 
 ## Role skills
 
@@ -40,6 +40,7 @@ Supporting skills are reference packs loaded silently by the role skills. You ne
 |-------|-----------------|-----------|
 | `godot-api` | Godot 4 engine class documentation — methods, properties, signals, and enums | `/gm-build`, `/gm-fixgap` |
 | `gecs` | API reference for the gecs ECS addon (Entity, Component, System, World, QueryBuilder) | `/gm-build`, `/gm-fixgap` |
+| `phantom-camera` | Optional Phantom Camera addon guidance for follow cameras, camera zones, transitions, shake, and cutscene-style camera moves | `/gm-build`, `/gm-fixgap` when the project opts into Phantom Camera |
 
 ### Building and running
 
