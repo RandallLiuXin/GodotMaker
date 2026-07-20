@@ -30,9 +30,9 @@
 <p align="center"><em>Games built with GodotMaker (click to view):</em></p>
 
 <p align="center">
-  <a href="docs/assets/demo_01.gif">Game 1</a> &nbsp;·&nbsp;
-  <a href="docs/assets/demo_02.gif">Game 2</a> &nbsp;·&nbsp;
-  <a href="docs/assets/demo_03.gif">Game 3</a>
+  <a href="docs/assets/demo_01.gif">Vertical bullet-hell shooter</a> &nbsp;·&nbsp;
+  <a href="docs/assets/demo_02.gif">Vampire Survivors-like</a> &nbsp;·&nbsp;
+  <a href="docs/assets/demo_03.gif">Roguelike deckbuilder</a>
 </p>
 
 ## Why I Built This

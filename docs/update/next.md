@@ -21,6 +21,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Project config templates and docs now show where the single godotmaker-cli pipeline model override belongs while leaving concrete model IDs to the CLI documentation (#81).
 - Added a commented `reasoning_effort` example to the default project config template for GodotMakerApp-driven pipelines.
+- Clarified the README demo GIF labels with concrete game-type names.
 
 ## Fixed
 

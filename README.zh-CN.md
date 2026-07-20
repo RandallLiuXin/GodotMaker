@@ -32,9 +32,9 @@
 <p align="center"><em>用 GodotMaker 制作的游戏（点击查看）：</em></p>
 
 <p align="center">
-  <a href="docs/assets/demo_01.gif">游戏 1</a> &nbsp;·&nbsp;
-  <a href="docs/assets/demo_02.gif">游戏 2</a> &nbsp;·&nbsp;
-  <a href="docs/assets/demo_03.gif">游戏 3</a>
+  <a href="docs/assets/demo_01.gif">竖版弹幕射击</a> &nbsp;·&nbsp;
+  <a href="docs/assets/demo_02.gif">吸血鬼幸存者</a> &nbsp;·&nbsp;
+  <a href="docs/assets/demo_03.gif">肉鸽卡牌</a>
 </p>
 
 ## 为什么做这个
