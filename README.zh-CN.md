@@ -15,7 +15,27 @@
   <a href="https://RandallLiuXin.github.io/GodotMaker/zh/"><img src="https://img.shields.io/badge/docs-online-teal" alt="Docs"></a>
 </p>
 
-[English](README.md) | **中文**
+<p align="center">
+  <a href="README.md">English</a> | <strong>中文</strong>
+</p>
+
+## 演示
+
+<p align="center">
+  <a href="https://www.bilibili.com/video/BV1qG7X6dEYv/"><img src="https://img.shields.io/badge/%E8%A7%82%E7%9C%8B-%E5%AE%A3%E4%BC%A0%E7%89%87-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white" alt="观看宣传片"></a>
+  &nbsp;&nbsp;
+  <a href="https://www.bilibili.com/video/BV174TK6eEF8/"><img src="https://img.shields.io/badge/%E8%A7%82%E7%9C%8B-%E6%95%99%E7%A8%8B-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white" alt="观看教程"></a>
+  &nbsp;&nbsp;
+  <a href="https://www.bilibili.com/video/BV1MQKm6vEup/"><img src="https://img.shields.io/badge/%E8%A7%82%E7%9C%8B-%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white" alt="观看开发实录"></a>
+</p>
+
+<p align="center"><em>用 GodotMaker 制作的游戏（点击查看）：</em></p>
+
+<p align="center">
+  <a href="docs/assets/demo_01.gif">游戏 1</a> &nbsp;·&nbsp;
+  <a href="docs/assets/demo_02.gif">游戏 2</a> &nbsp;·&nbsp;
+  <a href="docs/assets/demo_03.gif">游戏 3</a>
+</p>
 
 ## 为什么做这个
 

@@ -15,7 +15,25 @@
   <a href="https://RandallLiuXin.github.io/GodotMaker/"><img src="https://img.shields.io/badge/docs-online-teal" alt="Docs"></a>
 </p>
 
-**English** | [中文](README.zh-CN.md)
+<p align="center">
+  <strong>English</strong> | <a href="README.zh-CN.md">中文</a>
+</p>
+
+## Demo
+
+<p align="center">
+  <a href="https://youtu.be/lm_6Zk3pw0s"><img src="https://img.shields.io/badge/Watch-Trailer-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch the trailer"></a>
+  &nbsp;&nbsp;
+  <a href="https://youtu.be/HbYjKCxlNmY"><img src="https://img.shields.io/badge/Watch-Showcase-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch a gameplay showcase"></a>
+</p>
+
+<p align="center"><em>Games built with GodotMaker (click to view):</em></p>
+
+<p align="center">
+  <a href="docs/assets/demo_01.gif">Game 1</a> &nbsp;·&nbsp;
+  <a href="docs/assets/demo_02.gif">Game 2</a> &nbsp;·&nbsp;
+  <a href="docs/assets/demo_03.gif">Game 3</a>
+</p>
 
 ## Why I Built This
 
