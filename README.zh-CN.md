@@ -29,8 +29,6 @@
   <a href="https://www.bilibili.com/video/BV1MQKm6vEup/"><img src="https://img.shields.io/badge/%E8%A7%82%E7%9C%8B-%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white" alt="观看开发实录"></a>
 </p>
 
-<p align="center"><em>用 GodotMaker 制作的游戏（点击查看）：</em></p>
-
 <p align="center">
   <a href="docs/assets/demo_01.gif">竖版弹幕射击</a> &nbsp;·&nbsp;
   <a href="docs/assets/demo_02.gif">吸血鬼幸存者</a> &nbsp;·&nbsp;

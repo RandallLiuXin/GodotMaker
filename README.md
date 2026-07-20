@@ -27,8 +27,6 @@
   <a href="https://youtu.be/HbYjKCxlNmY"><img src="https://img.shields.io/badge/Watch-Showcase-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch a gameplay showcase"></a>
 </p>
 
-<p align="center"><em>Games built with GodotMaker (click to view):</em></p>
-
 <p align="center">
   <a href="docs/assets/demo_01.gif">Vertical bullet-hell shooter</a> &nbsp;·&nbsp;
   <a href="docs/assets/demo_02.gif">Vampire Survivors-like</a> &nbsp;·&nbsp;
