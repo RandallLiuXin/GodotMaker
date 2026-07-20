@@ -19,13 +19,13 @@
   <strong>English</strong> | <a href="README.zh-CN.md">中文</a>
 </p>
 
-## Demo
-
 <p align="center">
   <a href="https://youtu.be/lm_6Zk3pw0s"><img src="https://img.shields.io/badge/Watch-Trailer-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch the trailer"></a>
   &nbsp;&nbsp;
   <a href="https://youtu.be/HbYjKCxlNmY"><img src="https://img.shields.io/badge/Watch-Showcase-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch a gameplay showcase"></a>
 </p>
+
+<p align="center">Games built with GodotMaker (click to view):</p>
 
 <p align="center">
   <a href="docs/assets/demo_01.gif">Vertical bullet-hell shooter</a> &nbsp;·&nbsp;
