@@ -25,4 +25,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- gm-accept now writes the `accept` role marker on every invocation, even when `.godotmaker/current_role` already contains it, so an idempotent re-entry still performs the required FIRST ACTION write instead of substituting a read (#93).
+
 ## Removed
