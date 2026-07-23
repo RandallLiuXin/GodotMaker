@@ -2713,6 +2713,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Clarified the README demo GIF labels with concrete game-type names.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>gm-accept now writes the <code>accept</code> role marker on every invocation, even when <code>.godotmaker/current_role</code> already contains it, so an idempotent re-entry still performs the required FIRST ACTION write instead of substituting a read (#93).</li>
+</ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 
 
