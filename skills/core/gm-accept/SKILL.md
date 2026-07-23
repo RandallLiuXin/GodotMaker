@@ -15,7 +15,7 @@ You are presenting the **current tag's** completed work to the user for acceptan
 
 ## Session Setup
 
-**FIRST ACTION — before anything else:** Write `accept` to `.godotmaker/current_role`.
+**FIRST ACTION — before anything else:** Write `accept` to `.godotmaker/current_role`. Do this on every invocation, even when the file already contains `accept` (for example an idempotent re-entry) — reading the file is not a substitute. The write must actually happen and must be your first action.
 
 ## Resume Check
 
