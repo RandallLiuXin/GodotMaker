@@ -1,0 +1,201 @@
+import copy
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
+sys.path.insert(0, str(TOOLS_DIR))
+
+from asset_stable_entry import (  # noqa: E402
+    StableEntryError,
+    entry_relative_path,
+    validate_entry,
+    write_entry,
+)
+
+STABLE_ENTRY_TOOL = TOOLS_DIR / "asset_stable_entry.py"
+
+
+def valid_entry(**overrides):
+    entry = {
+        "version": 1,
+        "asset_id": "player",
+        "tag": "v0.1.0",
+        "production_family": "character-bundle",
+        "source_layout": {
+            "type": "grid_sheet",
+            "path": "res://assets/generated/character-bundle/player/player.png",
+        },
+        "godot_artifact": {
+            "type": "SpriteFrames",
+            "path": "res://assets/generated/character-bundle/player/player.tres",
+        },
+        "processing_status": "ready",
+    }
+    entry.update(overrides)
+    return entry
+
+
+def reference_entry(**overrides):
+    entry = {
+        "version": 1,
+        "asset_id": "title_screen",
+        "tag": "v0.1.0",
+        "production_family": "screen-reference",
+        "source_layout": {
+            "type": "reference",
+            "path": "res://assets/references/title_screen.png",
+        },
+        "processing_status": "ready",
+    }
+    entry.update(overrides)
+    return entry
+
+
+def test_validate_ready_entry_ok():
+    assert validate_entry(valid_entry()) == valid_entry()
+
+
+def test_reference_entry_needs_no_artifact():
+    validate_entry(reference_entry())
+
+
+def test_reference_entry_rejects_artifact():
+    entry = reference_entry(
+        godot_artifact={"type": "Texture2D", "path": "res://x.tres"}
+    )
+    with pytest.raises(StableEntryError, match="reference"):
+        validate_entry(entry)
+
+
+def test_artifact_required_for_ready_non_reference():
+    entry = valid_entry()
+    del entry["godot_artifact"]
+    with pytest.raises(StableEntryError, match="godot_artifact is required"):
+        validate_entry(entry)
+
+
+def test_artifact_optional_before_ready():
+    entry = valid_entry(processing_status="source_ready")
+    del entry["godot_artifact"]
+    validate_entry(entry)
+
+
+@pytest.mark.parametrize(
+    "mutate, match",
+    [
+        (lambda e: e.update(version=2), "version"),
+        (lambda e: e.pop("asset_id"), "asset_id"),
+        (lambda e: e.update(asset_id="../evil"), "path separators"),
+        (lambda e: e.update(tag="a/b"), "path separators"),
+        (lambda e: e.update(production_family="not-a-family"), "production_family"),
+        (lambda e: e.update(processing_status="weird"), "processing_status"),
+        (lambda e: e["source_layout"].update(type="bogus"), "source_layout.type"),
+        (lambda e: e["source_layout"].update(path="assets/x.png"), "res://"),
+        (lambda e: e["godot_artifact"].update(type="123bad"), "ClassDB"),
+        (lambda e: e["godot_artifact"].update(path="/abs/x.tres"), "res://"),
+    ],
+)
+def test_invalid_entries_rejected(mutate, match):
+    entry = valid_entry()
+    mutate(entry)
+    with pytest.raises(StableEntryError, match=match):
+        validate_entry(entry)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["runtime_artifact", "production_shape", "extraction_status", "family", "final_path"],
+)
+def test_legacy_fields_demand_regeneration(field):
+    entry = valid_entry()
+    entry[field] = "grid_sheet"
+    with pytest.raises(StableEntryError, match="Regenerate this asset through /gm-asset"):
+        validate_entry(entry)
+
+
+def test_legacy_field_nested_in_source_layout():
+    entry = valid_entry()
+    entry["source_layout"]["runtime_artifact"] = "grid_sheet"
+    with pytest.raises(StableEntryError, match="Regenerate"):
+        validate_entry(entry)
+
+
+def test_check_files_requires_present_paths(tmp_path):
+    entry = valid_entry()
+    with pytest.raises(StableEntryError, match="source_layout.path not found"):
+        validate_entry(entry, project_root=tmp_path, check_files=True)
+
+    src = tmp_path / "assets/generated/character-bundle/player/player.png"
+    src.parent.mkdir(parents=True)
+    src.write_bytes(b"png")
+    with pytest.raises(StableEntryError, match="godot_artifact.path not found"):
+        validate_entry(entry, project_root=tmp_path, check_files=True)
+
+    (tmp_path / "assets/generated/character-bundle/player/player.tres").write_text("res")
+    validate_entry(entry, project_root=tmp_path, check_files=True)
+
+
+def test_entry_relative_path():
+    assert (
+        entry_relative_path("v0.1.0", "player")
+        == ".godotmaker/asset-generation/entries/v0.1.0/player.json"
+    )
+
+
+def test_write_entry_serializes_to_canonical_path(tmp_path):
+    result = write_entry(valid_entry(), project_root=tmp_path)
+    assert result["ok"] is True
+    assert result["path"] == ".godotmaker/asset-generation/entries/v0.1.0/player.json"
+    written = json.loads((tmp_path / result["path"]).read_text(encoding="utf-8"))
+    assert written == valid_entry()
+
+
+def test_validate_allows_internal_extra_fields():
+    entry = valid_entry(compiler_receipt={"hash": "abc", "compiler": "sprite_frames"})
+    validate_entry(entry)
+
+
+def test_validate_does_not_mutate_input():
+    entry = valid_entry()
+    snapshot = copy.deepcopy(entry)
+    validate_entry(entry)
+    assert entry == snapshot
+
+
+def _run_cli(*args):
+    return subprocess.run(
+        [sys.executable, str(STABLE_ENTRY_TOOL), *args],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_cli_validate_and_write(tmp_path):
+    entry_file = tmp_path / "entry.json"
+    entry_file.write_text(json.dumps(valid_entry()), encoding="utf-8")
+
+    ok = _run_cli(str(entry_file))
+    assert ok.returncode == 0
+    assert json.loads(ok.stdout)["ok"] is True
+
+    written = _run_cli(str(entry_file), "--project-root", str(tmp_path), "--write")
+    assert written.returncode == 0
+    payload = json.loads(written.stdout)
+    assert (tmp_path / payload["path"]).exists()
+
+
+def test_cli_rejects_legacy(tmp_path):
+    entry = valid_entry()
+    entry["runtime_artifact"] = "grid_sheet"
+    entry_file = tmp_path / "legacy.json"
+    entry_file.write_text(json.dumps(entry), encoding="utf-8")
+
+    result = _run_cli(str(entry_file))
+    assert result.returncode == 1
+    payload = json.loads(result.stdout)
+    assert payload["ok"] is False
+    assert "Regenerate" in payload["error"]
