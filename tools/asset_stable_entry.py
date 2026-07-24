@@ -79,6 +79,17 @@ LEGACY_FIELDS = {
     "source_path",
 }
 
+# Characters that are illegal in a Windows filename or act as path separators /
+# drive markers / alternate-data-stream selectors across platforms.
+_RESERVED_PATH_CHARS = set('<>:"/\\|?*')
+
+# Windows reserved device basenames (case-insensitive, any extension).
+_RESERVED_DEVICE_NAMES = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
+
 _RES_PREFIX = "res://"
 
 # Both nested contract objects hold exactly a type and a path. Internal detail
@@ -124,8 +135,25 @@ def _non_empty_string(data: dict[str, Any], field: str, label: str) -> str:
 
 
 def _safe_identifier(value: str, label: str) -> str:
-    if any(sep in value for sep in ("/", "\\")) or ".." in value:
-        raise StableEntryError(f"{label} must not contain path separators or '..'")
+    """Require a single cross-platform-safe path segment.
+
+    ``tag`` and ``asset_id`` become one directory / file-stem component of the
+    canonical entry path, so they must map to exactly that segment on every OS.
+    """
+    if value in (".", ".."):
+        raise StableEntryError(f"{label} must not be '.' or '..'")
+    for char in value:
+        if char in _RESERVED_PATH_CHARS or ord(char) < 32:
+            raise StableEntryError(
+                f"{label} must be a single safe path segment "
+                "(no path separators, ':' or reserved characters)"
+            )
+    if value != value.strip() or value.endswith("."):
+        raise StableEntryError(
+            f"{label} must not have leading/trailing spaces or a trailing dot"
+        )
+    if value.split(".", 1)[0].upper() in _RESERVED_DEVICE_NAMES:
+        raise StableEntryError(f"{label} must not be a Windows reserved device name")
     return value
 
 

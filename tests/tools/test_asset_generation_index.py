@@ -206,6 +206,30 @@ def test_update_index_rejects_non_canonical_entry_path(tmp_path):
     assert not index_path.exists()
 
 
+def test_unsafe_tag_rejected_end_to_end(tmp_path):
+    # tag="." previously slipped through write -> update -> check and produced a
+    # non-canonical `/./` pointer. Every stage must now reject it.
+    entry = dict(valid_entry(), tag=".")
+    loose = tmp_path / "entry.json"
+    loose.write_text(json.dumps(entry), encoding="utf-8")
+    index_path = tmp_path / ".godotmaker/asset-generation/manifest.json"
+    with pytest.raises(GenerationIndexError, match="must not be"):
+        update_index(index_path, [loose], project_root=tmp_path)
+    assert not index_path.exists()
+
+    # A hand-written index carrying the non-canonical pointer is rejected too.
+    bad_index = write_index(
+        tmp_path / "manifest.json",
+        [{
+            "asset_id": "player",
+            "tag": ".",
+            "entry_path": ".godotmaker/asset-generation/entries/./player.json",
+        }],
+    )
+    with pytest.raises(GenerationIndexError, match="must not be"):
+        check_index(bad_index, project_root=tmp_path)
+
+
 def test_update_index_rejects_legacy_existing(tmp_path):
     index_path = tmp_path / ".godotmaker/asset-generation/manifest.json"
     index_path.parent.mkdir(parents=True, exist_ok=True)

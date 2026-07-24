@@ -125,6 +125,26 @@ def test_legacy_field_nested_in_source_layout():
         validate_entry(entry)
 
 
+@pytest.mark.parametrize("field", ["tag", "asset_id"])
+@pytest.mark.parametrize(
+    "bad",
+    [".", "..", "C:", "a:b", "a/b", "a\\b", "con", "CON", "nul.png", "lpt1", "aux",
+     "a<b", "a>b", 'a"b', "a|b", "a?b", "a*b", "trail ", " lead", "trail."],
+)
+def test_identity_must_be_safe_path_segment(field, bad):
+    entry = valid_entry(**{field: bad})
+    with pytest.raises(StableEntryError):
+        validate_entry(entry)
+
+
+def test_write_entry_rejects_unsafe_tag(tmp_path):
+    entry = valid_entry(tag=".")
+    with pytest.raises(StableEntryError, match="must not be"):
+        write_entry(entry, project_root=tmp_path)
+    # Nothing was written outside the (never-created) canonical location.
+    assert not (tmp_path / ".godotmaker/asset-generation/entries/player.json").exists()
+
+
 @pytest.mark.parametrize("version", [True, False, 1.0, "1", None, 2])
 def test_version_must_be_strict_integer(version):
     entry = valid_entry(version=version)
