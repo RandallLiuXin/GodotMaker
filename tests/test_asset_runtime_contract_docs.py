@@ -96,6 +96,25 @@ def test_production_unit_docs_are_first_entry_points():
     assert "## Curation Field" in runtime
 
 
+def test_production_unit_sheet_process_examples_pass_grid():
+    units = [
+        "ui-kit",
+        "card-kit",
+        "compact-prop-pack",
+        "fx-bundle",
+        "scene-prop-set",
+        "platform-strip",
+    ]
+    for unit in units:
+        doc = _read(f"skills/core/gm-asset/references/production-units/{unit}.md")
+        for block in doc.split("```"):
+            if "python tools/asset_sheet_process.py" not in block:
+                continue
+            assert "--grid" in block, (
+                f"{unit}.md asset_sheet_process example is missing --grid"
+            )
+
+
 def test_ui_and_prop_units_default_to_autoslice():
     ui = _read("skills/core/gm-asset/references/production-units/ui-kit.md")
     card = _read("skills/core/gm-asset/references/production-units/card-kit.md")

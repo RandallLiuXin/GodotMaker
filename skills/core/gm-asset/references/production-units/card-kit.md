@@ -59,10 +59,16 @@ Separated card components:
 python tools/asset_sheet_process.py \
   --source <card_source.png> \
   --out-dir <curation_dir> \
+  --grid <COLSxROWS> \
+  --names <component_names> \
   --background magenta \
   --snap-mode autoslice \
   --component-mode largest
 ```
+
+`--grid` is required in both snap modes; in autoslice it sets the cell buckets
+and per-cell names that detected components are assigned to. Match `--grid` and
+`--names` to the card-component layout requested in the prompt.
 
 Use `--snap-mode grid` only for deliberate equal-cell badge or slot layouts.
 Do not use a source kit or source frame as an independent final card asset.

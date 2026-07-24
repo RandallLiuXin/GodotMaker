@@ -687,7 +687,16 @@ def _main() -> int:
     parser = argparse.ArgumentParser(description="Process a production-shaped 2D asset sheet")
     parser.add_argument("--source", required=True, help="Source sheet image path")
     parser.add_argument("--out-dir", required=True, help="Output directory")
-    parser.add_argument("--grid", required=True, help="Grid layout, e.g. 2x2")
+    parser.add_argument(
+        "--grid",
+        required=True,
+        help=(
+            "Grid layout COLSxROWS, e.g. 2x2. Required for both snap modes. "
+            "In grid mode it defines the fixed cells that are cropped. In "
+            "autoslice mode it defines the cell buckets and per-cell naming "
+            "that detected rectangles are assigned to by their center"
+        ),
+    )
     parser.add_argument("--names", default=None, help="Comma-separated output names")
     parser.add_argument("--asset-id", default=None, help="Optional source asset id")
     parser.add_argument("--tag", default=None, help="Optional current tag")
