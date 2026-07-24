@@ -47,10 +47,16 @@ Extract separated props:
 python tools/asset_sheet_process.py \
   --source <prop_source.png> \
   --out-dir <curation_dir> \
+  --grid <COLSxROWS> \
+  --names <prop_names> \
   --background magenta \
   --snap-mode autoslice \
   --component-mode largest
 ```
+
+`--grid` is required in both snap modes; in autoslice it sets the cell buckets
+and per-cell names that detected props are assigned to. Match `--grid` and
+`--names` to the prop layout requested in the prompt.
 
 Use `--snap-mode grid` only for deliberate equal-cell prop packs.
 Use the same autoslice path for one-item pickup, collectable, and small-prop

@@ -365,3 +365,93 @@ def test_cli_requires_snap_mode(tmp_path):
 
     assert result.returncode != 0
     assert "--snap-mode" in result.stderr
+
+
+def test_cli_autoslice_outputs_json(tmp_path):
+    source = tmp_path / "autoslice_sheet.png"
+    make_autoslice_sheet(source)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_sheet_process.py"),
+            "--source",
+            str(source),
+            "--out-dir",
+            str(tmp_path / "out"),
+            "--grid",
+            "2x1",
+            "--names",
+            "wide_button,right_icon",
+            "--asset-id",
+            "ui_kit_source",
+            "--snap-mode",
+            "autoslice",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    data = json.loads(result.stdout)
+    assert data["ok"] is True
+    assert data["snap_mode"] == "autoslice"
+    assert data["strategy"] == "transparent_autoslice"
+    assert data["accepted_count"] == 2
+
+
+@pytest.mark.parametrize("snap_mode", ["autoslice", "grid"])
+def test_cli_requires_grid_in_both_modes(tmp_path, snap_mode):
+    source = tmp_path / "sheet.png"
+    make_sheet(source)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_sheet_process.py"),
+            "--source",
+            str(source),
+            "--out-dir",
+            str(tmp_path / "out"),
+            "--names",
+            "a,b,c,d",
+            "--snap-mode",
+            snap_mode,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "--grid" in result.stderr
+
+
+@pytest.mark.parametrize("snap_mode", ["autoslice", "grid"])
+def test_cli_rejects_malformed_grid_in_both_modes(tmp_path, snap_mode):
+    source = tmp_path / "sheet.png"
+    make_sheet(source)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_sheet_process.py"),
+            "--source",
+            str(source),
+            "--out-dir",
+            str(tmp_path / "out"),
+            "--grid",
+            "2",
+            "--snap-mode",
+            snap_mode,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    data = json.loads(result.stdout)
+    assert data["ok"] is False
+    assert "--grid" in data["error"]

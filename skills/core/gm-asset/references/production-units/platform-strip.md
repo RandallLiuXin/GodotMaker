@@ -42,10 +42,16 @@ Process fixed strip cells:
 python tools/asset_sheet_process.py \
   --source <strip_source.png> \
   --out-dir <curation_dir> \
+  --grid <COLSxROWS> \
+  --names <segment_names> \
   --background magenta \
   --snap-mode grid \
   --component-mode largest
 ```
+
+`--grid` is required; in grid mode it defines the fixed strip cells that are
+cropped. Match `--grid` and `--names` to the strip layout, for example `1x3`
+or `1x4`.
 
 Use one selected final segment per cap, repeat middle, end, slope, or variant.
 Use a processed strip atlas only with runtime segment metadata beside the final
