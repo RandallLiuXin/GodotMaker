@@ -214,6 +214,26 @@ def test_request_rejects_non_dict():
             id="runtime-output-non-res-path",
         ),
         pytest.param(
+            lambda r: r["outputs"][0].update(path="res://"),
+            id="runtime-output-bare-res",
+        ),
+        pytest.param(
+            lambda r: r["outputs"][0].update(path="res:///"),
+            id="runtime-output-res-triple-slash",
+        ),
+        pytest.param(
+            lambda r: r["outputs"][0].update(path="   "),
+            id="output-whitespace-path",
+        ),
+        pytest.param(
+            lambda r: r["outputs"][0].update(name="   "),
+            id="output-whitespace-name",
+        ),
+        pytest.param(
+            lambda r: r["sources"][0].update(path="   "),
+            id="source-whitespace-path",
+        ),
+        pytest.param(
             lambda r: r["outputs"][0].update(godot_type="spriteFrames"),
             id="runtime-output-bad-godot_type",
         ),

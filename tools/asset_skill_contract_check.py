@@ -44,7 +44,10 @@ VALIDATION_LEVELS = {"L0", "L1", "L2", "L3", "L4"}
 
 ASSET_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 GODOT_TYPE_PATTERN = re.compile(r"^[A-Z][A-Za-z0-9]+$")
-RES_PREFIX = "res://"
+# A loadable res:// resource path: the scheme, then a relative path that starts
+# with a non-slash, non-whitespace character. Rejects bare "res://" and
+# "res:///", which resolve to the project root rather than a resource.
+RES_PATH_PATTERN = re.compile(r"^res://[^/\s]\S*$")
 
 # Pipeline / registration concepts that must never leak into a skill-neutral
 # request or result. Reported with a targeted message; any other unknown key is
@@ -182,8 +185,11 @@ def _check_output(output: Any, *, index: int, issues: list[str]) -> bool:
     path = output.get("path")
     if not _non_empty_string(path):
         issues.append(f"{loc}.path must be a non-empty string")
-    elif role == "runtime" and not path.startswith(RES_PREFIX):
-        issues.append(f"{loc}.path must be a loadable res:// path for a runtime output")
+    elif role == "runtime" and not RES_PATH_PATTERN.match(path):
+        issues.append(
+            f"{loc}.path must be a loadable res:// resource path "
+            "(res:// followed by a relative resource path) for a runtime output"
+        )
 
     godot_type = output.get("godot_type")
     if role == "runtime":

@@ -36,7 +36,7 @@
           },
           "path": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           },
           "godot_type": {
             "type": "string",
@@ -44,7 +44,7 @@
           },
           "name": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         "allOf": [
@@ -55,7 +55,7 @@
             "then": {
               "required": ["godot_type"],
               "properties": {
-                "path": { "pattern": "^res://" }
+                "path": { "pattern": "^res://[^/\\s]\\S*$" }
               }
             }
           }
@@ -71,7 +71,7 @@
         "properties": {
           "path": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           },
           "layout": {
             "type": "string",
@@ -96,11 +96,11 @@
         "properties": {
           "path": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           },
           "label": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         }
       }
@@ -127,7 +127,28 @@
         "notes": {
           "type": "string"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "passed": { "const": true } },
+            "required": ["passed"]
+          },
+          "then": {
+            "properties": {
+              "levels": {
+                "properties": {
+                  "L0": { "const": true },
+                  "L1": { "const": true },
+                  "L2": { "const": true },
+                  "L3": { "const": true },
+                  "L4": { "const": true }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

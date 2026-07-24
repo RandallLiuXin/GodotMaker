@@ -37,8 +37,17 @@ a leaked pipeline field fails closed.
 
 The JSON Schema files are the canonical declarative contract. The checker is a
 dependency-free implementation of the identical rules so validation can run at
-runtime (schema/L0) inside a game project without a `jsonschema` dependency. A
-parity test keeps the two in sync.
+runtime (schema/L0) inside a game project without a `jsonschema` dependency. The
+two are semantically equivalent — a document is accepted by the JSON Schema if
+and only if it is accepted by the checker. A bidirectional parity test enforces
+this on a shared battery of valid and invalid documents.
+
+Two rules go beyond plain field structure, and both enforcers encode them:
+
+- every required string is non-empty after trimming whitespace (a whitespace-only
+  value is rejected);
+- a runtime output `path` must be `res://` followed by a relative resource path,
+  so bare `res://` and `res:///` are rejected.
 
 `_shared/` holds cross-skill contract material only. It has no `SKILL.md` and is
 not independently triggerable.
@@ -108,7 +117,7 @@ output into its own stable entry with one primary `godot_artifact`.
 | Field | Required | Type | Rule |
 |---|---|---|---|
 | `role` | yes | string | `runtime` or `reference` |
-| `path` | yes | string | Non-empty; a `runtime` path must be a loadable `res://` path |
+| `path` | yes | string | Non-empty; a `runtime` path must be `res://` followed by a relative resource path (bare `res://` / `res:///` are rejected) |
 | `godot_type` | runtime only | string | Godot ClassDB type, `^[A-Z][A-Za-z0-9]+$` (open, not a closed enum) |
 | `name` | no | string | Optional logical label to disambiguate multiple outputs |
 
