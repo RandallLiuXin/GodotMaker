@@ -92,10 +92,27 @@ def test_extra_root_field_rejected(tmp_path):
         check_index(path, project_root=tmp_path)
 
 
-def test_bad_version_rejected(tmp_path):
+@pytest.mark.parametrize("version", [2, True, False, 1.0, "1", None])
+def test_bad_version_rejected(tmp_path, version):
     path = tmp_path / "manifest.json"
-    path.write_text(json.dumps({"version": 2, "entries": []}), encoding="utf-8")
-    with pytest.raises(GenerationIndexError, match="version must be 1"):
+    path.write_text(json.dumps({"version": version, "entries": []}), encoding="utf-8")
+    with pytest.raises(GenerationIndexError, match="version must be integer 1"):
+        check_index(path, project_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "entry_path",
+    [
+        ".godotmaker\\asset-generation\\entries\\v0.1.0\\player.json",  # backslashes
+        ".godotmaker/asset-generation/entries/v0.1.0//player.json",     # double slash
+        "./.godotmaker/asset-generation/entries/v0.1.0/player.json",    # leading ./
+        ".godotmaker/asset-generation/entries/v0.1.0/./player.json",    # inner ./
+    ],
+)
+def test_non_canonical_entry_path_rejected(tmp_path, entry_path):
+    item = dict(index_item(), entry_path=entry_path)
+    path = write_index(tmp_path / "manifest.json", [item])
+    with pytest.raises(GenerationIndexError, match="entry_path must be"):
         check_index(path, project_root=tmp_path)
 
 

@@ -92,6 +92,15 @@ class StableEntryError(Exception):
     """Raised when a stable entry is invalid."""
 
 
+def is_schema_version(value: Any) -> bool:
+    """Return True only for a strict JSON integer equal to the schema version.
+
+    ``bool`` is a subclass of ``int`` and ``1.0 == 1``, so a plain ``== 1``
+    would accept ``True`` and ``1.0``. Require an exact ``int`` type.
+    """
+    return type(value) is int and value == SCHEMA_VERSION
+
+
 def _legacy_error(fields: set[str]) -> StableEntryError:
     listed = ", ".join(sorted(fields))
     return StableEntryError(
@@ -133,13 +142,29 @@ def _check_res_path(value: str, label: str) -> str:
     remainder = value[len(_RES_PREFIX):]
     if not remainder.strip():
         raise StableEntryError(f"{label} must name a resource under res://")
-    if "\\" in value or ".." in value:
-        raise StableEntryError(f"{label} must use forward slashes and no '..'")
+    if "\\" in remainder:
+        raise StableEntryError(f"{label} must use forward slashes")
+    # Must be a clean, project-relative resource path: no absolute/UNC anchor,
+    # no drive letter, no empty (``//``), ``.`` or ``..`` segments.
+    segments = remainder.split("/")
+    for segment in segments:
+        if segment in ("", ".", ".."):
+            raise StableEntryError(
+                f"{label} must be a relative resource path with no empty, '.' or '..' segments"
+            )
+        if ":" in segment:
+            raise StableEntryError(f"{label} must not contain a drive letter or scheme")
     return value
 
 
 def _resolve_res_path(project_root: Path, res_path: str) -> Path:
     return project_root / res_path[len(_RES_PREFIX):]
+
+
+def _assert_within_root(project_root: Path, resolved: Path, label: str) -> None:
+    root = project_root.resolve()
+    if not resolved.resolve().is_relative_to(root):
+        raise StableEntryError(f"{label} resolves outside the project root")
 
 
 def _validate_source_layout(data: dict[str, Any]) -> tuple[str, str]:
@@ -205,8 +230,8 @@ def validate_entry(
 
     _reject_legacy(data)
 
-    if data.get("version") != SCHEMA_VERSION:
-        raise StableEntryError(f"Stable entry version must be {SCHEMA_VERSION}")
+    if not is_schema_version(data.get("version")):
+        raise StableEntryError(f"Stable entry version must be integer {SCHEMA_VERSION}")
 
     _safe_identifier(_non_empty_string(data, "asset_id", "asset_id"), "asset_id")
     _safe_identifier(_non_empty_string(data, "tag", "tag"), "tag")
@@ -232,11 +257,15 @@ def validate_entry(
         if project_root is None:
             raise StableEntryError("project_root is required to check files")
         root = Path(project_root)
-        if not _resolve_res_path(root, layout_path).exists():
+        source_file = _resolve_res_path(root, layout_path)
+        _assert_within_root(root, source_file, "source_layout.path")
+        if not source_file.exists():
             raise StableEntryError(f"source_layout.path not found: {layout_path}")
         if artifact is not None:
             _, artifact_path = artifact
-            if not _resolve_res_path(root, artifact_path).exists():
+            artifact_file = _resolve_res_path(root, artifact_path)
+            _assert_within_root(root, artifact_file, "godot_artifact.path")
+            if not artifact_file.exists():
                 raise StableEntryError(
                     f"godot_artifact.path not found: {artifact_path}"
                 )

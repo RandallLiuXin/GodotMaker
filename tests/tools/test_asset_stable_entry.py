@@ -11,6 +11,7 @@ sys.path.insert(0, str(TOOLS_DIR))
 
 from asset_stable_entry import (  # noqa: E402
     StableEntryError,
+    _assert_within_root,
     entry_relative_path,
     validate_entry,
     write_entry,
@@ -122,6 +123,72 @@ def test_legacy_field_nested_in_source_layout():
     entry["source_layout"]["runtime_artifact"] = "grid_sheet"
     with pytest.raises(StableEntryError, match="Regenerate"):
         validate_entry(entry)
+
+
+@pytest.mark.parametrize("version", [True, False, 1.0, "1", None, 2])
+def test_version_must_be_strict_integer(version):
+    entry = valid_entry(version=version)
+    with pytest.raises(StableEntryError, match="version"):
+        validate_entry(entry)
+
+
+@pytest.mark.parametrize(
+    "res_path",
+    [
+        "res://C:/Windows/system.ini",   # drive letter
+        "res://c:/x.png",
+        "res:///tmp/x.png",              # absolute (empty first segment)
+        "res:////server/share/x.png",    # UNC-style double slash
+        "res://a//b.png",                # empty middle segment
+        "res://a/./b.png",               # '.' segment
+        "res://a/../b.png",              # '..' segment
+        "res://..",                      # bare parent
+        "res://a\\b.png",                # backslash
+    ],
+)
+def test_source_layout_path_rejects_escapes(res_path):
+    entry = valid_entry()
+    entry["source_layout"]["path"] = res_path
+    with pytest.raises(StableEntryError):
+        validate_entry(entry)
+
+
+def test_godot_artifact_path_rejects_escapes():
+    entry = valid_entry()
+    entry["godot_artifact"]["path"] = "res://C:/Windows/system.ini"
+    with pytest.raises(StableEntryError, match="drive letter"):
+        validate_entry(entry)
+
+
+def test_check_files_rejects_path_outside_root(tmp_path):
+    # A clean relative res:// path can never escape, but the post-resolve guard
+    # holds even if a symlink or ``project_root`` trick pointed elsewhere.
+    outside = tmp_path.parent / "outside"
+    outside.mkdir()
+    (outside / "leak.png").write_bytes(b"x")
+    root = tmp_path / "proj"
+    root.mkdir()
+    # Symlink a directory inside the root to a sibling outside it.
+    link = root / "assets"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not permitted on this platform")
+    entry = valid_entry(
+        source_layout={"type": "single", "path": "res://assets/leak.png"},
+    )
+    del entry["godot_artifact"]
+    entry["processing_status"] = "source_ready"
+    with pytest.raises(StableEntryError, match="outside the project root"):
+        validate_entry(entry, project_root=root, check_files=True)
+
+
+def test_assert_within_root_rejects_outside(tmp_path):
+    root = tmp_path / "proj"
+    root.mkdir()
+    _assert_within_root(root, root / "assets" / "x.png", "source_layout.path")
+    with pytest.raises(StableEntryError, match="outside the project root"):
+        _assert_within_root(root, tmp_path / "outside" / "x.png", "source_layout.path")
 
 
 def test_godot_artifact_rejects_extra_keys():

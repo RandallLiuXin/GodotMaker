@@ -35,6 +35,7 @@ from asset_stable_entry import (
     _load_json,
     _safe_identifier,
     entry_relative_path,
+    is_schema_version,
     validate_entry,
 )
 
@@ -89,7 +90,10 @@ def _validate_item(item: Any, *, index: int) -> tuple[str, str, str]:
         expected = entry_relative_path(tag, asset_id)
     except StableEntryError as exc:
         raise GenerationIndexError(f"entries[{index}]: {exc}") from exc
-    if Path(entry_path).as_posix() != expected:
+    # Compare the raw string, not a normalized path: backslashes, ``//`` and
+    # ``./`` segments must be rejected so the same JSON validates identically on
+    # every OS and the pointer stays the exact canonical string.
+    if entry_path != expected:
         raise GenerationIndexError(
             f"entries[{index}].entry_path must be {expected}"
         )
@@ -107,8 +111,8 @@ def _validate_index_data(data: Any) -> list[dict[str, str]]:
         raise GenerationIndexError(
             f"Root index must only hold version and entries; unexpected fields: {listed}"
         )
-    if data.get("version") != SCHEMA_VERSION:
-        raise GenerationIndexError(f"Root index version must be {SCHEMA_VERSION}")
+    if not is_schema_version(data.get("version")):
+        raise GenerationIndexError(f"Root index version must be integer {SCHEMA_VERSION}")
     entries = data.get("entries")
     if not isinstance(entries, list):
         raise GenerationIndexError("Root index entries must be a list")
