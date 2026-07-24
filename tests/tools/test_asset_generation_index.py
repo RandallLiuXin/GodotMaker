@@ -83,6 +83,15 @@ def test_invalid_index_rejected(tmp_path, entries, match):
         check_index(path, project_root=tmp_path)
 
 
+def test_extra_root_field_rejected(tmp_path):
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps({"version": 1, "entries": [], "unexpected": True}), encoding="utf-8"
+    )
+    with pytest.raises(GenerationIndexError, match="unexpected fields: unexpected"):
+        check_index(path, project_root=tmp_path)
+
+
 def test_bad_version_rejected(tmp_path):
     path = tmp_path / "manifest.json"
     path.write_text(json.dumps({"version": 2, "entries": []}), encoding="utf-8")
@@ -154,6 +163,30 @@ def test_update_index_upsert_overwrites(tmp_path):
     update_index(index_path, [entry_file], project_root=tmp_path)
     data = json.loads(index_path.read_text(encoding="utf-8"))
     assert len(data["entries"]) == 1
+
+
+def test_update_index_rejects_corrupt_existing(tmp_path):
+    # A pre-existing index carrying a root-level extra field must not be silently
+    # "repaired" on upsert.
+    index_path = tmp_path / ".godotmaker/asset-generation/manifest.json"
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    index_path.write_text(
+        json.dumps({"version": 1, "entries": [], "unexpected": True}), encoding="utf-8"
+    )
+    entry_file = write_entry_file(tmp_path, valid_entry())
+    with pytest.raises(GenerationIndexError, match="unexpected fields"):
+        update_index(index_path, [entry_file], project_root=tmp_path)
+
+
+def test_update_index_rejects_non_canonical_entry_path(tmp_path):
+    # Content is valid but the file is not at entries/<tag>/<asset_id>.json, so the
+    # pointer would dangle; the run must fail closed instead of writing it.
+    loose = tmp_path / "input.json"
+    loose.write_text(json.dumps(valid_entry()), encoding="utf-8")
+    index_path = tmp_path / ".godotmaker/asset-generation/manifest.json"
+    with pytest.raises(GenerationIndexError, match="canonical entry path"):
+        update_index(index_path, [loose], project_root=tmp_path)
+    assert not index_path.exists()
 
 
 def test_update_index_rejects_legacy_existing(tmp_path):

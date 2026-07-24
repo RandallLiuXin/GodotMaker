@@ -81,6 +81,12 @@ LEGACY_FIELDS = {
 
 _RES_PREFIX = "res://"
 
+# Both nested contract objects hold exactly a type and a path. Internal detail
+# (receipts, hashes, versions) belongs at the entry top level, never inside the
+# worker-facing artifact.
+SOURCE_LAYOUT_KEYS = {"type", "path"}
+GODOT_ARTIFACT_KEYS = {"type", "path"}
+
 
 class StableEntryError(Exception):
     """Raised when a stable entry is invalid."""
@@ -114,6 +120,13 @@ def _safe_identifier(value: str, label: str) -> str:
     return value
 
 
+def _reject_extra_keys(data: dict[str, Any], allowed: set[str], label: str) -> None:
+    extra = set(data.keys()) - allowed
+    if extra:
+        listed = ", ".join(sorted(extra))
+        raise StableEntryError(f"{label} must only hold type and path; unexpected fields: {listed}")
+
+
 def _check_res_path(value: str, label: str) -> str:
     if not value.startswith(_RES_PREFIX):
         raise StableEntryError(f"{label} must be a res:// path")
@@ -134,6 +147,7 @@ def _validate_source_layout(data: dict[str, Any]) -> tuple[str, str]:
     if not isinstance(layout, dict):
         raise StableEntryError("source_layout must be an object")
     _reject_legacy(layout)
+    _reject_extra_keys(layout, SOURCE_LAYOUT_KEYS, "source_layout")
     layout_type = _non_empty_string(layout, "type", "source_layout.type")
     if layout_type not in SOURCE_LAYOUT_TYPES:
         raise StableEntryError(f"source_layout.type is not allowed: {layout_type}")
@@ -167,6 +181,7 @@ def _validate_godot_artifact(
     if not isinstance(artifact, dict):
         raise StableEntryError("godot_artifact must be an object or null")
     _reject_legacy(artifact)
+    _reject_extra_keys(artifact, GODOT_ARTIFACT_KEYS, "godot_artifact")
 
     artifact_type = _non_empty_string(artifact, "type", "godot_artifact.type")
     if not GODOT_TYPE_PATTERN.match(artifact_type):
@@ -193,10 +208,8 @@ def validate_entry(
     if data.get("version") != SCHEMA_VERSION:
         raise StableEntryError(f"Stable entry version must be {SCHEMA_VERSION}")
 
-    asset_id = _safe_identifier(
-        _non_empty_string(data, "asset_id", "asset_id"), "asset_id"
-    )
-    tag = _safe_identifier(_non_empty_string(data, "tag", "tag"), "tag")
+    _safe_identifier(_non_empty_string(data, "asset_id", "asset_id"), "asset_id")
+    _safe_identifier(_non_empty_string(data, "tag", "tag"), "tag")
 
     family = _non_empty_string(data, "production_family", "production_family")
     if family not in PRODUCTION_FAMILIES:

@@ -124,6 +124,20 @@ def test_legacy_field_nested_in_source_layout():
         validate_entry(entry)
 
 
+def test_godot_artifact_rejects_extra_keys():
+    entry = valid_entry()
+    entry["godot_artifact"]["receipt"] = {"hash": "abc"}
+    with pytest.raises(StableEntryError, match="godot_artifact must only hold type and path"):
+        validate_entry(entry)
+
+
+def test_source_layout_rejects_extra_keys():
+    entry = valid_entry()
+    entry["source_layout"]["grid"] = [4, 4]
+    with pytest.raises(StableEntryError, match="source_layout must only hold type and path"):
+        validate_entry(entry)
+
+
 def test_check_files_requires_present_paths(tmp_path):
     entry = valid_entry()
     with pytest.raises(StableEntryError, match="source_layout.path not found"):

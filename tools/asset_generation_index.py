@@ -38,6 +38,7 @@ from asset_stable_entry import (
     validate_entry,
 )
 
+ROOT_KEYS = {"version", "entries"}
 INDEX_ITEM_KEYS = {"asset_id", "tag", "entry_path"}
 
 
@@ -95,6 +96,35 @@ def _validate_item(item: Any, *, index: int) -> tuple[str, str, str]:
     return tag, asset_id, entry_path
 
 
+def _validate_index_data(data: Any) -> list[dict[str, str]]:
+    """Fully validate the root-object structure and return normalized items."""
+    if not isinstance(data, dict):
+        raise GenerationIndexError("Root index must be a JSON object")
+    _reject_legacy_container(data)
+    extra = set(data.keys()) - ROOT_KEYS
+    if extra:
+        listed = ", ".join(sorted(extra))
+        raise GenerationIndexError(
+            f"Root index must only hold version and entries; unexpected fields: {listed}"
+        )
+    if data.get("version") != SCHEMA_VERSION:
+        raise GenerationIndexError(f"Root index version must be {SCHEMA_VERSION}")
+    entries = data.get("entries")
+    if not isinstance(entries, list):
+        raise GenerationIndexError("Root index entries must be a list")
+
+    seen: set[tuple[str, str]] = set()
+    items: list[dict[str, str]] = []
+    for index, item in enumerate(entries):
+        tag, asset_id, entry_path = _validate_item(item, index=index)
+        key = (tag, asset_id)
+        if key in seen:
+            raise GenerationIndexError(f"Duplicate asset_id for tag {tag}: {asset_id}")
+        seen.add(key)
+        items.append({"asset_id": asset_id, "tag": tag, "entry_path": entry_path})
+    return items
+
+
 def check_index(
     index_path: Path,
     *,
@@ -105,26 +135,11 @@ def check_index(
     index_path = Path(index_path)
     root = Path(project_root) if project_root is not None else index_path.parent.parent.parent
 
-    data = _load_json_index(index_path)
-    if not isinstance(data, dict):
-        raise GenerationIndexError("Root index must be a JSON object")
-    _reject_legacy_container(data)
+    items = _validate_index_data(_load_json_index(index_path))
 
-    if data.get("version") != SCHEMA_VERSION:
-        raise GenerationIndexError(f"Root index version must be {SCHEMA_VERSION}")
-    entries = data.get("entries")
-    if not isinstance(entries, list):
-        raise GenerationIndexError("Root index entries must be a list")
-
-    seen: set[tuple[str, str]] = set()
     entry_checks = 0
-    for index, item in enumerate(entries):
-        tag, asset_id, entry_path = _validate_item(item, index=index)
-        key = (tag, asset_id)
-        if key in seen:
-            raise GenerationIndexError(f"Duplicate asset_id for tag {tag}: {asset_id}")
-        seen.add(key)
-
+    for item in items:
+        tag, asset_id, entry_path = item["tag"], item["asset_id"], item["entry_path"]
         if check_entries:
             resolved = root / entry_path
             if not resolved.exists():
@@ -135,14 +150,14 @@ def check_index(
                 raise GenerationIndexError(f"{entry_path}: {exc}") from exc
             if entry.get("asset_id") != asset_id or entry.get("tag") != tag:
                 raise GenerationIndexError(
-                    f"{entry_path} identity does not match index item {key}"
+                    f"{entry_path} identity does not match index item {(tag, asset_id)}"
                 )
             entry_checks += 1
 
     return {
         "ok": True,
         "path": str(index_path),
-        "entry_count": len(entries),
+        "entry_count": len(items),
         "check_entries": check_entries,
         "entry_checks": entry_checks,
     }
@@ -155,18 +170,11 @@ def _load_json_index(path: Path) -> Any:
         raise GenerationIndexError(str(exc)) from exc
 
 
-def _load_index(index_path: Path) -> dict[str, Any]:
+def _load_index_items(index_path: Path) -> list[dict[str, str]]:
+    """Load and fully validate an existing index, returning normalized items."""
     if not index_path.exists():
-        return {"version": SCHEMA_VERSION, "entries": []}
-    data = _load_json_index(index_path)
-    if not isinstance(data, dict):
-        raise GenerationIndexError(f"Root index must be an object: {index_path}")
-    _reject_legacy_container(data)
-    if data.get("version") != SCHEMA_VERSION:
-        raise GenerationIndexError(f"Root index version must be {SCHEMA_VERSION}: {index_path}")
-    if not isinstance(data.get("entries"), list):
-        raise GenerationIndexError(f"Root index missing entries list: {index_path}")
-    return data
+        return []
+    return _validate_index_data(_load_json_index(index_path))
 
 
 def _write_atomic(path: Path, data: dict[str, Any]) -> None:
@@ -194,18 +202,20 @@ def update_index(
     *,
     project_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Upsert stable-entry pointers into the root index."""
+    """Upsert stable-entry pointers into the root index.
+
+    Each input entry file must already sit at its canonical
+    ``entries/<tag>/<asset_id>.json`` path (typically written first by
+    ``asset_stable_entry.write_entry``). The rewritten index is validated with
+    ``check_entries=True`` before the atomic replace, so a run can never write a
+    dangling or corrupt pointer.
+    """
     index_path = Path(index_path)
-    data = _load_index(index_path)
+    root = Path(project_root) if project_root is not None else index_path.parent.parent.parent
 
     items_by_key: dict[tuple[str, str], dict[str, str]] = {}
-    for index, item in enumerate(data["entries"]):
-        tag, asset_id, entry_path = _validate_item(item, index=index)
-        items_by_key[(tag, asset_id)] = {
-            "asset_id": asset_id,
-            "tag": tag,
-            "entry_path": entry_path,
-        }
+    for item in _load_index_items(index_path):
+        items_by_key[(item["tag"], item["asset_id"])] = item
 
     upserted: list[str] = []
     for entry_path in entry_paths:
@@ -215,10 +225,15 @@ def update_index(
             raise GenerationIndexError(f"{entry_path}: {exc}") from exc
         tag = entry["tag"]
         asset_id = entry["asset_id"]
+        canonical_rel = entry_relative_path(tag, asset_id)
+        if Path(entry_path).resolve() != (root / canonical_rel).resolve():
+            raise GenerationIndexError(
+                f"{entry_path} must be the canonical entry path {canonical_rel}"
+            )
         items_by_key[(tag, asset_id)] = {
             "asset_id": asset_id,
             "tag": tag,
-            "entry_path": entry_relative_path(tag, asset_id),
+            "entry_path": canonical_rel,
         }
         upserted.append(asset_id)
 
@@ -239,7 +254,7 @@ def update_index(
         json.dump(next_data, handle, indent=2)
         handle.write("\n")
     try:
-        check_index(tmp_path, project_root=project_root)
+        check_index(tmp_path, project_root=root, check_entries=True)
         _write_atomic(index_path, next_data)
     finally:
         if tmp_path.exists():
