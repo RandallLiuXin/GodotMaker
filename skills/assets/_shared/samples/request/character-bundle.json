@@ -1,0 +1,14 @@
+{
+  "asset_type": "character-bundle",
+  "asset_id": "player",
+  "brief": "A small pixel-art knight with idle and run actions, side view, transparent background.",
+  "references": [
+    { "role": "canonical", "path": "res://references/player_canonical.png" },
+    { "role": "style", "path": "res://references/style_seed.png" }
+  ],
+  "provider": "native",
+  "spec": {
+    "actions": ["idle", "run"],
+    "fps": 8
+  }
+}

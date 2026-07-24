@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RandallLiuXin/GodotMaker/skills/assets/_shared/schema/asset-skill-request.schema.json",
+  "title": "Asset Skill Request",
+  "description": "Unified invocation contract for any first-class asset skill. Carries no pipeline, tag, stage, or manifest state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["asset_type", "asset_id", "brief"],
+  "properties": {
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "background-map",
+        "character-bundle",
+        "fx-bundle",
+        "ui-kit",
+        "card-kit",
+        "compact-prop-pack",
+        "platform-strip",
+        "scene-prop-set",
+        "screen-reference",
+        "tileset"
+      ]
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "brief": {
+      "type": "string",
+      "minLength": 1
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "path"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["canonical", "style", "screen"]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["native", "codex", "gemini", "openai"]
+    },
+    "spec": {
+      "type": "object"
+    }
+  }
+}
