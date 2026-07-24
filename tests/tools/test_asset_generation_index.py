@@ -148,16 +148,35 @@ def test_check_entries_missing_file(tmp_path):
 
 
 def test_check_entries_identity_mismatch(tmp_path):
-    entry = valid_entry()
-    # Write the entry file at the player path but with a mismatched asset_id inside.
+    # Write a fully valid ``enemy`` entry (identity and paths consistent) at the
+    # ``player`` pointer location, so it clears schema validation and is caught
+    # by the index identity check rather than the output-path constraint.
     rel = ".godotmaker/asset-generation/entries/v0.1.0/player.json"
     target = tmp_path / rel
     target.parent.mkdir(parents=True, exist_ok=True)
-    mismatched = dict(entry, asset_id="enemy")
+    mismatched = valid_entry(asset_id="enemy")
     target.write_text(json.dumps(mismatched), encoding="utf-8")
     path = write_index(tmp_path / ".godotmaker/asset-generation/manifest.json", [index_item()])
     with pytest.raises(GenerationIndexError, match="does not match index item"):
         check_index(path, project_root=tmp_path, check_entries=True)
+
+
+def test_check_entries_rejects_symlinked_stable_dir(tmp_path):
+    # The root-index registration path must resolve-and-contain referenced
+    # paths: a symlinked assets tree pointing outside the project is rejected
+    # even though --check-entries does not pass check_files.
+    outside = tmp_path.parent / "outside_index"
+    outside.mkdir(exist_ok=True)
+    root = tmp_path / "proj"
+    root.mkdir()
+    try:
+        (root / "assets").symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not permitted on this platform")
+    write_entry_file(root, valid_entry())
+    path = write_index(root / ".godotmaker/asset-generation/manifest.json", [index_item()])
+    with pytest.raises(GenerationIndexError, match="outside the project root"):
+        check_index(path, project_root=root, check_entries=True)
 
 
 def test_update_index_writes_pointers_only(tmp_path):
