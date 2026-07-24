@@ -1,0 +1,27 @@
+{
+  "asset_type": "ui-kit",
+  "outputs": [
+    {
+      "role": "runtime",
+      "name": "main_theme",
+      "path": "res://assets/generated/ui-kit/main/main_theme.tres",
+      "godot_type": "Theme"
+    },
+    {
+      "role": "runtime",
+      "name": "panel_stylebox",
+      "path": "res://assets/generated/ui-kit/main/panel_stylebox.tres",
+      "godot_type": "StyleBoxTexture"
+    }
+  ],
+  "sources": [
+    { "path": "res://assets/generated/ui-kit/main/theme_recipe.json", "layout": "theme_recipe" },
+    { "path": "res://assets/generated/ui-kit/main/panel_atlas.png", "layout": "region_atlas" }
+  ],
+  "previews": [
+    { "path": "res://assets/generated/ui-kit/main/preview.png" }
+  ],
+  "validation": {
+    "passed": true
+  }
+}

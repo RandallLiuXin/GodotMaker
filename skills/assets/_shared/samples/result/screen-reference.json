@@ -1,0 +1,16 @@
+{
+  "asset_type": "screen-reference",
+  "outputs": [
+    {
+      "role": "reference",
+      "name": "main_menu",
+      "path": "references/scene_main_menu.png"
+    }
+  ],
+  "sources": [],
+  "previews": [],
+  "validation": {
+    "passed": true,
+    "levels": { "L0": true, "L1": true }
+  }
+}
