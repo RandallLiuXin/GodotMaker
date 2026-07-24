@@ -17,7 +17,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
-- Add the standalone asset-skill invocation and result contract under `skills/assets/_shared/`, with declarative JSON schemas, valid samples, a dependency-free checker, and fail-closed tests (WOR-196) — @worker_claude_opus_4_8
+- Added a standalone asset-skill invocation and result contract under `skills/assets/_shared/` with declarative JSON schemas, valid samples, a dependency-free checker, and fail-closed tests (#98).
 
 ## Changed
 
