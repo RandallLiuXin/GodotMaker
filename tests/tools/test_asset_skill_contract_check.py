@@ -182,6 +182,16 @@ def test_validation_levels_all_true_with_passed():
             id="reference-bad-role",
         ),
         pytest.param(
+            lambda r: r.update(references=[{"role": [], "path": "x"}]),
+            id="reference-role-list",
+        ),
+        pytest.param(
+            lambda r: r.update(references=[{"role": {}, "path": "x"}]),
+            id="reference-role-dict",
+        ),
+        pytest.param(lambda r: r.update(provider=[]), id="provider-list"),
+        pytest.param(lambda r: r.update(provider={}), id="provider-dict"),
+        pytest.param(
             lambda r: r.update(references=[{"role": "canonical", "path": "x", "z": 1}]),
             id="reference-extra-key",
         ),
@@ -296,6 +306,10 @@ def test_request_rejects_non_dict():
         pytest.param(
             lambda r: r["outputs"][0].update(role="preview"), id="output-bad-role"
         ),
+        pytest.param(lambda r: r["outputs"][0].update(role=[]), id="output-role-list"),
+        pytest.param(lambda r: r["outputs"][0].update(role={}), id="output-role-dict"),
+        pytest.param(lambda r: r["sources"][0].update(layout=[]), id="source-layout-list"),
+        pytest.param(lambda r: r["sources"][0].update(layout={}), id="source-layout-dict"),
         pytest.param(
             lambda r: r["outputs"][0].update(godot_artifact={"type": "x"}),
             id="output-forbidden-godot_artifact",
@@ -395,6 +409,20 @@ def test_cli_rejects_invalid_result(tmp_path):
     proc = _run_cli(path, "--kind", "result")
     assert proc.returncode == 1
     assert json.loads(proc.stdout)["ok"] is False
+
+
+@pytest.mark.parametrize("bad_role", [[], {}], ids=["list", "dict"])
+def test_cli_fails_closed_on_non_scalar_enum(tmp_path, bad_role):
+    # A non-scalar enum value must become {"ok": false}, never an uncaught
+    # TypeError traceback that crashes the L0/CI process.
+    data = valid_result()
+    data["outputs"][0]["role"] = bad_role
+    path = tmp_path / "result.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    proc = _run_cli(path, "--kind", "result")
+    assert proc.returncode == 1
+    assert json.loads(proc.stdout)["ok"] is False
+    assert "Traceback" not in proc.stderr
 
 
 def test_valid_samples_are_independent_copies():

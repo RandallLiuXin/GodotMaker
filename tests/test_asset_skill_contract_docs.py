@@ -196,6 +196,11 @@ def _result_parity_cases():
         ("bad-godot_type", _with(base, lambda d: d["outputs"][0].update(godot_type="spriteFrames")), False),
         ("bad-role", _with(base, lambda d: d["outputs"][0].update(role="preview")), False),
         ("bad-source-layout", _with(base, lambda d: d["sources"][0].update(layout="mosaic")), False),
+        # --- invalid: non-scalar values on enum fields (must not crash) ---
+        ("role-list", _with(base, lambda d: d["outputs"][0].update(role=[])), False),
+        ("role-dict", _with(base, lambda d: d["outputs"][0].update(role={})), False),
+        ("layout-list", _with(base, lambda d: d["sources"][0].update(layout=[])), False),
+        ("layout-dict", _with(base, lambda d: d["sources"][0].update(layout={})), False),
         ("unknown-output-key", _with(base, lambda d: d["outputs"][0].update(z=1)), False),
         ("unknown-top-key", _with(base, lambda d: d.update(extra=1)), False),
         ("forbidden-tag", _with(base, lambda d: d.update(tag="v0.1.0")), False),
@@ -245,6 +250,13 @@ def _request_parity_cases():
         ("null-references", _with(base, lambda d: d.update(references=None)), False),
         ("null-provider", _with(base, lambda d: d.update(provider=None)), False),
         ("null-spec", _with(base, lambda d: d.update(spec=None)), False),
+        ("provider-list", _with(base, lambda d: d.update(provider=[])), False),
+        ("provider-dict", _with(base, lambda d: d.update(provider={})), False),
+        (
+            "reference-role-list",
+            _with(base, lambda d: d.update(references=[{"role": [], "path": "x"}])),
+            False,
+        ),
     ]
 
 

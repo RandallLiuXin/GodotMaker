@@ -150,13 +150,15 @@ def check_request(data: Any) -> dict[str, Any]:
                     ref, {"role", "path"}, location=loc, forbidden=set(), issues=issues
                 )
                 role = ref.get("role")
-                if role not in REFERENCE_ROLES:
-                    issues.append(f"{loc}.role is not allowed: {role}")
+                if not isinstance(role, str) or role not in REFERENCE_ROLES:
+                    issues.append(f"{loc}.role is not allowed: {role!r}")
                 if not _non_empty_string(ref.get("path")):
                     issues.append(f"{loc}.path must be a non-empty string")
 
-    if "provider" in data and data["provider"] not in PROVIDERS:
-        issues.append(f"request.provider is not allowed: {data['provider']}")
+    if "provider" in data and (
+        not isinstance(data["provider"], str) or data["provider"] not in PROVIDERS
+    ):
+        issues.append(f"request.provider is not allowed: {data['provider']!r}")
 
     if "spec" in data and not isinstance(data["spec"], dict):
         issues.append("request.spec must be an object")
@@ -182,8 +184,8 @@ def _check_output(output: Any, *, index: int, issues: list[str]) -> bool:
     )
 
     role = output.get("role")
-    if role not in OUTPUT_ROLES:
-        issues.append(f"{loc}.role is not allowed: {role}")
+    if not isinstance(role, str) or role not in OUTPUT_ROLES:
+        issues.append(f"{loc}.role is not allowed: {role!r}")
 
     path = output.get("path")
     if not _non_empty_string(path):
@@ -309,9 +311,9 @@ def check_result(data: Any) -> dict[str, Any]:
     if isinstance(data.get("sources"), list):
         for index, source in enumerate(data["sources"]):
             if isinstance(source, dict) and "layout" in source:
-                if source["layout"] not in SOURCE_LAYOUTS:
+                if not isinstance(source["layout"], str) or source["layout"] not in SOURCE_LAYOUTS:
                     issues.append(
-                        f"result.sources[{index}].layout is not allowed: {source['layout']}"
+                        f"result.sources[{index}].layout is not allowed: {source['layout']!r}"
                     )
 
     _check_file_list(

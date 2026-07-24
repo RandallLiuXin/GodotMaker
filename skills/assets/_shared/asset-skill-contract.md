@@ -40,7 +40,9 @@ dependency-free implementation of the identical rules so validation can run at
 runtime (schema/L0) inside a game project without a `jsonschema` dependency. The
 two are semantically equivalent — a document is accepted by the JSON Schema if
 and only if it is accepted by the checker. A bidirectional parity test enforces
-this on a shared battery of valid and invalid documents.
+this on a shared battery of valid and invalid documents. The checker fails
+closed: any malformed input — including a wrong JSON type on an enum field —
+becomes a single `AssetContractError`, never an uncaught exception.
 
 These rules go beyond plain field structure, and both enforcers encode them:
 
