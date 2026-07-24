@@ -2736,6 +2736,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>v1 generated-asset stable entry and root index schema: <code>tools/asset_stable_entry.py</code> (per-asset <code>production_family</code> / <code>source_layout</code> / minimal <code>godot_artifact</code> / <code>processing_status</code> entry written to <code>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json</code>) and <code>tools/asset_generation_index.py</code> (pointer-only root index). Old <code>runtime_artifact</code> schema fails closed and must be regenerated through <code>/gm-asset</code>; no migration or compatibility read is provided.</li>
+<li>Added a standalone asset-skill invocation and result contract under <code>skills/assets/_shared/</code> with declarative JSON schemas, valid samples, a dependency-free checker, and fail-closed tests (#98).</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
