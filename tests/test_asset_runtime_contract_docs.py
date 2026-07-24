@@ -221,13 +221,17 @@ def test_build_and_fixgap_handoff_runtime_assets_to_workers():
     worker = _read("agents/worker.md")
 
     for doc in (build, fixgap):
-        assert "`ASSETS.md` and `assets/manifest.json`" in doc
+        assert "`ASSETS.md` and `.godotmaker/asset-generation/manifest.json`" in doc
         assert "Asset Runtime Snapshot" in doc
 
     assert "### Asset Runtime Snapshot" in worker_dispatch
     assert "Use final runtime assets only." in worker_dispatch
     assert "`grid_sheet` or `region_atlas`" in worker_dispatch
     assert "Do not use `.godotmaker/asset-generation/sources/`" in worker_dispatch
+    # Generated-asset runtime handoff reads the generated manifest, never the
+    # analyst's user-provided-asset classification manifest.
+    assert ".godotmaker/asset-generation/manifest.json" in worker_dispatch
+    assert ".godotmaker/asset-generation/manifest.json" in worker
     assert "## Runtime Asset Rules" in worker
     assert "For `grid_sheet`, read the listed action metadata JSON" in worker
     assert "For `region_atlas`, read the listed atlas metadata JSON" in worker
@@ -281,6 +285,48 @@ def test_gdd_templates_do_not_add_weak_dynamic_visual_checks():
     assert "animation/lifecycle" not in scenes
     assert "multi-frame actors/FX" not in scenes
     assert "dynamic-mode test" not in scenes
+
+
+def test_generated_and_analyst_manifests_have_distinct_responsibilities():
+    """The two manifests must never be confused.
+
+    `.godotmaker/asset-generation/manifest.json` holds the generated-asset
+    runtime handoff data (runtime_artifact, final paths, metadata). It is the
+    only runtime source read by gm-build / gm-fixgap / worker dispatch.
+
+    `assets/manifest.json` holds the analyst's classification of user-provided
+    assets and keeps that responsibility unchanged.
+    """
+    build = _read("skills/core/gm-build/SKILL.md")
+    fixgap = _read("skills/core/gm-fixgap/SKILL.md")
+    worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
+    worker = _read("agents/worker.md")
+
+    # Runtime handoff docs point at the generated manifest, not the analyst one.
+    runtime_docs = {
+        "gm-build/SKILL.md": build,
+        "gm-fixgap/SKILL.md": fixgap,
+        "worker-dispatch.md": worker_dispatch,
+        "worker.md": worker,
+    }
+    for name, doc in runtime_docs.items():
+        assert (
+            ".godotmaker/asset-generation/manifest.json" in doc
+        ), f"{name} must read generated runtime data from the generated manifest"
+
+    # Regression guard: runtime handoff docs must not name the analyst's
+    # user-asset manifest (`assets/manifest.json`) as a runtime source.
+    for name, doc in runtime_docs.items():
+        assert "assets/manifest.json" not in doc, (
+            f"{name} must not name the analyst manifest as a runtime source"
+        )
+
+    # The analyst manifest keeps its distinct user-asset classification role.
+    analyst = _read("agents/analyst.md")
+    analyst_dispatch = _read("skills/core/_shared/analyst-dispatch.md")
+    assert "assets/manifest.json" in analyst
+    assert "user-provided" in analyst_dispatch or "user-provided" in analyst
+    assert "assets/manifest.json" in analyst_dispatch
 
 
 def test_region_atlas_single_region_contract():
