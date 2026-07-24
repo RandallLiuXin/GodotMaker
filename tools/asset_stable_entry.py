@@ -53,6 +53,13 @@ SOURCE_LAYOUT_TYPES = {
 # Reference-only sources are never handed to workers as runtime game assets.
 REFERENCE_LAYOUTS = {"reference"}
 
+# Families whose assets are reference-only. A ``reference`` layout is legal only
+# for these, and these families must use a ``reference`` layout. Binding the two
+# closes the fail-open where a runtime family (e.g. ``character-bundle``) could
+# declare a ``reference`` layout to slip an arbitrary path past the stable-dir
+# constraint.
+REFERENCE_FAMILIES = {"screen-reference"}
+
 # Processing status maps to the L0-L4 readiness ladder.
 PROCESSING_STATUSES = {
     "pending",       # L0 only; nothing produced yet
@@ -91,6 +98,22 @@ _RESERVED_DEVICE_NAMES = {
 }
 
 _RES_PREFIX = "res://"
+
+# Every worker-consumable generated file (source image, native Godot artifact,
+# and required support files) lives under a deterministic, per-asset directory::
+#
+#     assets/generated/<production_family>/<asset_id>/
+#
+# Pinning outputs to this directory is what keeps timestamped, ``v2``, or
+# ``final`` drift paths out of the runtime handoff: the location is derived from
+# stable identity, so regeneration overwrites in place and never touches an
+# unrelated asset's directory. Reference-only layouts are handed to nobody as a
+# runtime game asset and keep their existing location outside this tree.
+GENERATED_ROOT = "assets/generated"
+
+# The generation workspace is temporary; no runtime handoff path may depend on
+# it (design: "No consumer may depend on files under work/").
+WORK_ROOT = ".godotmaker/asset-generation/work"
 
 # Both nested contract objects hold exactly a type and a path. Internal detail
 # (receipts, hashes, versions) belongs at the entry top level, never inside the
@@ -195,7 +218,121 @@ def _assert_within_root(project_root: Path, resolved: Path, label: str) -> None:
         raise StableEntryError(f"{label} resolves outside the project root")
 
 
-def _validate_source_layout(data: dict[str, Any]) -> tuple[str, str]:
+def stable_output_dir(production_family: str, asset_id: str) -> str:
+    """Return the canonical project-relative output directory for one asset.
+
+    The directory is derived only from stable identity, so it is deterministic
+    and unique per ``(production_family, asset_id)``. Every source image, native
+    Godot artifact, and support file for the asset must live under it.
+    """
+    if production_family not in PRODUCTION_FAMILIES:
+        raise StableEntryError(f"production_family is not allowed: {production_family}")
+    _safe_identifier(asset_id, "asset_id")
+    return f"{GENERATED_ROOT}/{production_family}/{asset_id}"
+
+
+def stable_output_res_path(production_family: str, asset_id: str) -> str:
+    """Return the ``res://`` form of the asset's canonical output directory."""
+    return _RES_PREFIX + stable_output_dir(production_family, asset_id)
+
+
+def check_output_path(
+    value: str,
+    *,
+    production_family: str,
+    asset_id: str,
+    label: str,
+) -> str:
+    """Require a ``res://`` file strictly under the asset's stable directory.
+
+    On top of ``_check_res_path`` cleanliness this enforces that ``value`` names
+    a file under ``assets/generated/<production_family>/<asset_id>/`` and never
+    depends on the temporary generation ``work/`` workspace. A drifting
+    location (``v2``, ``final``, a timestamped or unrelated directory) cannot
+    satisfy the exact-prefix requirement, so it fails closed.
+    """
+    _check_res_path(value, label)
+    remainder = value[len(_RES_PREFIX):]
+    if remainder == WORK_ROOT or remainder.startswith(WORK_ROOT + "/"):
+        raise StableEntryError(
+            f"{label} must not depend on the generation work/ workspace"
+        )
+    stable_dir = stable_output_dir(production_family, asset_id)
+    # A clean res path never ends in ``/`` (``_check_res_path`` rejects an empty
+    # last segment), so an exact-prefix match with the trailing slash guarantees
+    # a real file strictly under the directory, not the directory itself.
+    if not remainder.startswith(stable_dir + "/"):
+        raise StableEntryError(f"{label} must be a file under res://{stable_dir}/")
+    return value
+
+
+def check_support_files(
+    paths: Any,
+    *,
+    production_family: str,
+    asset_id: str,
+) -> list[str]:
+    """Validate that every required support file is under the stable directory."""
+    if not isinstance(paths, (list, tuple)):
+        raise StableEntryError("support files must be a list of res:// paths")
+    validated: list[str] = []
+    for index, path in enumerate(paths):
+        if not isinstance(path, str) or not path.strip():
+            raise StableEntryError(f"support_files[{index}] must be a non-empty string")
+        check_output_path(
+            path,
+            production_family=production_family,
+            asset_id=asset_id,
+            label=f"support_files[{index}]",
+        )
+        validated.append(path)
+    return validated
+
+
+def assert_within_output_dir(
+    project_root: Path,
+    target: Path | str,
+    *,
+    production_family: str,
+    asset_id: str,
+    label: str = "output",
+) -> Path:
+    """Assert an on-disk write target sits strictly under the asset's stable dir.
+
+    This is the write-time counterpart of ``check_output_path``: generation and
+    finalize tools call it before writing so a run can only ever touch its own
+    ``assets/generated/<production_family>/<asset_id>/`` directory, never an
+    unrelated asset's. A relative ``target`` is resolved against ``project_root``.
+    Symlinks are followed (``resolve``), so an in-tree link pointing elsewhere is
+    rejected too.
+    """
+    root = Path(project_root).resolve()
+    relative_dir = stable_output_dir(production_family, asset_id)
+    stable = (root / relative_dir).resolve()
+    # The stable directory itself must stay inside the project. Checking only
+    # ``resolved`` against a resolved ``stable`` is not enough: if the stable
+    # directory (or an ancestor) is a symlink pointing out of the project, both
+    # it and the target resolve outside and the containment check passes while
+    # the write still escapes. Anchor ``stable`` to ``root`` first.
+    if stable != root and not stable.is_relative_to(root):
+        raise StableEntryError(
+            f"{label} stable directory resolves outside the project root"
+        )
+    resolved = Path(target)
+    if not resolved.is_absolute():
+        resolved = root / resolved
+    resolved = resolved.resolve()
+    if resolved == stable or not resolved.is_relative_to(stable):
+        raise StableEntryError(f"{label} must be written under {relative_dir}/")
+    return resolved
+
+
+def _validate_source_layout(
+    data: dict[str, Any],
+    *,
+    production_family: str,
+    asset_id: str,
+) -> tuple[str, str]:
     layout = data.get("source_layout")
     if not isinstance(layout, dict):
         raise StableEntryError("source_layout must be an object")
@@ -205,7 +342,18 @@ def _validate_source_layout(data: dict[str, Any]) -> tuple[str, str]:
     if layout_type not in SOURCE_LAYOUT_TYPES:
         raise StableEntryError(f"source_layout.type is not allowed: {layout_type}")
     layout_path = _non_empty_string(layout, "path", "source_layout.path")
-    _check_res_path(layout_path, "source_layout.path")
+    if layout_type in REFERENCE_LAYOUTS:
+        # A reference is never handed to a worker as a runtime game asset, so it
+        # falls outside the stable generated tree; only res-path cleanliness
+        # applies.
+        _check_res_path(layout_path, "source_layout.path")
+    else:
+        check_output_path(
+            layout_path,
+            production_family=production_family,
+            asset_id=asset_id,
+            label="source_layout.path",
+        )
     return layout_type, layout_path
 
 
@@ -214,6 +362,8 @@ def _validate_godot_artifact(
     *,
     layout_type: str,
     processing_status: str,
+    production_family: str,
+    asset_id: str,
 ) -> tuple[str, str] | None:
     artifact = data.get("godot_artifact")
     is_reference = layout_type in REFERENCE_LAYOUTS
@@ -242,7 +392,12 @@ def _validate_godot_artifact(
             "godot_artifact.type must be a Godot ClassDB type identifier"
         )
     artifact_path = _non_empty_string(artifact, "path", "godot_artifact.path")
-    _check_res_path(artifact_path, "godot_artifact.path")
+    check_output_path(
+        artifact_path,
+        production_family=production_family,
+        asset_id=asset_id,
+        label="godot_artifact.path",
+    )
     return artifact_type, artifact_path
 
 
@@ -261,7 +416,8 @@ def validate_entry(
     if not is_schema_version(data.get("version")):
         raise StableEntryError(f"Stable entry version must be integer {SCHEMA_VERSION}")
 
-    _safe_identifier(_non_empty_string(data, "asset_id", "asset_id"), "asset_id")
+    asset_id = _non_empty_string(data, "asset_id", "asset_id")
+    _safe_identifier(asset_id, "asset_id")
     _safe_identifier(_non_empty_string(data, "tag", "tag"), "tag")
 
     family = _non_empty_string(data, "production_family", "production_family")
@@ -276,27 +432,49 @@ def validate_entry(
             f"processing_status is not allowed: {processing_status}"
         )
 
-    layout_type, layout_path = _validate_source_layout(data)
+    layout_type, layout_path = _validate_source_layout(
+        data, production_family=family, asset_id=asset_id
+    )
+    # Bind reference layout and reference family so neither can be used to
+    # bypass the other's contract.
+    if layout_type in REFERENCE_LAYOUTS and family not in REFERENCE_FAMILIES:
+        raise StableEntryError(
+            "a reference source_layout is only allowed for a reference family "
+            f"({', '.join(sorted(REFERENCE_FAMILIES))})"
+        )
+    if family in REFERENCE_FAMILIES and layout_type not in REFERENCE_LAYOUTS:
+        raise StableEntryError(
+            f"production_family {family} must use a reference source_layout"
+        )
     artifact = _validate_godot_artifact(
-        data, layout_type=layout_type, processing_status=processing_status
+        data,
+        layout_type=layout_type,
+        processing_status=processing_status,
+        production_family=family,
+        asset_id=asset_id,
     )
 
-    if check_files:
-        if project_root is None:
-            raise StableEntryError("project_root is required to check files")
+    # Whenever a project root is supplied, resolve-and-contain the referenced
+    # paths even if existence is not being checked. The root-index registration
+    # path (``check_index(..., check_entries=True)``) calls this with only a
+    # project root, so containment must not be gated behind ``check_files`` or a
+    # symlinked ``assets/generated`` could pass registration.
+    if project_root is not None:
         root = Path(project_root)
         source_file = _resolve_res_path(root, layout_path)
         _assert_within_root(root, source_file, "source_layout.path")
-        if not source_file.exists():
+        if check_files and not source_file.exists():
             raise StableEntryError(f"source_layout.path not found: {layout_path}")
         if artifact is not None:
             _, artifact_path = artifact
             artifact_file = _resolve_res_path(root, artifact_path)
             _assert_within_root(root, artifact_file, "godot_artifact.path")
-            if not artifact_file.exists():
+            if check_files and not artifact_file.exists():
                 raise StableEntryError(
                     f"godot_artifact.path not found: {artifact_path}"
                 )
+    elif check_files:
+        raise StableEntryError("project_root is required to check files")
 
     return data
 

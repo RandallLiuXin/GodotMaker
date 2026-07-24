@@ -180,22 +180,121 @@ def test_godot_artifact_path_rejects_escapes():
         validate_entry(entry)
 
 
-def test_check_files_rejects_path_outside_root(tmp_path):
-    # A clean relative res:// path can never escape, but the post-resolve guard
-    # holds even if a symlink or ``project_root`` trick pointed elsewhere.
-    outside = tmp_path.parent / "outside"
-    outside.mkdir()
-    (outside / "leak.png").write_bytes(b"x")
+@pytest.mark.parametrize(
+    "path",
+    [
+        "res://assets/generated/ui-kit/player/player.png",           # wrong family
+        "res://assets/generated/character-bundle/enemy/player.png",  # unrelated asset dir
+        "res://assets/generated/character-bundle/player.png",        # missing asset dir
+        "res://assets/character-bundle/player/player.png",           # not under generated
+        "res://assets/generated/character-bundle/player-v2/x.png",   # v2 drift dir
+        "res://assets/generated/character-bundle/player_20240101/x.png",  # timestamp drift
+    ],
+)
+def test_source_layout_path_must_be_under_stable_dir(path):
+    entry = valid_entry()
+    entry["source_layout"]["path"] = path
+    with pytest.raises(StableEntryError, match="must be a file under"):
+        validate_entry(entry)
+
+
+def test_godot_artifact_path_must_be_under_stable_dir():
+    entry = valid_entry()
+    entry["godot_artifact"]["path"] = "res://assets/generated/character-bundle/enemy/enemy.tres"
+    with pytest.raises(StableEntryError, match="must be a file under"):
+        validate_entry(entry)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "res://.godotmaker/asset-generation/work/character-bundle/player/player.png",
+        "res://.godotmaker/asset-generation/work",
+    ],
+)
+def test_work_dir_dependency_rejected(path):
+    entry = valid_entry()
+    entry["source_layout"]["path"] = path
+    with pytest.raises(StableEntryError, match="work/ workspace"):
+        validate_entry(entry)
+
+
+def test_nested_support_path_under_stable_dir_ok():
+    # A deeper file (e.g. a support frame) under the asset directory is allowed.
+    entry = valid_entry()
+    entry["source_layout"]["path"] = (
+        "res://assets/generated/character-bundle/player/frames/idle.png"
+    )
+    validate_entry(entry)
+
+
+def test_reference_layout_exempt_from_generated_tree():
+    # A reference is not a runtime handoff asset; it keeps its own location and
+    # is only held to res-path cleanliness.
+    validate_entry(reference_entry())
+    outside_tree = reference_entry(
+        source_layout={"type": "reference", "path": "res://docs/refs/title.png"}
+    )
+    validate_entry(outside_tree)
+
+
+def test_reference_layout_requires_reference_family():
+    # A runtime family must not use a reference layout to escape the stable-dir
+    # constraint with an arbitrary path.
+    entry = valid_entry(
+        source_layout={"type": "reference", "path": "res://docs/anything.png"},
+    )
+    del entry["godot_artifact"]
+    with pytest.raises(StableEntryError, match="reference source_layout is only allowed"):
+        validate_entry(entry)
+
+
+def test_reference_family_requires_reference_layout():
+    entry = reference_entry(
+        source_layout={
+            "type": "single",
+            "path": "res://assets/generated/screen-reference/title_screen/title_screen.png",
+        },
+    )
+    with pytest.raises(StableEntryError, match="must use a reference source_layout"):
+        validate_entry(entry)
+
+
+def test_containment_runs_without_check_files(tmp_path):
+    # A symlinked assets tree pointing outside the root must be rejected even
+    # when only a project_root is supplied (the index registration path), not
+    # just under check_files=True.
+    outside = tmp_path.parent / "outside_containment"
+    outside.mkdir(exist_ok=True)
     root = tmp_path / "proj"
     root.mkdir()
-    # Symlink a directory inside the root to a sibling outside it.
+    try:
+        (root / "assets").symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not permitted on this platform")
+    with pytest.raises(StableEntryError, match="outside the project root"):
+        validate_entry(valid_entry(), project_root=root)
+
+
+def test_check_files_rejects_path_outside_root(tmp_path):
+    # A clean, constraint-conforming res:// path can never escape, but the
+    # post-resolve guard holds even if a symlink or ``project_root`` trick
+    # pointed the stable directory elsewhere.
+    outside = tmp_path.parent / "outside"
+    outside.mkdir()
+    root = tmp_path / "proj"
+    root.mkdir()
+    # Symlink the whole assets tree inside the root to a sibling outside it.
     link = root / "assets"
     try:
         link.symlink_to(outside, target_is_directory=True)
     except (OSError, NotImplementedError):
         pytest.skip("symlinks not permitted on this platform")
     entry = valid_entry(
-        source_layout={"type": "single", "path": "res://assets/leak.png"},
+        source_layout={
+            "type": "single",
+            "path": "res://assets/generated/character-bundle/player/player.png",
+        },
     )
     del entry["godot_artifact"]
     entry["processing_status"] = "source_ready"
