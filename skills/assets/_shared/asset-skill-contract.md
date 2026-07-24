@@ -42,12 +42,15 @@ two are semantically equivalent — a document is accepted by the JSON Schema if
 and only if it is accepted by the checker. A bidirectional parity test enforces
 this on a shared battery of valid and invalid documents.
 
-Two rules go beyond plain field structure, and both enforcers encode them:
+These rules go beyond plain field structure, and both enforcers encode them:
 
 - every required string is non-empty after trimming whitespace (a whitespace-only
   value is rejected);
-- a runtime output `path` must be `res://` followed by a relative resource path,
-  so bare `res://` and `res:///` are rejected.
+- an optional field is either omitted or a value of its declared type — an
+  explicit `null` is a wrong-typed value and is rejected, not treated as absent;
+- a runtime output `path` must be `res://` followed by a relative resource path
+  of one or more non-empty segments, and no segment may be `.` or `..`. Bare
+  `res://`, `res:///`, `res://.`, and `res://../outside.tres` are all rejected.
 
 `_shared/` holds cross-skill contract material only. It has no `SKILL.md` and is
 not independently triggerable.
@@ -117,7 +120,7 @@ output into its own stable entry with one primary `godot_artifact`.
 | Field | Required | Type | Rule |
 |---|---|---|---|
 | `role` | yes | string | `runtime` or `reference` |
-| `path` | yes | string | Non-empty; a `runtime` path must be `res://` followed by a relative resource path (bare `res://` / `res:///` are rejected) |
+| `path` | yes | string | Non-empty; a `runtime` path must be `res://` followed by a relative resource path with no `.`/`..` segment (bare `res://`, `res:///`, `res://.`, `res://../x` are rejected) |
 | `godot_type` | runtime only | string | Godot ClassDB type, `^[A-Z][A-Za-z0-9]+$` (open, not a closed enum) |
 | `name` | no | string | Optional logical label to disambiguate multiple outputs |
 

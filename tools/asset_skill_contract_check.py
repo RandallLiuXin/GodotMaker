@@ -44,10 +44,13 @@ VALIDATION_LEVELS = {"L0", "L1", "L2", "L3", "L4"}
 
 ASSET_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 GODOT_TYPE_PATTERN = re.compile(r"^[A-Z][A-Za-z0-9]+$")
-# A loadable res:// resource path: the scheme, then a relative path that starts
-# with a non-slash, non-whitespace character. Rejects bare "res://" and
-# "res:///", which resolve to the project root rather than a resource.
-RES_PATH_PATTERN = re.compile(r"^res://[^/\s]\S*$")
+# A loadable res:// resource path: the scheme, then one or more "/"-separated
+# path segments of non-whitespace, non-slash characters. No segment may be "."
+# or ".." (a lone dot resolves to a directory, and ".." escapes the project
+# root), and there are no empty segments. Rejects bare "res://", "res:///",
+# "res://.", "res://..", and "res://../outside.tres".
+_RES_SEGMENT = r"(?!\.\.?(?:/|$))[^/\s]+"
+RES_PATH_PATTERN = re.compile(rf"^res://{_RES_SEGMENT}(?:/{_RES_SEGMENT})*$")
 
 # Pipeline / registration concepts that must never leak into a skill-neutral
 # request or result. Reported with a targeted message; any other unknown key is
@@ -131,8 +134,10 @@ def check_request(data: Any) -> dict[str, Any]:
     if not _non_empty_string(data.get("brief")):
         issues.append("request.brief must be a non-empty string")
 
-    references = data.get("references")
-    if references is not None:
+    # Optional fields are keyed on presence, not on a non-None value: an explicit
+    # null is a wrong-typed value the schema rejects, not an omission.
+    if "references" in data:
+        references = data["references"]
         if not isinstance(references, list):
             issues.append("request.references must be a list")
         else:
@@ -150,12 +155,10 @@ def check_request(data: Any) -> dict[str, Any]:
                 if not _non_empty_string(ref.get("path")):
                     issues.append(f"{loc}.path must be a non-empty string")
 
-    provider = data.get("provider")
-    if provider is not None and provider not in PROVIDERS:
-        issues.append(f"request.provider is not allowed: {provider}")
+    if "provider" in data and data["provider"] not in PROVIDERS:
+        issues.append(f"request.provider is not allowed: {data['provider']}")
 
-    spec = data.get("spec")
-    if spec is not None and not isinstance(spec, dict):
+    if "spec" in data and not isinstance(data["spec"], dict):
         issues.append("request.spec must be an object")
 
     if issues:
@@ -191,24 +194,17 @@ def _check_output(output: Any, *, index: int, issues: list[str]) -> bool:
             "(res:// followed by a relative resource path) for a runtime output"
         )
 
-    godot_type = output.get("godot_type")
-    if role == "runtime":
-        if not _non_empty_string(godot_type):
+    if role == "runtime" or "godot_type" in output:
+        godot_type = output.get("godot_type")
+        if role == "runtime" and "godot_type" not in output:
             issues.append(f"{loc}.godot_type is required for a runtime output")
-        elif not GODOT_TYPE_PATTERN.match(godot_type):
-            issues.append(
-                f"{loc}.godot_type must be a Godot ClassDB type name "
-                f"({GODOT_TYPE_PATTERN.pattern}): {godot_type}"
-            )
-    elif godot_type is not None:
-        if not _non_empty_string(godot_type) or not GODOT_TYPE_PATTERN.match(godot_type):
+        elif not _non_empty_string(godot_type) or not GODOT_TYPE_PATTERN.match(godot_type):
             issues.append(
                 f"{loc}.godot_type must be a Godot ClassDB type name "
                 f"({GODOT_TYPE_PATTERN.pattern}): {godot_type}"
             )
 
-    name = output.get("name")
-    if name is not None and not _non_empty_string(name):
+    if "name" in output and not _non_empty_string(output["name"]):
         issues.append(f"{loc}.name must be a non-empty string")
 
     return role == "runtime"
@@ -253,8 +249,8 @@ def _check_validation(validation: Any, *, issues: list[str]) -> None:
     if not isinstance(passed, bool):
         issues.append("result.validation.passed must be a boolean")
 
-    levels = validation.get("levels")
-    if levels is not None:
+    if "levels" in validation:
+        levels = validation["levels"]
         if not isinstance(levels, dict):
             issues.append("result.validation.levels must be an object")
         else:
@@ -275,8 +271,7 @@ def _check_validation(validation: Any, *, issues: list[str]) -> None:
                         + ", ".join(failed)
                     )
 
-    notes = validation.get("notes")
-    if notes is not None and not isinstance(notes, str):
+    if "notes" in validation and not isinstance(validation["notes"], str):
         issues.append("result.validation.notes must be a string")
 
 
@@ -313,19 +308,19 @@ def check_result(data: Any) -> dict[str, Any]:
     )
     if isinstance(data.get("sources"), list):
         for index, source in enumerate(data["sources"]):
-            if isinstance(source, dict):
-                layout = source.get("layout")
-                if layout is not None and layout not in SOURCE_LAYOUTS:
-                    issues.append(f"result.sources[{index}].layout is not allowed: {layout}")
+            if isinstance(source, dict) and "layout" in source:
+                if source["layout"] not in SOURCE_LAYOUTS:
+                    issues.append(
+                        f"result.sources[{index}].layout is not allowed: {source['layout']}"
+                    )
 
     _check_file_list(
         data.get("previews"), field="previews", allowed={"path", "label"}, issues=issues
     )
     if isinstance(data.get("previews"), list):
         for index, preview in enumerate(data["previews"]):
-            if isinstance(preview, dict):
-                label = preview.get("label")
-                if label is not None and not _non_empty_string(label):
+            if isinstance(preview, dict) and "label" in preview:
+                if not _non_empty_string(preview["label"]):
                     issues.append(f"result.previews[{index}].label must be a non-empty string")
 
     _check_validation(data.get("validation"), issues=issues)

@@ -122,6 +122,30 @@ def test_empty_sources_and_previews_are_allowed():
     assert check_result(data)["ok"] is True
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "res://assets/x.tres",
+        "res://a/b.name.tres",
+        "res://.hidden/x.tres",
+        "res://..foo/bar.tres",
+    ],
+)
+def test_runtime_paths_with_dotted_names_are_valid(path):
+    data = valid_result()
+    data["outputs"][0]["path"] = path
+    assert check_result(data)["ok"] is True
+
+
+def test_omitted_optional_fields_are_valid():
+    data = valid_result()
+    data["outputs"][0].pop("name", None)
+    data["sources"][0].pop("layout", None)
+    data["previews"] = [{"path": "res://a/b.png"}]
+    data["validation"] = {"passed": True}
+    assert check_result(data)["ok"] is True
+
+
 def test_validation_levels_all_true_with_passed():
     data = valid_result()
     data["validation"] = {
@@ -162,7 +186,10 @@ def test_validation_levels_all_true_with_passed():
             id="reference-extra-key",
         ),
         pytest.param(lambda r: r.update(provider="dalle"), id="bad-provider"),
+        pytest.param(lambda r: r.update(provider=None), id="provider-null"),
+        pytest.param(lambda r: r.update(references=None), id="references-null"),
         pytest.param(lambda r: r.update(spec=[]), id="spec-not-object"),
+        pytest.param(lambda r: r.update(spec=None), id="spec-null"),
         pytest.param(lambda r: r.update(tag="v0.1.0"), id="forbidden-tag"),
         pytest.param(lambda r: r.update(stage=1), id="forbidden-stage"),
         pytest.param(
@@ -232,6 +259,35 @@ def test_request_rejects_non_dict():
         pytest.param(
             lambda r: r["sources"][0].update(path="   "),
             id="source-whitespace-path",
+        ),
+        # explicit null on an optional field is a wrong-typed value, not omission
+        pytest.param(lambda r: r["outputs"][0].update(name=None), id="output-name-null"),
+        pytest.param(
+            lambda r: r["outputs"].__setitem__(
+                0, {"role": "reference", "path": "references/x.png", "godot_type": None}
+            ),
+            id="reference-godot_type-null",
+        ),
+        pytest.param(lambda r: r["sources"][0].update(layout=None), id="source-layout-null"),
+        pytest.param(lambda r: r["previews"][0].update(label=None), id="preview-label-null"),
+        pytest.param(
+            lambda r: r.update(validation={"passed": True, "levels": None}),
+            id="validation-levels-null",
+        ),
+        pytest.param(
+            lambda r: r.update(validation={"passed": True, "notes": None}),
+            id="validation-notes-null",
+        ),
+        # dot / traversal segments are not loadable resource paths
+        pytest.param(lambda r: r["outputs"][0].update(path="res://."), id="runtime-path-dot"),
+        pytest.param(lambda r: r["outputs"][0].update(path="res://.."), id="runtime-path-dotdot"),
+        pytest.param(
+            lambda r: r["outputs"][0].update(path="res://../outside.tres"),
+            id="runtime-path-traversal",
+        ),
+        pytest.param(
+            lambda r: r["outputs"][0].update(path="res://a/../b.tres"),
+            id="runtime-path-mid-traversal",
         ),
         pytest.param(
             lambda r: r["outputs"][0].update(godot_type="spriteFrames"),

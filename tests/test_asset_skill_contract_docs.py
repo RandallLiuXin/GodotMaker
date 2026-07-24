@@ -168,6 +168,27 @@ def _result_parity_cases():
         ("whitespace-output-name", _with(base, lambda d: d["outputs"][0].update(name="  ")), False),
         ("whitespace-source-path", _with(base, lambda d: d["sources"][0].update(path="  ")), False),
         ("whitespace-preview-label", _with(base, lambda d: d["previews"][0].update(label="  ")), False),
+        # --- invalid: explicit null on optional fields ---
+        ("null-output-name", _with(base, lambda d: d["outputs"][0].update(name=None)), False),
+        (
+            "null-reference-godot_type",
+            _with(base, lambda d: d["outputs"].__setitem__(
+                0, {"role": "reference", "path": "references/x.png", "godot_type": None}
+            )),
+            False,
+        ),
+        ("null-source-layout", _with(base, lambda d: d["sources"][0].update(layout=None)), False),
+        ("null-preview-label", _with(base, lambda d: d["previews"][0].update(label=None)), False),
+        ("null-levels", _with(base, lambda d: d.update(validation={"passed": True, "levels": None})), False),
+        ("null-notes", _with(base, lambda d: d.update(validation={"passed": True, "notes": None})), False),
+        # --- invalid: dot / traversal path segments ---
+        ("path-dot", _with(base, lambda d: d["outputs"][0].update(path="res://.")), False),
+        ("path-dotdot", _with(base, lambda d: d["outputs"][0].update(path="res://..")), False),
+        ("path-traversal", _with(base, lambda d: d["outputs"][0].update(path="res://../outside.tres")), False),
+        ("path-mid-traversal", _with(base, lambda d: d["outputs"][0].update(path="res://a/../b.tres")), False),
+        # --- valid: legitimate dotted names ---
+        ("valid-dotted-filename", _with(base, lambda d: d["outputs"][0].update(path="res://a/b.name.tres")), True),
+        ("valid-hidden-dir", _with(base, lambda d: d["outputs"][0].update(path="res://.hidden/x.tres")), True),
         # --- invalid: structural / enum / forbidden ---
         ("empty-outputs", _with(base, lambda d: d.update(outputs=[])), False),
         ("non-res-runtime", _with(base, lambda d: d["outputs"][0].update(path="assets/x.tres")), False),
@@ -221,6 +242,9 @@ def _request_parity_cases():
         ),
         ("forbidden-tag", _with(base, lambda d: d.update(tag="v0.1.0")), False),
         ("unknown-asset_type", _with(base, lambda d: d.update(asset_type="sprite")), False),
+        ("null-references", _with(base, lambda d: d.update(references=None)), False),
+        ("null-provider", _with(base, lambda d: d.update(provider=None)), False),
+        ("null-spec", _with(base, lambda d: d.update(spec=None)), False),
     ]
 
 

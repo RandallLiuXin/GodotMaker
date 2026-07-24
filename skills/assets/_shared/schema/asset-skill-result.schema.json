@@ -55,7 +55,7 @@
             "then": {
               "required": ["godot_type"],
               "properties": {
-                "path": { "pattern": "^res://[^/\\s]\\S*$" }
+                "path": { "pattern": "^res://(?!\\.\\.?(?:/|$))[^/\\s]+(?:/(?!\\.\\.?(?:/|$))[^/\\s]+)*$" }
               }
             }
           }
