@@ -80,7 +80,7 @@ Steps to follow when publishing a new version of GodotMaker.
    - **README + wiki entry-flow consistency.** The first command shown in
      `README.md`, `README.zh-CN.md`, and
      `docs/wiki/01-getting-started/first-game.md` must match the current
-     public entrypoint. For the CLI-first path this is `godotmaker`; direct
+     public entrypoint. For the CLI-first path this is `godotmaker-cli`; direct
      `/gm-scaffold` or `/gm-gdd` role commands are advanced/manual entrypoints,
      not the first-run command shown to new users.
    - **New config keys are in `config.yaml.default`.** Any `*_model` field

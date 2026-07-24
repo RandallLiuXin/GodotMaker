@@ -4,6 +4,18 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [0.8.2] - 2026-07-24
+
+### Changed
+
+- Documented where the single godotmaker-cli pipeline model override belongs while leaving concrete model IDs to the CLI documentation (#81).
+- Added a commented `reasoning_effort` example to the default project config template for GodotMakerApp-driven pipelines (#82).
+- Added and refined the README demo section with video links and concrete game-type labels (#84, #85, #86).
+
+### Fixed
+
+- Fixed gm-accept so every invocation writes the `accept` role marker as its first action, including idempotent re-entry when `.godotmaker/current_role` already contains it (#93).
+
 ## [0.8.1] - 2026-07-09
 
 ### Changed
