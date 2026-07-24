@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RandallLiuXin/GodotMaker/skills/assets/_shared/schema/asset-skill-result.schema.json",
+  "title": "Asset Skill Result",
+  "description": "Unified result contract returned by any first-class asset skill. Carries no pipeline, tag, stage, or registration state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["asset_type", "outputs", "sources", "previews", "validation"],
+  "properties": {
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "background-map",
+        "character-bundle",
+        "fx-bundle",
+        "ui-kit",
+        "card-kit",
+        "compact-prop-pack",
+        "platform-strip",
+        "scene-prop-set",
+        "screen-reference",
+        "tileset"
+      ]
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "path"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["runtime", "reference"]
+          },
+          "path": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "godot_type": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]+$"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "role": { "const": "runtime" } }
+            },
+            "then": {
+              "required": ["godot_type"],
+              "properties": {
+                "path": { "pattern": "^res://(?!\\.\\.?(?:/|$))[^/\\s]+(?:/(?!\\.\\.?(?:/|$))[^/\\s]+)*$" }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "layout": {
+            "type": "string",
+            "enum": [
+              "single",
+              "grid_sheet",
+              "region_atlas",
+              "action_frames",
+              "theme_recipe",
+              "tile_atlas"
+            ]
+          }
+        }
+      }
+    },
+    "previews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "label": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed"],
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        },
+        "levels": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "L0": { "type": "boolean" },
+            "L1": { "type": "boolean" },
+            "L2": { "type": "boolean" },
+            "L3": { "type": "boolean" },
+            "L4": { "type": "boolean" }
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "passed": { "const": true } },
+            "required": ["passed"]
+          },
+          "then": {
+            "properties": {
+              "levels": {
+                "properties": {
+                  "L0": { "const": true },
+                  "L1": { "const": true },
+                  "L2": { "const": true },
+                  "L3": { "const": true },
+                  "L4": { "const": true }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

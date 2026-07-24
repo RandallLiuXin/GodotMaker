@@ -1,0 +1,24 @@
+{
+  "asset_type": "character-bundle",
+  "outputs": [
+    {
+      "role": "runtime",
+      "name": "player",
+      "path": "res://assets/generated/character-bundle/player/player.tres",
+      "godot_type": "SpriteFrames"
+    }
+  ],
+  "sources": [
+    {
+      "path": "res://assets/generated/character-bundle/player/player.png",
+      "layout": "grid_sheet"
+    }
+  ],
+  "previews": [
+    { "path": "res://assets/generated/character-bundle/player/preview_idle.png", "label": "idle" }
+  ],
+  "validation": {
+    "passed": true,
+    "levels": { "L0": true, "L1": true, "L2": true, "L3": true, "L4": true }
+  }
+}

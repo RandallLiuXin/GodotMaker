@@ -1,0 +1,20 @@
+{
+  "asset_type": "tileset",
+  "outputs": [
+    {
+      "role": "runtime",
+      "path": "res://assets/generated/tileset/grassland/grassland.tres",
+      "godot_type": "TileSet"
+    }
+  ],
+  "sources": [
+    {
+      "path": "res://assets/generated/tileset/grassland/grassland_atlas.png",
+      "layout": "tile_atlas"
+    }
+  ],
+  "previews": [],
+  "validation": {
+    "passed": true
+  }
+}
