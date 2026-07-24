@@ -47,7 +47,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - run: pip install ruff
+      # Keep the lint baseline deterministic; upgrade Ruff in a dedicated PR.
+      - run: pip install ruff==0.15.22
       - run: ruff check .
 
   test-python:
