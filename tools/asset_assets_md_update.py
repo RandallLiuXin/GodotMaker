@@ -34,6 +34,12 @@ from asset_generation_index import GenerationIndexError, check_index
 PROMOTABLE_STATUS = "ready"
 REFERENCE_PROMOTABLE_STATUSES = {"source_ready", "ready"}
 ROOT_INDEX_RELATIVE = ".godotmaker/asset-generation/manifest.json"
+GENERATED_ROW_STATUS = "generated"
+ASSETS_MD_MIN_CELLS = 8
+ASSETS_MD_TAG_COLUMN = 1
+ASSETS_MD_ASSET_ID_COLUMN = 2
+ASSETS_MD_PARAMS_COLUMN = 5
+ASSETS_MD_STATUS_COLUMN = 7
 
 
 class AssetsMdUpdateError(Exception):
@@ -142,12 +148,13 @@ def _load_entries(
     return entries
 
 
-def _split_markdown_row(line: str) -> list[str] | None:
+def split_assets_md_row(line: str) -> list[str] | None:
+    """Return one contract-shaped ASSETS.md row, or ``None`` otherwise."""
     stripped = line.strip()
     if not stripped.startswith("|") or not stripped.endswith("|"):
         return None
     cells = [cell.strip() for cell in stripped.strip("|").split("|")]
-    if len(cells) < 8:
+    if len(cells) < ASSETS_MD_MIN_CELLS:
         return None
     return cells
 
@@ -203,21 +210,21 @@ def update_assets_md(
     row_re = re.compile(r"^\s*\|")
 
     for line in lines:
-        cells = _split_markdown_row(line) if row_re.match(line) else None
-        if cells is None or len(cells) < 8:
+        cells = split_assets_md_row(line) if row_re.match(line) else None
+        if cells is None:
             output.append(line)
             continue
-        tag = cells[1]
-        asset_id = cells[2]
+        tag = cells[ASSETS_MD_TAG_COLUMN]
+        asset_id = cells[ASSETS_MD_ASSET_ID_COLUMN]
         key = (tag, asset_id)
         if key not in entries_by_key:
             output.append(line)
             continue
 
-        cells[5] = _merge_generation_params(
-            cells[5], _entry_params(entries_by_key[key])
+        cells[ASSETS_MD_PARAMS_COLUMN] = _merge_generation_params(
+            cells[ASSETS_MD_PARAMS_COLUMN], _entry_params(entries_by_key[key])
         )
-        cells[7] = status
+        cells[ASSETS_MD_STATUS_COLUMN] = status
         output.append(_format_markdown_row(cells))
         updated.append(asset_id)
         remaining.discard(key)

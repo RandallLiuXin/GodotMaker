@@ -1,5 +1,6 @@
 import copy
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -71,11 +72,26 @@ def test_every_non_reference_layout_has_an_artifact_type():
     instead of a contract error.
     """
     assert set(LAYOUT_ARTIFACT_TYPES) == SOURCE_LAYOUT_TYPES - REFERENCE_LAYOUTS
+    assert all(
+        isinstance(artifact_types, tuple) and artifact_types
+        for artifact_types in LAYOUT_ARTIFACT_TYPES.values()
+    )
+    assert LAYOUT_ARTIFACT_TYPES == {
+        "single": ("Texture2D", "StyleBoxTexture"),
+        "grid_sheet": ("SpriteFrames",),
+        "region_atlas": ("AtlasTexture", "StyleBoxTexture"),
+        "theme_recipe": ("Theme",),
+        "tile_atlas": ("TileSet",),
+    }
 
 
 @pytest.mark.parametrize(
     ("layout", "artifact_type"),
-    sorted(LAYOUT_ARTIFACT_TYPES.items()),
+    [
+        (layout, artifact_type)
+        for layout, artifact_types in sorted(LAYOUT_ARTIFACT_TYPES.items())
+        for artifact_type in artifact_types
+    ],
 )
 def test_matching_artifact_type_is_accepted(layout, artifact_type):
     entry = valid_entry(
@@ -104,6 +120,9 @@ def test_matching_artifact_type_is_accepted(layout, artifact_type):
         ("grid_sheet", "AtlasTexture"),
         ("region_atlas", "SpriteFrames"),
         ("single", "Resource"),
+        ("grid_sheet", "StyleBoxTexture"),
+        ("theme_recipe", "StyleBoxTexture"),
+        ("tile_atlas", "StyleBoxTexture"),
     ],
 )
 def test_mismatched_artifact_type_is_rejected(layout, artifact_type):
@@ -117,10 +136,10 @@ def test_mismatched_artifact_type_is_rejected(layout, artifact_type):
             "path": "res://assets/generated/character-bundle/player/player.tres",
         },
     )
-    expected = LAYOUT_ARTIFACT_TYPES[layout]
+    expected = ", ".join(LAYOUT_ARTIFACT_TYPES[layout])
     with pytest.raises(
         StableEntryError,
-        match=f"must be {expected}, not {artifact_type}",
+        match=re.escape(f"must be one of: {expected}; not {artifact_type}"),
     ):
         validate_entry(entry)
 
@@ -208,6 +227,15 @@ def test_write_entry_rejects_unsafe_tag(tmp_path):
         write_entry(entry, project_root=tmp_path)
     # Nothing was written outside the (never-created) canonical location.
     assert not (tmp_path / ".godotmaker/asset-generation/entries/player.json").exists()
+
+
+@pytest.mark.parametrize("field", ["asset_id", "tag"])
+def test_stable_identifiers_reject_generation_param_delimiters(field):
+    entry = valid_entry()
+    entry[field] = "unsafe;identifier"
+
+    with pytest.raises(StableEntryError, match="reserved characters"):
+        validate_entry(entry)
 
 
 @pytest.mark.parametrize("version", [True, False, 1.0, "1", None, 2])
