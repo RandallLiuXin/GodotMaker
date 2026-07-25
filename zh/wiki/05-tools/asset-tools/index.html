@@ -1225,6 +1225,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#asset_atlas_assemblepy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        asset_atlas_assemble.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#asset_stable_entrypy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2835,6 +2846,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#asset_atlas_assemblepy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        asset_atlas_assemble.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#asset_stable_entrypy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2914,6 +2936,7 @@
 <li><code>asset_stable_entry.py</code></li>
 <li><code>asset_generation_index.py</code></li>
 <li><code>asset_assets_md_update.py</code></li>
+<li><code>asset_atlas_assemble.py</code></li>
 </ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> 会根据 JSON spec 生成 API 后端 source 图片，支持 Gemini、OpenAI 和 xAI Grok selector。运行时原生的 <code>native</code> 和 <code>codex</code> 图片生成由 <code>/gm-asset</code> 选择，不由这个脚本调用。</p>
@@ -3031,6 +3054,18 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>tools/asset_output_path.py<span class="w"> </span>--family<span class="w"> </span>&lt;production_family&gt;<span class="w"> </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>python<span class="w"> </span>tools/asset_output_path.py<span class="w"> </span>--entry<span class="w"> </span>&lt;entry.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--check-files
 </code></pre></div>
+<h2 id="asset_atlas_assemblepy">asset_atlas_assemble.py<a class="headerlink" href="#asset_atlas_assemblepy" title="Permanent link">&para;</a></h2>
+<p><code>asset_atlas_assemble.py</code> 根据显式声明 slot rect 的 JSON 组装物理 PNG atlas。它不做 packing、trim、resize 或 region 推断。source 必须是相对 project root 的 PNG 路径，尺寸必须与声明的 slot 精确一致；输出 PNG 和 metadata 都必须位于 <code>assets/generated/&lt;production_family&gt;/&lt;asset_id&gt;/</code> 内。</p>
+<p>手动入口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>tools/asset_atlas_assemble.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>--declaration<span class="w"> </span>&lt;fixed_slots.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--atlas-out<span class="w"> </span>assets/generated/ui-kit/&lt;asset_id&gt;/&lt;asset_id&gt;.png<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>--metadata-out<span class="w"> </span>assets/generated/ui-kit/&lt;asset_id&gt;/&lt;asset_id&gt;.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span>--family<span class="w"> </span>ui-kit<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span>--project-root<span class="w"> </span>.
+</code></pre></div>
+<p>该工具把物理 atlas 和确定性的 region metadata 作为可回滚的一对输出写入。它只负责固定 slot 的组装；把 metadata 编译成 <code>AtlasTexture</code> 是独立的 compiler 步骤。</p>
 <h2 id="asset_stable_entrypy">asset_stable_entry.py<a class="headerlink" href="#asset_stable_entrypy" title="Permanent link">&para;</a></h2>
 <p><code>asset_stable_entry.py</code> 校验一个 v1 stable entry，并把它序列化到 <code>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json</code>。entry 只保存稳定身份加上 <code>production_family</code>、<code>source_layout</code>、可选的最小 <code>godot_artifact</code> 和 <code>processing_status</code>，不保存其他字段。</p>
 <p>对于非 <code>reference</code> entry，<code>godot_artifact.type</code> 必须是 Godot ClassDB
@@ -3071,22 +3106,22 @@ ClassDB 类型：</p>
 </tbody>
 </table>
 <p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>tools/asset_stable_entry.py<span class="w"> </span>&lt;entry_draft.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--write<span class="w"> </span>--check-files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>tools/asset_stable_entry.py<span class="w"> </span>&lt;entry_draft.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--write<span class="w"> </span>--check-files
 </code></pre></div>
 <h2 id="asset_generation_indexpy">asset_generation_index.py<a class="headerlink" href="#asset_generation_indexpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_generation_index.py</code> 拥有位于 <code>.godotmaker/asset-generation/manifest.json</code> 的 pointer-only root index。它只保存身份和每个素材的一个 <code>entry_path</code>，绝不复制 entry 内容。</p>
 <p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>tools/asset_generation_index.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>python<span class="w"> </span>tools/asset_generation_index.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--check-entries<span class="w"> </span>--check-files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>tools/asset_generation_index.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>python<span class="w"> </span>tools/asset_generation_index.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--check-entries<span class="w"> </span>--check-files
 </code></pre></div>
 <p><code>--check-entries</code> 只做 schema 校验。<code>--check-files</code> 会额外检查每个 source 和 artifact 是否真的在磁盘上，并隐含 <code>--check-entries</code>，因此它才是完整的 handoff gate，能抓到注册之后被删除的素材。</p>
 <p>把完整 entry 内容存在 <code>assets</code> 键下的旧 <code>runtime_artifact</code> manifest 会被拒绝并提示重新生成；不提供迁移或兼容读取。</p>
 <h2 id="asset_assets_md_updatepy">asset_assets_md_update.py<a class="headerlink" href="#asset_assets_md_updatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_assets_md_update.py</code> 会根据已注册的 stable entry 更新 ASSETS.md 行。它先重新校验 entry 和被引用的文件，并且只接受 <code>ready</code> 的非 reference entry，所以只有素材确实是可被 worker 消费的成品时，行才会变成 <code>generated</code>；行里只记录 entry 指针，不复制任何路径。</p>
 <p>手动入口：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>tools/asset_assets_md_update.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>tools/asset_assets_md_update.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
 </code></pre></div>
 <h2 id="_2">手动调用这些脚本<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <p>大多数情况下不需要直接运行这些脚本。<code>/gm-asset</code> 会根据 <code>ASSETS.md</code> 和 source-generation manifest 自动调度它们。</p>

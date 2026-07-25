@@ -2735,6 +2735,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <hr />
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Added <code>tools/asset_atlas_assemble.py</code> for reproducible fixed-slot physical PNG atlases and region metadata; it rejects implicit packing, trimming, heuristic discovery, invalid bounds, overlap, size mismatches, and missing source PNGs.</li>
 <li>v1 generated-asset stable entry and root index schema: <code>tools/asset_stable_entry.py</code> (per-asset <code>production_family</code> / <code>source_layout</code> / minimal <code>godot_artifact</code> / <code>processing_status</code> entry written to <code>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json</code>) and <code>tools/asset_generation_index.py</code> (pointer-only root index). Old <code>runtime_artifact</code> schema fails closed and must be regenerated through <code>/gm-asset</code>; no migration or compatibility read is provided.</li>
 <li>Stable generated-asset output-path contract: deterministic <code>assets/generated/&lt;production_family&gt;/&lt;asset_id&gt;/</code> resolver (<code>tools/asset_output_path.py</code>), fail-closed stable-entry path validation, and a reusable <code>assert_within_output_dir</code> write guard.</li>
 <li>Added a standalone asset-skill invocation and result contract under <code>skills/assets/_shared/</code> with declarative JSON schemas, valid samples, a dependency-free checker, and fail-closed tests (#98).</li>
