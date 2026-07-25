@@ -36,7 +36,7 @@ from .godot_probe import (
     ProbeResult,
     find_godot,
 )
-from .ladder import ValidationLadder, build_default_ladder
+from .ladder import PROMOTION, REVALIDATION, ValidationLadder, build_default_ladder
 from .structure import (
     KNOWN_ARTIFACT_TYPES,
     TEXTURE2D_CHECKS,
@@ -58,6 +58,8 @@ __all__ = [
     "PASSED",
     "PROBE_CHECKS",
     "PROBE_SCRIPT",
+    "PROMOTION",
+    "REVALIDATION",
     "STATUS_FAILED",
     "STATUS_READY",
     "TEXTURE2D_CHECKS",

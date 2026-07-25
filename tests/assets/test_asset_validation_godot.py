@@ -17,14 +17,14 @@ SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(SHARED_DIR))
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from asset_compiler import build_default_registry  # noqa: E402
+from asset_compiler import CompileRequest, build_default_registry  # noqa: E402
 from asset_validation import (  # noqa: E402
     NOT_RUN,
     PASSED,
+    REVALIDATION,
     GodotProbe,
     ProbeRequest,
     ValidationLadder,
-    build_default_ladder,
     build_default_structures,
 )
 
@@ -97,9 +97,32 @@ def _stylebox_ladder(godot_bin: str) -> ValidationLadder:
     )
 
 
+def _default_compile_receipt(registry, root: Path):
+    return registry.compile(
+        CompileRequest(
+            production_family="ui-kit",
+            asset_id="panel",
+            source_layout_type="single",
+            source_path="res://assets/generated/ui-kit/panel/panel.png",
+            artifact_type="Texture2D",
+            artifact_path="res://assets/generated/ui-kit/panel/panel.png",
+            project_root=root,
+        )
+    ).receipt
+
+
 def test_a_generated_texture_reaches_ready_through_real_godot(godot_bin, godot_project):
     _write(godot_project, "res://assets/generated/ui-kit/panel/panel.png", _png(24, 16))
-    result = build_default_ladder(godot_bin).run(_entry(), project_root=godot_project)
+    registry = build_default_registry()
+    result = ValidationLadder(
+        registry=registry,
+        structures=build_default_structures(),
+        probe=GodotProbe(godot_bin),
+    ).run(
+        _entry(),
+        project_root=godot_project,
+        receipt=_default_compile_receipt(registry, godot_project),
+    )
 
     assert result.ready is True, result.to_dict()
     assert result.processing_status == "ready"
@@ -120,12 +143,15 @@ def test_headless_godot_rejects_a_corrupt_resource(godot_bin, godot_project):
         b"this is not a Godot resource\n",
     )
     entry = _entry(
+        processing_status="ready",
         godot_artifact={
             "type": "StyleBoxTexture",
             "path": "res://assets/generated/ui-kit/panel/panel.tres",
         }
     )
-    result = _stylebox_ladder(godot_bin).run(entry, project_root=godot_project)
+    result = _stylebox_ladder(godot_bin).run(
+        entry, project_root=godot_project, mode=REVALIDATION
+    )
 
     assert result.ready is False
     assert result.failure.level == "L3"
@@ -141,12 +167,15 @@ def test_headless_godot_rejects_a_resource_of_the_wrong_type(godot_bin, godot_pr
         THEME_TRES.encode("utf-8"),
     )
     entry = _entry(
+        processing_status="ready",
         godot_artifact={
             "type": "StyleBoxTexture",
             "path": "res://assets/generated/ui-kit/panel/panel.tres",
         }
     )
-    result = _stylebox_ladder(godot_bin).run(entry, project_root=godot_project)
+    result = _stylebox_ladder(godot_bin).run(
+        entry, project_root=godot_project, mode=REVALIDATION
+    )
 
     assert result.ready is False
     assert result.failure.level == "L3"
@@ -174,6 +203,7 @@ def test_a_loadable_type_without_a_structure_validator_stops_at_l4(godot_bin, go
         THEME_TRES.encode("utf-8"),
     )
     entry = _entry(
+        processing_status="ready",
         asset_id="skin",
         source_layout={
             "type": "theme_recipe",
@@ -189,7 +219,7 @@ def test_a_loadable_type_without_a_structure_validator_stops_at_l4(godot_bin, go
         structures=build_default_structures(),
         probe=GodotProbe(godot_bin),
     )
-    result = ladder.run(entry, project_root=godot_project)
+    result = ladder.run(entry, project_root=godot_project, mode=REVALIDATION)
 
     assert result.levels[3].status == PASSED
     assert result.levels[3].details["godot_class"] == "Theme"
@@ -255,6 +285,7 @@ def test_a_check_godot_cannot_answer_fails_l4_even_if_the_validator_ignores_it(
         b'[gd_resource type="StyleBoxTexture" format=3]\n\n[resource]\n',
     )
     entry = _entry(
+        processing_status="ready",
         godot_artifact={
             "type": "StyleBoxTexture",
             "path": "res://assets/generated/ui-kit/panel/panel.tres",
@@ -263,7 +294,7 @@ def test_a_check_godot_cannot_answer_fails_l4_even_if_the_validator_ignores_it(
     ladder = ValidationLadder(
         registry=registry, structures=structures, probe=GodotProbe(godot_bin)
     )
-    result = ladder.run(entry, project_root=godot_project)
+    result = ladder.run(entry, project_root=godot_project, mode=REVALIDATION)
 
     assert result.levels[3].status == PASSED
     assert result.ready is False, result.to_dict()
@@ -297,7 +328,16 @@ def test_the_ladder_leaves_the_project_sources_untouched(godot_bin, godot_projec
         godot_project, "res://assets/generated/ui-kit/panel/panel.png", _png(12, 12)
     )
     before = source.read_bytes()
-    result = build_default_ladder(godot_bin).run(_entry(), project_root=godot_project)
+    registry = build_default_registry()
+    result = ValidationLadder(
+        registry=registry,
+        structures=build_default_structures(),
+        probe=GodotProbe(godot_bin),
+    ).run(
+        _entry(),
+        project_root=godot_project,
+        receipt=_default_compile_receipt(registry, godot_project),
+    )
 
     assert result.ready is True
     assert source.read_bytes() == before
