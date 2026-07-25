@@ -3333,7 +3333,7 @@ plugin adapter.</p>
 <p>When you run <code>python tools/publish.py &lt;target&gt;</code>:</p>
 <ol>
 <li>Read <code>VERSION</code> from the repo root and compare against <code>&lt;target&gt;/.godotmaker/version</code>. Prompt or block on MINOR / MAJOR upgrades.</li>
-<li>Copy skills (flat): all directories under <code>skills/core/</code> and <code>skills/reviewer/</code> to the selected agent skill directory (<code>&lt;target&gt;/.claude/skills/</code> for Claude Code or <code>&lt;target&gt;/.agents/skills/</code> for Codex). Directories whose name starts with <code>_</code> (i.e., <code>_shared/</code>) are skipped by <code>publish_skills()</code>; shared docs are deployed into consumer <code>references/</code> folders instead by <code>publish_shared_refs()</code>.</li>
+<li>Copy first-class skills (flat): every non-private directory under <code>skills/core/</code>, <code>skills/reviewer/</code>, and <code>skills/assets/</code> goes to the selected agent skill directory (<code>&lt;target&gt;/.claude/skills/</code> for Claude Code or <code>&lt;target&gt;/.agents/skills/</code> for Codex). <code>skills/core/_shared/</code> documents are deployed into consumer <code>references/</code> folders by <code>publish_shared_refs()</code>; <code>skills/assets/_shared/</code> is not an invokable Skill and is copied to <code>&lt;target&gt;/.godotmaker/asset-runtime/</code> with the shared schemas, compiler, and L0-L4 validators.</li>
 <li>Copy hooks to <code>&lt;target&gt;/.godotmaker/hooks/</code>.</li>
 <li>Copy tools to <code>&lt;target&gt;/tools/</code>.</li>
 <li>Copy templates to the selected agent template directory.</li>

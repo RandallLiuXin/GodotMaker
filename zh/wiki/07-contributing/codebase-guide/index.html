@@ -3332,7 +3332,7 @@ Codex 使用 <code>agent-runtimes/&lt;agent&gt;/config/</code> 下的配置文�
 <p>运行 <code>python tools/publish.py &lt;target&gt;</code> 时：</p>
 <ol>
 <li>从仓库根目录读取 <code>VERSION</code>，与 <code>&lt;target&gt;/.godotmaker/version</code> 比较。MINOR / MAJOR 升级时弹出提示或直接拦截。</li>
-<li>扁平复制技能：<code>skills/core/</code> 和 <code>skills/reviewer/</code> 下的所有目录会写入所选 agent 的技能目录（Claude Code 为 <code>&lt;target&gt;/.claude/skills/</code>，Codex 为 <code>&lt;target&gt;/.agents/skills/</code>）。名称以 <code>_</code> 开头的目录（即 <code>_shared/</code>）会被 <code>publish_skills()</code> 跳过；共享文档改由 <code>publish_shared_refs()</code> 部署到消费技能的 <code>references/</code> 文件夹中。</li>
+<li>扁平复制 first-class 技能：<code>skills/core/</code>、<code>skills/reviewer/</code> 和 <code>skills/assets/</code> 下的每个非私有目录都会写入所选 agent 的技能目录（Claude Code 为 <code>&lt;target&gt;/.claude/skills/</code>，Codex 为 <code>&lt;target&gt;/.agents/skills/</code>）。<code>skills/core/_shared/</code> 文档由 <code>publish_shared_refs()</code> 部署到消费技能的 <code>references/</code> 文件夹；<code>skills/assets/_shared/</code> 不是可调用的 Skill，而是连同共享 schema、compiler 和 L0-L4 validator 一起复制到 <code>&lt;target&gt;/.godotmaker/asset-runtime/</code>。</li>
 <li>复制 hooks → <code>&lt;target&gt;/.godotmaker/hooks/</code>。</li>
 <li>复制 tools → <code>&lt;target&gt;/tools/</code>。</li>
 <li>复制 templates 到所选 agent 的模板目录。</li>
