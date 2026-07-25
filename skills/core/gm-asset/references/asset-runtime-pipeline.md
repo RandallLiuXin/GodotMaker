@@ -253,12 +253,14 @@ python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-The updater promotes a row to `generated` only for a `ready` non-reference entry
-and fails closed on anything else, because `generated` is what tells `/gm-build`
-the row's asset is finished. Until the compilers and the L0-L4 runner land no
-entry reaches `ready`, so generated rows stay `MISSING` and this command reports
-the blocking status instead of promoting anything. That is the honest state; do
-not work around it by editing rows or statuses by hand.
+The updater promotes a runtime row to `generated` only for a `ready`
+non-reference entry. A `screen-reference` row is the narrow exception: it may
+become `generated` at `source_ready` only after its finalized reference file,
+canonical stable entry, root-index pointer, and full root-index file gate pass.
+That records the same `manifest_entry` pointer without creating a
+`godot_artifact` or making the reference worker-consumable. All other
+`source_ready` entries remain `MISSING` until the compilers and L0-L4 runner
+land; do not work around that by editing rows or statuses by hand.
 
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.

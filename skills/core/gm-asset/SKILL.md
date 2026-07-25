@@ -244,8 +244,12 @@ python tools/asset_generation_index.py --project-root . \
 python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
 
-7. Update the matching ASSETS.md rows only after the root-index gate passes, and
-   only for `ready` non-reference entries:
+7. Update the matching ASSETS.md rows only after the root-index gate passes. A
+   `ready` non-reference entry is a finished runtime asset; a
+   `screen-reference` entry completes its reference row at `source_ready` when
+   its finalized file, canonical stable entry, and root-index pointer all pass
+   validation. The reference path never creates a `godot_artifact` or a worker
+   runtime handoff:
 
 ```bash
 python tools/asset_assets_md_update.py \
@@ -272,9 +276,11 @@ For current-tag rows only:
 1. Confirm rows whose entry is `ready` are `generated`.
 2. Mark provided files `provided`.
 3. Mark unprovided audio `deferred`.
-4. Keep rows without a registered `ready` entry as `MISSING`. Until the native
-   compilers and the L0-L4 runner land this covers every generated row,
-   including reference rows.
+4. Keep runtime rows without a registered `ready` entry as `MISSING`. Until
+   the native compilers and the L0-L4 runner land this covers every generated
+   runtime row. A registered, validated `screen-reference` at `source_ready`
+   is the sole reference-only exception and becomes `generated` without being
+   worker-consumable.
 5. Confirm `Generation Params` include the stable entry pointer only.
 6. Update the Visual Asset Contract for gameplay-visible generated assets.
 
@@ -298,11 +304,12 @@ or leave a fix task for a later role.
 
 ## Completion
 
-The native compilers and the L0-L4 runner are not implemented, so a tag whose
-plan contains generated visual assets cannot reach this state yet: those rows
-stay `MISSING` by design. Stop after Step 6, report the registered
-`source_ready` entries, and tell the user the asset stage is blocked on the
-compiler work rather than forcing the stage closed.
+The native compilers and the L0-L4 runner are not implemented, so generated
+runtime rows cannot reach this state yet: those rows stay `MISSING` by design.
+Registered, validated reference-only rows may complete at `source_ready`; report
+them as visual references, not worker-consumable assets. If any runtime rows
+remain, tell the user the asset stage is blocked on compiler work rather than
+forcing it closed.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 

@@ -9,6 +9,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
 from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
+from asset_generation_index import update_index  # noqa: E402
 from asset_stable_entry import entry_relative_path, stable_output_dir  # noqa: E402
 
 TAG = "v0.1.0"
@@ -174,32 +175,127 @@ def test_update_assets_md_rejects_unready_entry(tmp_path, status):
     assert "| generated |" not in assets_md.read_text(encoding="utf-8")
 
 
-def test_update_assets_md_rejects_reference_entry(tmp_path):
-    """A screen reference is never handed to a worker as a runtime asset."""
-    assets_md = tmp_path / "ASSETS.md"
-    assets_md.write_text(
+def make_reference_entry(**overrides):
+    entry = {
+        "version": 1,
+        "asset_id": "scene_main",
+        "tag": TAG,
+        "production_family": "screen-reference",
+        "source_layout": {
+            "type": "reference",
+            "path": "res://references/scene_main.png",
+        },
+        "processing_status": "source_ready",
+    }
+    entry.update(overrides)
+    return entry
+
+
+def write_reference_assets_md(path: Path):
+    path.write_text(
         "| ID | Tag | Name | Type | Size | Generation Params | Path | Status |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
         f"| 1 | {TAG} | scene_main | reference | 1280x720 | — | references/scene_main.png | MISSING |\n",
         encoding="utf-8",
     )
+
+
+def test_update_assets_md_promotes_registered_source_ready_reference(tmp_path):
+    """References complete after deterministic registration, not runtime readiness."""
+    assets_md = tmp_path / "ASSETS.md"
+    write_reference_assets_md(assets_md)
     touch(tmp_path, "references/scene_main.png")
-    entry_file = write_entry(
-        tmp_path,
-        {
-            "version": 1,
-            "asset_id": "scene_main",
-            "tag": TAG,
-            "production_family": "screen-reference",
-            "source_layout": {
-                "type": "reference",
-                "path": "res://references/scene_main.png",
-            },
-            "processing_status": "ready",
-        },
+    entry_file = write_entry(tmp_path, make_reference_entry())
+    update_index(
+        tmp_path / ".godotmaker/asset-generation/manifest.json",
+        [entry_file],
+        project_root=tmp_path,
     )
 
-    with pytest.raises(AssetsMdUpdateError, match="is a reference entry"):
+    update_assets_md(assets_md, [entry_file])
+
+    text = assets_md.read_text(encoding="utf-8")
+    assert "| generated |" in text
+    assert f"manifest_entry={entry_relative_path(TAG, 'scene_main')}" in text
+
+
+def test_reference_entry_must_be_registered_and_pass_the_root_index_gate(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    write_reference_assets_md(assets_md)
+    touch(tmp_path, "references/scene_main.png")
+    entry_file = write_entry(tmp_path, make_reference_entry())
+
+    with pytest.raises(AssetsMdUpdateError, match="root-index gate"):
+        update_assets_md(assets_md, [entry_file])
+
+    update_index(
+        tmp_path / ".godotmaker/asset-generation/manifest.json",
+        [entry_file],
+        project_root=tmp_path,
+    )
+    (tmp_path / "references/scene_main.png").unlink()
+
+    with pytest.raises(AssetsMdUpdateError, match="source_layout.path not found"):
+        update_assets_md(assets_md, [entry_file])
+
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
+def test_reference_entry_rejects_a_valid_index_without_its_pointer(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    write_reference_assets_md(assets_md)
+    touch(tmp_path, "references/scene_main.png")
+    entry_file = write_entry(tmp_path, make_reference_entry())
+    touch(tmp_path, "references/scene_other.png")
+    other_entry = write_entry(
+        tmp_path,
+        make_reference_entry(
+            asset_id="scene_other",
+            source_layout={
+                "type": "reference",
+                "path": "res://references/scene_other.png",
+            },
+        ),
+    )
+    update_index(
+        tmp_path / ".godotmaker/asset-generation/manifest.json",
+        [other_entry],
+        project_root=tmp_path,
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match="is not registered in the root index"):
+        update_assets_md(assets_md, [entry_file])
+
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
+def test_reference_entry_rejects_root_index_identity_mismatch(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    write_reference_assets_md(assets_md)
+    touch(tmp_path, "references/scene_main.png")
+    entry_file = write_entry(tmp_path, make_reference_entry())
+    bad_entry_path = tmp_path / entry_relative_path("v0.2.0", "scene_main")
+    bad_entry_path.parent.mkdir(parents=True, exist_ok=True)
+    bad_entry_path.write_text(entry_file.read_text(encoding="utf-8"), encoding="utf-8")
+    index_path = tmp_path / ".godotmaker/asset-generation/manifest.json"
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    index_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "entries": [
+                    {
+                        "asset_id": "scene_main",
+                        "tag": "v0.2.0",
+                        "entry_path": entry_relative_path("v0.2.0", "scene_main"),
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match="identity does not match"):
         update_assets_md(assets_md, [entry_file])
 
     assert "| generated |" not in assets_md.read_text(encoding="utf-8")

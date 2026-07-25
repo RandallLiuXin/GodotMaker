@@ -10,7 +10,7 @@ There are nine role skills, each responsible for one part of game creation. In t
 |---------|-------------|-------|---------|
 | `/gm-scaffold` | Creates a new Godot project with the right folder structure, required addons, and a first git commit | Nothing (run this once per project) | `project.godot`, `addons/`, initial `CLAUDE.md` or `AGENTS.md` |
 | `/gm-gdd` | Interviews you about the game, then writes the design documents and work plan | A scaffolded project | `GDD.md`, `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `TOC.md` |
-| `/gm-asset` | Generates missing art or analyses art you provide, so the build has visuals to work with | `ASSETS.md` from `/gm-gdd` | Art files in `assets/`, updated `ASSETS.md` |
+| `/gm-asset` | Generates missing art or analyses art you provide, so the build has visuals to work with | `ASSETS.md` from `/gm-gdd` | Art files, scene references, and updated `ASSETS.md`; references can complete without being runtime artifacts |
 | `/gm-build` | Implements the game by sending tasks to worker sub-agents one batch at a time, with reviewers checking the result | Design documents from `/gm-gdd` | Game code in `src/`, `scenes/`, unit tests, end-to-end tests |
 | `/gm-verify` | Runs a mechanical check: does the project compile, do unit tests pass, are required files present | A built project | A printed pass/fail report and a `verify` event appended to `.godotmaker/stage.jsonl` |
 | `/gm-evaluate` | Runs the game independently, takes screenshots, and scores the result against the GDD | A verified project | `.godotmaker/evaluation.json`, screenshots in `e2e/screenshots/` |
