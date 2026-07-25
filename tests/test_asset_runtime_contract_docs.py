@@ -553,6 +553,22 @@ def test_gm_asset_registers_through_the_stable_entry_tools_only():
     assert "Do not hand-edit" in skill
 
 
+def test_runtime_resolver_is_documented_as_a_registered_assets_reader():
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+    tools = _read("docs/wiki/05-tools/asset-tools.md")
+    tools_zh = _read("docs/zh/wiki/05-tools/asset-tools.md")
+    guide = _read("docs/wiki/07-contributing/codebase-guide.md")
+    guide_zh = _read("docs/zh/wiki/07-contributing/codebase-guide.md")
+
+    assert "## Runtime Snapshot Resolution" in runtime
+    assert "tools/asset_runtime_resolver.py" in runtime
+    assert "root-index" in runtime
+    assert "registration" in runtime
+    assert "Both modes require" in runtime
+    for doc in (tools, tools_zh, guide, guide_zh):
+        assert "asset_runtime_resolver.py" in doc
+
+
 def test_region_atlas_single_region_contract():
     worker = _read("agents/worker.md")
     worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")

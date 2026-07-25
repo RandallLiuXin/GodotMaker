@@ -18,6 +18,7 @@ Primary pipeline tools:
 10. `asset_stable_entry.py`
 11. `asset_generation_index.py`
 12. `asset_assets_md_update.py`
+13. `asset_runtime_resolver.py`
 
 ## asset_source_generate.py
 
@@ -277,6 +278,24 @@ python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
+## asset_runtime_resolver.py
+
+`asset_runtime_resolver.py` resolves one registered, generated ASSETS.md row
+into the minimal runtime snapshot: `asset_id`, `production_family`,
+`source_layout`, and `godot_artifact`. It requires the ASSETS.md pointer and
+the generated root index to agree, then validates the ready stable entry and all
+referenced files. Reference-only entries never produce a worker runtime
+snapshot.
+
+Manual entry points:
+
+```bash
+python tools/asset_runtime_resolver.py --project-root . \
+  --tag <tag> --asset-id <asset_id>
+python tools/asset_runtime_resolver.py --project-root . \
+  --manifest-entry .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
+```
+
 ## Calling these by hand
 
 You usually do not need to run these scripts directly. `/gm-asset` orchestrates
@@ -292,6 +311,7 @@ Manual use cases:
 6. Select one extracted candidate into a runtime asset path.
 7. Print or validate one asset's stable output directory.
 8. Validate and register one stable entry and its root-index pointer.
+9. Resolve one registered ASSETS.md entry into its minimal runtime snapshot.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.

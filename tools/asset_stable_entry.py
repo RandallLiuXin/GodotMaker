@@ -102,7 +102,7 @@ LEGACY_FIELDS = {
 
 # Characters that are illegal in a Windows filename or act as path separators /
 # drive markers / alternate-data-stream selectors across platforms.
-_RESERVED_PATH_CHARS = set('<>:"/\\|?*')
+_RESERVED_PATH_CHARS = set('<>:"/\\|?*;')
 
 # Windows reserved device basenames (case-insensitive, any extension).
 _RESERVED_DEVICE_NAMES = {
@@ -183,7 +183,7 @@ def _safe_identifier(value: str, label: str) -> str:
         if char in _RESERVED_PATH_CHARS or ord(char) < 32:
             raise StableEntryError(
                 f"{label} must be a single safe path segment "
-                "(no path separators, ':' or reserved characters)"
+                "(no path separators, ':', ';' or reserved characters)"
             )
     if value != value.strip() or value.endswith("."):
         raise StableEntryError(

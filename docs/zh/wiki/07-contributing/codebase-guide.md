@@ -156,6 +156,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 | `asset_stable_entry.py` | 校验并序列化一个 v1 generated-asset stable entry |
 | `asset_generation_index.py` | 校验并 upsert pointer-only 的 generated-asset root index |
 | `asset_assets_md_update.py` | 根据已注册的 stable entry 更新 ASSETS.md 行 |
+| `asset_runtime_resolver.py` | 将已注册的 ASSETS.md 指针解析为最小 ready runtime snapshot |
 | `migrate.py` | 在任何非 MAJOR 升级时把未应用的迁移脚本应用到目标项目；也通过 `--new <slug>` 生成新脚本模板 |
 
 ### publish.py 如何串联一切
