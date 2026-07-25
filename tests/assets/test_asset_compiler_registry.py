@@ -43,6 +43,15 @@ def _writer(payload=b"artifact"):
     return compiler
 
 
+def _writer_with_uncopyable_details(request):
+    class Uncopyable:
+        def __deepcopy__(self, memo):
+            raise TypeError("cannot snapshot")
+
+    _writer(b"NEW")(request)
+    return {"invalid": Uncopyable()}
+
+
 def _register(registry, layout, artifact_type, compiler=None, compiler_id=None):
     return registry.register(
         source_layout_type=layout,
@@ -390,6 +399,45 @@ def test_first_failed_compile_leaves_no_stable_or_staging_artifact(project):
     _register(registry, "single", "StyleBoxTexture", compiler=lambda request: {})
 
     with pytest.raises(CompilerError, match="returned without writing"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert not stable.exists()
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
+
+
+def test_uncopyable_receipt_details_keep_the_previous_artifact(project):
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stable.write_bytes(b"STABLE-OLD-CONTENT")
+    registry = CompilerRegistry()
+    _register(
+        registry,
+        "single",
+        "StyleBoxTexture",
+        compiler=_writer_with_uncopyable_details,
+    )
+
+    with pytest.raises(CompilerError, match="details must hold copyable plain data"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
+
+
+def test_first_uncopyable_receipt_failure_leaves_no_artifact(project):
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    registry = CompilerRegistry()
+    _register(
+        registry,
+        "single",
+        "StyleBoxTexture",
+        compiler=_writer_with_uncopyable_details,
+    )
+
+    with pytest.raises(CompilerError, match="details must hold copyable plain data"):
         registry.compile(
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )

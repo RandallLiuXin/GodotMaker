@@ -270,6 +270,23 @@ class CompilerRegistry:
                     f"{route.compiler_id} writes no artifact and must not modify "
                     f"source_path ({request.source_path})"
                 )
+            result = CompileResult(
+                godot_artifact=GodotArtifact(
+                    type=request.artifact_type,
+                    path=request.artifact_path,
+                ),
+                receipt=CompileReceipt(
+                    compiler_id=route.compiler_id,
+                    compiler_version=route.compiler_version,
+                    production_family=request.production_family,
+                    asset_id=request.asset_id,
+                    source_layout_type=request.source_layout_type,
+                    source_path=request.source_path,
+                    artifact_type=request.artifact_type,
+                    artifact_path=request.artifact_path,
+                    details=details,
+                ),
+            )
             if route.writes_artifact:
                 try:
                     artifact_file.replace(request.artifact_file())
@@ -282,20 +299,4 @@ class CompilerRegistry:
             if staging_file is not None:
                 staging_file.unlink(missing_ok=True)
 
-        return CompileResult(
-            godot_artifact=GodotArtifact(
-                type=request.artifact_type,
-                path=request.artifact_path,
-            ),
-            receipt=CompileReceipt(
-                compiler_id=route.compiler_id,
-                compiler_version=route.compiler_version,
-                production_family=request.production_family,
-                asset_id=request.asset_id,
-                source_layout_type=request.source_layout_type,
-                source_path=request.source_path,
-                artifact_type=request.artifact_type,
-                artifact_path=request.artifact_path,
-                details=dict(details),
-            ),
-        )
+        return result
