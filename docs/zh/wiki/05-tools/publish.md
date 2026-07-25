@@ -36,6 +36,7 @@ python tools\publish.py C:\Games\my-game
 | 位置 | 说明 |
 |----------|------------|
 | `.claude/skills/` | 所有 GodotMaker 斜杠命令（`/gm-*` 系列命令及配套技能） |
+| `.godotmaker/asset-runtime/` | 共享 Asset Skill schema、compiler 和 L0-L4 validator；这是运行时代码，不是可调用的 Skill |
 | `.claude/agents/` | worker、verifier、reviewer、analyst、asset-producer 等 helper 的定义文件 |
 | `.claude/settings.json` | 告知 Claude Code 要运行哪些 hook 脚本以及何时运行 |
 | `.claude/godotmaker.yaml` | 你的 Godot 可执行文件路径（仅对本机有效） |
