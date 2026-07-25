@@ -339,8 +339,7 @@ declaration. The assembler does not pack, trim, or discover regions:
       "name": "battle_button",
       "rect": [0, 0, 256, 96],
       "source": "battle_button.png",
-      "pivot": [0.5, 0.5],
-      "nine_slice": null
+      "pivot": [0.5, 0.5]
     }
   ]
 }
@@ -351,12 +350,18 @@ python tools/asset_atlas_assemble.py \
   --declaration <fixed_slots.json> \
   --atlas-out assets/generated/ui-kit/main_atlas/main_atlas.png \
   --metadata-out assets/generated/ui-kit/main_atlas/main_atlas.json \
+  --family ui-kit \
+  --asset-id main_atlas \
   --project-root .
 ```
 
 Every source must be a PNG with exactly the declared slot size. Out-of-bounds,
 overlapping, missing, or malformed slots fail before either output is written.
-The emitted regions are ordered by name for stable metadata.
+Source paths are project-root relative, as are all other asset-tool inputs.
+Both outputs must be under the declared asset's stable directory and are
+committed together; a write failure restores any prior output pair. The emitted
+regions are ordered by name for stable metadata, with `nine_slice: null` because
+nine-slice behavior is outside this tool.
 
 Action metadata shape (`assets/generated/character-bundle/player/player.json`):
 

@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
 """Assemble a physical PNG atlas from explicitly declared fixed slots.
 
-This is deliberately not a packing tool.  Every source PNG must be assigned to
+This is deliberately not a packing tool. Every source PNG must be assigned to
 one declared rectangle of an explicitly sized atlas; sources are neither
-trimmed nor inspected to discover regions.  The companion metadata describes
-those same declared rectangles for a later AtlasTexture compiler.
+trimmed nor inspected to discover regions. Both output files are constrained to
+the asset's stable generated-output directory and are committed together.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
+from asset_stable_entry import StableEntryError, assert_within_output_dir
+
 
 SCHEMA_VERSION = 1
+MAX_ATLAS_PIXELS = 64 * 1024 * 1024
 DECLARATION_KEYS = {"version", "atlas", "slots"}
 ATLAS_KEYS = {"width", "height"}
-SLOT_KEYS = {"name", "rect", "source", "pivot", "nine_slice"}
+SLOT_KEYS = {"name", "rect", "source", "pivot"}
 
 
 class AtlasAssemblyError(Exception):
@@ -107,46 +112,102 @@ def _load_png(path: Path):
     return image
 
 
-def _output_path(project_root: Path, raw_path: Path, label: str) -> Path:
+def _project_file(project_root: Path, value: Path | str, label: str) -> Path:
     root = Path(project_root).resolve()
-    path = Path(raw_path)
-    if not path.is_absolute():
-        path = root / path
-    resolved = path.resolve()
+    path = Path(value)
+    resolved = path.resolve() if path.is_absolute() else (root / path).resolve()
     if not resolved.is_relative_to(root):
         raise AtlasAssemblyError(f"{label} resolves outside the project root")
     return resolved
 
 
-def _res_path(project_root: Path, path: Path) -> str:
-    return "res://" + path.resolve().relative_to(Path(project_root).resolve()).as_posix()
+def _temporary_path(directory: Path, suffix: str) -> Path:
+    with tempfile.NamedTemporaryFile(delete=False, dir=directory, suffix=suffix) as handle:
+        return Path(handle.name)
 
 
-def _atomic_save_png(image, output: Path) -> None:
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(delete=False, dir=output.parent, suffix=".png") as handle:
-        temporary = Path(handle.name)
+def _write_png_temp(image, directory: Path) -> Path:
     try:
+        temporary = _temporary_path(directory, ".png")
         image.save(temporary, format="PNG", optimize=False, compress_level=9)
-        temporary.replace(output)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
+        return temporary
+    except (MemoryError, OSError, ValueError) as exc:
+        if "temporary" in locals():
+            temporary.unlink(missing_ok=True)
+        raise AtlasAssemblyError("Unable to write atlas PNG") from exc
 
 
-def _atomic_write_json(data: dict[str, Any], output: Path) -> None:
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        delete=False, dir=output.parent, suffix=".json", mode="w", encoding="utf-8"
-    ) as handle:
-        temporary = Path(handle.name)
-        json.dump(data, handle, indent=2)
-        handle.write("\n")
+def _write_json_temp(data: dict[str, Any], directory: Path) -> Path:
     try:
-        temporary.replace(output)
+        temporary = _temporary_path(directory, ".json")
+        with temporary.open("w", encoding="utf-8", newline="\n") as handle:
+            json.dump(data, handle, indent=2)
+            handle.write("\n")
+        return temporary
+    except (MemoryError, OSError, TypeError, ValueError) as exc:
+        if "temporary" in locals():
+            temporary.unlink(missing_ok=True)
+        raise AtlasAssemblyError("Unable to write atlas metadata") from exc
+
+
+def _backup(path: Path) -> Path | None:
+    if not path.exists():
+        return None
+    try:
+        backup = _temporary_path(path.parent, path.suffix)
+        shutil.copy2(path, backup)
+    except OSError as exc:
+        if "backup" in locals():
+            backup.unlink(missing_ok=True)
+        raise AtlasAssemblyError(f"Unable to back up existing output: {path}") from exc
+    return backup
+
+
+def _restore(path: Path, backup: Path | None) -> None:
+    if backup is None:
+        path.unlink(missing_ok=True)
+    else:
+        os.replace(backup, path)
+
+
+def _commit_output_pair(
+    atlas_temp: Path,
+    atlas_output: Path,
+    metadata_temp: Path,
+    metadata_output: Path,
+) -> None:
+    """Replace both outputs or restore the previous pair after an I/O failure."""
+    atlas_backup: Path | None = None
+    metadata_backup: Path | None = None
+    atlas_replaced = False
+    metadata_replaced = False
+    try:
+        atlas_backup = _backup(atlas_output)
+        metadata_backup = _backup(metadata_output)
+        os.replace(atlas_temp, atlas_output)
+        atlas_replaced = True
+        os.replace(metadata_temp, metadata_output)
+        metadata_replaced = True
+    except OSError as exc:
+        try:
+            if atlas_replaced:
+                _restore(atlas_output, atlas_backup)
+                atlas_backup = None
+            if metadata_replaced:
+                _restore(metadata_output, metadata_backup)
+                metadata_backup = None
+        except OSError as rollback_exc:
+            raise AtlasAssemblyError(
+                "Unable to commit atlas outputs and rollback failed"
+            ) from rollback_exc
+        raise AtlasAssemblyError("Unable to commit atlas outputs; changes were rolled back") from exc
     finally:
-        if temporary.exists():
-            temporary.unlink()
+        atlas_temp.unlink(missing_ok=True)
+        metadata_temp.unlink(missing_ok=True)
+        if atlas_backup is not None:
+            atlas_backup.unlink(missing_ok=True)
+        if metadata_backup is not None:
+            metadata_backup.unlink(missing_ok=True)
 
 
 def _load_declaration(path: Path) -> dict[str, Any]:
@@ -166,21 +227,43 @@ def assemble_atlas(
     atlas_output: Path,
     metadata_output: Path,
     *,
+    production_family: str,
+    asset_id: str,
     project_root: Path,
 ) -> dict[str, Any]:
     """Validate a declaration, then write its physical atlas PNG and metadata."""
-    declaration_path = Path(declaration_path).resolve()
+    project_root = Path(project_root).resolve()
+    declaration_path = _project_file(project_root, declaration_path, "declaration")
     declaration = _load_declaration(declaration_path)
     atlas = _require_object(declaration.get("atlas"), "declaration.atlas")
     _reject_extra_keys(atlas, ATLAS_KEYS, "declaration.atlas")
     atlas_width = _positive_int(atlas.get("width"), "declaration.atlas.width")
     atlas_height = _positive_int(atlas.get("height"), "declaration.atlas.height")
+    if atlas_width * atlas_height > MAX_ATLAS_PIXELS:
+        raise AtlasAssemblyError(
+            f"Declared atlas exceeds the {MAX_ATLAS_PIXELS}-pixel safety limit"
+        )
     slots = declaration.get("slots")
     if not isinstance(slots, list) or not slots:
         raise AtlasAssemblyError("declaration.slots must be a non-empty list")
 
-    atlas_output = _output_path(project_root, atlas_output, "atlas output")
-    metadata_output = _output_path(project_root, metadata_output, "metadata output")
+    try:
+        atlas_output = assert_within_output_dir(
+            project_root,
+            atlas_output,
+            production_family=production_family,
+            asset_id=asset_id,
+            label="atlas output",
+        )
+        metadata_output = assert_within_output_dir(
+            project_root,
+            metadata_output,
+            production_family=production_family,
+            asset_id=asset_id,
+            label="metadata output",
+        )
+    except StableEntryError as exc:
+        raise AtlasAssemblyError(str(exc)) from exc
     if atlas_output.suffix.lower() != ".png":
         raise AtlasAssemblyError("atlas output must end in .png")
     if metadata_output.suffix.lower() != ".json":
@@ -211,17 +294,20 @@ def assemble_atlas(
         source = slot.get("source")
         if not isinstance(source, str) or not source.strip():
             raise AtlasAssemblyError(f"{label}.source must be a non-empty PNG path")
-        source_path = (declaration_path.parent / source).resolve()
+        source_path = _project_file(project_root, source, f"{label}.source")
         if source_path == atlas_output:
             raise AtlasAssemblyError(f"{label}.source must not be the atlas output")
-        if slot.get("nine_slice") is not None:
-            raise AtlasAssemblyError(f"{label}.nine_slice must be null; nine-slice is not handled here")
         parsed_slots.append(
-            {"name": name, "rect": rect, "source": source_path, "pivot": _pivot(slot.get("pivot"), f"{label}.pivot")}
+            {
+                "name": name,
+                "rect": rect,
+                "source": source_path,
+                "pivot": _pivot(slot.get("pivot"), f"{label}.pivot"),
+            }
         )
 
-    # Validate every source and its declared size before creating either output.
     loaded_images: list[tuple[dict[str, Any], Any]] = []
+    canvas = None
     try:
         for slot in parsed_slots:
             image = _load_png(slot["source"])
@@ -236,9 +322,14 @@ def assemble_atlas(
 
         from PIL import Image
 
-        canvas = Image.new("RGBA", (atlas_width, atlas_height), (0, 0, 0, 0))
+        try:
+            canvas = Image.new("RGBA", (atlas_width, atlas_height), (0, 0, 0, 0))
+        except (MemoryError, OSError, ValueError) as exc:
+            raise AtlasAssemblyError("Unable to allocate the declared atlas") from exc
         for slot, image in loaded_images:
-            canvas.alpha_composite(image, dest=slot["rect"][:2])
+            # Slots are non-overlapping, so a direct copy preserves every RGBA
+            # value, including transparent RGB edge-padding used by filtering.
+            canvas.paste(image, box=slot["rect"][:2])
         regions = [
             {
                 "name": slot["name"],
@@ -250,20 +341,32 @@ def assemble_atlas(
         ]
         metadata = {
             "version": SCHEMA_VERSION,
-            "atlas_path": _res_path(project_root, atlas_output),
+            "atlas_path": "res://" + atlas_output.relative_to(project_root).as_posix(),
             "regions": regions,
         }
-        _atomic_save_png(canvas, atlas_output)
-        canvas.close()
-        _atomic_write_json(metadata, metadata_output)
+        # Both parents are made ready before either temporary output is written.
+        try:
+            atlas_output.parent.mkdir(parents=True, exist_ok=True)
+            metadata_output.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise AtlasAssemblyError("Unable to prepare atlas output directories") from exc
+        atlas_temp = _write_png_temp(canvas, atlas_output.parent)
+        try:
+            metadata_temp = _write_json_temp(metadata, metadata_output.parent)
+        except AtlasAssemblyError:
+            atlas_temp.unlink(missing_ok=True)
+            raise
+        _commit_output_pair(atlas_temp, atlas_output, metadata_temp, metadata_output)
     finally:
+        if canvas is not None:
+            canvas.close()
         for _, image in loaded_images:
             image.close()
 
     return {
         "ok": True,
         "atlas_path": metadata["atlas_path"],
-        "metadata_path": _res_path(project_root, metadata_output),
+        "metadata_path": "res://" + metadata_output.relative_to(project_root).as_posix(),
         "width": atlas_width,
         "height": atlas_height,
         "slot_count": len(parsed_slots),
@@ -278,13 +381,17 @@ def _main() -> int:
     parser.add_argument("--declaration", required=True, type=Path, help="Fixed-slot declaration JSON")
     parser.add_argument("--atlas-out", required=True, type=Path, help="Physical atlas PNG output")
     parser.add_argument("--metadata-out", required=True, type=Path, help="Atlas region metadata JSON output")
-    parser.add_argument("--project-root", default=".", type=Path, help="Project root for outputs and res:// paths")
+    parser.add_argument("--family", required=True, help="Production family for the stable output directory")
+    parser.add_argument("--asset-id", required=True, help="Asset id for the stable output directory")
+    parser.add_argument("--project-root", default=".", type=Path, help="Project root for inputs and outputs")
     args = parser.parse_args()
     try:
         result = assemble_atlas(
             args.declaration,
             args.atlas_out,
             args.metadata_out,
+            production_family=args.family,
+            asset_id=args.asset_id,
             project_root=args.project_root,
         )
     except AtlasAssemblyError as exc:
