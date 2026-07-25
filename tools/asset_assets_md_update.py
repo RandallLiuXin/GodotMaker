@@ -7,9 +7,10 @@ validated against the v1 schema before any row is touched, and the row records
 the entry pointer — never a duplicated path snapshot — so the entry stays the
 single source of truth for the asset.
 
-Only an entry that is genuinely worker-consumable may promote a row. ASSETS.md
-``generated`` is what tells ``/gm-build`` a row's asset is finished, so this tool
-fails closed on anything else.
+Runtime entries may promote a row only when they are genuinely
+worker-consumable. A registered reference-only entry has a separate completion
+path: it proves an accepted scene/style reference exists without claiming that
+a worker can consume it as a runtime artifact.
 """
 from __future__ import annotations
 
@@ -27,9 +28,12 @@ from asset_stable_entry import (
     entry_relative_path,
     validate_entry,
 )
+from asset_generation_index import GenerationIndexError, check_index
 
 # The only readiness state that means "a worker can load this asset now".
 PROMOTABLE_STATUS = "ready"
+REFERENCE_PROMOTABLE_STATUSES = {"source_ready", "ready"}
+ROOT_INDEX_RELATIVE = ".godotmaker/asset-generation/manifest.json"
 GENERATED_ROW_STATUS = "generated"
 ASSETS_MD_MIN_CELLS = 8
 ASSETS_MD_TAG_COLUMN = 1
@@ -49,26 +53,60 @@ def _load_json(path: Path) -> Any:
         raise AssetsMdUpdateError(f"Invalid JSON: {path}") from exc
 
 
-def _assert_promotable(entry: dict[str, Any], entry_path: Path) -> None:
-    """Reject any entry that is not a finished runtime asset.
+def _assert_promotable(entry: dict[str, Any], entry_path: Path) -> bool:
+    """Validate an entry's completion path and return whether it is a reference.
 
     ``validate_entry`` proves the entry is well-formed and its files exist, but a
-    well-formed entry can still be mid-flight (``pending``, ``source_ready``,
-    ``compiled``), failed outright, or a screen reference that is never handed to
-    a worker as a runtime game asset. Marking such a row ``generated`` would tell
-    ``/gm-build`` to bind an asset that is not finished, so the precondition is
-    enforced here rather than left to the caller.
+    well-formed runtime entry can still be mid-flight (``pending``,
+    ``source_ready``, ``compiled``) or failed outright. A screen reference is
+    intentionally different: it completes at ``source_ready`` and remains
+    repeatable if a future process records it as ``ready``. Neither status makes
+    a reference worker-consumable.
     """
+    is_reference = entry["source_layout"]["type"] in REFERENCE_LAYOUTS
     status = entry["processing_status"]
-    if status != PROMOTABLE_STATUS:
+    if is_reference and status in REFERENCE_PROMOTABLE_STATUSES:
+        return True
+    expected_status = "source_ready or ready" if is_reference else PROMOTABLE_STATUS
+    if status != expected_status:
         raise AssetsMdUpdateError(
-            f"{entry_path} processing_status is {status}; only a "
-            f"{PROMOTABLE_STATUS} entry may update an ASSETS.md row"
+            f"{entry_path} processing_status is {status}; only a {expected_status} "
+            f"{'reference' if is_reference else 'runtime'} entry may update an "
+            "ASSETS.md row"
         )
-    if entry["source_layout"]["type"] in REFERENCE_LAYOUTS:
+    return False
+
+
+def _assert_registered_reference(
+    entry: dict[str, Any], entry_path: Path, *, project_root: Path
+) -> None:
+    """Require a reference to pass the root-index gate before completion.
+
+    A reference has no runtime artifact, so its ``source_ready`` status is
+    enough only after the canonical entry is registered and the root index
+    schema-validates every pointer. The caller separately validates this entry's
+    source file, avoiding unrelated pending entries from other tags blocking a
+    reference-only completion. The membership check prevents a valid but
+    unregistered entry from changing ASSETS.md directly.
+    """
+    index_path = project_root / ROOT_INDEX_RELATIVE
+    try:
+        check_index(index_path, project_root=project_root, check_entries=True)
+    except GenerationIndexError as exc:
         raise AssetsMdUpdateError(
-            f"{entry_path} is a reference entry; a reference is not a runtime "
-            "asset, so /gm-asset updates its row directly instead"
+            f"Reference entry cannot pass the root-index gate: {exc}"
+        ) from exc
+
+    index_data = _load_json(index_path)
+    expected = {
+        "asset_id": entry["asset_id"],
+        "tag": entry["tag"],
+        "entry_path": entry_relative_path(entry["tag"], entry["asset_id"]),
+    }
+    if expected not in index_data["entries"]:
+        raise AssetsMdUpdateError(
+            f"{entry_path} is not registered in the root index as "
+            f"{expected['entry_path']}"
         )
 
 
@@ -90,7 +128,7 @@ def _load_entries(
             entry = validate_entry(data, project_root=project_root, check_files=True)
         except StableEntryError as exc:
             raise AssetsMdUpdateError(f"{entry_path}: {exc}") from exc
-        _assert_promotable(entry, entry_path)
+        is_reference = _assert_promotable(entry, entry_path)
         tag = entry["tag"]
         asset_id = entry["asset_id"]
         key = (tag, asset_id)
@@ -101,6 +139,10 @@ def _load_entries(
         if entry_path.resolve() != (project_root / canonical).resolve():
             raise AssetsMdUpdateError(
                 f"{entry_path} must be the canonical entry path {canonical}"
+            )
+        if is_reference:
+            _assert_registered_reference(
+                entry, entry_path, project_root=project_root
             )
         entries.append((canonical, entry))
     return entries

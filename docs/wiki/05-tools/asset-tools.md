@@ -304,10 +304,14 @@ read.
 ## asset_assets_md_update.py
 
 `asset_assets_md_update.py` promotes ASSETS.md rows from registered stable
-entries. It revalidates the entry and its referenced files first and accepts only
-a `ready` non-reference entry, so a row can reach `generated` only once the asset
-is a finished, worker-consumable runtime asset. It records the entry pointer
-instead of duplicating any path into the row.
+entries. It revalidates every entry and referenced file first. Runtime rows
+require a `ready` non-reference entry, so they become `generated` only when the
+asset is worker-consumable. A `screen-reference` row may instead complete at
+`source_ready` and remain repeatable at `ready` when its finalized reference
+file, canonical stable entry, and root-index pointer pass validation. The
+updater validates the reference file plus every root-index pointer without
+requiring unrelated pending entries to have files. This records the same entry
+pointer but never creates a `godot_artifact` or sends the reference to a worker.
 
 Manual entry point:
 
@@ -349,7 +353,8 @@ Manual use cases:
 6. Select one extracted candidate into a runtime asset path.
 7. Print or validate one asset's stable output directory.
 8. Validate and register one stable entry and its root-index pointer.
-9. Resolve one registered ASSETS.md entry into its minimal runtime snapshot.
+9. Complete a finalized screen reference without treating it as runtime art.
+10. Resolve one registered ASSETS.md entry into its minimal runtime snapshot.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.

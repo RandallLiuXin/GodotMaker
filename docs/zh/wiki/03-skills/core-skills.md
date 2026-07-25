@@ -10,7 +10,7 @@ Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十二
 |------|------|----------|--------|
 | `/gm-scaffold` | 创建一个新的 Godot 项目，包含正确的目录结构、所需插件，并完成首次 git 提交 | 无（每个项目只运行一次） | `project.godot`、`addons/`、初始 `CLAUDE.md` 或 `AGENTS.md` |
 | `/gm-gdd` | 询问你关于游戏的构想，然后编写设计文档和工作计划 | 已搭建好的项目骨架 | `GDD.md`、`PLAN.md`、`STRUCTURE.md`、`SCENES.md`、`ASSETS.md`、`TOC.md` |
-| `/gm-asset` | 生成缺失的美术资源，或分析你提供的美术资源，为构建阶段准备好可用的素材 | `/gm-gdd` 产出的 `ASSETS.md` | `assets/` 下的美术文件，更新后的 `ASSETS.md` |
+| `/gm-asset` | 生成缺失的美术资源，或分析你提供的美术资源，为构建阶段准备好可用的素材 | `/gm-gdd` 产出的 `ASSETS.md` | 美术文件、场景参考图和更新后的 `ASSETS.md`；参考图可以完成，但不会成为运行时资产 |
 | `/gm-build` | 通过向 Worker（工人）子 Agent 分批派发任务来实现游戏，Reviewer 会对结果进行审查 | `/gm-gdd` 产出的设计文档 | `src/`、`scenes/` 下的游戏代码，单元测试，端对端测试 |
 | `/gm-verify` | 运行机械性检查：项目能否编译、单元测试是否通过、必要文件是否存在 | 已构建好的项目 | 一份打印到聊天里的通过/失败报告，并向 `.godotmaker/stage.jsonl` 追加一个 `verify` 事件 |
 | `/gm-evaluate` | 独立运行游戏，截图并对照 GDD 给结果评分 | 已通过验证的项目 | `.godotmaker/evaluation.json`，`e2e/screenshots/` 下的截图 |

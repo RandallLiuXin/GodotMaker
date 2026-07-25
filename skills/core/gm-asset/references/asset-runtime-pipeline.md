@@ -288,12 +288,13 @@ python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-The updater promotes a row to `generated` only for a `ready` non-reference entry
-and fails closed on anything else, because `generated` is what tells `/gm-build`
-the row's asset is finished. Until the compilers and the L0-L4 runner land no
-entry reaches `ready`, so generated rows stay `MISSING` and this command reports
-the blocking status instead of promoting anything. That is the honest state; do
-not work around it by editing rows or statuses by hand.
+The updater promotes a runtime row to `generated` only for a `ready`
+non-reference entry. A `screen-reference` row may become `generated` at
+`source_ready` or `ready` with a finalized reference file, canonical stable
+entry, and root-index pointer. It schema-validates index pointers and validates
+the selected reference file. Do not create a `godot_artifact`, worker handoff,
+or hand-edited ASSETS.md status for a reference. Keep all other `source_ready`
+entries `MISSING`.
 
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.
@@ -333,7 +334,7 @@ Compiler target compatibility by source layout, for when that work lands:
 2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.
 3. `region_atlas`: `AtlasTexture` or `StyleBoxTexture`, with atlas metadata beside the artifact.
 4. `theme_recipe`: `Theme`. `tile_atlas`: `TileSet`.
-5. `reference`: no artifact; never mark an ASSETS runtime row generated from it.
+5. `reference`: no artifact; complete a reference-type ASSETS row only.
 
 Support files are named after the asset and live beside the artifact:
 

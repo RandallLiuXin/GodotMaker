@@ -249,7 +249,7 @@ python tools/asset_generation_index.py --project-root . --check-entries --check-
 
 ## asset_assets_md_update.py
 
-`asset_assets_md_update.py` 会根据已注册的 stable entry 更新 ASSETS.md 行。它先重新校验 entry 和被引用的文件，并且只接受 `ready` 的非 reference entry，所以只有素材确实是可被 worker 消费的成品时，行才会变成 `generated`；行里只记录 entry 指针，不复制任何路径。
+`asset_assets_md_update.py` 会根据已注册的 stable entry 更新 ASSETS.md 行。它先重新校验每个 entry 和被引用的文件。运行时行必须使用 `ready` 的非 reference entry，因此只有素材确实可被 worker 消费时才会变成 `generated`。`screen-reference` 行是例外：当 finalize 后的参考图文件、canonical stable entry 和 root-index 指针通过适用校验时，可在 `source_ready`（或后续 `ready`）变为 `generated`。它记录同一个 entry 指针，但绝不会创建 `godot_artifact` 或交给 worker 作为运行时资产。
 
 手动入口：
 
@@ -285,5 +285,6 @@ python tools/asset_runtime_resolver.py --project-root . \
 6. 把某个 extracted candidate 选入运行时素材路径。
 7. 打印或校验某个素材的稳定输出目录。
 8. 校验并注册一个 stable entry 及其 root-index 指针。
+9. 完成一张 finalize 后的场景参考图，而不把它当作运行时美术。
 
 如果想更新 `/gm-evaluate` 用于对比的视觉目标，请重新运行 `/gm-asset`，不要直接编辑已生成的图片。
