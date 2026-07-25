@@ -229,6 +229,15 @@ def test_write_entry_rejects_unsafe_tag(tmp_path):
     assert not (tmp_path / ".godotmaker/asset-generation/entries/player.json").exists()
 
 
+@pytest.mark.parametrize("field", ["asset_id", "tag"])
+def test_stable_identifiers_reject_generation_param_delimiters(field):
+    entry = valid_entry()
+    entry[field] = "unsafe;identifier"
+
+    with pytest.raises(StableEntryError, match="reserved characters"):
+        validate_entry(entry)
+
+
 @pytest.mark.parametrize("version", [True, False, 1.0, "1", None, 2])
 def test_version_must_be_strict_integer(version):
     entry = valid_entry(version=version)

@@ -157,6 +157,7 @@ Python CLI scripts that contributors and users run directly.
 | `asset_stable_entry.py` | Validate and serialize one v1 generated-asset stable entry |
 | `asset_generation_index.py` | Validate and upsert the pointer-only generated-asset root index |
 | `asset_assets_md_update.py` | Update ASSETS.md rows from registered stable entries |
+| `asset_runtime_resolver.py` | Resolve one registered ASSETS.md pointer into a minimal ready runtime snapshot |
 | `migrate.py` | Apply pending migrations to a target on any non-MAJOR upgrade; also scaffolds new ones via `--new <slug>` |
 
 ### How publish.py wires everything together

@@ -17,6 +17,7 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 11. `asset_generation_index.py`
 12. `asset_assets_md_update.py`
 13. `asset_atlas_assemble.py`
+14. `asset_runtime_resolver.py`
 
 ## asset_source_generate.py
 
@@ -255,6 +256,19 @@ python tools/asset_generation_index.py --project-root . --check-entries --check-
 ```bash
 python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
+```
+
+## asset_runtime_resolver.py
+
+`asset_runtime_resolver.py` 将一个已注册且状态为 `generated` 的 ASSETS.md 行解析为最小 runtime snapshot：`asset_id`、`production_family`、`source_layout` 和 `godot_artifact`。它要求 ASSETS.md 指针与 generated root index 一致，并校验 ready stable entry 及其引用文件；reference-only entry 不会产生 worker runtime snapshot。
+
+手动入口：
+
+```bash
+python tools/asset_runtime_resolver.py --project-root . \
+  --tag <tag> --asset-id <asset_id>
+python tools/asset_runtime_resolver.py --project-root . \
+  --manifest-entry .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
 ## 手动调用这些脚本
