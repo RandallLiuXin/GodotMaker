@@ -18,6 +18,7 @@ Primary pipeline tools:
 10. `asset_stable_entry.py`
 11. `asset_generation_index.py`
 12. `asset_assets_md_update.py`
+13. `asset_atlas_assemble.py`
 
 ## asset_source_generate.py
 
@@ -226,6 +227,30 @@ Manual entry point:
 python tools/asset_output_path.py --family <production_family> --asset-id <asset_id>
 python tools/asset_output_path.py --entry <entry.json> --project-root . --check-files
 ```
+
+## asset_atlas_assemble.py
+
+`asset_atlas_assemble.py` builds a physical PNG atlas from an explicit JSON
+declaration of slot rectangles. It does not pack, trim, resize, or discover
+regions. Sources are project-root-relative PNG paths whose dimensions must
+exactly equal their declared slots; output PNG and metadata paths must both be
+inside `assets/generated/<production_family>/<asset_id>/`.
+
+Manual entry point:
+
+```bash
+python tools/asset_atlas_assemble.py \
+  --declaration <fixed_slots.json> \
+  --atlas-out assets/generated/ui-kit/<asset_id>/<asset_id>.png \
+  --metadata-out assets/generated/ui-kit/<asset_id>/<asset_id>.json \
+  --family ui-kit \
+  --asset-id <asset_id> \
+  --project-root .
+```
+
+The tool writes the physical atlas and its deterministic region metadata as one
+rollback-protected output pair. It is the fixed-slot assembly step; compiling
+the metadata to `AtlasTexture` is a separate compiler step.
 
 ## asset_stable_entry.py
 
