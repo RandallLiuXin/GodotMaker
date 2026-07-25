@@ -192,6 +192,19 @@ python tools/asset_output_path.py --entry <entry.json> --project-root . --check-
 
 `asset_stable_entry.py` 校验一个 v1 stable entry，并把它序列化到 `.godotmaker/asset-generation/entries/<tag>/<asset_id>.json`。entry 只保存稳定身份加上 `production_family`、`source_layout`、可选的最小 `godot_artifact` 和 `processing_status`，不保存其他字段。
 
+对于非 `reference` entry，`godot_artifact.type` 必须是 Godot ClassDB
+标识符，且必须位于下列封闭的 layout 兼容集合中；这不表示可以使用任意
+ClassDB 类型：
+
+| `source_layout.type` | 允许的 `godot_artifact.type` |
+|---|---|
+| `single` | `Texture2D` 或 `StyleBoxTexture` |
+| `region_atlas` | `AtlasTexture` 或 `StyleBoxTexture` |
+| `grid_sheet` | `SpriteFrames` |
+| `theme_recipe` | `Theme` |
+| `tile_atlas` | `TileSet` |
+| `reference` | 不带 `godot_artifact` |
+
 手动入口：
 
 ```bash

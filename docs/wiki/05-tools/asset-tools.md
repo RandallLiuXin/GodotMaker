@@ -234,6 +234,19 @@ python tools/asset_output_path.py --entry <entry.json> --project-root . --check-
 stable identity plus `production_family`, `source_layout`, an optional minimal
 `godot_artifact`, and `processing_status` — nothing else.
 
+For non-reference entries, `godot_artifact.type` must be a Godot ClassDB
+identifier in the closed layout compatibility set; it is not an allow-list for
+arbitrary ClassDB types:
+
+| `source_layout.type` | Allowed `godot_artifact.type` |
+|---|---|
+| `single` | `Texture2D` or `StyleBoxTexture` |
+| `region_atlas` | `AtlasTexture` or `StyleBoxTexture` |
+| `grid_sheet` | `SpriteFrames` |
+| `theme_recipe` | `Theme` |
+| `tile_atlas` | `TileSet` |
+| `reference` | no `godot_artifact` |
+
 Manual entry point:
 
 ```bash
