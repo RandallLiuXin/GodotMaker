@@ -2743,6 +2743,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Added <code>tools/asset_action_entry_draft.py</code>, which builds action support metadata and a v1 stable-entry draft while enforcing frame count, empty edge-touch frames, a recorded scale reference, and stable-path containment.</li>
 <li>Added <code>tools/asset_curation_entry_draft.py</code>, which builds a v1 stable-entry draft from a selected curation candidate while enforcing candidate selection, unambiguous naming, coherent selection counts, and stable-path containment.</li>
 <li>Added <code>tools/asset_finalize_entry_draft.py</code>, which builds a v1 stable-entry draft from an <code>asset_image_finalize.py</code> report for screen references, backgrounds, and single card or portrait frames while enforcing aspect validation, asset-label binding, and path containment.</li>
+<li>Added a shared Godot artifact compiler interface and registry under <code>skills/assets/_shared/</code> that routes on the frozen source-layout to artifact-type compatibility set, keeps compiler receipts out of the worker-facing artifact, requires each compiler to actually rebuild an artifact distinct from its source image, serves <code>Texture2D</code> through Godot's default import, and fails closed on unregistered or mismatched combinations (#107).</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
