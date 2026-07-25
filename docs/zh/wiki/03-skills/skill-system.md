@@ -18,7 +18,7 @@ Reviewer（审查员）技能是八个专项领域清单，覆盖物理、UI、�
 
 ## 技能是如何部署的
 
-技能文件存放在本仓库的 `skills/core/` 和 `skills/reviewer/` 目录下。当你运行 `python tools/publish.py <project>` 时，它们会被复制到 `<project>/.claude/skills/`，Claude Code 会自动找到它们。运行 `python tools/publish.py --agent codex <project>` 时，publish 会把同一套 GodotMaker 共享技能写入 `<project>/.agents/skills/`，并附带 Codex runtime mapping references，让 Codex 能解释 `.claude/...` 路径和 `/gm-*` 命令这类 Claude-first 表面语义。
+技能文件存放在本仓库的 `skills/core/`、`skills/reviewer/` 和 `skills/assets/` 目录下。当你运行 `python tools/publish.py <project>` 时，每个非私有的技能目录都会被复制到 `<project>/.claude/skills/`，Claude Code 会自动找到它们。运行 `python tools/publish.py --agent codex <project>` 时，publish 会把同一套技能写入 `<project>/.agents/skills/`，并附带 Codex runtime mapping references，让 Codex 能解释 `.claude/...` 路径和 `/gm-*` 命令这类 Claude-first 表面语义。Asset 的 `_shared` 不是可调用的 Skill；它会以 schema、compiler registry 和 L0-L4 validator 运行时的形式发布到 `<project>/.godotmaker/asset-runtime/`。
 
 被多个技能共用的参考文档（例如 Worker 调度协议）在 `skills/core/_shared/` 中保存唯一的权威副本。发布步骤会把每份共享文件部署到每个使用方技能的 `references/` 文件夹里。如果你在为 GodotMaker 做贡献并需要修改共享文档，请始终编辑 `_shared/` 下的源文件——部署出去的副本是自动生成的，下次发布时会被覆盖。
 

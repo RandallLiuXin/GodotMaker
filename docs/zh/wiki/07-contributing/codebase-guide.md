@@ -164,7 +164,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 运行 `python tools/publish.py <target>` 时：
 
 1. 从仓库根目录读取 `VERSION`，与 `<target>/.godotmaker/version` 比较。MINOR / MAJOR 升级时弹出提示或直接拦截。
-2. 扁平复制技能：`skills/core/` 和 `skills/reviewer/` 下的所有目录会写入所选 agent 的技能目录（Claude Code 为 `<target>/.claude/skills/`，Codex 为 `<target>/.agents/skills/`）。名称以 `_` 开头的目录（即 `_shared/`）会被 `publish_skills()` 跳过；共享文档改由 `publish_shared_refs()` 部署到消费技能的 `references/` 文件夹中。
+2. 扁平复制 first-class 技能：`skills/core/`、`skills/reviewer/` 和 `skills/assets/` 下的每个非私有目录都会写入所选 agent 的技能目录（Claude Code 为 `<target>/.claude/skills/`，Codex 为 `<target>/.agents/skills/`）。`skills/core/_shared/` 文档由 `publish_shared_refs()` 部署到消费技能的 `references/` 文件夹；`skills/assets/_shared/` 不是可调用的 Skill，而是连同共享 schema、compiler 和 L0-L4 validator 一起复制到 `<target>/.godotmaker/asset-runtime/`。
 3. 复制 hooks → `<target>/.godotmaker/hooks/`。
 4. 复制 tools → `<target>/tools/`。
 5. 复制 templates 到所选 agent 的模板目录。
