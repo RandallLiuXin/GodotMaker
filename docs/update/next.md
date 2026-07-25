@@ -26,7 +26,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added `tools/asset_curation_entry_draft.py`, which builds a v1 stable-entry draft from a selected curation candidate while enforcing candidate selection, unambiguous naming, coherent selection counts, and stable-path containment.
 - Added `tools/asset_finalize_entry_draft.py`, which builds a v1 stable-entry draft from an `asset_image_finalize.py` report for screen references, backgrounds, and single card or portrait frames while enforcing aspect validation, asset-label binding, and path containment.
 - Added a shared Godot artifact compiler interface and registry under `skills/assets/_shared/` that routes on the frozen source-layout to artifact-type compatibility set, keeps compiler receipts out of the worker-facing artifact, requires each compiler to actually rebuild an artifact distinct from its source image, serves `Texture2D` through Godot's default import, and fails closed on unregistered or mismatched combinations (#107).
-- Added the shared L0-L4 asset readiness ladder under `skills/assets/_shared/`, which reaches `ready` only after the stable entry contract, the processed source, the compiled artifact, a real headless Godot import and `ResourceLoader.load` type match, and a registered type-specific structure check all pass.
+- Added the shared L0-L4 asset readiness ladder under `skills/assets/_shared/`, which reaches `ready` only after the stable entry contract, the processed source, the compiled artifact, a real headless Godot import and `ResourceLoader.load` type match, and a registered type-specific structure check all pass (#108).
 
 ## Changed
 
