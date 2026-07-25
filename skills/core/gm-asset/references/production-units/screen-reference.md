@@ -17,9 +17,9 @@ targets.
 3. Generate a source image through the provider doc.
 4. Finalize with aspect validation.
 5. Write one report entry per scene.
-6. Write manifest entries with `family: screen_reference` and
-   `production_shape: reference_only`.
-7. Write `runtime_artifact: reference` in the manifest entry.
+6. Write stable entry drafts with `production_family: screen-reference` and
+   `source_layout.type: reference`.
+7. Leave `godot_artifact` absent; a reference is never a runtime game asset.
 
 ## Prompt Contract
 
@@ -56,4 +56,4 @@ If aspect validation fails, leave the production unit incomplete.
 2. `.godotmaker/asset-generation/sources/<asset_id>_source.png`
 3. `references/scene_<name>.png`
 4. `.godotmaker/asset-generation/reports/<unit_id>.json`
-5. manifest entry JSON
+5. stable entry drafts

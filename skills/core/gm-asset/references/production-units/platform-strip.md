@@ -18,7 +18,7 @@ terrain chunks, and collision-aligned horizontal pieces.
 4. Process with `tools/asset_sheet_process.py --snap-mode grid`.
 5. Choose final segments or a processed strip atlas.
 6. Write runtime segment metadata when final is a processed strip atlas.
-7. Write manifest entries.
+7. Write stable entry drafts.
 
 ## Prompt Contract
 
@@ -56,8 +56,10 @@ or `1x4`.
 Use one selected final segment per cap, repeat middle, end, slope, or variant.
 Use a processed strip atlas only with runtime segment metadata beside the final
 atlas.
-Write `runtime_artifact: single` in segment PNG manifest entries.
-Write `runtime_artifact: region_atlas` in strip atlas manifest entries.
+Write `source_layout.type: single` in segment PNG stable entries.
+Write `source_layout.type: region_atlas` in strip atlas stable entries.
+Point `godot_artifact` at the finalized segment or atlas image as `Texture2D`;
+a `ready` entry must declare one.
 
 ## Outputs
 
@@ -65,4 +67,4 @@ Write `runtime_artifact: region_atlas` in strip atlas manifest entries.
 2. final strip segments or processed strip atlas
 3. runtime segment metadata when final is an atlas
 4. processing report
-5. manifest entry JSON
+5. stable entry drafts

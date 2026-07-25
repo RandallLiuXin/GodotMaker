@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Update ASSETS.md rows from asset-generation manifest entries."""
+"""Update ASSETS.md rows from v1 generated-asset stable entries.
+
+Each input is one stable entry at its canonical
+``.godotmaker/asset-generation/entries/<tag>/<asset_id>.json`` path. The entry is
+validated against the v1 schema before any row is touched, and the row records
+the entry pointer — never a duplicated path snapshot — so the entry stays the
+single source of truth for the asset.
+"""
 from __future__ import annotations
 
 import argparse
@@ -10,9 +17,15 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from asset_stable_entry import (
+    StableEntryError,
+    entry_relative_path,
+    validate_entry,
+)
+
 
 class AssetsMdUpdateError(Exception):
-    """Raised when ASSETS.md cannot be updated from manifest entries."""
+    """Raised when ASSETS.md cannot be updated from stable entries."""
 
 
 def _load_json(path: Path) -> Any:
@@ -22,54 +35,36 @@ def _load_json(path: Path) -> Any:
         raise AssetsMdUpdateError(f"Invalid JSON: {path}") from exc
 
 
-def _entry_from_data(data: Any, path: Path) -> dict[str, Any]:
-    if not isinstance(data, dict):
-        raise AssetsMdUpdateError(f"{path} entry must be an object")
-    if isinstance(data.get("assets"), list):
-        raise AssetsMdUpdateError(f"{path} must contain one asset entry, not a manifest")
-    return data
+def _load_entries(
+    entry_paths: list[Path], *, project_root: Path
+) -> list[tuple[str, dict[str, Any]]]:
+    """Validate each stable entry and pair it with its canonical pointer.
 
-
-def _string_field(entry: dict[str, Any], field: str, entry_path: Path) -> str:
-    value = entry.get(field)
-    if not isinstance(value, str) or not value.strip():
-        raise AssetsMdUpdateError(f"{entry_path} entry missing {field}")
-    return value.strip()
-
-
-def _optional_string(entry: dict[str, Any], field: str) -> str | None:
-    value = entry.get(field)
-    if isinstance(value, str) and value.strip():
-        return value.strip()
-    return None
-
-
-def _resolve_project_path(project_root: Path, value: str) -> Path:
-    path = Path(value)
-    if path.is_absolute():
-        return path
-    return project_root / path
-
-
-def _load_entries(entry_paths: list[Path], *, project_root: Path) -> list[tuple[Path, dict[str, Any]]]:
-    entries: list[tuple[Path, dict[str, Any]]] = []
+    ``validate_entry(check_files=True)`` proves identity, schema, and that every
+    referenced file exists, so a row can only ever be promoted from an entry
+    whose asset is really on disk.
+    """
+    entries: list[tuple[str, dict[str, Any]]] = []
     seen: set[tuple[str, str]] = set()
-    for entry_path in entry_paths:
-        entry_path = Path(entry_path)
-        entry = _entry_from_data(_load_json(entry_path), entry_path)
-        tag = _string_field(entry, "tag", entry_path)
-        asset_id = _string_field(entry, "asset_id", entry_path)
+    for raw_path in entry_paths:
+        entry_path = Path(raw_path)
+        data = _load_json(entry_path)
+        try:
+            entry = validate_entry(data, project_root=project_root, check_files=True)
+        except StableEntryError as exc:
+            raise AssetsMdUpdateError(f"{entry_path}: {exc}") from exc
+        tag = entry["tag"]
+        asset_id = entry["asset_id"]
         key = (tag, asset_id)
         if key in seen:
             raise AssetsMdUpdateError(f"Duplicate entry for {tag}/{asset_id}")
         seen.add(key)
-        final_path = _optional_string(entry, "final_path")
-        if final_path is None:
-            raise AssetsMdUpdateError(f"{entry_path} entry missing final_path")
-        resolved_final_path = _resolve_project_path(project_root, final_path)
-        if not resolved_final_path.exists():
-            raise AssetsMdUpdateError(f"{entry_path} final_path does not exist: {final_path}")
-        entries.append((entry_path, entry))
+        canonical = entry_relative_path(tag, asset_id)
+        if entry_path.resolve() != (project_root / canonical).resolve():
+            raise AssetsMdUpdateError(
+                f"{entry_path} must be the canonical entry path {canonical}"
+            )
+        entries.append((canonical, entry))
     return entries
 
 
@@ -106,8 +101,8 @@ def _merge_generation_params(current: str, additions: dict[str, str]) -> str:
     return "; ".join(parts) if parts else "—"
 
 
-def _entry_params(entry_path: Path, entry: dict[str, Any]) -> dict[str, str]:
-    return {"manifest_entry": str(entry_path).replace("\\", "/")}
+def _entry_params(entry_path: str) -> dict[str, str]:
+    return {"manifest_entry": entry_path}
 
 
 def update_assets_md(
@@ -116,14 +111,14 @@ def update_assets_md(
     *,
     status: str = "generated",
 ) -> dict[str, object]:
-    """Update ASSETS.md rows that match the provided manifest entries."""
+    """Update ASSETS.md rows that match the provided stable entries."""
     assets_md = Path(assets_md)
     if not assets_md.exists():
         raise AssetsMdUpdateError(f"ASSETS.md not found: {assets_md}")
     project_root = assets_md.parent
     entries = _load_entries(entry_paths, project_root=project_root)
     entries_by_key = {
-        (_string_field(entry, "tag", entry_path), _string_field(entry, "asset_id", entry_path)): (entry_path, entry)
+        (entry["tag"], entry["asset_id"]): entry_path
         for entry_path, entry in entries
     }
     remaining = set(entries_by_key.keys())
@@ -145,8 +140,9 @@ def update_assets_md(
             output.append(line)
             continue
 
-        entry_path, entry = entries_by_key[key]
-        cells[5] = _merge_generation_params(cells[5], _entry_params(entry_path, entry))
+        cells[5] = _merge_generation_params(
+            cells[5], _entry_params(entries_by_key[key])
+        )
         cells[7] = status
         output.append(_format_markdown_row(cells))
         updated.append(asset_id)
@@ -180,13 +176,15 @@ def update_assets_md(
 
 
 def _main() -> int:
-    parser = argparse.ArgumentParser(description="Update ASSETS.md rows from manifest entries")
+    parser = argparse.ArgumentParser(
+        description="Update ASSETS.md rows from v1 generated-asset stable entries"
+    )
     parser.add_argument("--assets-md", default="ASSETS.md", help="ASSETS.md path")
     parser.add_argument(
         "--entry-file",
         action="append",
         required=True,
-        help="JSON asset entry used to update one ASSETS.md row",
+        help="Canonical stable entry JSON used to update one ASSETS.md row",
     )
     parser.add_argument("--status", default="generated", help="Status to write")
     args = parser.parse_args()

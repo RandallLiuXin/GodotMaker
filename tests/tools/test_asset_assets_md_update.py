@@ -9,33 +9,55 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
 from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
+from asset_stable_entry import entry_relative_path, stable_output_dir  # noqa: E402
+
+TAG = "v0.1.0"
 
 
-def make_entry(asset_id="player_idle", **overrides):
+def artifact_relative(asset_id: str, family: str = "character-bundle") -> str:
+    return f"{stable_output_dir(family, asset_id)}/{asset_id}.png"
+
+
+def source_relative(asset_id: str, family: str = "character-bundle") -> str:
+    return f"{stable_output_dir(family, asset_id)}/{asset_id}_source.png"
+
+
+def make_entry(asset_id="player_idle", family="character-bundle", **overrides):
     entry = {
+        "version": 1,
         "asset_id": asset_id,
-        "tag": "v0.1.0",
-        "family": "character_frame_output",
-        "production_shape": "delivery_sheet",
-        "runtime_role": "player",
-        "source_path": ".godotmaker/asset-generation/sources/player_idle_source.png",
-        "final_path": "assets/sprites/player_idle_sheet.png",
-        "prompt_path": ".godotmaker/asset-generation/prompts/player_idle.txt",
-        "processing_status": "ready",
-        "extraction_status": "processed",
-        "curation": {
-            "status": "selected",
-            "strategy": "transparent_grid",
-            "report_path": ".godotmaker/asset-generation/curation/player_idle.json",
+        "tag": TAG,
+        "production_family": family,
+        "source_layout": {
+            "type": "grid_sheet",
+            "path": f"res://{source_relative(asset_id, family)}",
         },
+        "godot_artifact": {
+            "type": "Texture2D",
+            "path": f"res://{artifact_relative(asset_id, family)}",
+        },
+        "processing_status": "ready",
     }
     entry.update(overrides)
     return entry
 
 
-def write_json(path: Path, data):
+def write_entry(project_root: Path, entry: dict) -> Path:
+    path = project_root / entry_relative_path(entry["tag"], entry["asset_id"])
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data), encoding="utf-8")
+    path.write_text(json.dumps(entry), encoding="utf-8")
+    return path
+
+
+def touch(project_root: Path, relative: str) -> None:
+    target = project_root / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"png")
+
+
+def touch_asset_files(project_root: Path, asset_id: str, family: str = "character-bundle") -> None:
+    touch(project_root, source_relative(asset_id, family))
+    touch(project_root, artifact_relative(asset_id, family))
 
 
 def write_assets_md(path: Path):
@@ -43,58 +65,54 @@ def write_assets_md(path: Path):
         "# Assets\n\n"
         "| ID | Tag | Name | Type | Size | Generation Params | Path | Status |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
-        "| 1 | v0.1.0 | player_idle | sprite | 128x128 | prompt=old.txt | assets/sprites/player_idle_sheet.png | MISSING |\n"
-        "| 2 | v0.1.0 | coin | sprite | 64x64 | — | assets/sprites/coin.png | MISSING |\n"
+        f"| 1 | {TAG} | player_idle | sprite | 128x128 | prompt=old.txt | "
+        f"{artifact_relative('player_idle')} | MISSING |\n"
+        f"| 2 | {TAG} | coin | sprite | 64x64 | — | "
+        f"{artifact_relative('coin', 'compact-prop-pack')} | MISSING |\n"
         "| 3 | v0.2.0 | player_idle | sprite | 128x128 | — | assets/sprites/player_idle_v2.png | MISSING |\n",
         encoding="utf-8",
     )
 
 
-def touch_final(path: Path, relative: str = "assets/sprites/player_idle_sheet.png"):
-    final_path = path / relative
-    final_path.parent.mkdir(parents=True, exist_ok=True)
-    final_path.write_bytes(b"png")
-
-
 def test_update_assets_md_updates_matching_row_only(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
-    entry_file = tmp_path / ".godotmaker" / "asset-generation" / "work" / "manifest-entries" / "player_idle.json"
     write_assets_md(assets_md)
-    touch_final(tmp_path)
-    write_json(entry_file, make_entry())
+    touch_asset_files(tmp_path, "player_idle")
+    entry_file = write_entry(tmp_path, make_entry())
 
     result = update_assets_md(assets_md, [entry_file])
 
     text = assets_md.read_text(encoding="utf-8")
     assert result["ok"] is True
     assert result["updated"] == ["player_idle"]
-    assert "| 1 | v0.1.0 | player_idle | sprite | 128x128 |" in text
+    assert f"| 1 | {TAG} | player_idle | sprite | 128x128 |" in text
     assert "| generated |" in text
-    assert "manifest_entry=" in text
-    assert "source_path=" not in text
-    assert "final_path=" not in text
+    assert f"manifest_entry={entry_relative_path(TAG, 'player_idle')}" in text
+    assert "source_layout=" not in text
+    assert "godot_artifact=" not in text
     assert "curation_report=" not in text
     assert "| 3 | v0.2.0 | player_idle | sprite | 128x128 | — | assets/sprites/player_idle_v2.png | MISSING |" in text
 
 
 def test_update_assets_md_updates_multiple_entries(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
-    player_entry = tmp_path / "player_idle.json"
-    coin_entry = tmp_path / "coin.json"
     write_assets_md(assets_md)
-    touch_final(tmp_path)
-    touch_final(tmp_path, "assets/sprites/coin.png")
-    write_json(player_entry, make_entry())
-    write_json(
-        coin_entry,
+    touch_asset_files(tmp_path, "player_idle")
+    touch_asset_files(tmp_path, "coin", "compact-prop-pack")
+    player_entry = write_entry(tmp_path, make_entry())
+    coin_entry = write_entry(
+        tmp_path,
         make_entry(
             "coin",
-            family="runtime_sprite",
-            production_shape="single_image",
-            source_path=".godotmaker/asset-generation/sources/coin_source.png",
-            final_path="assets/sprites/coin.png",
-            prompt_path=".godotmaker/asset-generation/prompts/coin.txt",
-            curation={"status": "not_required", "strategy": "single_image"},
+            family="compact-prop-pack",
+            source_layout={
+                "type": "single",
+                "path": f"res://{source_relative('coin', 'compact-prop-pack')}",
+            },
+            godot_artifact={
+                "type": "Texture2D",
+                "path": f"res://{artifact_relative('coin', 'compact-prop-pack')}",
+            },
         ),
     )
 
@@ -106,46 +124,58 @@ def test_update_assets_md_updates_multiple_entries(tmp_path):
 
 def test_update_assets_md_rejects_missing_row(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
-    entry_file = tmp_path / "missing.json"
     write_assets_md(assets_md)
-    touch_final(tmp_path)
-    write_json(entry_file, make_entry("missing_asset"))
+    touch_asset_files(tmp_path, "missing_asset")
+    entry_file = write_entry(tmp_path, make_entry("missing_asset"))
 
     with pytest.raises(AssetsMdUpdateError, match="missing rows"):
         update_assets_md(assets_md, [entry_file])
 
-    assert "| 1 | v0.1.0 | player_idle" in assets_md.read_text(encoding="utf-8")
+    assert f"| 1 | {TAG} | player_idle" in assets_md.read_text(encoding="utf-8")
 
 
-def test_update_assets_md_rejects_entry_without_final_path(tmp_path):
+def test_update_assets_md_rejects_legacy_entry(tmp_path):
+    """A row can never be promoted from an old runtime_artifact entry."""
     assets_md = tmp_path / "ASSETS.md"
-    entry_file = tmp_path / "player_idle.json"
     write_assets_md(assets_md)
-    touch_final(tmp_path)
+    touch_asset_files(tmp_path, "player_idle")
     entry = make_entry()
-    entry.pop("final_path")
-    write_json(entry_file, entry)
+    entry["runtime_artifact"] = "grid_sheet"
+    entry_file = write_entry(tmp_path, entry)
 
-    with pytest.raises(AssetsMdUpdateError, match="missing final_path"):
+    with pytest.raises(AssetsMdUpdateError, match="Legacy runtime_artifact schema"):
         update_assets_md(assets_md, [entry_file])
 
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
 
-def test_update_assets_md_rejects_missing_final_file(tmp_path):
+
+def test_update_assets_md_rejects_missing_artifact_file(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
-    entry_file = tmp_path / "player_idle.json"
     write_assets_md(assets_md)
-    write_json(entry_file, make_entry())
+    touch(tmp_path, source_relative("player_idle"))
+    entry_file = write_entry(tmp_path, make_entry())
 
-    with pytest.raises(AssetsMdUpdateError, match="final_path does not exist"):
+    with pytest.raises(AssetsMdUpdateError, match="godot_artifact.path not found"):
         update_assets_md(assets_md, [entry_file])
+
+
+def test_update_assets_md_rejects_non_canonical_entry_path(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    write_assets_md(assets_md)
+    touch_asset_files(tmp_path, "player_idle")
+    stray = tmp_path / ".godotmaker" / "asset-generation" / "work" / "player_idle.json"
+    stray.parent.mkdir(parents=True, exist_ok=True)
+    stray.write_text(json.dumps(make_entry()), encoding="utf-8")
+
+    with pytest.raises(AssetsMdUpdateError, match="canonical entry path"):
+        update_assets_md(assets_md, [stray])
 
 
 def test_cli_outputs_json(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
-    entry_file = tmp_path / "player_idle.json"
     write_assets_md(assets_md)
-    touch_final(tmp_path)
-    write_json(entry_file, make_entry())
+    touch_asset_files(tmp_path, "player_idle")
+    entry_file = write_entry(tmp_path, make_entry())
 
     result = subprocess.run(
         [

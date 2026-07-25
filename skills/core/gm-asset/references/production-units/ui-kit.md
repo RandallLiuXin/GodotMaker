@@ -26,7 +26,7 @@ slots, or card-game-specific UI assets.
 7. For selected component PNGs, run `tools/asset_curation_select.py`.
 8. For processed UI atlases, write runtime atlas metadata with named regions
    and rects beside the final atlas.
-9. Write manifest entries.
+9. Write stable entry drafts.
 10. Mark rows generated only after final UI artifacts and metadata are ready.
 
 ## Prompt Contract
@@ -70,21 +70,21 @@ Final selected component PNG:
 python tools/asset_curation_select.py \
   --report <report.json> \
   --candidate <candidate_id_or_name> \
-  --final-path <final_path> \
+  --final-path assets/generated/ui-kit/<final_asset_id>/<final_asset_id>.png \
   --asset-id <final_asset_id> \
   --project-root .
 ```
 
-Create selected-candidate manifest entries with
-`tools/asset_curation_manifest_entry.py`.
+Write `source_layout.type: single` in selected component stable entries and
+point `godot_artifact` at the selected PNG as `Texture2D`.
 
 Final processed UI atlas:
 
-1. Write a transparent processed atlas to the final path.
+1. Write a transparent processed atlas under
+   `assets/generated/ui-kit/<asset_id>/`.
 2. Write runtime atlas metadata beside the atlas.
-3. Write `runtime_artifact: region_atlas` in the manifest entry.
-4. Write `qc.atlas_metadata.metadata_path` and `region_count` in the manifest
-   entry.
+3. Write `source_layout.type: region_atlas` in the stable entry.
+4. Point `godot_artifact` at the processed atlas.
 
 ## Outputs
 
@@ -93,4 +93,4 @@ Final processed UI atlas:
 3. selected final UI PNGs or processed UI atlas
 4. runtime atlas metadata when final is an atlas
 5. curation report
-6. manifest entry JSON
+6. stable entry drafts

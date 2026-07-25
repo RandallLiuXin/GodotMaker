@@ -75,9 +75,10 @@ Write curation reports under `.godotmaker/asset-generation/curation/`:
 Only update ASSETS.md rows to `generated` when:
 
 1. The row's `File Path` points to a final runtime asset.
-2. The matching manifest entry is `processed` or `ready`.
+2. The matching stable entry is registered with `processing_status: ready`.
 3. The matching curation report is `selected` or no curation is required.
 4. The Visual Asset Contract names the canonical or derived source.
 
-If curation is incomplete, leave the row `MISSING` or mark the source entry as
-`needs_curation` in the manifest.
+If curation is incomplete, leave the row `MISSING` and leave the asset
+unregistered. Curation state lives in the curation report, never in a stable
+entry.

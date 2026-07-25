@@ -82,8 +82,9 @@ The lead agent provides your brief with these fields. REQUIRED fields are always
 {Known pitfalls from reviewer skills}
 
 ### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
-{Final runtime asset paths from ASSETS.md or .godotmaker/asset-generation/manifest.json.
-Include metadata paths for grid sheets and region atlases.}
+{Final runtime asset paths from ASSETS.md or from the stable entries that the
+.godotmaker/asset-generation/manifest.json pointer index resolves to.
+Include support metadata paths for grid sheets and region atlases.}
 
 ### Visual Self-Check                                  [OPTIONAL]
 - Source: {evaluation.json.visual_checks scene and blocking finding}

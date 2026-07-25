@@ -42,10 +42,10 @@ For current-tag gameplay actors:
 |---|-----|------|------|------|-------------------|-----------|--------|
 | 1 | v0.1.0 | player_canonical | reference | full body | family=character_canonical; role=player | references/characters/player_canonical.png | MISSING |
 | 2 | v0.1.0 | player_action_source | sprite_sheet | action set | family=character_action_source; derived_from=player_canonical; actions=from_current_tag_behavior; curation=.godotmaker/asset-generation/curation/player_actions.json | .godotmaker/asset-generation/sources/player_actions.png | MISSING |
-| 3 | v0.1.0 | player_animation_runtime | animation | frame output | family=character_frame_output; derived_from=player_action_source; runtime_artifact=grid_sheet; metadata=assets/sprites/player/player_actions.json | assets/sprites/player/player_actions.png | MISSING |
-| 4 | v0.1.0 | player_portrait | portrait | 256x256 px | family=character_portrait; role=player; derived_from=player_canonical; use=character_select_card; required_if=large_ui_display | assets/portraits/player.png | MISSING |
-| 5 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button; selected_candidate=ui_kit.action_button | assets/ui/action_button.png | MISSING |
-| 6 | v0.1.0 | background_sky | background | 1280x720 | family=background; shape=single_image | assets/backgrounds/sky.png | MISSING |
+| 3 | v0.1.0 | player_animation_runtime | animation | frame output | family=character_frame_output; derived_from=player_action_source; source_layout=grid_sheet | assets/generated/character-bundle/player_animation_runtime/player_animation_runtime.png | MISSING |
+| 4 | v0.1.0 | player_portrait | portrait | 256x256 px | family=character_portrait; role=player; derived_from=player_canonical; use=character_select_card; required_if=large_ui_display | assets/generated/character-bundle/player_portrait/player_portrait.png | MISSING |
+| 5 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button; selected_candidate=ui_kit.action_button | assets/generated/ui-kit/action_button/action_button.png | MISSING |
+| 6 | v0.1.0 | background_sky | background | 1280x720 | family=background; source_layout=single | assets/generated/background-map/background_sky/background_sky.png | MISSING |
 | ... | ... | ... | ... | ... | ... | ... | ... |
 
 ## Visual Asset Contract
@@ -60,10 +60,10 @@ For current-tag gameplay actors:
 
 | Tag | Scene / Mechanic | Visible Object | Asset Row / Path | Runtime Size | Visual Role | Readability Requirement | Source |
 |-----|------------------|----------------|------------------|--------------|-------------|-------------------------|--------|
-| v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_animation_runtime / assets/sprites/player/player_actions.png | 8% viewport height / 58px tall at 1280x720 | controllable player | readable silhouette and current-tag actions visible in frame sequences | derived from player_canonical |
-| v0.1.0 | Character Select | player portrait | player_portrait / assets/portraits/player.png | 140x140 px card slot | selectable character identity | readable in UI slots larger than gameplay runtime frames | derived from player_canonical |
+| v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_animation_runtime / assets/generated/character-bundle/player_animation_runtime/player_animation_runtime.png | 8% viewport height / 58px tall at 1280x720 | controllable player | readable silhouette and current-tag actions visible in frame sequences | derived from player_canonical |
+| v0.1.0 | Character Select | player portrait | player_portrait / assets/generated/character-bundle/player_portrait/player_portrait.png | 140x140 px card slot | selectable character identity | readable in UI slots larger than gameplay runtime frames | derived from player_canonical |
 | v0.1.0 | Main Menu | title text | UI text | viewport-relative | menu identity | readable at target resolution | procedural/UI |
-| v0.1.0 | HUD / [v0.1.0-M1] | action button | action_button / assets/ui/action_button.png | 96x48 px target | HUD control | readable touch target at target resolution | derived from UI component sheet |
+| v0.1.0 | HUD / [v0.1.0-M1] | action button | action_button / assets/generated/ui-kit/action_button/action_button.png | 96x48 px target | HUD control | readable touch target at target resolution | derived from UI component sheet |
 
 ## 2D Animation Sources
 
@@ -71,7 +71,7 @@ For current-tag gameplay actors:
 
 ### player_action_source (tag: v0.1.0)
 - **Family:** character_action_source
-- **Output:** assets/sprites/player/player_actions.png
+- **Output:** assets/generated/character-bundle/player_animation_runtime/player_animation_runtime.png
 - **Derived from:** player_canonical
 - **Actions:** current-tag player behavior
 - **Frames:** per action metadata
@@ -103,7 +103,7 @@ For current-tag gameplay actors:
 - **Source:** .godotmaker/asset-generation/sources/ui_kit_source.png
 - **Report:** .godotmaker/asset-generation/curation/ui_kit_source.json
 - **Status:** needs_curation
-- **Selected:** action_button -> assets/ui/action_button.png
+- **Selected:** action_button -> assets/generated/ui-kit/action_button/action_button.png
 - **Rejected:** empty_04 (empty_cell)
 
 ## Audio

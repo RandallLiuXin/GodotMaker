@@ -15,9 +15,11 @@ scenic assets.
 1. Write one prompt per background or plate.
 2. Include fixed viewport, target aspect, and composition.
 3. Generate source images through the provider doc.
-4. Finalize with aspect validation when target size is fixed.
-5. Write `runtime_artifact: single` in the manifest entry.
-6. Write manifest entries.
+4. Finalize with aspect validation when target size is fixed, writing the
+   result under `assets/generated/background-map/<asset_id>/`.
+5. Write `source_layout.type: single` in the stable entry and point
+   `godot_artifact` at the finalized image as `Texture2D`.
+6. Write stable entry drafts.
 
 ## Prompt Contract
 
@@ -52,4 +54,4 @@ If aspect validation fails, leave the production unit incomplete.
 2. final background or plate
 3. prompt file
 4. provider/finalize report
-5. manifest entry JSON
+5. stable entry drafts

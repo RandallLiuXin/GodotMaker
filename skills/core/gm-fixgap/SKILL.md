@@ -39,7 +39,7 @@ Then read context:
 - `.godotmaker/verify_report.json` → mechanical-layer failures from the most recent verify
 - `PLAN.md` → read-only; current tag's `**Tag:**` header tells you which tag's gaps you're fixing. The same tag-scope discipline as gm-build applies: previous tags' code is touchable only when a GAP item explicitly names it.
 - `STRUCTURE.md` → architecture (fixes need to respect existing system boundaries)
-- `ASSETS.md` and `.godotmaker/asset-generation/manifest.json` → final runtime asset paths, `runtime_artifact`, and runtime metadata paths for visual tasks
+- `ASSETS.md` and `.godotmaker/asset-generation/manifest.json` → the pointer index to generated assets; resolve each `entry_path` to a stable entry for `godot_artifact`, `source_layout`, and support metadata paths for visual tasks
 - `MEMORY.md` index + sub-files → past decisions and known gotchas
 
 ## Hard Rules

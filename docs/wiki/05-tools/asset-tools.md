@@ -9,10 +9,12 @@ Primary pipeline tools:
 1. `asset_source_generate.py`
 2. `asset_layout_guide.py`
 3. `asset_action_process.py`
-4. `asset_action_manifest_entry.py`
-5. `asset_sheet_process.py`
-6. `asset_curation_select.py`
-7. `asset_curation_manifest_entry.py`
+4. `asset_sheet_process.py`
+5. `asset_curation_select.py`
+6. `asset_output_path.py`
+7. `asset_stable_entry.py`
+8. `asset_generation_index.py`
+9. `asset_assets_md_update.py`
 
 ## asset_source_generate.py
 
@@ -122,25 +124,6 @@ For later body actions, add:
 --scale-reference-metadata <accepted_action_pipeline_meta.json>
 ```
 
-## asset_action_manifest_entry.py
-
-`asset_action_manifest_entry.py` turns one processed action
-`pipeline-meta.json` plus its `character_action_source` entry into a
-`character_frame_output` manifest entry.
-
-Manual entry point:
-
-```bash
-python tools/asset_action_manifest_entry.py \
-  --metadata <processed_dir>/pipeline-meta.json \
-  --source-entry <character_action_source_entry.json> \
-  --asset-id <frame_output_asset_id> \
-  --project-root . \
-  --out <frame_output_entry.json>
-```
-
-Upsert the generated entry with `asset_generation_manifest_update.py`.
-
 ## asset_curation_select.py
 
 `asset_curation_select.py` selects one candidate from a curation report and
@@ -160,24 +143,64 @@ python tools/asset_curation_select.py \
 The tool updates the report status to `selected`, stores the candidate's final
 path, and prints the same finalize metadata as `asset_image_finalize.py`.
 
-## asset_curation_manifest_entry.py
+## asset_output_path.py
 
-`asset_curation_manifest_entry.py` turns one selected curation candidate plus
-its source-sheet manifest entry into a validated runtime manifest entry.
+`asset_output_path.py` is the authority for the stable output directory
+`assets/generated/<production_family>/<asset_id>/`. Every worker-consumable file
+for one asset lives there, so regeneration overwrites in place instead of
+drifting into a timestamped or `v2` path.
 
 Manual entry point:
 
 ```bash
-python tools/asset_curation_manifest_entry.py \
-  --report <report.json> \
-  --source-entry <source_sheet_entry.json> \
-  --candidate <candidate_id_or_name> \
-  --asset-id <final_asset_id> \
-  --project-root . \
-  --out <final_asset_entry.json>
+python tools/asset_output_path.py --family <production_family> --asset-id <asset_id>
+python tools/asset_output_path.py --entry <entry.json> --project-root . --check-files
 ```
 
-Upsert the generated entry with `asset_generation_manifest_update.py`.
+## asset_stable_entry.py
+
+`asset_stable_entry.py` validates one v1 stable entry and serializes it to
+`.godotmaker/asset-generation/entries/<tag>/<asset_id>.json`. The entry holds
+stable identity plus `production_family`, `source_layout`, an optional minimal
+`godot_artifact`, and `processing_status` — nothing else.
+
+Manual entry point:
+
+```bash
+python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write --check-files
+```
+
+## asset_generation_index.py
+
+`asset_generation_index.py` owns the pointer-only root index at
+`.godotmaker/asset-generation/manifest.json`. It stores identity plus one
+`entry_path` per asset and never duplicates an entry body.
+
+Manual entry point:
+
+```bash
+python tools/asset_generation_index.py --project-root . \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
+python tools/asset_generation_index.py --project-root . --check-entries
+```
+
+An old `runtime_artifact` manifest that stores full entry bodies under `assets`
+is rejected with a regeneration message; there is no migration or compatibility
+read.
+
+## asset_assets_md_update.py
+
+`asset_assets_md_update.py` promotes ASSETS.md rows from registered stable
+entries. It revalidates the entry and its referenced files first, so a row can
+only reach `generated` once the asset really exists on disk, and it records the
+entry pointer instead of duplicating any path into the row.
+
+Manual entry point:
+
+```bash
+python tools/asset_assets_md_update.py \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
+```
 
 ## Calling these by hand
 
@@ -189,11 +212,11 @@ Manual use cases:
 1. Generate one source image from a tweaked spec.
 2. Create one layout guide for a fixed-grid source.
 3. Process one character action sheet while debugging animation output.
-4. Build one character frame-output manifest entry from action metadata.
-5. Test a provider, size, or aspect ratio before a full `/gm-asset` run.
-6. Process one source sheet while debugging extraction.
-7. Select one extracted candidate into a runtime asset path.
-8. Build one runtime manifest entry from a selected curation candidate.
+4. Test a provider, size, or aspect ratio before a full `/gm-asset` run.
+5. Process one source sheet while debugging extraction.
+6. Select one extracted candidate into a runtime asset path.
+7. Print or validate one asset's stable output directory.
+8. Validate and register one stable entry and its root-index pointer.
 
 If you want to update visual targets used by `/gm-evaluate`, re-run
 `/gm-asset` rather than editing generated images directly.

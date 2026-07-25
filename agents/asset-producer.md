@@ -1,6 +1,6 @@
 ---
 name: asset-producer
-description: Produces one assigned visual asset production unit for the asset stage. Generates sources, runs asset tools, writes scoped outputs, and reports manifest handoff.
+description: Produces one assigned visual asset production unit for the asset stage. Generates sources, runs asset tools, writes scoped outputs, and reports stable-entry handoff.
 model: inherit
 ---
 
@@ -24,16 +24,16 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 11. Use the provider document and configured provider named in the brief.
 12. Do not switch providers.
 13. Use built-in image generation or the configured provider path for raw art.
-14. Use asset tools for finalization, curation, action processing, and manifest
-    entry generation.
+14. Use asset tools for finalization, curation, action processing, and stable
+    entry drafting.
 15. Keep all scratch files under `.godotmaker/asset-generation/`.
-16. Report every generated source, final asset, prompt, curation report, and
-    manifest entry.
+16. Report every generated source, runtime output, prompt, curation report, and
+    stable entry draft.
 17. Use only provider outputs or user-provided assets as raw visual sources.
 18. Do not create procedural, placeholder, or fallback images for a planned
     source or final asset path.
 19. When the configured provider fails after its allowed retries, write `FAILED` or
-    `PARTIAL` and leave affected manifest entries unwritten.
+    `PARTIAL` and leave affected stable entry drafts unwritten.
 
 ## Execution Order
 
@@ -44,8 +44,8 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 5. Generate or claim source images.
 6. Stop the affected asset path when source generation or claim fails.
 7. Run required processing tools for claimed or provided sources.
-8. Write prompt files, reports, and manifest entry files.
-9. Validate manifest entry content and referenced files.
+8. Write prompt files, reports, and stable entry draft files.
+9. Validate stable entry content and referenced files.
 10. Verify listed output files exist.
 11. Write the Asset Producer Report.
 
@@ -84,20 +84,20 @@ When a prompt depends on an existing image:
 
 ### Outputs
 - Sources: {paths or none}
-- Finals: {paths or none}
+- Runtime outputs: {paths under assets/generated/<production_family>/<asset_id>/ or none}
 - Prompts: {paths or none}
 - Reports: {paths or none}
-- Manifest Entries: {paths or none}
+- Stable Entry Drafts: {paths or none}
 
 ### Tools
 - {exact commands run}
 
 ### Validation
 - File existence: PASS | FAIL
-- Manifest entries: PASS | FAIL | SKIP
+- Stable entries: PASS | FAIL | SKIP
 - Curation: PASS | FAIL | SKIP
 - Notes: {short notes}
 
 ### Handoff
-{What the manager should update in ASSETS.md and manifest.}
+{Which stable entries the manager should register and which ASSETS.md rows they update.}
 ```

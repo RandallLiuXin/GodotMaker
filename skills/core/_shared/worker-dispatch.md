@@ -69,11 +69,14 @@ Agent({
 - DO NOT write files outside the project tree (system temp dirs, home directory, etc.). If you genuinely need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p the directory if missing) and delete it before reporting DONE. Claude Code's own scratchpad system is gated behind a feature flag we cannot rely on, so this rule is what guarantees clean tear-down.
 
 ### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
-{Copy the matching ready entries from .godotmaker/asset-generation/manifest.json and ASSETS.md.
-Include: asset_id, final_path, runtime_artifact, runtime_role, target size,
-frame_count, and metadata path for `grid_sheet` or `region_atlas`.
-Use cwd-relative final paths and metadata paths.
-Use final runtime assets only.
+{Resolve each `entry_path` in .godotmaker/asset-generation/manifest.json and copy
+the matching `ready` stable entries plus their ASSETS.md rows.
+Include: asset_id, production_family, source_layout.type, godot_artifact.type,
+godot_artifact.path, target size, frame_count, and the support metadata path for
+`grid_sheet` or `region_atlas`. Support metadata is always
+assets/generated/<production_family>/<asset_id>/<asset_id>.json.
+Use cwd-relative artifact paths and metadata paths.
+Use `ready` stable entries only; skip any other processing_status.
 Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
 prompt files, or scene references as runtime assets.
 For `grid_sheet` with frame_count > 1, include the action metadata path,
@@ -91,7 +94,8 @@ FAILED with the missing path.}
  Include: asset row/path, runtime size, visual role, readability requirement,
  animation/lifecycle requirement when present, anchor/derivative source, and
  final runtime asset path.
- Use existing final paths from ASSETS.md or .godotmaker/asset-generation/manifest.json.
+ Use existing final paths from ASSETS.md or from the stable entries the
+ .godotmaker/asset-generation/manifest.json index points at.
  Do not use source sheets, curation candidates, prompt files, or scene
  references as runtime assets unless ASSETS.md explicitly lists that path as
  the final asset.
