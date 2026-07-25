@@ -2759,6 +2759,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Asset readiness promotion now requires a compiler receipt bound to the compiled entry, while already-ready assets can explicitly revalidate without retaining that receipt.</li>
 <li>Failed native Godot artifact compilation now retains the previous stable artifact and atomically commits a validated replacement only after success.</li>
 <li>Added the required <code>--grid</code> (and <code>--names</code>) argument to every production-unit <code>asset_sheet_process.py</code> example so the ui-kit, card-kit, compact-prop-pack, fx-bundle, scene-prop-set, and platform-strip commands run as written instead of failing on a missing required argument, and clarified that <code>--grid</code> is required in both autoslice and grid snap modes.</li>
 <li>Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at <code>.godotmaker/asset-generation/manifest.json</code> instead of the analyst's <code>assets/manifest.json</code> (#97)</li>
