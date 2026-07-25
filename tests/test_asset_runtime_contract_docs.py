@@ -3,9 +3,62 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# The only modules allowed to name the retired schema, and only to reject it.
+LEGACY_REJECTION_TOOLS = {
+    "asset_stable_entry.py",
+    "asset_generation_index.py",
+    "asset_skill_contract_check.py",
+}
+
+# Tools retired with the v1 switch. No active caller may name them again.
+RETIRED_TOOLS = (
+    "asset_generation_manifest_update.py",
+    "asset_generation_manifest_check.py",
+    "asset_action_manifest_entry.py",
+    "asset_curation_manifest_entry.py",
+)
+
 
 def _read(relative: str) -> str:
     return (REPO_ROOT / relative).read_text(encoding="utf-8")
+
+
+def _collect(roots) -> list[Path]:
+    """Collect every file under `roots`, failing loudly on an empty scan."""
+    found: list[Path] = []
+    for root, patterns in roots:
+        directory = REPO_ROOT / root
+        assert directory.is_dir(), f"scan root disappeared: {root}"
+        before = len(found)
+        for pattern in patterns:
+            found.extend(directory.glob(pattern))
+        assert len(found) > before, f"scan root matched nothing: {root}"
+    return found
+
+
+def _active_contract_files() -> list[Path]:
+    """Every active skill, reference, agent, template, and tool file."""
+    return _collect(
+        (
+            ("skills", ("**/*.md", "**/*.json")),
+            ("agents", ("**/*.md",)),
+            ("templates", ("**/*.md",)),
+            ("tools", ("**/*.py",)),
+        )
+    )
+
+
+def _all_shipped_files() -> list[Path]:
+    """Everything an active caller could live in, including docs and runtimes."""
+    return _active_contract_files() + _collect(
+        (
+            ("docs", ("**/*.md",)),
+            ("agent-runtimes", ("**/*.md", "**/*.json")),
+            ("hooks", ("**/*.py",)),
+            ("config", ("**/*.json", "**/*.yaml", "**/*.default")),
+            ("migrations", ("**/*.py",)),
+        )
+    )
 
 
 def test_provider_contracts_are_separate_from_generic_asset_docs():
@@ -65,7 +118,7 @@ def test_gm_asset_manager_dispatches_asset_producer_units():
     assert "Use visible scene references and canonical asset references" in producer
     assert "Use only provider outputs or user-provided assets as raw visual sources." in producer
     assert "Do not create procedural, placeholder, or fallback images" in producer
-    assert "leave affected manifest entries unwritten" in producer
+    assert "leave affected stable entry drafts unwritten" in producer
 
 
 def test_production_unit_docs_are_first_entry_points():
@@ -90,10 +143,10 @@ def test_production_unit_docs_are_first_entry_points():
         assert f"references/production-units/{unit}.md" in skill
         assert f"`{unit}`" in planner
 
-    assert "## Production Shapes" in runtime
+    assert "## Production Families" in runtime
+    assert "## Source Layouts" in runtime
     assert "## Processing Status" in runtime
-    assert "## Extraction Status" in runtime
-    assert "## Curation Field" in runtime
+    assert "## Curation" in runtime
 
 
 def test_production_unit_sheet_process_examples_pass_grid():
@@ -163,15 +216,15 @@ def test_foreground_production_units_do_not_finalize_source_images():
     assert "tools/asset_curation_select.py" in ui
     assert "tools/asset_curation_select.py" in props
     assert "tools/asset_curation_select.py" in scene_props
-    assert "runtime_artifact: region_atlas" in ui
-    assert "qc.atlas_metadata.metadata_path" in ui
-    assert "runtime_artifact: single" in fx
-    assert "runtime_artifact: grid_sheet" in fx
+    assert "--source-layout region_atlas" in ui
+    assert "tools/asset_curation_entry_draft.py" in fx
+    assert "tools/asset_action_entry_draft.py" in fx
     assert "--snap-mode grid" in platform
     assert "--background magenta" in platform
-    assert "runtime_artifact: region_atlas" in platform
+    assert "--source-layout region_atlas" in platform
     assert "tools/asset_action_process.py" in character
-    assert "runtime_artifact: grid_sheet" in character
+    assert "tools/asset_action_entry_draft.py" in character
+    assert "source_layout.type: grid_sheet" in character
 
 
 def test_character_canonical_uses_magenta_finalize():
@@ -199,38 +252,49 @@ def test_asset_planner_routes_foreground_sprites_to_extraction_units():
     assert "uncut single-image foreground sprites" in planner
 
 
-def test_runtime_pipeline_documents_runtime_ready_gate():
+def test_runtime_pipeline_documents_stable_entry_contract():
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
-    assert "## Runtime Artifact Types" in runtime
+    assert "## Stable Entry Contract" in runtime
+    assert "## Root Index" in runtime
     assert "## Runtime Ready Gate" in runtime
-    assert "`projectile_fx_source`" in runtime
-    assert "`ui_component_sheet`" in runtime
-    assert "`card_component_sheet`" in runtime
-    assert "`card_frame_source`" in runtime
-    assert "`portrait_frame_source`" in runtime
-    assert "`runtime_sprite`" in runtime
+    assert "`production_family`" in runtime
+    assert "`source_layout`" in runtime
+    assert "`godot_artifact`" in runtime
+    assert "`processing_status`" in runtime
     assert "`region_atlas`" in runtime
     assert "`grid_sheet`" in runtime
-    assert "qc.atlas_metadata.metadata_path" in runtime
+    assert ".godotmaker/asset-generation/entries/<tag>/<asset_id>.json" in runtime
+    assert "assets/generated/<production_family>/<asset_id>/" in runtime
     assert "\"rect\": [0, 0, 256, 96]" in runtime
 
+    # The root index is pointer-only: identity plus one entry_path, never a body.
+    assert '"entry_path"' in runtime
+    assert "never duplicates an entry body" in runtime
 
-def test_asset_stage_runs_manifest_gate_before_assets_update():
+
+def test_asset_stage_runs_stable_entry_gate_before_assets_update():
     skill = _read("skills/core/gm-asset/SKILL.md")
     producer = _read("agents/asset-producer.md")
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
-    assert "Confirm every ready manifest entry contains `runtime_artifact`." in skill
-    assert "python tools/asset_generation_manifest_update.py --entry-file <entry.json>" in skill
-    assert "python tools/asset_generation_manifest_check.py --check-files" in skill
-    assert "Update the matching ASSETS.md rows only after manifest validation passes" in skill
-    assert "runtime_artifact" in skill
-    assert "Validate manifest entry content and referenced files." in producer
+    assert "python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write --check-files" in skill
+    assert "python tools/asset_assets_md_update.py" in skill
+    assert "Update the matching ASSETS.md rows only after the root-index gate passes" in skill
+
+    # The documented gate must be the file-checking one. `--check-entries` alone
+    # is schema-only and would pass on an asset deleted after registration.
+    for doc in (skill, runtime):
+        assert (
+            "python tools/asset_generation_index.py --project-root . --check-entries --check-files"
+            in doc
+        )
+        assert "--check-entries\n```" not in doc
+    assert "Validate stable entry content and referenced files." in producer
     assert "Do not switch providers." in producer
     assert "Configured Provider:" in producer
     assert "Used Provider:" in producer
-    assert "manager upserts entries and" in runtime
+    assert "runs the root-index gate before updating ASSETS.md" in runtime
 
 
 def test_build_and_fixgap_handoff_runtime_assets_to_workers():
@@ -244,7 +308,7 @@ def test_build_and_fixgap_handoff_runtime_assets_to_workers():
         assert "Asset Runtime Snapshot" in doc
 
     assert "### Asset Runtime Snapshot" in worker_dispatch
-    assert "Use final runtime assets only." in worker_dispatch
+    assert "Use `ready` stable entries only" in worker_dispatch
     assert "`grid_sheet` or `region_atlas`" in worker_dispatch
     assert "Do not use `.godotmaker/asset-generation/sources/`" in worker_dispatch
     # Generated-asset runtime handoff reads the generated manifest, never the
@@ -309,9 +373,9 @@ def test_gdd_templates_do_not_add_weak_dynamic_visual_checks():
 def test_generated_and_analyst_manifests_have_distinct_responsibilities():
     """The two manifests must never be confused.
 
-    `.godotmaker/asset-generation/manifest.json` holds the generated-asset
-    runtime handoff data (runtime_artifact, final paths, metadata). It is the
-    only runtime source read by gm-build / gm-fixgap / worker dispatch.
+    `.godotmaker/asset-generation/manifest.json` is the pointer index into the
+    generated-asset stable entries. It is the only runtime source read by
+    gm-build / gm-fixgap / worker dispatch.
 
     `assets/manifest.json` holds the analyst's classification of user-provided
     assets and keeps that responsibility unchanged.
@@ -346,6 +410,147 @@ def test_generated_and_analyst_manifests_have_distinct_responsibilities():
     assert "assets/manifest.json" in analyst
     assert "user-provided" in analyst_dispatch or "user-provided" in analyst
     assert "assets/manifest.json" in analyst_dispatch
+
+
+def test_no_active_surface_requires_the_retired_runtime_artifact_contract():
+    """Gate 1: one schema owns the generated-asset manifest, not two.
+
+    `runtime_artifact` may survive only inside a legacy-rejection module, never
+    as a field an active skill, reference, agent, template, or tool asks a
+    producer to write.
+    """
+    offenders = []
+    for path in _active_contract_files():
+        text = path.read_text(encoding="utf-8")
+        if "runtime_artifact" not in text:
+            continue
+        if path.suffix == ".py" and path.name in LEGACY_REJECTION_TOOLS:
+            continue
+        offenders.append(str(path.relative_to(REPO_ROOT)).replace("\\", "/"))
+
+    assert not offenders, (
+        "these active files still name the retired runtime_artifact contract: "
+        + ", ".join(sorted(offenders))
+    )
+
+
+def test_retired_manifest_tools_have_no_active_callers():
+    """The old full-entry manifest tools are gone, including every reference."""
+    for name in RETIRED_TOOLS:
+        assert not (REPO_ROOT / "tools" / name).exists(), f"{name} was not removed"
+
+    offenders = []
+    for path in _all_shipped_files():
+        text = path.read_text(encoding="utf-8")
+        if any(name in text for name in RETIRED_TOOLS):
+            offenders.append(str(path.relative_to(REPO_ROOT)).replace("\\", "/"))
+
+    assert not offenders, (
+        "these active files still call a retired manifest tool: "
+        + ", ".join(sorted(offenders))
+    )
+
+
+def test_no_doc_fakes_a_compiled_artifact_or_ready_state():
+    """No native compiler and no L0-L4 runner exist, so nothing may claim them.
+
+    Pointing `godot_artifact` at a source image would make a `grid_sheet` look
+    like a compiled `SpriteFrames`, and a worker binding it would get a static
+    image where an animation was promised. Guard the whole authoring surface, not
+    just the file that happened to say it first.
+    """
+    offenders = []
+    for path in _active_contract_files():
+        text = path.read_text(encoding="utf-8")
+        if path.suffix != ".md":
+            continue
+        for line in text.splitlines():
+            lowered = line.lower()
+            if "godot_artifact" not in lowered:
+                continue
+            # A doc may name the field, describe the compiler that will fill it,
+            # or state that it stays absent — it may not instruct anyone to point
+            # it at an image today.
+            if "point `godot_artifact` at the finalized image" in lowered or (
+                "texture2d" in lowered and "point `godot_artifact`" in lowered
+            ):
+                offenders.append(
+                    f"{str(path.relative_to(REPO_ROOT))}: {line.strip()}"
+                )
+
+    assert not offenders, (
+        "these docs tell a producer to fake a compiled artifact: "
+        + "; ".join(sorted(offenders))
+    )
+
+
+def test_production_units_stop_at_source_ready():
+    """Every production path must draft `source_ready`, never `ready`."""
+    unit_dir = REPO_ROOT / "skills/core/gm-asset/references/production-units"
+    units = sorted(unit_dir.glob("*.md"))
+    assert units, "production-unit docs disappeared"
+
+    for path in units:
+        text = path.read_text(encoding="utf-8")
+        name = path.name
+        assert '"processing_status": "ready"' not in text, f"{name} drafts a ready entry"
+        assert "processing_status: ready" not in text, f"{name} drafts a ready entry"
+
+
+def test_entry_drafts_come_from_deterministic_builders():
+    """Producers must not hand-write drafts or support metadata.
+
+    The retired manifest builders carried mechanical checks — frame count,
+    edge-touch, scale reference, curation selection. Those live in the v1 draft
+    builders now; the skill must route through them rather than asking an agent
+    to honour the rules in prose.
+    """
+    skill = _read("skills/core/gm-asset/SKILL.md")
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+
+    for doc in (skill, runtime):
+        assert "tools/asset_action_entry_draft.py" in doc
+        assert "tools/asset_curation_entry_draft.py" in doc
+        # Reference-only production needs a builder too, or Step 5's
+        # "no hand-written drafts" rule would leave screen-reference with no
+        # executable registration path at all.
+        assert "tools/asset_finalize_entry_draft.py" in doc
+    assert "reject a hand-written draft" in skill
+    assert "do not hand-write a draft or its support metadata" in runtime
+
+
+def test_every_production_unit_routes_through_a_draft_builder():
+    """No production unit may be left without an executable draft path."""
+    unit_dir = REPO_ROOT / "skills/core/gm-asset/references/production-units"
+    builders = (
+        "asset_action_entry_draft.py",
+        "asset_curation_entry_draft.py",
+        "asset_finalize_entry_draft.py",
+    )
+    units = sorted(unit_dir.glob("*.md"))
+    assert units, "production-unit docs disappeared"
+
+    missing = [
+        path.name
+        for path in units
+        if not any(builder in path.read_text(encoding="utf-8") for builder in builders)
+    ]
+    assert not missing, (
+        "these production units have no deterministic draft builder: "
+        + ", ".join(missing)
+    )
+
+
+def test_gm_asset_registers_through_the_stable_entry_tools_only():
+    skill = _read("skills/core/gm-asset/SKILL.md")
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+
+    for doc in (skill, runtime):
+        assert "tools/asset_stable_entry.py" in doc
+        assert "tools/asset_generation_index.py" in doc
+    assert ".godotmaker/asset-generation/entries/<tag>/<asset_id>.json" in skill
+    # No hand-edit escape hatch around the gates.
+    assert "Do not hand-edit" in skill
 
 
 def test_region_atlas_single_region_contract():

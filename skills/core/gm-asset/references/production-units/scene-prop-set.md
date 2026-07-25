@@ -19,7 +19,9 @@ reference.
 5. Run curation for source sheets.
 6. Select final runtime objects from processed candidates.
 7. Use processed atlases only with runtime region metadata.
-8. Write manifest entries for final runtime props.
+8. Draft stable entries for final runtime props with
+   `tools/asset_curation_entry_draft.py --production-family scene-prop-set`;
+   they stop at `source_ready` with no `godot_artifact`.
 
 ## Prompt Contract
 
@@ -68,4 +70,4 @@ Do not use a source image or reference mockup as an independent final prop.
 2. selected final props, segments, or processed object atlases
 3. runtime atlas metadata when final is an atlas
 4. curation reports
-5. manifest entry JSON
+5. stable entry drafts

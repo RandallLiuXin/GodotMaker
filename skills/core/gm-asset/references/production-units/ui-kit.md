@@ -26,7 +26,7 @@ slots, or card-game-specific UI assets.
 7. For selected component PNGs, run `tools/asset_curation_select.py`.
 8. For processed UI atlases, write runtime atlas metadata with named regions
    and rects beside the final atlas.
-9. Write manifest entries.
+9. Write stable entry drafts.
 10. Mark rows generated only after final UI artifacts and metadata are ready.
 
 ## Prompt Contract
@@ -70,21 +70,36 @@ Final selected component PNG:
 python tools/asset_curation_select.py \
   --report <report.json> \
   --candidate <candidate_id_or_name> \
-  --final-path <final_path> \
+  --final-path assets/generated/ui-kit/<final_asset_id>/<final_asset_id>.png \
   --asset-id <final_asset_id> \
   --project-root .
 ```
 
-Create selected-candidate manifest entries with
-`tools/asset_curation_manifest_entry.py`.
+Build the stable entry draft deterministically:
+
+```bash
+python tools/asset_curation_entry_draft.py \
+  --report <report.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --tag <tag> \
+  --production-family ui-kit \
+  --source-layout single \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
+```
+
+The draft stops at `processing_status: source_ready` with no `godot_artifact`.
+Do not hand-write it, and do not add an artifact to make the asset look finished:
+the native compiler that produces one is not implemented yet.
 
 Final processed UI atlas:
 
-1. Write a transparent processed atlas to the final path.
+1. Write a transparent processed atlas under
+   `assets/generated/ui-kit/<asset_id>/`.
 2. Write runtime atlas metadata beside the atlas.
-3. Write `runtime_artifact: region_atlas` in the manifest entry.
-4. Write `qc.atlas_metadata.metadata_path` and `region_count` in the manifest
-   entry.
+3. Draft the entry with `--source-layout region_atlas`.
+4. Leave `godot_artifact` absent until the atlas compiler lands.
 
 ## Outputs
 
@@ -93,4 +108,4 @@ Final processed UI atlas:
 3. selected final UI PNGs or processed UI atlas
 4. runtime atlas metadata when final is an atlas
 5. curation report
-6. manifest entry JSON
+6. stable entry drafts

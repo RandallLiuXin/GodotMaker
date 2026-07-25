@@ -15,11 +15,9 @@ targets.
 1. Write one prompt per scene reference.
 2. Include target size and target aspect.
 3. Generate a source image through the provider doc.
-4. Finalize with aspect validation.
+4. Finalize with aspect validation, capturing the finalize report.
 5. Write one report entry per scene.
-6. Write manifest entries with `family: screen_reference` and
-   `production_shape: reference_only`.
-7. Write `runtime_artifact: reference` in the manifest entry.
+6. Build the stable entry draft with `tools/asset_finalize_entry_draft.py`.
 
 ## Prompt Contract
 
@@ -42,13 +40,34 @@ Finalize accepted scene references:
 ```bash
 python tools/asset_image_finalize.py \
   --source <source_path> \
-  --out <final_path> \
+  --out references/scene_<name>.png \
   --label <asset_id> \
   --require-aspect <WIDTH:HEIGHT> \
-  --resize <WIDTHxHEIGHT>
+  --resize <WIDTHxHEIGHT> \
+  > .godotmaker/asset-generation/reports/<asset_id>_finalize.json
 ```
 
+`--label <asset_id>` and `--require-aspect` are both required: the draft builder
+reads that report and refuses a run that skipped aspect validation or belongs to
+a different asset.
+
 If aspect validation fails, leave the production unit incomplete.
+
+Build the stable entry draft from the captured report:
+
+```bash
+python tools/asset_finalize_entry_draft.py \
+  --finalize-report .godotmaker/asset-generation/reports/<asset_id>_finalize.json \
+  --asset-id <asset_id> \
+  --tag <tag> \
+  --production-family screen-reference \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+The draft carries `source_layout.type: reference` at
+`processing_status: source_ready` and no `godot_artifact` — a reference is never
+a runtime game asset. Do not hand-write it.
 
 ## Outputs
 
@@ -56,4 +75,4 @@ If aspect validation fails, leave the production unit incomplete.
 2. `.godotmaker/asset-generation/sources/<asset_id>_source.png`
 3. `references/scene_<name>.png`
 4. `.godotmaker/asset-generation/reports/<unit_id>.json`
-5. manifest entry JSON
+5. stable entry drafts

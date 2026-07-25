@@ -3,7 +3,7 @@ name: gm-asset
 description: |
   Asset stage manager. Reads current-tag ASSETS.md gaps, accepts user-provided
   assets, plans visual production units, dispatches asset-producer subagents,
-  collects reports, updates ASSETS.md and the asset-generation manifest.
+  collects reports, registers generated-asset stable entries, updates ASSETS.md.
   Explicit invocation only - use /gm-asset.
 disable-model-invocation: true
 ---
@@ -190,11 +190,14 @@ Brief shape:
 - Canonical references: {paths}
 
 ### Outputs
-- Source paths: {paths under .godotmaker/asset-generation/sources/}
-- Final paths: {paths under assets/ or references/}
+- Stable output directory: `assets/generated/{production_family}/{asset_id}/`
+- Raw source paths: {scratch paths under .godotmaker/asset-generation/sources/}
+- Runtime output paths: {finalized image and support metadata under the stable
+  output directory; only these may appear in a stable entry}
+- Reference paths: {paths under references/ for reference-only assets}
 - Prompt paths: {paths}
 - Report path: {path}
-- Manifest entry files: {paths}
+- Stable entry drafts: {paths under .godotmaker/asset-generation/work/entries/}
 
 ### Scope
 - Write only the listed outputs.
@@ -205,47 +208,79 @@ Brief shape:
 Do not dispatch one subagent per ASSETS.md row when the work is one bundle.
 Dispatch one subagent per production unit.
 
-### Step 5 - Collect Reports
+### Step 5 - Register Stable Entries
 
 Read `references/asset-runtime-pipeline.md`.
 
 For each `asset-producer` report:
 
 1. Confirm status is `DONE`, `PARTIAL`, or `FAILED`.
-2. Confirm listed source, final, prompt, report, and manifest-entry files exist
-   when claimed.
-3. Confirm every ready manifest entry contains `runtime_artifact`.
-4. Upsert manifest entries:
+2. Confirm listed source, runtime output, prompt, report, and stable-entry draft
+   files exist when claimed.
+3. Confirm every entry draft came from a deterministic builder —
+   `tools/asset_action_entry_draft.py` for processed action output,
+   `tools/asset_curation_entry_draft.py` for a selected curation candidate,
+   `tools/asset_finalize_entry_draft.py` for a finalized screen reference.
+   Every production path has one, so reject a hand-written draft: the builders
+   are what enforce frame count, edge-touch rejection, scale reference, curation
+   selection, aspect validation, and stable-path containment.
+4. Write each draft to its canonical stable-entry path:
 
 ```bash
-python tools/asset_generation_manifest_update.py --entry-file <entry.json>
+python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write --check-files
 ```
 
-5. Run full manifest validation:
+5. Upsert the written entry into the pointer-only root index:
 
 ```bash
-python tools/asset_generation_manifest_check.py --check-files
+python tools/asset_generation_index.py --project-root . \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-6. Update the matching ASSETS.md rows only after manifest validation passes:
+6. Run the full root-index gate. `--check-files` verifies that every registered
+   entry's source and artifact still exist, so it is required here:
 
 ```bash
-python tools/asset_assets_md_update.py --entry-file <entry.json>
+python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
 
-7. Redispatch failed or incomplete production units once when the failure is
+7. Update the matching ASSETS.md rows only after the root-index gate passes, and
+   only for `ready` non-reference entries:
+
+```bash
+python tools/asset_assets_md_update.py \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
+```
+
+The updater rejects any other entry. The native compilers and the L0-L4 runner
+are not implemented, so no generated asset reaches `ready` yet and this command
+currently reports the blocking status instead of promoting a row. That is
+expected: registration is what this stage delivers. Leave the row `MISSING` and
+do not hand-edit a status to make the stage look complete.
+
+8. Redispatch failed or incomplete production units once when the failure is
    actionable from the report.
+
+Each command fails closed. Do not hand-edit
+`.godotmaker/asset-generation/manifest.json` or an entry file to make a gate
+pass.
 
 ### Step 6 - Update ASSETS.md
 
 For current-tag rows only:
 
-1. Confirm final generated runtime assets are `generated`.
+1. Confirm rows whose entry is `ready` are `generated`.
 2. Mark provided files `provided`.
 3. Mark unprovided audio `deferred`.
-4. Keep rows with incomplete curation or missing final paths as `MISSING`.
-5. Confirm `Generation Params` include the manifest entry pointer only.
+4. Keep rows without a registered `ready` entry as `MISSING`. Until the native
+   compilers and the L0-L4 runner land this covers every generated row,
+   including reference rows.
+5. Confirm `Generation Params` include the stable entry pointer only.
 6. Update the Visual Asset Contract for gameplay-visible generated assets.
+
+Report the registered `source_ready` entries to the user and say plainly that
+generated assets are not yet worker-consumable. Do not mark a row `generated`,
+invent a `godot_artifact`, or edit `processing_status` to close the stage.
 
 Do not mark source sheets, references, or curation candidates as final runtime
 assets unless the production-unit report selected them as final outputs.
@@ -262,6 +297,12 @@ If the user wants to regenerate an accepted prior asset, add a current-tag row
 or leave a fix task for a later role.
 
 ## Completion
+
+The native compilers and the L0-L4 runner are not implemented, so a tag whose
+plan contains generated visual assets cannot reach this state yet: those rows
+stay `MISSING` by design. Stop after Step 6, report the registered
+`source_ready` entries, and tell the user the asset stage is blocked on the
+compiler work rather than forcing the stage closed.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 

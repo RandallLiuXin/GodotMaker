@@ -1,6 +1,6 @@
 # Asset Runtime Pipeline Reference
 
-Use this file for common paths, manager-to-producer handoff, and manifest
+Use this file for common paths, manager-to-producer handoff, and stable-entry
 registration. Use production-unit docs for prompts, finalization, extraction,
 processing, and curation commands.
 
@@ -8,17 +8,26 @@ processing, and curation commands.
 
 For each generated visual production unit, reserve:
 
-1. Source images under `.godotmaker/asset-generation/sources/`.
-2. Replaced source images under `.godotmaker/asset-generation/sources/history/`.
+1. Raw provider output under `.godotmaker/asset-generation/sources/`.
+2. Replaced raw output under `.godotmaker/asset-generation/sources/history/`.
 3. Prompt files under `.godotmaker/asset-generation/prompts/`.
 4. Reports under `.godotmaker/asset-generation/reports/`.
 5. Curation reports under `.godotmaker/asset-generation/curation/`.
 6. Processed previews and derived files under
    `.godotmaker/asset-generation/processed/`.
-7. Manifest entry files under
-   `.godotmaker/asset-generation/work/manifest-entries/`.
-8. Final runtime assets under `assets/`.
-9. Scene references under `references/`.
+7. Stable entry drafts under `.godotmaker/asset-generation/work/entries/`.
+8. Registered stable entries under
+   `.godotmaker/asset-generation/entries/<tag>/<asset_id>.json`.
+9. The root index at `.godotmaker/asset-generation/manifest.json`.
+10. Worker-consumable runtime outputs under
+    `assets/generated/<production_family>/<asset_id>/`.
+11. Scene references under `references/`.
+
+Everything under `.godotmaker/asset-generation/` is generation scratch. No
+registered entry may point into it — not the raw source, not the processed
+preview, not the work directory. A registered path is always under the asset's
+stable output directory, so a non-reference production unit finishes by writing
+its finalized image there.
 
 ## Provider Docs
 
@@ -29,191 +38,284 @@ Use exactly one provider doc per production unit:
 3. `references/providers/gemini.md`
 4. `references/providers/openai.md`
 
-## Production Shapes
+## Production Families
 
-| Shape | Use for | Required fields |
-|-------|---------|-----------------|
-| `single_image` | Backgrounds, panels, canonicals, large props | `source_path`, `final_path` |
-| `grid_sheet` | Source sheet for compact components or deliberate equal-cell layouts | `source_path`, `expected_items` |
-| `action_sheet` | One character or FX action | `source_path`, `action`, `frames`, `anchor` |
-| `frame_sequence` | Extracted animation frames | `source_path`, `frame_dir`, `fps`, `loop` |
-| `delivery_sheet` | Runtime-ready sheet assembled from processed frames | `source_path`, `final_path`, `derived_from` |
-| `reference_only` | Screen/style references | `source_path` or `final_path`, `contract_summary` |
-| `curation_required` | Irregular sheets or references needing selection | `source_path`, `curation_reason` |
+`production_family` is the stable identity of the producing unit and picks the
+output directory. Allowed values:
+
+`background-map`, `character-bundle`, `fx-bundle`, `ui-kit`, `card-kit`,
+`compact-prop-pack`, `platform-strip`, `scene-prop-set`, `screen-reference`,
+`tileset`.
+
+`screen-reference` is the only reference-only family.
+
+## Stable Output Paths
+
+Every worker-consumable file for one asset — the runtime image, the Godot
+artifact, and required support files such as region or action metadata — lives
+under one identity-derived directory:
+
+```text
+assets/generated/<production_family>/<asset_id>/
+```
+
+Print and validate it with:
+
+```bash
+python tools/asset_output_path.py --family <production_family> --asset-id <asset_id>
+```
+
+Regeneration overwrites the same directory in place. A timestamped, `v2`, or
+`final` drift path is rejected. Reference-only assets keep their `references/`
+location and never write into this tree.
+
+## Source Layouts
+
+`source_layout.type` describes how pixels are organized in the generated source.
+It is not a Godot artifact.
+
+| Type | Use for |
+|------|---------|
+| `single` | One runtime image: background, panel, portrait, large prop |
+| `grid_sheet` | Equal-cell sheet for animation frames, FX, or fixed cells |
+| `region_atlas` | Irregular UI, icon, prop, strip, or tileset atlas |
+| `theme_recipe` | UI theme description compiled into a `Theme` |
+| `tile_atlas` | Tileset source compiled into a `TileSet` |
+| `reference` | Screen and style references; `screen-reference` family only |
 
 ## Processing Status
 
-1. `source_only`
-2. `needs_curation`
-3. `processed`
-4. `ready`
-5. `deferred`
-6. `rejected`
+`processing_status` maps to the L0-L4 readiness ladder:
 
-## Extraction Status
+1. `pending` — L0 only; nothing produced yet.
+2. `source_ready` — L1 source generation and processing succeeded.
+3. `compiled` — L2 native Godot artifact compiled, not yet L3-L4 verified.
+4. `ready` — L0-L4 all passed; worker-consumable.
+5. `failed` — a stage failed.
 
-1. `not_required`
-2. `pending`
-3. `source_sheet`
-4. `extracted`
-5. `processed`
-6. `needs_curation`
-7. `rejected`
+`compiled` and `ready` require a `godot_artifact` for every non-reference asset.
 
-## Runtime Artifact Types
+**Current pipeline state.** The native compilers and the L0-L4 runner are not
+implemented. `/gm-asset` therefore registers `source_ready` entries and nothing
+further. Do not write `compiled` or `ready`, and do not invent a `godot_artifact`
+to reach them: a generated asset is not worker-consumable yet, and claiming
+otherwise hands `/gm-build` an asset that was never compiled or verified.
 
-Use `runtime_artifact` to describe the ready asset shape:
+## Stable Entry Contract
 
-| Type | Use for | Required manifest data |
-|------|---------|------------------------|
-| `reference` | Style, screen, and planning references | `final_path` or `source_path`, contract summary |
-| `single` | One runtime image | `final_path`, target geometry or extraction data |
-| `grid_sheet` | Regular grid sheet for animation, FX, or fixed cells | `final_path`, `qc.action_processing.metadata_path`, frame count |
-| `region_atlas` | Irregular UI, icon, prop, strip, or tileset atlas | `final_path`, `qc.atlas_metadata.metadata_path`, region count |
-
-## Manifest Handoff
-
-Each ready entry writes `runtime_artifact` as one of:
-
-1. `reference`
-2. `single`
-3. `grid_sheet`
-4. `region_atlas`
-
-Upsert manifest entries with:
-
-```bash
-python tools/asset_generation_manifest_update.py --entry-file <entry.json>
-```
-
-Validate the manifest with:
-
-```bash
-python tools/asset_generation_manifest_check.py --check-files
-```
-
-Producer reports include manifest entry paths. The manager upserts entries and
-runs full manifest validation before updating ASSETS.md.
-
-Update matching ASSETS.md rows with:
-
-```bash
-python tools/asset_assets_md_update.py --entry-file <entry.json>
-```
-
-Manifest entry shape:
-
-```json
-{
-  "asset_id": "<asset_id>",
-  "tag": "<tag>",
-  "family": "<family>",
-  "production_shape": "<shape>",
-  "runtime_role": "<role>",
-  "source_path": ".godotmaker/asset-generation/sources/<source>.png",
-  "final_path": "assets/<path>.png",
-  "target_size": null,
-  "target_aspect": null,
-  "derived_from": null,
-  "canonical_reference": null,
-  "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
-  "runtime_artifact": "single",
-  "processing_status": "ready",
-  "extraction_status": "processed",
-  "qc": {},
-  "curation": {
-    "status": "not_required",
-    "strategy": "none",
-    "report_path": null
-  },
-  "preview_path": null,
-  "notes": ""
-}
-```
-
-Append entries for new current-tag assets. Preserve prior entries unless the
-same current-tag asset is being regenerated.
-
-## Curation Field
-
-Allowed `curation.status` values:
-
-1. `not_required`
-2. `pending`
-3. `candidate_extracted`
-4. `selected`
-5. `needs_curation`
-6. `needs_regeneration`
-7. `rejected`
-
-Allowed `curation.strategy` values:
-
-1. `none`
-2. `transparent_grid`
-3. `solid_background_grid`
-4. `transparent_autoslice`
-5. `solid_background_autoslice`
-6. `row_column_grid`
-7. `explicit_boxes`
-8. `manual_selection`
-9. `regenerate_source`
-
-Required curation fields:
-
-1. `status`
-2. `strategy`
-3. `report_path` when `status` is not `not_required`
-
-## Runtime Ready Gate
-
-Foreground runtime asset families:
-
-1. `projectile_fx_source`
-2. `impact_fx_source`
-3. `compact_prop_pack`
-4. `character_portrait`
-5. `ui_component_sheet`
-6. `icon_pack`
-7. `panel_source`
-8. `card_component_sheet`
-9. `card_frame_source`
-10. `portrait_frame_source`
-11. `scene_prop_set`
-12. `platform_strip`
-13. `runtime_sprite`
-
-When one of these families is `ready`, set `runtime_artifact` to one of:
-
-1. `single`
-2. `grid_sheet`
-3. `region_atlas`
-
-Ready gate by artifact:
-
-1. `single`: use one runtime-ready image.
-2. `grid_sheet`: include action metadata path and frame count.
-3. `region_atlas`: include atlas metadata path and region count.
-4. `reference`: do not mark ASSETS runtime rows generated from this entry.
-
-Keep detailed runtime metadata under `assets/**/*.json`, not embedded in the
-asset-generation manifest.
-
-Atlas manifest summary:
-
-```json
-{
-  "metadata_path": "assets/ui/main_atlas.json",
-  "region_count": 8
-}
-```
-
-Atlas runtime metadata shape:
+One stable entry is the single source of truth for one generated asset. It holds
+stable identity plus the minimal contract a worker needs, and nothing else:
 
 ```json
 {
   "version": 1,
-  "runtime_artifact": "region_atlas",
-  "atlas_path": "assets/ui/main_atlas.png",
+  "asset_id": "<asset_id>",
+  "tag": "<tag>",
+  "production_family": "character-bundle",
+  "source_layout": {
+    "type": "grid_sheet",
+    "path": "res://assets/generated/character-bundle/<asset_id>/<asset_id>_sheet.png"
+  },
+  "processing_status": "source_ready"
+}
+```
+
+Rules:
+
+1. `source_layout` holds exactly `type` and `path`.
+2. `godot_artifact` holds exactly `type` and `path`. `type` is the Godot ClassDB
+   type the native compiler produced for this layout:
+
+   | `source_layout.type` | Compiled `godot_artifact.type` |
+   |---|---|
+   | `grid_sheet` | `SpriteFrames` |
+   | `region_atlas` | `AtlasTexture` |
+   | `theme_recipe` | `Theme` |
+   | `tile_atlas` | `TileSet` |
+   | `single` | `Texture2D` |
+
+3. Both paths are `res://` paths under the asset's stable output directory. A
+   path under `.godotmaker/` is rejected, so finalize into the stable directory
+   before drafting the entry.
+4. Only a native compiler writes `godot_artifact`. Never point it at the source
+   image to make an asset look finished — a `grid_sheet` is not a `SpriteFrames`
+   just because its sheet exists, and a worker that loads it gets a static image
+   where an animation was promised. No compiler exists yet, so entries stay at
+   `source_ready` with no `godot_artifact`.
+5. A `reference` layout carries no `godot_artifact` and keeps its `references/`
+   location.
+6. Detailed runtime metadata (region rects, frame lists) is a support file beside
+   the artifact, never an entry field.
+7. No other field is allowed. Regenerate through `/gm-asset` instead of adding
+   one.
+
+## Root Index
+
+`.godotmaker/asset-generation/manifest.json` is a pointer-only index. It stores
+identity and one `entry_path` per asset and never duplicates an entry body:
+
+```json
+{
+  "version": 1,
+  "entries": [
+    {
+      "asset_id": "<asset_id>",
+      "tag": "<tag>",
+      "entry_path": ".godotmaker/asset-generation/entries/<tag>/<asset_id>.json"
+    }
+  ]
+}
+```
+
+Consumers resolve `entry_path` and read the entry. Nothing reads runtime data
+straight from the root index.
+
+## Registration Commands
+
+Build the entry draft with the deterministic builder for the production path.
+Every production path has one; do not hand-write a draft or its support metadata.
+The builders are what enforce frame count, edge-touch rejection, scale reference,
+curation selection, aspect validation, and stable-path containment.
+
+Processed action output (`character-bundle`, `fx-bundle`):
+
+```bash
+python tools/asset_action_entry_draft.py \
+  --metadata <processed_dir>/pipeline-meta.json \
+  --asset-id <asset_id> --tag <tag> --production-family <production_family> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+It also writes the action support metadata to
+`assets/generated/<production_family>/<asset_id>/<asset_id>.json`.
+
+Selected curation candidate (`ui-kit`, `card-kit`, `compact-prop-pack`,
+`scene-prop-set`, `platform-strip`):
+
+```bash
+python tools/asset_curation_entry_draft.py \
+  --report <curation_report.json> --candidate <candidate_id_or_name> \
+  --asset-id <asset_id> --tag <tag> --production-family <production_family> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+One finalized image (`screen-reference`, `background-map`, and single card or
+portrait frames):
+
+```bash
+python tools/asset_finalize_entry_draft.py \
+  --finalize-report <finalize_report.json> \
+  --asset-id <asset_id> --tag <tag> --production-family <production_family> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+Capture the report by redirecting `asset_image_finalize.py` stdout. The builder
+requires that run to have succeeded with `--require-aspect` inside tolerance and
+`--label <asset_id>`. It derives the layout from the family — `reference` pinned
+to `references/` for `screen-reference`, `single` pinned to the stable output
+directory for every other family.
+
+Write one validated entry to its canonical path:
+
+```bash
+python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write --check-files
+```
+
+Upsert its pointer into the root index:
+
+```bash
+python tools/asset_generation_index.py --project-root . \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
+```
+
+Validate the whole index, every referenced entry, and every handoff file:
+
+```bash
+python tools/asset_generation_index.py --project-root . --check-entries --check-files
+```
+
+`--check-entries` alone is a schema-only pass. `--check-files` additionally proves
+every registered `source_layout.path` and `godot_artifact.path` is still on disk,
+so it catches an asset deleted after registration. That pair is the registration
+gate; it is not a readiness gate and does not check support files or compiled
+output, because neither the compilers nor the L0-L4 runner exist yet.
+
+Producer reports list stable entry drafts. The manager writes each entry, upserts
+its pointer, and runs the root-index gate before updating ASSETS.md.
+
+Update matching ASSETS.md rows with:
+
+```bash
+python tools/asset_assets_md_update.py \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
+```
+
+The updater promotes a row to `generated` only for a `ready` non-reference entry
+and fails closed on anything else, because `generated` is what tells `/gm-build`
+the row's asset is finished. Until the compilers and the L0-L4 runner land no
+entry reaches `ready`, so generated rows stay `MISSING` and this command reports
+the blocking status instead of promoting anything. That is the honest state; do
+not work around it by editing rows or statuses by hand.
+
+Register entries for new current-tag assets. Preserve prior entries unless the
+same current-tag asset is being regenerated.
+
+## Curation
+
+Curation is a production step, not an entry field. Keep candidate selection,
+strategy, and rejection detail in the curation report under
+`.godotmaker/asset-generation/curation/`. See `references/asset-curation.md` for
+the record shape and allowed states.
+
+Register a stable entry only after curation selected the final artifact. An
+unresolved curation leaves the asset unregistered and its ASSETS.md row
+`MISSING`.
+
+## Runtime Ready Gate
+
+An asset is worker-consumable only when its entry is `ready`, which requires all
+of:
+
+1. The root index points at the entry and
+   `asset_generation_index.py --check-entries --check-files` passes.
+2. A native compiler produced the `godot_artifact` for the entry's
+   `source_layout.type`, and that file exists under the stable output directory.
+3. Required support files (region metadata, action metadata) exist beside the
+   artifact.
+4. The L0-L4 runner verified the asset.
+
+Steps 2 and 4 are not implemented. **No generated asset can reach `ready` today**,
+so `/gm-build` and worker dispatch currently receive no generated runtime assets.
+Registration, stable paths, and the pointer index are what this stage delivers;
+compilation and verification arrive with the compiler work.
+
+Compiler target by source layout, for when that work lands:
+
+1. `single`: `Texture2D`, no support file.
+2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.
+3. `region_atlas`: `AtlasTexture`, with atlas metadata beside the artifact.
+4. `theme_recipe`: `Theme`. `tile_atlas`: `TileSet`.
+5. `reference`: no artifact; never mark an ASSETS runtime row generated from it.
+
+Support files are named after the asset and live beside the artifact:
+
+```text
+assets/generated/<production_family>/<asset_id>/<asset_id>.json
+```
+
+That fixed name is the only support-metadata path a consumer needs, which is why
+the entry does not carry it. Keep detailed runtime metadata there, never in the
+entry and never in ASSETS.md.
+
+Atlas metadata shape (`assets/generated/ui-kit/main_atlas/main_atlas.json`):
+
+```json
+{
+  "version": 1,
+  "atlas_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.png",
   "regions": [
     {
       "name": "battle_button",
@@ -225,25 +327,15 @@ Atlas runtime metadata shape:
 }
 ```
 
-Action manifest summary:
-
-```json
-{
-  "frame_count": 4,
-  "metadata_path": "assets/sprites/player_idle.json"
-}
-```
-
-Action runtime metadata shape:
+Action metadata shape (`assets/generated/character-bundle/player/player.json`):
 
 ```json
 {
   "version": 1,
-  "runtime_artifact": "grid_sheet",
-  "sheet_path": "assets/sprites/player_idle.png",
+  "sheet_path": "res://assets/generated/character-bundle/player/player_sheet.png",
   "frame_count": 4,
   "frame_paths": [
-    "assets/sprites/player_idle_01.png"
+    "res://assets/generated/character-bundle/player/player_idle_01.png"
   ],
   "align": "feet",
   "shared_scale": true,
@@ -265,15 +357,14 @@ Use this shape for manager-to-producer handoff:
   "items": [
     {
       "asset_id": "<asset_id>",
-      "family": "<family>",
-      "production_shape": "<shape>",
+      "production_family": "<production_family>",
+      "source_layout_type": "<single|grid_sheet|region_atlas|theme_recipe|tile_atlas|reference>",
       "target_size": "<WIDTHxHEIGHT or null>",
       "target_aspect": "<WIDTH:HEIGHT or null>",
       "prompt_path": ".godotmaker/asset-generation/prompts/<asset_id>.txt",
-      "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
-      "final_path": "assets/<path>.png",
-      "runtime_artifact": "<reference|single|grid_sheet|region_atlas>",
-      "manifest_entry_path": ".godotmaker/asset-generation/work/manifest-entries/<asset_id>.json"
+      "raw_source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
+      "output_dir": "assets/generated/<production_family>/<asset_id>/",
+      "entry_draft_path": ".godotmaker/asset-generation/work/entries/<asset_id>.json"
     }
   ],
   "report_path": ".godotmaker/asset-generation/reports/<unit_id>.json"
@@ -292,9 +383,9 @@ Each production unit writes one report:
   "status": "done",
   "sequential_fallback_reason": null,
   "sources": [],
-  "finals": [],
+  "outputs": [],
   "prompts": [],
-  "manifest_entries": [],
+  "entry_drafts": [],
   "curation_reports": [],
   "failures": []
 }

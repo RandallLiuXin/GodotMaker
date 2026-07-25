@@ -147,10 +147,15 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 | `asset_source_generate.py` | 根据 `/gm-asset` spec 生成 API 后端 source 图片 |
 | `asset_layout_guide.py` | 为固定网格 source 图片创建 layout guide |
 | `asset_action_process.py` | 将角色动作 sheet 处理成规范化 frames 和 metadata |
-| `asset_action_manifest_entry.py` | 根据已处理动作 metadata 生成 frame-output manifest entry |
 | `asset_sheet_process.py` | 将生产形态的 2D source sheet 拆成 curation candidate |
 | `asset_curation_select.py` | 将选中的 curation candidate finalize 到运行时素材路径 |
-| `asset_curation_manifest_entry.py` | 根据已选中的 curation candidate 生成运行时 manifest entry |
+| `asset_action_entry_draft.py` | 根据已处理动作输出生成 action support metadata 和 v1 stable-entry draft |
+| `asset_curation_entry_draft.py` | 根据已选中的 curation candidate 生成 v1 stable-entry draft |
+| `asset_finalize_entry_draft.py` | 根据 asset_image_finalize.py 报告生成 v1 stable-entry draft |
+| `asset_output_path.py` | 解析并校验稳定输出目录 `assets/generated/<family>/<asset_id>/` |
+| `asset_stable_entry.py` | 校验并序列化一个 v1 generated-asset stable entry |
+| `asset_generation_index.py` | 校验并 upsert pointer-only 的 generated-asset root index |
+| `asset_assets_md_update.py` | 根据已注册的 stable entry 更新 ASSETS.md 行 |
 | `migrate.py` | 在任何非 MAJOR 升级时把未应用的迁移脚本应用到目标项目；也通过 `--new <slug>` 生成新脚本模板 |
 
 ### publish.py 如何串联一切

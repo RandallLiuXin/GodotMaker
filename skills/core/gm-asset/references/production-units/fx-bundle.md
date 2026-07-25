@@ -21,7 +21,7 @@ flashes, slash arcs, aura loops, dust, and detached effects.
    `tools/asset_sheet_process.py --snap-mode autoslice`.
 6. Use action metadata for animated frames or delivery sheets.
 7. Use selected transparent PNGs for one-frame foreground effects.
-8. Write manifest entries.
+8. Write stable entry drafts.
 
 ## Prompt Contract
 
@@ -74,8 +74,12 @@ and per-cell names that detected effects are assigned to. Match `--grid` and
 `--names` to the one-frame effect layout requested in the prompt.
 
 Select one-frame foreground effects with `tools/asset_curation_select.py`.
-Write `runtime_artifact: single` in selected one-frame manifest entries.
-Write `runtime_artifact: grid_sheet` in animated FX manifest entries.
+Draft selected one-frame entries with `tools/asset_curation_entry_draft.py`
+(`--production-family fx-bundle --source-layout single`).
+Draft animated FX entries with `tools/asset_action_entry_draft.py`
+(`--production-family fx-bundle`), which writes `source_layout.type: grid_sheet`.
+Both stop at `processing_status: source_ready` with no `godot_artifact`; the
+`SpriteFrames` compiler is not implemented yet.
 Do not use a source sheet as an independent final effect.
 
 ## Outputs
@@ -85,4 +89,4 @@ Do not use a source sheet as an independent final effect.
 3. GIF preview when animated
 4. processing report
 5. action metadata for animated FX
-6. manifest entry JSON
+6. stable entry drafts

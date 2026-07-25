@@ -21,7 +21,7 @@ small signs, lamps, and compact environmental dressing.
 6. Select final prop PNGs by default.
 7. Use a processed prop atlas only when the ASSETS row asks for a pack or atlas.
 8. Write runtime atlas metadata when final is a processed atlas.
-9. Write manifest entries.
+9. Write stable entry drafts.
 10. Mark rows generated only after final prop artifacts are ready.
 
 ## Prompt Contract
@@ -64,16 +64,31 @@ sources.
 Do not use a source pack as an independent final prop artifact.
 
 Select final props with `tools/asset_curation_select.py`.
-Create selected-candidate manifest entries with
-`tools/asset_curation_manifest_entry.py`.
+Build the stable entry draft deterministically:
+
+```bash
+python tools/asset_curation_entry_draft.py \
+  --report <report.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --tag <tag> \
+  --production-family compact-prop-pack \
+  --source-layout single \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
+```
+
+The draft stops at `processing_status: source_ready` with no `godot_artifact`.
+Do not hand-write it, and do not add an artifact to make the asset look finished:
+the native compiler that produces one is not implemented yet.
 
 For a requested prop atlas:
 
-1. Write a transparent processed atlas to the final path.
+1. Write a transparent processed atlas under
+   `assets/generated/compact-prop-pack/<asset_id>/`.
 2. Write runtime atlas metadata with named prop regions beside the final atlas.
-3. Write `runtime_artifact: region_atlas` in the manifest entry.
-4. Write `qc.atlas_metadata.metadata_path` and `region_count` in the manifest
-   entry.
+3. Draft the entry with `--source-layout region_atlas`.
+4. Leave `godot_artifact` absent until the atlas compiler lands.
 
 ## Outputs
 
@@ -82,4 +97,4 @@ For a requested prop atlas:
 3. selected final prop PNGs or processed prop atlas
 4. runtime atlas metadata when final is an atlas
 5. curation report
-6. manifest entry JSON
+6. stable entry drafts

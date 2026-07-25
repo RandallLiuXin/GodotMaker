@@ -27,7 +27,7 @@ overlays.
 7. Use `--snap-mode grid` only for deliberate equal-cell badge or slot sheets.
 8. Select final component PNGs or write a processed card atlas with runtime
    region metadata.
-9. Write manifest entries.
+9. Write stable entry drafts.
 10. Mark rows generated only after final card assets and metadata are ready.
 
 ## Prompt Contract
@@ -50,8 +50,21 @@ State:
 Large card or portrait frame as a single image:
 
 1. Generate the source at the target aspect.
-2. Run `tools/asset_image_finalize.py` with the required target geometry.
-3. Write `runtime_artifact: single` in the manifest entry.
+2. Run `tools/asset_image_finalize.py` with `--require-aspect`,
+   `--label <asset_id>`, and `--out assets/generated/card-kit/<asset_id>/<asset_id>.png`,
+   redirecting the report to
+   `.godotmaker/asset-generation/reports/<asset_id>_finalize.json`.
+3. Build the draft from that report:
+
+```bash
+python tools/asset_finalize_entry_draft.py \
+  --finalize-report .godotmaker/asset-generation/reports/<asset_id>_finalize.json \
+  --asset-id <asset_id> \
+  --tag <tag> \
+  --production-family card-kit \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
 
 Separated card components:
 
@@ -79,21 +92,36 @@ Final selected component PNG:
 python tools/asset_curation_select.py \
   --report <report.json> \
   --candidate <candidate_id_or_name> \
-  --final-path <final_path> \
+  --final-path assets/generated/card-kit/<final_asset_id>/<final_asset_id>.png \
   --asset-id <final_asset_id> \
   --project-root .
 ```
 
-Create selected-candidate manifest entries with
-`tools/asset_curation_manifest_entry.py`.
+Build the stable entry draft deterministically:
+
+```bash
+python tools/asset_curation_entry_draft.py \
+  --report <report.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --tag <tag> \
+  --production-family card-kit \
+  --source-layout single \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
+```
+
+The draft stops at `processing_status: source_ready` with no `godot_artifact`.
+Do not hand-write it, and do not add an artifact to make the asset look finished:
+the native compiler that produces one is not implemented yet.
 
 Final processed card atlas:
 
-1. Write a transparent processed atlas to the final path.
+1. Write a transparent processed atlas under
+   `assets/generated/card-kit/<asset_id>/`.
 2. Write runtime atlas metadata beside the atlas.
-3. Write `runtime_artifact: region_atlas` in the manifest entry.
-4. Write `qc.atlas_metadata.metadata_path` and `region_count` in the manifest
-   entry.
+3. Draft the entry with `--source-layout region_atlas`.
+4. Leave `godot_artifact` absent until the atlas compiler lands.
 
 ## Outputs
 
@@ -103,4 +131,4 @@ Final processed card atlas:
 4. selected final card PNGs or processed card atlas
 5. runtime atlas metadata when final is an atlas
 6. curation report when extraction is used
-7. manifest entry JSON
+7. stable entry drafts

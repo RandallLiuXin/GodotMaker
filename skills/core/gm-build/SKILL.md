@@ -44,7 +44,7 @@ Apply the resume gates in this order:
 Then read context:
 - `PLAN.md` → current tag's `**Tag:**` header + Tag Mechanics + Inherited Mechanics + Playable Unit + pending/in_progress/completed tasks (anything not `verified`)
 - `STRUCTURE.md` → architecture and build order (current tag scope: previous tags' systems already exist on disk and may be touched only when PLAN.md explicitly lists a refactor task for them)
-- `ASSETS.md` and `.godotmaker/asset-generation/manifest.json` → final runtime asset paths, `runtime_artifact`, and runtime metadata paths for visual tasks
+- `ASSETS.md` and `.godotmaker/asset-generation/manifest.json` → the pointer index to generated assets; resolve each `entry_path` to a stable entry for `godot_artifact`, `source_layout`, and support metadata paths for visual tasks
 - `MEMORY.md` index + sub-files (cross-tag accumulating notebook) → avoid repeating known mistakes
 - `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring
 

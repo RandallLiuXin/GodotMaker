@@ -27,7 +27,7 @@ Do not read image binaries in the manager context.
 6. Group generated visual work into production units.
 7. Choose one production-unit doc for each unit.
 8. Choose one provider doc for each unit.
-9. Reserve source, final, prompt, report, and manifest-entry paths.
+9. Reserve source, stable output, prompt, report, and entry-draft paths.
 10. Record dependencies between units.
 11. Dispatch independent units in batches of up to 3.
 12. Keep bundle work in one production unit.
@@ -38,9 +38,9 @@ Current-tag visual anchors are:
 
 1. User-provided image assets accepted as `direct_runtime`.
 2. Current-tag `references/scene_*.png` files with matching reports.
-3. Current-tag generated `screen-reference` or `style_reference` manifest
+3. Current-tag generated `screen-reference` or `style_reference` stable
    entries whose files exist.
-4. Current-tag canonical character or UI reference images whose manifest entries
+4. Current-tag canonical character or UI reference images whose stable entries
    are `ready`.
 
 When no visual anchor exists:
@@ -127,12 +127,12 @@ Record these fields for each generated visual production unit:
 4. `input_rows`
 5. `dependencies`
 6. `source_paths`
-7. `final_paths`
+7. `output_dirs`
 8. `prompt_paths`
 9. `report_path`
-10. `manifest_entry_paths`
-11. `runtime_artifacts`
-12. `metadata_paths`
+10. `entry_draft_paths`
+11. `source_layouts`
+12. `support_file_paths`
 
 ## Dependency Order
 
@@ -143,7 +143,7 @@ Use this order when units depend on each other:
 3. `character-bundle` canonicals, `ui-kit`, and `card-kit` source sheets.
 4. `character-bundle` actions, `fx-bundle`, `compact-prop-pack`,
    `platform-strip`, and `scene-prop-set`.
-5. Curation and manifest update.
+5. Curation and stable entry registration.
 
 ## Batch Rules
 
@@ -157,16 +157,17 @@ Use this order when units depend on each other:
 
 Update current-tag rows after producer reports:
 
-1. `generated`: final runtime asset exists and manifest validation passed.
+1. `generated`: a `ready` stable entry is registered and the root-index gate
+   passed.
 2. `provided`: user-provided file matched the row.
 3. `deferred`: unprovided audio or intentionally skipped asset.
-4. `MISSING`: source exists but final runtime asset or curation is incomplete.
+4. `MISSING`: source exists but the runtime output or curation is incomplete.
 
 Update `Generation Params` with:
 
-1. manifest entry pointer
+1. stable entry pointer
 
-Do not duplicate prompt paths, source paths, runtime artifact, metadata paths,
+Do not duplicate prompt paths, source paths, source layout, support file paths,
 or curation reports in `ASSETS.md`.
 
 Update the Visual Asset Contract for gameplay-visible final assets.
