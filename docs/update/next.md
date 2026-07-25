@@ -25,6 +25,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - `/gm-asset` now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body `runtime_artifact` manifest.
 - Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.
+- An ASSETS.md row reaches `generated` only from a `ready` non-reference stable entry, so an unfinished or failed asset can no longer look complete to `/gm-build`.
+- `asset_generation_index.py --check-files` verifies that every registered source and artifact still exists, catching an asset deleted after registration.
 
 ## Fixed
 

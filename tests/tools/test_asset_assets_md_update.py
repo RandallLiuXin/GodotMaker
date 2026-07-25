@@ -149,6 +149,61 @@ def test_update_assets_md_rejects_legacy_entry(tmp_path):
     assert "| generated |" not in assets_md.read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize("status", ["pending", "source_ready", "compiled", "failed"])
+def test_update_assets_md_rejects_unready_entry(tmp_path, status):
+    """`generated` means finished; a mid-flight or failed asset must not claim it.
+
+    A `failed` or `source_ready` entry can still pass schema validation and have
+    its `source_layout` file on disk, so without an explicit readiness gate the
+    row would be promoted and `/gm-build` would bind an unfinished asset.
+    """
+    assets_md = tmp_path / "ASSETS.md"
+    write_assets_md(assets_md)
+    touch_asset_files(tmp_path, "player_idle")
+    entry = make_entry(processing_status=status)
+    if status in {"pending", "source_ready", "failed"}:
+        # These statuses do not require an artifact; drop it so the entry is a
+        # realistic mid-flight record rather than an artificially complete one.
+        entry.pop("godot_artifact")
+    entry_file = write_entry(tmp_path, entry)
+
+    with pytest.raises(AssetsMdUpdateError, match=f"processing_status is {status}"):
+        update_assets_md(assets_md, [entry_file])
+
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
+def test_update_assets_md_rejects_reference_entry(tmp_path):
+    """A screen reference is never handed to a worker as a runtime asset."""
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "| ID | Tag | Name | Type | Size | Generation Params | Path | Status |\n"
+        "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
+        f"| 1 | {TAG} | scene_main | reference | 1280x720 | — | references/scene_main.png | MISSING |\n",
+        encoding="utf-8",
+    )
+    touch(tmp_path, "references/scene_main.png")
+    entry_file = write_entry(
+        tmp_path,
+        {
+            "version": 1,
+            "asset_id": "scene_main",
+            "tag": TAG,
+            "production_family": "screen-reference",
+            "source_layout": {
+                "type": "reference",
+                "path": "res://references/scene_main.png",
+            },
+            "processing_status": "ready",
+        },
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match="is a reference entry"):
+        update_assets_md(assets_md, [entry_file])
+
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
 def test_update_assets_md_rejects_missing_artifact_file(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
     write_assets_md(assets_md)

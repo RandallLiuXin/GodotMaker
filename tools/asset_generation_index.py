@@ -134,10 +134,22 @@ def check_index(
     *,
     project_root: Path | None = None,
     check_entries: bool = False,
+    check_files: bool = False,
 ) -> dict[str, Any]:
-    """Validate one root index and return a summary."""
+    """Validate one root index and return a summary.
+
+    ``check_entries`` loads and schema-validates every referenced stable entry.
+    ``check_files`` additionally requires each entry's source and artifact to
+    exist on disk, which is what makes this the full handoff gate: a registered
+    asset whose files were deleted afterwards fails here instead of reaching a
+    worker as a dangling path.
+    """
     index_path = Path(index_path)
     root = Path(project_root) if project_root is not None else index_path.parent.parent.parent
+
+    # Checking files without loading the entries is meaningless, so treat
+    # ``check_files`` alone as the full gate rather than a silent no-op.
+    check_entries = check_entries or check_files
 
     items = _validate_index_data(_load_json_index(index_path))
 
@@ -149,7 +161,11 @@ def check_index(
             if not resolved.exists():
                 raise GenerationIndexError(f"Entry file not found: {entry_path}")
             try:
-                entry = validate_entry(_load_json_index(resolved), project_root=root)
+                entry = validate_entry(
+                    _load_json_index(resolved),
+                    project_root=root,
+                    check_files=check_files,
+                )
             except StableEntryError as exc:
                 raise GenerationIndexError(f"{entry_path}: {exc}") from exc
             if entry.get("asset_id") != asset_id or entry.get("tag") != tag:
@@ -163,6 +179,7 @@ def check_index(
         "path": str(index_path),
         "entry_count": len(items),
         "check_entries": check_entries,
+        "check_files": check_files,
         "entry_checks": entry_checks,
     }
 
@@ -213,6 +230,11 @@ def update_index(
     ``asset_stable_entry.write_entry``). The rewritten index is validated with
     ``check_entries=True`` before the atomic replace, so a run can never write a
     dangling or corrupt pointer.
+
+    Registration deliberately stays structural: an entry may legitimately be
+    registered before its files exist (``pending``, ``source_ready``). Proving
+    the handoff files are on disk is the job of the ``check_files`` gate, which
+    ``/gm-asset`` runs after every upsert.
     """
     index_path = Path(index_path)
     root = Path(project_root) if project_root is not None else index_path.parent.parent.parent
@@ -293,6 +315,14 @@ def _main() -> int:
         action="store_true",
         help="Load and validate each referenced stable entry file",
     )
+    parser.add_argument(
+        "--check-files",
+        action="store_true",
+        help=(
+            "Full handoff gate: validate each referenced stable entry and verify "
+            "its source and artifact files exist (implies --check-entries)"
+        ),
+    )
     args = parser.parse_args()
 
     try:
@@ -307,6 +337,7 @@ def _main() -> int:
                 Path(args.index),
                 project_root=args.project_root,
                 check_entries=args.check_entries,
+                check_files=args.check_files,
             )
     except (GenerationIndexError, StableEntryError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))

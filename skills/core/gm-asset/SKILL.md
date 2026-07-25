@@ -233,18 +233,24 @@ python tools/asset_generation_index.py --project-root . \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-6. Run the full root-index gate:
+6. Run the full root-index gate. `--check-files` verifies that every registered
+   entry's source and artifact still exist, so it is required here:
 
 ```bash
-python tools/asset_generation_index.py --project-root . --check-entries
+python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
 
-7. Update the matching ASSETS.md rows only after the root-index gate passes:
+7. Update the matching ASSETS.md rows only after the root-index gate passes, and
+   only for `ready` non-reference entries:
 
 ```bash
 python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
+
+The updater rejects any other entry. Leave a `pending`, `source_ready`,
+`compiled`, or `failed` asset's row `MISSING`, and update reference rows in
+Step 6 instead.
 
 8. Redispatch failed or incomplete production units once when the failure is
    actionable from the report.
@@ -258,11 +264,15 @@ pass.
 For current-tag rows only:
 
 1. Confirm rows whose entry is `ready` are `generated`.
-2. Mark provided files `provided`.
-3. Mark unprovided audio `deferred`.
-4. Keep rows without a registered `ready` entry as `MISSING`.
-5. Confirm `Generation Params` include the stable entry pointer only.
-6. Update the Visual Asset Contract for gameplay-visible generated assets.
+2. Mark reference rows whose `screen-reference` entry is registered and `ready`
+   as `generated`, with the stable entry pointer in `Generation Params`. A
+   reference is not a runtime asset, so `asset_assets_md_update.py` refuses it
+   and this is the only place it is written.
+3. Mark provided files `provided`.
+4. Mark unprovided audio `deferred`.
+5. Keep rows without a registered `ready` entry as `MISSING`.
+6. Confirm `Generation Params` include the stable entry pointer only.
+7. Update the Visual Asset Contract for gameplay-visible generated assets.
 
 Do not mark source sheets, references, or curation candidates as final runtime
 assets unless the production-unit report selected them as final outputs.

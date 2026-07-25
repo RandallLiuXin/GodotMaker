@@ -181,8 +181,12 @@ Manual entry point:
 ```bash
 python tools/asset_generation_index.py --project-root . \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
-python tools/asset_generation_index.py --project-root . --check-entries
+python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
+
+`--check-entries` schema-validates each referenced entry. `--check-files` adds
+the on-disk check for every source and artifact and implies `--check-entries`,
+so it is the full handoff gate and catches an asset deleted after registration.
 
 An old `runtime_artifact` manifest that stores full entry bodies under `assets`
 is rejected with a regeneration message; there is no migration or compatibility
@@ -191,9 +195,10 @@ read.
 ## asset_assets_md_update.py
 
 `asset_assets_md_update.py` promotes ASSETS.md rows from registered stable
-entries. It revalidates the entry and its referenced files first, so a row can
-only reach `generated` once the asset really exists on disk, and it records the
-entry pointer instead of duplicating any path into the row.
+entries. It revalidates the entry and its referenced files first and accepts only
+a `ready` non-reference entry, so a row can reach `generated` only once the asset
+is a finished, worker-consumable runtime asset. It records the entry pointer
+instead of duplicating any path into the row.
 
 Manual entry point:
 

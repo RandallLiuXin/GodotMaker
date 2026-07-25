@@ -6,6 +6,10 @@ Each input is one stable entry at its canonical
 validated against the v1 schema before any row is touched, and the row records
 the entry pointer — never a duplicated path snapshot — so the entry stays the
 single source of truth for the asset.
+
+Only an entry that is genuinely worker-consumable may promote a row. ASSETS.md
+``generated`` is what tells ``/gm-build`` a row's asset is finished, so this tool
+fails closed on anything else.
 """
 from __future__ import annotations
 
@@ -18,10 +22,14 @@ from pathlib import Path
 from typing import Any
 
 from asset_stable_entry import (
+    REFERENCE_LAYOUTS,
     StableEntryError,
     entry_relative_path,
     validate_entry,
 )
+
+# The only readiness state that means "a worker can load this asset now".
+PROMOTABLE_STATUS = "ready"
 
 
 class AssetsMdUpdateError(Exception):
@@ -33,6 +41,29 @@ def _load_json(path: Path) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         raise AssetsMdUpdateError(f"Invalid JSON: {path}") from exc
+
+
+def _assert_promotable(entry: dict[str, Any], entry_path: Path) -> None:
+    """Reject any entry that is not a finished runtime asset.
+
+    ``validate_entry`` proves the entry is well-formed and its files exist, but a
+    well-formed entry can still be mid-flight (``pending``, ``source_ready``,
+    ``compiled``), failed outright, or a screen reference that is never handed to
+    a worker as a runtime game asset. Marking such a row ``generated`` would tell
+    ``/gm-build`` to bind an asset that is not finished, so the precondition is
+    enforced here rather than left to the caller.
+    """
+    status = entry["processing_status"]
+    if status != PROMOTABLE_STATUS:
+        raise AssetsMdUpdateError(
+            f"{entry_path} processing_status is {status}; only a "
+            f"{PROMOTABLE_STATUS} entry may update an ASSETS.md row"
+        )
+    if entry["source_layout"]["type"] in REFERENCE_LAYOUTS:
+        raise AssetsMdUpdateError(
+            f"{entry_path} is a reference entry; a reference is not a runtime "
+            "asset, so /gm-asset updates its row directly instead"
+        )
 
 
 def _load_entries(
@@ -53,6 +84,7 @@ def _load_entries(
             entry = validate_entry(data, project_root=project_root, check_files=True)
         except StableEntryError as exc:
             raise AssetsMdUpdateError(f"{entry_path}: {exc}") from exc
+        _assert_promotable(entry, entry_path)
         tag = entry["tag"]
         asset_id = entry["asset_id"]
         key = (tag, asset_id)

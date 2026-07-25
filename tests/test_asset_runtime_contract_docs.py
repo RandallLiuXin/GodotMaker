@@ -278,9 +278,17 @@ def test_asset_stage_runs_stable_entry_gate_before_assets_update():
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
     assert "python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write --check-files" in skill
-    assert "python tools/asset_generation_index.py --project-root . --check-entries" in skill
     assert "python tools/asset_assets_md_update.py" in skill
     assert "Update the matching ASSETS.md rows only after the root-index gate passes" in skill
+
+    # The documented gate must be the file-checking one. `--check-entries` alone
+    # is schema-only and would pass on an asset deleted after registration.
+    for doc in (skill, runtime):
+        assert (
+            "python tools/asset_generation_index.py --project-root . --check-entries --check-files"
+            in doc
+        )
+        assert "--check-entries\n```" not in doc
     assert "Validate stable entry content and referenced files." in producer
     assert "Do not switch providers." in producer
     assert "Configured Provider:" in producer

@@ -152,14 +152,16 @@ python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write -
 ```bash
 python tools/asset_generation_index.py --project-root . \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
-python tools/asset_generation_index.py --project-root . --check-entries
+python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
+
+`--check-entries` 只做 schema 校验。`--check-files` 会额外检查每个 source 和 artifact 是否真的在磁盘上，并隐含 `--check-entries`，因此它才是完整的 handoff gate，能抓到注册之后被删除的素材。
 
 把完整 entry 内容存在 `assets` 键下的旧 `runtime_artifact` manifest 会被拒绝并提示重新生成；不提供迁移或兼容读取。
 
 ## asset_assets_md_update.py
 
-`asset_assets_md_update.py` 会根据已注册的 stable entry 更新 ASSETS.md 行。它先重新校验 entry 和被引用的文件，所以只有素材确实存在于磁盘上时行才会变成 `generated`；行里只记录 entry 指针，不复制任何路径。
+`asset_assets_md_update.py` 会根据已注册的 stable entry 更新 ASSETS.md 行。它先重新校验 entry 和被引用的文件，并且只接受 `ready` 的非 reference entry，所以只有素材确实是可被 worker 消费的成品时，行才会变成 `generated`；行里只记录 entry 指针，不复制任何路径。
 
 手动入口：
 

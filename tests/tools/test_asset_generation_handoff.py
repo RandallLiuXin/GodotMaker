@@ -280,6 +280,47 @@ def test_missing_entry_file_fails_the_index_gate(tmp_path):
         )
 
 
+@pytest.mark.parametrize(
+    ("relative", "message"),
+    [
+        (artifact_relative(), "godot_artifact.path not found"),
+        (source_relative(), "source_layout.path not found"),
+    ],
+    ids=["artifact", "source"],
+)
+def test_deleting_a_registered_handoff_file_fails_the_gate(tmp_path, relative, message):
+    """The gate must prove the files it gates on, not just the schema.
+
+    Registration succeeds while the asset is on disk; deleting it afterwards
+    leaves a structurally perfect index whose pointer resolves to a dangling
+    path. `--check-entries` alone still passes, which is exactly why the
+    documented gate adds `--check-files`.
+    """
+    produce_asset(tmp_path)
+    register(tmp_path, make_entry())
+    index_path = tmp_path / INDEX_RELATIVE
+    (tmp_path / relative).unlink()
+
+    schema_only = check_index(index_path, project_root=tmp_path, check_entries=True)
+    assert schema_only["ok"] is True, "schema-only pass is not the handoff gate"
+
+    with pytest.raises(GenerationIndexError, match=re.escape(message)):
+        check_index(index_path, project_root=tmp_path, check_files=True)
+
+
+def test_check_files_alone_is_the_full_gate(tmp_path):
+    """`--check-files` implies `--check-entries` so it can never be a no-op."""
+    produce_asset(tmp_path)
+    register(tmp_path, make_entry())
+
+    summary = check_index(
+        tmp_path / INDEX_RELATIVE, project_root=tmp_path, check_files=True
+    )
+    assert summary["check_entries"] is True
+    assert summary["check_files"] is True
+    assert summary["entry_checks"] == 1
+
+
 def test_index_pointer_must_be_the_canonical_entry_path(tmp_path):
     produce_asset(tmp_path)
     register(tmp_path, make_entry())
@@ -333,9 +374,19 @@ def test_documented_cli_chain_registers_and_validates(tmp_path):
     assert upserted.returncode == 0, upserted.stdout + upserted.stderr
     assert json.loads(upserted.stdout)["upserted"] == [ASSET_ID]
 
-    gate = run(str(INDEX_TOOL), "--project-root", ".", "--check-entries")
+    gate = run(
+        str(INDEX_TOOL), "--project-root", ".", "--check-entries", "--check-files"
+    )
     assert gate.returncode == 0, gate.stdout + gate.stderr
     assert json.loads(gate.stdout)["entry_checks"] == 1
+
+    # The same gate turns red the moment the registered artifact disappears.
+    (tmp_path / artifact_relative()).unlink()
+    broken = run(
+        str(INDEX_TOOL), "--project-root", ".", "--check-entries", "--check-files"
+    )
+    assert broken.returncode == 1
+    assert "godot_artifact.path not found" in json.loads(broken.stdout)["error"]
 
 
 def test_cli_gate_fails_on_a_legacy_manifest(tmp_path):

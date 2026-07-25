@@ -177,11 +177,15 @@ python tools/asset_generation_index.py --project-root . \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-Validate the whole index and every referenced entry:
+Validate the whole index, every referenced entry, and every handoff file:
 
 ```bash
-python tools/asset_generation_index.py --project-root . --check-entries
+python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
+
+`--check-entries` alone is a schema-only pass. `--check-files` is what proves the
+registered source and artifact are still on disk, so the gate catches an asset
+whose files were deleted after registration. Use both.
 
 Producer reports list stable entry drafts. The manager writes each entry, upserts
 its pointer, and runs the root-index gate before updating ASSETS.md.
@@ -192,6 +196,10 @@ Update matching ASSETS.md rows with:
 python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
+
+The updater promotes a row to `generated` only for a `ready` non-reference entry
+and fails closed on anything else, because `generated` is what tells `/gm-build`
+the row's asset is finished. Reference rows are written by `/gm-asset` Step 6.
 
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.
@@ -216,7 +224,7 @@ An asset is worker-consumable only when its entry is `ready`:
 3. Required support files (region metadata, action metadata) exist beside the
    artifact.
 4. The root index points at the entry and
-   `asset_generation_index.py --check-entries` passes.
+   `asset_generation_index.py --check-entries --check-files` passes.
 
 Ready gate by source layout:
 
