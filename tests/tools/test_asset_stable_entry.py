@@ -72,6 +72,17 @@ def test_every_non_reference_layout_has_an_artifact_type():
     instead of a contract error.
     """
     assert set(LAYOUT_ARTIFACT_TYPES) == SOURCE_LAYOUT_TYPES - REFERENCE_LAYOUTS
+    assert all(
+        isinstance(artifact_types, tuple) and artifact_types
+        for artifact_types in LAYOUT_ARTIFACT_TYPES.values()
+    )
+    assert LAYOUT_ARTIFACT_TYPES == {
+        "single": ("Texture2D", "StyleBoxTexture"),
+        "grid_sheet": ("SpriteFrames",),
+        "region_atlas": ("AtlasTexture", "StyleBoxTexture"),
+        "theme_recipe": ("Theme",),
+        "tile_atlas": ("TileSet",),
+    }
 
 
 @pytest.mark.parametrize(
@@ -96,22 +107,6 @@ def test_matching_artifact_type_is_accepted(layout, artifact_type):
     validate_entry(entry)
 
 
-@pytest.mark.parametrize("layout", ["single", "region_atlas"])
-def test_styleboxtexture_artifact_type_is_accepted_for_compatible_layouts(layout):
-    entry = valid_entry(
-        source_layout={
-            "type": layout,
-            "path": "res://assets/generated/character-bundle/player/player.png",
-        },
-        godot_artifact={
-            "type": "StyleBoxTexture",
-            "path": "res://assets/generated/character-bundle/player/player.tres",
-        },
-    )
-
-    validate_entry(entry)
-
-
 @pytest.mark.parametrize(
     ("layout", "artifact_type"),
     [
@@ -125,6 +120,9 @@ def test_styleboxtexture_artifact_type_is_accepted_for_compatible_layouts(layout
         ("grid_sheet", "AtlasTexture"),
         ("region_atlas", "SpriteFrames"),
         ("single", "Resource"),
+        ("grid_sheet", "StyleBoxTexture"),
+        ("theme_recipe", "StyleBoxTexture"),
+        ("tile_atlas", "StyleBoxTexture"),
     ],
 )
 def test_mismatched_artifact_type_is_rejected(layout, artifact_type):

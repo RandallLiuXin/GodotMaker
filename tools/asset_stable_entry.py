@@ -72,7 +72,8 @@ PROCESSING_STATUSES = {
 # Statuses that require a compiled ``godot_artifact`` for non-reference assets.
 ARTIFACT_REQUIRED_STATUSES = {"compiled", "ready"}
 
-# ``godot_artifact.type`` is a Godot ClassDB type, not a closed enum.
+# ``godot_artifact.type`` has the shape of a Godot ClassDB identifier, while
+# the layout-to-type compatibility relation below is deliberately closed.
 GODOT_TYPE_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 # The Godot resource types each non-reference layout may compile to. The

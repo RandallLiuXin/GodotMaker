@@ -296,9 +296,9 @@ compilation and verification arrive with the compiler work.
 
 Compiler target compatibility by source layout, for when that work lands:
 
-1. `single`: `Texture2D` or `StyleBoxTexture`.
+1. `single`: `Texture2D`, no support file; or `StyleBoxTexture`.
 2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.
-3. `region_atlas`: `AtlasTexture` or `StyleBoxTexture`.
+3. `region_atlas`: `AtlasTexture` or `StyleBoxTexture`, with atlas metadata beside the artifact.
 4. `theme_recipe`: `Theme`. `tile_atlas`: `TileSet`.
 5. `reference`: no artifact; never mark an ASSETS runtime row generated from it.
 
