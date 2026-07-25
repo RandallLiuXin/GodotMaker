@@ -28,6 +28,7 @@ from .registry import (
     Compiler,
     CompilerRegistry,
     CompilerRoute,
+    is_same_file,
 )
 
 
@@ -49,6 +50,7 @@ __all__ = [
     "CompilerRoute",
     "GodotArtifact",
     "build_default_registry",
+    "is_same_file",
     "require_text",
     "texture2d",
 ]

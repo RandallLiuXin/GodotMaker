@@ -65,12 +65,15 @@ def _content_digest(path: Path) -> bytes | None:
     return digest.digest()
 
 
-def _is_same_file(left: Path, right: Path) -> bool:
+def is_same_file(left: Path, right: Path) -> bool:
     """True when two paths name one file: a hard link, or a case alias.
 
     Distinct path strings are not distinct files. ``os.link`` gives a compiler a
     second name for its source image, and on a case-insensitive filesystem
     ``Hero.png`` and ``hero.png`` are already one file without any linking.
+
+    Exported because the readiness ladder re-checks the same rule on an entry it
+    did not compile itself, and a second copy of it could drift.
     """
     try:
         return left.samefile(right)
@@ -201,7 +204,7 @@ class CompilerRegistry:
             )
         artifact_file = request.artifact_file()
         if route.writes_artifact:
-            if _is_same_file(source_file, artifact_file):
+            if is_same_file(source_file, artifact_file):
                 raise CompilerError(
                     f"{route.compiler_id} may not publish source_path as "
                     f"artifact_path ({request.artifact_path})"
@@ -242,7 +245,7 @@ class CompilerRegistry:
         source_file = request.source_file()
         if not source_file.is_file():
             raise CompilerError(f"source_path not found after compilation: {request.source_path}")
-        if route.writes_artifact and _is_same_file(source_file, artifact_file):
+        if route.writes_artifact and is_same_file(source_file, artifact_file):
             raise CompilerError(
                 f"{route.compiler_id} may not publish source_path as "
                 f"artifact_path ({request.artifact_path})"
