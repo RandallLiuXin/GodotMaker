@@ -511,8 +511,34 @@ def test_entry_drafts_come_from_deterministic_builders():
     for doc in (skill, runtime):
         assert "tools/asset_action_entry_draft.py" in doc
         assert "tools/asset_curation_entry_draft.py" in doc
-    assert "Reject a hand-written draft" in skill
-    assert "Do not hand-write a draft or its support metadata" in runtime
+        # Reference-only production needs a builder too, or Step 5's
+        # "no hand-written drafts" rule would leave screen-reference with no
+        # executable registration path at all.
+        assert "tools/asset_finalize_entry_draft.py" in doc
+    assert "reject a hand-written draft" in skill
+    assert "do not hand-write a draft or its support metadata" in runtime
+
+
+def test_every_production_unit_routes_through_a_draft_builder():
+    """No production unit may be left without an executable draft path."""
+    unit_dir = REPO_ROOT / "skills/core/gm-asset/references/production-units"
+    builders = (
+        "asset_action_entry_draft.py",
+        "asset_curation_entry_draft.py",
+        "asset_finalize_entry_draft.py",
+    )
+    units = sorted(unit_dir.glob("*.md"))
+    assert units, "production-unit docs disappeared"
+
+    missing = [
+        path.name
+        for path in units
+        if not any(builder in path.read_text(encoding="utf-8") for builder in builders)
+    ]
+    assert not missing, (
+        "these production units have no deterministic draft builder: "
+        + ", ".join(missing)
+    )
 
 
 def test_gm_asset_registers_through_the_stable_entry_tools_only():

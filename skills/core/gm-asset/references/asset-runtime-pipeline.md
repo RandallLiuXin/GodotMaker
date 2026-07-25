@@ -173,9 +173,9 @@ straight from the root index.
 ## Registration Commands
 
 Build the entry draft with the deterministic builder for the production path.
-Do not hand-write a draft or its support metadata: the builders are what enforce
-frame count, edge-touch rejection, scale reference, curation selection, and
-stable-path containment.
+Every production path has one; do not hand-write a draft or its support metadata.
+The builders are what enforce frame count, edge-touch rejection, scale reference,
+curation selection, aspect validation, and stable-path containment.
 
 Processed action output (`character-bundle`, `fx-bundle`):
 
@@ -200,6 +200,23 @@ python tools/asset_curation_entry_draft.py \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
+
+One finalized image (`screen-reference`, `background-map`, and single card or
+portrait frames):
+
+```bash
+python tools/asset_finalize_entry_draft.py \
+  --finalize-report <finalize_report.json> \
+  --asset-id <asset_id> --tag <tag> --production-family <production_family> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+Capture the report by redirecting `asset_image_finalize.py` stdout. The builder
+requires that run to have succeeded with `--require-aspect` inside tolerance and
+`--label <asset_id>`. It derives the layout from the family — `reference` pinned
+to `references/` for `screen-reference`, `single` pinned to the stable output
+directory for every other family.
 
 Write one validated entry to its canonical path:
 

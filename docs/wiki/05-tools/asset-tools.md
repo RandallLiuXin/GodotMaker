@@ -13,10 +13,11 @@ Primary pipeline tools:
 5. `asset_curation_select.py`
 6. `asset_action_entry_draft.py`
 7. `asset_curation_entry_draft.py`
-8. `asset_output_path.py`
-9. `asset_stable_entry.py`
-10. `asset_generation_index.py`
-11. `asset_assets_md_update.py`
+8. `asset_finalize_entry_draft.py`
+9. `asset_output_path.py`
+10. `asset_stable_entry.py`
+11. `asset_generation_index.py`
+12. `asset_assets_md_update.py`
 
 ## asset_source_generate.py
 
@@ -188,6 +189,28 @@ python tools/asset_curation_entry_draft.py \
   --source-layout single \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
+```
+
+## asset_finalize_entry_draft.py
+
+`asset_finalize_entry_draft.py` turns one `asset_image_finalize.py` report into a
+v1 stable-entry draft. Every path that ends in a single finalized image uses it:
+screen references, backgrounds and parallax plates, and single card or portrait
+frames. It requires the finalize run to have succeeded with `--require-aspect`
+inside tolerance and `--label <asset_id>`, and derives the layout from the
+family — `reference` pinned to `references/` for `screen-reference`, `single`
+pinned to the stable output directory for every other family.
+
+Manual entry point:
+
+```bash
+python tools/asset_finalize_entry_draft.py \
+  --finalize-report <finalize_report.json> \
+  --asset-id <asset_id> \
+  --tag <tag> \
+  --production-family screen-reference \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
 
 ## asset_output_path.py

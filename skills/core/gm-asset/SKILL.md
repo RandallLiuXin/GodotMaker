@@ -219,10 +219,11 @@ For each `asset-producer` report:
    files exist when claimed.
 3. Confirm every entry draft came from a deterministic builder —
    `tools/asset_action_entry_draft.py` for processed action output,
-   `tools/asset_curation_entry_draft.py` for a selected curation candidate.
-   Reject a hand-written draft: the builders are what enforce frame count,
-   edge-touch rejection, scale reference, curation selection, and stable-path
-   containment.
+   `tools/asset_curation_entry_draft.py` for a selected curation candidate,
+   `tools/asset_finalize_entry_draft.py` for a finalized screen reference.
+   Every production path has one, so reject a hand-written draft: the builders
+   are what enforce frame count, edge-touch rejection, scale reference, curation
+   selection, aspect validation, and stable-path containment.
 4. Write each draft to its canonical stable-entry path:
 
 ```bash

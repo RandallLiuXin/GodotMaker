@@ -15,7 +15,8 @@ TAG = "v0.1.0"
 
 
 def artifact_relative(asset_id: str, family: str = "character-bundle") -> str:
-    return f"{stable_output_dir(family, asset_id)}/{asset_id}.png"
+    """The compiled SpriteFrames a grid_sheet becomes, not its source image."""
+    return f"{stable_output_dir(family, asset_id)}/{asset_id}.tres"
 
 
 def source_relative(asset_id: str, family: str = "character-bundle") -> str:
@@ -33,7 +34,7 @@ def make_entry(asset_id="player_idle", family="character-bundle", **overrides):
             "path": f"res://{source_relative(asset_id, family)}",
         },
         "godot_artifact": {
-            "type": "Texture2D",
+            "type": "SpriteFrames",
             "path": f"res://{artifact_relative(asset_id, family)}",
         },
         "processing_status": "ready",

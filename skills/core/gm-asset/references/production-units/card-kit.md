@@ -50,10 +50,21 @@ State:
 Large card or portrait frame as a single image:
 
 1. Generate the source at the target aspect.
-2. Run `tools/asset_image_finalize.py` with the required target geometry,
-   writing the result under `assets/generated/card-kit/<asset_id>/`.
-3. Write `source_layout.type: single` and `processing_status: source_ready`
-   in the stable entry draft, with no `godot_artifact`.
+2. Run `tools/asset_image_finalize.py` with `--require-aspect`,
+   `--label <asset_id>`, and `--out assets/generated/card-kit/<asset_id>/<asset_id>.png`,
+   redirecting the report to
+   `.godotmaker/asset-generation/reports/<asset_id>_finalize.json`.
+3. Build the draft from that report:
+
+```bash
+python tools/asset_finalize_entry_draft.py \
+  --finalize-report .godotmaker/asset-generation/reports/<asset_id>_finalize.json \
+  --asset-id <asset_id> \
+  --tag <tag> \
+  --production-family card-kit \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
 
 Separated card components:
 

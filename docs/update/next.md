@@ -22,6 +22,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added a standalone asset-skill invocation and result contract under `skills/assets/_shared/` with declarative JSON schemas, valid samples, a dependency-free checker, and fail-closed tests (#98).
 - Added `tools/asset_action_entry_draft.py`, which builds action support metadata and a v1 stable-entry draft while enforcing frame count, empty edge-touch frames, a recorded scale reference, and stable-path containment.
 - Added `tools/asset_curation_entry_draft.py`, which builds a v1 stable-entry draft from a selected curation candidate while enforcing candidate selection, unambiguous naming, coherent selection counts, and stable-path containment.
+- Added `tools/asset_finalize_entry_draft.py`, which builds a v1 stable-entry draft from an `asset_image_finalize.py` report for screen references, backgrounds, and single card or portrait frames while enforcing aspect validation, asset-label binding, and path containment.
 
 ## Changed
 
@@ -31,6 +32,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `asset_generation_index.py --check-files` verifies that every registered source and artifact still exists, catching an asset deleted after registration.
 - Generated assets now stop at `source_ready`: the native compilers and the L0-L4 runner are not implemented, so `/gm-asset` registers stable entries but produces no worker-consumable runtime asset and leaves generated ASSETS.md rows `MISSING`.
 - `godot_artifact` is written only by a native compiler, so a `grid_sheet` can no longer be published as a `Texture2D` standing in for its unbuilt `SpriteFrames`.
+- The stable-entry schema now binds each `source_layout.type` to the Godot resource it compiles to, so a mismatched `godot_artifact.type` is rejected instead of reaching a worker.
 
 ## Fixed
 

@@ -11,10 +11,11 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 5. `asset_curation_select.py`
 6. `asset_action_entry_draft.py`
 7. `asset_curation_entry_draft.py`
-8. `asset_output_path.py`
-9. `asset_stable_entry.py`
-10. `asset_generation_index.py`
-11. `asset_assets_md_update.py`
+8. `asset_finalize_entry_draft.py`
+9. `asset_output_path.py`
+10. `asset_stable_entry.py`
+11. `asset_generation_index.py`
+12. `asset_assets_md_update.py`
 
 ## asset_source_generate.py
 
@@ -158,6 +159,22 @@ python tools/asset_curation_entry_draft.py \
   --source-layout single \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
+```
+
+## asset_finalize_entry_draft.py
+
+`asset_finalize_entry_draft.py` 会把一次 `asset_image_finalize.py` 的报告转换成 v1 stable-entry draft。所有以单张 finalize 图片收尾的路径都用它：screen reference、背景与视差层，以及单张卡框或立绘框。它要求 finalize 运行成功、`--require-aspect` 在容差内、且带 `--label <asset_id>`；layout 由 family 推导——`screen-reference` 得到固定在 `references/` 的 `reference`，其余 family 得到固定在稳定输出目录的 `single`。
+
+手动入口：
+
+```bash
+python tools/asset_finalize_entry_draft.py \
+  --finalize-report <finalize_report.json> \
+  --asset-id <asset_id> \
+  --tag <tag> \
+  --production-family screen-reference \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
 
 ## asset_output_path.py

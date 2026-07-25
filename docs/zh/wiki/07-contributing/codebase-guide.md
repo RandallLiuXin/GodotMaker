@@ -151,6 +151,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 | `asset_curation_select.py` | 将选中的 curation candidate finalize 到运行时素材路径 |
 | `asset_action_entry_draft.py` | 根据已处理动作输出生成 action support metadata 和 v1 stable-entry draft |
 | `asset_curation_entry_draft.py` | 根据已选中的 curation candidate 生成 v1 stable-entry draft |
+| `asset_finalize_entry_draft.py` | 根据 asset_image_finalize.py 报告生成 v1 stable-entry draft |
 | `asset_output_path.py` | 解析并校验稳定输出目录 `assets/generated/<family>/<asset_id>/` |
 | `asset_stable_entry.py` | 校验并序列化一个 v1 generated-asset stable entry |
 | `asset_generation_index.py` | 校验并 upsert pointer-only 的 generated-asset root index |

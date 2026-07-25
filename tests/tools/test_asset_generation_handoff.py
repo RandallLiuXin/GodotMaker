@@ -44,15 +44,17 @@ def source_relative(asset_id=ASSET_ID, family=FAMILY):
 
 
 def artifact_relative(asset_id=ASSET_ID, family=FAMILY):
-    return f"{stable_output_dir(family, asset_id)}/{asset_id}.png"
+    """The compiled SpriteFrames a grid_sheet becomes, not its source image."""
+    return f"{stable_output_dir(family, asset_id)}/{asset_id}.tres"
 
 
 def make_entry(asset_id=ASSET_ID, family=FAMILY, **overrides):
-    """A `ready` entry with a compiled artifact.
+    """A `ready` entry with a legitimately compiled artifact.
 
-    This exercises the forward-looking schema so the registration mechanics are
-    covered for the state the compiler work will produce. It is not what
-    `/gm-asset` emits today — see
+    A `grid_sheet` compiles to `SpriteFrames`; pointing the artifact at the
+    source image instead is the forbidden shortcut the schema now rejects, so
+    this fixture must model real future compiler output. It exercises the
+    forward-looking schema and is not what `/gm-asset` emits today — see
     ``test_stage_one_chain_registers_but_never_promotes_a_row`` for that.
     """
     entry = {
@@ -65,7 +67,7 @@ def make_entry(asset_id=ASSET_ID, family=FAMILY, **overrides):
             "path": f"res://{source_relative(asset_id, family)}",
         },
         "godot_artifact": {
-            "type": "Texture2D",
+            "type": "SpriteFrames",
             "path": f"res://{artifact_relative(asset_id, family)}",
         },
         "processing_status": "ready",
@@ -184,7 +186,7 @@ def test_written_entry_is_consumed_by_the_index_checker(tmp_path):
     assert written["production_family"] == FAMILY
     assert written["source_layout"]["type"] == "grid_sheet"
     assert written["godot_artifact"] == {
-        "type": "Texture2D",
+        "type": "SpriteFrames",
         "path": f"res://{artifact_relative()}",
     }
     assert written["processing_status"] == "ready"
@@ -318,7 +320,7 @@ def test_out_of_bounds_artifact_path_never_registers(tmp_path, artifact_path, me
     stable-output-directory check itself.
     """
     produce_asset(tmp_path)
-    entry = make_entry(godot_artifact={"type": "Texture2D", "path": artifact_path})
+    entry = make_entry(godot_artifact={"type": "SpriteFrames", "path": artifact_path})
     draft = tmp_path / entry_relative_path(TAG, ASSET_ID)
     draft.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(json.dumps(entry), encoding="utf-8")

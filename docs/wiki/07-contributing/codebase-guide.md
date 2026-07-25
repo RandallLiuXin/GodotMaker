@@ -152,6 +152,7 @@ Python CLI scripts that contributors and users run directly.
 | `asset_curation_select.py` | Finalize selected curation candidates into runtime asset paths |
 | `asset_action_entry_draft.py` | Build action support metadata and a v1 stable-entry draft from processed action output |
 | `asset_curation_entry_draft.py` | Build a v1 stable-entry draft from a selected curation candidate |
+| `asset_finalize_entry_draft.py` | Build a v1 stable-entry draft from an asset_image_finalize.py report |
 | `asset_output_path.py` | Resolve and validate the stable `assets/generated/<family>/<asset_id>/` output directory |
 | `asset_stable_entry.py` | Validate and serialize one v1 generated-asset stable entry |
 | `asset_generation_index.py` | Validate and upsert the pointer-only generated-asset root index |

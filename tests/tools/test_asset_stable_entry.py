@@ -10,6 +10,9 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
 from asset_stable_entry import (  # noqa: E402
+    LAYOUT_ARTIFACT_TYPES,
+    REFERENCE_LAYOUTS,
+    SOURCE_LAYOUT_TYPES,
     StableEntryError,
     _assert_within_root,
     entry_relative_path,
@@ -58,6 +61,68 @@ def reference_entry(**overrides):
 
 def test_validate_ready_entry_ok():
     assert validate_entry(valid_entry()) == valid_entry()
+
+
+def test_every_non_reference_layout_has_an_artifact_type():
+    """Guard the mapping against layout drift.
+
+    ``_validate_godot_artifact`` indexes ``LAYOUT_ARTIFACT_TYPES`` directly, so a
+    new ``source_layout.type`` without an entry here would raise ``KeyError``
+    instead of a contract error.
+    """
+    assert set(LAYOUT_ARTIFACT_TYPES) == SOURCE_LAYOUT_TYPES - REFERENCE_LAYOUTS
+
+
+@pytest.mark.parametrize(
+    ("layout", "artifact_type"),
+    sorted(LAYOUT_ARTIFACT_TYPES.items()),
+)
+def test_matching_artifact_type_is_accepted(layout, artifact_type):
+    entry = valid_entry(
+        source_layout={
+            "type": layout,
+            "path": "res://assets/generated/character-bundle/player/player.png",
+        },
+        godot_artifact={
+            "type": artifact_type,
+            "path": "res://assets/generated/character-bundle/player/player.tres",
+        },
+    )
+    validate_entry(entry)
+
+
+@pytest.mark.parametrize(
+    ("layout", "artifact_type"),
+    [
+        # The exact shortcut the Owner ruling forbids: a static image published
+        # as if it were the compiled SpriteFrames a worker was promised.
+        ("grid_sheet", "Texture2D"),
+        ("region_atlas", "Texture2D"),
+        ("tile_atlas", "Texture2D"),
+        ("theme_recipe", "Texture2D"),
+        ("single", "SpriteFrames"),
+        ("grid_sheet", "AtlasTexture"),
+        ("region_atlas", "SpriteFrames"),
+        ("single", "Resource"),
+    ],
+)
+def test_mismatched_artifact_type_is_rejected(layout, artifact_type):
+    entry = valid_entry(
+        source_layout={
+            "type": layout,
+            "path": "res://assets/generated/character-bundle/player/player.png",
+        },
+        godot_artifact={
+            "type": artifact_type,
+            "path": "res://assets/generated/character-bundle/player/player.tres",
+        },
+    )
+    expected = LAYOUT_ARTIFACT_TYPES[layout]
+    with pytest.raises(
+        StableEntryError,
+        match=f"must be {expected}, not {artifact_type}",
+    ):
+        validate_entry(entry)
 
 
 def test_reference_entry_needs_no_artifact():

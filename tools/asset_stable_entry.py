@@ -75,6 +75,20 @@ ARTIFACT_REQUIRED_STATUSES = {"compiled", "ready"}
 # ``godot_artifact.type`` is a Godot ClassDB type, not a closed enum.
 GODOT_TYPE_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+# The Godot resource each non-reference layout compiles to. The pairing is fixed:
+# a ``grid_sheet`` published as a plain ``Texture2D`` is a static image standing
+# in for the ``SpriteFrames`` the worker was promised, and binding it yields a
+# frozen sprite where an animation was specified. Declaring the source image as
+# the artifact is the exact shortcut this mapping exists to reject, so a type
+# that does not match its layout fails closed rather than reaching a worker.
+LAYOUT_ARTIFACT_TYPES = {
+    "single": "Texture2D",
+    "grid_sheet": "SpriteFrames",
+    "region_atlas": "AtlasTexture",
+    "theme_recipe": "Theme",
+    "tile_atlas": "TileSet",
+}
+
 # Any of these fields marks an old ``runtime_artifact`` manifest/entry.
 LEGACY_FIELDS = {
     "runtime_artifact",
@@ -390,6 +404,12 @@ def _validate_godot_artifact(
     if not GODOT_TYPE_PATTERN.match(artifact_type):
         raise StableEntryError(
             "godot_artifact.type must be a Godot ClassDB type identifier"
+        )
+    expected_type = LAYOUT_ARTIFACT_TYPES[layout_type]
+    if artifact_type != expected_type:
+        raise StableEntryError(
+            f"godot_artifact.type for a {layout_type} source_layout must be "
+            f"{expected_type}, not {artifact_type}"
         )
     artifact_path = _non_empty_string(artifact, "path", "godot_artifact.path")
     check_output_path(
