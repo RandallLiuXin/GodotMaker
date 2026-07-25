@@ -6,6 +6,7 @@ when no engine is reachable -- CI installs pytest and pillow only -- so a
 contributor with Godot 4.4+ installed runs them and CI does not.
 """
 import struct
+import subprocess
 import sys
 import zlib
 from pathlib import Path
@@ -31,6 +32,34 @@ from asset_validation import (  # noqa: E402
 # A Theme with no content: it loads cleanly, which is what makes it a useful
 # stand-in for a resource of the wrong type.
 THEME_TRES = '[gd_resource type="Theme" format=3]\n\n[resource]\n'
+
+RESOURCE_SAVER_SCRIPT = """extends SceneTree
+
+func _init() -> void:
+    var arguments := OS.get_cmdline_user_args()
+    if arguments.size() != 2:
+        push_error("expected a resource type and target path")
+        quit(2)
+        return
+
+    var resource: Resource
+    match arguments[0]:
+        "StyleBoxTexture":
+            resource = StyleBoxTexture.new()
+        "Theme":
+            resource = Theme.new()
+        _:
+            push_error("unsupported resource type: " + arguments[0])
+            quit(2)
+            return
+
+    var error := ResourceSaver.save(resource, arguments[1])
+    if error != OK:
+        push_error("ResourceSaver.save failed: " + str(error))
+        quit(error)
+        return
+    quit()
+"""
 
 
 def _png(width: int, height: int) -> bytes:
@@ -109,6 +138,82 @@ def _default_compile_receipt(registry, root: Path):
             project_root=root,
         )
     ).receipt
+
+
+@pytest.mark.parametrize(
+    ("layout", "artifact_type", "asset_id", "source_name", "artifact_name"),
+    [
+        ("single", "StyleBoxTexture", "panel", "panel.png", "panel.tres"),
+        ("theme_recipe", "Theme", "skin", "skin.json", "skin.res"),
+    ],
+)
+def test_resource_saver_accepts_extension_preserving_staging_artifacts(
+    godot_bin,
+    godot_project,
+    layout,
+    artifact_type,
+    asset_id,
+    source_name,
+    artifact_name,
+):
+    """Exercise Godot's suffix-sensitive ResourceSaver through the registry."""
+    base = f"res://assets/generated/ui-kit/{asset_id}"
+    _write(godot_project, f"{base}/{source_name}", b"source")
+    script = godot_project / "save_staging_resource.gd"
+    script.write_text(RESOURCE_SAVER_SCRIPT, encoding="utf-8")
+    staging_paths = []
+
+    def save_with_godot(request):
+        staging_paths.append(request.artifact_path)
+        completed = subprocess.run(
+            [
+                godot_bin,
+                "--headless",
+                "--path",
+                str(godot_project),
+                "--script",
+                str(script),
+                "--",
+                artifact_type,
+                request.artifact_path,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0, completed.stderr or completed.stdout
+        return {"writer": "ResourceSaver"}
+
+    registry = build_default_registry()
+    registry.register(
+        source_layout_type=layout,
+        artifact_type=artifact_type,
+        compiler_id=f"resource_saver_{artifact_type.lower()}",
+        compiler_version=1,
+        compiler=save_with_godot,
+    )
+    result = registry.compile(
+        CompileRequest(
+            production_family="ui-kit",
+            asset_id=asset_id,
+            source_layout_type=layout,
+            source_path=f"{base}/{source_name}",
+            artifact_type=artifact_type,
+            artifact_path=f"{base}/{artifact_name}",
+            project_root=godot_project,
+        )
+    )
+
+    (staging_path,) = staging_paths
+    assert staging_path.endswith(Path(artifact_name).suffix)
+    assert ".staging-" in staging_path
+    report = GodotProbe(godot_bin).probe(
+        godot_project,
+        [ProbeRequest(result.godot_artifact.path, artifact_type)],
+    )
+    (loaded,) = report.resources
+    assert loaded.loaded is True, loaded.to_dict()
+    assert loaded.type_matches is True, loaded.to_dict()
 
 
 def test_a_generated_texture_reaches_ready_through_real_godot(godot_bin, godot_project):

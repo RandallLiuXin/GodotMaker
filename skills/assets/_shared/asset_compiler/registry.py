@@ -53,10 +53,14 @@ def _staging_request(request: CompileRequest) -> CompileRequest:
     A compiler may overwrite the stable artifact on a successful regeneration,
     but it must never expose a partial result at that path.  Keeping the staging
     target in the same directory makes ``Path.replace`` an atomic commit on the
-    target filesystem, while the receipt still records the stable path.
+    target filesystem.  The final extension stays at the end of the staging
+    filename because Godot's ``ResourceSaver`` selects its format from that
+    extension.  The receipt still records the stable path.
     """
     parent, name = request.artifact_path.rsplit("/", 1)
-    staging_path = f"{parent}/{name}.staging-{uuid4().hex}"
+    extension = Path(name).suffix
+    stem = name.removesuffix(extension) if extension else name
+    staging_path = f"{parent}/{stem}.staging-{uuid4().hex}{extension}"
     return replace(request, artifact_path=staging_path)
 
 
@@ -297,14 +301,6 @@ class CompilerRegistry:
                 artifact_path=request.artifact_path,
                 details=details,
             )
-            self._issued_receipts[id(receipt)] = receipt
-            result = CompileResult(
-                godot_artifact=GodotArtifact(
-                    type=request.artifact_type,
-                    path=request.artifact_path,
-                ),
-                receipt=receipt,
-            )
             if route.writes_artifact:
                 try:
                     artifact_file.replace(request.artifact_file())
@@ -313,6 +309,17 @@ class CompilerRegistry:
                         f"{route.compiler_id} cannot commit artifact "
                         f"{request.artifact_path}: {exc}"
                     ) from exc
+            # A receipt is a capability used to promote an entry through L2.
+            # Issue it only once the stable artifact is in place, so a failed
+            # atomic commit cannot leave a receipt for bytes never published.
+            self._issued_receipts[id(receipt)] = receipt
+            result = CompileResult(
+                godot_artifact=GodotArtifact(
+                    type=request.artifact_type,
+                    path=request.artifact_path,
+                ),
+                receipt=receipt,
+            )
         finally:
             if staging_file is not None:
                 staging_file.unlink(missing_ok=True)

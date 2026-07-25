@@ -45,8 +45,12 @@ def test_doc_states_the_rules_the_registry_enforces():
         "writes_artifact=False",
         "build_default_registry()",
         "CompilerError",
+        "sibling staging artifact",
+        "panel.staging-<uuid>.tres",
+        "after the stable artifact commit",
     ):
         assert claim in doc, f"the contract doc no longer mentions {claim}"
+    assert "removes an\n  existing artifact before the compiler runs" not in doc
     # The doc must not promise a module-level registry the package removed.
     assert "DEFAULT_REGISTRY" not in doc
 

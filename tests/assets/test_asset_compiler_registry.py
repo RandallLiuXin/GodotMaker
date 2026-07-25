@@ -142,6 +142,31 @@ def test_compile_returns_the_routed_compilers_receipt(project):
     assert (project / "assets/generated/ui-kit/panel/panel.tres").is_file()
 
 
+@pytest.mark.parametrize("extension", [".tres", ".res"])
+def test_writing_compiler_gets_a_sibling_staging_path_with_final_extension(
+    project, extension
+):
+    observed_paths = []
+
+    def records_staging_path(request):
+        observed_paths.append(request.artifact_path)
+        return _writer()(request)
+
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=records_staging_path)
+    request = _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+    request = _replace(request, "artifact_path", request.artifact_path.removesuffix(".tres") + extension)
+
+    registry.compile(request)
+
+    (staging_path,) = observed_paths
+    stable_parent, stable_name = request.artifact_path.rsplit("/", 1)
+    staging_parent, staging_name = staging_path.rsplit("/", 1)
+    assert staging_parent == stable_parent
+    assert staging_name.startswith(stable_name.removesuffix(extension) + ".staging-")
+    assert staging_name.endswith(extension)
+
+
 def test_only_the_exact_receipt_returned_by_this_registry_is_issued(project):
     registry = CompilerRegistry()
     _register(registry, "single", "StyleBoxTexture", compiler=_writer(b"12345"))
@@ -393,7 +418,7 @@ def test_failed_compile_keeps_the_previous_artifact(project, compiler):
         )
 
     assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_raised_compiler_error_keeps_the_previous_artifact(project):
@@ -413,7 +438,7 @@ def test_raised_compiler_error_keeps_the_previous_artifact(project):
         )
 
     assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_first_failed_compile_leaves_no_stable_or_staging_artifact(project):
@@ -427,7 +452,7 @@ def test_first_failed_compile_leaves_no_stable_or_staging_artifact(project):
         )
 
     assert not stable.exists()
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_uncopyable_receipt_details_keep_the_previous_artifact(project):
@@ -447,7 +472,7 @@ def test_uncopyable_receipt_details_keep_the_previous_artifact(project):
         )
 
     assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_first_uncopyable_receipt_failure_leaves_no_artifact(project):
@@ -466,7 +491,7 @@ def test_first_uncopyable_receipt_failure_leaves_no_artifact(project):
         )
 
     assert not stable.exists()
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_rebuilding_over_an_existing_artifact_is_accepted(project):
@@ -480,12 +505,12 @@ def test_rebuilding_over_an_existing_artifact_is_accepted(project):
     )
     assert result.receipt.details == {"bytes": 11}
     assert stable.read_bytes() == b"NEW-CONTENT"
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_same_size_rewrite_is_accepted(project):
-    # Replacing the old path before compilation makes this independent of the
-    # filesystem timestamp resolution.
+    # A distinct staging path makes this independent of filesystem timestamp
+    # resolution, including when the deterministic result has the same size.
     (project / "assets/generated/ui-kit/panel/panel.tres").write_bytes(b"AAA")
 
     registry = CompilerRegistry()
@@ -494,6 +519,55 @@ def test_same_size_rewrite_is_accepted(project):
         _make_request(project, layout="single", artifact_type="StyleBoxTexture")
     )
     assert (project / "assets/generated/ui-kit/panel/panel.tres").read_bytes() == b"BBB"
+
+
+def test_commit_failure_keeps_previous_artifact_and_does_not_issue_receipt(
+    project, monkeypatch
+):
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stable.write_bytes(b"STABLE-OLD-CONTENT")
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=_writer(b"NEW-CONTENT"))
+    original_replace = Path.replace
+
+    def reject_staging_commit(self, target):
+        if self.parent == stable.parent and self.name.startswith("panel.staging-"):
+            raise OSError("commit denied")
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", reject_staging_commit)
+
+    with pytest.raises(CompilerError, match="cannot commit artifact"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
+    assert registry._issued_receipts == {}
+
+
+def test_first_commit_failure_leaves_no_artifact_or_receipt(project, monkeypatch):
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=_writer())
+    original_replace = Path.replace
+
+    def reject_staging_commit(self, target):
+        if self.parent == stable.parent and self.name.startswith("panel.staging-"):
+            raise OSError("commit denied")
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", reject_staging_commit)
+
+    with pytest.raises(CompilerError, match="cannot commit artifact"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert not stable.exists()
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
+    assert registry._issued_receipts == {}
 
 
 # --- the source image may not be published as the artifact -----------------
@@ -536,7 +610,7 @@ def test_a_writing_route_may_not_hard_link_its_source_as_the_artifact(project):
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )
     assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_a_writing_route_may_not_symlink_its_source_as_the_artifact(project):
@@ -556,7 +630,7 @@ def test_a_writing_route_may_not_symlink_its_source_as_the_artifact(project):
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )
     assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_post_compile_source_validation_failure_keeps_previous_artifact(project):
@@ -579,7 +653,7 @@ def test_post_compile_source_validation_failure_keeps_previous_artifact(project)
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )
     assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
-    assert not list(stable.parent.glob("panel.tres.staging-*"))
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
 
 
 def test_a_non_writing_route_may_not_modify_its_source(project):
