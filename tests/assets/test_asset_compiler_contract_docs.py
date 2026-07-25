@@ -12,6 +12,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 CONTRACT_DOC = SHARED_DIR / "godot-artifact-compiler-contract.md"
+SCAFFOLD_GITIGNORE = (
+    REPO_ROOT / "skills" / "core" / "project-scaffold" / "templates" / "gitignore.tmpl"
+)
 sys.path.insert(0, str(SHARED_DIR))
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
@@ -39,14 +42,28 @@ def test_documented_routing_table_matches_the_frozen_relation():
 
 def test_doc_states_the_rules_the_registry_enforces():
     doc = CONTRACT_DOC.read_text(encoding="utf-8")
+    normalized_doc = " ".join(doc.split())
     for claim in (
         "LAYOUT_ARTIFACT_TYPES",
         "SOURCE_IS_ARTIFACT_TYPES",
         "writes_artifact=False",
         "build_default_registry()",
         "CompilerError",
+        "sibling staging artifact",
+        "panel.staging-<uuid>.tres",
+        "after the stable artifact commit",
     ):
         assert claim in doc, f"the contract doc no longer mentions {claim}"
+    for current_claim in (
+        "A writing compiler receives a sibling staging `request.artifact_path`",
+        "A non-writing route receives the original request, writes no artifact, and has no staging or commit step.",
+    ):
+        assert current_claim in normalized_doc
+    for retired_claim in (
+        "removes an existing artifact before the compiler runs",
+        "deletes the existing artifact before running the compiler",
+    ):
+        assert retired_claim not in normalized_doc
     # The doc must not promise a module-level registry the package removed.
     assert "DEFAULT_REGISTRY" not in doc
 
@@ -60,3 +77,8 @@ def test_doc_names_every_type_allowed_to_skip_writing():
 def test_shared_has_no_skill_md():
     # _shared holds cross-skill material and is not independently triggerable.
     assert not (SHARED_DIR / "SKILL.md").exists()
+
+
+def test_staging_artifacts_are_ignored_by_repo_and_scaffold_templates():
+    for gitignore in (REPO_ROOT / ".gitignore", SCAFFOLD_GITIGNORE):
+        assert "*.staging-*" in gitignore.read_text(encoding="utf-8")

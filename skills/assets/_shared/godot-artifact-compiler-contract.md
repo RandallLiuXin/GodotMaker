@@ -37,11 +37,19 @@ Two rules make "the compiler produced the artifact" mean something, because a
 generated asset overwrites a stable path in place and the artifact usually
 already exists from an earlier run:
 
-- **A writing route must replace the old artifact.** The registry removes an
-  existing artifact before the compiler runs and requires a new file after it
-  returns. Otherwise a compiler that silently no-ops passes off the previous
-  run's bytes as this run's result. This does not rely on filesystem timestamp
-  precision, so a same-byte deterministic rebuild remains valid.
+- **A writing route must produce a sibling staging artifact.** The registry
+  passes the compiler a unique path beside the stable artifact, such as
+  `panel.staging-<uuid>.tres` for `panel.tres` or
+  `tileset.staging-<uuid>.res` for `tileset.res`. The final extension remains
+  intact so Godot's `ResourceSaver` recognizes the resource format. After the
+  compiler returns a valid file, the registry atomically commits that staging
+  artifact with `Path.replace()`. A no-op compiler therefore cannot pass off
+  the previous run's bytes, while compiler, validation, and commit failures
+  preserve the previous stable artifact. This does not rely on filesystem
+  timestamp precision, so a same-byte deterministic rebuild remains valid.
+  Before a new writing compile starts, the registry removes only interrupted
+  staging siblings for that exact stable filename and extension. This narrow
+  recovery is not a production-family orphan scan or a directory transaction.
 - **A writing route must not name its source.** `artifact_path` may not equal
   `source_path` or resolve to the same file, so a compiler cannot publish its
   own source image (including through a hard link or case alias) as the
@@ -59,10 +67,13 @@ the registry rejects it if its compiler changes that source.
 Compiler = Callable[[CompileRequest], Mapping[str, Any]]
 ```
 
-A compiler writes its artifact to `request.artifact_path` and returns its
-receipt details. It does not build the worker-facing artifact object; the
-registry does. That asymmetry is the mechanism behind the worker-snapshot
-boundary below.
+A writing compiler receives a sibling staging `request.artifact_path`, writes
+its artifact there, and returns receipt details. The registry commits that
+artifact to the stable request path only after validation succeeds. A
+non-writing route receives the original request, writes no artifact, and has
+no staging or commit step. The compiler does not build the worker-facing
+artifact object; the registry does. That asymmetry is the mechanism behind the
+worker-snapshot boundary below.
 
 `CompileRequest` carries `production_family`, `asset_id`, `source_layout_type`,
 `source_path`, `artifact_type`, `artifact_path`, `project_root`, and a
@@ -95,7 +106,8 @@ layer surfaces — when:
 - the compiler raises — its own `CompilerError` propagates unchanged, any other
   exception is wrapped with the compiler id so nothing escapes as a traceback;
 - the compiler returns something other than a mapping;
-- the compiler returns without replacing its artifact for this run.
+- the compiler returns without writing its staging artifact for this run;
+- the staging artifact cannot be atomically committed to the stable path.
 
 Path containment is re-checked after the compiler returns, not reused from
 before it ran: the first check resolved a path whose parent directories did not
@@ -113,8 +125,10 @@ request. Compiler identity, version, and internal findings live in
 `CompileReceipt` and never widen the worker snapshot — a compiler cannot add a
 field to the artifact even by returning one, because it never constructs it.
 
-Receipts are returned to the caller. This layer does not define a receipt
-storage location; nothing worker-facing may depend on one.
+Receipts are returned to the caller only after the stable artifact commit
+succeeds (or, for a non-writing route, after its source-preservation checks
+succeed). This layer does not define a receipt storage location; nothing
+worker-facing may depend on one. A failed commit leaves no issued receipt.
 
 ## Texture2D
 

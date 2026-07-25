@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from hashlib import sha256
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -53,11 +53,47 @@ def _staging_request(request: CompileRequest) -> CompileRequest:
     A compiler may overwrite the stable artifact on a successful regeneration,
     but it must never expose a partial result at that path.  Keeping the staging
     target in the same directory makes ``Path.replace`` an atomic commit on the
-    target filesystem, while the receipt still records the stable path.
+    target filesystem.  The final extension stays at the end of the staging
+    filename because Godot's ``ResourceSaver`` selects its format from that
+    extension.  The receipt still records the stable path.
     """
     parent, name = request.artifact_path.rsplit("/", 1)
-    staging_path = f"{parent}/{name}.staging-{uuid4().hex}"
+    artifact_name = PurePosixPath(name)
+    staging_path = (
+        f"{parent}/{artifact_name.stem}.staging-{uuid4().hex}{artifact_name.suffix}"
+    )
     return replace(request, artifact_path=staging_path)
+
+
+def _staging_glob(request: CompileRequest) -> str:
+    """Return the exact sibling staging glob for one stable artifact."""
+    artifact_name = PurePosixPath(request.artifact_path)
+    return f"{artifact_name.stem}.staging-*{artifact_name.suffix}"
+
+
+def _remove_stale_staging(request: CompileRequest) -> None:
+    """Remove interrupted staging files for this one stable artifact.
+
+    This is deliberately narrower than a project-wide orphan scan: a new
+    compile only recovers siblings for its exact stable artifact name and final
+    extension. It prevents a prior interrupted Godot save from poisoning the
+    next project import while preserving the single-file commit boundary.
+    """
+    stable_file = request.artifact_file()
+    try:
+        stale_files = tuple(stable_file.parent.glob(_staging_glob(request)))
+    except OSError as exc:
+        raise CompilerError(
+            f"cannot inspect stale staging artifacts for {request.artifact_path}: {exc}"
+        ) from exc
+
+    for stale_file in stale_files:
+        try:
+            stale_file.unlink()
+        except OSError as exc:
+            raise CompilerError(
+                f"cannot remove stale staging artifact {stale_file.name}: {exc}"
+            ) from exc
 
 
 def _content_digest(path: Path) -> bytes | None:
@@ -239,6 +275,7 @@ class CompilerRegistry:
                     f"{route.compiler_id} may not publish source_path as "
                     f"artifact_path ({request.artifact_path})"
                 )
+            _remove_stale_staging(request)
             source_digest = None
         else:
             source_digest = _content_digest(source_file)
@@ -271,7 +308,8 @@ class CompilerRegistry:
             artifact_file = staging_request.artifact_file()
             if not artifact_file.is_file():
                 raise CompilerError(
-                    f"{route.compiler_id} returned without writing {request.artifact_path}"
+                    f"{route.compiler_id} returned without writing "
+                    f"{staging_request.artifact_path}"
                 )
             source_file = request.source_file()
             if not source_file.is_file():
@@ -279,7 +317,7 @@ class CompilerRegistry:
             if route.writes_artifact and is_same_file(source_file, artifact_file):
                 raise CompilerError(
                     f"{route.compiler_id} may not publish source_path as "
-                    f"artifact_path ({request.artifact_path})"
+                    f"staging artifact ({staging_request.artifact_path})"
                 )
             if not route.writes_artifact and _content_digest(source_file) != source_digest:
                 raise CompilerError(
@@ -297,14 +335,6 @@ class CompilerRegistry:
                 artifact_path=request.artifact_path,
                 details=details,
             )
-            self._issued_receipts[id(receipt)] = receipt
-            result = CompileResult(
-                godot_artifact=GodotArtifact(
-                    type=request.artifact_type,
-                    path=request.artifact_path,
-                ),
-                receipt=receipt,
-            )
             if route.writes_artifact:
                 try:
                     artifact_file.replace(request.artifact_file())
@@ -313,8 +343,25 @@ class CompilerRegistry:
                         f"{route.compiler_id} cannot commit artifact "
                         f"{request.artifact_path}: {exc}"
                     ) from exc
+            # A receipt is a capability used to promote an entry through L2.
+            # Issue it only once the stable artifact is in place, so a failed
+            # atomic commit cannot leave a receipt for bytes never published.
+            self._issued_receipts[id(receipt)] = receipt
+            result = CompileResult(
+                godot_artifact=GodotArtifact(
+                    type=request.artifact_type,
+                    path=request.artifact_path,
+                ),
+                receipt=receipt,
+            )
         finally:
             if staging_file is not None:
-                staging_file.unlink(missing_ok=True)
+                try:
+                    staging_file.unlink(missing_ok=True)
+                except OSError:
+                    # Never replace the compile error being propagated. A later
+                    # compile for this exact artifact retries its narrow sibling
+                    # recovery before handing a fresh staging path to a compiler.
+                    pass
 
         return result
