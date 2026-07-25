@@ -328,9 +328,8 @@ def test_compiler_that_writes_nothing_is_rejected(project):
 
 
 def test_no_op_compiler_cannot_pass_off_a_previous_runs_artifact(project):
-    # Regeneration overwrites a stable path in place, so the artifact usually
-    # already exists. Existence alone would let a silently no-op compiler hand
-    # back last run's bytes as this run's result.
+    # A no-op compiler must not pass off last run's bytes as this run's result,
+    # nor may it remove the already-ready stable artifact.
     stale = project / "assets/generated/ui-kit/panel/panel.tres"
     stale.write_bytes(b"STALE-FROM-RUN-1")
 
@@ -340,11 +339,68 @@ def test_no_op_compiler_cannot_pass_off_a_previous_runs_artifact(project):
         registry.compile(
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )
-    assert not stale.exists()
+    assert stale.read_bytes() == b"STALE-FROM-RUN-1"
+
+
+@pytest.mark.parametrize(
+    "compiler",
+    [
+        pytest.param(lambda request: (_writer()(request), "not details")[1], id="bad-details"),
+        pytest.param(lambda request: {}, id="no-output"),
+    ],
+)
+def test_failed_compile_keeps_the_previous_artifact(project, compiler):
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stable.write_bytes(b"STABLE-OLD-CONTENT")
+
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=compiler)
+    with pytest.raises(CompilerError):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
+
+
+def test_raised_compiler_error_keeps_the_previous_artifact(project):
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stable.write_bytes(b"STABLE-OLD-CONTENT")
+
+    registry = CompilerRegistry()
+    _register(
+        registry,
+        "single",
+        "StyleBoxTexture",
+        compiler=lambda request: (_ for _ in ()).throw(CompilerError("failed")),
+    )
+    with pytest.raises(CompilerError, match="failed"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
+
+
+def test_first_failed_compile_leaves_no_stable_or_staging_artifact(project):
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=lambda request: {})
+
+    with pytest.raises(CompilerError, match="returned without writing"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert not stable.exists()
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
 
 
 def test_rebuilding_over_an_existing_artifact_is_accepted(project):
-    (project / "assets/generated/ui-kit/panel/panel.tres").write_bytes(b"OLD")
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stable.write_bytes(b"OLD")
 
     registry = CompilerRegistry()
     _register(registry, "single", "StyleBoxTexture", compiler=_writer(b"NEW-CONTENT"))
@@ -352,6 +408,8 @@ def test_rebuilding_over_an_existing_artifact_is_accepted(project):
         _make_request(project, layout="single", artifact_type="StyleBoxTexture")
     )
     assert result.receipt.details == {"bytes": 11}
+    assert stable.read_bytes() == b"NEW-CONTENT"
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
 
 
 def test_same_size_rewrite_is_accepted(project):
@@ -398,12 +456,59 @@ def test_a_writing_route_may_not_hard_link_its_source_as_the_artifact(project):
         os.link(request.source_file(), request.artifact_file())
         return {}
 
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stable.write_bytes(b"STABLE-OLD-CONTENT")
     registry = CompilerRegistry()
     _register(registry, "single", "StyleBoxTexture", compiler=links_the_source)
     with pytest.raises(CompilerError, match="may not publish source_path"):
         registry.compile(
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )
+    assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
+
+
+def test_a_writing_route_may_not_symlink_its_source_as_the_artifact(project):
+    def symlinks_the_source(request):
+        try:
+            request.artifact_file().symlink_to(request.source_file())
+        except (OSError, NotImplementedError) as exc:
+            pytest.skip(f"symlink creation unavailable: {exc}")
+        return {}
+
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stable.write_bytes(b"STABLE-OLD-CONTENT")
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=symlinks_the_source)
+    with pytest.raises(CompilerError, match="may not publish source_path"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+    assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
+
+
+def test_post_compile_source_validation_failure_keeps_previous_artifact(project):
+    def deletes_source_after_writing(request):
+        _writer()(request)
+        request.source_file().unlink()
+        return {}
+
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stable.write_bytes(b"STABLE-OLD-CONTENT")
+    registry = CompilerRegistry()
+    _register(
+        registry,
+        "single",
+        "StyleBoxTexture",
+        compiler=deletes_source_after_writing,
+    )
+    with pytest.raises(CompilerError, match="source_path not found after compilation"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+    assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
+    assert not list(stable.parent.glob("panel.tres.staging-*"))
 
 
 def test_a_non_writing_route_may_not_modify_its_source(project):
