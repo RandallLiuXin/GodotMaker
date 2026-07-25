@@ -170,6 +170,33 @@ identity and one `entry_path` per asset and never duplicates an entry body:
 Consumers resolve `entry_path` and read the entry. Nothing reads runtime data
 straight from the root index.
 
+## Runtime Snapshot Resolution
+
+Managers do not copy fields from a stable entry into a worker brief by hand.
+Resolve either the current-tag ASSETS.md row:
+
+```bash
+python tools/asset_runtime_resolver.py \
+  --project-root . \
+  --assets-md ASSETS.md \
+  --tag <tag> \
+  --asset-id <asset_id>
+```
+
+or its canonical pointer directly:
+
+```bash
+python tools/asset_runtime_resolver.py \
+  --project-root . \
+  --manifest-entry .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
+```
+
+The resolver verifies the canonical pointer, entry identity, v1 schema, `ready`
+status, and source/artifact file existence. It emits only `asset_id`,
+`production_family`, `source_layout`, and `godot_artifact`, in that order.
+Reference-only entries are valid manifest records but never produce a worker
+runtime snapshot.
+
 ## Registration Commands
 
 Build the entry draft with the deterministic builder for the production path.
