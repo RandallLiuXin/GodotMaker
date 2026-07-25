@@ -17,9 +17,8 @@ scenic assets.
 3. Generate source images through the provider doc.
 4. Finalize with aspect validation when target size is fixed, writing the
    result under `assets/generated/background-map/<asset_id>/`.
-5. Write `source_layout.type: single` in the stable entry and point
-   `godot_artifact` at the finalized image as `Texture2D`.
-6. Write stable entry drafts.
+5. Write `source_layout.type: single` and `processing_status: source_ready`
+   in the stable entry draft, with no `godot_artifact`.
 
 ## Prompt Contract
 

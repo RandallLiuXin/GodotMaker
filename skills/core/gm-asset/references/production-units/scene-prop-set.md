@@ -19,8 +19,9 @@ reference.
 5. Run curation for source sheets.
 6. Select final runtime objects from processed candidates.
 7. Use processed atlases only with runtime region metadata.
-8. Write stable entry drafts for final runtime props, each with a
-   `godot_artifact` pointing at the finalized image as `Texture2D`.
+8. Draft stable entries for final runtime props with
+   `tools/asset_curation_entry_draft.py --production-family scene-prop-set`;
+   they stop at `source_ready` with no `godot_artifact`.
 
 ## Prompt Contract
 

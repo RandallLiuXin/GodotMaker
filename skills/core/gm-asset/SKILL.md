@@ -217,9 +217,12 @@ For each `asset-producer` report:
 1. Confirm status is `DONE`, `PARTIAL`, or `FAILED`.
 2. Confirm listed source, runtime output, prompt, report, and stable-entry draft
    files exist when claimed.
-3. Confirm every entry draft declares `production_family`, `source_layout`, and
-   `processing_status`, and that a `ready` non-reference asset also declares
-   `godot_artifact`.
+3. Confirm every entry draft came from a deterministic builder —
+   `tools/asset_action_entry_draft.py` for processed action output,
+   `tools/asset_curation_entry_draft.py` for a selected curation candidate.
+   Reject a hand-written draft: the builders are what enforce frame count,
+   edge-touch rejection, scale reference, curation selection, and stable-path
+   containment.
 4. Write each draft to its canonical stable-entry path:
 
 ```bash
@@ -248,9 +251,11 @@ python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-The updater rejects any other entry. Leave a `pending`, `source_ready`,
-`compiled`, or `failed` asset's row `MISSING`, and update reference rows in
-Step 6 instead.
+The updater rejects any other entry. The native compilers and the L0-L4 runner
+are not implemented, so no generated asset reaches `ready` yet and this command
+currently reports the blocking status instead of promoting a row. That is
+expected: registration is what this stage delivers. Leave the row `MISSING` and
+do not hand-edit a status to make the stage look complete.
 
 8. Redispatch failed or incomplete production units once when the failure is
    actionable from the report.
@@ -264,15 +269,17 @@ pass.
 For current-tag rows only:
 
 1. Confirm rows whose entry is `ready` are `generated`.
-2. Mark reference rows whose `screen-reference` entry is registered and `ready`
-   as `generated`, with the stable entry pointer in `Generation Params`. A
-   reference is not a runtime asset, so `asset_assets_md_update.py` refuses it
-   and this is the only place it is written.
-3. Mark provided files `provided`.
-4. Mark unprovided audio `deferred`.
-5. Keep rows without a registered `ready` entry as `MISSING`.
-6. Confirm `Generation Params` include the stable entry pointer only.
-7. Update the Visual Asset Contract for gameplay-visible generated assets.
+2. Mark provided files `provided`.
+3. Mark unprovided audio `deferred`.
+4. Keep rows without a registered `ready` entry as `MISSING`. Until the native
+   compilers and the L0-L4 runner land this covers every generated row,
+   including reference rows.
+5. Confirm `Generation Params` include the stable entry pointer only.
+6. Update the Visual Asset Contract for gameplay-visible generated assets.
+
+Report the registered `source_ready` entries to the user and say plainly that
+generated assets are not yet worker-consumable. Do not mark a row `generated`,
+invent a `godot_artifact`, or edit `processing_status` to close the stage.
 
 Do not mark source sheets, references, or curation candidates as final runtime
 assets unless the production-unit report selected them as final outputs.
@@ -289,6 +296,12 @@ If the user wants to regenerate an accepted prior asset, add a current-tag row
 or leave a fix task for a later role.
 
 ## Completion
+
+The native compilers and the L0-L4 runner are not implemented, so a tag whose
+plan contains generated visual assets cannot reach this state yet: those rows
+stay `MISSING` by design. Stop after Step 6, report the registered
+`source_ready` entries, and tell the user the asset stage is blocked on the
+compiler work rather than forcing the stage closed.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 

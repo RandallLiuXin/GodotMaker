@@ -17,6 +17,7 @@ import pytest
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
+from asset_action_entry_draft import write_action_entry_draft  # noqa: E402
 from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
 from asset_generation_index import (  # noqa: E402
     GenerationIndexError,
@@ -47,6 +48,13 @@ def artifact_relative(asset_id=ASSET_ID, family=FAMILY):
 
 
 def make_entry(asset_id=ASSET_ID, family=FAMILY, **overrides):
+    """A `ready` entry with a compiled artifact.
+
+    This exercises the forward-looking schema so the registration mechanics are
+    covered for the state the compiler work will produce. It is not what
+    `/gm-asset` emits today — see
+    ``test_stage_one_chain_registers_but_never_promotes_a_row`` for that.
+    """
     entry = {
         "version": 1,
         "asset_id": asset_id,
@@ -90,6 +98,61 @@ def register(project_root: Path, entry: dict) -> Path:
 
 def read_index(project_root: Path) -> dict:
     return json.loads((project_root / INDEX_RELATIVE).read_text(encoding="utf-8"))
+
+
+def test_stage_one_chain_registers_but_never_promotes_a_row(tmp_path):
+    """The real `/gm-asset` chain as it stands today, end to end.
+
+    The action builder produces the draft and support metadata, the entry
+    registers, and the gate passes — but the asset stops at `source_ready`
+    because no compiler produced a `SpriteFrames` and no L0-L4 runner verified
+    it. The ASSETS.md row must therefore stay `MISSING`. This is the honest
+    Stage 1 outcome; a green chain here must not be mistaken for a delivered
+    runtime asset.
+    """
+    sheet = f"{stable_output_dir(FAMILY, ASSET_ID)}/{ASSET_ID}_sheet.png"
+    frames = [f"{stable_output_dir(FAMILY, ASSET_ID)}/{ASSET_ID}_f{i}.png" for i in (1, 2)]
+    for relative in [sheet, *frames]:
+        touch(tmp_path, relative)
+    metadata_path = tmp_path / ".godotmaker/asset-generation/processed/p/pipeline-meta.json"
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "frame_count": 2,
+                "final_sheet_path": sheet,
+                "final_frame_paths": frames,
+                "align": "feet",
+                "shared_scale": True,
+                "edge_touch_frames": [],
+                "scale_reference": {"checked": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    draft_path = tmp_path / ".godotmaker/asset-generation/work/entries/player_idle.json"
+    write_action_entry_draft(
+        metadata_path,
+        asset_id=ASSET_ID,
+        tag=TAG,
+        production_family=FAMILY,
+        project_root=tmp_path,
+        out=draft_path,
+    )
+    draft = json.loads(draft_path.read_text(encoding="utf-8"))
+    assert draft["processing_status"] == "source_ready"
+    assert "godot_artifact" not in draft
+
+    entry_path = register(tmp_path, draft)
+    gate = check_index(tmp_path / INDEX_RELATIVE, project_root=tmp_path, check_files=True)
+    assert gate["ok"] is True and gate["entry_checks"] == 1
+
+    assets_md = write_assets_md(tmp_path)
+    with pytest.raises(AssetsMdUpdateError, match="processing_status is source_ready"):
+        update_assets_md(assets_md, [entry_path])
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+    assert "MISSING" in assets_md.read_text(encoding="utf-8")
 
 
 def test_written_entry_is_consumed_by_the_index_checker(tmp_path):

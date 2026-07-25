@@ -11,10 +11,12 @@ Primary pipeline tools:
 3. `asset_action_process.py`
 4. `asset_sheet_process.py`
 5. `asset_curation_select.py`
-6. `asset_output_path.py`
-7. `asset_stable_entry.py`
-8. `asset_generation_index.py`
-9. `asset_assets_md_update.py`
+6. `asset_action_entry_draft.py`
+7. `asset_curation_entry_draft.py`
+8. `asset_output_path.py`
+9. `asset_stable_entry.py`
+10. `asset_generation_index.py`
+11. `asset_assets_md_update.py`
 
 ## asset_source_generate.py
 
@@ -142,6 +144,51 @@ python tools/asset_curation_select.py \
 
 The tool updates the report status to `selected`, stores the candidate's final
 path, and prints the same finalize metadata as `asset_image_finalize.py`.
+
+## asset_action_entry_draft.py
+
+`asset_action_entry_draft.py` turns one processed action `pipeline-meta.json`
+into the action support metadata plus a v1 stable-entry draft. It is the
+mechanical gate for the action path: frame count against the listed frames, an
+empty `edge_touch_frames` set, a recorded scale reference, and containment of
+every runtime path inside the asset's stable output directory.
+
+Manual entry point:
+
+```bash
+python tools/asset_action_entry_draft.py \
+  --metadata <processed_dir>/pipeline-meta.json \
+  --asset-id <asset_id> \
+  --tag <tag> \
+  --production-family character-bundle \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+The draft stops at `processing_status: source_ready` and carries no
+`godot_artifact`. A `grid_sheet` becomes worker-consumable only once a native
+compiler produces its `SpriteFrames` and the L0-L4 runner verifies it.
+
+## asset_curation_entry_draft.py
+
+`asset_curation_entry_draft.py` turns one selected curation candidate into a v1
+stable-entry draft. It requires the named candidate to exist, be unambiguous and
+actually `selected`, the report's selected/rejected counts to be coherent, and
+the finalized path to sit inside the asset's stable output directory.
+
+Manual entry point:
+
+```bash
+python tools/asset_curation_entry_draft.py \
+  --report <report.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --tag <tag> \
+  --production-family ui-kit \
+  --source-layout single \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
+```
 
 ## asset_output_path.py
 

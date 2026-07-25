@@ -216,13 +216,14 @@ def test_foreground_production_units_do_not_finalize_source_images():
     assert "tools/asset_curation_select.py" in ui
     assert "tools/asset_curation_select.py" in props
     assert "tools/asset_curation_select.py" in scene_props
-    assert "source_layout.type: region_atlas" in ui
-    assert "source_layout.type: single" in fx
-    assert "source_layout.type: grid_sheet" in fx
+    assert "--source-layout region_atlas" in ui
+    assert "tools/asset_curation_entry_draft.py" in fx
+    assert "tools/asset_action_entry_draft.py" in fx
     assert "--snap-mode grid" in platform
     assert "--background magenta" in platform
-    assert "source_layout.type: region_atlas" in platform
+    assert "--source-layout region_atlas" in platform
     assert "tools/asset_action_process.py" in character
+    assert "tools/asset_action_entry_draft.py" in character
     assert "source_layout.type: grid_sheet" in character
 
 
@@ -448,6 +449,70 @@ def test_retired_manifest_tools_have_no_active_callers():
         "these active files still call a retired manifest tool: "
         + ", ".join(sorted(offenders))
     )
+
+
+def test_no_doc_fakes_a_compiled_artifact_or_ready_state():
+    """No native compiler and no L0-L4 runner exist, so nothing may claim them.
+
+    Pointing `godot_artifact` at a source image would make a `grid_sheet` look
+    like a compiled `SpriteFrames`, and a worker binding it would get a static
+    image where an animation was promised. Guard the whole authoring surface, not
+    just the file that happened to say it first.
+    """
+    offenders = []
+    for path in _active_contract_files():
+        text = path.read_text(encoding="utf-8")
+        if path.suffix != ".md":
+            continue
+        for line in text.splitlines():
+            lowered = line.lower()
+            if "godot_artifact" not in lowered:
+                continue
+            # A doc may name the field, describe the compiler that will fill it,
+            # or state that it stays absent — it may not instruct anyone to point
+            # it at an image today.
+            if "point `godot_artifact` at the finalized image" in lowered or (
+                "texture2d" in lowered and "point `godot_artifact`" in lowered
+            ):
+                offenders.append(
+                    f"{str(path.relative_to(REPO_ROOT))}: {line.strip()}"
+                )
+
+    assert not offenders, (
+        "these docs tell a producer to fake a compiled artifact: "
+        + "; ".join(sorted(offenders))
+    )
+
+
+def test_production_units_stop_at_source_ready():
+    """Every production path must draft `source_ready`, never `ready`."""
+    unit_dir = REPO_ROOT / "skills/core/gm-asset/references/production-units"
+    units = sorted(unit_dir.glob("*.md"))
+    assert units, "production-unit docs disappeared"
+
+    for path in units:
+        text = path.read_text(encoding="utf-8")
+        name = path.name
+        assert '"processing_status": "ready"' not in text, f"{name} drafts a ready entry"
+        assert "processing_status: ready" not in text, f"{name} drafts a ready entry"
+
+
+def test_entry_drafts_come_from_deterministic_builders():
+    """Producers must not hand-write drafts or support metadata.
+
+    The retired manifest builders carried mechanical checks — frame count,
+    edge-touch, scale reference, curation selection. Those live in the v1 draft
+    builders now; the skill must route through them rather than asking an agent
+    to honour the rules in prose.
+    """
+    skill = _read("skills/core/gm-asset/SKILL.md")
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+
+    for doc in (skill, runtime):
+        assert "tools/asset_action_entry_draft.py" in doc
+        assert "tools/asset_curation_entry_draft.py" in doc
+    assert "Reject a hand-written draft" in skill
+    assert "Do not hand-write a draft or its support metadata" in runtime
 
 
 def test_gm_asset_registers_through_the_stable_entry_tools_only():

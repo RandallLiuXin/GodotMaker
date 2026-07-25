@@ -75,16 +75,31 @@ python tools/asset_curation_select.py \
   --project-root .
 ```
 
-Write `source_layout.type: single` in selected component stable entries and
-point `godot_artifact` at the selected PNG as `Texture2D`.
+Build the stable entry draft deterministically:
+
+```bash
+python tools/asset_curation_entry_draft.py \
+  --report <report.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --tag <tag> \
+  --production-family ui-kit \
+  --source-layout single \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
+```
+
+The draft stops at `processing_status: source_ready` with no `godot_artifact`.
+Do not hand-write it, and do not add an artifact to make the asset look finished:
+the native compiler that produces one is not implemented yet.
 
 Final processed UI atlas:
 
 1. Write a transparent processed atlas under
    `assets/generated/ui-kit/<asset_id>/`.
 2. Write runtime atlas metadata beside the atlas.
-3. Write `source_layout.type: region_atlas` in the stable entry.
-4. Point `godot_artifact` at the processed atlas.
+3. Draft the entry with `--source-layout region_atlas`.
+4. Leave `godot_artifact` absent until the atlas compiler lands.
 
 ## Outputs
 

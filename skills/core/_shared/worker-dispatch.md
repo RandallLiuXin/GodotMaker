@@ -77,6 +77,9 @@ godot_artifact.path, target size, frame_count, and the support metadata path for
 assets/generated/<production_family>/<asset_id>/<asset_id>.json.
 Use cwd-relative artifact paths and metadata paths.
 Use `ready` stable entries only; skip any other processing_status.
+The native compilers and the L0-L4 runner are not implemented, so generated
+entries currently stop at `source_ready` and this section is empty for them. Say
+so instead of listing a `source_ready` asset or inventing an artifact path.
 Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
 prompt files, or scene references as runtime assets.
 For `grid_sheet` with frame_count > 1, include the action metadata path,

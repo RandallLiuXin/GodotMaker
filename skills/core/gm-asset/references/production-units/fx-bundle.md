@@ -74,10 +74,12 @@ and per-cell names that detected effects are assigned to. Match `--grid` and
 `--names` to the one-frame effect layout requested in the prompt.
 
 Select one-frame foreground effects with `tools/asset_curation_select.py`.
-Write `source_layout.type: single` in selected one-frame stable entries.
-Write `source_layout.type: grid_sheet` in animated FX stable entries.
-Point `godot_artifact` at the finalized image as `Texture2D` in both cases;
-a `ready` entry must declare one.
+Draft selected one-frame entries with `tools/asset_curation_entry_draft.py`
+(`--production-family fx-bundle --source-layout single`).
+Draft animated FX entries with `tools/asset_action_entry_draft.py`
+(`--production-family fx-bundle`), which writes `source_layout.type: grid_sheet`.
+Both stop at `processing_status: source_ready` with no `godot_artifact`; the
+`SpriteFrames` compiler is not implemented yet.
 Do not use a source sheet as an independent final effect.
 
 ## Outputs

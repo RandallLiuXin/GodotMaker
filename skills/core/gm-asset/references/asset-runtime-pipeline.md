@@ -87,13 +87,19 @@ It is not a Godot artifact.
 
 `processing_status` maps to the L0-L4 readiness ladder:
 
-1. `pending` — nothing produced yet.
-2. `source_ready` — source generation and processing succeeded.
-3. `compiled` — a Godot artifact exists but is not yet verified.
-4. `ready` — worker-consumable.
+1. `pending` — L0 only; nothing produced yet.
+2. `source_ready` — L1 source generation and processing succeeded.
+3. `compiled` — L2 native Godot artifact compiled, not yet L3-L4 verified.
+4. `ready` — L0-L4 all passed; worker-consumable.
 5. `failed` — a stage failed.
 
 `compiled` and `ready` require a `godot_artifact` for every non-reference asset.
+
+**Current pipeline state.** The native compilers and the L0-L4 runner are not
+implemented. `/gm-asset` therefore registers `source_ready` entries and nothing
+further. Do not write `compiled` or `ready`, and do not invent a `godot_artifact`
+to reach them: a generated asset is not worker-consumable yet, and claiming
+otherwise hands `/gm-build` an asset that was never compiled or verified.
 
 ## Stable Entry Contract
 
@@ -110,30 +116,32 @@ stable identity plus the minimal contract a worker needs, and nothing else:
     "type": "grid_sheet",
     "path": "res://assets/generated/character-bundle/<asset_id>/<asset_id>_sheet.png"
   },
-  "godot_artifact": {
-    "type": "Texture2D",
-    "path": "res://assets/generated/character-bundle/<asset_id>/<asset_id>_sheet.png"
-  },
-  "processing_status": "ready"
+  "processing_status": "source_ready"
 }
 ```
 
 Rules:
 
-1. `godot_artifact` holds exactly `type` and `path`. `type` is a Godot ClassDB
-   type such as `Texture2D`, `AtlasTexture`, `SpriteFrames`, `Theme`, or
-   `TileSet`.
-2. `source_layout` holds exactly `type` and `path`.
+1. `source_layout` holds exactly `type` and `path`.
+2. `godot_artifact` holds exactly `type` and `path`. `type` is the Godot ClassDB
+   type the native compiler produced for this layout:
+
+   | `source_layout.type` | Compiled `godot_artifact.type` |
+   |---|---|
+   | `grid_sheet` | `SpriteFrames` |
+   | `region_atlas` | `AtlasTexture` |
+   | `theme_recipe` | `Theme` |
+   | `tile_atlas` | `TileSet` |
+   | `single` | `Texture2D` |
+
 3. Both paths are `res://` paths under the asset's stable output directory. A
    path under `.godotmaker/` is rejected, so finalize into the stable directory
    before drafting the entry.
-4. Every non-reference asset at `compiled` or `ready` declares a
-   `godot_artifact`. There is no native compiler yet, so an image-backed asset
-   declares its finalized image as `{"type": "Texture2D", "path": ...}`. That is
-   the same file as `source_layout.path` whenever the finalized image is itself
-   the pixel source; the two fields answer different questions (how pixels are
-   organized versus which Godot resource a worker loads) and are allowed to
-   resolve to one file.
+4. Only a native compiler writes `godot_artifact`. Never point it at the source
+   image to make an asset look finished — a `grid_sheet` is not a `SpriteFrames`
+   just because its sheet exists, and a worker that loads it gets a static image
+   where an animation was promised. No compiler exists yet, so entries stay at
+   `source_ready` with no `godot_artifact`.
 5. A `reference` layout carries no `godot_artifact` and keeps its `references/`
    location.
 6. Detailed runtime metadata (region rects, frame lists) is a support file beside
@@ -164,6 +172,35 @@ straight from the root index.
 
 ## Registration Commands
 
+Build the entry draft with the deterministic builder for the production path.
+Do not hand-write a draft or its support metadata: the builders are what enforce
+frame count, edge-touch rejection, scale reference, curation selection, and
+stable-path containment.
+
+Processed action output (`character-bundle`, `fx-bundle`):
+
+```bash
+python tools/asset_action_entry_draft.py \
+  --metadata <processed_dir>/pipeline-meta.json \
+  --asset-id <asset_id> --tag <tag> --production-family <production_family> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+It also writes the action support metadata to
+`assets/generated/<production_family>/<asset_id>/<asset_id>.json`.
+
+Selected curation candidate (`ui-kit`, `card-kit`, `compact-prop-pack`,
+`scene-prop-set`, `platform-strip`):
+
+```bash
+python tools/asset_curation_entry_draft.py \
+  --report <curation_report.json> --candidate <candidate_id_or_name> \
+  --asset-id <asset_id> --tag <tag> --production-family <production_family> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
 Write one validated entry to its canonical path:
 
 ```bash
@@ -183,9 +220,11 @@ Validate the whole index, every referenced entry, and every handoff file:
 python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
 
-`--check-entries` alone is a schema-only pass. `--check-files` is what proves the
-registered source and artifact are still on disk, so the gate catches an asset
-whose files were deleted after registration. Use both.
+`--check-entries` alone is a schema-only pass. `--check-files` additionally proves
+every registered `source_layout.path` and `godot_artifact.path` is still on disk,
+so it catches an asset deleted after registration. That pair is the registration
+gate; it is not a readiness gate and does not check support files or compiled
+output, because neither the compilers nor the L0-L4 runner exist yet.
 
 Producer reports list stable entry drafts. The manager writes each entry, upserts
 its pointer, and runs the root-index gate before updating ASSETS.md.
@@ -199,7 +238,10 @@ python tools/asset_assets_md_update.py \
 
 The updater promotes a row to `generated` only for a `ready` non-reference entry
 and fails closed on anything else, because `generated` is what tells `/gm-build`
-the row's asset is finished. Reference rows are written by `/gm-asset` Step 6.
+the row's asset is finished. Until the compilers and the L0-L4 runner land no
+entry reaches `ready`, so generated rows stay `MISSING` and this command reports
+the blocking status instead of promoting anything. That is the honest state; do
+not work around it by editing rows or statuses by hand.
 
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.
@@ -217,25 +259,29 @@ unresolved curation leaves the asset unregistered and its ASSETS.md row
 
 ## Runtime Ready Gate
 
-An asset is worker-consumable only when its entry is `ready`:
+An asset is worker-consumable only when its entry is `ready`, which requires all
+of:
 
-1. The `godot_artifact` file exists under the stable output directory.
-2. `source_layout.path` exists under the same directory.
+1. The root index points at the entry and
+   `asset_generation_index.py --check-entries --check-files` passes.
+2. A native compiler produced the `godot_artifact` for the entry's
+   `source_layout.type`, and that file exists under the stable output directory.
 3. Required support files (region metadata, action metadata) exist beside the
    artifact.
-4. The root index points at the entry and
-   `asset_generation_index.py --check-entries --check-files` passes.
+4. The L0-L4 runner verified the asset.
 
-Ready gate by source layout:
+Steps 2 and 4 are not implemented. **No generated asset can reach `ready` today**,
+so `/gm-build` and worker dispatch currently receive no generated runtime assets.
+Registration, stable paths, and the pointer index are what this stage delivers;
+compilation and verification arrive with the compiler work.
 
-1. `single`: one runtime-ready image artifact, no support file.
-2. `grid_sheet`: write action metadata beside the artifact with frame count and
-   frame paths.
-3. `region_atlas`: write atlas metadata beside the artifact with named regions
-   and rects.
-4. `theme_recipe` and `tile_atlas`: the artifact is the compiled `Theme` or
-   `TileSet`.
-5. `reference`: never mark an ASSETS runtime row generated from this entry.
+Compiler target by source layout, for when that work lands:
+
+1. `single`: `Texture2D`, no support file.
+2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.
+3. `region_atlas`: `AtlasTexture`, with atlas metadata beside the artifact.
+4. `theme_recipe`: `Theme`. `tile_atlas`: `TileSet`.
+5. `reference`: no artifact; never mark an ASSETS runtime row generated from it.
 
 Support files are named after the asset and live beside the artifact:
 

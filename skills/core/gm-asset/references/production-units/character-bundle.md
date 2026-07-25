@@ -93,29 +93,29 @@ Use `--final-dir assets/generated/character-bundle/<asset_id>/` and
 `<asset_id>_sheet.png` and each runtime frame as `<asset_id>_<frame>.png` inside
 the stable output directory.
 
-Write the action metadata support file to
-`assets/generated/character-bundle/<asset_id>/<asset_id>.json` using the shape in
-`references/asset-runtime-pipeline.md`, then draft the stable entry:
+Build the action support metadata and the stable entry draft in one step:
 
-```json
-{
-  "version": 1,
-  "asset_id": "<asset_id>",
-  "tag": "<tag>",
-  "production_family": "character-bundle",
-  "source_layout": {
-    "type": "grid_sheet",
-    "path": "res://assets/generated/character-bundle/<asset_id>/<asset_id>_sheet.png"
-  },
-  "godot_artifact": {
-    "type": "Texture2D",
-    "path": "res://assets/generated/character-bundle/<asset_id>/<asset_id>_sheet.png"
-  },
-  "processing_status": "ready"
-}
+```bash
+python tools/asset_action_entry_draft.py \
+  --metadata <processed_dir>/pipeline-meta.json \
+  --asset-id <asset_id> \
+  --tag <tag> \
+  --production-family character-bundle \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
 
-Reject processed outputs with non-empty `edge_touch_frames`.
+The builder writes the support metadata to
+`assets/generated/character-bundle/<asset_id>/<asset_id>.json` and a draft with
+`source_layout.type: grid_sheet` at `processing_status: source_ready`. It rejects
+a frame count that disagrees with the listed frames, any non-empty
+`edge_touch_frames`, a missing scale reference, and any runtime path outside the
+stable output directory — do not hand-write either file to get past those checks.
+
+The draft carries no `godot_artifact`. A `grid_sheet` becomes worker-consumable
+only once the `SpriteFrames` compiler and the L0-L4 runner exist; neither is
+implemented, so the asset stops here.
+
 Keep `source_recovery.report` and `source_recovery.archived_source_path` when
 recovery is used.
 

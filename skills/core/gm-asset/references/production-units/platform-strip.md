@@ -56,10 +56,10 @@ or `1x4`.
 Use one selected final segment per cap, repeat middle, end, slope, or variant.
 Use a processed strip atlas only with runtime segment metadata beside the final
 atlas.
-Write `source_layout.type: single` in segment PNG stable entries.
-Write `source_layout.type: region_atlas` in strip atlas stable entries.
-Point `godot_artifact` at the finalized segment or atlas image as `Texture2D`;
-a `ready` entry must declare one.
+Draft segment entries with `tools/asset_curation_entry_draft.py`
+(`--production-family platform-strip --source-layout single`), and strip atlas
+entries with `--source-layout region_atlas`. Both stop at
+`processing_status: source_ready` with no `godot_artifact`.
 
 ## Outputs
 

@@ -9,10 +9,12 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 3. `asset_action_process.py`
 4. `asset_sheet_process.py`
 5. `asset_curation_select.py`
-6. `asset_output_path.py`
-7. `asset_stable_entry.py`
-8. `asset_generation_index.py`
-9. `asset_assets_md_update.py`
+6. `asset_action_entry_draft.py`
+7. `asset_curation_entry_draft.py`
+8. `asset_output_path.py`
+9. `asset_stable_entry.py`
+10. `asset_generation_index.py`
+11. `asset_assets_md_update.py`
 
 ## asset_source_generate.py
 
@@ -121,6 +123,42 @@ python tools/asset_curation_select.py \
 ```
 
 工具会把 report 状态更新为 `selected`，记录 candidate 的 final path，并输出与 `asset_image_finalize.py` 相同的 finalize metadata。
+
+## asset_action_entry_draft.py
+
+`asset_action_entry_draft.py` 会把一个已处理动作的 `pipeline-meta.json` 转换成 action support metadata 和一个 v1 stable-entry draft。它是 action 路径上的机械关卡：frame count 与实际帧列表一致、`edge_touch_frames` 必须为空、scale reference 必须已记录，以及所有运行时路径必须落在该素材的稳定输出目录内。
+
+手动入口：
+
+```bash
+python tools/asset_action_entry_draft.py \
+  --metadata <processed_dir>/pipeline-meta.json \
+  --asset-id <asset_id> \
+  --tag <tag> \
+  --production-family character-bundle \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+draft 停在 `processing_status: source_ready`，不带 `godot_artifact`。`grid_sheet` 只有在原生 compiler 产出 `SpriteFrames` 且 L0-L4 runner 校验通过后，才可以被 worker 消费。
+
+## asset_curation_entry_draft.py
+
+`asset_curation_entry_draft.py` 会把一个已选中的 curation candidate 转换成 v1 stable-entry draft。它要求指定的 candidate 存在、不歧义、且状态确实是 `selected`，report 的 selected/rejected 计数自洽，finalize 后的路径落在该素材的稳定输出目录内。
+
+手动入口：
+
+```bash
+python tools/asset_curation_entry_draft.py \
+  --report <report.json> \
+  --candidate <candidate_id_or_name> \
+  --asset-id <final_asset_id> \
+  --tag <tag> \
+  --production-family ui-kit \
+  --source-layout single \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
+```
 
 ## asset_output_path.py
 
