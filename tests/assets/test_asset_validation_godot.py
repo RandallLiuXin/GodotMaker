@@ -223,6 +223,55 @@ def test_the_probe_reports_a_path_godot_cannot_import(godot_bin, godot_project):
     assert "no importable resource" in absent.error
 
 
+def test_a_check_godot_cannot_answer_fails_l4_even_if_the_validator_ignores_it(
+    godot_bin, godot_project
+):
+    """Registration cannot catch this one: the check name is implemented.
+
+    ``texture2d`` is a legal check, but the artifact is a ``StyleBoxTexture``, so
+    the engine answers with an error instead of dimensions. The validator here
+    returns ``{}`` without reading the probe -- L4 must still fail, on Godot's
+    answer alone.
+    """
+    registry = build_default_registry()
+    registry.register(
+        source_layout_type="single",
+        artifact_type="StyleBoxTexture",
+        compiler_id="test_stylebox",
+        compiler_version=1,
+        compiler=lambda request: {},
+    )
+    structures = build_default_structures()
+    structures.register(
+        artifact_type="StyleBoxTexture",
+        validator_id="ignores_the_probe",
+        validator=lambda request: {},
+        checks=("texture2d",),
+    )
+    _write(godot_project, "res://assets/generated/ui-kit/panel/panel.png", _png(8, 8))
+    _write(
+        godot_project,
+        "res://assets/generated/ui-kit/panel/panel.tres",
+        b'[gd_resource type="StyleBoxTexture" format=3]\n\n[resource]\n',
+    )
+    entry = _entry(
+        godot_artifact={
+            "type": "StyleBoxTexture",
+            "path": "res://assets/generated/ui-kit/panel/panel.tres",
+        }
+    )
+    ladder = ValidationLadder(
+        registry=registry, structures=structures, probe=GodotProbe(godot_bin)
+    )
+    result = ladder.run(entry, project_root=godot_project)
+
+    assert result.levels[3].status == PASSED
+    assert result.ready is False, result.to_dict()
+    assert result.failure.level == "L4"
+    assert "could not be performed" in result.failure.error
+    assert "not a Texture2D" in result.failure.error
+
+
 def test_the_probe_reports_an_unknown_structural_check(godot_bin, godot_project):
     """A check name probe.gd does not implement is an error, never a silent pass."""
     _write(godot_project, "res://assets/generated/ui-kit/panel/panel.png", _png(4, 4))

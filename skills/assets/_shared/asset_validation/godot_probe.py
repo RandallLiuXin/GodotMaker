@@ -35,6 +35,14 @@ from .contract import ValidationError
 
 PROBE_SCRIPT = Path(__file__).resolve().parent / "probe.gd"
 
+# The structural checks ``probe.gd`` implements, mirroring its ``KNOWN_CHECKS``;
+# tests/assets/ asserts the two agree so neither can drift. Declaring it here as
+# well is what lets a structure validator that asks for a check nobody wrote fail
+# at registration, instead of failing every asset of that type at L4 -- or, worse,
+# passing them, if the validator does not read the error the probe reported.
+# A family adds its name to both lists together with the GDScript branch.
+PROBE_CHECKS = ("texture2d",)
+
 # Godot's own import and script runs; generous because a first import of a
 # project with many textures is not fast, and a hang must still end as a
 # diagnosable failure rather than a stuck pipeline.

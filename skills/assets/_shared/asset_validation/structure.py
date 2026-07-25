@@ -11,6 +11,13 @@ together with the structural facts its validator needs ``probe.gd`` to collect.
 The registry fails closed on an unregistered type: an artifact nobody can check
 must not reach ``ready`` just because no one wrote the check yet.
 
+The registry also owns whether those facts were actually collected. A check name
+``probe.gd`` does not implement is rejected at registration, and a declared check
+the probe could not answer fails the level before the validator runs -- otherwise
+a validator that simply ignores ``request.probe.structure`` would return normally
+and carry the ladder to ``ready`` while the L3 details record that the check was
+impossible.
+
 The shared layer ships exactly one validator, for the one artifact type it
 compiles -- ``Texture2D``, through ``asset_compiler/texture2d.py``. Every other
 type lands with its family skill.
@@ -24,7 +31,7 @@ from typing import Any, Callable
 
 from ._bridge import LAYOUT_ARTIFACT_TYPES
 from .contract import ValidationError
-from .godot_probe import ProbeResult
+from .godot_probe import PROBE_CHECKS, ProbeResult
 
 # Every artifact type the frozen stable-entry relation allows. A validator for a
 # type outside it could never run, so registering one is a mistake, not a
@@ -49,6 +56,29 @@ class StructureRequest:
     project_root: Path
     probe: ProbeResult
     spec: Mapping[str, Any] = field(default_factory=dict)
+
+    def checked_structure(self, check: str) -> Mapping[str, Any]:
+        """Return the facts Godot collected for one check, or fail closed.
+
+        The single place that decides whether a structural check was answered.
+        The registry calls it for every declared check before the validator runs,
+        and a validator reads its own facts through it, so a validator used
+        outside the registry gets the same guarantee rather than an attribute
+        error on a missing answer.
+        """
+        answered = self.probe.structure.get(check)
+        if not isinstance(answered, Mapping):
+            raise ValidationError(
+                f"the Godot probe reported no {check!r} structural check for "
+                f"{self.artifact_path}"
+            )
+        reported = answered.get("error")
+        if reported:
+            raise ValidationError(
+                f"the {check!r} structural check could not be performed on "
+                f"{self.artifact_path}: {reported}"
+            )
+        return answered
 
 
 # A validator raises ``ValidationError`` when the structure is unusable and
@@ -99,6 +129,12 @@ class StructureValidatorRegistry:
             isinstance(check, str) and check.strip() for check in checks
         ):
             raise ValidationError("checks must be a tuple of non-empty strings")
+        unknown = tuple(check for check in checks if check not in PROBE_CHECKS)
+        if unknown:
+            raise ValidationError(
+                f"probe.gd implements no structural check named "
+                f"{', '.join(unknown)}; implemented: {', '.join(PROBE_CHECKS)}"
+            )
         existing = self._routes.get(artifact_type)
         if existing is not None:
             raise ValidationError(
@@ -138,9 +174,27 @@ class StructureValidatorRegistry:
         route = self._routes.get(artifact_type)
         return () if route is None else route.checks
 
+    @staticmethod
+    def _require_answered_checks(route: StructureRoute, request: StructureRequest) -> None:
+        """Fail before the validator runs if Godot did not answer a declared check.
+
+        The registry, not the validator, owns this. A validator that never reads
+        ``request.probe.structure`` -- or reads only part of it -- would otherwise
+        return normally and carry the whole ladder to ``ready`` while the probe
+        result sitting in the L3 details says the check could not be performed.
+        Making every validator repeat the guard would only mean every family gets
+        one chance to forget it.
+
+        ``checks`` are what the validator declared it needs, so a missing or
+        errored one is a level that did not run, not an optional extra.
+        """
+        for check in route.checks:
+            request.checked_structure(check)
+
     def validate(self, request: StructureRequest) -> Mapping[str, Any]:
         """Run the registered validator and normalize how it may fail."""
         route = self.resolve(request.artifact_type)
+        self._require_answered_checks(route, request)
         try:
             details = route.validator(request)
         except ValidationError:
@@ -165,16 +219,13 @@ def validate_texture2d(request: StructureRequest) -> dict[str, Any]:
     binding one gives a worker an invisible sprite with no error anywhere. Godot
     reports the dimensions of the loaded resource, not of the file on disk, so
     this is the imported result being checked rather than the source PNG.
+
+    The template for a family validator: read the declared checks through
+    :meth:`StructureRequest.checked_structure` and judge only what this type
+    means. Whether the probe answered at all is the registry's guarantee, not
+    something each validator re-implements.
     """
-    structure = request.probe.structure.get("texture2d")
-    if not isinstance(structure, Mapping):
-        raise ValidationError(
-            "the Godot probe collected no texture2d structure for "
-            f"{request.artifact_path}"
-        )
-    reported = structure.get("error")
-    if reported:
-        raise ValidationError(str(reported))
+    structure = request.checked_structure("texture2d")
     dimensions: dict[str, int] = {}
     for axis in ("width", "height"):
         value = structure.get(axis)

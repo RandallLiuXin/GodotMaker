@@ -16,6 +16,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from asset_validation import (  # noqa: E402
     LEVELS,
+    PROBE_CHECKS,
     PROBE_SCRIPT,
     build_default_structures,
 )
@@ -72,6 +73,8 @@ def test_the_doc_states_the_rules_the_ladder_enforces():
         "build_default_structures()",
         "build_default_ladder()",
         "KNOWN_CHECKS",
+        "PROBE_CHECKS",
+        "checked_structure",
     ):
         assert claim in doc, f"the contract doc no longer mentions {claim}"
 
@@ -81,6 +84,13 @@ def test_the_doc_does_not_promise_the_private_evaluation_layers():
     # L5 and L6 are named only to place them outside this layer.
     assert "not runtime readiness gates" in doc
     assert "GodotMakerApp" in doc
+
+
+def test_the_python_check_list_matches_the_probe_script():
+    # PROBE_CHECKS gates registration; KNOWN_CHECKS is what the engine can answer.
+    # If they drift, a validator can register a check Godot will only ever answer
+    # with an error.
+    assert _probe_known_checks() == tuple(PROBE_CHECKS)
 
 
 def test_every_registered_structure_check_is_implemented_by_the_probe():

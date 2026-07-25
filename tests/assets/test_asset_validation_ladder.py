@@ -27,6 +27,7 @@ from asset_validation import (  # noqa: E402
     STATUS_READY,
     GodotProbe,
     GodotProbeError,
+    PROBE_CHECKS,
     LadderResult,
     LevelResult,
     ProbeReport,
@@ -635,7 +636,7 @@ def test_a_probe_that_collected_no_structure_fails_l4(tmp_path):
     result, _ = _run(tmp_path, probe=probe)
     level, error = _failure(result)
     assert level == "L4"
-    assert "collected no texture2d structure" in error
+    assert "reported no 'texture2d' structural check" in error
 
 
 def test_a_structure_check_godot_could_not_answer_fails_l4(tmp_path):
@@ -643,7 +644,56 @@ def test_a_structure_check_godot_could_not_answer_fails_l4(tmp_path):
     result, _ = _run(tmp_path, probe=probe)
     level, error = _failure(result)
     assert level == "L4"
+    assert "could not be performed" in error
     assert "resource is a Theme" in error
+
+
+@pytest.mark.parametrize(
+    "structure",
+    [
+        {},
+        {"texture2d": {"error": "unknown structural check: texture2d"}},
+        {"texture2d": "not even an object"},
+    ],
+)
+def test_a_validator_that_ignores_the_probe_cannot_pass_an_unanswered_check(
+    tmp_path, structure
+):
+    """The bypass this guard exists for: L4 must fail on the probe's answer alone.
+
+    A validator is free to return ``{}`` without reading anything. If the level
+    depended on it noticing, every family would get one chance to forget, and the
+    ladder would report ``ready`` beside an L3 detail saying the check was
+    impossible.
+    """
+    structures = StructureValidatorRegistry()
+    structures.register(
+        artifact_type="Texture2D",
+        validator_id="ignores_the_probe",
+        validator=lambda request: {},
+        checks=("texture2d",),
+    )
+    result, _ = _run(tmp_path, probe=StubProbe(structure=structure), structures=structures)
+
+    assert result.ready is False
+    assert result.processing_status == STATUS_FAILED
+    level, error = _failure(result)
+    assert level == "L4"
+    assert "texture2d" in error
+
+
+def test_a_validator_declaring_no_checks_still_runs(tmp_path):
+    """The guard covers declared checks only; a validator may need none."""
+    structures = StructureValidatorRegistry()
+    structures.register(
+        artifact_type="Texture2D",
+        validator_id="needs_nothing",
+        validator=lambda request: {"checked": "nothing"},
+    )
+    result, _ = _run(tmp_path, probe=StubProbe(structure={}), structures=structures)
+
+    assert result.ready is True
+    assert result.levels[4].details["checked"] == "nothing"
 
 
 def test_l4_reports_the_dimensions_it_checked(tmp_path):
@@ -743,7 +793,7 @@ def test_a_non_callable_validator_is_rejected():
         )
 
 
-@pytest.mark.parametrize("checks", [["sprite_frames"], ("",), ("ok", 3)])
+@pytest.mark.parametrize("checks", [["texture2d"], ("",), ("texture2d", 3)])
 def test_malformed_checks_are_rejected(checks):
     structures = StructureValidatorRegistry()
     with pytest.raises(ValidationError, match="checks must be a tuple"):
@@ -753,6 +803,29 @@ def test_malformed_checks_are_rejected(checks):
             validator=lambda r: {},
             checks=checks,
         )
+
+
+def test_a_check_the_probe_script_does_not_implement_is_rejected_at_registration():
+    structures = StructureValidatorRegistry()
+    with pytest.raises(ValidationError, match="probe.gd implements no structural check"):
+        structures.register(
+            artifact_type="StyleBoxTexture",
+            validator_id="nine_slice",
+            validator=lambda r: {},
+            checks=("unknown_structure",),
+        )
+
+
+def test_every_implemented_check_may_be_registered():
+    for check in PROBE_CHECKS:
+        structures = StructureValidatorRegistry()
+        route = structures.register(
+            artifact_type="Theme",
+            validator_id="theme",
+            validator=lambda r: {},
+            checks=(check,),
+        )
+        assert route.checks == (check,)
 
 
 def test_an_unregistered_type_asks_for_no_probe_checks():
@@ -854,6 +927,47 @@ def test_build_default_ladder_accepts_family_registries():
     structures = build_default_structures()
     ladder = build_default_ladder("godot", registry=registry, structures=structures)
     assert isinstance(ladder, ValidationLadder)
+
+
+def _structure_request(structure):
+    return StructureRequest(
+        production_family="ui-kit",
+        asset_id="panel",
+        source_layout_type="single",
+        source_path=SOURCE,
+        artifact_type="Texture2D",
+        artifact_path=SOURCE,
+        project_root=Path("."),
+        probe=ProbeResult(
+            res_path=SOURCE,
+            expected_type="Texture2D",
+            loaded=True,
+            godot_class="CompressedTexture2D",
+            type_matches=True,
+            structure=structure,
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "structure, message",
+    [
+        ({}, "reported no 'texture2d' structural check"),
+        ({"texture2d": None}, "reported no 'texture2d' structural check"),
+        ({"texture2d": "words"}, "reported no 'texture2d' structural check"),
+        ({"texture2d": {"error": "boom"}}, "could not be performed"),
+    ],
+)
+def test_reading_an_unanswered_check_fails_closed_outside_the_registry(structure, message):
+    # A validator used directly gets the same guarantee the registry enforces,
+    # rather than an attribute error on a missing answer.
+    with pytest.raises(ValidationError, match=message):
+        _structure_request(structure).checked_structure("texture2d")
+
+
+def test_reading_an_answered_check_returns_its_facts():
+    request = _structure_request({"texture2d": {"width": 2, "height": 2}})
+    assert request.checked_structure("texture2d") == {"width": 2, "height": 2}
 
 
 def test_the_texture_validator_is_usable_on_its_own():

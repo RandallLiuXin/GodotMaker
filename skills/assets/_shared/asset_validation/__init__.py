@@ -27,6 +27,7 @@ from .contract import (
     ValidationError,
 )
 from .godot_probe import (
+    PROBE_CHECKS,
     PROBE_SCRIPT,
     GodotProbe,
     GodotProbeError,
@@ -55,6 +56,7 @@ __all__ = [
     "LEVEL_BY_ID",
     "NOT_RUN",
     "PASSED",
+    "PROBE_CHECKS",
     "PROBE_SCRIPT",
     "STATUS_FAILED",
     "STATUS_READY",

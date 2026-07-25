@@ -104,14 +104,27 @@ structures.register(
 ```
 
 `checks` names the structural facts `probe.gd` must collect during L3, so one
-Godot run serves both levels. The check names are a closed set in `probe.gd`
-(`KNOWN_CHECKS`); an unregistered check name is reported as an error, never
-silently skipped. A family adds its check branch there together with the
-validator that consumes it.
+Godot run serves both levels. The check names are a closed set, declared twice on
+purpose: `KNOWN_CHECKS` in `probe.gd` is what the engine can answer, and
+`PROBE_CHECKS` in `godot_probe.py` is what a validator may ask for. A family adds
+its name to both together with the GDScript branch, and `tests/assets/` asserts
+the two agree.
 
-A validator raises `ValidationError` when the structure is unusable and returns
-the facts it checked otherwise. Those facts are diagnostics and never widen the
-worker snapshot, which stays exactly `{type, path}`.
+**Whether a declared check was answered is the registry's business, not the
+validator's.** A name `probe.gd` does not implement is rejected at registration,
+and a declared check the probe could not answer — a missing answer, or one
+carrying an `error` — fails L4 before the validator runs. Without that, a
+validator that simply never reads `request.probe.structure` would return
+normally and carry the whole ladder to `ready`, while the L3 details sitting
+right next to the verdict record that the check was impossible. Making every
+family validator repeat the guard would only give every family one chance to
+forget it.
+
+A validator therefore reads its facts through
+`StructureRequest.checked_structure(name)` and judges only what its type means.
+It raises `ValidationError` when the structure is unusable and returns the facts
+it checked otherwise. Those facts are diagnostics and never widen the worker
+snapshot, which stays exactly `{type, path}`.
 
 The registry fails closed on an unregistered artifact type: an artifact nobody
 can check must not reach `ready` just because no one wrote the check yet. The
@@ -141,8 +154,10 @@ The ladder concludes `failed` when:
 - Godot has no importable resource at the artifact path, or
   `ResourceLoader.load` returns null;
 - the loaded resource is not the declared type;
-- no structure validator is registered for the artifact type, or the registered
-  one rejects the structure.
+- no structure validator is registered for the artifact type;
+- a structural check the registered validator declared was not answered by the
+  probe, or was answered with an error;
+- the registered validator rejects the structure.
 
 Path containment is re-resolved on disk at L1 and L2 rather than trusted from
 L0's string check, so a symlink inside the stable directory cannot aim the ladder
@@ -153,8 +168,9 @@ has none to offer. When one is supplied it must be this asset's, so a receipt
 from another compile cannot stand in as evidence.
 
 Registration fails closed too: an artifact type no source layout compiles to, a
-non-callable validator, malformed `checks`, and a second validator for an already
-registered type are all rejected.
+non-callable validator, malformed `checks`, a check name `probe.gd` does not
+implement, and a second validator for an already registered type are all
+rejected.
 
 ## Boundary
 
