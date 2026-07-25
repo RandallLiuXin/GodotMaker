@@ -1269,6 +1269,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#asset_runtime_resolverpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        asset_runtime_resolver.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#_2" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2890,6 +2901,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#asset_runtime_resolverpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        asset_runtime_resolver.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#_2" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2937,6 +2959,7 @@
 <li><code>asset_generation_index.py</code></li>
 <li><code>asset_assets_md_update.py</code></li>
 <li><code>asset_atlas_assemble.py</code></li>
+<li><code>asset_runtime_resolver.py</code></li>
 </ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> 会根据 JSON spec 生成 API 后端 source 图片，支持 Gemini、OpenAI 和 xAI Grok selector。运行时原生的 <code>native</code> 和 <code>codex</code> 图片生成由 <code>/gm-asset</code> 选择，不由这个脚本调用。</p>
@@ -3122,6 +3145,14 @@ ClassDB 类型：</p>
 <p>手动入口：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>tools/asset_assets_md_update.py<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
+</code></pre></div>
+<h2 id="asset_runtime_resolverpy">asset_runtime_resolver.py<a class="headerlink" href="#asset_runtime_resolverpy" title="Permanent link">&para;</a></h2>
+<p><code>asset_runtime_resolver.py</code> 将一个已注册且状态为 <code>generated</code> 的 ASSETS.md 行解析为最小 runtime snapshot：<code>asset_id</code>、<code>production_family</code>、<code>source_layout</code> 和 <code>godot_artifact</code>。它要求 ASSETS.md 指针与 generated root index 一致，并校验 ready stable entry 及其引用文件；reference-only entry 不会产生 worker runtime snapshot。</p>
+<p>手动入口：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>python<span class="w"> </span>tools/asset_runtime_resolver.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>--tag<span class="w"> </span>&lt;tag&gt;<span class="w"> </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>python<span class="w"> </span>tools/asset_runtime_resolver.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">  </span>--manifest-entry<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
 </code></pre></div>
 <h2 id="_2">手动调用这些脚本<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <p>大多数情况下不需要直接运行这些脚本。<code>/gm-asset</code> 会根据 <code>ASSETS.md</code> 和 source-generation manifest 自动调度它们。</p>
