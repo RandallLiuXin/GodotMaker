@@ -15,10 +15,11 @@ all a :class:`CompilerError`.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Callable
+from uuid import uuid4
 
 from ._stable_entry import LAYOUT_ARTIFACT_TYPES
 from .contract import (
@@ -44,6 +45,19 @@ Compiler = Callable[[CompileRequest], Mapping[str, Any]]
 # (tools/asset_stable_entry.py). Existence alone cannot catch that, because the
 # source file satisfies it.
 SOURCE_IS_ARTIFACT_TYPES = ("Texture2D",)
+
+
+def _staging_request(request: CompileRequest) -> CompileRequest:
+    """Return a request whose artifact target is a unique sibling staging file.
+
+    A compiler may overwrite the stable artifact on a successful regeneration,
+    but it must never expose a partial result at that path.  Keeping the staging
+    target in the same directory makes ``Path.replace`` an atomic commit on the
+    target filesystem, while the receipt still records the stable path.
+    """
+    parent, name = request.artifact_path.rsplit("/", 1)
+    staging_path = f"{parent}/{name}.staging-{uuid4().hex}"
+    return replace(request, artifact_path=staging_path)
 
 
 def _content_digest(path: Path) -> bytes | None:
@@ -202,74 +216,87 @@ class CompilerRegistry:
                 f"source_path; got {request.artifact_path} instead of "
                 f"{request.source_path}"
             )
-        artifact_file = request.artifact_file()
         if route.writes_artifact:
+            artifact_file = request.artifact_file()
             if is_same_file(source_file, artifact_file):
                 raise CompilerError(
                     f"{route.compiler_id} may not publish source_path as "
                     f"artifact_path ({request.artifact_path})"
                 )
-            try:
-                artifact_file.unlink(missing_ok=True)
-            except OSError as exc:
-                raise CompilerError(
-                    f"{route.compiler_id} cannot clear prior artifact "
-                    f"{request.artifact_path}: {exc}"
-                ) from exc
             source_digest = None
         else:
             source_digest = _content_digest(source_file)
             if source_digest is None:
                 raise CompilerError(f"source_path cannot be read: {request.source_path}")
 
+        staging_request = _staging_request(request) if route.writes_artifact else request
+        staging_file: Path | None = None
+        if route.writes_artifact:
+            staging_file = (
+                Path(staging_request.project_root)
+                / staging_request.artifact_path.removeprefix("res://")
+            )
         try:
-            details = route.compiler(request)
-        except CompilerError:
-            raise
-        except Exception as exc:  # noqa: BLE001 - surfaced as a compiler error
-            raise CompilerError(f"{route.compiler_id} failed: {exc}") from exc
+            try:
+                details = route.compiler(staging_request)
+            except CompilerError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - surfaced as a compiler error
+                raise CompilerError(f"{route.compiler_id} failed: {exc}") from exc
 
-        if not isinstance(details, Mapping):
-            raise CompilerError(
-                f"{route.compiler_id} must return a mapping of receipt details"
-            )
+            if not isinstance(details, Mapping):
+                raise CompilerError(
+                    f"{route.compiler_id} must return a mapping of receipt details"
+                )
 
-        # Re-resolve rather than reuse: the first containment check ran against a
-        # path whose parent directories did not exist yet, so no symlink could be
-        # followed. Anything the compiler created in between is checked now.
-        artifact_file = request.artifact_file()
-        if not artifact_file.is_file():
-            raise CompilerError(
-                f"{route.compiler_id} returned without writing {request.artifact_path}"
+            # Re-resolve rather than reuse: the first containment check ran against a
+            # path whose parent directories did not exist yet, so no symlink could be
+            # followed. Anything the compiler created in between is checked now.
+            artifact_file = staging_request.artifact_file()
+            if not artifact_file.is_file():
+                raise CompilerError(
+                    f"{route.compiler_id} returned without writing {request.artifact_path}"
+                )
+            source_file = request.source_file()
+            if not source_file.is_file():
+                raise CompilerError(f"source_path not found after compilation: {request.source_path}")
+            if route.writes_artifact and is_same_file(source_file, artifact_file):
+                raise CompilerError(
+                    f"{route.compiler_id} may not publish source_path as "
+                    f"artifact_path ({request.artifact_path})"
+                )
+            if not route.writes_artifact and _content_digest(source_file) != source_digest:
+                raise CompilerError(
+                    f"{route.compiler_id} writes no artifact and must not modify "
+                    f"source_path ({request.source_path})"
+                )
+            result = CompileResult(
+                godot_artifact=GodotArtifact(
+                    type=request.artifact_type,
+                    path=request.artifact_path,
+                ),
+                receipt=CompileReceipt(
+                    compiler_id=route.compiler_id,
+                    compiler_version=route.compiler_version,
+                    production_family=request.production_family,
+                    asset_id=request.asset_id,
+                    source_layout_type=request.source_layout_type,
+                    source_path=request.source_path,
+                    artifact_type=request.artifact_type,
+                    artifact_path=request.artifact_path,
+                    details=details,
+                ),
             )
-        source_file = request.source_file()
-        if not source_file.is_file():
-            raise CompilerError(f"source_path not found after compilation: {request.source_path}")
-        if route.writes_artifact and is_same_file(source_file, artifact_file):
-            raise CompilerError(
-                f"{route.compiler_id} may not publish source_path as "
-                f"artifact_path ({request.artifact_path})"
-            )
-        if not route.writes_artifact and _content_digest(source_file) != source_digest:
-            raise CompilerError(
-                f"{route.compiler_id} writes no artifact and must not modify "
-                f"source_path ({request.source_path})"
-            )
+            if route.writes_artifact:
+                try:
+                    artifact_file.replace(request.artifact_file())
+                except OSError as exc:
+                    raise CompilerError(
+                        f"{route.compiler_id} cannot commit artifact "
+                        f"{request.artifact_path}: {exc}"
+                    ) from exc
+        finally:
+            if staging_file is not None:
+                staging_file.unlink(missing_ok=True)
 
-        return CompileResult(
-            godot_artifact=GodotArtifact(
-                type=request.artifact_type,
-                path=request.artifact_path,
-            ),
-            receipt=CompileReceipt(
-                compiler_id=route.compiler_id,
-                compiler_version=route.compiler_version,
-                production_family=request.production_family,
-                asset_id=request.asset_id,
-                source_layout_type=request.source_layout_type,
-                source_path=request.source_path,
-                artifact_type=request.artifact_type,
-                artifact_path=request.artifact_path,
-                details=dict(details),
-            ),
-        )
+        return result
