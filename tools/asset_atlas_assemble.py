@@ -181,6 +181,7 @@ def _commit_output_pair(
     metadata_backup: Path | None = None
     atlas_replaced = False
     metadata_replaced = False
+    commit_succeeded = False
     try:
         atlas_backup = _backup(atlas_output)
         metadata_backup = _backup(metadata_output)
@@ -188,25 +189,39 @@ def _commit_output_pair(
         atlas_replaced = True
         os.replace(metadata_temp, metadata_output)
         metadata_replaced = True
+        commit_succeeded = True
     except OSError as exc:
-        try:
-            if atlas_replaced:
+        rollback_failures: list[tuple[Path, Path | None, OSError]] = []
+        if atlas_replaced:
+            try:
                 _restore(atlas_output, atlas_backup)
                 atlas_backup = None
-            if metadata_replaced:
+            except OSError as rollback_exc:
+                rollback_failures.append((atlas_output, atlas_backup, rollback_exc))
+        if metadata_replaced:
+            try:
                 _restore(metadata_output, metadata_backup)
                 metadata_backup = None
-        except OSError as rollback_exc:
+            except OSError as rollback_exc:
+                rollback_failures.append(
+                    (metadata_output, metadata_backup, rollback_exc)
+                )
+        if rollback_failures:
+            recovery_locations = "; ".join(
+                f"{output} (backup: {backup})"
+                for output, backup, _ in rollback_failures
+            )
             raise AtlasAssemblyError(
-                "Unable to commit atlas outputs and rollback failed"
-            ) from rollback_exc
+                "Unable to commit atlas outputs and rollback failed; "
+                f"manual recovery required for: {recovery_locations}"
+            ) from rollback_failures[0][2]
         raise AtlasAssemblyError("Unable to commit atlas outputs; changes were rolled back") from exc
     finally:
         atlas_temp.unlink(missing_ok=True)
         metadata_temp.unlink(missing_ok=True)
-        if atlas_backup is not None:
+        if atlas_backup is not None and (commit_succeeded or not atlas_replaced):
             atlas_backup.unlink(missing_ok=True)
-        if metadata_backup is not None:
+        if metadata_backup is not None and (commit_succeeded or not metadata_replaced):
             metadata_backup.unlink(missing_ok=True)
 
 
