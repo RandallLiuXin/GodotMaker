@@ -2750,7 +2750,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li><code>asset_generation_index.py --check-files</code> verifies that every registered source and artifact still exists, catching an asset deleted after registration.</li>
 <li>Generated assets now stop at <code>source_ready</code>: the native compilers and the L0-L4 runner are not implemented, so <code>/gm-asset</code> registers stable entries but produces no worker-consumable runtime asset and leaves generated ASSETS.md rows <code>MISSING</code>.</li>
 <li><code>godot_artifact</code> is written only by a native compiler, so a <code>grid_sheet</code> can no longer be published as a <code>Texture2D</code> standing in for its unbuilt <code>SpriteFrames</code>.</li>
-<li>The stable-entry schema now binds each <code>source_layout.type</code> to the Godot resource it compiles to, so a mismatched <code>godot_artifact.type</code> is rejected instead of reaching a worker.</li>
+<li>The stable-entry schema now validates each <code>source_layout.type</code> against its closed compatible Godot artifact-type set, including <code>StyleBoxTexture</code> for <code>single</code> and <code>region_atlas</code>, so mismatches are rejected before reaching a worker.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>

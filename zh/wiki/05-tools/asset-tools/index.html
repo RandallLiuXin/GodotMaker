@@ -3033,6 +3033,43 @@
 </code></pre></div>
 <h2 id="asset_stable_entrypy">asset_stable_entry.py<a class="headerlink" href="#asset_stable_entrypy" title="Permanent link">&para;</a></h2>
 <p><code>asset_stable_entry.py</code> 校验一个 v1 stable entry，并把它序列化到 <code>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json</code>。entry 只保存稳定身份加上 <code>production_family</code>、<code>source_layout</code>、可选的最小 <code>godot_artifact</code> 和 <code>processing_status</code>，不保存其他字段。</p>
+<p>对于非 <code>reference</code> entry，<code>godot_artifact.type</code> 必须是 Godot ClassDB
+标识符，且必须位于下列封闭的 layout 兼容集合中；这不表示可以使用任意
+ClassDB 类型：</p>
+<table>
+<thead>
+<tr>
+<th><code>source_layout.type</code></th>
+<th>允许的 <code>godot_artifact.type</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>single</code></td>
+<td><code>Texture2D</code> 或 <code>StyleBoxTexture</code></td>
+</tr>
+<tr>
+<td><code>region_atlas</code></td>
+<td><code>AtlasTexture</code> 或 <code>StyleBoxTexture</code></td>
+</tr>
+<tr>
+<td><code>grid_sheet</code></td>
+<td><code>SpriteFrames</code></td>
+</tr>
+<tr>
+<td><code>theme_recipe</code></td>
+<td><code>Theme</code></td>
+</tr>
+<tr>
+<td><code>tile_atlas</code></td>
+<td><code>TileSet</code></td>
+</tr>
+<tr>
+<td><code>reference</code></td>
+<td>不带 <code>godot_artifact</code></td>
+</tr>
+</tbody>
+</table>
 <p>手动入口：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>tools/asset_stable_entry.py<span class="w"> </span>&lt;entry_draft.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--write<span class="w"> </span>--check-files
 </code></pre></div>

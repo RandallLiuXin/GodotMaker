@@ -3075,6 +3075,43 @@ drifting into a timestamped or <code>v2</code> path.</p>
 <code>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json</code>. The entry holds
 stable identity plus <code>production_family</code>, <code>source_layout</code>, an optional minimal
 <code>godot_artifact</code>, and <code>processing_status</code> — nothing else.</p>
+<p>For non-reference entries, <code>godot_artifact.type</code> must be a Godot ClassDB
+identifier in the closed layout compatibility set; it is not an allow-list for
+arbitrary ClassDB types:</p>
+<table>
+<thead>
+<tr>
+<th><code>source_layout.type</code></th>
+<th>Allowed <code>godot_artifact.type</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>single</code></td>
+<td><code>Texture2D</code> or <code>StyleBoxTexture</code></td>
+</tr>
+<tr>
+<td><code>region_atlas</code></td>
+<td><code>AtlasTexture</code> or <code>StyleBoxTexture</code></td>
+</tr>
+<tr>
+<td><code>grid_sheet</code></td>
+<td><code>SpriteFrames</code></td>
+</tr>
+<tr>
+<td><code>theme_recipe</code></td>
+<td><code>Theme</code></td>
+</tr>
+<tr>
+<td><code>tile_atlas</code></td>
+<td><code>TileSet</code></td>
+</tr>
+<tr>
+<td><code>reference</code></td>
+<td>no <code>godot_artifact</code></td>
+</tr>
+</tbody>
+</table>
 <p>Manual entry point:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>tools/asset_stable_entry.py<span class="w"> </span>&lt;entry_draft.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--write<span class="w"> </span>--check-files
 </code></pre></div>
