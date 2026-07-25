@@ -16,6 +16,7 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 10. `asset_stable_entry.py`
 11. `asset_generation_index.py`
 12. `asset_assets_md_update.py`
+13. `asset_atlas_assemble.py`
 
 ## asset_source_generate.py
 
@@ -187,6 +188,24 @@ python tools/asset_finalize_entry_draft.py \
 python tools/asset_output_path.py --family <production_family> --asset-id <asset_id>
 python tools/asset_output_path.py --entry <entry.json> --project-root . --check-files
 ```
+
+## asset_atlas_assemble.py
+
+`asset_atlas_assemble.py` 根据显式声明 slot rect 的 JSON 组装物理 PNG atlas。它不做 packing、trim、resize 或 region 推断。source 必须是相对 project root 的 PNG 路径，尺寸必须与声明的 slot 精确一致；输出 PNG 和 metadata 都必须位于 `assets/generated/<production_family>/<asset_id>/` 内。
+
+手动入口：
+
+```bash
+python tools/asset_atlas_assemble.py \
+  --declaration <fixed_slots.json> \
+  --atlas-out assets/generated/ui-kit/<asset_id>/<asset_id>.png \
+  --metadata-out assets/generated/ui-kit/<asset_id>/<asset_id>.json \
+  --family ui-kit \
+  --asset-id <asset_id> \
+  --project-root .
+```
+
+该工具把物理 atlas 和确定性的 region metadata 作为可回滚的一对输出写入。它只负责固定 slot 的组装；把 metadata 编译成 `AtlasTexture` 是独立的 compiler 步骤。
 
 ## asset_stable_entry.py
 
