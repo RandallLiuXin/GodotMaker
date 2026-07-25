@@ -2738,14 +2738,29 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>v1 generated-asset stable entry and root index schema: <code>tools/asset_stable_entry.py</code> (per-asset <code>production_family</code> / <code>source_layout</code> / minimal <code>godot_artifact</code> / <code>processing_status</code> entry written to <code>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json</code>) and <code>tools/asset_generation_index.py</code> (pointer-only root index). Old <code>runtime_artifact</code> schema fails closed and must be regenerated through <code>/gm-asset</code>; no migration or compatibility read is provided.</li>
 <li>Stable generated-asset output-path contract: deterministic <code>assets/generated/&lt;production_family&gt;/&lt;asset_id&gt;/</code> resolver (<code>tools/asset_output_path.py</code>), fail-closed stable-entry path validation, and a reusable <code>assert_within_output_dir</code> write guard.</li>
 <li>Added a standalone asset-skill invocation and result contract under <code>skills/assets/_shared/</code> with declarative JSON schemas, valid samples, a dependency-free checker, and fail-closed tests (#98).</li>
+<li>Added <code>tools/asset_action_entry_draft.py</code>, which builds action support metadata and a v1 stable-entry draft while enforcing frame count, empty edge-touch frames, a recorded scale reference, and stable-path containment.</li>
+<li>Added <code>tools/asset_curation_entry_draft.py</code>, which builds a v1 stable-entry draft from a selected curation candidate while enforcing candidate selection, unambiguous naming, coherent selection counts, and stable-path containment.</li>
+<li>Added <code>tools/asset_finalize_entry_draft.py</code>, which builds a v1 stable-entry draft from an <code>asset_image_finalize.py</code> report for screen references, backgrounds, and single card or portrait frames while enforcing aspect validation, asset-label binding, and path containment.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>/gm-asset</code> now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body <code>runtime_artifact</code> manifest.</li>
+<li>Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.</li>
+<li>An ASSETS.md row reaches <code>generated</code> only from a <code>ready</code> non-reference stable entry, so an unfinished or failed asset can no longer look complete to <code>/gm-build</code>.</li>
+<li><code>asset_generation_index.py --check-files</code> verifies that every registered source and artifact still exists, catching an asset deleted after registration.</li>
+<li>Generated assets now stop at <code>source_ready</code>: the native compilers and the L0-L4 runner are not implemented, so <code>/gm-asset</code> registers stable entries but produces no worker-consumable runtime asset and leaves generated ASSETS.md rows <code>MISSING</code>.</li>
+<li><code>godot_artifact</code> is written only by a native compiler, so a <code>grid_sheet</code> can no longer be published as a <code>Texture2D</code> standing in for its unbuilt <code>SpriteFrames</code>.</li>
+<li>The stable-entry schema now binds each <code>source_layout.type</code> to the Godot resource it compiles to, so a mismatched <code>godot_artifact.type</code> is rejected instead of reaching a worker.</li>
+</ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Added the required <code>--grid</code> (and <code>--names</code>) argument to every production-unit <code>asset_sheet_process.py</code> example so the ui-kit, card-kit, compact-prop-pack, fx-bundle, scene-prop-set, and platform-strip commands run as written instead of failing on a missing required argument, and clarified that <code>--grid</code> is required in both autoslice and grid snap modes.</li>
 <li>Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at <code>.godotmaker/asset-generation/manifest.json</code> instead of the analyst's <code>assets/manifest.json</code> (#97)</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Retired the old <code>runtime_artifact</code> generated-asset manifest update, check, and entry-builder tools with no migration, dual-write, or compatibility read.</li>
+</ul>
 
 
 

@@ -3284,10 +3284,6 @@ plugin adapter.</p>
 <td>Process character action sheets into normalized frames and metadata</td>
 </tr>
 <tr>
-<td><code>asset_action_manifest_entry.py</code></td>
-<td>Build frame-output manifest entries from processed action metadata</td>
-</tr>
-<tr>
 <td><code>asset_sheet_process.py</code></td>
 <td>Split production-shaped 2D source sheets into curation candidates</td>
 </tr>
@@ -3296,8 +3292,32 @@ plugin adapter.</p>
 <td>Finalize selected curation candidates into runtime asset paths</td>
 </tr>
 <tr>
-<td><code>asset_curation_manifest_entry.py</code></td>
-<td>Build runtime manifest entries from selected curation candidates</td>
+<td><code>asset_action_entry_draft.py</code></td>
+<td>Build action support metadata and a v1 stable-entry draft from processed action output</td>
+</tr>
+<tr>
+<td><code>asset_curation_entry_draft.py</code></td>
+<td>Build a v1 stable-entry draft from a selected curation candidate</td>
+</tr>
+<tr>
+<td><code>asset_finalize_entry_draft.py</code></td>
+<td>Build a v1 stable-entry draft from an asset_image_finalize.py report</td>
+</tr>
+<tr>
+<td><code>asset_output_path.py</code></td>
+<td>Resolve and validate the stable <code>assets/generated/&lt;family&gt;/&lt;asset_id&gt;/</code> output directory</td>
+</tr>
+<tr>
+<td><code>asset_stable_entry.py</code></td>
+<td>Validate and serialize one v1 generated-asset stable entry</td>
+</tr>
+<tr>
+<td><code>asset_generation_index.py</code></td>
+<td>Validate and upsert the pointer-only generated-asset root index</td>
+</tr>
+<tr>
+<td><code>asset_assets_md_update.py</code></td>
+<td>Update ASSETS.md rows from registered stable entries</td>
 </tr>
 <tr>
 <td><code>migrate.py</code></td>
