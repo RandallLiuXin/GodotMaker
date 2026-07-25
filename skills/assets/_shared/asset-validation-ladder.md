@@ -39,10 +39,10 @@ the step that got there.
 ## Promotion and revalidation
 
 `ValidationLadder.run()` has two explicit modes. `promotion` (the default) is
-the only route from `compiled` to `ready`: it requires a matching
-`CompileReceipt` returned by the compiler registry for this entry's compiler,
-family, asset ID, source layout, and artifact. A file at the artifact path does
-not substitute for proof that this compile succeeded.
+the only route from `compiled` to `ready`: it requires the exact
+`CompileReceipt` returned by this compiler-registry instance for this entry's
+compiler ID and version, family, asset ID, source layout, and artifact. A file
+at the artifact path does not substitute for proof that this compile succeeded.
 
 `revalidation` is only for an entry already recorded as `ready`. It reruns
 L0-L4 after a process restart without requiring an in-memory receipt. It cannot
@@ -163,7 +163,8 @@ The ladder concludes `failed` when:
   a regular file, or is empty;
 - a writing route's `godot_artifact.path` equals or resolves to the same file as
   `source_layout.path`, or a non-writing route's does not;
-- a `promotion` has no matching compile receipt, or its entry is not `compiled`;
+- a `promotion` has no matching receipt issued by the current compiler registry,
+  or its entry is not `compiled`;
 - a `revalidation` entry is not already `ready`;
 - a supplied compile receipt describes a different asset, layout, or artifact;
 - Godot cannot be run, times out, or writes no report;
@@ -181,8 +182,9 @@ at a file it was never allowed to accept.
 
 The compile receipt is internal evidence: it never enters the stable entry,
 `ASSETS.md`, or worker snapshot. It is mandatory for promotion and optional for
-revalidation; when supplied it must be this asset's, so a receipt from another
-compile cannot stand in as evidence.
+revalidation; when supplied it must be this asset's and the exact object issued
+by the current registry, so a hand-built, copied, or another registry's receipt
+cannot stand in as evidence.
 
 Registration fails closed too: an artifact type no source layout compiles to, a
 non-callable validator, malformed `checks`, a check name `probe.gd` does not

@@ -133,6 +133,29 @@ def test_compile_returns_the_routed_compilers_receipt(project):
     assert (project / "assets/generated/ui-kit/panel/panel.tres").is_file()
 
 
+def test_only_the_exact_receipt_returned_by_this_registry_is_issued(project):
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=_writer(b"12345"))
+    receipt = registry.compile(
+        _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+    ).receipt
+
+    assert registry.issued_receipt(receipt) is True
+    assert registry.issued_receipt(
+        CompileReceipt(
+            compiler_id=receipt.compiler_id,
+            compiler_version=receipt.compiler_version,
+            production_family=receipt.production_family,
+            asset_id=receipt.asset_id,
+            source_layout_type=receipt.source_layout_type,
+            source_path=receipt.source_path,
+            artifact_type=receipt.artifact_type,
+            artifact_path=receipt.artifact_path,
+            details=receipt.details,
+        )
+    ) is False
+
+
 # --- registration failures -------------------------------------------------
 
 

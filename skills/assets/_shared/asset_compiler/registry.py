@@ -107,6 +107,11 @@ class CompilerRegistry:
 
     def __init__(self) -> None:
         self._routes: dict[tuple[str, str], CompilerRoute] = {}
+        # Receipt values are public diagnostic data, so field equality cannot
+        # prove that a caller actually ran this registry. Retain the exact
+        # instances returned by ``compile`` for the lifetime of this per-run
+        # registry and check identity at the validation boundary.
+        self._issued_receipts: dict[int, CompileReceipt] = {}
 
     def register(
         self,
@@ -180,6 +185,17 @@ class CompilerRegistry:
                 f"{artifact_type}; registered: {registered or 'none'}"
             )
         return route
+
+    def issued_receipt(self, receipt: CompileReceipt) -> bool:
+        """Return whether ``receipt`` is this registry's exact compile result.
+
+        ``CompileReceipt`` is intentionally a public, serializable dataclass,
+        so an equal value may be constructed without invoking a compiler. The
+        identity registry is the non-persistent capability that distinguishes a
+        compiler result from such a forgery. It is deliberately scoped to this
+        registry instance and is never written into a stable entry.
+        """
+        return self._issued_receipts.get(id(receipt)) is receipt
 
     def compile(self, request: CompileRequest) -> CompileResult:
         """Validate, route, run one compiler, and receipt the result."""
@@ -256,20 +272,22 @@ class CompilerRegistry:
                 f"source_path ({request.source_path})"
             )
 
+        receipt = CompileReceipt(
+            compiler_id=route.compiler_id,
+            compiler_version=route.compiler_version,
+            production_family=request.production_family,
+            asset_id=request.asset_id,
+            source_layout_type=request.source_layout_type,
+            source_path=request.source_path,
+            artifact_type=request.artifact_type,
+            artifact_path=request.artifact_path,
+            details=dict(details),
+        )
+        self._issued_receipts[id(receipt)] = receipt
         return CompileResult(
             godot_artifact=GodotArtifact(
                 type=request.artifact_type,
                 path=request.artifact_path,
             ),
-            receipt=CompileReceipt(
-                compiler_id=route.compiler_id,
-                compiler_version=route.compiler_version,
-                production_family=request.production_family,
-                asset_id=request.asset_id,
-                source_layout_type=request.source_layout_type,
-                source_path=request.source_path,
-                artifact_type=request.artifact_type,
-                artifact_path=request.artifact_path,
-                details=dict(details),
-            ),
+            receipt=receipt,
         )

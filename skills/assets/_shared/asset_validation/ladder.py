@@ -288,8 +288,7 @@ class ValidationLadder:
             details["receipt"] = self._check_receipt(run, route)
         return details
 
-    @staticmethod
-    def _check_receipt(run: _Run, route: Any) -> dict[str, Any]:
+    def _check_receipt(self, run: _Run, route: Any) -> dict[str, Any]:
         """Bind a supplied compile receipt to the entry it claims to describe.
 
         Promotion always supplies one. Revalidation may omit it because an
@@ -303,6 +302,7 @@ class ValidationLadder:
             )
         expected = {
             "compiler_id": route.compiler_id,
+            "compiler_version": route.compiler_version,
             "production_family": run.production_family,
             "asset_id": run.asset_id,
             "source_layout_type": run.source_layout_type,
@@ -317,6 +317,10 @@ class ValidationLadder:
                     f"the supplied compile receipt describes {name} {actual!r}, not "
                     f"this entry's {value!r}"
                 )
+        if not self._registry.issued_receipt(receipt):
+            raise ValidationError(
+                "the supplied compile receipt was not issued by this compiler registry"
+            )
         return {
             "compiler_id": receipt.compiler_id,
             "compiler_version": receipt.compiler_version,

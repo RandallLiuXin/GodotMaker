@@ -17,7 +17,12 @@ SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(SHARED_DIR))
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from asset_compiler import CompileReceipt, CompilerRegistry, build_default_registry  # noqa: E402
+from asset_compiler import (  # noqa: E402
+    CompileReceipt,
+    CompileRequest,
+    CompilerRegistry,
+    build_default_registry,
+)
 from asset_validation import (  # noqa: E402
     FAILED,
     LEVELS,
@@ -146,11 +151,14 @@ _DEFAULT_RECEIPT = object()
 def _run(tmp_path, entry=None, *, receipt=_DEFAULT_RECEIPT, **kwargs):
     root = _project(tmp_path)
     _write(root, SOURCE)
+    registry = kwargs.pop("registry", None)
+    if registry is None:
+        registry = build_default_registry()
     if receipt is _DEFAULT_RECEIPT:
-        receipt = _receipt()
+        receipt = _issued_receipt(root, registry)
     mode = kwargs.pop("mode", PROMOTION)
     return (
-        _ladder(**kwargs).run(
+        _ladder(registry=registry, **kwargs).run(
             entry or _entry(), project_root=root, receipt=receipt, mode=mode
         ),
         root,
@@ -515,10 +523,27 @@ def _receipt(**overrides):
     return CompileReceipt(**fields)
 
 
+def _issued_receipt(root: Path, registry: CompilerRegistry) -> CompileReceipt:
+    return registry.compile(
+        CompileRequest(
+            production_family="ui-kit",
+            asset_id="panel",
+            source_layout_type="single",
+            source_path=SOURCE,
+            artifact_type="Texture2D",
+            artifact_path=SOURCE,
+            project_root=root,
+        )
+    ).receipt
+
+
 def test_a_matching_compile_receipt_is_recorded_by_l2(tmp_path):
     root = _project(tmp_path)
     _write(root, SOURCE)
-    result = _ladder().run(_entry(), project_root=root, receipt=_receipt())
+    registry = build_default_registry()
+    result = _ladder(registry=registry).run(
+        _entry(), project_root=root, receipt=_issued_receipt(root, registry)
+    )
     assert result.ready is True
     assert result.levels[2].details["receipt"] == {
         "compiler_id": "texture2d_default_import",
@@ -526,22 +551,28 @@ def test_a_matching_compile_receipt_is_recorded_by_l2(tmp_path):
     }
 
 
-@pytest.mark.parametrize(
-    "override",
-    [
-        {"asset_id": "someone-else"},
-        {"production_family": "card-kit"},
-        {"artifact_path": "res://assets/generated/ui-kit/panel/other.tres"},
-        {"compiler_id": "another_compiler"},
-    ],
-)
-def test_a_compile_receipt_for_another_asset_fails_l2(tmp_path, override):
+def test_a_hand_built_matching_receipt_is_rejected_as_unissued(tmp_path):
     root = _project(tmp_path)
     _write(root, SOURCE)
-    result = _ladder().run(_entry(), project_root=root, receipt=_receipt(**override))
+    registry = build_default_registry()
+    result = _ladder(registry=registry).run(
+        _entry(), project_root=root, receipt=_receipt()
+    )
     level, error = _failure(result)
     assert level == "L2"
-    assert "compile receipt describes" in error
+    assert "was not issued by this compiler registry" in error
+
+
+def test_a_receipt_with_an_old_compiler_version_fails_l2(tmp_path):
+    root = _project(tmp_path)
+    _write(root, SOURCE)
+    registry = build_default_registry()
+    result = _ladder(registry=registry).run(
+        _entry(), project_root=root, receipt=_receipt(compiler_version=999)
+    )
+    level, error = _failure(result)
+    assert level == "L2"
+    assert "describes compiler_version 999" in error
 
 
 def test_an_object_that_is_not_a_compile_receipt_fails_l2(tmp_path):
@@ -602,7 +633,10 @@ def test_l3_asks_godot_for_the_artifact_and_the_checks_l4_needs(tmp_path):
     probe = StubProbe()
     root = _project(tmp_path)
     _write(root, SOURCE)
-    _ladder(probe=probe).run(_entry(), project_root=root, receipt=_receipt())
+    registry = build_default_registry()
+    _ladder(registry=registry, probe=probe).run(
+        _entry(), project_root=root, receipt=_issued_receipt(root, registry)
+    )
     (project_root, requests), = probe.calls
     assert project_root == root
     assert requests == (ProbeRequest(res_path=SOURCE, expected_type="Texture2D", checks=("texture2d",)),)
@@ -662,16 +696,14 @@ def test_an_artifact_type_with_no_structure_validator_fails_l4(tmp_path):
     root = _project(tmp_path)
     _write(root, SOURCE)
     _write(root, ARTIFACT, b"[gd_resource]\n")
-    entry = _entry(godot_artifact={"type": "StyleBoxTexture", "path": ARTIFACT})
+    entry = _entry(
+        godot_artifact={"type": "StyleBoxTexture", "path": ARTIFACT},
+        processing_status="ready",
+    )
     result = _ladder(registry=_stylebox_registry()).run(
         entry,
         project_root=root,
-        receipt=_receipt(
-            compiler_id="test_stylebox",
-            compiler_version=2,
-            artifact_type="StyleBoxTexture",
-            artifact_path=ARTIFACT,
-        ),
+        mode=REVALIDATION,
     )
     level, error = _failure(result)
     assert level == "L4"
