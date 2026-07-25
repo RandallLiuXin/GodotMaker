@@ -5,25 +5,27 @@ set the stable-entry validator enforces. Re-declaring that set here would let
 the two drift, and an artifact could compile that a stable entry then rejects.
 So the registry imports the frozen relation instead of copying it.
 
-``tools/`` is a flat script directory rather than an installed package, so it is
-resolved relative to this file the same way the repository's tests do. That
-makes this package importable from a source checkout only: ``skills/assets/`` is
-not part of the publish layout yet, so the location is asserted with a
-diagnosable message instead of failing as a bare ``ModuleNotFoundError``.
+``tools/`` is a flat script directory rather than an installed package. The
+bridge accepts both supported layouts: the source checkout and the published
+``.godotmaker/asset-runtime`` beside the project's ``tools/`` directory.
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-_TOOLS_DIR = Path(__file__).resolve().parents[4] / "tools"
+_SHARED_DIR = Path(__file__).resolve().parents[1]
+_TOOLS_CANDIDATES = (
+    _SHARED_DIR.parents[2] / "tools",  # source: skills/assets/_shared/
+    _SHARED_DIR.parents[1] / "tools",  # published: .godotmaker/asset-runtime/
+)
+_TOOLS_DIR = next((path for path in _TOOLS_CANDIDATES if path.is_dir()), None)
 
-if not _TOOLS_DIR.is_dir():
+if _TOOLS_DIR is None:
     raise ImportError(
         "the shared Godot artifact compiler expects the repository tools/ "
-        f"directory at {_TOOLS_DIR}, resolved from {__file__}. It is importable "
-        "from a source checkout only; skills/assets/ is not deployed by "
-        "tools/publish.py yet."
+        "directory beside the source checkout or published project runtime; checked "
+        + ", ".join(str(path) for path in _TOOLS_CANDIDATES)
     )
 
 # Appended, never inserted: tools/ is a flat directory of scripts, and putting it

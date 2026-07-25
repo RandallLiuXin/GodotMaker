@@ -79,6 +79,12 @@ AGENT_HOOK_CONFIGS = {
     ),
 }
 
+# Shared asset implementation code is project runtime, not an agent skill. It
+# deliberately lives outside every adapter's skill root so `_shared` cannot be
+# discovered or invoked as a standalone skill.
+ASSET_RUNTIME_SOURCE = Path("skills") / "assets" / "_shared"
+ASSET_RUNTIME_TARGET = Path(".godotmaker") / "asset-runtime"
+
 @dataclass(frozen=True)
 class AgentPublishAdapter:
     """Selected-agent publish contract for project-local GodotMaker output."""
@@ -391,7 +397,7 @@ def publish_skills(repo_root: Path, skills_target: Path,
     """
     adapter = get_agent_adapter(agent)
     count = 0
-    for layer in ("core", "reviewer"):
+    for layer in ("core", "reviewer", "assets"):
         layer_dir = repo_root / "skills" / layer
         if not layer_dir.exists():
             continue
@@ -412,6 +418,24 @@ def publish_skills(repo_root: Path, skills_target: Path,
         shutil.copy2(helper, helper_target)
 
     print(f"Published skills: {count}")
+    return count
+
+
+def publish_asset_runtime(repo_root: Path, target: Path) -> int:
+    """Deploy shared asset schemas, compilers, and validators for skills.
+
+    Asset skills need Python modules and schemas that must not appear beneath
+    an agent's skill discovery directory. The project-owned
+    ``.godotmaker/asset-runtime`` location is stable for every adapter and is
+    adjacent to the published ``tools/`` directory used by the import bridges.
+    """
+    src = repo_root / ASSET_RUNTIME_SOURCE
+    if not src.exists():
+        return 0
+    dst = target / ASSET_RUNTIME_TARGET
+    copy_tree(src, dst)
+    count = sum(1 for path in dst.rglob("*") if path.is_file())
+    print(f"Published asset runtime: {count} files")
     return count
 
 
@@ -1352,6 +1376,7 @@ def main():
             adapter.config_dir(target),          # selected agent config
             adapter.templates_dir(target),       # selected agent templates
             target / ".godotmaker" / "hooks",   # .godotmaker/hooks/
+            target / ASSET_RUNTIME_TARGET,         # shared asset runtime
             target / "tools",                   # tools/
         ]:
             if d.exists():
@@ -1388,6 +1413,7 @@ def main():
     # Publish all components
     publish_skills(repo_root, skills_target, agent)
     publish_shared_refs(repo_root, skills_target, agent)
+    publish_asset_runtime(repo_root, target)
     publish_runtime_references(repo_root, target, agent)
     publish_agents(repo_root, adapter.agents_dir(target), agent)
     publish_agent_plugins(repo_root, target, agent, args.force)

@@ -165,7 +165,7 @@ Python CLI scripts that contributors and users run directly.
 When you run `python tools/publish.py <target>`:
 
 1. Read `VERSION` from the repo root and compare against `<target>/.godotmaker/version`. Prompt or block on MINOR / MAJOR upgrades.
-2. Copy skills (flat): all directories under `skills/core/` and `skills/reviewer/` to the selected agent skill directory (`<target>/.claude/skills/` for Claude Code or `<target>/.agents/skills/` for Codex). Directories whose name starts with `_` (i.e., `_shared/`) are skipped by `publish_skills()`; shared docs are deployed into consumer `references/` folders instead by `publish_shared_refs()`.
+2. Copy first-class skills (flat): every non-private directory under `skills/core/`, `skills/reviewer/`, and `skills/assets/` goes to the selected agent skill directory (`<target>/.claude/skills/` for Claude Code or `<target>/.agents/skills/` for Codex). `skills/core/_shared/` documents are deployed into consumer `references/` folders by `publish_shared_refs()`; `skills/assets/_shared/` is not an invokable Skill and is copied to `<target>/.godotmaker/asset-runtime/` with the shared schemas, compiler, and L0-L4 validators.
 3. Copy hooks to `<target>/.godotmaker/hooks/`.
 4. Copy tools to `<target>/tools/`.
 5. Copy templates to the selected agent template directory.
