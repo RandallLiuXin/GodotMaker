@@ -268,8 +268,10 @@ read.
 entries. It revalidates every entry and referenced file first. Runtime rows
 require a `ready` non-reference entry, so they become `generated` only when the
 asset is worker-consumable. A `screen-reference` row may instead complete at
-`source_ready` when its finalized reference file, canonical stable entry, and
-root-index pointer pass the full root-index gate. This records the same entry
+`source_ready` and remain repeatable at `ready` when its finalized reference
+file, canonical stable entry, and root-index pointer pass validation. The
+updater validates the reference file plus every root-index pointer without
+requiring unrelated pending entries to have files. This records the same entry
 pointer but never creates a `godot_artifact` or sends the reference to a worker.
 
 Manual entry point:

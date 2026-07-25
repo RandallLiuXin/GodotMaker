@@ -39,8 +39,9 @@ Current-tag visual anchors are:
 1. User-provided image assets accepted as `direct_runtime`.
 2. Current-tag `references/scene_*.png` files with matching reports.
 3. Current-tag generated `screen-reference` or `style_reference` stable
-   entries at `source_ready` whose files exist and whose canonical pointers
-   pass the root-index gate. They are visual anchors, never runtime artifacts.
+   entries at `source_ready` or `ready` whose files exist and whose canonical
+   pointers pass the root-index gate. They are visual anchors, never runtime
+   artifacts.
 4. Current-tag canonical character or UI reference images whose stable entries
    are `ready`.
 
@@ -159,8 +160,9 @@ Use this order when units depend on each other:
 Update current-tag rows after producer reports:
 
 1. `generated`: either a `ready` non-reference stable entry is registered and
-   the root-index gate passed, or a `source_ready` reference-only stable entry
-   has its finalized file, canonical pointer, and root-index gate validated.
+   the root-index gate passed, or a `source_ready` or `ready` reference-only
+   stable entry has its finalized file, canonical pointer, and root-index gate
+   validated.
 2. `provided`: user-provided file matched the row.
 3. `deferred`: unprovided audio or intentionally skipped asset.
 4. `MISSING`: a runtime source exists but the runtime output or curation is

@@ -200,12 +200,13 @@ def write_reference_assets_md(path: Path):
     )
 
 
-def test_update_assets_md_promotes_registered_source_ready_reference(tmp_path):
+@pytest.mark.parametrize("status", ["source_ready", "ready"])
+def test_update_assets_md_promotes_registered_reference(tmp_path, status):
     """References complete after deterministic registration, not runtime readiness."""
     assets_md = tmp_path / "ASSETS.md"
     write_reference_assets_md(assets_md)
     touch(tmp_path, "references/scene_main.png")
-    entry_file = write_entry(tmp_path, make_reference_entry())
+    entry_file = write_entry(tmp_path, make_reference_entry(processing_status=status))
     update_index(
         tmp_path / ".godotmaker/asset-generation/manifest.json",
         [entry_file],
@@ -217,6 +218,19 @@ def test_update_assets_md_promotes_registered_source_ready_reference(tmp_path):
     text = assets_md.read_text(encoding="utf-8")
     assert "| generated |" in text
     assert f"manifest_entry={entry_relative_path(TAG, 'scene_main')}" in text
+
+
+@pytest.mark.parametrize("status", ["pending", "compiled", "failed"])
+def test_update_assets_md_rejects_incomplete_reference(tmp_path, status):
+    assets_md = tmp_path / "ASSETS.md"
+    write_reference_assets_md(assets_md)
+    touch(tmp_path, "references/scene_main.png")
+    entry_file = write_entry(tmp_path, make_reference_entry(processing_status=status))
+
+    with pytest.raises(AssetsMdUpdateError, match=f"processing_status is {status}"):
+        update_assets_md(assets_md, [entry_file])
+
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
 
 
 def test_reference_entry_must_be_registered_and_pass_the_root_index_gate(tmp_path):
@@ -299,6 +313,26 @@ def test_reference_entry_rejects_root_index_identity_mismatch(tmp_path):
         update_assets_md(assets_md, [entry_file])
 
     assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
+def test_reference_entry_ignores_unrelated_unfinished_index_entry(tmp_path):
+    """A pending asset may be registered without blocking a reference row."""
+    assets_md = tmp_path / "ASSETS.md"
+    write_reference_assets_md(assets_md)
+    touch(tmp_path, "references/scene_main.png")
+    reference_entry = write_entry(tmp_path, make_reference_entry())
+    pending_runtime = make_entry(processing_status="pending")
+    pending_runtime.pop("godot_artifact")
+    pending_entry = write_entry(tmp_path, pending_runtime)
+    update_index(
+        tmp_path / ".godotmaker/asset-generation/manifest.json",
+        [reference_entry, pending_entry],
+        project_root=tmp_path,
+    )
+
+    update_assets_md(assets_md, [reference_entry])
+
+    assert "| generated |" in assets_md.read_text(encoding="utf-8")
 
 
 def test_update_assets_md_rejects_missing_artifact_file(tmp_path):

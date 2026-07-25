@@ -32,7 +32,7 @@ from asset_generation_index import GenerationIndexError, check_index
 
 # The only readiness state that means "a worker can load this asset now".
 PROMOTABLE_STATUS = "ready"
-REFERENCE_PROMOTABLE_STATUS = "source_ready"
+REFERENCE_PROMOTABLE_STATUSES = {"source_ready", "ready"}
 ROOT_INDEX_RELATIVE = ".godotmaker/asset-generation/manifest.json"
 
 
@@ -53,21 +53,22 @@ def _assert_promotable(entry: dict[str, Any], entry_path: Path) -> bool:
     ``validate_entry`` proves the entry is well-formed and its files exist, but a
     well-formed runtime entry can still be mid-flight (``pending``,
     ``source_ready``, ``compiled``) or failed outright. A screen reference is
-    intentionally different: it completes at ``source_ready`` after separate
-    root-index validation, but is never handed to a worker as a runtime asset.
+    intentionally different: it completes at ``source_ready`` and remains
+    repeatable if a future process records it as ``ready``. Neither status makes
+    a reference worker-consumable.
     """
     is_reference = entry["source_layout"]["type"] in REFERENCE_LAYOUTS
     status = entry["processing_status"]
-    expected_status = (
-        REFERENCE_PROMOTABLE_STATUS if is_reference else PROMOTABLE_STATUS
-    )
+    if is_reference and status in REFERENCE_PROMOTABLE_STATUSES:
+        return True
+    expected_status = "source_ready or ready" if is_reference else PROMOTABLE_STATUS
     if status != expected_status:
         raise AssetsMdUpdateError(
             f"{entry_path} processing_status is {status}; only a {expected_status} "
             f"{'reference' if is_reference else 'runtime'} entry may update an "
             "ASSETS.md row"
         )
-    return is_reference
+    return False
 
 
 def _assert_registered_reference(
@@ -76,13 +77,15 @@ def _assert_registered_reference(
     """Require a reference to pass the root-index gate before completion.
 
     A reference has no runtime artifact, so its ``source_ready`` status is
-    enough only after the canonical entry is registered and the full root index
-    still validates its source files. The membership check prevents a valid but
+    enough only after the canonical entry is registered and the root index
+    schema-validates every pointer. The caller separately validates this entry's
+    source file, avoiding unrelated pending entries from other tags blocking a
+    reference-only completion. The membership check prevents a valid but
     unregistered entry from changing ASSETS.md directly.
     """
     index_path = project_root / ROOT_INDEX_RELATIVE
     try:
-        check_index(index_path, project_root=project_root, check_files=True)
+        check_index(index_path, project_root=project_root, check_entries=True)
     except GenerationIndexError as exc:
         raise AssetsMdUpdateError(
             f"Reference entry cannot pass the root-index gate: {exc}"

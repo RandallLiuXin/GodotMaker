@@ -28,15 +28,14 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - `/gm-asset` now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body `runtime_artifact` manifest.
 - Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.
-- An ASSETS.md row reaches `generated` only from a `ready` non-reference stable entry, so an unfinished or failed asset can no longer look complete to `/gm-build`.
+- An ASSETS.md runtime row reaches `generated` only from a `ready` non-reference stable entry, while a finalized registered screen reference completes its reference row at `source_ready` without becoming a worker runtime artifact.
 - `asset_generation_index.py --check-files` verifies that every registered source and artifact still exists, catching an asset deleted after registration.
-- Generated assets now stop at `source_ready`: the native compilers and the L0-L4 runner are not implemented, so `/gm-asset` registers stable entries but produces no worker-consumable runtime asset and leaves generated ASSETS.md rows `MISSING`.
+- Generated runtime assets now stop at `source_ready`: the native compilers and the L0-L4 runner are not implemented, so `/gm-asset` registers stable entries but produces no worker-consumable runtime asset and leaves generated runtime ASSETS.md rows `MISSING`.
 - `godot_artifact` is written only by a native compiler, so a `grid_sheet` can no longer be published as a `Texture2D` standing in for its unbuilt `SpriteFrames`.
 - The stable-entry schema now binds each `source_layout.type` to the Godot resource it compiles to, so a mismatched `godot_artifact.type` is rejected instead of reaching a worker.
 
 ## Fixed
 
-- Finalized, registered screen references can now complete their matching ASSETS.md rows at `source_ready` after the root-index gate passes, without becoming worker runtime artifacts.
 - Added the required `--grid` (and `--names`) argument to every production-unit `asset_sheet_process.py` example so the ui-kit, card-kit, compact-prop-pack, fx-bundle, scene-prop-set, and platform-strip commands run as written instead of failing on a missing required argument, and clarified that `--grid` is required in both autoslice and grid snap modes.
 - Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at `.godotmaker/asset-generation/manifest.json` instead of the analyst's `assets/manifest.json` (#97)
 

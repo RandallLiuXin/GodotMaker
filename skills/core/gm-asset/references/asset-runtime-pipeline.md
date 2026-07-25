@@ -255,12 +255,15 @@ python tools/asset_assets_md_update.py \
 
 The updater promotes a runtime row to `generated` only for a `ready`
 non-reference entry. A `screen-reference` row is the narrow exception: it may
-become `generated` at `source_ready` only after its finalized reference file,
-canonical stable entry, root-index pointer, and full root-index file gate pass.
-That records the same `manifest_entry` pointer without creating a
-`godot_artifact` or making the reference worker-consumable. All other
-`source_ready` entries remain `MISSING` until the compilers and L0-L4 runner
-land; do not work around that by editing rows or statuses by hand.
+become `generated` at `source_ready` and remains repeatable at `ready` after its
+finalized reference file, canonical stable entry, and root-index pointer pass.
+The updater schema-validates every index pointer and validates the selected
+reference entry's file; it deliberately does not require unrelated pending
+entries from other tags to have produced files. That records the same
+`manifest_entry` pointer without creating a `godot_artifact` or making the
+reference worker-consumable. All other `source_ready` entries remain `MISSING`
+until the compilers and L0-L4 runner land; do not work around that by editing
+rows or statuses by hand.
 
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.
@@ -300,7 +303,8 @@ Compiler target by source layout, for when that work lands:
 2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.
 3. `region_atlas`: `AtlasTexture`, with atlas metadata beside the artifact.
 4. `theme_recipe`: `Theme`. `tile_atlas`: `TileSet`.
-5. `reference`: no artifact; never mark an ASSETS runtime row generated from it.
+5. `reference`: no artifact; it may complete a reference-type ASSETS row but
+   never an ASSETS runtime row.
 
 Support files are named after the asset and live beside the artifact:
 
