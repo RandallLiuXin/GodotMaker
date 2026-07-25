@@ -29,6 +29,8 @@ from publish import (
     ensure_worktreeinclude,
     publish_agents,
     publish_agent_plugins,
+    publish_asset_runtime,
+    publish_directory,
     publish_skills,
     register_codex_mcp,
     register_opencode_mcp,
@@ -36,6 +38,9 @@ from publish import (
     rmtree_force,
     _verify_godot_path,
 )
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 PRIMARY_ROLE_SKILLS = [
@@ -965,6 +970,80 @@ class TestPublishSkills:
         # Second publish
         publish_skills(repo, target)
         assert (target / "gecs" / "SKILL.md").read_text() == "# updated\n"
+
+    @pytest.mark.parametrize("agent", publish.AGENT_CHOICES)
+    def test_flattens_first_class_asset_skills_but_not_shared_runtime(
+        self, tmp_path, agent
+    ):
+        repo = self._make_repo(tmp_path)
+        asset_skill = repo / "skills" / "assets" / "texture"
+        asset_skill.mkdir(parents=True)
+        (asset_skill / "SKILL.md").write_text("# texture\n", encoding="utf-8")
+        shared = repo / "skills" / "assets" / "_shared"
+        shared.mkdir(parents=True)
+        (shared / "SKILL.md").write_text("# private runtime\n", encoding="utf-8")
+
+        target = tmp_path / "target"
+        target.mkdir()
+
+        assert publish_skills(repo, target, agent) == 5
+        assert (target / "texture" / "SKILL.md").exists()
+        assert not (target / "_shared").exists()
+
+
+class TestPublishedAssetRuntime:
+    @pytest.mark.parametrize(
+        "publish_project,skill_root",
+        [
+            (_publish_claude_project, ".claude/skills"),
+            (_publish_codex_project, ".agents/skills"),
+            (_publish_opencode_project, ".opencode/skills"),
+        ],
+    )
+    def test_each_adapter_deploys_non_invokable_asset_runtime(
+        self, tmp_path, monkeypatch, publish_project, skill_root
+    ):
+        result = publish_project(tmp_path, monkeypatch)
+        target = result[0] if isinstance(result, tuple) else result
+        runtime = target / ".godotmaker" / "asset-runtime"
+
+        assert (runtime / "schema" / "asset-skill-request.schema.json").exists()
+        assert (runtime / "asset_compiler" / "registry.py").exists()
+        assert (runtime / "asset_validation" / "ladder.py").exists()
+        assert not (target / skill_root / "_shared").exists()
+
+    def test_published_runtime_imports_without_the_source_checkout(self, tmp_path):
+        target = tmp_path / "target"
+        publish_asset_runtime(REPO_ROOT, target)
+        publish_directory(REPO_ROOT / "tools", target / "tools", "tools/")
+        runtime = target / ".godotmaker" / "asset-runtime"
+
+        script = f'''\
+import sys
+from pathlib import Path
+
+source_root = Path({str(REPO_ROOT)!r}).resolve()
+assert source_root not in [Path(path).resolve() for path in sys.path if path]
+runtime = Path({str(runtime)!r})
+sys.path.insert(0, str(runtime))
+
+from asset_compiler import build_default_registry
+from asset_validation import build_default_ladder
+
+registry = build_default_registry()
+assert registry.resolve("single", "Texture2D").writes_artifact is False
+ladder = build_default_ladder("unused-godot")
+result = ladder.run({{}}, project_root=runtime.parent.parent)
+assert result.levels[0].status == "failed"
+assert [level.status for level in result.levels[1:]] == ["not_run"] * 4
+'''
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=target,
+            capture_output=True,
+            text=True,
+        )
+        assert completed.returncode == 0, completed.stderr
 
 
 class TestPublishAgents:

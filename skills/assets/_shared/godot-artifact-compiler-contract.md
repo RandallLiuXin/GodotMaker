@@ -144,7 +144,7 @@ invisible to a second caller holding a freshly built registry, and — because
 self-registering module into an import-time crash.
 
 `asset_compiler/` imports `tools/asset_stable_entry.py` through a path bridge
-resolved relative to the repository root, so it is importable from a source
-checkout only. `tools/publish.py` does not deploy `skills/assets/` yet; the
-bridge asserts the directory and names it in the error rather than failing as a
-bare `ModuleNotFoundError`.
+that supports both the source checkout and the published project layout.
+`tools/publish.py` deploys this shared implementation to
+`.godotmaker/asset-runtime/`, adjacent to the published `tools/` directory,
+without exposing `_shared` as a standalone Skill.
