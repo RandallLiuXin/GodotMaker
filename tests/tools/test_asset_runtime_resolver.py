@@ -211,6 +211,18 @@ def test_rejects_unregistered_or_missing_runtime_files(tmp_path):
         resolve_manifest_entry(pointer, project_root=tmp_path, assets_md=tmp_path / "ASSETS.md")
 
 
+def test_ready_entry_resolves_when_a_registered_pending_sibling_has_no_files(tmp_path):
+    ready, pointer = register(tmp_path, make_entry(), assets=True)
+    pending = make_entry(asset_id="boss", processing_status="pending")
+    pending.pop("godot_artifact")
+    write_entry(tmp_path, pending)
+    write_index(tmp_path, [ready, pending])
+
+    assert resolve_manifest_entry(
+        pointer, project_root=tmp_path, assets_md=tmp_path / "ASSETS.md"
+    ) == expected_snapshot()
+
+
 @pytest.mark.parametrize(
     ("pointer", "message"),
     [

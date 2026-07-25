@@ -136,10 +136,15 @@ def _canonical_entry_path(project_root: Path, pointer: str) -> Path:
 def _assert_registered(
     *, project_root: Path, manifest_entry: str, tag: str, asset_id: str
 ) -> None:
-    """Require the root index to pass its full gate and point at this entry."""
+    """Require a structurally valid root index that points at this entry.
+
+    The resolver proves the requested entry's files below. Other entries may
+    legitimately still be ``pending`` or ``source_ready`` without files, so the
+    root index's all-entry file gate remains an explicit batch validation.
+    """
     index_path = project_root / ROOT_INDEX_PATH
     try:
-        check_index(index_path, project_root=project_root, check_files=True)
+        check_index(index_path, project_root=project_root, check_entries=True)
         index = json.loads(index_path.read_text(encoding="utf-8"))
     except (GenerationIndexError, OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise AssetRuntimeResolverError(f"Generated root index is invalid: {exc}") from exc
