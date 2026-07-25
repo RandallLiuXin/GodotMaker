@@ -47,6 +47,9 @@ already exists from an earlier run:
   the previous run's bytes, while compiler, validation, and commit failures
   preserve the previous stable artifact. This does not rely on filesystem
   timestamp precision, so a same-byte deterministic rebuild remains valid.
+  Before a new writing compile starts, the registry removes only interrupted
+  staging siblings for that exact stable filename and extension. This narrow
+  recovery is not a production-family orphan scan or a directory transaction.
 - **A writing route must not name its source.** `artifact_path` may not equal
   `source_path` or resolve to the same file, so a compiler cannot publish its
   own source image (including through a hard link or case alias) as the
@@ -64,11 +67,13 @@ the registry rejects it if its compiler changes that source.
 Compiler = Callable[[CompileRequest], Mapping[str, Any]]
 ```
 
-A compiler writes its artifact to its staging `request.artifact_path` and
-returns its receipt details. The registry commits that artifact to the stable
-request path only after validation succeeds. It does not build the
-worker-facing artifact object; the registry does. That asymmetry is the
-mechanism behind the worker-snapshot boundary below.
+A writing compiler receives a sibling staging `request.artifact_path`, writes
+its artifact there, and returns receipt details. The registry commits that
+artifact to the stable request path only after validation succeeds. A
+non-writing route receives the original request, writes no artifact, and has
+no staging or commit step. The compiler does not build the worker-facing
+artifact object; the registry does. That asymmetry is the mechanism behind the
+worker-snapshot boundary below.
 
 `CompileRequest` carries `production_family`, `asset_id`, `source_layout_type`,
 `source_path`, `artifact_type`, `artifact_path`, `project_root`, and a

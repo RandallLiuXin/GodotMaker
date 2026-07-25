@@ -147,10 +147,11 @@ def test_writing_compiler_gets_a_sibling_staging_path_with_final_extension(
     project, extension
 ):
     observed_paths = []
+    payload = f"artifact{extension}".encode()
 
     def records_staging_path(request):
         observed_paths.append(request.artifact_path)
-        return _writer()(request)
+        return _writer(payload)(request)
 
     registry = CompilerRegistry()
     _register(registry, "single", "StyleBoxTexture", compiler=records_staging_path)
@@ -165,6 +166,8 @@ def test_writing_compiler_gets_a_sibling_staging_path_with_final_extension(
     assert staging_parent == stable_parent
     assert staging_name.startswith(stable_name.removesuffix(extension) + ".staging-")
     assert staging_name.endswith(extension)
+    stable_file = project / request.artifact_path.removeprefix("res://")
+    assert stable_file.read_bytes() == payload
 
 
 def test_only_the_exact_receipt_returned_by_this_registry_is_issued(project):
@@ -381,6 +384,23 @@ def test_compiler_that_writes_nothing_is_rejected(project):
         )
 
 
+def test_missing_artifact_diagnostic_names_the_staging_path(project):
+    observed_paths = []
+
+    def writes_nothing(request):
+        observed_paths.append(request.artifact_path)
+        return {}
+
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=writes_nothing)
+    with pytest.raises(CompilerError, match="returned without writing") as error:
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert observed_paths[0] in str(error.value)
+
+
 # --- the artifact must actually be rebuilt this run ------------------------
 
 
@@ -397,6 +417,91 @@ def test_no_op_compiler_cannot_pass_off_a_previous_runs_artifact(project):
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )
     assert stale.read_bytes() == b"STALE-FROM-RUN-1"
+
+
+def test_writing_compile_recovers_its_interrupted_staging_sibling(project):
+    stable = project / "assets/generated/ui-kit/panel/panel.tres"
+    stale = stable.with_name("panel.staging-interrupted.tres")
+    stale.write_bytes(b"PARTIAL")
+    saw_stale = []
+
+    def verifies_recovery(request):
+        saw_stale.append(stale.exists())
+        return _writer(b"FRESH")(request)
+
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=verifies_recovery)
+    registry.compile(
+        _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+    )
+
+    assert saw_stale == [False]
+    assert stable.read_bytes() == b"FRESH"
+    assert not list(stable.parent.glob("panel.staging-*.tres"))
+
+
+def test_writing_compile_only_recovers_its_matching_staging_extension(project):
+    preserved = project / "assets/generated/ui-kit/panel/panel.staging-other.res"
+    preserved.write_bytes(b"OTHER-RESOURCE")
+
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture")
+    registry.compile(
+        _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+    )
+
+    assert preserved.read_bytes() == b"OTHER-RESOURCE"
+
+
+def test_unremovable_stale_staging_fails_before_the_compiler_runs(project, monkeypatch):
+    stale = project / "assets/generated/ui-kit/panel/panel.staging-locked.tres"
+    stale.write_bytes(b"LOCKED")
+    original_unlink = Path.unlink
+    ran = []
+
+    def locked_unlink(self, *args, **kwargs):
+        if self == stale:
+            raise PermissionError("locked")
+        return original_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", locked_unlink)
+    registry = CompilerRegistry()
+    _register(
+        registry,
+        "single",
+        "StyleBoxTexture",
+        compiler=lambda request: ran.append(request) or {},
+    )
+    with pytest.raises(CompilerError, match="cannot remove stale staging artifact"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+    assert ran == []
+
+
+def test_staging_cleanup_error_does_not_mask_the_compiler_error(project, monkeypatch):
+    observed_paths = []
+    original_unlink = Path.unlink
+
+    def returns_bad_details(request):
+        observed_paths.append(request.artifact_file())
+        _writer()(request)
+        return []
+
+    def locked_unlink(self, *args, **kwargs):
+        if self in observed_paths:
+            raise PermissionError("locked")
+        return original_unlink(self, *args, **kwargs)
+
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=returns_bad_details)
+    monkeypatch.setattr(Path, "unlink", locked_unlink)
+
+    with pytest.raises(CompilerError, match="must return a mapping of receipt details"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
 
 
 @pytest.mark.parametrize(
@@ -597,7 +702,10 @@ def test_a_writing_route_may_not_hand_back_its_source_image(project):
 
 
 def test_a_writing_route_may_not_hard_link_its_source_as_the_artifact(project):
+    observed_paths = []
+
     def links_the_source(request):
+        observed_paths.append(request.artifact_path)
         os.link(request.source_file(), request.artifact_file())
         return {}
 
@@ -605,10 +713,11 @@ def test_a_writing_route_may_not_hard_link_its_source_as_the_artifact(project):
     stable.write_bytes(b"STABLE-OLD-CONTENT")
     registry = CompilerRegistry()
     _register(registry, "single", "StyleBoxTexture", compiler=links_the_source)
-    with pytest.raises(CompilerError, match="may not publish source_path"):
+    with pytest.raises(CompilerError, match="may not publish source_path") as error:
         registry.compile(
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )
+    assert observed_paths[0] in str(error.value)
     assert stable.read_bytes() == b"STABLE-OLD-CONTENT"
     assert not list(stable.parent.glob("panel.staging-*.tres"))
 

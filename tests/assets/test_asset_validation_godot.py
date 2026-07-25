@@ -18,7 +18,7 @@ SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(SHARED_DIR))
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from asset_compiler import CompileRequest, build_default_registry  # noqa: E402
+from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
 from asset_validation import (  # noqa: E402
     NOT_RUN,
     PASSED,
@@ -28,6 +28,7 @@ from asset_validation import (  # noqa: E402
     ValidationLadder,
     build_default_structures,
 )
+from asset_validation.godot_probe import SCRIPT_TIMEOUT  # noqa: E402
 
 # A Theme with no content: it loads cleanly, which is what makes it a useful
 # stand-in for a resource of the wrong type.
@@ -60,6 +61,33 @@ func _init() -> void:
         return
     quit()
 """
+
+
+def _run_resource_saver(
+    probe: GodotProbe,
+    project_root: Path,
+    script: Path,
+    artifact_type: str,
+    artifact_path: str,
+) -> subprocess.CompletedProcess:
+    """Ask the same console Godot binary L3 uses to save one resource."""
+    return subprocess.run(
+        [
+            probe.godot_path,
+            "--headless",
+            "--path",
+            str(project_root),
+            "--script",
+            str(script),
+            "--",
+            artifact_type,
+            artifact_path,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=SCRIPT_TIMEOUT,
+    )
 
 
 def _png(width: int, height: int) -> bytes:
@@ -162,26 +190,27 @@ def test_resource_saver_accepts_extension_preserving_staging_artifacts(
     script = godot_project / "save_staging_resource.gd"
     script.write_text(RESOURCE_SAVER_SCRIPT, encoding="utf-8")
     staging_paths = []
+    probe = GodotProbe(godot_bin)
 
     def save_with_godot(request):
         staging_paths.append(request.artifact_path)
-        completed = subprocess.run(
-            [
-                godot_bin,
-                "--headless",
-                "--path",
-                str(godot_project),
-                "--script",
-                str(script),
-                "--",
+        try:
+            completed = _run_resource_saver(
+                probe,
+                godot_project,
+                script,
                 artifact_type,
                 request.artifact_path,
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert completed.returncode == 0, completed.stderr or completed.stdout
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise CompilerError(
+                f"ResourceSaver.save timed out after {SCRIPT_TIMEOUT}s"
+            ) from exc
+        if completed.returncode != 0:
+            raise CompilerError(
+                f"ResourceSaver.save failed for {request.artifact_path}: "
+                f"{completed.stderr.strip() or completed.stdout.strip()}"
+            )
         return {"writer": "ResourceSaver"}
 
     registry = build_default_registry()
@@ -207,13 +236,33 @@ def test_resource_saver_accepts_extension_preserving_staging_artifacts(
     (staging_path,) = staging_paths
     assert staging_path.endswith(Path(artifact_name).suffix)
     assert ".staging-" in staging_path
-    report = GodotProbe(godot_bin).probe(
+    report = probe.probe(
         godot_project,
         [ProbeRequest(result.godot_artifact.path, artifact_type)],
     )
     (loaded,) = report.resources
     assert loaded.loaded is True, loaded.to_dict()
     assert loaded.type_matches is True, loaded.to_dict()
+
+
+def test_resource_saver_rejects_a_staging_token_after_the_resource_extension(
+    godot_bin, godot_project
+):
+    """The legacy suffix order must remain a real engine failure."""
+    base = "res://assets/generated/ui-kit/panel"
+    _write(godot_project, f"{base}/panel.png", b"source")
+    script = godot_project / "save_legacy_staging_resource.gd"
+    script.write_text(RESOURCE_SAVER_SCRIPT, encoding="utf-8")
+
+    completed = _run_resource_saver(
+        GodotProbe(godot_bin),
+        godot_project,
+        script,
+        "StyleBoxTexture",
+        f"{base}/panel.tres.staging-legacy",
+    )
+
+    assert completed.returncode == 15, completed.stderr or completed.stdout
 
 
 def test_a_generated_texture_reaches_ready_through_real_godot(godot_bin, godot_project):
