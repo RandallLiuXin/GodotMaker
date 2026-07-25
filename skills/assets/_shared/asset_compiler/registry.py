@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 from typing import Any, Callable
 
@@ -45,19 +46,36 @@ Compiler = Callable[[CompileRequest], Mapping[str, Any]]
 SOURCE_IS_ARTIFACT_TYPES = ("Texture2D",)
 
 
-def _fingerprint(path: Path) -> tuple[int, int] | None:
-    """Return a change marker for ``path``, or ``None`` when it is absent.
+def _content_digest(path: Path) -> bytes | None:
+    """Return a content digest, or ``None`` when ``path`` cannot be read.
 
-    Size alone misses a same-length rewrite and the modification time alone
-    misses a rewrite inside the clock's resolution, so both are compared.
-    Rewriting a file always advances ``st_mtime_ns``, so an unchanged marker
-    means the compiler did not touch the artifact this run.
+    Only non-writing routes use this check. They are allowed to reuse their
+    source as the artifact, so existence cannot show whether their compiler
+    clobbered that source. Hashing gives this narrow route class a real
+    fail-closed guard without making writing compilers read large artifacts
+    twice merely to detect a no-op.
     """
+    digest = sha256()
     try:
-        stat = path.stat()
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
     except OSError:
         return None
-    return (stat.st_size, stat.st_mtime_ns)
+    return digest.digest()
+
+
+def _is_same_file(left: Path, right: Path) -> bool:
+    """True when two paths name one file: a hard link, or a case alias.
+
+    Distinct path strings are not distinct files. ``os.link`` gives a compiler a
+    second name for its source image, and on a case-insensitive filesystem
+    ``Hero.png`` and ``hero.png`` are already one file without any linking.
+    """
+    try:
+        return left.samefile(right)
+    except OSError:
+        return False
 
 
 @dataclass(frozen=True)
@@ -181,7 +199,25 @@ class CompilerRegistry:
                 f"source_path; got {request.artifact_path} instead of "
                 f"{request.source_path}"
             )
-        before = _fingerprint(request.artifact_file())
+        artifact_file = request.artifact_file()
+        if route.writes_artifact:
+            if _is_same_file(source_file, artifact_file):
+                raise CompilerError(
+                    f"{route.compiler_id} may not publish source_path as "
+                    f"artifact_path ({request.artifact_path})"
+                )
+            try:
+                artifact_file.unlink(missing_ok=True)
+            except OSError as exc:
+                raise CompilerError(
+                    f"{route.compiler_id} cannot clear prior artifact "
+                    f"{request.artifact_path}: {exc}"
+                ) from exc
+            source_digest = None
+        else:
+            source_digest = _content_digest(source_file)
+            if source_digest is None:
+                raise CompilerError(f"source_path cannot be read: {request.source_path}")
 
         try:
             details = route.compiler(request)
@@ -199,16 +235,22 @@ class CompilerRegistry:
         # path whose parent directories did not exist yet, so no symlink could be
         # followed. Anything the compiler created in between is checked now.
         artifact_file = request.artifact_file()
-        after = _fingerprint(artifact_file)
-        if after is None or not artifact_file.is_file():
+        if not artifact_file.is_file():
             raise CompilerError(
                 f"{route.compiler_id} returned without writing {request.artifact_path}"
             )
-        if route.writes_artifact and after == before:
+        source_file = request.source_file()
+        if not source_file.is_file():
+            raise CompilerError(f"source_path not found after compilation: {request.source_path}")
+        if route.writes_artifact and _is_same_file(source_file, artifact_file):
             raise CompilerError(
-                f"{route.compiler_id} returned without rebuilding "
-                f"{request.artifact_path}; the file on disk is unchanged from an "
-                "earlier run"
+                f"{route.compiler_id} may not publish source_path as "
+                f"artifact_path ({request.artifact_path})"
+            )
+        if not route.writes_artifact and _content_digest(source_file) != source_digest:
+            raise CompilerError(
+                f"{route.compiler_id} writes no artifact and must not modify "
+                f"source_path ({request.source_path})"
             )
 
         return CompileResult(

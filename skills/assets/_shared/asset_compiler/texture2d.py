@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .contract import CompileRequest
+from .contract import CompileRequest, CompilerError
 from .registry import CompilerRegistry, CompilerRoute
 
 COMPILER_ID = "texture2d_default_import"
@@ -28,6 +28,11 @@ COMPILER_VERSION = 1
 
 def compile_texture2d(request: CompileRequest) -> dict[str, Any]:
     """Record that Godot's default import already produced the artifact."""
+    if request.artifact_path != request.source_path:
+        raise CompilerError(
+            "texture2d_default_import writes no file, so artifact_path must equal "
+            "source_path"
+        )
     return {"mode": "godot_default_import"}
 
 

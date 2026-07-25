@@ -39,15 +39,32 @@ from asset_stable_entry import (  # noqa: E402
     REFERENCE_LAYOUTS,
     SOURCE_LAYOUT_TYPES,
     StableEntryError,
+    _check_res_path,
     _resolve_res_path,
     assert_within_output_dir,
     check_output_path,
 )
 
-# ``_resolve_res_path`` is private to the stable-entry module, but sharing it is
-# the point of this bridge: the compiler must turn a ``res://`` path into a file
-# exactly the way the validator that will later accept the entry does.
-resolve_res_path = _resolve_res_path
+
+def resolve_res_path(project_root: Path, res_path: str, *, label: str = "path") -> Path:
+    """Resolve a ``res://`` path to an absolute file under ``project_root``.
+
+    Both halves of this wrapper exist to make the stable-entry resolver safe to
+    share rather than to copy:
+
+    - it slices the prefix without checking it, so a path that carries none is
+      silently corrupted (``/etc/passwd`` becomes ``<root>/asswd``). That is
+      sound where it lives, because every caller validates first, but not as an
+      exported "turn a res:// path into a file" helper. The prefix is checked
+      here with the same checker the validator uses.
+    - the root is resolved first so the result is absolute.
+      ``assert_within_output_dir`` re-anchors a relative target against the
+      project root, so handing it a relative root joined path would join the
+      root twice.
+    """
+    _check_res_path(res_path, label)
+    return _resolve_res_path(Path(project_root).resolve(), res_path)
+
 
 __all__ = [
     "LAYOUT_ARTIFACT_TYPES",

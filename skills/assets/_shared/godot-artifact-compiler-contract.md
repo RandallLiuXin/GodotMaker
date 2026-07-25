@@ -37,19 +37,21 @@ Two rules make "the compiler produced the artifact" mean something, because a
 generated asset overwrites a stable path in place and the artifact usually
 already exists from an earlier run:
 
-- **A writing route must rebuild.** The registry fingerprints the artifact's
-  size and modification time before and after the compiler runs, and rejects an
-  unchanged file. Otherwise a compiler that silently no-ops passes off the
-  previous run's bytes as this run's result.
+- **A writing route must replace the old artifact.** The registry removes an
+  existing artifact before the compiler runs and requires a new file after it
+  returns. Otherwise a compiler that silently no-ops passes off the previous
+  run's bytes as this run's result. This does not rely on filesystem timestamp
+  precision, so a same-byte deterministic rebuild remains valid.
 - **A writing route must not name its source.** `artifact_path` may not equal
-  `source_path`, so a compiler cannot publish its own source image as the
+  `source_path` or resolve to the same file, so a compiler cannot publish its
+  own source image (including through a hard link or case alias) as the
   resource a worker was promised. A file-existence check alone cannot catch
   this: the source file satisfies it.
 
 `writes_artifact=False` is the explicit opt-out, allowed only for the artifact
 types in `SOURCE_IS_ARTIFACT_TYPES` — the ones Godot's default import already
 produces from the source file itself. Such a route must name its source, and
-changes nothing.
+the registry rejects it if its compiler changes that source.
 
 ## Interface
 
@@ -69,10 +71,11 @@ family-specific `spec` mapping whose inner shape each concrete compiler owns.
 `CompileResult` is `godot_artifact` plus `receipt`.
 
 Both mapping fields — `CompileRequest.spec` and `CompileReceipt.details` — are
-deep-copied behind a read-only view at construction. They sit on frozen
-dataclasses that a caller, a compiler, and a stored receipt all hold at once, so
-a shared reference would make the freeze decorative and let a compiler edit what
-a finished receipt says it produced.
+deep-copied at construction. They sit on frozen dataclasses that a caller, a
+compiler, and a stored receipt all hold at once, so a shared reference would
+make the freeze decorative and let a compiler edit what a finished receipt says
+it produced. The copies deliberately remain ordinary mappings so standard
+dataclass, copy, and pickle operations stay usable.
 
 ## Fail-closed rules
 
@@ -87,13 +90,12 @@ layer surfaces — when:
   temporary `work/` workspace, or resolves out of the project through a symlink;
 - no compiler is registered for the pair;
 - the source file does not exist;
-- a writing route's `artifact_path` equals its `source_path`, or a non-writing
-  route's does not;
+- a writing route's `artifact_path` equals or resolves to its `source_path`, a
+  non-writing route's does not, or a non-writing compiler modifies its source;
 - the compiler raises — its own `CompilerError` propagates unchanged, any other
   exception is wrapped with the compiler id so nothing escapes as a traceback;
 - the compiler returns something other than a mapping;
-- the compiler returns without writing its artifact, or leaves it unchanged from
-  an earlier run.
+- the compiler returns without replacing its artifact for this run.
 
 Path containment is re-checked after the compiler returns, not reused from
 before it ran: the first check resolved a path whose parent directories did not

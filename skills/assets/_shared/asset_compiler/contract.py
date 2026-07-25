@@ -17,7 +17,6 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from types import MappingProxyType
 from typing import Any
 
 from ._stable_entry import (
@@ -44,22 +43,26 @@ def require_text(value: Any, label: str) -> str:
     return value
 
 
-def _frozen_mapping(value: Any, label: str) -> Mapping[str, Any]:
-    """Return an unshared, read-only copy of a caller-supplied mapping.
+def _snapshot_mapping(value: Any, label: str) -> dict[str, Any]:
+    """Return an unshared deep copy of a caller-supplied mapping.
 
-    Both mapping fields sit on frozen dataclasses that a compiler, its caller,
-    and a stored receipt all hold at once. A plain reference would make the
-    freeze decorative: the caller could still mutate a nested list and change
-    what a finished receipt says was produced. Deep-copying behind a
-    ``MappingProxyType`` makes the snapshot real.
+    The copy is what does the work: both mapping fields sit on frozen
+    dataclasses that a compiler, its caller, and a stored receipt all hold at
+    once, and copying is what stops a compiler from editing what a finished
+    receipt says it produced.
+
+    A plain dict, not a read-only view. Wrapping it in a ``MappingProxyType``
+    would only block rebinding a top-level key — a nested list stays mutable
+    through the proxy either way — while breaking ``deepcopy``, ``pickle``, and
+    ``dataclasses.asdict`` on every object that holds one, with a bare
+    ``TypeError`` that escapes this layer's ``CompilerError`` contract.
     """
     if not isinstance(value, Mapping):
         raise CompilerError(f"{label} must be a mapping")
     try:
-        copied = deepcopy(dict(value))
+        return deepcopy(dict(value))
     except Exception as exc:  # noqa: BLE001 - surfaced as a compiler error
         raise CompilerError(f"{label} must hold copyable plain data: {exc}") from exc
-    return MappingProxyType(copied)
 
 
 @dataclass(frozen=True)
@@ -80,7 +83,7 @@ class CompileRequest:
 
     ``spec`` carries family-specific parameters (animation timing, nine-slice
     margins, tile semantics). Its inner shape is owned by the concrete compiler;
-    this layer only requires a mapping, and snapshots it at construction.
+    this layer only requires a mapping, and deep-copies it at construction.
 
     ``spec`` is excluded from ``__hash__`` because a mapping is unhashable; the
     remaining fields identify the request, and ``__eq__`` still compares it.
@@ -96,7 +99,7 @@ class CompileRequest:
     spec: Mapping[str, Any] = field(default_factory=dict, hash=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "spec", _frozen_mapping(self.spec, "spec"))
+        object.__setattr__(self, "spec", _snapshot_mapping(self.spec, "spec"))
 
     def validate(self) -> None:
         """Fail closed on anything the frozen compatibility contract forbids."""
@@ -149,7 +152,7 @@ class CompileRequest:
         try:
             return assert_within_output_dir(
                 self.project_root,
-                resolve_res_path(self.project_root, res_path),
+                resolve_res_path(self.project_root, res_path, label=label),
                 production_family=self.production_family,
                 asset_id=self.asset_id,
                 label=label,
@@ -175,7 +178,7 @@ class CompileRequest:
 class CompileReceipt:
     """Internal record of one compile. Never part of the worker snapshot.
 
-    ``details`` is snapshotted at construction: the receipt records what one run
+    ``details`` is deep-copied at construction: the receipt records what one run
     produced, so a compiler must not be able to edit it afterwards. It is
     excluded from ``__hash__`` for the same reason as ``CompileRequest.spec``.
     """
@@ -191,7 +194,7 @@ class CompileReceipt:
     details: Mapping[str, Any] = field(hash=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "details", _frozen_mapping(self.details, "details"))
+        object.__setattr__(self, "details", _snapshot_mapping(self.details, "details"))
 
     def to_dict(self) -> dict[str, Any]:
         return {

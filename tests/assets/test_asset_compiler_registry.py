@@ -1,8 +1,10 @@
 """Routing, fail-closed, and boundary tests for the shared compiler registry."""
 import os
+import pickle
 import subprocess
 import sys
-from dataclasses import replace
+from copy import deepcopy
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import pytest
@@ -21,6 +23,7 @@ from asset_compiler import (  # noqa: E402
     build_default_registry,
     texture2d,
 )
+from asset_compiler._stable_entry import StableEntryError, resolve_res_path  # noqa: E402
 from asset_stable_entry import (  # noqa: E402
     GODOT_ARTIFACT_KEYS,
     LAYOUT_ARTIFACT_TYPES,
@@ -333,11 +336,11 @@ def test_no_op_compiler_cannot_pass_off_a_previous_runs_artifact(project):
 
     registry = CompilerRegistry()
     _register(registry, "single", "StyleBoxTexture", compiler=lambda request: {})
-    with pytest.raises(CompilerError, match="unchanged from an earlier run"):
+    with pytest.raises(CompilerError, match="returned without writing"):
         registry.compile(
             _make_request(project, layout="single", artifact_type="StyleBoxTexture")
         )
-    assert stale.read_bytes() == b"STALE-FROM-RUN-1"
+    assert not stale.exists()
 
 
 def test_rebuilding_over_an_existing_artifact_is_accepted(project):
@@ -352,8 +355,8 @@ def test_rebuilding_over_an_existing_artifact_is_accepted(project):
 
 
 def test_same_size_rewrite_is_accepted(project):
-    # The guard compares size and st_mtime_ns, so a byte-count-preserving
-    # rebuild must not be mistaken for a no-op.
+    # Replacing the old path before compilation makes this independent of the
+    # filesystem timestamp resolution.
     (project / "assets/generated/ui-kit/panel/panel.tres").write_bytes(b"AAA")
 
     registry = CompilerRegistry()
@@ -386,7 +389,47 @@ def test_a_writing_route_may_not_hand_back_its_source_image(project):
         artifact_path="res://assets/generated/character-bundle/hero/hero.png",
         project_root=project,
     )
-    with pytest.raises(CompilerError, match="may not be the source image itself"):
+    with pytest.raises(CompilerError, match="must compile a new file"):
+        registry.compile(request)
+
+
+def test_a_writing_route_may_not_hard_link_its_source_as_the_artifact(project):
+    def links_the_source(request):
+        os.link(request.source_file(), request.artifact_file())
+        return {}
+
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture", compiler=links_the_source)
+    with pytest.raises(CompilerError, match="may not publish source_path"):
+        registry.compile(
+            _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+        )
+
+
+def test_a_non_writing_route_may_not_modify_its_source(project):
+    def clobbers_the_source(request):
+        request.source_file().write_bytes(b"CLOBBERED")
+        return {}
+
+    registry = CompilerRegistry()
+    registry.register(
+        source_layout_type="single",
+        artifact_type="Texture2D",
+        compiler_id="unsafe_default_import",
+        compiler_version=1,
+        compiler=clobbers_the_source,
+        writes_artifact=False,
+    )
+    request = CompileRequest(
+        production_family="ui-kit",
+        asset_id="panel",
+        source_layout_type="single",
+        source_path="res://assets/generated/ui-kit/panel/panel.png",
+        artifact_type="Texture2D",
+        artifact_path="res://assets/generated/ui-kit/panel/panel.png",
+        project_root=project,
+    )
+    with pytest.raises(CompilerError, match="must not modify source_path"):
         registry.compile(request)
 
 
@@ -501,6 +544,13 @@ def test_texture2d_rejects_a_separate_artifact_path(project):
         )
 
 
+def test_texture2d_compiler_rejects_a_separate_artifact_path_directly(project):
+    with pytest.raises(CompilerError, match="must equal source_path"):
+        texture2d.compile_texture2d(
+            _make_request(project, layout="single", artifact_type="Texture2D")
+        )
+
+
 def test_default_registry_ships_only_the_texture2d_route():
     # No concrete AtlasTexture, SpriteFrames, Theme, StyleBoxTexture, or TileSet
     # compiler belongs to the shared layer; each lands with its asset skill.
@@ -516,6 +566,29 @@ def test_each_build_returns_an_independent_registry():
     _register(first, "grid_sheet", "SpriteFrames")
     assert len(first.routes()) == 2
     assert len(build_default_registry().routes()) == 1
+
+
+def test_relative_project_root_compiles_without_double_anchoring(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    project = Path("myproj")
+    source = project / "assets" / "generated" / "ui-kit" / "panel" / "panel.png"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"png")
+
+    registry = CompilerRegistry()
+    _register(registry, "single", "StyleBoxTexture")
+    result = registry.compile(
+        _make_request(project, layout="single", artifact_type="StyleBoxTexture")
+    )
+
+    assert result.godot_artifact.path.endswith("/panel.tres")
+    assert (project / "assets/generated/ui-kit/panel/panel.tres").is_file()
+
+
+@pytest.mark.parametrize("path", ["", "assets/generated/ui-kit/panel/panel.png", "/etc/passwd"])
+def test_exported_resolver_rejects_non_resource_paths(project, path):
+    with pytest.raises(StableEntryError, match="res:// path"):
+        resolve_res_path(project, path)
 
 
 # --- source_path validation ------------------------------------------------
@@ -628,7 +701,7 @@ def test_symlinked_stable_directory_is_rejected_on_disk(project, tmp_path):
 # --- immutability of the mapping fields ------------------------------------
 
 
-def test_request_spec_is_snapshotted_and_hashable(project):
+def test_request_spec_is_snapshotted_hashable_and_standard_library_safe(project):
     spec = {"frames": [1, 2]}
     request = _replace(
         _make_request(project, layout="single", artifact_type="StyleBoxTexture"),
@@ -638,12 +711,13 @@ def test_request_spec_is_snapshotted_and_hashable(project):
     spec["frames"].append(99)
 
     assert request.spec == {"frames": [1, 2]}
-    with pytest.raises(TypeError):
-        request.spec["frames"] = []
     assert isinstance(hash(request), int)
+    assert deepcopy(request).spec == {"frames": [1, 2]}
+    assert pickle.loads(pickle.dumps(request)).spec == {"frames": [1, 2]}
+    assert asdict(request)["spec"] == {"frames": [1, 2]}
 
 
-def test_receipt_details_are_snapshotted_and_hashable(project):
+def test_receipt_details_are_snapshotted_hashable_and_standard_library_safe(project):
     details = {"regions": ["a"]}
     receipt = CompileReceipt(
         compiler_id="boxes",
@@ -661,6 +735,9 @@ def test_receipt_details_are_snapshotted_and_hashable(project):
 
     assert receipt.details == {"regions": ["a"]}
     assert isinstance(hash(receipt), int)
+    assert deepcopy(receipt).details == {"regions": ["a"]}
+    assert pickle.loads(pickle.dumps(receipt)).details == {"regions": ["a"]}
+    assert asdict(receipt)["details"] == {"regions": ["a"]}
 
 
 def test_a_compiler_cannot_edit_its_receipt_after_the_fact(project):
