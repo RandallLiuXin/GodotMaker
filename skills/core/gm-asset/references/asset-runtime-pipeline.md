@@ -123,16 +123,18 @@ stable identity plus the minimal contract a worker needs, and nothing else:
 Rules:
 
 1. `source_layout` holds exactly `type` and `path`.
-2. `godot_artifact` holds exactly `type` and `path`. `type` is the Godot ClassDB
-   type the native compiler produced for this layout:
+2. `godot_artifact` holds exactly `type` and `path`. `type` is a Godot ClassDB
+   identifier the native compiler may produce for this layout. The table is a
+   closed compatibility set, not permission to use any ClassDB type:
 
-   | `source_layout.type` | Compiled `godot_artifact.type` |
+   | `source_layout.type` | Allowed `godot_artifact.type` |
    |---|---|
+   | `single` | `Texture2D` or `StyleBoxTexture` |
    | `grid_sheet` | `SpriteFrames` |
-   | `region_atlas` | `AtlasTexture` |
+   | `region_atlas` | `AtlasTexture` or `StyleBoxTexture` |
    | `theme_recipe` | `Theme` |
    | `tile_atlas` | `TileSet` |
-   | `single` | `Texture2D` |
+   | `reference` | no `godot_artifact` |
 
 3. Both paths are `res://` paths under the asset's stable output directory. A
    path under `.godotmaker/` is rejected, so finalize into the stable directory
@@ -292,11 +294,11 @@ so `/gm-build` and worker dispatch currently receive no generated runtime assets
 Registration, stable paths, and the pointer index are what this stage delivers;
 compilation and verification arrive with the compiler work.
 
-Compiler target by source layout, for when that work lands:
+Compiler target compatibility by source layout, for when that work lands:
 
-1. `single`: `Texture2D`, no support file.
+1. `single`: `Texture2D` or `StyleBoxTexture`.
 2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.
-3. `region_atlas`: `AtlasTexture`, with atlas metadata beside the artifact.
+3. `region_atlas`: `AtlasTexture` or `StyleBoxTexture`.
 4. `theme_recipe`: `Theme`. `tile_atlas`: `TileSet`.
 5. `reference`: no artifact; never mark an ASSETS runtime row generated from it.
 

@@ -1,5 +1,6 @@
 import copy
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -75,7 +76,11 @@ def test_every_non_reference_layout_has_an_artifact_type():
 
 @pytest.mark.parametrize(
     ("layout", "artifact_type"),
-    sorted(LAYOUT_ARTIFACT_TYPES.items()),
+    [
+        (layout, artifact_type)
+        for layout, artifact_types in sorted(LAYOUT_ARTIFACT_TYPES.items())
+        for artifact_type in artifact_types
+    ],
 )
 def test_matching_artifact_type_is_accepted(layout, artifact_type):
     entry = valid_entry(
@@ -88,6 +93,22 @@ def test_matching_artifact_type_is_accepted(layout, artifact_type):
             "path": "res://assets/generated/character-bundle/player/player.tres",
         },
     )
+    validate_entry(entry)
+
+
+@pytest.mark.parametrize("layout", ["single", "region_atlas"])
+def test_styleboxtexture_artifact_type_is_accepted_for_compatible_layouts(layout):
+    entry = valid_entry(
+        source_layout={
+            "type": layout,
+            "path": "res://assets/generated/character-bundle/player/player.png",
+        },
+        godot_artifact={
+            "type": "StyleBoxTexture",
+            "path": "res://assets/generated/character-bundle/player/player.tres",
+        },
+    )
+
     validate_entry(entry)
 
 
@@ -117,10 +138,10 @@ def test_mismatched_artifact_type_is_rejected(layout, artifact_type):
             "path": "res://assets/generated/character-bundle/player/player.tres",
         },
     )
-    expected = LAYOUT_ARTIFACT_TYPES[layout]
+    expected = ", ".join(LAYOUT_ARTIFACT_TYPES[layout])
     with pytest.raises(
         StableEntryError,
-        match=f"must be {expected}, not {artifact_type}",
+        match=re.escape(f"must be one of: {expected}; not {artifact_type}"),
     ):
         validate_entry(entry)
 
