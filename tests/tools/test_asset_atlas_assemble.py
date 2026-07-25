@@ -266,6 +266,50 @@ def test_assemble_atlas_rolls_back_both_outputs_when_second_commit_fails(
     assert (tmp_path / METADATA_OUTPUT).read_bytes() == original_json
 
 
+def test_assemble_atlas_keeps_backup_when_commit_and_rollback_fail(
+    tmp_path, monkeypatch
+):
+    declaration = prepare_valid_declaration(tmp_path)
+    atlas_output = tmp_path / ATLAS_OUTPUT
+    metadata_output = tmp_path / METADATA_OUTPUT
+    write_png(atlas_output, (12, 8), (10, 20, 30, 255))
+    metadata_output.parent.mkdir(parents=True, exist_ok=True)
+    metadata_output.write_text('{"old": true}\n', encoding="utf-8")
+    original_png = atlas_output.read_bytes()
+    real_replace = atlas_assemble.os.replace
+    atlas_path = atlas_output.resolve()
+    metadata_path = metadata_output.resolve()
+    metadata_commit_failed = False
+    rollback_failed = False
+
+    def fail_commit_and_rollback(source, destination):
+        nonlocal metadata_commit_failed, rollback_failed
+        destination_path = Path(destination).resolve()
+        if destination_path == metadata_path and not metadata_commit_failed:
+            metadata_commit_failed = True
+            raise OSError("simulated metadata commit failure")
+        if (
+            destination_path == atlas_path
+            and metadata_commit_failed
+            and not rollback_failed
+        ):
+            rollback_failed = True
+            raise OSError("simulated atlas rollback failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(atlas_assemble.os, "replace", fail_commit_and_rollback)
+
+    with pytest.raises(AtlasAssemblyError, match="rollback failed") as exc_info:
+        assemble(tmp_path, declaration)
+
+    backups = [path for path in atlas_output.parent.glob("*.png") if path != atlas_output]
+    assert len(backups) == 1
+    assert backups[0].read_bytes() == original_png
+    assert str(atlas_output) in str(exc_info.value)
+    assert str(backups[0]) in str(exc_info.value)
+    assert list(metadata_output.parent.glob("*.json")) == [metadata_output]
+
+
 def test_cli_reports_write_failures_as_json_and_leaves_no_orphan_atlas(tmp_path):
     declaration = prepare_valid_declaration(tmp_path)
     blocked_parent = tmp_path / OUTPUT_DIR / "blocked"

@@ -10,11 +10,10 @@ pipeline enforces, so it imports them instead of restating them:
 - ``tools/agent_runtime.py`` owns the Windows console-binary preference the
   Godot probe needs to capture output.
 
-Neither ``tools/`` nor ``_shared/`` is an installed package, so both are
-resolved relative to this file the same way the repository's tests do. That
-makes this package importable from a source checkout only: ``skills/assets/``
-is not part of the publish layout yet, so each location is asserted with a
-diagnosable message instead of failing as a bare ``ModuleNotFoundError``.
+Neither ``tools/`` nor ``_shared/`` is an installed package. The bridge
+supports both the source checkout and the published
+``.godotmaker/asset-runtime`` layout, where the runtime sits beside the
+project's published ``tools/`` directory.
 """
 from __future__ import annotations
 
@@ -22,16 +21,18 @@ import sys
 from pathlib import Path
 
 _SHARED_DIR = Path(__file__).resolve().parents[1]
-_TOOLS_DIR = _SHARED_DIR.parents[2] / "tools"
+_TOOLS_CANDIDATES = (
+    _SHARED_DIR.parents[2] / "tools",  # source: skills/assets/_shared/
+    _SHARED_DIR.parents[1] / "tools",  # published: .godotmaker/asset-runtime/
+)
+_TOOLS_DIR = next((path for path in _TOOLS_CANDIDATES if path.is_dir()), None)
 
-for _label, _directory in (("tools/", _TOOLS_DIR), ("skills/assets/_shared/", _SHARED_DIR)):
-    if not _directory.is_dir():
-        raise ImportError(
-            f"the shared asset validation ladder expects the repository {_label} "
-            f"directory at {_directory}, resolved from {__file__}. It is "
-            "importable from a source checkout only; skills/assets/ is not "
-            "deployed by tools/publish.py yet."
-        )
+if _TOOLS_DIR is None or not _SHARED_DIR.is_dir():
+    raise ImportError(
+        "the shared asset validation ladder needs its asset runtime and a "
+        "tools/ directory beside the source checkout or published project; "
+        "checked " + ", ".join(str(path) for path in _TOOLS_CANDIDATES)
+    )
 
 # Appended, never inserted: both are flat directories of scripts and packages,
 # and putting either ahead of the standard library would let a same-named module

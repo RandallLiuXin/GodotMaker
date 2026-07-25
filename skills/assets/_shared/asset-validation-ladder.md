@@ -207,7 +207,8 @@ CI policy, or make reviewer judgments. Wiring it into `/gm-asset` is separate
 work.
 
 `asset_validation/` imports `tools/` and its sibling `asset_compiler` through a
-path bridge resolved relative to the repository root, so it is importable from a
-source checkout only. `tools/publish.py` does not deploy `skills/assets/` yet;
-the bridge asserts each directory and names it in the error rather than failing
-as a bare `ModuleNotFoundError`.
+path bridge that supports both the source checkout and the published project
+layout. `tools/publish.py` deploys `_shared` to
+`.godotmaker/asset-runtime/`, adjacent to the published `tools/` directory.
+This runtime is deliberately outside the agent skill directory, so it cannot be
+discovered or invoked as a standalone Skill.
