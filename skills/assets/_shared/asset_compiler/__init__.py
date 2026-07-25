@@ -4,6 +4,13 @@ See ``godot-artifact-compiler-contract.md`` next to this package for the
 contract this code implements. Concrete family compilers (``AtlasTexture``,
 ``SpriteFrames``, ``Theme``, ``StyleBoxTexture``, ``TileSet``) live outside the
 registry and register themselves into it.
+
+There is deliberately no module-level default registry instance. A caller builds
+one with :func:`build_default_registry` and every family compiler for that run
+registers into that instance. A process-global would let one caller's
+registrations be invisible to a second caller holding a freshly built registry,
+and — because ``register()`` rejects a duplicate pair outright — would turn a
+re-imported self-registering module into an import-time crash.
 """
 from __future__ import annotations
 
@@ -16,20 +23,23 @@ from .contract import (
     GodotArtifact,
     require_text,
 )
-from .registry import Compiler, CompilerRegistry, CompilerRoute
+from .registry import (
+    SOURCE_IS_ARTIFACT_TYPES,
+    Compiler,
+    CompilerRegistry,
+    CompilerRoute,
+)
 
 
 def build_default_registry() -> CompilerRegistry:
-    """Return a registry holding every compiler the shared layer ships."""
+    """Return a new registry holding every compiler the shared layer ships."""
     registry = CompilerRegistry()
     texture2d.register_into(registry)
     return registry
 
 
-DEFAULT_REGISTRY = build_default_registry()
-
 __all__ = [
-    "DEFAULT_REGISTRY",
+    "SOURCE_IS_ARTIFACT_TYPES",
     "CompileReceipt",
     "CompileRequest",
     "CompileResult",
