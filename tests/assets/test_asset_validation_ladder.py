@@ -23,6 +23,8 @@ from asset_validation import (  # noqa: E402
     LEVELS,
     NOT_RUN,
     PASSED,
+    PROMOTION,
+    REVALIDATION,
     STATUS_FAILED,
     STATUS_READY,
     GodotProbe,
@@ -138,10 +140,21 @@ def _ladder(*, registry=None, structures=None, probe=None) -> ValidationLadder:
     )
 
 
-def _run(tmp_path, entry=None, **kwargs):
+_DEFAULT_RECEIPT = object()
+
+
+def _run(tmp_path, entry=None, *, receipt=_DEFAULT_RECEIPT, **kwargs):
     root = _project(tmp_path)
     _write(root, SOURCE)
-    return _ladder(**kwargs).run(entry or _entry(), project_root=root), root
+    if receipt is _DEFAULT_RECEIPT:
+        receipt = _receipt()
+    mode = kwargs.pop("mode", PROMOTION)
+    return (
+        _ladder(**kwargs).run(
+            entry or _entry(), project_root=root, receipt=receipt, mode=mode
+        ),
+        root,
+    )
 
 
 def _failure(result):
@@ -390,8 +403,8 @@ def test_a_linked_subdirectory_of_the_stable_directory_fails_l1(tmp_path):
 def test_an_entry_without_a_godot_artifact_fails_l2(tmp_path):
     result, _ = _run(tmp_path, _entry(godot_artifact=None, processing_status="source_ready"))
     level, error = _failure(result)
-    assert level == "L2"
-    assert "no native Godot resource was compiled" in error
+    assert level == "L0"
+    assert "promotion requires an entry with processing_status 'compiled'" in error
 
 
 def test_an_artifact_type_with_no_registered_compiler_fails_l2(tmp_path):
@@ -478,6 +491,14 @@ def test_l2_reports_the_route_that_compiled_the_artifact(tmp_path):
     assert details["bytes"] == len(PNG)
 
 
+def test_promotion_of_a_compiled_entry_requires_a_compile_receipt(tmp_path):
+    result, _ = _run(tmp_path, receipt=None)
+    level, error = _failure(result)
+    assert level == "L2"
+    assert "promotion requires a matching CompileReceipt" in error
+    assert result.levels[3].status == NOT_RUN
+
+
 def _receipt(**overrides):
     fields = {
         "compiler_id": "texture2d_default_import",
@@ -542,6 +563,38 @@ def test_an_object_that_is_not_a_compile_receipt_fails_l2(tmp_path):
     assert "must be a CompileReceipt" in error
 
 
+def test_an_already_ready_entry_can_be_explicitly_revalidated_without_a_receipt(tmp_path):
+    result, _ = _run(
+        tmp_path,
+        _entry(processing_status="ready"),
+        receipt=None,
+        mode=REVALIDATION,
+    )
+    assert result.ready is True
+    assert [level.status for level in result.levels] == [PASSED] * 5
+    assert "receipt" not in result.levels[2].details
+
+
+@pytest.mark.parametrize("processing_status", ["pending", "source_ready", "compiled"])
+def test_revalidation_cannot_promote_an_entry_that_is_not_ready(tmp_path, processing_status):
+    result, _ = _run(
+        tmp_path,
+        _entry(processing_status=processing_status),
+        receipt=None,
+        mode=REVALIDATION,
+    )
+    level, error = _failure(result)
+    assert level == "L0"
+    assert "revalidation requires an entry with processing_status 'ready'" in error
+
+
+def test_promotion_only_accepts_a_compiled_entry(tmp_path):
+    result, _ = _run(tmp_path, _entry(processing_status="ready"), mode=PROMOTION)
+    level, error = _failure(result)
+    assert level == "L0"
+    assert "promotion requires an entry with processing_status 'compiled'" in error
+
+
 # ------------------------------------------------------------------------ L3
 
 
@@ -549,7 +602,7 @@ def test_l3_asks_godot_for_the_artifact_and_the_checks_l4_needs(tmp_path):
     probe = StubProbe()
     root = _project(tmp_path)
     _write(root, SOURCE)
-    _ladder(probe=probe).run(_entry(), project_root=root)
+    _ladder(probe=probe).run(_entry(), project_root=root, receipt=_receipt())
     (project_root, requests), = probe.calls
     assert project_root == root
     assert requests == (ProbeRequest(res_path=SOURCE, expected_type="Texture2D", checks=("texture2d",)),)
@@ -610,7 +663,16 @@ def test_an_artifact_type_with_no_structure_validator_fails_l4(tmp_path):
     _write(root, SOURCE)
     _write(root, ARTIFACT, b"[gd_resource]\n")
     entry = _entry(godot_artifact={"type": "StyleBoxTexture", "path": ARTIFACT})
-    result = _ladder(registry=_stylebox_registry()).run(entry, project_root=root)
+    result = _ladder(registry=_stylebox_registry()).run(
+        entry,
+        project_root=root,
+        receipt=_receipt(
+            compiler_id="test_stylebox",
+            compiler_version=2,
+            artifact_type="StyleBoxTexture",
+            artifact_path=ARTIFACT,
+        ),
+    )
     level, error = _failure(result)
     assert level == "L4"
     assert "no structure validator is registered for StyleBoxTexture" in error

@@ -54,6 +54,13 @@ from .structure import (
 )
 
 
+# ``run`` has two deliberately separate contracts.  A caller must state which
+# one it is invoking rather than having the ladder infer intent from whether a
+# receipt happens to be in memory.
+PROMOTION = "promotion"
+REVALIDATION = "revalidation"
+
+
 @dataclass
 class _Run:
     """What each level hands to the next. Populated in order, never rewound."""
@@ -64,6 +71,7 @@ class _Run:
     entry: Any
     project_root: Path
     spec: Mapping[str, Any]
+    mode: str = PROMOTION
     receipt: CompileReceipt | None = None
     production_family: str = ""
     asset_id: str = ""
@@ -109,6 +117,7 @@ class ValidationLadder:
         project_root: Path,
         spec: Mapping[str, Any] | None = None,
         receipt: CompileReceipt | None = None,
+        mode: str = PROMOTION,
     ) -> LadderResult:
         """Validate one stable entry and return every level's outcome."""
         if not isinstance(project_root, (str, Path)):
@@ -127,6 +136,7 @@ class ValidationLadder:
             entry=entry,
             project_root=Path(project_root),
             spec=dict(spec or {}),
+            mode=mode,
             receipt=receipt,
         )
 
@@ -190,6 +200,23 @@ class ValidationLadder:
         run.asset_id = validated["asset_id"]
         run.source_layout_type = layout_type
         run.source_path = layout["path"]
+        processing_status = validated["processing_status"]
+        if run.mode == PROMOTION:
+            if processing_status != "compiled":
+                raise ValidationError(
+                    "promotion requires an entry with processing_status 'compiled'; "
+                    f"got {processing_status!r}"
+                )
+        elif run.mode == REVALIDATION:
+            if processing_status != "ready":
+                raise ValidationError(
+                    "revalidation requires an entry with processing_status 'ready'; "
+                    f"got {processing_status!r}"
+                )
+        else:
+            raise ValidationError(
+                f"mode must be {PROMOTION!r} or {REVALIDATION!r}; got {run.mode!r}"
+            )
         artifact = validated.get("godot_artifact")
         if isinstance(artifact, Mapping):
             run.artifact_type = artifact["type"]
@@ -198,7 +225,8 @@ class ValidationLadder:
             "production_family": family,
             "asset_id": run.asset_id,
             "source_layout_type": layout_type,
-            "processing_status": validated["processing_status"],
+            "processing_status": processing_status,
+            "mode": run.mode,
         }
 
     # ------------------------------------------------------------------ L1
@@ -251,18 +279,22 @@ class ValidationLadder:
             "artifact_path": run.artifact_path,
             "bytes": size,
         }
+        if run.mode == PROMOTION and run.receipt is None:
+            raise ValidationError(
+                "promotion requires a matching CompileReceipt returned by the "
+                "compiler registry"
+            )
         if run.receipt is not None:
             details["receipt"] = self._check_receipt(run, route)
         return details
 
     @staticmethod
     def _check_receipt(run: _Run, route: Any) -> dict[str, Any]:
-        """Bind an optional compile receipt to the entry it claims to describe.
+        """Bind a supplied compile receipt to the entry it claims to describe.
 
-        The receipt is optional because re-validating a registered asset has none
-        to offer. When one is supplied it must be this asset's: a receipt for a
-        different asset, layout, or artifact would otherwise be accepted as
-        evidence that this entry was compiled.
+        Promotion always supplies one. Revalidation may omit it because an
+        already-ready stable entry can outlive the compiler process; when it is
+        supplied, it must still be this asset's.
         """
         receipt = run.receipt
         if not isinstance(receipt, CompileReceipt):

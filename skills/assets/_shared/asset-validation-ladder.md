@@ -36,6 +36,20 @@ It also never decides what a caller records. `LadderResult.processing_status` is
 `source_ready`, `compiled`) describe how far production got and are written by
 the step that got there.
 
+## Promotion and revalidation
+
+`ValidationLadder.run()` has two explicit modes. `promotion` (the default) is
+the only route from `compiled` to `ready`: it requires a matching
+`CompileReceipt` returned by the compiler registry for this entry's compiler,
+family, asset ID, source layout, and artifact. A file at the artifact path does
+not substitute for proof that this compile succeeded.
+
+`revalidation` is only for an entry already recorded as `ready`. It reruns
+L0-L4 after a process restart without requiring an in-memory receipt. It cannot
+be used for `pending`, `source_ready`, or `compiled` entries. Callers must pass
+the mode explicitly when revalidating; the ladder never infers it from an absent
+receipt.
+
 ## Ordering and short-circuit
 
 Levels run in order and stop at the first failure. Every later level depends on
@@ -149,6 +163,8 @@ The ladder concludes `failed` when:
   a regular file, or is empty;
 - a writing route's `godot_artifact.path` equals or resolves to the same file as
   `source_layout.path`, or a non-writing route's does not;
+- a `promotion` has no matching compile receipt, or its entry is not `compiled`;
+- a `revalidation` entry is not already `ready`;
 - a supplied compile receipt describes a different asset, layout, or artifact;
 - Godot cannot be run, times out, or writes no report;
 - Godot has no importable resource at the artifact path, or
@@ -163,9 +179,10 @@ Path containment is re-resolved on disk at L1 and L2 rather than trusted from
 L0's string check, so a symlink inside the stable directory cannot aim the ladder
 at a file it was never allowed to accept.
 
-The compile receipt is optional because re-validating an already registered asset
-has none to offer. When one is supplied it must be this asset's, so a receipt
-from another compile cannot stand in as evidence.
+The compile receipt is internal evidence: it never enters the stable entry,
+`ASSETS.md`, or worker snapshot. It is mandatory for promotion and optional for
+revalidation; when supplied it must be this asset's, so a receipt from another
+compile cannot stand in as evidence.
 
 Registration fails closed too: an artifact type no source layout compiles to, a
 non-callable validator, malformed `checks`, a check name `probe.gd` does not
