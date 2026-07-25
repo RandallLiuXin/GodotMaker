@@ -327,6 +327,37 @@ Atlas metadata shape (`assets/generated/ui-kit/main_atlas/main_atlas.json`):
 }
 ```
 
+Build that physical atlas and its metadata only from an explicit fixed-slot
+declaration. The assembler does not pack, trim, or discover regions:
+
+```json
+{
+  "version": 1,
+  "atlas": {"width": 512, "height": 256},
+  "slots": [
+    {
+      "name": "battle_button",
+      "rect": [0, 0, 256, 96],
+      "source": "battle_button.png",
+      "pivot": [0.5, 0.5],
+      "nine_slice": null
+    }
+  ]
+}
+```
+
+```bash
+python tools/asset_atlas_assemble.py \
+  --declaration <fixed_slots.json> \
+  --atlas-out assets/generated/ui-kit/main_atlas/main_atlas.png \
+  --metadata-out assets/generated/ui-kit/main_atlas/main_atlas.json \
+  --project-root .
+```
+
+Every source must be a PNG with exactly the declared slot size. Out-of-bounds,
+overlapping, missing, or malformed slots fail before either output is written.
+The emitted regions are ordered by name for stable metadata.
+
 Action metadata shape (`assets/generated/character-bundle/player/player.json`):
 
 ```json
