@@ -3196,10 +3196,14 @@ is rejected with a regeneration message; there is no migration or compatibility
 read.</p>
 <h2 id="asset_assets_md_updatepy">asset_assets_md_update.py<a class="headerlink" href="#asset_assets_md_updatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_assets_md_update.py</code> promotes ASSETS.md rows from registered stable
-entries. It revalidates the entry and its referenced files first and accepts only
-a <code>ready</code> non-reference entry, so a row can reach <code>generated</code> only once the asset
-is a finished, worker-consumable runtime asset. It records the entry pointer
-instead of duplicating any path into the row.</p>
+entries. It revalidates every entry and referenced file first. Runtime rows
+require a <code>ready</code> non-reference entry, so they become <code>generated</code> only when the
+asset is worker-consumable. A <code>screen-reference</code> row may instead complete at
+<code>source_ready</code> and remain repeatable at <code>ready</code> when its finalized reference
+file, canonical stable entry, and root-index pointer pass validation. The
+updater validates the reference file plus every root-index pointer without
+requiring unrelated pending entries to have files. This records the same entry
+pointer but never creates a <code>godot_artifact</code> or sends the reference to a worker.</p>
 <p>Manual entry point:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>tools/asset_assets_md_update.py<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
@@ -3230,6 +3234,7 @@ them based on <code>ASSETS.md</code> and the source-generation manifest.</p>
 <li>Select one extracted candidate into a runtime asset path.</li>
 <li>Print or validate one asset's stable output directory.</li>
 <li>Validate and register one stable entry and its root-index pointer.</li>
+<li>Complete a finalized screen reference without treating it as runtime art.</li>
 <li>Resolve one registered ASSETS.md entry into its minimal runtime snapshot.</li>
 </ol>
 <p>If you want to update visual targets used by <code>/gm-evaluate</code>, re-run

@@ -2748,9 +2748,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <ul>
 <li><code>/gm-asset</code> now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body <code>runtime_artifact</code> manifest.</li>
 <li>Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.</li>
-<li>An ASSETS.md row reaches <code>generated</code> only from a <code>ready</code> non-reference stable entry, so an unfinished or failed asset can no longer look complete to <code>/gm-build</code>.</li>
+<li>An ASSETS.md runtime row reaches <code>generated</code> only from a <code>ready</code> non-reference stable entry, while a finalized registered screen reference completes its reference row at <code>source_ready</code> without becoming a worker runtime artifact.</li>
 <li><code>asset_generation_index.py --check-files</code> verifies that every registered source and artifact still exists, catching an asset deleted after registration.</li>
-<li>Generated assets now stop at <code>source_ready</code>: the native compilers and the L0-L4 runner are not implemented, so <code>/gm-asset</code> registers stable entries but produces no worker-consumable runtime asset and leaves generated ASSETS.md rows <code>MISSING</code>.</li>
+<li>Generated runtime assets now stop at <code>source_ready</code>: the native compilers and the L0-L4 runner are not implemented, so <code>/gm-asset</code> registers stable entries but produces no worker-consumable runtime asset and leaves generated runtime ASSETS.md rows <code>MISSING</code>.</li>
 <li><code>godot_artifact</code> is written only by a native compiler, so a <code>grid_sheet</code> can no longer be published as a <code>Texture2D</code> standing in for its unbuilt <code>SpriteFrames</code>.</li>
 <li>The stable-entry schema now validates each <code>source_layout.type</code> against its closed compatible Godot artifact-type set, including <code>StyleBoxTexture</code> for <code>single</code> and <code>region_atlas</code>, so mismatches are rejected before reaching a worker.</li>
 </ul>
