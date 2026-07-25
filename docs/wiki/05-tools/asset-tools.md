@@ -18,7 +18,8 @@ Primary pipeline tools:
 10. `asset_stable_entry.py`
 11. `asset_generation_index.py`
 12. `asset_assets_md_update.py`
-13. `asset_runtime_resolver.py`
+13. `asset_atlas_assemble.py`
+14. `asset_runtime_resolver.py`
 
 ## asset_source_generate.py
 
@@ -228,12 +229,49 @@ python tools/asset_output_path.py --family <production_family> --asset-id <asset
 python tools/asset_output_path.py --entry <entry.json> --project-root . --check-files
 ```
 
+## asset_atlas_assemble.py
+
+`asset_atlas_assemble.py` builds a physical PNG atlas from an explicit JSON
+declaration of slot rectangles. It does not pack, trim, resize, or discover
+regions. Sources are project-root-relative PNG paths whose dimensions must
+exactly equal their declared slots; output PNG and metadata paths must both be
+inside `assets/generated/<production_family>/<asset_id>/`.
+
+Manual entry point:
+
+```bash
+python tools/asset_atlas_assemble.py \
+  --declaration <fixed_slots.json> \
+  --atlas-out assets/generated/ui-kit/<asset_id>/<asset_id>.png \
+  --metadata-out assets/generated/ui-kit/<asset_id>/<asset_id>.json \
+  --family ui-kit \
+  --asset-id <asset_id> \
+  --project-root .
+```
+
+The tool writes the physical atlas and its deterministic region metadata as one
+rollback-protected output pair. It is the fixed-slot assembly step; compiling
+the metadata to `AtlasTexture` is a separate compiler step.
+
 ## asset_stable_entry.py
 
 `asset_stable_entry.py` validates one v1 stable entry and serializes it to
 `.godotmaker/asset-generation/entries/<tag>/<asset_id>.json`. The entry holds
 stable identity plus `production_family`, `source_layout`, an optional minimal
 `godot_artifact`, and `processing_status` — nothing else.
+
+For non-reference entries, `godot_artifact.type` must be a Godot ClassDB
+identifier in the closed layout compatibility set; it is not an allow-list for
+arbitrary ClassDB types:
+
+| `source_layout.type` | Allowed `godot_artifact.type` |
+|---|---|
+| `single` | `Texture2D` or `StyleBoxTexture` |
+| `region_atlas` | `AtlasTexture` or `StyleBoxTexture` |
+| `grid_sheet` | `SpriteFrames` |
+| `theme_recipe` | `Theme` |
+| `tile_atlas` | `TileSet` |
+| `reference` | no `godot_artifact` |
 
 Manual entry point:
 

@@ -123,16 +123,18 @@ stable identity plus the minimal contract a worker needs, and nothing else:
 Rules:
 
 1. `source_layout` holds exactly `type` and `path`.
-2. `godot_artifact` holds exactly `type` and `path`. `type` is the Godot ClassDB
-   type the native compiler produced for this layout:
+2. `godot_artifact` holds exactly `type` and `path`. `type` is a Godot ClassDB
+   identifier the native compiler may produce for this layout. The table is a
+   closed compatibility set, not permission to use any ClassDB type:
 
-   | `source_layout.type` | Compiled `godot_artifact.type` |
+   | `source_layout.type` | Allowed `godot_artifact.type` |
    |---|---|
+   | `single` | `Texture2D` or `StyleBoxTexture` |
    | `grid_sheet` | `SpriteFrames` |
-   | `region_atlas` | `AtlasTexture` |
+   | `region_atlas` | `AtlasTexture` or `StyleBoxTexture` |
    | `theme_recipe` | `Theme` |
    | `tile_atlas` | `TileSet` |
-   | `single` | `Texture2D` |
+   | `reference` | no `godot_artifact` |
 
 3. Both paths are `res://` paths under the asset's stable output directory. A
    path under `.godotmaker/` is rejected, so finalize into the stable directory
@@ -325,11 +327,11 @@ so `/gm-build` and worker dispatch currently receive no generated runtime assets
 Registration, stable paths, and the pointer index are what this stage delivers;
 compilation and verification arrive with the compiler work.
 
-Compiler target by source layout, for when that work lands:
+Compiler target compatibility by source layout, for when that work lands:
 
-1. `single`: `Texture2D`, no support file.
+1. `single`: `Texture2D`, no support file; or `StyleBoxTexture`.
 2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.
-3. `region_atlas`: `AtlasTexture`, with atlas metadata beside the artifact.
+3. `region_atlas`: `AtlasTexture` or `StyleBoxTexture`, with atlas metadata beside the artifact.
 4. `theme_recipe`: `Theme`. `tile_atlas`: `TileSet`.
 5. `reference`: no artifact; never mark an ASSETS runtime row generated from it.
 
@@ -359,6 +361,42 @@ Atlas metadata shape (`assets/generated/ui-kit/main_atlas/main_atlas.json`):
   ]
 }
 ```
+
+Build that physical atlas and its metadata only from an explicit fixed-slot
+declaration. The assembler does not pack, trim, or discover regions:
+
+```json
+{
+  "version": 1,
+  "atlas": {"width": 512, "height": 256},
+  "slots": [
+    {
+      "name": "battle_button",
+      "rect": [0, 0, 256, 96],
+      "source": "battle_button.png",
+      "pivot": [0.5, 0.5]
+    }
+  ]
+}
+```
+
+```bash
+python tools/asset_atlas_assemble.py \
+  --declaration <fixed_slots.json> \
+  --atlas-out assets/generated/ui-kit/main_atlas/main_atlas.png \
+  --metadata-out assets/generated/ui-kit/main_atlas/main_atlas.json \
+  --family ui-kit \
+  --asset-id main_atlas \
+  --project-root .
+```
+
+Every source must be a PNG with exactly the declared slot size. Out-of-bounds,
+overlapping, missing, or malformed slots fail before either output is written.
+Source paths are project-root relative, as are all other asset-tool inputs.
+Both outputs must be under the declared asset's stable directory and are
+committed together; a write failure restores any prior output pair. The emitted
+regions are ordered by name for stable metadata, with `nine_slice: null` because
+nine-slice behavior is outside this tool.
 
 Action metadata shape (`assets/generated/character-bundle/player/player.json`):
 

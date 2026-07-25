@@ -16,7 +16,8 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 10. `asset_stable_entry.py`
 11. `asset_generation_index.py`
 12. `asset_assets_md_update.py`
-13. `asset_runtime_resolver.py`
+13. `asset_atlas_assemble.py`
+14. `asset_runtime_resolver.py`
 
 ## asset_source_generate.py
 
@@ -189,9 +190,40 @@ python tools/asset_output_path.py --family <production_family> --asset-id <asset
 python tools/asset_output_path.py --entry <entry.json> --project-root . --check-files
 ```
 
+## asset_atlas_assemble.py
+
+`asset_atlas_assemble.py` 根据显式声明 slot rect 的 JSON 组装物理 PNG atlas。它不做 packing、trim、resize 或 region 推断。source 必须是相对 project root 的 PNG 路径，尺寸必须与声明的 slot 精确一致；输出 PNG 和 metadata 都必须位于 `assets/generated/<production_family>/<asset_id>/` 内。
+
+手动入口：
+
+```bash
+python tools/asset_atlas_assemble.py \
+  --declaration <fixed_slots.json> \
+  --atlas-out assets/generated/ui-kit/<asset_id>/<asset_id>.png \
+  --metadata-out assets/generated/ui-kit/<asset_id>/<asset_id>.json \
+  --family ui-kit \
+  --asset-id <asset_id> \
+  --project-root .
+```
+
+该工具把物理 atlas 和确定性的 region metadata 作为可回滚的一对输出写入。它只负责固定 slot 的组装；把 metadata 编译成 `AtlasTexture` 是独立的 compiler 步骤。
+
 ## asset_stable_entry.py
 
 `asset_stable_entry.py` 校验一个 v1 stable entry，并把它序列化到 `.godotmaker/asset-generation/entries/<tag>/<asset_id>.json`。entry 只保存稳定身份加上 `production_family`、`source_layout`、可选的最小 `godot_artifact` 和 `processing_status`，不保存其他字段。
+
+对于非 `reference` entry，`godot_artifact.type` 必须是 Godot ClassDB
+标识符，且必须位于下列封闭的 layout 兼容集合中；这不表示可以使用任意
+ClassDB 类型：
+
+| `source_layout.type` | 允许的 `godot_artifact.type` |
+|---|---|
+| `single` | `Texture2D` 或 `StyleBoxTexture` |
+| `region_atlas` | `AtlasTexture` 或 `StyleBoxTexture` |
+| `grid_sheet` | `SpriteFrames` |
+| `theme_recipe` | `Theme` |
+| `tile_atlas` | `TileSet` |
+| `reference` | 不带 `godot_artifact` |
 
 手动入口：
 
