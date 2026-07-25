@@ -99,10 +99,8 @@ FAILED with the missing path.}
  final runtime asset path.
  Use existing final paths from ASSETS.md or from the stable entries the
  .godotmaker/asset-generation/manifest.json index points at.
- Do not use source sheets, curation candidates, prompt files, or scene
- references as runtime assets. An ASSETS.md row whose type is `reference` is
- never a runtime asset, even when it is `generated` and lists a final reference
- path.
+ Do not use source sheets, curation candidates, prompt files, scene references,
+ or ASSETS.md rows whose type is `reference` as runtime assets.
  Do not replace an available final asset with placeholder art, procedural
  shapes, or freshly drawn stand-ins.}
 

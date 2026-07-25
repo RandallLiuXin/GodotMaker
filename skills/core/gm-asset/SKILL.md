@@ -237,32 +237,27 @@ python tools/asset_generation_index.py --project-root . \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-6. Run the full root-index gate before marking any runtime entry `generated`.
-   `--check-files` verifies that every registered entry's source and artifact
-   still exist, so it is required for runtime handoff:
+6. Before marking any runtime entry `generated`, run the full root-index gate:
 
 ```bash
 python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
 
-7. Update the matching ASSETS.md rows only after the root-index gate passes. A
-   `ready` non-reference entry is a finished runtime asset. A
-   `screen-reference` entry completes its reference row at `source_ready` (or
-   remains repeatable at `ready`) when its finalized file, canonical stable
-   entry, and root-index pointer pass validation. The updater schema-validates
-   the complete root index and validates the reference entry's own file, so an
-   unrelated pending entry cannot block this reference-only path. It never
-   creates a `godot_artifact` or a worker runtime handoff:
+7. Update the matching ASSETS.md rows only after the root-index gate passes:
+
+   - Mark a `ready` non-reference entry `generated` after the full root-index
+     gate passes.
+   - Mark a `screen-reference` entry `generated` at `source_ready` or `ready`
+     after its finalized file, canonical entry, and root-index pointer validate.
+   - Do not create a `godot_artifact` or worker runtime handoff for a reference.
 
 ```bash
 python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-The updater rejects any other entry. The native compilers and the L0-L4 runner
-are not implemented, so no generated runtime asset reaches `ready` yet and the
-command reports a blocking status for those rows. A validated reference-only row
-is the exception and is promoted by the updater, never by hand-editing a status.
+Keep runtime entries below `ready` as `MISSING`. Do not hand-edit an ASSETS.md
+status, the root index, or a stable entry.
 
 8. Redispatch failed or incomplete production units once when the failure is
    actionable from the report.
@@ -275,21 +270,18 @@ pass.
 
 For current-tag rows only:
 
-1. Confirm rows whose non-reference entry is `ready` are `generated`, and whose
-   validated reference-only entry is `source_ready` or `ready` are `generated`.
+1. Confirm a `ready` non-reference entry is `generated`; confirm a validated
+   `source_ready` or `ready` reference-only entry is `generated`.
 2. Mark provided files `provided`.
 3. Mark unprovided audio `deferred`.
-4. Keep runtime rows without a registered `ready` entry as `MISSING`. Until
-   the native compilers and the L0-L4 runner land this covers every generated
-   runtime row. A registered, validated `screen-reference` at `source_ready`
-   is the sole reference-only exception and becomes `generated` without being
-   worker-consumable.
+4. Keep runtime rows without a registered `ready` entry as `MISSING`. Mark a
+   registered, validated `screen-reference` at `source_ready` or `ready` as
+   `generated`.
 5. Confirm `Generation Params` include the stable entry pointer only.
 6. Update the Visual Asset Contract for gameplay-visible generated assets.
 
-Report the registered reference-only entries to the user and say plainly that
-they are not worker-consumable. Do not mark a runtime row `generated`, invent a
-`godot_artifact`, or edit `processing_status` to close the stage.
+Report registered reference-only entries as non-runtime assets. Do not mark a
+runtime row `generated`, invent a `godot_artifact`, or edit `processing_status`.
 
 Do not mark source sheets, references, or curation candidates as final runtime
 assets unless the production-unit report selected them as final outputs.
@@ -307,12 +299,9 @@ or leave a fix task for a later role.
 
 ## Completion
 
-The native compilers and the L0-L4 runner are not implemented, so generated
-runtime rows cannot reach this state yet: those rows stay `MISSING` by design.
-Registered, validated reference-only rows may complete at `source_ready`; report
-them as visual references, not worker-consumable assets. If any runtime rows
-remain, tell the user the asset stage is blocked on compiler work rather than
-forcing it closed.
+Keep generated runtime rows below `ready` as `MISSING`. Registered, validated
+reference-only rows may complete at `source_ready` or `ready`. If runtime rows
+remain, report the asset stage blocked on compiler work.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 
