@@ -13,9 +13,12 @@ either one static `Texture2D` effect or one independently animated
 Read `../_shared/asset-skill-contract.md` before accepting a request. First
 validate the shared request/result shape with
 `tools/asset_skill_contract_check.py`, then validate this family contract with
-`tools/asset_animated_bundle_contract_check.py --kind request` or `--kind
-result`. The family checker is the callable enforcement for the `spec` rules
-below; the shared checker alone intentionally validates only cross-family shape.
+`tools/asset_animated_bundle_contract_check.py --kind request`. For final
+runtime handoff, call the same checker with `--request <request.json> --result
+<result.json>`; this is required to bind `spec.mode` to the output type and
+source layout. The family checker is the callable enforcement for the `spec`
+rules below; the shared checker alone intentionally validates only cross-family
+shape.
 
 ## Standalone boundary
 

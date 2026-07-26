@@ -15,6 +15,7 @@ sys.path.insert(0, str(SHARED_DIR))
 from asset_animated_bundle_contract_check import (  # noqa: E402
     AnimatedBundleContractError,
     build_spriteframes_spec,
+    check_bundle_handoff,
     check_bundle_request,
     check_bundle_result,
 )
@@ -40,11 +41,12 @@ def test_character_fixture_has_a_valid_multi_action_public_contract():
 
     assert check_bundle_request(request)["asset_type"] == "character-bundle"
     assert check_bundle_result(result)["asset_type"] == "character-bundle"
+    assert check_bundle_handoff(request, result)["kind"] == "handoff"
     assert request["spec"]["required_actions"] == ["idle", "attack"]
     assert request["spec"]["actions"][1]["loop"] is False
 
 
-def test_family_contract_checker_cli_validates_the_public_fixture():
+def test_family_contract_checker_cli_validates_the_public_fixture(tmp_path):
     fixture = REPO_ROOT / "skills/assets/fx-bundle/fixtures/animated-request.json"
     process = subprocess.run(
         [
@@ -60,6 +62,31 @@ def test_family_contract_checker_cli_validates_the_public_fixture():
     )
     assert process.returncode == 0
     assert json.loads(process.stdout)["asset_type"] == "fx-bundle"
+
+    request_path = tmp_path / "request.json"
+    result_path = tmp_path / "result.json"
+    request_path.write_text(fixture.read_text(encoding="utf-8"), encoding="utf-8")
+    result_path.write_text(
+        (REPO_ROOT / "skills/assets/fx-bundle/fixtures/animated-result.json").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
+    handoff = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "tools/asset_animated_bundle_contract_check.py"),
+            "--request",
+            str(request_path),
+            "--result",
+            str(result_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert handoff.returncode == 0
+    assert json.loads(handoff.stdout)["kind"] == "handoff"
 
 
 @pytest.mark.parametrize(
@@ -91,6 +118,7 @@ def test_character_request_rejects_every_declared_action_boundary(mutate):
     [
         pytest.param(lambda d: d["outputs"][0].update(godot_type="Texture2D"), id="no-spriteframes"),
         pytest.param(lambda d: d["outputs"].append({"role": "runtime", "path": "res://assets/generated/character-bundle/player/other.tres", "godot_type": "SpriteFrames"}), id="two-spriteframes"),
+        pytest.param(lambda d: d["sources"][0].update(layout="single"), id="non-grid-sheet-source"),
     ],
 )
 def test_character_result_rejects_an_ambiguous_runtime_handoff(mutate):
@@ -162,6 +190,7 @@ def test_static_fx_rejects_animation_fields_and_keeps_its_texture_result_boundar
     result = _fixture("fx-bundle", "static-result.json")
     assert check_bundle_request(request)["asset_type"] == "fx-bundle"
     assert check_bundle_result(result)["asset_type"] == "fx-bundle"
+    assert check_bundle_handoff(request, result)["kind"] == "handoff"
 
     request["spec"]["actions"] = []
     with pytest.raises(AnimatedBundleContractError, match="not allowed for a static"):
@@ -181,6 +210,37 @@ def test_fx_result_rejects_unsupported_or_ambiguous_runtime_handoff(mutate):
     mutate(result)
     with pytest.raises(AnimatedBundleContractError):
         check_bundle_result(result)
+
+
+@pytest.mark.parametrize(
+    ("request_name", "result_name", "mutate"),
+    [
+        pytest.param(
+            "animated-request.json",
+            "animated-result.json",
+            lambda d: (
+                d["outputs"][0].update(godot_type="Texture2D", path="res://assets/generated/fx-bundle/impact/impact.png"),
+                d["sources"][0].update(path="res://assets/generated/fx-bundle/impact/impact.png", layout="single"),
+            ),
+            id="animated-to-texture2d",
+        ),
+        pytest.param(
+            "static-request.json",
+            "static-result.json",
+            lambda d: (
+                d["outputs"][0].update(godot_type="SpriteFrames", path="res://assets/generated/fx-bundle/pickup/pickup.tres"),
+                d["sources"][0].update(path="res://assets/generated/fx-bundle/pickup/pickup_sheet.png", layout="grid_sheet"),
+            ),
+            id="static-to-spriteframes",
+        ),
+    ],
+)
+def test_fx_handoff_rejects_result_that_bypasses_request_mode(request_name, result_name, mutate):
+    request = _fixture("fx-bundle", request_name)
+    result = _fixture("fx-bundle", result_name)
+    mutate(result)
+    with pytest.raises(AnimatedBundleContractError):
+        check_bundle_handoff(request, result)
 
 
 @pytest.mark.parametrize("family", ["character-bundle", "fx-bundle"])

@@ -165,8 +165,17 @@ def _runtime_outputs(data: dict[str, Any]) -> list[dict[str, Any]]:
             if isinstance(output, dict) and output.get("role") == "runtime"]
 
 
+def _source_layouts(data: dict[str, Any]) -> set[str]:
+    return {source.get("layout") for source in data["sources"] if isinstance(source, dict)}
+
+
 def check_bundle_result(data: Any) -> dict[str, Any]:
-    """Validate the public runtime-output boundary for animated bundle results."""
+    """Validate a bundle result's intrinsic runtime-output boundary.
+
+    This function checks constraints visible in the result alone. Use
+    :func:`check_bundle_handoff` for final validation, because only that path can
+    bind an FX result to the request's ``static`` or ``animated`` mode.
+    """
     try:
         shared = check_result(data)
     except AssetContractError as exc:
@@ -178,6 +187,8 @@ def check_bundle_result(data: Any) -> dict[str, Any]:
     if asset_type == "character-bundle":
         if sum(output.get("godot_type") == "SpriteFrames" for output in runtime) != 1:
             issues.append("character-bundle result must contain exactly one SpriteFrames runtime output")
+        elif "grid_sheet" not in _source_layouts(data):
+            issues.append("character-bundle SpriteFrames result needs a grid_sheet source")
     elif asset_type == "fx-bundle":
         if len(runtime) != 1:
             issues.append("fx-bundle result must contain exactly one runtime output")
@@ -185,14 +196,48 @@ def check_bundle_result(data: Any) -> dict[str, Any]:
             issues.append("fx-bundle runtime output must be Texture2D or SpriteFrames")
         else:
             expected_layout = "single" if runtime[0]["godot_type"] == "Texture2D" else "grid_sheet"
-            layouts = {source.get("layout") for source in data["sources"] if isinstance(source, dict)}
-            if expected_layout not in layouts:
+            if expected_layout not in _source_layouts(data):
                 issues.append(f"fx-bundle {runtime[0]['godot_type']} result needs a {expected_layout} source")
     else:
         issues.append(f"asset_type is not an animated bundle family: {asset_type}")
     if issues:
         raise AnimatedBundleContractError("; ".join(issues))
     return {"ok": True, "kind": "result", "asset_type": asset_type, "shared": shared}
+
+
+def check_bundle_handoff(request: Any, result: Any) -> dict[str, Any]:
+    """Validate the final request-to-result runtime handoff for one bundle.
+
+    FX output type cannot be inferred from a result alone: both Texture2D and
+    SpriteFrames are legitimate FX artifacts. This boundary therefore validates
+    the request and result together and makes the request's explicit mode the
+    authority for the final artifact type and source layout.
+    """
+    request_check = check_bundle_request(request)
+    result_check = check_bundle_result(result)
+    if request["asset_type"] != result["asset_type"]:
+        raise AnimatedBundleContractError("request.asset_type must match result.asset_type")
+
+    if request["asset_type"] == "fx-bundle":
+        runtime = _runtime_outputs(result)
+        mode = request["spec"]["mode"]
+        expected_type = "Texture2D" if mode == "static" else "SpriteFrames"
+        expected_layout = "single" if mode == "static" else "grid_sheet"
+        if len(runtime) != 1 or runtime[0].get("godot_type") != expected_type:
+            raise AnimatedBundleContractError(
+                f"{mode} FX request must hand off exactly one {expected_type} runtime output"
+            )
+        if expected_layout not in _source_layouts(result):
+            raise AnimatedBundleContractError(
+                f"{mode} FX request must hand off a {expected_layout} source"
+            )
+    return {
+        "ok": True,
+        "kind": "handoff",
+        "asset_type": request["asset_type"],
+        "request": request_check,
+        "result": result_check,
+    }
 
 
 def build_spriteframes_spec(data: Any, frame_paths_by_action: Mapping[str, Sequence[str]]) -> dict[str, Any]:
@@ -241,12 +286,27 @@ def build_spriteframes_spec(data: Any, frame_paths_by_action: Mapping[str, Seque
 
 def _main() -> int:
     parser = argparse.ArgumentParser(description="Validate animated bundle asset-skill contracts")
-    parser.add_argument("document", type=Path, help="Request or result JSON path")
-    parser.add_argument("--kind", choices=["request", "result"], required=True)
+    parser.add_argument("document", nargs="?", type=Path, help="Request or result JSON path")
+    parser.add_argument("--kind", choices=["request", "result"])
+    parser.add_argument("--request", type=Path, help="Validated request JSON for final handoff")
+    parser.add_argument("--result", type=Path, help="Result JSON for final handoff")
     args = parser.parse_args()
     try:
-        data = json.loads(args.document.read_text(encoding="utf-8"))
-        result = check_bundle_request(data) if args.kind == "request" else check_bundle_result(data)
+        if args.request or args.result:
+            if args.document or not args.request or not args.result:
+                raise AnimatedBundleContractError(
+                    "handoff validation needs --request and --result with no document"
+                )
+            request = json.loads(args.request.read_text(encoding="utf-8"))
+            result_document = json.loads(args.result.read_text(encoding="utf-8"))
+            result = check_bundle_handoff(request, result_document)
+        elif args.document and args.kind:
+            data = json.loads(args.document.read_text(encoding="utf-8"))
+            result = check_bundle_request(data) if args.kind == "request" else check_bundle_result(data)
+        else:
+            raise AnimatedBundleContractError(
+                "document with --kind is required without --request and --result"
+            )
     except (AnimatedBundleContractError, OSError, json.JSONDecodeError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
