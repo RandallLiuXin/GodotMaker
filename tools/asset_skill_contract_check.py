@@ -294,11 +294,13 @@ def check_result(data: Any) -> dict[str, Any]:
 
     _check_asset_type(data.get("asset_type"), location="result.asset_type", issues=issues)
 
+    validation = data.get("validation")
+    validation_passed = validation.get("passed") if isinstance(validation, dict) else None
     runtime_output_count = 0
     outputs = data.get("outputs")
     if not isinstance(outputs, list):
         issues.append("result.outputs must be a list")
-    elif not outputs:
+    elif not outputs and validation_passed is not False:
         issues.append("result.outputs must contain at least one output")
     else:
         for index, output in enumerate(outputs):

@@ -103,3 +103,18 @@ def test_gm_asset_keeps_no_second_authoritative_copy_of_extracted_families():
         for family in FAMILIES:
             assert f"references/production-units/{family}.md" not in text
             assert f"First-class `{family}` Asset Skill" in text
+
+
+def test_gm_asset_dispatches_extracted_families_through_named_skills():
+    manager = (REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    producer = (REPO_ROOT / "agents" / "asset-producer.md").read_text(encoding="utf-8")
+
+    for family in FAMILIES:
+        assert f"| `{family}` | First-class Asset Skill: `{family}` |" in manager
+        assert f"references/production-units/{family}.md" not in manager
+    assert "### First-Class Result Adapter" in manager
+    assert "does not register a generic result directly." in manager
+    assert "invoke it with the supplied generic request" in producer
+    assert "adapt its sources,\n   outputs, and validation evidence" in producer

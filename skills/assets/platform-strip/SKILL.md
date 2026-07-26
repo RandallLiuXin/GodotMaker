@@ -70,6 +70,7 @@ For an atlas result, include the physical PNG in `sources` with
 }
 ```
 
-If a grid, declared segment, atlas region, or Godot type check fails, return a
-failed validation result with notes instead of a runtime output that implies
-the strip can be used safely.
+If a grid, declared segment, atlas region, or Godot type check fails, return
+`outputs: []` with `validation.passed: false` and explanatory notes. The shared
+result contract accepts an empty output list only for this failed state, so the
+strip never implies it can be used safely.

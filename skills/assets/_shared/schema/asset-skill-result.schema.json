@@ -24,7 +24,6 @@
     },
     "outputs": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -150,5 +149,25 @@
         }
       ]
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "validation": {
+            "properties": {
+              "passed": { "const": true }
+            },
+            "required": ["passed"]
+          }
+        },
+        "required": ["validation"]
+      },
+      "then": {
+        "properties": {
+          "outputs": { "minItems": 1 }
+        }
+      }
+    }
+  ]
 }
