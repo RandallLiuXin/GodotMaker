@@ -145,10 +145,16 @@ repeat, compression, and filtering choices remain worker decisions.
 ## Boundary
 
 `_shared/` holds cross-skill material only. It has no `SKILL.md` and is not
-independently triggerable. The registry holds no concrete `AtlasTexture`,
-`SpriteFrames`, `Theme`, `StyleBoxTexture`, or `TileSet` compiler; each lands
-with its own asset skill and registers itself through
+independently triggerable. The registry's default holds no concrete
+`AtlasTexture`, `SpriteFrames`, `Theme`, `StyleBoxTexture`, or `TileSet`
+compiler; each family compiler registers itself through
 `CompilerRegistry.register()`.
+
+`asset_compiler/theme.py` is the UI family's `theme_recipe -> Theme` compiler.
+It validates the recipe's closed ClassDB type, item-property, resource, and
+StyleBox-reference sets before serializing a deterministic `.tres`; callers
+register it, and its `theme` L4 structure validator, into their per-run
+registries.
 
 There is no module-level default registry instance. A caller builds one with
 `build_default_registry()` and every family compiler for that run registers into

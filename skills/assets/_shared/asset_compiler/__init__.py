@@ -14,7 +14,7 @@ re-imported self-registering module into an import-time crash.
 """
 from __future__ import annotations
 
-from . import texture2d
+from . import texture2d, theme
 from .contract import (
     CompileReceipt,
     CompileRequest,
@@ -53,4 +53,5 @@ __all__ = [
     "is_same_file",
     "require_text",
     "texture2d",
+    "theme",
 ]

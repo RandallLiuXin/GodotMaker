@@ -18,7 +18,7 @@ SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(SHARED_DIR))
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
+from asset_compiler import CompileRequest, CompilerError, build_default_registry, theme  # noqa: E402
 from asset_validation import (  # noqa: E402
     NOT_RUN,
     PASSED,
@@ -287,6 +287,43 @@ def test_a_generated_texture_reaches_ready_through_real_godot(godot_bin, godot_p
     # L4 reads the dimensions of the resource Godot loaded, not of the file.
     assert result.levels[4].details["width"] == 24
     assert result.levels[4].details["height"] == 16
+
+
+def test_a_compiled_theme_recipe_reaches_ready_through_real_godot(godot_bin, godot_project):
+    """The compiler output must survive real Theme loading and L4 inspection."""
+    recipe_path = "res://assets/generated/ui-kit/skin/skin.json"
+    _write(
+        godot_project,
+        recipe_path,
+        b'''{"version":1,"colors":[{"type":"Button","name":"font_color","value":"#FFFFFFFF"}],"font_sizes":[],"constants":[],"fonts":[],"icons":[],"styleboxes":{"normal":{"type":"StyleBoxFlat","properties":{"bg_color":"#112233FF"}}},"styles":[{"type":"Button","name":"normal","stylebox":"normal"}],"variations":[{"name":"PrimaryButton","base_type":"Button"}]}''',
+    )
+    registry = build_default_registry()
+    theme.register_into(registry)
+    compiled = registry.compile(
+        CompileRequest(
+            production_family="ui-kit",
+            asset_id="skin",
+            source_layout_type="theme_recipe",
+            source_path=recipe_path,
+            artifact_type="Theme",
+            artifact_path="res://assets/generated/ui-kit/skin/skin.tres",
+            project_root=godot_project,
+        )
+    )
+    structures = build_default_structures()
+    theme.register_structure_into(structures)
+    entry = _entry(
+        asset_id="skin",
+        source_layout={"type": "theme_recipe", "path": recipe_path},
+        godot_artifact=compiled.godot_artifact.to_dict(),
+    )
+    result = ValidationLadder(
+        registry=registry, structures=structures, probe=GodotProbe(godot_bin)
+    ).run(entry, project_root=godot_project, receipt=compiled.receipt)
+
+    assert result.ready is True, result.to_dict()
+    assert result.levels[3].details["godot_class"] == "Theme"
+    assert result.levels[4].details["variations"] == ["PrimaryButton"]
 
 
 def test_headless_godot_rejects_a_corrupt_resource(godot_bin, godot_project):
