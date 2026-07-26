@@ -290,7 +290,7 @@ python tools/asset_assets_md_update.py \
 
 The updater promotes a runtime row to `generated` only for a `ready`
 non-reference entry. A `screen-reference` row may become `generated` at
-`source_ready` or `ready` with a finalized reference file, canonical stable
+`source_ready` with a finalized reference file, canonical stable
 entry, and root-index pointer. It schema-validates index pointers and validates
 the selected reference file. Do not create a `godot_artifact`, worker handoff,
 or hand-edited ASSETS.md status for a reference. Keep all other `source_ready`

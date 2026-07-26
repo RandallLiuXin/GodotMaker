@@ -277,6 +277,7 @@ def test_a_path_in_the_generation_workspace_fails_l0(tmp_path):
             asset_id="title",
             source_layout={"type": "reference", "path": "res://assets/refs/title.png"},
             godot_artifact=None,
+            processing_status="source_ready",
         ),
     ],
 )

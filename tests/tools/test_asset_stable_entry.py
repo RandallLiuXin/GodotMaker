@@ -54,7 +54,7 @@ def reference_entry(**overrides):
             "type": "reference",
             "path": "res://assets/references/title_screen.png",
         },
-        "processing_status": "ready",
+        "processing_status": "source_ready",
     }
     entry.update(overrides)
     return entry
@@ -146,6 +146,17 @@ def test_mismatched_artifact_type_is_rejected(layout, artifact_type):
 
 def test_reference_entry_needs_no_artifact():
     validate_entry(reference_entry())
+
+
+@pytest.mark.parametrize("status", ["pending", "source_ready", "failed"])
+def test_reference_entry_accepts_only_its_process_and_failure_statuses(status):
+    validate_entry(reference_entry(processing_status=status))
+
+
+@pytest.mark.parametrize("status", ["compiled", "ready"])
+def test_reference_entry_rejects_runtime_ladder_statuses(status):
+    with pytest.raises(StableEntryError, match=rf"not {status}"):
+        validate_entry(reference_entry(processing_status=status))
 
 
 def test_reference_entry_rejects_artifact():

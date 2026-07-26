@@ -247,7 +247,7 @@ python tools/asset_generation_index.py --project-root . --check-entries --check-
 
    - Mark a `ready` non-reference entry `generated` after the full root-index
      gate passes.
-   - Mark a `screen-reference` entry `generated` at `source_ready` or `ready`
+   - Mark a `screen-reference` entry `generated` only at `source_ready`
      after its finalized file, canonical entry, and root-index pointer validate.
    - Do not create a `godot_artifact` or worker runtime handoff for a reference.
 
@@ -271,11 +271,11 @@ pass.
 For current-tag rows only:
 
 1. Confirm a `ready` non-reference entry is `generated`; confirm a validated
-   `source_ready` or `ready` reference-only entry is `generated`.
+   `source_ready` reference-only entry is `generated`.
 2. Mark provided files `provided`.
 3. Mark unprovided audio `deferred`.
 4. Keep runtime rows without a registered `ready` entry as `MISSING`. Mark a
-   registered, validated `screen-reference` at `source_ready` or `ready` as
+   registered, validated `screen-reference` at `source_ready` as
    `generated`.
 5. Confirm `Generation Params` include the stable entry pointer only.
 6. Update the Visual Asset Contract for gameplay-visible generated assets.
@@ -300,7 +300,7 @@ or leave a fix task for a later role.
 ## Completion
 
 Keep generated runtime rows below `ready` as `MISSING`. Registered, validated
-reference-only rows may complete at `source_ready` or `ready`. If runtime rows
+reference-only rows may complete only at `source_ready`. If runtime rows
 remain, report the asset stage blocked on compiler work.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:

@@ -249,7 +249,7 @@ python tools/asset_generation_index.py --project-root . --check-entries --check-
 
 ## asset_assets_md_update.py
 
-`asset_assets_md_update.py` 会根据已注册的 stable entry 更新 ASSETS.md 行。它先重新校验每个 entry 和被引用的文件。运行时行必须使用 `ready` 的非 reference entry，因此只有素材确实可被 worker 消费时才会变成 `generated`。`screen-reference` 行是例外：当 finalize 后的参考图文件、canonical stable entry 和 root-index 指针通过适用校验时，可在 `source_ready`（或后续 `ready`）变为 `generated`。它记录同一个 entry 指针，但绝不会创建 `godot_artifact` 或交给 worker 作为运行时资产。
+`asset_assets_md_update.py` 会根据已注册的 stable entry 更新 ASSETS.md 行。它先重新校验每个 entry 和被引用的文件。运行时行必须使用 `ready` 的非 reference entry，因此只有素材确实可被 worker 消费时才会变成 `generated`。`screen-reference` 行是例外：当 finalize 后的参考图文件、canonical stable entry 和 root-index 指针通过适用校验时，只能在 `source_ready` 变为 `generated`。它记录同一个 entry 指针，但绝不会创建 `godot_artifact` 或交给 worker 作为运行时资产。
 
 手动入口：
 

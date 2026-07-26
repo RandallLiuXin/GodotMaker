@@ -200,13 +200,12 @@ def write_reference_assets_md(path: Path):
     )
 
 
-@pytest.mark.parametrize("status", ["source_ready", "ready"])
-def test_update_assets_md_promotes_registered_reference(tmp_path, status):
+def test_update_assets_md_promotes_registered_source_ready_reference(tmp_path):
     """References complete after deterministic registration, not runtime readiness."""
     assets_md = tmp_path / "ASSETS.md"
     write_reference_assets_md(assets_md)
     touch(tmp_path, "references/scene_main.png")
-    entry_file = write_entry(tmp_path, make_reference_entry(processing_status=status))
+    entry_file = write_entry(tmp_path, make_reference_entry())
     update_index(
         tmp_path / ".godotmaker/asset-generation/manifest.json",
         [entry_file],
@@ -220,7 +219,7 @@ def test_update_assets_md_promotes_registered_reference(tmp_path, status):
     assert f"manifest_entry={entry_relative_path(TAG, 'scene_main')}" in text
 
 
-@pytest.mark.parametrize("status", ["pending", "compiled", "failed"])
+@pytest.mark.parametrize("status", ["pending", "failed"])
 def test_update_assets_md_rejects_incomplete_reference(tmp_path, status):
     assets_md = tmp_path / "ASSETS.md"
     write_reference_assets_md(assets_md)
@@ -228,6 +227,21 @@ def test_update_assets_md_rejects_incomplete_reference(tmp_path, status):
     entry_file = write_entry(tmp_path, make_reference_entry(processing_status=status))
 
     with pytest.raises(AssetsMdUpdateError, match=f"processing_status is {status}"):
+        update_assets_md(assets_md, [entry_file])
+
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("status", ["compiled", "ready"])
+def test_update_assets_md_rejects_reference_runtime_ladder_status(tmp_path, status):
+    assets_md = tmp_path / "ASSETS.md"
+    write_reference_assets_md(assets_md)
+    touch(tmp_path, "references/scene_main.png")
+    entry_file = write_entry(
+        tmp_path, make_reference_entry(processing_status=status)
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match=rf"not {status}"):
         update_assets_md(assets_md, [entry_file])
 
     assert "| generated |" not in assets_md.read_text(encoding="utf-8")

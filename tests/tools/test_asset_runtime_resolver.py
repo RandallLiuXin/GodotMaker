@@ -178,11 +178,13 @@ def test_reference_entry_cannot_appear_as_a_worker_runtime_asset(tmp_path):
         "tag": TAG,
         "production_family": "screen-reference",
         "source_layout": {"type": "reference", "path": "res://references/scene_main.png"},
-        "processing_status": "ready",
+        "processing_status": "source_ready",
     }
     _, pointer = register(tmp_path, entry, assets=True)
 
-    with pytest.raises(AssetRuntimeResolverError, match="reference-only"):
+    with pytest.raises(
+        AssetRuntimeResolverError, match="processing_status is source_ready"
+    ):
         resolve_manifest_entry(pointer, project_root=tmp_path, assets_md=tmp_path / "ASSETS.md")
 
 
