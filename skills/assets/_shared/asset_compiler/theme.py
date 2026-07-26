@@ -471,6 +471,14 @@ def validate_theme_structure(request: Any) -> dict[str, Any]:
     ]
     if not variations:
         raise ValidationError("the loaded Theme has no type variation")
+    requested_variation = request.spec.get("variation") if isinstance(request.spec, Mapping) else None
+    if requested_variation is not None:
+        if not isinstance(requested_variation, str) or not requested_variation:
+            raise ValidationError("Theme standalone validation requires a non-empty requested variation")
+        if requested_variation not in variations:
+            raise ValidationError(
+                f"the loaded Theme does not declare requested variation {requested_variation!r}"
+            )
     declared_items = 0
     for facts in types.values():
         if not isinstance(facts, Mapping):
@@ -482,7 +490,10 @@ def validate_theme_structure(request: Any) -> dict[str, Any]:
             declared_items += len(values)
     if declared_items == 0:
         raise ValidationError("the loaded Theme has no declared Theme items")
-    return {"types": sorted(types), "variations": sorted(variations), "theme_items": declared_items}
+    return {
+        "types": sorted(types), "variations": sorted(variations),
+        "requested_variation": requested_variation, "theme_items": declared_items,
+    }
 
 
 def register_structure_into(structures: Any) -> Any:

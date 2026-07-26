@@ -87,14 +87,14 @@ def _result(request: dict) -> dict:
     }
 
 
-def _write_sources(root: Path, request: dict) -> None:
+def _write_sources(root: Path, request: dict, *, recipe_variation: str | None = None) -> None:
     spec = request["spec"]
     recipe = {
         "version": 1,
         "colors": [{"type": "Button", "name": "font_color", "value": "#FFFFFFFF"}],
         "font_sizes": [], "constants": [], "fonts": [], "icons": [],
         "styleboxes": {}, "styles": [],
-        "variations": [{"name": spec["theme"]["variation"], "base_type": "Button"}],
+        "variations": [{"name": recipe_variation or spec["theme"]["variation"], "base_type": "Button"}],
     }
     recipe_file = root / spec["theme"]["recipe_path"].removeprefix("res://")
     recipe_file.parent.mkdir(parents=True, exist_ok=True)
@@ -111,10 +111,10 @@ def _write_sources(root: Path, request: dict) -> None:
     (root / region["metadata_path"].removeprefix("res://")).write_text(json.dumps(metadata), encoding="utf-8")
 
 
-def _good_probe(request: dict, result: dict):
+def _good_probe(request: dict, result: dict, *, theme_variation: str | None = None):
     box = request["spec"]["styleboxes"][0]
     atlas = request["spec"]["atlas_regions"][0]
-    variation = request["spec"]["theme"]["variation"]
+    variation = theme_variation or request["spec"]["theme"]["variation"]
 
     def fake_probe(self, project_root, requests):
         resources = []
@@ -259,3 +259,15 @@ def test_standalone_runner_maps_structure_failure_to_l4(tmp_path, monkeypatch):
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
     assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": True, "L3": True, "L4": False}
+
+
+def test_standalone_runner_maps_requested_theme_variation_mismatch_to_l4(tmp_path, monkeypatch):
+    request = _request("ui-kit")
+    result = _result(request)
+    _write_sources(tmp_path, request, recipe_variation="OtherVariation")
+    monkeypatch.setattr(GodotProbe, "probe", _good_probe(request, result, theme_variation="OtherVariation"))
+
+    validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+
+    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": True, "L3": True, "L4": False}
+    assert "requested variation" in validated["validation"]["notes"]

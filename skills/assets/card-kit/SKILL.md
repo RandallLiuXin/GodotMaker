@@ -55,6 +55,8 @@ manifests, stable entries, or worker dispatch state.
    and L4 structure validation for every output. The deterministic tools enforce
    legal serialization, complete declared resource types, Godot loading, and
    type-specific structure checks.
+   Theme L4 requires the exact requested `spec.theme.variation`, not merely an
+   arbitrary variation declared by the recipe.
 
 The worker owns `Control` and `Container` layout and card placement. A
 reference shows visual direction only and is not pixel-perfect.

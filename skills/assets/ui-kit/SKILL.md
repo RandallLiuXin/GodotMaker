@@ -54,6 +54,8 @@ manifests, stable entries, or worker dispatch state.
    own legal serialization, resource-type completeness, Godot loading, and
    structure checks; they do not claim to generate a good visual design by
    themselves.
+   Theme L4 requires the exact `spec.theme.variation` to exist in the loaded
+   Theme; another declared variation does not satisfy the request.
 
 The worker owns `Control` and `Container` layout. Reference images establish
 visual direction only; they are not pixel-perfect layout oracles. A worker

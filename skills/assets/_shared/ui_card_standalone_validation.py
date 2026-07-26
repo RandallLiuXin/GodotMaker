@@ -47,7 +47,7 @@ def _artifact_request(
             production_family=request["asset_type"], asset_id=request["asset_id"],
             source_layout_type="theme_recipe", source_path=declaration["recipe_path"],
             artifact_type="Theme", artifact_path=output["path"], project_root=root,
-            spec={},
+            spec={"variation": declaration["variation"]},
         )
     if kind == "stylebox":
         return CompileRequest(
