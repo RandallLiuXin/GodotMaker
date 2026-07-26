@@ -89,8 +89,26 @@ def _recipe(request: CompileRequest) -> dict[str, Any]:
                 if type(animation.get("frames_count")) is not int or animation["frames_count"] < 1:
                     raise CompilerError("animation frames_count must be a positive integer")
                 animation["mode"] = _ANIMATION_MODES[mode]
-                animation["columns"] = int(animation.get("columns", 1))
+                if type(animation.get("columns", 1)) is not int or animation.get("columns", 1) < 1:
+                    raise CompilerError("animation columns must be a positive integer")
+                animation["columns"] = animation.get("columns", 1)
                 animation["separation"] = _pair(animation.get("separation", [0, 0]), "animation separation")
+                if type(animation.get("speed", 1.0)) not in (int, float) or animation.get("speed", 1.0) <= 0:
+                    raise CompilerError("animation speed must be a positive number")
+                animation["speed"] = float(animation.get("speed", 1.0))
+                durations = animation.get("frame_durations", [])
+                if not isinstance(durations, list):
+                    raise CompilerError("animation frame_durations must be a list")
+                normalized: list[dict[str, Any]] = []
+                for frame, duration in enumerate(durations):
+                    if not isinstance(duration, Mapping) or duration.get("frame") != frame:
+                        raise CompilerError("animation frame_durations must be ordered, unique, and continuous")
+                    if type(duration.get("duration")) not in (int, float) or duration["duration"] <= 0:
+                        raise CompilerError("animation frame duration must be a positive number")
+                    normalized.append({"frame": frame, "duration": float(duration["duration"])})
+                if normalized and len(normalized) != animation["frames_count"]:
+                    raise CompilerError("animation frame_durations must declare every frame")
+                animation["frame_durations"] = normalized
     for terrain_set in spec.get("terrain_sets", []):
         if not isinstance(terrain_set, Mapping) or type(terrain_set.get("mode", 0)) is not int:
             raise CompilerError("terrain set mode must be an integer")

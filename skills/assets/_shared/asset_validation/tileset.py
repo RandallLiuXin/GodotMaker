@@ -13,6 +13,20 @@ _SHAPES = {"square": 0, "isometric": 1, "half_offset_square": 2, "hexagon": 3}
 _ANIMATION_MODES = {"default": 0, "random_start_times": 1, "max": 2}
 
 
+def _expected_tile(tile: dict[str, Any], spec: dict[str, Any], *, alternative: bool = False) -> dict[str, Any]:
+    physics = [[] for _ in spec.get("physics_layers", [])]
+    for item in tile.get("collision_polygons", []): physics[item["layer"]].append(item["points"])
+    occlusion = [[] for _ in spec.get("occlusion_layers", [])]
+    for item in tile.get("occlusion_polygons", []): occlusion[item["layer"]].append(item["points"])
+    navigation = [[] for _ in spec.get("navigation_layers", [])]
+    for item in tile.get("navigation_polygons", []): navigation[item["layer"]] = item["points"]
+    peering = [-1] * 16
+    for item in tile.get("peering_bits", []): peering[item["bit"]] = item["terrain"]
+    custom = [None] * len(spec.get("custom_data_layers", []))
+    for item in tile.get("custom_data", []): custom[item["layer"]] = item.get("value")
+    return {"id": tile.get("id", 0 if not alternative else None), "texture_origin": tile.get("texture_origin", [0, 0]), "z_index": tile.get("z_index", 0), "y_sort_origin": tile.get("y_sort_origin", 0), "probability": tile.get("probability", 1.0), "terrain_set": tile.get("terrain_set", -1), "terrain": tile.get("terrain", -1), "peering_bits": peering, "custom_data": custom, "collision_polygons": physics, "occlusion_polygons": occlusion, "navigation_polygons": navigation}
+
+
 def validate_tileset(request: StructureRequest) -> dict[str, Any]:
     facts = request.checked_structure("tileset")
     sources = request.spec.get("sources")
@@ -63,10 +77,23 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
                     expected_durations = [item.get("duration") for item in tile["animation"]["frame_durations"]]
                     if loaded.get("animation", {}).get("frame_durations") != expected_durations:
                         raise ValidationError("loaded TileSet animation frame durations do not match the recipe")
+            expected_tile = _expected_tile(tile, request.spec)
+            for key, value in expected_tile.items():
+                if key != "id" and loaded.get(key) != value:
+                    raise ValidationError(f"loaded TileSet tile {key} does not match the recipe")
+            loaded_alternatives = loaded.get("alternatives", [])
+            expected_alternatives = tile.get("alternatives", [])
+            if len(loaded_alternatives) != len(expected_alternatives):
+                raise ValidationError("loaded TileSet alternatives do not match the recipe")
+            for alternative, actual_alternative in zip(expected_alternatives, loaded_alternatives):
+                if actual_alternative != _expected_tile(alternative, request.spec, alternative=True):
+                    raise ValidationError("loaded TileSet alternative data does not match the recipe")
     for key in ("physics_layers", "navigation_layers", "occlusion_layers", "custom_data_layers", "terrain_sets"):
         expected = len(request.spec.get(key, []))
         if facts.get(key + "_count") != expected:
             raise ValidationError(f"loaded TileSet {key} count does not match the recipe")
+        if facts.get(key) != request.spec.get(key, []):
+            raise ValidationError(f"loaded TileSet {key} data does not match the recipe")
     return dict(facts)
 
 

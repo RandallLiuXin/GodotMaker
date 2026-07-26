@@ -65,10 +65,16 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 								var coords = source.get_tile_id(tile_index)
 								tile_count += 1
 								alternative_count += source.get_alternative_tiles_count(coords) - 1
-								var data = source.get_tile_data(coords, 0)
+								var tile_entry = _tile_descriptor(resource, source, coords, 0)
+								tile_entry["coords"] = [coords.x, coords.y]
+								var alternatives := []
+								for alternative_index in source.get_alternative_tiles_count(coords):
+									if alternative_index > 0: alternatives.append(_tile_descriptor(resource, source, coords, source.get_alternative_tile_id(coords, alternative_index)))
 								var durations := []
 								for frame_index in source.get_tile_animation_frames_count(coords): durations.append(source.get_tile_animation_frame_duration(coords, frame_index))
-								tiles.append({"coords": [coords.x, coords.y], "texture_origin": [data.texture_origin.x, data.texture_origin.y], "z_index": data.z_index, "y_sort_origin": data.y_sort_origin, "probability": data.probability, "terrain_set": data.terrain_set, "terrain": data.terrain, "animation": {"mode": source.get_tile_animation_mode(coords), "columns": source.get_tile_animation_columns(coords), "frames_count": source.get_tile_animation_frames_count(coords), "separation": [source.get_tile_animation_separation(coords).x, source.get_tile_animation_separation(coords).y], "speed": source.get_tile_animation_speed(coords), "frame_durations": durations}})
+								tile_entry["alternatives"] = alternatives
+								tile_entry["animation"] = {"mode": source.get_tile_animation_mode(coords), "columns": source.get_tile_animation_columns(coords), "frames_count": source.get_tile_animation_frames_count(coords), "separation": [source.get_tile_animation_separation(coords).x, source.get_tile_animation_separation(coords).y], "speed": source.get_tile_animation_speed(coords), "frame_durations": durations}
+								tiles.append(tile_entry)
 							sources.append({"id": source_id, "region_size": [source.texture_region_size.x, source.texture_region_size.y], "margins": [source.margins.x, source.margins.y], "separation": [source.separation.x, source.separation.y], "tiles": tiles})
 					structure[check] = {
 						"source_count": resource.get_source_count(), "tile_count": tile_count,
@@ -80,10 +86,61 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 						"occlusion_layers_count": resource.get_occlusion_layers_count(),
 						"custom_data_layers_count": resource.get_custom_data_layers_count(),
 						"terrain_sets_count": resource.get_terrain_sets_count(),
+						"physics_layers": _physics_layers(resource), "navigation_layers": _navigation_layers(resource), "occlusion_layers": _occlusion_layers(resource), "custom_data_layers": _custom_layers(resource), "terrain_sets": _terrain_sets(resource),
 					}
 				else:
 					structure[check] = {"error": "resource is a %s, not a TileSet" % resource.get_class()}
 	return structure
+
+func _tile_descriptor(tile_set: TileSet, source: TileSetAtlasSource, coords: Vector2i, alternative: int) -> Dictionary:
+	var data := source.get_tile_data(coords, alternative)
+	var peering := []
+	for bit in 16: peering.append(data.get_terrain_peering_bit(bit))
+	var custom := []
+	for layer in tile_set.get_custom_data_layers_count(): custom.append(data.get_custom_data_by_layer_id(layer))
+	var collisions := []
+	for layer in tile_set.get_physics_layers_count():
+		var polygons := []
+		for polygon in data.get_collision_polygons_count(layer): polygons.append(data.get_collision_polygon_points(layer, polygon).to_array())
+		collisions.append(polygons)
+	var occlusions := []
+	for layer in tile_set.get_occlusion_layers_count():
+		var polygons := []
+		for polygon in data.get_occluder_polygons_count(layer):
+			var item = data.get_occluder_polygon(layer, polygon)
+			polygons.append([] if item == null else item.polygon.to_array())
+		occlusions.append(polygons)
+	var navigation := []
+	for layer in tile_set.get_navigation_layers_count():
+		var polygon = data.get_navigation_polygon(layer)
+		navigation.append([] if polygon == null else polygon.vertices.to_array())
+	return {"id": alternative, "texture_origin": [data.texture_origin.x, data.texture_origin.y], "z_index": data.z_index, "y_sort_origin": data.y_sort_origin, "probability": data.probability, "terrain_set": data.terrain_set, "terrain": data.terrain, "peering_bits": peering, "custom_data": custom, "collision_polygons": collisions, "occlusion_polygons": occlusions, "navigation_polygons": navigation}
+
+func _physics_layers(tile_set: TileSet) -> Array:
+	var result := []
+	for index in tile_set.get_physics_layers_count(): result.append({"collision_layer": tile_set.get_physics_layer_collision_layer(index), "collision_mask": tile_set.get_physics_layer_collision_mask(index)})
+	return result
+func _navigation_layers(tile_set: TileSet) -> Array:
+	var result := []
+	for index in tile_set.get_navigation_layers_count(): result.append({"layers": tile_set.get_navigation_layer_layers(index)})
+	return result
+func _occlusion_layers(tile_set: TileSet) -> Array:
+	var result := []
+	for index in tile_set.get_occlusion_layers_count(): result.append({"light_mask": tile_set.get_occlusion_layer_light_mask(index)})
+	return result
+func _custom_layers(tile_set: TileSet) -> Array:
+	var result := []
+	for index in tile_set.get_custom_data_layers_count(): result.append({"name": str(tile_set.get_custom_data_layer_name(index)), "type": tile_set.get_custom_data_layer_type(index)})
+	return result
+func _terrain_sets(tile_set: TileSet) -> Array:
+	var result := []
+	for set_index in tile_set.get_terrain_sets_count():
+		var terrains := []
+		for terrain_index in tile_set.get_terrains_count(set_index):
+			var color := tile_set.get_terrain_color(set_index, terrain_index)
+			terrains.append({"name": tile_set.get_terrain_name(set_index, terrain_index), "color": [color.r, color.g, color.b, color.a]})
+		result.append({"mode": tile_set.get_terrain_set_mode(set_index), "terrains": terrains})
+	return result
 
 
 func _probe(item: Dictionary) -> Dictionary:
