@@ -94,6 +94,8 @@ It is not a Godot artifact.
 5. `failed` — a stage failed.
 
 `compiled` and `ready` require a `godot_artifact` for every non-reference asset.
+Reference-only entries never enter this ladder: they may use only `pending`,
+`source_ready`, or `failed`, and only `source_ready` is their completion state.
 
 **Current pipeline state.** The native compilers and the L0-L4 runner are not
 implemented. `/gm-asset` therefore registers `source_ready` entries and nothing

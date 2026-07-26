@@ -273,6 +273,9 @@ arbitrary ClassDB types:
 | `tile_atlas` | `TileSet` |
 | `reference` | no `godot_artifact` |
 
+Reference-only entries may use only `pending`, `source_ready`, or `failed`;
+`source_ready` is their sole completion state and is not runtime `ready`.
+
 Manual entry point:
 
 ```bash

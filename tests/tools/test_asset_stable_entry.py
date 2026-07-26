@@ -11,7 +11,10 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
 from asset_stable_entry import (  # noqa: E402
+    ARTIFACT_REQUIRED_STATUSES,
     LAYOUT_ARTIFACT_TYPES,
+    PROCESSING_STATUSES,
+    REFERENCE_PROCESSING_STATUSES,
     REFERENCE_LAYOUTS,
     SOURCE_LAYOUT_TYPES,
     StableEntryError,
@@ -83,6 +86,12 @@ def test_every_non_reference_layout_has_an_artifact_type():
         "theme_recipe": ("Theme",),
         "tile_atlas": ("TileSet",),
     }
+
+
+def test_reference_statuses_are_the_non_runtime_statuses():
+    assert REFERENCE_PROCESSING_STATUSES == (
+        PROCESSING_STATUSES - ARTIFACT_REQUIRED_STATUSES
+    )
 
 
 @pytest.mark.parametrize(

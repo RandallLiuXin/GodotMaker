@@ -8,7 +8,11 @@ import pytest
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
+from asset_assets_md_update import (  # noqa: E402
+    AssetsMdUpdateError,
+    _assert_promotable,
+    update_assets_md,
+)
 from asset_generation_index import update_index  # noqa: E402
 from asset_stable_entry import entry_relative_path, stable_output_dir  # noqa: E402
 
@@ -245,6 +249,17 @@ def test_update_assets_md_rejects_reference_runtime_ladder_status(tmp_path, stat
         update_assets_md(assets_md, [entry_file])
 
     assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
+def test_reference_promotability_requires_source_ready(tmp_path):
+    """Keep the updater's defense in depth independent of schema validation."""
+    with pytest.raises(
+        AssetsMdUpdateError, match="only a source_ready reference entry"
+    ):
+        _assert_promotable(
+            make_reference_entry(processing_status="ready"),
+            tmp_path / "reference.json",
+        )
 
 
 def test_reference_entry_must_be_registered_and_pass_the_root_index_gate(tmp_path):

@@ -42,6 +42,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - Reference-only stable entries now accept only `pending`, `source_ready`, or `failed`; only registered `source_ready` entries may promote ASSETS.md reference rows.
+- Existing reference entries persisted as `compiled` or `ready` must be manually corrected to `source_ready` before root-index validation; no migration or compatibility reader is provided.
 - Compiler staging now preserves Godot resource extensions.
 - Compiler receipts are now issued only after atomic artifact commits.
 - Asset readiness promotion now requires a compiler receipt bound to the compiled entry, while already-ready assets can explicitly revalidate without retaining that receipt.

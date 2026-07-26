@@ -225,6 +225,9 @@ ClassDB 类型：
 | `tile_atlas` | `TileSet` |
 | `reference` | 不带 `godot_artifact` |
 
+reference-only entry 只能使用 `pending`、`source_ready` 或 `failed`；其中只有
+`source_ready` 是完成态，且它不是运行时 `ready`。
+
 手动入口：
 
 ```bash
