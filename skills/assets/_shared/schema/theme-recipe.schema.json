@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RandallLiuXin/GodotMaker/skills/assets/_shared/schema/theme-recipe.schema.json",
+  "title": "Godot Theme Recipe",
+  "description": "A declarative source for the fail-closed theme_recipe -> Theme compiler. The compiler is authoritative for property and ClassDB allow-lists.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "colors", "font_sizes", "constants", "fonts", "icons", "styleboxes", "styles", "variations"],
+  "properties": {
+    "version": {"const": 1},
+    "colors": {"$ref": "#/$defs/theme_items"},
+    "font_sizes": {"$ref": "#/$defs/theme_items"},
+    "constants": {"$ref": "#/$defs/theme_items"},
+    "fonts": {"$ref": "#/$defs/theme_items"},
+    "icons": {"$ref": "#/$defs/theme_items"},
+    "styles": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["type", "name", "stylebox"], "properties": {"type": {"type": "string"}, "name": {"type": "string"}, "stylebox": {"type": "string"}}}},
+    "variations": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["name", "base_type"], "properties": {"name": {"type": "string"}, "base_type": {"type": "string"}}}},
+    "styleboxes": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": false, "required": ["type", "properties"], "properties": {"type": {"enum": ["StyleBoxFlat", "StyleBoxEmpty"]}, "properties": {"type": "object"}}}}
+  },
+  "$defs": {
+    "theme_items": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["type", "name", "value"], "properties": {"type": {"type": "string"}, "name": {"type": "string"}, "value": {}}}}
+  }
+}

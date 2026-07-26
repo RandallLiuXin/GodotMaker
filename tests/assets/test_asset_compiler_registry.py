@@ -1149,8 +1149,10 @@ def test_bridge_reports_a_missing_tools_directory_diagnosably(tmp_path):
     package = tmp_path / "a" / "b" / "c" / "d" / "asset_compiler"
     package.mkdir(parents=True)
     source = SHARED_DIR / "asset_compiler"
-    for name in ("__init__.py", "_stable_entry.py", "contract.py", "registry.py",
-                 "texture2d.py", "atlas_texture.py", "sprite_frames.py"):
+    for name in (
+        "__init__.py", "_stable_entry.py", "contract.py", "registry.py",
+        "texture2d.py", "atlas_texture.py", "sprite_frames.py", "theme.py",
+    ):
         (package / name).write_bytes((source / name).read_bytes())
 
     code = (

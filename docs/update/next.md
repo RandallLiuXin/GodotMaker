@@ -30,6 +30,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added `tools/asset_finalize_entry_draft.py`, which builds a v1 stable-entry draft from an `asset_image_finalize.py` report for screen references, backgrounds, and single card or portrait frames while enforcing aspect validation, asset-label binding, and path containment.
 - Added a shared Godot artifact compiler interface and registry under `skills/assets/_shared/` that routes on the frozen source-layout to artifact-type compatibility set, keeps compiler receipts out of the worker-facing artifact, requires each compiler to actually rebuild an artifact distinct from its source image, serves `Texture2D` through Godot's default import, and fails closed on unregistered or mismatched combinations (#107).
 - Added the shared L0-L4 asset readiness ladder under `skills/assets/_shared/`, which reaches `ready` only after the stable entry contract, the processed source, the compiled artifact, a real headless Godot import and `ResourceLoader.load` type match, and a registered type-specific structure check all pass (#108).
+- Added a deterministic `theme_recipe` compiler with a closed JSON schema for Theme colors, font sizes, constants, fonts, icons, StyleBoxes, and type variations; invalid class types, properties, resources, and StyleBox references fail closed before a loadable Theme is written.
 
 ## Changed
 
@@ -50,6 +51,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Compiler staging now preserves Godot resource extensions.
 - Compiler receipts are now issued only after atomic artifact commits.
 - Asset readiness promotion now requires a compiler receipt bound to the compiled entry, while already-ready assets can explicitly revalidate without retaining that receipt.
+- Theme recipes now accept only fully decoded raster textures and FreeType-loadable TTF/OTF fonts, rejecting truncated or unsupported resource content before a Theme is written.
 - Failed native Godot artifact compilation now retains the previous stable artifact and atomically commits a validated replacement only after success.
 - Added the required `--grid` (and `--names`) argument to every production-unit `asset_sheet_process.py` example so the ui-kit, card-kit, compact-prop-pack, fx-bundle, scene-prop-set, and platform-strip commands run as written instead of failing on a missing required argument, and clarified that `--grid` is required in both autoslice and grid snap modes.
 - Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at `.godotmaker/asset-generation/manifest.json` instead of the analyst's `assets/manifest.json` (#97)

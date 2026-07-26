@@ -14,7 +14,7 @@ re-imported self-registering module into an import-time crash.
 """
 from __future__ import annotations
 
-from . import atlas_texture, sprite_frames, texture2d
+from . import atlas_texture, sprite_frames, texture2d, theme
 from .contract import (
     CompileReceipt,
     CompileRequest,
@@ -57,4 +57,5 @@ __all__ = [
     "atlas_texture",
     "sprite_frames",
     "texture2d",
+    "theme",
 ]
