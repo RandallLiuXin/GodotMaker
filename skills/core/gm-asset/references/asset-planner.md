@@ -39,7 +39,7 @@ Current-tag visual anchors are:
 1. User-provided image assets accepted as `direct_runtime`.
 2. Current-tag `references/scene_*.png` files with matching reports.
 3. Current-tag generated `screen-reference` or `style_reference` stable
-   entries at `source_ready` or `ready` with existing files and canonical
+   entries at `source_ready` with existing files and canonical
    pointers that pass the root-index gate. Use them as visual anchors only.
 4. Current-tag canonical character or UI reference images whose stable entries
    are `ready`.
@@ -159,7 +159,7 @@ Use this order when units depend on each other:
 Update current-tag rows after producer reports:
 
 1. `generated`: a registered `ready` non-reference stable entry after the full
-   root-index gate, or a validated `source_ready` or `ready` reference-only
+   root-index gate, or a validated `source_ready` reference-only
    stable entry with its finalized file and canonical root-index pointer.
 2. `provided`: user-provided file matched the row.
 3. `deferred`: unprovided audio or intentionally skipped asset.

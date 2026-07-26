@@ -32,7 +32,7 @@ from asset_generation_index import GenerationIndexError, check_index
 
 # The only readiness state that means "a worker can load this asset now".
 PROMOTABLE_STATUS = "ready"
-REFERENCE_PROMOTABLE_STATUSES = {"source_ready", "ready"}
+REFERENCE_PROMOTABLE_STATUSES = {"source_ready"}
 ROOT_INDEX_RELATIVE = ".godotmaker/asset-generation/manifest.json"
 GENERATED_ROW_STATUS = "generated"
 ASSETS_MD_MIN_CELLS = 8
@@ -59,15 +59,14 @@ def _assert_promotable(entry: dict[str, Any], entry_path: Path) -> bool:
     ``validate_entry`` proves the entry is well-formed and its files exist, but a
     well-formed runtime entry can still be mid-flight (``pending``,
     ``source_ready``, ``compiled``) or failed outright. A screen reference is
-    intentionally different: it completes at ``source_ready`` and remains
-    repeatable if a future process records it as ``ready``. Neither status makes
-    a reference worker-consumable.
+    intentionally different: it completes at ``source_ready``. That status does
+    not make a reference worker-consumable.
     """
     is_reference = entry["source_layout"]["type"] in REFERENCE_LAYOUTS
     status = entry["processing_status"]
     if is_reference and status in REFERENCE_PROMOTABLE_STATUSES:
         return True
-    expected_status = "source_ready or ready" if is_reference else PROMOTABLE_STATUS
+    expected_status = "source_ready" if is_reference else PROMOTABLE_STATUS
     if status != expected_status:
         raise AssetsMdUpdateError(
             f"{entry_path} processing_status is {status}; only a {expected_status} "

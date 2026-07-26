@@ -72,6 +72,11 @@ PROCESSING_STATUSES = {
 # Statuses that require a compiled ``godot_artifact`` for non-reference assets.
 ARTIFACT_REQUIRED_STATUSES = {"compiled", "ready"}
 
+# Reference-only entries do not enter the L0-L4 runtime ladder. They may be
+# awaiting source generation, have a finalized source, or have failed; they can
+# never be compiled or runtime-ready.
+REFERENCE_PROCESSING_STATUSES = {"pending", "source_ready", "failed"}
+
 # ``godot_artifact.type`` has the shape of a Godot ClassDB identifier, while
 # the layout-to-type compatibility relation below is deliberately closed.
 GODOT_TYPE_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -469,6 +474,15 @@ def validate_entry(
     if family in REFERENCE_FAMILIES and layout_type not in REFERENCE_LAYOUTS:
         raise StableEntryError(
             f"production_family {family} must use a reference source_layout"
+        )
+    if (
+        layout_type in REFERENCE_LAYOUTS
+        and processing_status not in REFERENCE_PROCESSING_STATUSES
+    ):
+        allowed = ", ".join(sorted(REFERENCE_PROCESSING_STATUSES))
+        raise StableEntryError(
+            "processing_status for a reference source_layout must be one of: "
+            f"{allowed}; not {processing_status}"
         )
     artifact = _validate_godot_artifact(
         data,

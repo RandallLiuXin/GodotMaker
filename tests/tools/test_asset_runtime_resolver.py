@@ -8,6 +8,7 @@ import pytest
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
+import asset_runtime_resolver  # noqa: E402
 from asset_runtime_resolver import (  # noqa: E402
     AssetRuntimeResolverError,
     ROOT_INDEX_PATH,
@@ -171,16 +172,25 @@ def test_rejects_non_ready_entries_even_when_registered(tmp_path, status):
         resolve_manifest_entry(pointer, project_root=tmp_path, assets_md=tmp_path / "ASSETS.md")
 
 
-def test_reference_entry_cannot_appear_as_a_worker_runtime_asset(tmp_path):
+def test_reference_entry_cannot_appear_as_a_worker_runtime_asset(tmp_path, monkeypatch):
     entry = {
         "version": 1,
         "asset_id": "scene_main",
         "tag": TAG,
         "production_family": "screen-reference",
         "source_layout": {"type": "reference", "path": "res://references/scene_main.png"},
-        "processing_status": "ready",
+        "processing_status": "source_ready",
     }
     _, pointer = register(tmp_path, entry, assets=True)
+
+    # The schema rejects a ready reference first. Simulate a compromised
+    # validator result so this resolver's defense-in-depth branch remains
+    # directly covered.
+    monkeypatch.setattr(
+        asset_runtime_resolver,
+        "validate_entry",
+        lambda *args, **kwargs: {**entry, "processing_status": "ready"},
+    )
 
     with pytest.raises(AssetRuntimeResolverError, match="reference-only"):
         resolve_manifest_entry(pointer, project_root=tmp_path, assets_md=tmp_path / "ASSETS.md")

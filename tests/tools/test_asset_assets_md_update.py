@@ -8,7 +8,11 @@ import pytest
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
+from asset_assets_md_update import (  # noqa: E402
+    AssetsMdUpdateError,
+    _assert_promotable,
+    update_assets_md,
+)
 from asset_generation_index import update_index  # noqa: E402
 from asset_stable_entry import entry_relative_path, stable_output_dir  # noqa: E402
 
@@ -200,13 +204,12 @@ def write_reference_assets_md(path: Path):
     )
 
 
-@pytest.mark.parametrize("status", ["source_ready", "ready"])
-def test_update_assets_md_promotes_registered_reference(tmp_path, status):
+def test_update_assets_md_promotes_registered_source_ready_reference(tmp_path):
     """References complete after deterministic registration, not runtime readiness."""
     assets_md = tmp_path / "ASSETS.md"
     write_reference_assets_md(assets_md)
     touch(tmp_path, "references/scene_main.png")
-    entry_file = write_entry(tmp_path, make_reference_entry(processing_status=status))
+    entry_file = write_entry(tmp_path, make_reference_entry())
     update_index(
         tmp_path / ".godotmaker/asset-generation/manifest.json",
         [entry_file],
@@ -220,7 +223,7 @@ def test_update_assets_md_promotes_registered_reference(tmp_path, status):
     assert f"manifest_entry={entry_relative_path(TAG, 'scene_main')}" in text
 
 
-@pytest.mark.parametrize("status", ["pending", "compiled", "failed"])
+@pytest.mark.parametrize("status", ["pending", "failed"])
 def test_update_assets_md_rejects_incomplete_reference(tmp_path, status):
     assets_md = tmp_path / "ASSETS.md"
     write_reference_assets_md(assets_md)
@@ -231,6 +234,32 @@ def test_update_assets_md_rejects_incomplete_reference(tmp_path, status):
         update_assets_md(assets_md, [entry_file])
 
     assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("status", ["compiled", "ready"])
+def test_update_assets_md_rejects_reference_runtime_ladder_status(tmp_path, status):
+    assets_md = tmp_path / "ASSETS.md"
+    write_reference_assets_md(assets_md)
+    touch(tmp_path, "references/scene_main.png")
+    entry_file = write_entry(
+        tmp_path, make_reference_entry(processing_status=status)
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match=rf"not {status}"):
+        update_assets_md(assets_md, [entry_file])
+
+    assert "| generated |" not in assets_md.read_text(encoding="utf-8")
+
+
+def test_reference_promotability_requires_source_ready(tmp_path):
+    """Keep the updater's defense in depth independent of schema validation."""
+    with pytest.raises(
+        AssetsMdUpdateError, match="only a source_ready reference entry"
+    ):
+        _assert_promotable(
+            make_reference_entry(processing_status="ready"),
+            tmp_path / "reference.json",
+        )
 
 
 def test_reference_entry_must_be_registered_and_pass_the_root_index_gate(tmp_path):

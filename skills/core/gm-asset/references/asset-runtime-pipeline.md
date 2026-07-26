@@ -94,6 +94,8 @@ It is not a Godot artifact.
 5. `failed` — a stage failed.
 
 `compiled` and `ready` require a `godot_artifact` for every non-reference asset.
+Reference-only entries never enter this ladder: they may use only `pending`,
+`source_ready`, or `failed`, and only `source_ready` is their completion state.
 
 **Current pipeline state.** The native compilers and the L0-L4 runner are not
 implemented. `/gm-asset` therefore registers `source_ready` entries and nothing
@@ -290,7 +292,7 @@ python tools/asset_assets_md_update.py \
 
 The updater promotes a runtime row to `generated` only for a `ready`
 non-reference entry. A `screen-reference` row may become `generated` at
-`source_ready` or `ready` with a finalized reference file, canonical stable
+`source_ready` with a finalized reference file, canonical stable
 entry, and root-index pointer. It schema-validates index pointers and validates
 the selected reference file. Do not create a `godot_artifact`, worker handoff,
 or hand-edited ASSETS.md status for a reference. Keep all other `source_ready`

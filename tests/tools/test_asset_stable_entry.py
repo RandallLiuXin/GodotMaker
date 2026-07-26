@@ -11,7 +11,10 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
 from asset_stable_entry import (  # noqa: E402
+    ARTIFACT_REQUIRED_STATUSES,
     LAYOUT_ARTIFACT_TYPES,
+    PROCESSING_STATUSES,
+    REFERENCE_PROCESSING_STATUSES,
     REFERENCE_LAYOUTS,
     SOURCE_LAYOUT_TYPES,
     StableEntryError,
@@ -54,7 +57,7 @@ def reference_entry(**overrides):
             "type": "reference",
             "path": "res://assets/references/title_screen.png",
         },
-        "processing_status": "ready",
+        "processing_status": "source_ready",
     }
     entry.update(overrides)
     return entry
@@ -83,6 +86,12 @@ def test_every_non_reference_layout_has_an_artifact_type():
         "theme_recipe": ("Theme",),
         "tile_atlas": ("TileSet",),
     }
+
+
+def test_reference_statuses_are_the_non_runtime_statuses():
+    assert REFERENCE_PROCESSING_STATUSES == (
+        PROCESSING_STATUSES - ARTIFACT_REQUIRED_STATUSES
+    )
 
 
 @pytest.mark.parametrize(
@@ -146,6 +155,17 @@ def test_mismatched_artifact_type_is_rejected(layout, artifact_type):
 
 def test_reference_entry_needs_no_artifact():
     validate_entry(reference_entry())
+
+
+@pytest.mark.parametrize("status", ["pending", "source_ready", "failed"])
+def test_reference_entry_accepts_only_its_process_and_failure_statuses(status):
+    validate_entry(reference_entry(processing_status=status))
+
+
+@pytest.mark.parametrize("status", ["compiled", "ready"])
+def test_reference_entry_rejects_runtime_ladder_statuses(status):
+    with pytest.raises(StableEntryError, match=rf"not {status}"):
+        validate_entry(reference_entry(processing_status=status))
 
 
 def test_reference_entry_rejects_artifact():
