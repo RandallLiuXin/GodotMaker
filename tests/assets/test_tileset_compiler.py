@@ -177,9 +177,40 @@ def test_tileset_builder_accepts_json_integer_float_tile_shape(godot_bin, godot_
             "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0]}]}],
         },
     )
-    compiler.compile_tileset(request)
+    registry = CompilerRegistry()
+    compiler.register_into(registry)
+    registry.compile(request)
     report = GodotProbe(godot_bin).probe(godot_project, [ProbeRequest(request.artifact_path, "TileSet", ("tileset",))])
     assert report.resources[0].structure["tileset"]["tile_shape"] == 3
+
+
+def test_tileset_l4_accepts_omitted_animation_defaults(godot_bin, godot_project):
+    source = godot_project / "assets/generated/tileset/grass/atlas.png"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(_png(16, 16))
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/defaults.tres", project_root=godot_project,
+        spec={
+            "godot_path": godot_bin, "tile_size": [16, 16],
+            "sources": [{
+                "texture": "res://assets/generated/tileset/grass/atlas.png",
+                "tiles": [{"coords": [0, 0], "animation": {"frames_count": 1}}],
+            }],
+        },
+    )
+    registry = CompilerRegistry()
+    compiler.register_into(registry)
+    registry.compile(request)
+    report = GodotProbe(godot_bin).probe(
+        godot_project, [ProbeRequest(request.artifact_path, "TileSet", ("tileset",))]
+    )
+    structures.validate_tileset(StructureRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path=request.source_path, artifact_type="TileSet", artifact_path=request.artifact_path,
+        project_root=godot_project, probe=report.resources[0], spec=request.spec,
+    ))
 
 
 def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_project):
@@ -203,7 +234,7 @@ def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_pr
             "navigation_layers": [{}],
             "occlusion_layers": [{}],
             "custom_data_layers": [{"name": "kind", "type": 4}],
-            "terrain_sets": [{"terrains": [{"name": "grass", "color": [0.2, 0.8, 0.3]}]}],
+            "terrain_sets": [{"terrains": [{"name": "grass", "color": [0, 1, 0]}]}],
             "sources": [{
                 "id": 3,
                 "texture": "res://assets/generated/tileset/grass/atlas.png",
@@ -220,7 +251,7 @@ def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_pr
                     "occlusion_polygons": [{"layer": 0, "points": [[0, 0], [16, 0], [16, 16]]}],
                     "navigation_polygons": [{"layer": 0, "points": [[0, 0], [16, 0], [16, 16]]}],
                     "alternatives": [{"id": 1, "z_index": 2, "custom_data": [{"layer": 0, "value": "alt"}]}],
-                    "animation": {"mode": "default", "columns": 1, "frames_count": 1, "speed": 1.0, "frame_durations": [{"frame": 0, "duration": 1.0}]},
+                    "animation": {"mode": "default", "columns": 1, "frames_count": 1, "separation": [0, 0], "speed": 1.0, "frame_durations": [{"frame": 0, "duration": 1.0}]},
                 }],
             }],
         },
@@ -231,6 +262,11 @@ def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_pr
     report = GodotProbe(godot_bin).probe(godot_project, [ProbeRequest(request.artifact_path, "TileSet", ("tileset",))])
     assert report.resources[0].type_matches is True
     assert report.resources[0].structure["tileset"]["sources"][0]["id"] == 3
+    loaded_tile = report.resources[0].structure["tileset"]["sources"][0]["tiles"][0]
+    assert loaded_tile["custom_data"] == ["grass"]
+    assert loaded_tile["collision_polygons"] == [[[[0, 0], [16, 0], [16, 16]]]]
+    assert loaded_tile["occlusion_polygons"] == [[[[0, 0], [16, 0], [16, 16]]]]
+    assert loaded_tile["navigation_polygons"] == [[[0, 0], [16, 0], [16, 16]]]
     binding_script = godot_project / "bind_fixture.gd"
     binding_script.write_text(
         "extends SceneTree\nfunc _init():\n\tvar scene = load('res://orthogonal_tileset_tilemap.tscn').instantiate()\n\tscene.get_node('TileMap').tile_set = load('res://assets/generated/tileset/grass/grass.tres')\n\tquit()\n",

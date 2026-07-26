@@ -91,8 +91,14 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
                 if loaded.get(key) != tile.get(key, default):
                     raise ValidationError(f"loaded TileSet tile {key} does not match the recipe")
             if "animation" in tile:
-                for key in ("mode", "columns", "frames_count", "separation", "speed"):
-                    expected_value = tile["animation"].get(key)
+                for key, default in (
+                    ("mode", "default"),
+                    ("columns", 1),
+                    ("frames_count", None),
+                    ("separation", [0, 0]),
+                    ("speed", 1.0),
+                ):
+                    expected_value = tile["animation"].get(key, default)
                     if key == "mode":
                         expected_value = _ANIMATION_MODES.get(expected_value, expected_value)
                     if loaded.get("animation", {}).get(key) != expected_value:

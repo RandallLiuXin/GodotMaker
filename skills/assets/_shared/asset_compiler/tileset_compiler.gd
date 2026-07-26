@@ -99,6 +99,7 @@ func _source(tile_set: TileSet, item: Dictionary, fallback_id: int) -> bool:
 	source.texture_region_size = _v2(item.get("region_size", item.get("tile_size", [16, 16])))
 	source.margins = _v2(item.get("margins", [0, 0]))
 	source.separation = _v2(item.get("separation", [0, 0]))
+	tile_set.add_source(source, int(item.get("id", fallback_id)))
 	for tile in item["tiles"]:
 		var coords := _v2(tile["coords"])
 		source.create_tile(coords)
@@ -115,7 +116,6 @@ func _source(tile_set: TileSet, item: Dictionary, fallback_id: int) -> bool:
 			source.set_tile_animation_separation(coords, _v2(animation.get("separation", [0, 0])))
 			source.set_tile_animation_speed(coords, float(animation.get("speed", 1.0)))
 			for frame in animation.get("frame_durations", []): source.set_tile_animation_frame_duration(coords, int(frame["frame"]), float(frame["duration"]))
-	tile_set.add_source(source, int(item.get("id", fallback_id)))
 	return true
 
 func _initialize() -> void:
