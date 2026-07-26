@@ -86,14 +86,14 @@ Use `references/asset-planner.md` for production-unit selection.
 
 | Production unit | First entry document |
 | --- | --- |
-| `screen-reference` | `references/production-units/screen-reference.md` |
+| `screen-reference` | First-class `screen-reference` Asset Skill |
 | `character-bundle` | `references/production-units/character-bundle.md` |
 | `fx-bundle` | `references/production-units/fx-bundle.md` |
 | `ui-kit` | `references/production-units/ui-kit.md` |
 | `card-kit` | `references/production-units/card-kit.md` |
 | `compact-prop-pack` | `references/production-units/compact-prop-pack.md` |
-| `background-map` | `references/production-units/background-map.md` |
-| `platform-strip` | `references/production-units/platform-strip.md` |
+| `background-map` | First-class `background-map` Asset Skill |
+| `platform-strip` | First-class `platform-strip` Asset Skill |
 | `scene-prop-set` | `references/production-units/scene-prop-set.md` |
 
 ## Process
@@ -164,6 +164,15 @@ Agent({
 Read `references/asset-curation.md` when the selected production unit produces
 source sheets, candidates, extracted frames, or selected final assets.
 
+For the extracted first-class families, put the named Asset Skill in the brief;
+never substitute a deleted production-unit document:
+
+| Family | Production contract in the brief |
+| --- | --- |
+| `background-map` | First-class Asset Skill: `background-map` |
+| `platform-strip` | First-class Asset Skill: `platform-strip` |
+| `screen-reference` | First-class Asset Skill: `screen-reference` |
+
 Brief shape:
 
 ```text
@@ -172,8 +181,22 @@ Brief shape:
 ### Objective
 {one concrete generated visual production unit}
 
-### First Entry Document
-- {references/production-units/<unit>.md}
+### Production Contract
+- Legacy unit: First Entry Document: {references/production-units/<unit>.md}
+- First-class unit: First-class Asset Skill: {background-map | platform-strip | screen-reference}
+- For a first-class unit, invoke that named Skill with one shared generic asset
+  request. Do not read a production-unit path for that family.
+
+### First-Class Result Adapter
+- For a first-class unit only, validate the generic result with
+  `tools/asset_skill_contract_check.py`.
+- When `validation.passed` is false, report the failure and do not create a
+  stable-entry draft.
+- When it passes, map its `sources`, `outputs`, and validation evidence into
+  the existing Asset Producer Report and the inputs of the appropriate
+  deterministic entry-draft builder.
+- The manager consumes only that adapted report and its drafts in Step 5; the
+  first-class Skill never reads registration, manifest, tag, or stage state.
 
 ### Provider
 - {references/providers/<provider>.md}
@@ -201,7 +224,7 @@ Brief shape:
 
 ### Scope
 - Write only the listed outputs.
-- Use only the first entry document and docs it references.
+- Use only the production contract and docs it references.
 - Return the required Asset Producer Report.
 ```
 
@@ -213,6 +236,11 @@ Dispatch one subagent per production unit.
 Read `references/asset-runtime-pipeline.md`.
 
 For each `asset-producer` report:
+
+For a first-class Skill result, the producer is the manager's adapter: it
+validates the generic result, materializes the normal report and deterministic
+draft-builder inputs, and then follows this same registration path. The manager
+does not register a generic result directly.
 
 1. Confirm status is `DONE`, `PARTIAL`, or `FAILED`.
 2. Confirm listed source, runtime output, prompt, report, and stable-entry draft

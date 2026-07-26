@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "colors": [
+    {"type": "Button", "name": "font_color", "value": "#FFFFFFFF"},
+    {"type": "PrimaryButton", "name": "font_color", "value": "#102030FF"}
+  ],
+  "font_sizes": [{"type": "Button", "name": "font_size", "value": 18}],
+  "constants": [{"type": "Button", "name": "outline_size", "value": 1}],
+  "fonts": [],
+  "icons": [],
+  "styleboxes": {
+    "button_normal": {
+      "type": "StyleBoxFlat",
+      "properties": {"bg_color": "#6FE7DDFF", "corner_radius": 8, "content_margin": 12}
+    }
+  },
+  "styles": [{"type": "Button", "name": "normal", "stylebox": "button_normal"}],
+  "variations": [{"name": "PrimaryButton", "base_type": "Button"}]
+}

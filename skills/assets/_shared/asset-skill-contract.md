@@ -114,10 +114,13 @@ empty arrays.
 
 ### outputs
 
-`outputs` has at least one entry. One invocation may return multiple logical
-outputs (for example a `Theme` plus a `StyleBoxTexture`, or several actors);
-each is a separate entry, and `/gm-asset` registration turns each `runtime`
-output into its own stable entry with one primary `godot_artifact`.
+When `validation.passed` is `true`, `outputs` has at least one entry. A failed
+result (`validation.passed: false`) may use an empty `outputs` array to state
+that no usable asset was produced. One successful invocation may return
+multiple logical outputs (for example a `Theme` plus a `StyleBoxTexture`, or
+several actors); each is a separate entry, and `/gm-asset` registration turns
+each `runtime` output into its own stable entry with one primary
+`godot_artifact`.
 
 | Field | Required | Type | Rule |
 |---|---|---|---|

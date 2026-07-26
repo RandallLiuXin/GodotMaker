@@ -61,7 +61,8 @@ def test_schema_files_are_valid_json_with_no_additional_properties():
         "previews",
         "validation",
     ]
-    assert result_schema["properties"]["outputs"]["minItems"] == 1
+    assert "minItems" not in result_schema["properties"]["outputs"]
+    assert result_schema["allOf"][0]["then"]["properties"]["outputs"]["minItems"] == 1
 
 
 def test_schema_enums_match_validator_constants():
@@ -143,6 +144,13 @@ def _result_parity_cases():
             "valid-passed-false-level-false",
             _with(base, lambda d: d.update(
                 validation={"passed": False, "levels": {"L0": False}}
+            )),
+            True,
+        ),
+        (
+            "valid-passed-false-empty-outputs",
+            _with(base, lambda d: d.update(
+                outputs=[], validation={"passed": False, "notes": "Atlas validation failed."}
             )),
             True,
         ),

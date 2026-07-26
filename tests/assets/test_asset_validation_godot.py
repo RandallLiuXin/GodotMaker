@@ -19,7 +19,13 @@ SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(SHARED_DIR))
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
+from asset_compiler import (  # noqa: E402
+    CompileRequest,
+    CompilerError,
+    CompilerRegistry,
+    build_default_registry,
+    theme,
+)
 from asset_validation import (  # noqa: E402
     NOT_RUN,
     PASSED,
@@ -27,6 +33,7 @@ from asset_validation import (  # noqa: E402
     GodotProbe,
     ProbeRequest,
     ValidationLadder,
+    StructureValidatorRegistry,
     build_default_structures,
 )
 from asset_validation.godot_probe import SCRIPT_TIMEOUT  # noqa: E402
@@ -139,17 +146,9 @@ def _entry(**overrides):
 
 
 def _stylebox_ladder(godot_bin: str) -> ValidationLadder:
-    """A ladder with one writing route, so a compiled ``.tres`` can reach L3."""
-    registry = build_default_registry()
-    registry.register(
-        source_layout_type="single",
-        artifact_type="StyleBoxTexture",
-        compiler_id="test_stylebox",
-        compiler_version=1,
-        compiler=lambda request: {},
-    )
+    """Return the default ladder, including the shared StyleBoxTexture route."""
     return ValidationLadder(
-        registry=registry,
+        registry=build_default_registry(),
         structures=build_default_structures(),
         probe=GodotProbe(godot_bin),
     )
@@ -214,7 +213,9 @@ def test_resource_saver_accepts_extension_preserving_staging_artifacts(
             )
         return {"writer": "ResourceSaver"}
 
-    registry = build_default_registry()
+    # This test substitutes the compiler to exercise ResourceSaver itself, so
+    # it must not collide with the shared default StyleBoxTexture route.
+    registry = CompilerRegistry()
     registry.register(
         source_layout_type=layout,
         artifact_type=artifact_type,
@@ -290,6 +291,44 @@ def test_a_generated_texture_reaches_ready_through_real_godot(godot_bin, godot_p
     assert result.levels[4].details["height"] == 16
 
 
+def test_a_compiled_theme_recipe_reaches_ready_through_real_godot(godot_bin, godot_project):
+    """The compiler output must survive real Theme loading and L4 inspection."""
+    recipe_path = "res://assets/generated/ui-kit/skin/skin.json"
+    _write(
+        godot_project,
+        recipe_path,
+        b'''{"version":1,"colors":[{"type":"Button","name":"font_color","value":"#FFFFFFFF"}],"font_sizes":[],"constants":[],"fonts":[],"icons":[],"styleboxes":{"normal":{"type":"StyleBoxFlat","properties":{"bg_color":"#112233FF","border_width":2}},"focus":{"type":"StyleBoxEmpty","properties":{}}},"styles":[{"type":"Button","name":"normal","stylebox":"normal"},{"type":"Button","name":"focus","stylebox":"focus"}],"variations":[{"name":"PrimaryButton","base_type":"Button"}]}''',
+    )
+    registry = build_default_registry()
+    theme.register_into(registry)
+    compiled = registry.compile(
+        CompileRequest(
+            production_family="ui-kit",
+            asset_id="skin",
+            source_layout_type="theme_recipe",
+            source_path=recipe_path,
+            artifact_type="Theme",
+            artifact_path="res://assets/generated/ui-kit/skin/skin.tres",
+            project_root=godot_project,
+        )
+    )
+    structures = build_default_structures()
+    theme.register_structure_into(structures)
+    entry = _entry(
+        asset_id="skin",
+        source_layout={"type": "theme_recipe", "path": recipe_path},
+        godot_artifact=compiled.godot_artifact.to_dict(),
+    )
+    result = ValidationLadder(
+        registry=registry, structures=structures, probe=GodotProbe(godot_bin)
+    ).run(entry, project_root=godot_project, receipt=compiled.receipt)
+
+    assert result.ready is True, result.to_dict()
+    assert result.levels[3].details["godot_class"] == "Theme"
+    assert result.levels[4].details["variations"] == ["PrimaryButton"]
+    border = result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["normal"]["border_width"]
+    assert border == {"left": 2, "top": 2, "right": 2, "bottom": 2}
+    assert result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["focus"] == {"class": "StyleBoxEmpty"}
 def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
     godot_bin, godot_project
 ):
@@ -365,6 +404,45 @@ def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
     assert tampered.levels[3].status == PASSED
     assert tampered.failure.level == "L4"
     assert "atlas_path" in tampered.failure.error
+
+
+def test_stylebox_texture_reaches_ready_with_its_exact_nine_slice_recipe(
+    godot_bin, godot_project
+):
+    base = "res://assets/generated/ui-kit/panel"
+    _write(godot_project, f"{base}/panel.png", _png(16, 12))
+    registry = build_default_registry()
+    request = CompileRequest(
+        production_family="ui-kit",
+        asset_id="panel",
+        source_layout_type="single",
+        source_path=f"{base}/panel.png",
+        artifact_type="StyleBoxTexture",
+        artifact_path=f"{base}/panel.tres",
+        project_root=godot_project,
+        spec={
+            "texture_region": [2, 1, 12, 10],
+            "border": [3, 2, 3, 2],
+            "expand_margin": [1, 1.5, 2, 0],
+            "axis_stretch": {"horizontal": "tile_fit", "vertical": "stretch"},
+        },
+    )
+    compiled = registry.compile(request)
+    entry = _entry(godot_artifact=compiled.godot_artifact.to_dict())
+    result = ValidationLadder(
+        registry=registry,
+        structures=build_default_structures(),
+        probe=GodotProbe(godot_bin),
+    ).run(entry, project_root=godot_project, spec=request.spec, receipt=compiled.receipt)
+
+    assert result.ready is True, result.to_dict()
+    assert result.levels[3].details["godot_class"] == "StyleBoxTexture"
+    assert result.levels[4].details["texture_region"] == [2, 1, 12, 10]
+    assert result.levels[4].details["border"] == [3, 2, 3, 2]
+    assert result.levels[4].details["axis_stretch"] == {
+        "horizontal": "tile_fit",
+        "vertical": "stretch",
+    }
 
 
 def test_headless_godot_rejects_a_corrupt_resource(godot_bin, godot_project):
@@ -495,7 +573,9 @@ def test_a_check_godot_cannot_answer_fails_l4_even_if_the_validator_ignores_it(
     returns ``{}`` without reading the probe -- L4 must still fail, on Godot's
     answer alone.
     """
-    registry = build_default_registry()
+    # This test deliberately installs a validator that asks for the wrong
+    # probe check; isolate both replacements from the shared defaults.
+    registry = CompilerRegistry()
     registry.register(
         source_layout_type="single",
         artifact_type="StyleBoxTexture",
@@ -503,7 +583,7 @@ def test_a_check_godot_cannot_answer_fails_l4_even_if_the_validator_ignores_it(
         compiler_version=1,
         compiler=lambda request: {},
     )
-    structures = build_default_structures()
+    structures = StructureValidatorRegistry()
     structures.register(
         artifact_type="StyleBoxTexture",
         validator_id="ignores_the_probe",
