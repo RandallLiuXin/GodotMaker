@@ -910,10 +910,12 @@ def test_texture2d_compiler_rejects_a_separate_artifact_path_directly(project):
         )
 
 
-def test_default_registry_ships_the_shared_texture_atlas_and_spriteframes_routes():
+def test_default_registry_ships_the_shared_texture_atlas_spriteframes_and_stylebox_routes():
     assert [route.key for route in build_default_registry().routes()] == [
         ("grid_sheet", "SpriteFrames"),
         ("region_atlas", "AtlasTexture"),
+        ("region_atlas", "StyleBoxTexture"),
+        ("single", "StyleBoxTexture"),
         ("single", "Texture2D")
     ]
 
@@ -923,8 +925,8 @@ def test_each_build_returns_an_independent_registry():
     # leak into a registry another caller builds.
     first = build_default_registry()
     _register(first, "theme_recipe", "Theme")
-    assert len(first.routes()) == 4
-    assert len(build_default_registry().routes()) == 3
+    assert len(first.routes()) == 6
+    assert len(build_default_registry().routes()) == 5
 
 
 def test_relative_project_root_compiles_without_double_anchoring(tmp_path, monkeypatch):

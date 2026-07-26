@@ -367,6 +367,45 @@ def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
     assert "atlas_path" in tampered.failure.error
 
 
+def test_stylebox_texture_reaches_ready_with_its_exact_nine_slice_recipe(
+    godot_bin, godot_project
+):
+    base = "res://assets/generated/ui-kit/panel"
+    _write(godot_project, f"{base}/panel.png", _png(16, 12))
+    registry = build_default_registry()
+    request = CompileRequest(
+        production_family="ui-kit",
+        asset_id="panel",
+        source_layout_type="single",
+        source_path=f"{base}/panel.png",
+        artifact_type="StyleBoxTexture",
+        artifact_path=f"{base}/panel.tres",
+        project_root=godot_project,
+        spec={
+            "texture_region": [2, 1, 12, 10],
+            "border": [3, 2, 3, 2],
+            "expand_margin": [1, 1.5, 2, 0],
+            "axis_stretch": {"horizontal": "tile_fit", "vertical": "stretch"},
+        },
+    )
+    compiled = registry.compile(request)
+    entry = _entry(godot_artifact=compiled.godot_artifact.to_dict())
+    result = ValidationLadder(
+        registry=registry,
+        structures=build_default_structures(),
+        probe=GodotProbe(godot_bin),
+    ).run(entry, project_root=godot_project, spec=request.spec, receipt=compiled.receipt)
+
+    assert result.ready is True, result.to_dict()
+    assert result.levels[3].details["godot_class"] == "StyleBoxTexture"
+    assert result.levels[4].details["texture_region"] == [2, 1, 12, 10]
+    assert result.levels[4].details["border"] == [3, 2, 3, 2]
+    assert result.levels[4].details["axis_stretch"] == {
+        "horizontal": "tile_fit",
+        "vertical": "stretch",
+    }
+
+
 def test_headless_godot_rejects_a_corrupt_resource(godot_bin, godot_project):
     _write(godot_project, "res://assets/generated/ui-kit/panel/panel.png", _png(8, 8))
     _write(

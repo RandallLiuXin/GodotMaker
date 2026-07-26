@@ -125,16 +125,8 @@ def _entry(**overrides):
 
 
 def _stylebox_registry() -> CompilerRegistry:
-    """The shared registry plus one writing route, so L2's writing rules are reachable."""
-    registry = build_default_registry()
-    registry.register(
-        source_layout_type="single",
-        artifact_type="StyleBoxTexture",
-        compiler_id="test_stylebox",
-        compiler_version=2,
-        compiler=lambda request: {},
-    )
-    return registry
+    """Return the default registry, which now includes the writing StyleBox route."""
+    return build_default_registry()
 
 
 def _ladder(*, registry=None, structures=None, probe=None) -> ValidationLadder:
@@ -694,21 +686,33 @@ def test_an_unavailable_godot_binary_fails_l3_rather_than_skipping_it(tmp_path):
 
 
 def test_an_artifact_type_with_no_structure_validator_fails_l4(tmp_path):
-    root = _project(tmp_path)
-    _write(root, SOURCE)
-    _write(root, ARTIFACT, b"[gd_resource]\n")
+    root = _project(tmp_path, asset_id="skin")
+    source = "res://assets/generated/ui-kit/skin/skin.json"
+    artifact = "res://assets/generated/ui-kit/skin/skin.tres"
+    _write(root, source, b"{}")
+    _write(root, artifact, b"[gd_resource]\n")
     entry = _entry(
-        godot_artifact={"type": "StyleBoxTexture", "path": ARTIFACT},
+        asset_id="skin",
+        source_layout={"type": "theme_recipe", "path": source},
+        godot_artifact={"type": "Theme", "path": artifact},
         processing_status="ready",
     )
-    result = _ladder(registry=_stylebox_registry()).run(
+    registry = build_default_registry()
+    registry.register(
+        source_layout_type="theme_recipe",
+        artifact_type="Theme",
+        compiler_id="test_theme",
+        compiler_version=1,
+        compiler=lambda request: {},
+    )
+    result = _ladder(registry=registry).run(
         entry,
         project_root=root,
         mode=REVALIDATION,
     )
     level, error = _failure(result)
     assert level == "L4"
-    assert "no structure validator is registered for StyleBoxTexture" in error
+    assert "no structure validator is registered for Theme" in error
     assert result.levels[3].status == PASSED
 
 
@@ -928,6 +932,7 @@ def test_an_unregistered_type_asks_for_no_probe_checks():
     assert build_default_structures().checks_for("SpriteFrames") == ("spriteframes",)
     assert build_default_structures().checks_for("Texture2D") == ("texture2d",)
     assert build_default_structures().checks_for("AtlasTexture") == ("atlas_texture",)
+    assert build_default_structures().checks_for("StyleBoxTexture") == ("stylebox_texture",)
 
 
 def test_routes_are_ordered_by_artifact_type():
@@ -935,6 +940,7 @@ def test_routes_are_ordered_by_artifact_type():
     assert [route.artifact_type for route in structures.routes()] == [
         "AtlasTexture",
         "SpriteFrames",
+        "StyleBoxTexture",
         "Texture2D",
     ]
 
@@ -945,6 +951,7 @@ def test_each_build_returns_an_independent_structure_registry():
     assert [route.artifact_type for route in build_default_structures().routes()] == [
         "AtlasTexture",
         "SpriteFrames",
+        "StyleBoxTexture",
         "Texture2D"
     ]
 
@@ -1019,6 +1026,7 @@ def test_build_default_ladder_wires_the_shared_compiler_and_validator():
     assert [route.validator_id for route in structures.routes()] == [
         "atlas_texture_fixed_slot_structure",
         "spriteframes_structure",
+        "stylebox_texture_nine_slice_structure",
         "texture2d_structure",
     ]
 

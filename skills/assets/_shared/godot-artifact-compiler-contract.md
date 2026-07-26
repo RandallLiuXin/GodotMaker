@@ -159,12 +159,39 @@ regions, or introduce nine-slice behavior. L4 reloads the resource through
 headless Godot and checks that `AtlasTexture.atlas.resource_path` exactly equals
 the declared physical atlas path, alongside its exact region and zero margin.
 
+## StyleBoxTexture
+
+`single -> StyleBoxTexture` and `region_atlas -> StyleBoxTexture` are served by
+`asset_compiler/stylebox_texture.py`. Both routes use the same exact `spec`:
+
+```json
+{
+  "texture_region": [x, y, width, height],
+  "border": [left, top, right, bottom],
+  "expand_margin": [left, top, right, bottom],
+  "axis_stretch": {"horizontal": "tile", "vertical": "stretch"}
+}
+```
+
+`texture_region` and `border` are non-negative integer pixel values; the region
+must lie inside the source PNG and the opposing borders may not exceed its
+width or height. `expand_margin` contains finite non-negative numbers. Each
+stretch axis is explicitly one of `tile`, `tile_fit`, or `stretch`.
+
+The compiler assigns the source texture directly and writes exactly the
+declared `StyleBoxTexture.region_rect`. It does not infer a region from pixels
+or fixed-slot metadata, choose borders, alter margins, or generate Theme or
+Control layout. L4 reloads the resource through headless Godot and requires its
+source path, texture region, border, expand margins, and both stretch modes to
+match the recipe exactly.
+
 ## Boundary
 
 `_shared/` holds cross-skill material only. It has no `SKILL.md` and is not
 independently triggerable. It ships the shared `Texture2D` and fixed-slot
-`AtlasTexture` routes; `SpriteFrames`, `Theme`, `StyleBoxTexture`, and `TileSet`
-remain family-specific compilers registered through `CompilerRegistry.register()`.
+`AtlasTexture`, and `StyleBoxTexture` routes; `SpriteFrames`, `Theme`, and
+`TileSet` remain family-specific compilers registered through
+`CompilerRegistry.register()`.
 
 There is no module-level default registry instance. A caller builds one with
 `build_default_registry()` and every family compiler for that run registers into
