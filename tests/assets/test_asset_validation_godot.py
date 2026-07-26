@@ -19,7 +19,12 @@ SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(SHARED_DIR))
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
+from asset_compiler import (  # noqa: E402
+    CompileRequest,
+    CompilerError,
+    CompilerRegistry,
+    build_default_registry,
+)
 from asset_validation import (  # noqa: E402
     NOT_RUN,
     PASSED,
@@ -27,6 +32,7 @@ from asset_validation import (  # noqa: E402
     GodotProbe,
     ProbeRequest,
     ValidationLadder,
+    StructureValidatorRegistry,
     build_default_structures,
 )
 from asset_validation.godot_probe import SCRIPT_TIMEOUT  # noqa: E402
@@ -139,17 +145,9 @@ def _entry(**overrides):
 
 
 def _stylebox_ladder(godot_bin: str) -> ValidationLadder:
-    """A ladder with one writing route, so a compiled ``.tres`` can reach L3."""
-    registry = build_default_registry()
-    registry.register(
-        source_layout_type="single",
-        artifact_type="StyleBoxTexture",
-        compiler_id="test_stylebox",
-        compiler_version=1,
-        compiler=lambda request: {},
-    )
+    """Return the default ladder, including the shared StyleBoxTexture route."""
     return ValidationLadder(
-        registry=registry,
+        registry=build_default_registry(),
         structures=build_default_structures(),
         probe=GodotProbe(godot_bin),
     )
@@ -214,7 +212,9 @@ def test_resource_saver_accepts_extension_preserving_staging_artifacts(
             )
         return {"writer": "ResourceSaver"}
 
-    registry = build_default_registry()
+    # This test substitutes the compiler to exercise ResourceSaver itself, so
+    # it must not collide with the shared default StyleBoxTexture route.
+    registry = CompilerRegistry()
     registry.register(
         source_layout_type=layout,
         artifact_type=artifact_type,
@@ -310,7 +310,9 @@ def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
             }
         ).encode(),
     )
-    registry = build_default_registry()
+    # This test deliberately installs a validator that asks for the wrong
+    # probe check; isolate both replacements from the shared defaults.
+    registry = CompilerRegistry()
     request = CompileRequest(
         production_family="ui-kit",
         asset_id="main_atlas",
@@ -542,7 +544,7 @@ def test_a_check_godot_cannot_answer_fails_l4_even_if_the_validator_ignores_it(
         compiler_version=1,
         compiler=lambda request: {},
     )
-    structures = build_default_structures()
+    structures = StructureValidatorRegistry()
     structures.register(
         artifact_type="StyleBoxTexture",
         validator_id="ignores_the_probe",
