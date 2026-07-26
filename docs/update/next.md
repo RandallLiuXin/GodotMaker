@@ -32,6 +32,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Added deterministic fixed-slot `AtlasTexture` compilation from atlas metadata, with exact region and zero-margin validation through headless Godot.
+
 - `/gm-asset` now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body `runtime_artifact` manifest.
 - Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.
 - An ASSETS.md runtime row reaches `generated` only from a `ready` non-reference stable entry, while a finalized registered screen reference completes its reference row at `source_ready` without becoming a worker runtime artifact.

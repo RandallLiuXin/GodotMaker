@@ -910,9 +910,10 @@ def test_texture2d_compiler_rejects_a_separate_artifact_path_directly(project):
         )
 
 
-def test_default_registry_ships_the_shared_texture_and_spriteframes_routes():
+def test_default_registry_ships_the_shared_texture_atlas_and_spriteframes_routes():
     assert [route.key for route in build_default_registry().routes()] == [
         ("grid_sheet", "SpriteFrames"),
+        ("region_atlas", "AtlasTexture"),
         ("single", "Texture2D")
     ]
 
@@ -922,8 +923,8 @@ def test_each_build_returns_an_independent_registry():
     # leak into a registry another caller builds.
     first = build_default_registry()
     _register(first, "theme_recipe", "Theme")
-    assert len(first.routes()) == 3
-    assert len(build_default_registry().routes()) == 2
+    assert len(first.routes()) == 4
+    assert len(build_default_registry().routes()) == 3
 
 
 def test_relative_project_root_compiles_without_double_anchoring(tmp_path, monkeypatch):
@@ -1149,7 +1150,7 @@ def test_bridge_reports_a_missing_tools_directory_diagnosably(tmp_path):
     package.mkdir(parents=True)
     source = SHARED_DIR / "asset_compiler"
     for name in ("__init__.py", "_stable_entry.py", "contract.py", "registry.py",
-                 "texture2d.py"):
+                 "texture2d.py", "atlas_texture.py", "sprite_frames.py"):
         (package / name).write_bytes((source / name).read_bytes())
 
     code = (

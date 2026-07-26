@@ -43,6 +43,7 @@ from asset_stable_entry import (  # noqa: E402
     StableEntryError,
     _check_res_path,
     _resolve_res_path,
+    _safe_identifier,
     assert_within_output_dir,
     check_output_path,
 )
@@ -68,6 +69,18 @@ def resolve_res_path(project_root: Path, res_path: str, *, label: str = "path") 
     return _resolve_res_path(Path(project_root).resolve(), res_path)
 
 
+def safe_identifier(value: str, label: str) -> str:
+    """Validate one cross-platform stable-identity segment.
+
+    ``asset_id`` and related names must use the canonical stable-entry rule so
+    a compiler cannot accept an identifier that a later manifest or Windows
+    filesystem rejects. The canonical helper is deliberately shared rather than
+    copied here; it covers control characters and reserved device names as well
+    as path syntax.
+    """
+    return _safe_identifier(value, label)
+
+
 __all__ = [
     "LAYOUT_ARTIFACT_TYPES",
     "PRODUCTION_FAMILIES",
@@ -78,4 +91,5 @@ __all__ = [
     "assert_within_output_dir",
     "check_output_path",
     "resolve_res_path",
+    "safe_identifier",
 ]
