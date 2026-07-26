@@ -10,6 +10,6 @@ for path in (str(_SHARED), str(_TOOLS)):
     if path not in sys.path:
         sys.path.insert(0, path)
 
-from ui_card_standalone_validation import UICardSkillError, compile_and_validate
+from ui_card_standalone_validation import UICardSkillError, compile_and_validate  # noqa: E402
 
 __all__ = ["UICardSkillError", "compile_and_validate"]

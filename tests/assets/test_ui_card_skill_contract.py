@@ -3,7 +3,6 @@ import json
 import struct
 import sys
 import zlib
-from copy import deepcopy
 from pathlib import Path
 
 import pytest
