@@ -310,9 +310,7 @@ def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
             }
         ).encode(),
     )
-    # This test deliberately installs a validator that asks for the wrong
-    # probe check; isolate both replacements from the shared defaults.
-    registry = CompilerRegistry()
+    registry = build_default_registry()
     request = CompileRequest(
         production_family="ui-kit",
         asset_id="main_atlas",
@@ -536,7 +534,9 @@ def test_a_check_godot_cannot_answer_fails_l4_even_if_the_validator_ignores_it(
     returns ``{}`` without reading the probe -- L4 must still fail, on Godot's
     answer alone.
     """
-    registry = build_default_registry()
+    # This test deliberately installs a validator that asks for the wrong
+    # probe check; isolate both replacements from the shared defaults.
+    registry = CompilerRegistry()
     registry.register(
         source_layout_type="single",
         artifact_type="StyleBoxTexture",
