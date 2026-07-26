@@ -14,7 +14,11 @@ composite screen, readable text, or gameplay geometry.
 
 Accept one asset request matching the shared Asset Skill request schema in
 `skills/assets/_shared/schema/asset-skill-request.schema.json`. Require
-`asset_type` to be `ui-kit`. Validate the returned document against the shared result schema and checker before returning it.
+`asset_type` to be `ui-kit`. First validate the returned document against the shared result schema and checker, then enforce the closed UI request and
+request-to-result binding with `tools/asset_ui_card_contract_check.py`.
+`spec` must declare one Theme recipe/output/variation, the complete requested
+button-state set, one explicit StyleBoxTexture recipe for each state, and every
+requested atlas region. The common checker alone is not sufficient.
 
 This skill can be invoked directly or by an orchestrator with the same
 contract. Do not read or write `ASSETS.md`, tags, stage state, generated
@@ -42,7 +46,11 @@ manifests, stable entries, or worker dispatch state.
 5. Cover every requested button state explicitly (`normal`, `hover`, `pressed`,
    `disabled`, and `focus` when requested). Missing requested states are a
    failed result, not a visual fallback.
-6. Run the shared L0-L4 ladder for every runtime output. The deterministic tools
+6. Run `standalone_validation.compile_and_validate()` before returning the
+   result. It validates the family binding at L0, verifies every recipe/image/
+   metadata file at L1, compiles every declared Theme, StyleBoxTexture, and
+   AtlasTexture with a fresh registry at L2, probes every runtime output in
+   headless Godot at L3, and validates every returned structure at L4. The deterministic tools
    own legal serialization, resource-type completeness, Godot loading, and
    structure checks; they do not claim to generate a good visual design by
    themselves.
@@ -65,7 +73,9 @@ native outputs rather than one opaque bundle:
 The result may include only the requested resource kinds, but every listed
 runtime output must have a successful L0-L4 result. `sources` records the
 `theme_recipe` JSON and each `region_atlas` or `single` PNG used by those
-resources. A representative result is in `fixtures/representative-result.json`.
+resources. The runner maps its actual L0-L4 verdict into `validation`; callers
+must not self-report those levels. Representative request/result files are in
+`fixtures/`.
 
 If recipe validation, a requested button state, a nine-slice declaration, an
 atlas region, or a Godot type check fails, return `outputs: []` with

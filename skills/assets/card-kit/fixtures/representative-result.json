@@ -9,8 +9,8 @@
     },
     {
       "role": "runtime",
-      "name": "rare_card_frame",
-      "path": "res://assets/generated/card-kit/arcane_deck/rare_card_frame.tres",
+      "name": "rare_card_normal",
+      "path": "res://assets/generated/card-kit/arcane_deck/rare_card_normal.tres",
       "godot_type": "StyleBoxTexture"
     },
     {

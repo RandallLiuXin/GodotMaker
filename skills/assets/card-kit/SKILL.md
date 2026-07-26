@@ -16,7 +16,10 @@ composite screen, readable text, or scene layout.
 Accept one asset request matching the shared Asset Skill request schema in
 `skills/assets/_shared/schema/asset-skill-request.schema.json`. Require
 `asset_type` to be `card-kit`. Validate the returned document against the
-shared result schema and checker before returning it.
+shared result schema and checker, then validate its closed family contract with
+`tools/asset_ui_card_contract_check.py`. `spec` declares the Theme recipe and
+variation, every requested card frame/state pair with an explicit StyleBox
+recipe, and every requested AtlasTexture region.
 
 This skill can be invoked directly or by an orchestrator with the same
 contract. Do not read or write `ASSETS.md`, tags, stage state, generated
@@ -46,7 +49,10 @@ manifests, stable entries, or worker dispatch state.
 6. Declare all requested card states (`normal`, `hover`, `pressed`,
    `disabled`, `selected`, or `locked`) as named resources. Never infer a
    missing state from another frame.
-7. Run shared L0-L4 validation for every output. The deterministic tools enforce
+7. Run `standalone_validation.compile_and_validate()` before returning the
+   result. It performs L0 family binding, L1 source/recipe/metadata checks, L2
+   fresh-registry compilation for every output, L3 headless Godot type checks,
+   and L4 structure validation for every output. The deterministic tools enforce
    legal serialization, complete declared resource types, Godot loading, and
    type-specific structure checks.
 
@@ -62,7 +68,8 @@ resource independently: an optional card `Theme`, one `StyleBoxTexture` for
 each scalable frame or state, and one `AtlasTexture` for each declared icon or
 overlay region. `sources` records each `theme_recipe`, `single`, or
 `region_atlas` input used by the resources. See
-`fixtures/representative-result.json` for a valid standalone result.
+`fixtures/` for a request/result pair with a valid standalone contract. The
+runner, not a self-reported boolean, writes the final L0-L4 result.
 
 If a requested frame/state is absent, a portrait window is incorrectly filled,
 a nine-slice declaration is invalid, an atlas region is missing, or any L0-L4
