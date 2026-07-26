@@ -142,13 +142,28 @@ v1 introduces no general texture-import profile system. Import settings stay
 Godot's defaults plus the project-wide pixel-art baseline; per-texture mipmap,
 repeat, compression, and filtering choices remain worker decisions.
 
+## AtlasTexture
+
+`region_atlas -> AtlasTexture` is served by
+`asset_compiler/atlas_texture.py`. Its `spec` has exactly two fields:
+`metadata_path` (the fixed-slot metadata JSON beside the physical atlas PNG)
+and `logical_asset_id` (the declared region name). The logical id must be a safe
+single path segment and match the output `.tres` filename. The compiler requires the
+metadata's `atlas_path` to exactly match `source_path`, finds exactly that
+declared region, rejects malformed, duplicate, missing, or out-of-bounds
+regions, and writes an independent `.tres` for every requested logical asset.
+
+It serializes the declared `Rect2` unchanged and always sets
+`AtlasTexture.margin` to `Rect2(0, 0, 0, 0)`. It does not pack, trim, discover
+regions, or introduce nine-slice behavior. L4 reloads the resource through
+headless Godot and checks its atlas binding, exact region, and zero margin.
+
 ## Boundary
 
 `_shared/` holds cross-skill material only. It has no `SKILL.md` and is not
-independently triggerable. The registry holds no concrete `AtlasTexture`,
-`SpriteFrames`, `Theme`, `StyleBoxTexture`, or `TileSet` compiler; each lands
-with its own asset skill and registers itself through
-`CompilerRegistry.register()`.
+independently triggerable. It ships the shared `Texture2D` and fixed-slot
+`AtlasTexture` routes; `SpriteFrames`, `Theme`, `StyleBoxTexture`, and `TileSet`
+remain family-specific compilers registered through `CompilerRegistry.register()`.
 
 There is no module-level default registry instance. A caller builds one with
 `build_default_registry()` and every family compiler for that run registers into

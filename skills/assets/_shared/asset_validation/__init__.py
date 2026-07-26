@@ -39,6 +39,8 @@ from .godot_probe import (
 from .ladder import PROMOTION, REVALIDATION, ValidationLadder, build_default_ladder
 from .structure import (
     KNOWN_ARTIFACT_TYPES,
+    ATLAS_TEXTURE_CHECKS,
+    ATLAS_TEXTURE_VALIDATOR_ID,
     TEXTURE2D_CHECKS,
     TEXTURE2D_VALIDATOR_ID,
     StructureRequest,
@@ -47,11 +49,14 @@ from .structure import (
     StructureValidatorRegistry,
     build_default_structures,
     validate_texture2d,
+    validate_atlas_texture,
 )
 
 __all__ = [
     "FAILED",
     "KNOWN_ARTIFACT_TYPES",
+    "ATLAS_TEXTURE_CHECKS",
+    "ATLAS_TEXTURE_VALIDATOR_ID",
     "LEVELS",
     "LEVEL_BY_ID",
     "NOT_RUN",
@@ -82,4 +87,5 @@ __all__ = [
     "build_default_structures",
     "find_godot",
     "validate_texture2d",
+    "validate_atlas_texture",
 ]

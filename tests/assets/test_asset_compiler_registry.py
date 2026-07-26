@@ -910,10 +910,9 @@ def test_texture2d_compiler_rejects_a_separate_artifact_path_directly(project):
         )
 
 
-def test_default_registry_ships_only_the_texture2d_route():
-    # No concrete AtlasTexture, SpriteFrames, Theme, StyleBoxTexture, or TileSet
-    # compiler belongs to the shared layer; each lands with its asset skill.
+def test_default_registry_ships_the_shared_texture_and_atlas_routes():
     assert [route.key for route in build_default_registry().routes()] == [
+        ("region_atlas", "AtlasTexture"),
         ("single", "Texture2D")
     ]
 
@@ -923,8 +922,8 @@ def test_each_build_returns_an_independent_registry():
     # leak into a registry another caller builds.
     first = build_default_registry()
     _register(first, "grid_sheet", "SpriteFrames")
-    assert len(first.routes()) == 2
-    assert len(build_default_registry().routes()) == 1
+    assert len(first.routes()) == 3
+    assert len(build_default_registry().routes()) == 2
 
 
 def test_relative_project_root_compiles_without_double_anchoring(tmp_path, monkeypatch):
@@ -1129,7 +1128,7 @@ def test_bridge_imports_the_package_without_tools_on_the_path(tmp_path):
         f"sys.path.insert(0, {str(SHARED_DIR)!r})\n"
         "assert 'asset_stable_entry' not in sys.modules\n"
         "import asset_compiler\n"
-        "print(asset_compiler.build_default_registry().routes()[0].compiler_id)\n"
+        "print(len(asset_compiler.build_default_registry().routes()))\n"
     )
     env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
     completed = subprocess.run(
@@ -1140,7 +1139,7 @@ def test_bridge_imports_the_package_without_tools_on_the_path(tmp_path):
         text=True,
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.strip() == texture2d.COMPILER_ID
+    assert completed.stdout.strip() == "2"
 
 
 def test_bridge_reports_a_missing_tools_directory_diagnosably(tmp_path):
@@ -1150,7 +1149,7 @@ def test_bridge_reports_a_missing_tools_directory_diagnosably(tmp_path):
     package.mkdir(parents=True)
     source = SHARED_DIR / "asset_compiler"
     for name in ("__init__.py", "_stable_entry.py", "contract.py", "registry.py",
-                 "texture2d.py"):
+                 "texture2d.py", "atlas_texture.py"):
         (package / name).write_bytes((source / name).read_bytes())
 
     code = (

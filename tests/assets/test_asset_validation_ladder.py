@@ -926,13 +926,11 @@ def test_every_implemented_check_may_be_registered():
 def test_an_unregistered_type_asks_for_no_probe_checks():
     assert build_default_structures().checks_for("TileSet") == ()
     assert build_default_structures().checks_for("Texture2D") == ("texture2d",)
+    assert build_default_structures().checks_for("AtlasTexture") == ("atlas_texture",)
 
 
 def test_routes_are_ordered_by_artifact_type():
     structures = build_default_structures()
-    structures.register(
-        artifact_type="AtlasTexture", validator_id="atlas", validator=lambda r: {}
-    )
     assert [route.artifact_type for route in structures.routes()] == [
         "AtlasTexture",
         "Texture2D",
@@ -943,6 +941,7 @@ def test_each_build_returns_an_independent_structure_registry():
     first = build_default_structures()
     first.register(artifact_type="Theme", validator_id="theme", validator=lambda r: {})
     assert [route.artifact_type for route in build_default_structures().routes()] == [
+        "AtlasTexture",
         "Texture2D"
     ]
 
@@ -1014,7 +1013,10 @@ def test_build_default_ladder_wires_the_shared_compiler_and_validator():
     ladder = build_default_ladder("godot")
     assert isinstance(ladder, ValidationLadder)
     structures = build_default_structures()
-    assert [route.validator_id for route in structures.routes()] == ["texture2d_structure"]
+    assert [route.validator_id for route in structures.routes()] == [
+        "atlas_texture_fixed_slot_structure",
+        "texture2d_structure",
+    ]
 
 
 def test_build_default_ladder_accepts_family_registries():
