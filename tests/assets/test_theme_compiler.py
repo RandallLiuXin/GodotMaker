@@ -1,5 +1,6 @@
 """Contract tests for the deterministic JSON Theme compiler."""
 import json
+import struct
 import sys
 from pathlib import Path
 
@@ -131,6 +132,33 @@ def test_rejects_wrongly_typed_external_resource_content(tmp_path, section, reso
     item = {"type": "Button", "name": "font" if section == "fonts" else "icon", "value": {"type": resource_type, "path": path}}
     _write_recipe(tmp_path, _recipe(**{section: [item]}))
     with pytest.raises(CompilerError, match=f"not valid {resource_type} content"):
+        _compile(tmp_path)
+
+
+def test_rejects_a_truncated_png_with_valid_magic_and_iend(tmp_path):
+    # This satisfies the previous magic-byte-only check but has no IDAT chunk
+    # and no valid CRCs, so it cannot be a loadable Texture2D.
+    fake_png = (
+        b"\x89PNG\r\n\x1a\n"
+        + b"\x00\x00\x00\rIHDR"
+        + b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+        + b"\x00\x00\x00\x00"
+        + b"\x00\x00\x00\x00IEND\x00\x00\x00\x00"
+    )
+    (tmp_path / "fake.png").write_bytes(fake_png)
+    recipe = _recipe(icons=[{"type": "Button", "name": "icon", "value": {"type": "Texture2D", "path": "res://fake.png"}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="not valid Texture2D content"):
+        _compile(tmp_path)
+
+
+def test_rejects_a_minimal_sfnt_without_required_font_tables(tmp_path):
+    # The former bounds-only parser accepted this single empty cmap record.
+    fake_sfnt = b"\x00\x01\x00\x00" + struct.pack(">HHHH", 1, 0, 0, 0) + b"cmap" + struct.pack(">III", 0, 28, 0)
+    (tmp_path / "fake.ttf").write_bytes(fake_sfnt)
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://fake.ttf"}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="not valid FontFile content"):
         _compile(tmp_path)
 
 

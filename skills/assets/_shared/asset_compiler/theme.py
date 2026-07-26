@@ -14,7 +14,6 @@ import struct
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
-from xml.etree import ElementTree
 
 from .contract import CompileRequest, CompilerError
 from .registry import CompilerRegistry, CompilerRoute
@@ -91,8 +90,11 @@ def _property_allowed(section: str, theme_type: str, name: str, variation_bases:
         return base_type in {"TabBar", "TabContainer"}
     return False
 _RESOURCE_EXTENSIONS = {
-    "FontFile": frozenset({".ttf", ".otf", ".woff", ".woff2"}),
-    "Texture2D": frozenset({".png", ".webp", ".jpg", ".jpeg", ".svg"}),
+    # Every accepted format below has a bounded content validation path. Do not
+    # add a Godot-supported suffix here merely because Godot may load it: this
+    # compiler must prove the resource is usable before it writes a Theme.
+    "FontFile": frozenset({".ttf", ".otf"}),
+    "Texture2D": frozenset({".png", ".webp", ".jpg", ".jpeg"}),
 }
 _STYLEBOX_PROPERTIES = {
     "StyleBoxFlat": frozenset({
@@ -164,103 +166,116 @@ def _vector2(value: Any, label: str) -> str:
 
 
 def _valid_sfnt(payload: bytes) -> bool:
-    """Check the bounded offset-table layout shared by TTF and OTF fonts."""
+    """Validate essential TTF/OTF tables, including their bounded internals."""
     if len(payload) < 12 or payload[:4] not in {b"\x00\x01\x00\x00", b"true", b"OTTO"}:
         return False
     table_count = struct.unpack(">H", payload[4:6])[0]
     directory_end = 12 + table_count * 16
     if table_count == 0 or directory_end > len(payload):
         return False
+    tables: dict[bytes, bytes] = {}
     for index in range(table_count):
         offset = 12 + index * 16
+        tag = payload[offset:offset + 4]
         table_offset, table_length = struct.unpack(">II", payload[offset + 8:offset + 16])
-        if table_offset + table_length > len(payload):
+        if tag in tables or table_length == 0 or table_offset < directory_end or table_offset + table_length > len(payload):
             return False
-    return True
+        tables[tag] = payload[table_offset:table_offset + table_length]
 
-
-def _valid_woff(payload: bytes) -> bool:
-    if len(payload) < 44 or payload[:4] != b"wOFF":
+    required = {b"cmap", b"head", b"hhea", b"hmtx", b"maxp", b"name", b"post"}
+    if not required.issubset(tables):
         return False
-    declared_length = struct.unpack(">I", payload[8:12])[0]
-    table_count = struct.unpack(">H", payload[12:14])[0]
-    directory_end = 44 + table_count * 20
-    if declared_length != len(payload) or table_count == 0 or directory_end > len(payload):
-        return False
-    for index in range(table_count):
-        offset = 44 + index * 20
-        table_offset, compressed_length = struct.unpack(">II", payload[offset + 4:offset + 12])
-        if table_offset + compressed_length > len(payload):
-            return False
-    return True
-
-
-def _valid_woff2(payload: bytes) -> bool:
-    return (
-        len(payload) >= 48
-        and payload[:4] == b"wOF2"
-        and struct.unpack(">I", payload[8:12])[0] == len(payload)
-        and struct.unpack(">H", payload[12:14])[0] > 0
+    head, hhea, hmtx, maxp, name, cmap = (
+        tables[b"head"], tables[b"hhea"], tables[b"hmtx"], tables[b"maxp"],
+        tables[b"name"], tables[b"cmap"],
     )
-
-
-def _valid_jpeg(payload: bytes) -> bool:
-    if not payload.startswith(b"\xff\xd8"):
+    if len(head) < 54 or struct.unpack(">I", head[12:16])[0] != 0x5F0F3CF5:
         return False
-    index = 2
-    while index + 4 <= len(payload):
-        if payload[index] != 0xFF:
+    units_per_em = struct.unpack(">H", head[18:20])[0]
+    if not 16 <= units_per_em <= 16384 or len(maxp) < 6 or len(hhea) < 36:
+        return False
+    glyph_count = struct.unpack(">H", maxp[4:6])[0]
+    metric_count = struct.unpack(">H", hhea[34:36])[0]
+    if glyph_count == 0 or not 0 < metric_count <= glyph_count or len(hmtx) < metric_count * 4:
+        return False
+    if len(name) < 6 or len(cmap) < 4:
+        return False
+    name_count, string_offset = struct.unpack(">HH", name[2:6])
+    if name_count == 0 or 6 + name_count * 12 > len(name) or string_offset > len(name):
+        return False
+    for index in range(name_count):
+        entry = 6 + index * 12
+        length, offset = struct.unpack(">HH", name[entry + 8:entry + 12])
+        if string_offset + offset + length > len(name):
             return False
-        while index < len(payload) and payload[index] == 0xFF:
-            index += 1
-        if index >= len(payload):
-            return False
-        marker = payload[index]
-        index += 1
-        if marker in {0xD8, 0xD9} or 0xD0 <= marker <= 0xD7:
-            continue
-        if index + 2 > len(payload):
-            return False
-        length = struct.unpack(">H", payload[index:index + 2])[0]
-        if length < 2 or index + length > len(payload):
-            return False
-        if marker in {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}:
-            return length >= 8 and payload[index + 3:index + 7] != b"\x00\x00\x00\x00"
-        index += length
-    return False
-
-
-def _valid_texture(payload: bytes, suffix: str) -> bool:
-    if suffix == ".png":
-        return (
-            len(payload) >= 45
-            and payload.startswith(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
-            and payload[16:24] != b"\x00" * 8
-            and payload[-12:-4] == b"\x00\x00\x00\x00IEND"
+    cmap_count = struct.unpack(">H", cmap[2:4])[0]
+    if cmap_count == 0 or 4 + cmap_count * 8 > len(cmap):
+        return False
+    if payload[:4] == b"OTTO":
+        return b"CFF " in tables and len(tables[b"CFF "]) >= 4
+    if not {b"glyf", b"loca"}.issubset(tables):
+        return False
+    loca = tables[b"loca"]
+    short_loca = struct.unpack(">h", head[50:52])[0] == 0
+    expected_loca = (glyph_count + 1) * (2 if short_loca else 4)
+    if len(loca) < expected_loca or not tables[b"glyf"]:
+        return False
+    previous = 0
+    for index in range(glyph_count + 1):
+        offset = (
+            struct.unpack(">H", loca[index * 2:index * 2 + 2])[0] * 2
+            if short_loca
+            else struct.unpack(">I", loca[index * 4:index * 4 + 4])[0]
         )
-    if suffix == ".webp":
-        return len(payload) >= 16 and payload[:4] == b"RIFF" and payload[8:12] == b"WEBP" and struct.unpack("<I", payload[4:8])[0] + 8 == len(payload)
-    if suffix in {".jpg", ".jpeg"}:
-        return _valid_jpeg(payload)
-    if suffix == ".svg":
-        try:
-            root = ElementTree.fromstring(payload)
-        except ElementTree.ParseError:
+        if offset < previous or offset > len(tables[b"glyf"]):
             return False
-        return root.tag.rsplit("}", 1)[-1] == "svg"
-    return False
+        previous = offset
+    return previous > 0
+
+
+def _valid_font(file_path: Path, payload: bytes) -> bool:
+    """Require both bounded SFNT structure and a real FreeType font load."""
+    if not _valid_sfnt(payload):
+        return False
+    try:
+        from PIL import ImageFont
+
+        font = ImageFont.truetype(file_path, size=16)
+        font.getbbox("GodotMaker")
+    except (ImportError, OSError, ValueError):
+        return False
+    return True
+
+
+def _valid_texture(file_path: Path, suffix: str) -> bool:
+    """Fully decode a raster texture instead of merely matching magic bytes."""
+    try:
+        from PIL import Image, UnidentifiedImageError
+    except ImportError:
+        return False
+    expected_formats = {
+        ".png": "PNG", ".webp": "WEBP", ".jpg": "JPEG", ".jpeg": "JPEG",
+    }
+    try:
+        with Image.open(file_path) as image:
+            if image.format != expected_formats[suffix]:
+                return False
+            image.verify()
+        with Image.open(file_path) as image:
+            image.load()
+            return image.width > 0 and image.height > 0
+    except (OSError, SyntaxError, ValueError, UnidentifiedImageError):
+        return False
 
 
 def _validate_resource_content(file_path: Path, expected_type: str, suffix: str, label: str) -> None:
     try:
-        payload = file_path.read_bytes()
+        payload = file_path.read_bytes() if expected_type == "FontFile" else b""
     except OSError as exc:
         _fail(f"{label}.path cannot be read: {exc}")
     valid = (
-        _valid_sfnt(payload) if expected_type == "FontFile" and suffix in {".ttf", ".otf"}
-        else _valid_woff(payload) if expected_type == "FontFile" and suffix == ".woff"
-        else _valid_woff2(payload) if expected_type == "FontFile" and suffix == ".woff2"
-        else _valid_texture(payload, suffix) if expected_type == "Texture2D"
+        _valid_font(file_path, payload) if expected_type == "FontFile"
+        else _valid_texture(file_path, suffix) if expected_type == "Texture2D"
         else False
     )
     if not valid:
