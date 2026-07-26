@@ -34,6 +34,12 @@ from ._bridge import LAYOUT_ARTIFACT_TYPES
 from .contract import ValidationError
 from .godot_probe import PROBE_CHECKS, ProbeResult
 from asset_compiler.atlas_texture import read_atlas_texture_input
+from asset_compiler._stable_entry import (
+    StableEntryError,
+    assert_within_output_dir,
+    check_output_path,
+    resolve_res_path,
+)
 from asset_compiler.stylebox_texture import read_stylebox_texture_input
 
 # Every artifact type the frozen stable-entry relation allows. A validator for a
@@ -59,6 +65,33 @@ class StructureRequest:
     project_root: Path
     probe: ProbeResult
     spec: Mapping[str, Any] = field(default_factory=dict)
+
+    def source_file(self) -> Path:
+        """Resolve the declared source under its stable output directory.
+
+        L4 validators may need to read their source recipe independently of the
+        ladder.  Keep that read behind the same ``res://`` and on-disk
+        containment checks as compiler input so a direct validator call cannot
+        use a traversal, absolute path, or escaping symlink.
+        """
+        try:
+            check_output_path(
+                self.source_path,
+                production_family=self.production_family,
+                asset_id=self.asset_id,
+                label="source_path",
+            )
+            return assert_within_output_dir(
+                self.project_root,
+                resolve_res_path(self.project_root, self.source_path, label="source_path"),
+                production_family=self.production_family,
+                asset_id=self.asset_id,
+                label="source_path",
+            )
+        except (AttributeError, OSError, StableEntryError, TypeError, ValueError) as exc:
+            raise ValidationError(
+                f"source_path cannot be resolved: {self.source_path!r} ({exc})"
+            ) from exc
 
     def checked_structure(self, check: str) -> Mapping[str, Any]:
         """Return the facts Godot collected for one check, or fail closed.
