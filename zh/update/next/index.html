@@ -2748,6 +2748,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Added <code>tools/asset_finalize_entry_draft.py</code>, which builds a v1 stable-entry draft from an <code>asset_image_finalize.py</code> report for screen references, backgrounds, and single card or portrait frames while enforcing aspect validation, asset-label binding, and path containment.</li>
 <li>Added a shared Godot artifact compiler interface and registry under <code>skills/assets/_shared/</code> that routes on the frozen source-layout to artifact-type compatibility set, keeps compiler receipts out of the worker-facing artifact, requires each compiler to actually rebuild an artifact distinct from its source image, serves <code>Texture2D</code> through Godot's default import, and fails closed on unregistered or mismatched combinations (#107).</li>
 <li>Added the shared L0-L4 asset readiness ladder under <code>skills/assets/_shared/</code>, which reaches <code>ready</code> only after the stable entry contract, the processed source, the compiled artifact, a real headless Godot import and <code>ResourceLoader.load</code> type match, and a registered type-specific structure check all pass (#108).</li>
+<li>Added a deterministic <code>theme_recipe</code> compiler with a closed JSON schema for Theme colors, font sizes, constants, fonts, icons, StyleBoxes, and type variations; invalid class types, properties, resources, and StyleBox references fail closed before a loadable Theme is written.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2771,6 +2772,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Compiler staging now preserves Godot resource extensions.</li>
 <li>Compiler receipts are now issued only after atomic artifact commits.</li>
 <li>Asset readiness promotion now requires a compiler receipt bound to the compiled entry, while already-ready assets can explicitly revalidate without retaining that receipt.</li>
+<li>Theme recipes now accept only fully decoded raster textures and FreeType-loadable TTF/OTF fonts, rejecting truncated or unsupported resource content before a Theme is written.</li>
 <li>Failed native Godot artifact compilation now retains the previous stable artifact and atomically commits a validated replacement only after success.</li>
 <li>Added the required <code>--grid</code> (and <code>--names</code>) argument to every production-unit <code>asset_sheet_process.py</code> example so the ui-kit, card-kit, compact-prop-pack, fx-bundle, scene-prop-set, and platform-strip commands run as written instead of failing on a missing required argument, and clarified that <code>--grid</code> is required in both autoslice and grid snap modes.</li>
 <li>Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at <code>.godotmaker/asset-generation/manifest.json</code> instead of the analyst's <code>assets/manifest.json</code> (#97)</li>
