@@ -420,15 +420,15 @@ def test_an_artifact_type_with_no_registered_compiler_fails_l2(tmp_path):
     root = _project(tmp_path, asset_id="hero")
     entry = _entry(
         asset_id="hero",
-        source_layout={"type": "grid_sheet", "path": "res://assets/generated/ui-kit/hero/hero.png"},
-        godot_artifact={"type": "SpriteFrames", "path": "res://assets/generated/ui-kit/hero/hero.tres"},
+        source_layout={"type": "theme_recipe", "path": "res://assets/generated/ui-kit/hero/hero.json"},
+        godot_artifact={"type": "Theme", "path": "res://assets/generated/ui-kit/hero/hero.tres"},
     )
-    _write(root, "res://assets/generated/ui-kit/hero/hero.png")
+    _write(root, "res://assets/generated/ui-kit/hero/hero.json")
     _write(root, "res://assets/generated/ui-kit/hero/hero.tres", b"[gd_resource]\n")
     result = _ladder().run(entry, project_root=root)
     level, error = _failure(result)
     assert level == "L2"
-    assert "no compiler is registered for grid_sheet -> SpriteFrames" in error
+    assert "no compiler is registered for theme_recipe -> Theme" in error
 
 
 def test_a_missing_compiled_artifact_fails_l2(tmp_path):
@@ -925,6 +925,7 @@ def test_every_implemented_check_may_be_registered():
 
 def test_an_unregistered_type_asks_for_no_probe_checks():
     assert build_default_structures().checks_for("TileSet") == ()
+    assert build_default_structures().checks_for("SpriteFrames") == ("spriteframes",)
     assert build_default_structures().checks_for("Texture2D") == ("texture2d",)
 
 
@@ -935,6 +936,7 @@ def test_routes_are_ordered_by_artifact_type():
     )
     assert [route.artifact_type for route in structures.routes()] == [
         "AtlasTexture",
+        "SpriteFrames",
         "Texture2D",
     ]
 
@@ -943,6 +945,7 @@ def test_each_build_returns_an_independent_structure_registry():
     first = build_default_structures()
     first.register(artifact_type="Theme", validator_id="theme", validator=lambda r: {})
     assert [route.artifact_type for route in build_default_structures().routes()] == [
+        "SpriteFrames",
         "Texture2D"
     ]
 
@@ -1014,7 +1017,10 @@ def test_build_default_ladder_wires_the_shared_compiler_and_validator():
     ladder = build_default_ladder("godot")
     assert isinstance(ladder, ValidationLadder)
     structures = build_default_structures()
-    assert [route.validator_id for route in structures.routes()] == ["texture2d_structure"]
+    assert [route.validator_id for route in structures.routes()] == [
+        "spriteframes_structure",
+        "texture2d_structure",
+    ]
 
 
 def test_build_default_ladder_accepts_family_registries():
