@@ -17,7 +17,7 @@ extends SceneTree
 # Structural facts a resource may be asked to report for L4. The set is closed:
 # an unknown check is an error, never a silent pass. A family skill adds its
 # check name here together with the Python structure validator that consumes it.
-const KNOWN_CHECKS := ["texture2d"]
+const KNOWN_CHECKS := ["texture2d", "tileset"]
 
 
 func _parse_user_args() -> Dictionary:
@@ -51,6 +51,29 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 					structure[check] = {
 						"error": "resource is a %s, not a Texture2D" % resource.get_class(),
 					}
+			"tileset":
+				if resource.is_class("TileSet"):
+					var tile_count := 0
+					var alternative_count := 0
+					for source_index in resource.get_source_count():
+						var source = resource.get_source(resource.get_source_id(source_index))
+						if source is TileSetAtlasSource:
+							for tile_index in source.get_tiles_count():
+								var coords = source.get_tile_id(tile_index)
+								tile_count += 1
+								alternative_count += source.get_alternative_tiles_count(coords) - 1
+					structure[check] = {
+						"source_count": resource.get_source_count(), "tile_count": tile_count,
+						"alternative_count": alternative_count,
+						"tile_size": [resource.tile_size.x, resource.tile_size.y],
+						"physics_layers_count": resource.get_physics_layers_count(),
+						"navigation_layers_count": resource.get_navigation_layers_count(),
+						"occlusion_layers_count": resource.get_occlusion_layers_count(),
+						"custom_data_layers_count": resource.get_custom_data_layers_count(),
+						"terrain_sets_count": resource.get_terrain_sets_count(),
+					}
+				else:
+					structure[check] = {"error": "resource is a %s, not a TileSet" % resource.get_class()}
 	return structure
 
 
