@@ -34,7 +34,7 @@ COMPLETE_REVIEWER = (
 COMPLETE_ASSET_PRODUCER = (
     "## Asset Producer Report: ui_kit\n\n"
     "### Status: DONE\n\n"
-    "### Production Unit\n- First Entry Document: references/production-units/ui-kit.md\n\n"
+    "### Production Unit\n- First-class Asset Skill: ui-kit\n\n"
     "### Outputs\n- Sources: .godotmaker/asset-generation/sources/ui_source.png\n\n"
     "### Tools\n- python tools/asset_sheet_process.py --snap-mode autoslice\n\n"
     "### Validation\n- File existence: PASS\n\n"
