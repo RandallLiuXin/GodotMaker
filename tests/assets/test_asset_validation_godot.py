@@ -5,6 +5,7 @@ the ladder reacts correctly to an answer; only Godot proves the answer. They ski
 when no engine is reachable -- CI installs pytest and pillow only -- so a
 contributor with Godot 4.4+ installed runs them and CI does not.
 """
+import json
 import struct
 import subprocess
 import sys
@@ -287,6 +288,83 @@ def test_a_generated_texture_reaches_ready_through_real_godot(godot_bin, godot_p
     # L4 reads the dimensions of the resource Godot loaded, not of the file.
     assert result.levels[4].details["width"] == 24
     assert result.levels[4].details["height"] == 16
+
+
+def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
+    godot_bin, godot_project
+):
+    """L3 and L4 prove Godot loads the compiled AtlasTexture unchanged."""
+    base = "res://assets/generated/ui-kit/main_atlas"
+    _write(godot_project, f"{base}/main_atlas.png", _png(12, 8))
+    _write(
+        godot_project,
+        f"{base}/main_atlas.json",
+        json.dumps(
+            {
+                "version": 1,
+                "atlas_path": f"{base}/main_atlas.png",
+                "regions": [
+                    {"name": "button", "rect": [0, 0, 4, 4], "pivot": [0.5, 0.5], "nine_slice": None},
+                    {"name": "icon", "rect": [6, 2, 2, 3], "pivot": [0.0, 1.0], "nine_slice": None},
+                ],
+            }
+        ).encode(),
+    )
+    registry = build_default_registry()
+    request = CompileRequest(
+        production_family="ui-kit",
+        asset_id="main_atlas",
+        source_layout_type="region_atlas",
+        source_path=f"{base}/main_atlas.png",
+        artifact_type="AtlasTexture",
+        artifact_path=f"{base}/button.tres",
+        project_root=godot_project,
+        spec={"metadata_path": f"{base}/main_atlas.json", "logical_asset_id": "button"},
+    )
+    compiled = registry.compile(request)
+    entry = _entry(
+        asset_id="main_atlas",
+        source_layout={"type": "region_atlas", "path": request.source_path},
+        godot_artifact=compiled.godot_artifact.to_dict(),
+    )
+    result = ValidationLadder(
+        registry=registry,
+        structures=build_default_structures(),
+        probe=GodotProbe(godot_bin),
+    ).run(entry, project_root=godot_project, spec=request.spec, receipt=compiled.receipt)
+
+    assert result.ready is True, result.to_dict()
+    assert result.levels[3].details["godot_class"] == "AtlasTexture"
+    assert result.levels[4].details["region"] == [0, 0, 4, 4]
+    assert result.levels[4].details["margin"] == [0, 0, 0, 0]
+
+    # The same region and zero margin cannot prove that the resource still
+    # binds the physical atlas declared by metadata. Tampering only the
+    # ExtResource target must therefore reach L3 but fail the L4 path check.
+    _write(godot_project, f"{base}/other_atlas.png", _png(12, 8))
+    artifact = godot_project / "assets/generated/ui-kit/main_atlas/button.tres"
+    artifact.write_text(
+        artifact.read_text(encoding="utf-8").replace(
+            "main_atlas.png", "other_atlas.png"
+        ),
+        encoding="utf-8",
+    )
+    entry["processing_status"] = "ready"
+    tampered = ValidationLadder(
+        registry=registry,
+        structures=build_default_structures(),
+        probe=GodotProbe(godot_bin),
+    ).run(
+        entry,
+        project_root=godot_project,
+        spec=request.spec,
+        mode=REVALIDATION,
+    )
+
+    assert tampered.ready is False, tampered.to_dict()
+    assert tampered.levels[3].status == PASSED
+    assert tampered.failure.level == "L4"
+    assert "atlas_path" in tampered.failure.error
 
 
 def test_headless_godot_rejects_a_corrupt_resource(godot_bin, godot_project):

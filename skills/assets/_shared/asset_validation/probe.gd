@@ -17,7 +17,7 @@ extends SceneTree
 # Structural facts a resource may be asked to report for L4. The set is closed:
 # an unknown check is an error, never a silent pass. A family skill adds its
 # check name here together with the Python structure validator that consumes it.
-const KNOWN_CHECKS := ["texture2d", "spriteframes", "tileset"]
+const KNOWN_CHECKS := ["texture2d", "atlas_texture", "spriteframes", "tileset"]
 
 
 func _parse_user_args() -> Dictionary:
@@ -50,6 +50,24 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 				else:
 					structure[check] = {
 						"error": "resource is a %s, not a Texture2D" % resource.get_class(),
+					}
+			"atlas_texture":
+				if resource.is_class("AtlasTexture"):
+					var atlas_texture: AtlasTexture = resource
+					var atlas_path := ""
+					if atlas_texture.atlas != null:
+						atlas_path = atlas_texture.atlas.resource_path
+					var region := atlas_texture.region
+					var margin := atlas_texture.margin
+					structure[check] = {
+						"has_atlas": atlas_texture.atlas != null,
+						"atlas_path": atlas_path,
+						"region": [region.position.x, region.position.y, region.size.x, region.size.y],
+						"margin": [margin.position.x, margin.position.y, margin.size.x, margin.size.y],
+					}
+				else:
+					structure[check] = {
+						"error": "resource is a %s, not an AtlasTexture" % resource.get_class(),
 					}
 			"tileset":
 				if resource.is_class("TileSet"):

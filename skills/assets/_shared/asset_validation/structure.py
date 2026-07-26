@@ -32,6 +32,7 @@ from typing import Any, Callable
 from ._bridge import LAYOUT_ARTIFACT_TYPES
 from .contract import ValidationError
 from .godot_probe import PROBE_CHECKS, ProbeResult
+from asset_compiler.atlas_texture import read_atlas_texture_input
 
 # Every artifact type the frozen stable-entry relation allows. A validator for a
 # type outside it could never run, so registering one is a mistake, not a
@@ -210,6 +211,8 @@ class StructureValidatorRegistry:
 
 TEXTURE2D_VALIDATOR_ID = "texture2d_structure"
 TEXTURE2D_CHECKS = ("texture2d",)
+ATLAS_TEXTURE_VALIDATOR_ID = "atlas_texture_fixed_slot_structure"
+ATLAS_TEXTURE_CHECKS = ("atlas_texture",)
 
 
 def validate_texture2d(request: StructureRequest) -> dict[str, Any]:
@@ -238,6 +241,47 @@ def validate_texture2d(request: StructureRequest) -> dict[str, Any]:
     return dimensions
 
 
+def validate_atlas_texture(request: StructureRequest) -> dict[str, Any]:
+    """Require the loaded resource to retain its declared region and zero margin."""
+    try:
+        expected = read_atlas_texture_input(request)
+    except Exception as exc:  # CompilerError is a family-input failure at L4.
+        raise ValidationError(str(exc)) from exc
+    structure = request.checked_structure("atlas_texture")
+    if structure.get("has_atlas") is not True:
+        raise ValidationError("the loaded AtlasTexture has no atlas texture")
+    actual_atlas_path = structure.get("atlas_path")
+    if actual_atlas_path != expected.atlas_path:
+        raise ValidationError(
+            "the loaded AtlasTexture atlas_path is "
+            f"{actual_atlas_path!r}, not {expected.atlas_path!r}"
+        )
+    for rectangle_name, expected_value in (
+        ("region", list(expected.region)),
+        ("margin", [0, 0, 0, 0]),
+    ):
+        actual = structure.get(rectangle_name)
+        if not isinstance(actual, list) or len(actual) != 4:
+            raise ValidationError(
+                f"the loaded AtlasTexture reported no {rectangle_name} rectangle"
+            )
+        if any(type(value) not in (int, float) or isinstance(value, bool) for value in actual):
+            raise ValidationError(
+                f"the loaded AtlasTexture reported an invalid {rectangle_name} rectangle"
+            )
+        if list(actual) != expected_value:
+            raise ValidationError(
+                f"the loaded AtlasTexture {rectangle_name} is {actual!r}, not "
+                f"{expected_value!r}"
+            )
+    return {
+        "logical_asset_id": expected.logical_asset_id,
+        "atlas_path": expected.atlas_path,
+        "region": list(expected.region),
+        "margin": [0, 0, 0, 0],
+    }
+
+
 def build_default_structures() -> StructureValidatorRegistry:
     """Return a new registry holding every validator the shared layer ships."""
     from . import sprite_frames
@@ -248,6 +292,12 @@ def build_default_structures() -> StructureValidatorRegistry:
         validator_id=TEXTURE2D_VALIDATOR_ID,
         validator=validate_texture2d,
         checks=TEXTURE2D_CHECKS,
+    )
+    registry.register(
+        artifact_type="AtlasTexture",
+        validator_id=ATLAS_TEXTURE_VALIDATOR_ID,
+        validator=validate_atlas_texture,
+        checks=ATLAS_TEXTURE_CHECKS,
     )
     sprite_frames.register_into(registry)
     return registry
