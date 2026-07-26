@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "atlas": {"width": 144, "height": 48},
+  "slots": [
+    {"name": "coin", "rect": [0, 0, 32, 32], "source": "sources/coin.png"},
+    {"name": "crate", "rect": [48, 0, 48, 48], "source": "sources/crate.png", "pivot": [0.5, 1.0]},
+    {"name": "lantern", "rect": [112, 0, 32, 48], "source": "sources/lantern.png", "pivot": [0.5, 1.0]}
+  ]
+}

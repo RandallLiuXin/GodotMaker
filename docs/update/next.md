@@ -18,6 +18,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Added
 
 - Added a recipe-only native TileSet atlas compiler with declared tile semantics and L4 source, tile, alternative, layer, and tile-size verification.
+- Added standalone atlas-backed compact-prop-pack and scene-prop-set Skills with deterministic independent AtlasTexture outputs for each declared prop.
 - Added a deterministic SpriteFrames compiler that aggregates explicitly timed normalized action PNGs, rejects missing required actions, and serializes independent frame texture bindings for character bundles and animated FX.
 - Added a deterministic StyleBoxTexture compiler for reusable UI borders, with explicit texture regions, nine-slice borders, expand margins, and stretch axes verified through headless Godot.
 - Published first-class Asset Skills for Claude Code, Codex, and OpenCode together with their project-local shared compiler, validator, and schema runtime under `.godotmaker/asset-runtime/`.
