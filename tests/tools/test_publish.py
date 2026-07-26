@@ -1041,6 +1041,134 @@ class TestPublishedAssetRuntime:
                     f"{skill_name} references a missing published runtime path: {reference}"
                 )
 
+    @pytest.mark.parametrize(
+        "publish_project,skill_root",
+        [
+            (_publish_claude_project, ".claude/skills"),
+            (_publish_codex_project, ".agents/skills"),
+            (_publish_opencode_project, ".opencode/skills"),
+        ],
+    )
+    def test_published_standalone_runners_import_and_validate_without_source_checkout(
+        self, tmp_path, monkeypatch, publish_project, skill_root
+    ):
+        result = publish_project(tmp_path, monkeypatch)
+        target = result[0] if isinstance(result, tuple) else result
+
+        script = f'''\
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+target = Path.cwd().resolve()
+source_root = Path({str(REPO_ROOT)!r}).resolve()
+assert source_root not in [Path(path).resolve() for path in sys.path if path]
+skills = target / {skill_root!r}
+
+def load_runner(name, family):
+    spec = importlib.util.spec_from_file_location(
+        name, skills / family / "standalone_validation.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+tileset = load_runner("published_tileset_validation", "tileset")
+ui_kit = load_runner("published_ui_kit_validation", "ui-kit")
+card_kit = load_runner("published_card_kit_validation", "card-kit")
+assert callable(tileset.compile_and_validate)
+assert callable(ui_kit.compile_and_validate)
+assert callable(card_kit.compile_and_validate)
+
+recipe = json.loads(
+    (skills / "tileset" / "fixtures" / "orthogonal-square-recipe.json").read_text(
+        encoding="utf-8"
+    )
+)
+source_path = "res://assets/generated/tileset/grassland/grassland_atlas.png"
+validated = tileset.compile_and_validate(
+    {{
+        "asset_type": "tileset",
+        "asset_id": "grassland",
+        "brief": "A grassland tile atlas.",
+        "spec": recipe,
+    }},
+    {{
+        "asset_type": "tileset",
+        "outputs": [{{
+            "role": "runtime",
+            "path": "res://assets/generated/tileset/grassland/grassland.tres",
+            "godot_type": "TileSet",
+        }}],
+        "sources": [{{"path": source_path, "layout": "tile_atlas"}}],
+        "previews": [],
+        "validation": {{"passed": False}},
+    }},
+    project_root=target,
+    godot_path="godot",
+)
+assert validated["validation"]["levels"] == {{
+    "L0": True, "L1": False, "L2": False, "L3": False, "L4": False,
+}}
+'''
+        environment = os.environ.copy()
+        environment.pop("PYTHONPATH", None)
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=target,
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+        assert completed.returncode == 0, completed.stderr
+
+    @pytest.mark.parametrize(
+        "agent,skill_root",
+        [
+            (publish.AGENT_CLAUDE_CODE, ".claude/skills"),
+            (publish.AGENT_CODEX, ".agents/skills"),
+            (publish.AGENT_OPENCODE, ".opencode/skills"),
+        ],
+    )
+    def test_published_standalone_runner_reports_missing_runtime(
+        self, tmp_path, agent, skill_root
+    ):
+        target = tmp_path / "target"
+        skills_target = target / skill_root
+        publish_skills(REPO_ROOT, skills_target, agent)
+        runner = skills_target / "tileset" / "standalone_validation.py"
+        expected_runtime = target / ".godotmaker" / "asset-runtime"
+
+        script = f'''\
+import importlib.util
+from pathlib import Path
+
+runner = Path({str(runner)!r})
+spec = importlib.util.spec_from_file_location("missing_runtime_runner", runner)
+module = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+try:
+    spec.loader.exec_module(module)
+except ImportError as error:
+    message = str(error)
+    assert "GodotMaker asset runtime is missing" in message
+    assert {str(expected_runtime)!r} in message
+else:
+    raise AssertionError("published standalone runner imported without its runtime")
+'''
+        environment = os.environ.copy()
+        environment.pop("PYTHONPATH", None)
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=target,
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+        assert completed.returncode == 0, completed.stderr
+
     def test_published_runtime_imports_without_the_source_checkout(self, tmp_path):
         target = tmp_path / "target"
         publish_asset_runtime(REPO_ROOT, target)

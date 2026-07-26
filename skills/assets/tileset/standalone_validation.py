@@ -10,20 +10,62 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
+import sys
 from pathlib import Path
 from typing import Any
 
-from asset_compiler import CompileRequest, CompilerError, CompilerRegistry
-from asset_compiler import tileset as tileset_compiler
-from asset_compiler._stable_entry import (
+
+def _configure_runtime_imports() -> None:
+    """Add the source or published shared runtime to the import path.
+
+    Source skills keep their runtime beside the family directories. Published
+    skills are flattened into an adapter-specific skill root, while their
+    runtime is deliberately deployed once at ``.godotmaker/asset-runtime``.
+    """
+    runner = Path(__file__).resolve()
+    source_runtime = runner.parents[1] / "_shared"
+    if source_runtime.is_dir():
+        runtime = source_runtime
+        project_root = runner.parents[3]
+    else:
+        project_root = runner.parents[3]
+        runtime = project_root / ".godotmaker" / "asset-runtime"
+    tools = project_root / "tools"
+    if not runtime.is_dir():
+        raise ImportError(
+            "GodotMaker asset runtime is missing for standalone tileset validation: "
+            f"expected {runtime}"
+        )
+    if not tools.is_dir():
+        raise ImportError(
+            "GodotMaker tools directory is missing for standalone tileset validation: "
+            f"expected {tools}"
+        )
+    for path in (str(runtime), str(tools)):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+
+
+_configure_runtime_imports()
+
+from asset_compiler import CompileRequest, CompilerError, CompilerRegistry  # noqa: E402
+from asset_compiler import tileset as tileset_compiler  # noqa: E402
+from asset_compiler._stable_entry import (  # noqa: E402
     StableEntryError,
     assert_within_output_dir,
     resolve_res_path,
 )
-from asset_validation import GodotProbe, ProbeRequest, ValidationError
-from asset_validation import tileset as tileset_structures
-from asset_validation.structure import StructureRequest, StructureValidatorRegistry
-from asset_skill_contract_check import AssetContractError, check_request, check_result
+from asset_validation import GodotProbe, ProbeRequest, ValidationError  # noqa: E402
+from asset_validation import tileset as tileset_structures  # noqa: E402
+from asset_validation.structure import (  # noqa: E402
+    StructureRequest,
+    StructureValidatorRegistry,
+)
+from asset_skill_contract_check import (  # noqa: E402
+    AssetContractError,
+    check_request,
+    check_result,
+)
 
 
 class TileSetSkillError(Exception):
