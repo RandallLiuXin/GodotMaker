@@ -2750,7 +2750,12 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>/gm-asset</code> now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body <code>runtime_artifact</code> manifest.</li>
+<li>
+<p>Added deterministic fixed-slot <code>AtlasTexture</code> compilation from atlas metadata, with exact region and zero-margin validation through headless Godot.</p>
+</li>
+<li>
+<p><code>/gm-asset</code> now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body <code>runtime_artifact</code> manifest.</p>
+</li>
 <li>Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.</li>
 <li>An ASSETS.md runtime row reaches <code>generated</code> only from a <code>ready</code> non-reference stable entry, while a finalized registered screen reference completes its reference row at <code>source_ready</code> without becoming a worker runtime artifact.</li>
 <li><code>asset_generation_index.py --check-files</code> verifies that every registered source and artifact still exists, catching an asset deleted after registration.</li>
