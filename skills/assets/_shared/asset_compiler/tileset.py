@@ -21,20 +21,42 @@ COMPILER_VERSION = 1
 
 _SCRIPT = Path(__file__).with_name("tileset_compiler.gd")
 
+_SHAPES = {"square": 0, "isometric": 1, "half_offset_square": 2, "hexagon": 3}
+_ANIMATION_MODES = {"default": 0, "random_start_times": 1, "max": 2}
+
+
+def _pair(value: Any, label: str, *, positive: bool = False) -> list[int]:
+    if not isinstance(value, list) or len(value) != 2 or any(type(v) is not int for v in value):
+        raise CompilerError(f"{label} must be [integer, integer]")
+    if positive and any(v <= 0 for v in value):
+        raise CompilerError(f"{label} values must be positive integers")
+    return list(value)
+
+
+def _color(value: Any, label: str) -> list[float]:
+    if not isinstance(value, list) or len(value) not in (3, 4) or any(type(v) not in (int, float) for v in value):
+        raise CompilerError(f"{label} must be [r, g, b] or [r, g, b, a]")
+    result = [float(v) for v in value]
+    if any(v < 0 or v > 1 for v in result):
+        raise CompilerError(f"{label} channels must be between 0 and 1")
+    return result + ([1.0] if len(result) == 3 else [])
+
 
 def _recipe(request: CompileRequest) -> dict[str, Any]:
     spec = dict(request.spec)
     binary = spec.pop("godot_path", None)
     if not isinstance(binary, str) or not binary.strip():
         raise CompilerError("TileSet spec requires a non-empty godot_path")
-    if not isinstance(spec.get("tile_size"), list) or len(spec["tile_size"]) != 2:
-        raise CompilerError("TileSet spec requires tile_size as [width, height]")
-    if any(type(value) is not int or value <= 0 for value in spec["tile_size"]):
-        raise CompilerError("TileSet tile_size values must be positive integers")
+    spec["tile_size"] = _pair(spec.get("tile_size"), "TileSet tile_size", positive=True)
+    shape = spec.get("tile_shape", "square")
+    if not isinstance(shape, str) or shape not in _SHAPES:
+        raise CompilerError("tile_shape must be one of: " + ", ".join(_SHAPES))
+    spec["tile_shape"] = _SHAPES[shape]
     sources = spec.get("sources")
     if not isinstance(sources, list) or not sources:
         raise CompilerError("TileSet spec requires a non-empty sources list")
-    for source in sources:
+    seen_source_ids: set[int] = set()
+    for source_index, source in enumerate(sources):
         if not isinstance(source, Mapping):
             raise CompilerError("every TileSet source must be an object")
         texture = source.get("texture")
@@ -42,8 +64,41 @@ def _recipe(request: CompileRequest) -> dict[str, Any]:
             raise CompilerError("every TileSet source requires a res:// texture path")
         if not isinstance(source.get("tiles"), list):
             raise CompilerError("every TileSet source requires a tiles list")
-        if "region_size" not in source and "tile_size" not in source:
-            source["region_size"] = list(spec["tile_size"])
+        source_id = source.get("id", source_index)
+        if type(source_id) is not int or source_id < 0 or source_id in seen_source_ids:
+            raise CompilerError("every TileSet source id must be a unique non-negative integer")
+        seen_source_ids.add(source_id)
+        source["id"] = source_id
+        source["region_size"] = _pair(source.get("region_size", source.get("tile_size", spec["tile_size"])), "source region_size", positive=True)
+        source["margins"] = _pair(source.get("margins", [0, 0]), "source margins")
+        source["separation"] = _pair(source.get("separation", [0, 0]), "source separation")
+        for tile in source["tiles"]:
+            if not isinstance(tile, Mapping):
+                raise CompilerError("every TileSet tile must be an object")
+            tile["coords"] = _pair(tile.get("coords"), "tile coords")
+            for alternative in tile.get("alternatives", []):
+                if not isinstance(alternative, Mapping) or type(alternative.get("id")) is not int or alternative["id"] <= 0:
+                    raise CompilerError("alternative id must be a positive integer")
+            animation = tile.get("animation")
+            if animation is not None:
+                if not isinstance(animation, Mapping):
+                    raise CompilerError("tile animation must be an object")
+                mode = animation.get("mode", "default")
+                if not isinstance(mode, str) or mode not in _ANIMATION_MODES:
+                    raise CompilerError("animation mode must be one of: " + ", ".join(_ANIMATION_MODES))
+                if type(animation.get("frames_count")) is not int or animation["frames_count"] < 1:
+                    raise CompilerError("animation frames_count must be a positive integer")
+                animation["mode"] = _ANIMATION_MODES[mode]
+                animation["columns"] = int(animation.get("columns", 1))
+                animation["separation"] = _pair(animation.get("separation", [0, 0]), "animation separation")
+    for terrain_set in spec.get("terrain_sets", []):
+        if not isinstance(terrain_set, Mapping) or type(terrain_set.get("mode", 0)) is not int:
+            raise CompilerError("terrain set mode must be an integer")
+        for terrain in terrain_set.get("terrains", []):
+            if not isinstance(terrain, Mapping) or not isinstance(terrain.get("name", ""), str):
+                raise CompilerError("terrain needs a string name")
+            if "color" in terrain:
+                terrain["color"] = _color(terrain["color"], "terrain color")
     spec["godot_path"] = binary.strip()
     return spec
 

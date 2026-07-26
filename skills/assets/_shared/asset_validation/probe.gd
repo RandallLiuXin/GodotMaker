@@ -55,16 +55,25 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 				if resource.is_class("TileSet"):
 					var tile_count := 0
 					var alternative_count := 0
+					var sources := []
 					for source_index in resource.get_source_count():
-						var source = resource.get_source(resource.get_source_id(source_index))
+						var source_id = resource.get_source_id(source_index)
+						var source = resource.get_source(source_id)
 						if source is TileSetAtlasSource:
+							var tiles := []
 							for tile_index in source.get_tiles_count():
 								var coords = source.get_tile_id(tile_index)
 								tile_count += 1
 								alternative_count += source.get_alternative_tiles_count(coords) - 1
+								var data = source.get_tile_data(coords, 0)
+								var durations := []
+								for frame_index in source.get_tile_animation_frames_count(coords): durations.append(source.get_tile_animation_frame_duration(coords, frame_index))
+								tiles.append({"coords": [coords.x, coords.y], "texture_origin": [data.texture_origin.x, data.texture_origin.y], "z_index": data.z_index, "y_sort_origin": data.y_sort_origin, "probability": data.probability, "terrain_set": data.terrain_set, "terrain": data.terrain, "animation": {"mode": source.get_tile_animation_mode(coords), "columns": source.get_tile_animation_columns(coords), "frames_count": source.get_tile_animation_frames_count(coords), "separation": [source.get_tile_animation_separation(coords).x, source.get_tile_animation_separation(coords).y], "speed": source.get_tile_animation_speed(coords), "frame_durations": durations}})
+							sources.append({"id": source_id, "region_size": [source.texture_region_size.x, source.texture_region_size.y], "margins": [source.margins.x, source.margins.y], "separation": [source.separation.x, source.separation.y], "tiles": tiles})
 					structure[check] = {
 						"source_count": resource.get_source_count(), "tile_count": tile_count,
 						"alternative_count": alternative_count,
+						"tile_shape": resource.tile_shape, "sources": sources,
 						"tile_size": [resource.tile_size.x, resource.tile_size.y],
 						"physics_layers_count": resource.get_physics_layers_count(),
 						"navigation_layers_count": resource.get_navigation_layers_count(),

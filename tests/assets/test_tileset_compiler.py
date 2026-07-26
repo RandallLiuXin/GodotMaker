@@ -54,6 +54,7 @@ def test_tileset_structure_validator_compares_loaded_recipe_facts():
         res_path="res://assets/generated/tileset/grass/grass.tres", expected_type="TileSet",
         loaded=True, godot_class="TileSet", type_matches=True,
         structure={"tileset": {"source_count": 1, "tile_count": 1, "alternative_count": 0,
+			"tile_shape": 0, "sources": [{"id": 0, "region_size": [16, 16], "margins": [0, 0], "separation": [0, 0], "tiles": [{"coords": [0, 0], "texture_origin": [0, 0], "z_index": 0, "y_sort_origin": 0, "probability": 1.0, "terrain_set": -1, "terrain": -1, "animation": {"mode": 0, "columns": 1, "frames_count": 1, "separation": [0, 0], "speed": 1.0}}]}],
             "tile_size": [16, 16], "physics_layers_count": 1, "navigation_layers_count": 0,
 			"occlusion_layers_count": 0, "custom_data_layers_count": 1, "terrain_sets_count": 0}},
     )
@@ -71,9 +72,28 @@ def test_tileset_structure_validator_fails_on_unexpected_loaded_tile_count():
         source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
         artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=Path("."),
         probe=ProbeResult("res://x", "TileSet", True, "TileSet", True, structure={"tileset": {
-            "source_count": 1, "tile_count": 0, "alternative_count": 0, "tile_size": [16, 16],
+			"source_count": 1, "tile_count": 0, "alternative_count": 0, "tile_shape": 0, "sources": [{"id": 0, "region_size": [16, 16], "margins": [0, 0], "separation": [0, 0], "tiles": []}], "tile_size": [16, 16],
             "physics_layers_count": 0, "navigation_layers_count": 0, "occlusion_layers_count": 0,
 			"custom_data_layers_count": 0, "terrain_sets_count": 0}}), spec=_spec(),
     )
     with pytest.raises(ValidationError, match="tile count"):
         structures.validate_tileset(request)
+
+
+@pytest.mark.parametrize(
+    "recipe, message",
+    [
+        (_spec(tile_shape="triangle"), "tile_shape"),
+        (_spec(sources=[{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "animation": {"frames_count": 1, "mode": "loop_forever"}}]}]), "animation mode"),
+        (_spec(terrain_sets=[{"terrains": [{"name": "grass", "color": [2, 0, 0]}]}]), "terrain color"),
+    ],
+)
+def test_tileset_recipe_rejects_unknown_enums_and_invalid_colours(recipe, message, tmp_path):
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=tmp_path,
+        spec=recipe,
+    )
+    with pytest.raises(CompilerError, match=message):
+        compiler.compile_tileset(request)

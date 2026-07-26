@@ -20,11 +20,13 @@ func _points(values: Array) -> PackedVector2Array:
 	return result
 
 func _shape(value: Variant) -> int:
-	if value is int:
+	if value is int and value >= TileSet.TILE_SHAPE_SQUARE and value <= TileSet.TILE_SHAPE_HEXAGON:
 		return value
-	return {"square": TileSet.TILE_SHAPE_SQUARE, "isometric": TileSet.TILE_SHAPE_ISOMETRIC,
-		"half_offset_square": TileSet.TILE_SHAPE_HALF_OFFSET_SQUARE,
-		"hexagon": TileSet.TILE_SHAPE_HEXAGON}.get(str(value), TileSet.TILE_SHAPE_SQUARE)
+	push_error("invalid normalized tile_shape"); quit(2); return TileSet.TILE_SHAPE_SQUARE
+
+func _color(value: Array) -> Color:
+	if value.size() != 4: push_error("normalized color needs four channels"); quit(2); return Color.WHITE
+	return Color(float(value[0]), float(value[1]), float(value[2]), float(value[3]))
 
 func _layers(tile_set: TileSet, recipe: Dictionary) -> void:
 	for layer in recipe.get("physics_layers", []):
@@ -53,7 +55,7 @@ func _layers(tile_set: TileSet, recipe: Dictionary) -> void:
 			tile_set.add_terrain(terrain_set)
 			var terrain := tile_set.get_terrains_count(terrain_set) - 1
 			tile_set.set_terrain_name(terrain_set, terrain, String(terrain_recipe.get("name", "")))
-			if terrain_recipe.has("color"): tile_set.set_terrain_color(terrain_set, terrain, Color(terrain_recipe["color"]))
+			if terrain_recipe.has("color"): tile_set.set_terrain_color(terrain_set, terrain, _color(terrain_recipe["color"]))
 
 func _tile_data(source: TileSetAtlasSource, coords: Vector2i, alternative: int, tile: Dictionary) -> void:
 	var data := source.get_tile_data(coords, alternative)
@@ -99,6 +101,7 @@ func _source(tile_set: TileSet, item: Dictionary, fallback_id: int) -> void:
 			_tile_data(source, coords, id, alternative)
 		var animation: Dictionary = tile.get("animation", {})
 		if not animation.is_empty():
+			source.set_tile_animation_mode(coords, int(animation["mode"]))
 			source.set_tile_animation_columns(coords, int(animation.get("columns", 1)))
 			source.set_tile_animation_frames_count(coords, int(animation.get("frames_count", 1)))
 			source.set_tile_animation_separation(coords, _v2(animation.get("separation", [0, 0])))
