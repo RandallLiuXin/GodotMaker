@@ -133,6 +133,7 @@ def compile_and_validate(
     except (OSError, StableEntryError, ValidationError) as exc:
         return _failure(result, passed, "L1", exc)
 
+    passed.append("L1")
     primary_source = atlas_paths[0]
     compile_request = CompileRequest(
         production_family="tileset",
@@ -153,10 +154,9 @@ def compile_and_validate(
             "path": output["path"],
         }:
             raise ValidationError("TileSet compiler returned an artifact that does not match the result")
-    except CompilerError as exc:
+    except (CompilerError, ValidationError) as exc:
         return _failure(result, passed, "L2", exc)
 
-    passed.append("L1")
     passed.append("L2")
     structures = StructureValidatorRegistry()
     tileset_structures.register_into(structures)

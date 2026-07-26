@@ -122,6 +122,66 @@ def _png(width: int, height: int) -> bytes:
     return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(b"".join(b"\0" + b"\xff\xff\xff\xff" * width for _ in range(height)))) + chunk(b"IEND", b"")
 
 
+def test_tileset_compiler_imports_before_running_the_builder(tmp_path, monkeypatch):
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=tmp_path,
+        spec=_spec(),
+    )
+    calls = []
+
+    class Result:
+        returncode = 0
+        stderr = ""
+        stdout = ""
+
+    def fake_run(args, **_kwargs):
+        calls.append(args)
+        return Result()
+
+    monkeypatch.setattr(compiler.subprocess, "run", fake_run)
+    assert compiler.compile_tileset(request) == {"sources": 1, "tile_size": [16, 16]}
+    assert calls[0][-1] == "--import"
+    assert "--script" in calls[1]
+
+
+def test_tileset_builder_failure_preserves_existing_artifact(godot_bin, godot_project):
+    artifact = godot_project / "assets/generated/tileset/grass/grass.tres"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"previous-good-artifact")
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/missing.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=godot_project,
+        spec={
+            "godot_path": godot_bin, "tile_size": [16, 16],
+            "sources": [{"texture": "res://assets/generated/tileset/grass/missing.png", "tiles": [{"coords": [0, 0]}]}],
+        },
+    )
+    with pytest.raises(CompilerError, match="TileSet Godot compiler failed"):
+        compiler.compile_tileset(request)
+    assert artifact.read_bytes() == b"previous-good-artifact"
+
+
+def test_tileset_builder_accepts_json_integer_float_tile_shape(godot_bin, godot_project):
+    source = godot_project / "assets/generated/tileset/grass/atlas.png"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(_png(16, 16))
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/hex.tres", project_root=godot_project,
+        spec={
+            "godot_path": godot_bin, "tile_shape": "hexagon", "tile_size": [16, 16],
+            "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0]}]}],
+        },
+    )
+    compiler.compile_tileset(request)
+    report = GodotProbe(godot_bin).probe(godot_project, [ProbeRequest(request.artifact_path, "TileSet", ("tileset",))])
+    assert report.resources[0].structure["tileset"]["tile_shape"] == 3
+
+
 def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_project):
     """Real compiler → ResourceLoader coverage for the v1 square atlas path."""
     fixture = REPO_ROOT / "tests" / "assets" / "fixtures" / "orthogonal_tileset_tilemap.tscn"

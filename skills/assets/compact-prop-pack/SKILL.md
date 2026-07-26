@@ -10,7 +10,7 @@ Skill.
 ## Contract
 
 Accept the shared asset request contract from
-`skills/assets/_shared/asset-skill-contract.md` with
+`.godotmaker/asset-runtime/asset-skill-contract.md` with
 `asset_type: "compact-prop-pack"`. The family-specific `spec` is the exact
 JSON declaration passed to `tools/asset_atlas_assemble.py --declaration`; no
 conversion or inferred fields are allowed:
@@ -67,7 +67,7 @@ names exactly match the corresponding metadata region names.
    `tools/asset_atlas_assemble.py`. Its declaration contains every slot's name,
    rectangle, source, and pivot. It is the source of the exact regions.
 4. For every metadata region, compile one independent `AtlasTexture` through
-   `skills/assets/_shared/asset_compiler/atlas_texture.py`, passing only
+   `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py`, passing only
    `metadata_path` and that region's `logical_asset_id` in the compiler spec.
    The artifact filename must equal the logical id.
 5. Run the shared L0-L4 validation ladder for every runtime output. L4 must
@@ -77,7 +77,7 @@ names exactly match the corresponding metadata region names.
    whole-atlas texture or silently omit an output.
 
 Common schema validation, atlas assembly, compiler routing, and L0-L4
-validation live exclusively in `skills/assets/_shared/`. This Skill does not
+ validation live exclusively in `.godotmaker/asset-runtime/`. This Skill does not
 copy a schema, compiler, validator, or atlas-packing implementation.
 
 ## Prompt Requirements

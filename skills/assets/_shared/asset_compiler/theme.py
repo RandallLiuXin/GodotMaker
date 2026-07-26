@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .contract import CompileRequest, CompilerError
+from ._stable_entry import StableEntryError, assert_within_output_dir, resolve_res_path
 from .registry import CompilerRegistry, CompilerRoute
 
 COMPILER_ID = "theme_recipe"
@@ -25,7 +26,6 @@ THEME_CHECKS = ("theme",)
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _COLOR = re.compile(r"^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$")
-_RES_PATH = re.compile(r"^res://(?!.*(?:^|/)\.\.?/)[^\s]+$")
 _THEME_TYPES = frozenset(
     {
         "Button", "CheckBox", "CheckButton", "Label", "LineEdit",
@@ -282,24 +282,53 @@ def _validate_resource_content(file_path: Path, expected_type: str, suffix: str,
         _fail(f"{label}.path is not valid {expected_type} content: {file_path.name}")
 
 
-def _resource(value: Any, label: str, *, expected_type: str, root: Path) -> tuple[str, str]:
+def _resource(
+    value: Any,
+    label: str,
+    *,
+    expected_type: str,
+    root: Path,
+    production_family: str,
+    asset_id: str,
+) -> tuple[str, str]:
     item = _mapping(value, label)
     if set(item) != {"type", "path"} or item.get("type") != expected_type:
         _fail(f"{label} must have exactly type {expected_type!r} and path")
     path = item.get("path")
-    if not isinstance(path, str) or not _RES_PATH.fullmatch(path):
+    if not isinstance(path, str):
         _fail(f"{label}.path must be a safe res:// path")
+    try:
+        resolved = resolve_res_path(root, path, label=f"{label}.path")
+    except StableEntryError as exc:
+        _fail(f"{label}.path must be a safe res:// path: {exc}")
     suffix = Path(path).suffix.lower()
     if suffix not in _RESOURCE_EXTENSIONS[expected_type]:
         _fail(f"{label}.path is not a supported {expected_type} resource")
-    file_path = root / path[len("res://"):]
+    try:
+        file_path = assert_within_output_dir(
+            root,
+            resolved,
+            production_family=production_family,
+            asset_id=asset_id,
+            label=f"{label}.path",
+        )
+    except StableEntryError as exc:
+        _fail(f"{label}.path must be a safe res:// path: {exc}")
     if not file_path.is_file():
         _fail(f"{label}.path does not exist: {path}")
     _validate_resource_content(file_path, expected_type, suffix, label)
     return path, expected_type
 
 
-def _item_rows(recipe: Mapping[str, Any], section: str, variations: set[str], variation_bases: Mapping[str, str], root: Path) -> list[tuple[str, str, str]]:
+def _item_rows(
+    recipe: Mapping[str, Any],
+    section: str,
+    variations: set[str],
+    variation_bases: Mapping[str, str],
+    root: Path,
+    production_family: str,
+    asset_id: str,
+) -> list[tuple[str, str, str]]:
     rows: list[tuple[str, str, str]] = []
     for index, raw in enumerate(_list(recipe[section], section)):
         item = _mapping(raw, f"{section}[{index}]")
@@ -317,10 +346,10 @@ def _item_rows(recipe: Mapping[str, Any], section: str, variations: set[str], va
         elif section == "constants":
             encoded = str(_number(value, f"{section}[{index}].value", integer=True))
         elif section == "fonts":
-            path, _ = _resource(value, f"{section}[{index}].value", expected_type="FontFile", root=root)
+            path, _ = _resource(value, f"{section}[{index}].value", expected_type="FontFile", root=root, production_family=production_family, asset_id=asset_id)
             encoded = f'ExtResource("Font_{index}")'
         elif section == "icons":
-            path, _ = _resource(value, f"{section}[{index}].value", expected_type="Texture2D", root=root)
+            path, _ = _resource(value, f"{section}[{index}].value", expected_type="Texture2D", root=root, production_family=production_family, asset_id=asset_id)
             encoded = f'ExtResource("Icon_{index}")'
         else:
             encoded = _identifier(value, f"{section}[{index}].value")
@@ -409,7 +438,13 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
     variation_bases = dict(variations)
 
     root = request.project_root
-    sections = {section: _item_rows(recipe, section, variation_names, variation_bases, root) for section in ("colors", "font_sizes", "constants", "fonts", "icons")}
+    sections = {
+        section: _item_rows(
+            recipe, section, variation_names, variation_bases, root,
+            request.production_family, request.asset_id,
+        )
+        for section in ("colors", "font_sizes", "constants", "fonts", "icons")
+    }
     boxes, box_types = _styleboxes(recipe)
     styles: list[tuple[str, str, str]] = []
     for index, raw in enumerate(_list(recipe["styles"], "styles")):
@@ -430,7 +465,14 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
     external: list[tuple[str, str, str]] = []
     for section, resource_type, prefix in (("fonts", "FontFile", "Font"), ("icons", "Texture2D", "Icon")):
         for index, raw in enumerate(_list(recipe[section], section)):
-            path, _ = _resource(_mapping(raw, f"{section}[{index}]")["value"], f"{section}[{index}].value", expected_type=resource_type, root=root)
+            path, _ = _resource(
+                _mapping(raw, f"{section}[{index}]")["value"],
+                f"{section}[{index}].value",
+                expected_type=resource_type,
+                root=root,
+                production_family=request.production_family,
+                asset_id=request.asset_id,
+            )
             external.append((f"{prefix}_{index}", resource_type, path))
     lines = ["[gd_resource type=\"Theme\" load_steps=" + str(1 + len(external) + len(boxes)) + " format=3]", ""]
     for resource_id, resource_type, path in external:
@@ -439,7 +481,7 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
         lines.extend([f'[sub_resource type="{box_types[box_id]}" id="StyleBox_{box_id}"]', *boxes[box_id], ""])
     lines.extend(["[resource]"])
     for name, base in sorted(variations):
-        lines.append(f'{name}/variation_base = &"{base}"')
+        lines.append(f'{name}/base_type = &"{base}"')
     category = {"colors": "colors", "font_sizes": "font_sizes", "constants": "constants", "fonts": "fonts", "icons": "icons"}
     for section in ("colors", "font_sizes", "constants", "fonts", "icons"):
         for theme_type, name, value in sorted(sections[section]):

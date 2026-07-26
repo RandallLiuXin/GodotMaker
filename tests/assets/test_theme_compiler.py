@@ -47,7 +47,7 @@ def _request(root: Path):
 
 def _write_recipe(root: Path, recipe):
     path = root / "assets/generated/ui-kit/main/main.json"
-    path.parent.mkdir(parents=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(recipe), encoding="utf-8")
 
 
@@ -66,7 +66,7 @@ def test_compiles_a_complete_theme_with_a_variation_deterministically(tmp_path):
     assert second.receipt.details == {"variations": ["PrimaryButton"], "theme_items": 4, "styleboxes": ["button_normal"]}
     assert (tmp_path / "assets/generated/ui-kit/main/main.tres").read_bytes() == first_bytes
     text = first_bytes.decode()
-    assert 'PrimaryButton/variation_base = &"Button"' in text
+    assert 'PrimaryButton/base_type = &"Button"' in text
     assert "Button/colors/font_color = Color(1, 1, 1, 1)" in text
     assert 'Button/styles/normal = SubResource("StyleBox_button_normal")' in text
 
@@ -114,7 +114,7 @@ def test_rejects_untrusted_type_property_and_stylebox_references(tmp_path, mutat
 
 
 def test_rejects_missing_external_resources(tmp_path):
-    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://outside.ttf"}}])
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://assets/generated/ui-kit/main/outside.ttf"}}])
     _write_recipe(tmp_path, recipe)
     with pytest.raises(CompilerError, match="does not exist"):
         _compile(tmp_path)
@@ -128,10 +128,40 @@ def test_rejects_missing_external_resources(tmp_path):
     ],
 )
 def test_rejects_wrongly_typed_external_resource_content(tmp_path, section, resource_type, path):
-    (tmp_path / path[len("res://"):]).write_bytes(b"not a resource")
+    path = "res://assets/generated/ui-kit/main/" + Path(path).name
+    resource = tmp_path / path[len("res://"):]
+    resource.parent.mkdir(parents=True, exist_ok=True)
+    resource.write_bytes(b"not a resource")
     item = {"type": "Button", "name": "font" if section == "fonts" else "icon", "value": {"type": resource_type, "path": path}}
     _write_recipe(tmp_path, _recipe(**{section: [item]}))
     with pytest.raises(CompilerError, match=f"not valid {resource_type} content"):
+        _compile(tmp_path)
+
+
+@pytest.mark.parametrize("path", [
+    "res://C:/Windows/Fonts/arial.ttf",
+    "res:///etc/passwd",
+    "res://assets/generated/ui-kit/main/../escape.ttf",
+])
+def test_rejects_unsafe_external_resource_paths(tmp_path, path):
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": path}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="safe res:// path"):
+        _compile(tmp_path)
+
+
+def test_rejects_external_resource_symlink_escape(tmp_path):
+    source = tmp_path / "assets/generated/ui-kit/main/font.ttf"
+    source.parent.mkdir(parents=True)
+    outside = tmp_path / "outside.ttf"
+    outside.write_bytes(b"not a font")
+    try:
+        source.symlink_to(outside)
+    except OSError:
+        pytest.skip("symlinks are not permitted on this platform")
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://assets/generated/ui-kit/main/font.ttf"}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="safe res:// path"):
         _compile(tmp_path)
 
 
@@ -145,8 +175,10 @@ def test_rejects_a_truncated_png_with_valid_magic_and_iend(tmp_path):
         + b"\x00\x00\x00\x00"
         + b"\x00\x00\x00\x00IEND\x00\x00\x00\x00"
     )
-    (tmp_path / "fake.png").write_bytes(fake_png)
-    recipe = _recipe(icons=[{"type": "Button", "name": "icon", "value": {"type": "Texture2D", "path": "res://fake.png"}}])
+    target = tmp_path / "assets/generated/ui-kit/main/fake.png"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(fake_png)
+    recipe = _recipe(icons=[{"type": "Button", "name": "icon", "value": {"type": "Texture2D", "path": "res://assets/generated/ui-kit/main/fake.png"}}])
     _write_recipe(tmp_path, recipe)
     with pytest.raises(CompilerError, match="not valid Texture2D content"):
         _compile(tmp_path)
@@ -155,8 +187,10 @@ def test_rejects_a_truncated_png_with_valid_magic_and_iend(tmp_path):
 def test_rejects_a_minimal_sfnt_without_required_font_tables(tmp_path):
     # The former bounds-only parser accepted this single empty cmap record.
     fake_sfnt = b"\x00\x01\x00\x00" + struct.pack(">HHHH", 1, 0, 0, 0) + b"cmap" + struct.pack(">III", 0, 28, 0)
-    (tmp_path / "fake.ttf").write_bytes(fake_sfnt)
-    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://fake.ttf"}}])
+    target = tmp_path / "assets/generated/ui-kit/main/fake.ttf"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(fake_sfnt)
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://assets/generated/ui-kit/main/fake.ttf"}}])
     _write_recipe(tmp_path, recipe)
     with pytest.raises(CompilerError, match="not valid FontFile content"):
         _compile(tmp_path)

@@ -1012,6 +1012,35 @@ class TestPublishedAssetRuntime:
         assert (runtime / "asset_validation" / "ladder.py").exists()
         assert not (target / skill_root / "_shared").exists()
 
+    @pytest.mark.parametrize(
+        "publish_project,skill_root",
+        [
+            (_publish_claude_project, ".claude/skills"),
+            (_publish_codex_project, ".agents/skills"),
+            (_publish_opencode_project, ".opencode/skills"),
+        ],
+    )
+    def test_published_asset_skills_reference_existing_runtime_paths(
+        self, tmp_path, monkeypatch, publish_project, skill_root
+    ):
+        result = publish_project(tmp_path, monkeypatch)
+        target = result[0] if isinstance(result, tuple) else result
+        asset_skills = [
+            path.name for path in (REPO_ROOT / "skills" / "assets").iterdir()
+            if path.is_dir() and not path.name.startswith("_")
+        ]
+
+        for skill_name in asset_skills:
+            content = (target / skill_root / skill_name / "SKILL.md").read_text(encoding="utf-8")
+            assert "skills/assets/_shared" not in content
+            assert "../_shared" not in content
+            references = re.findall(r"`(\.godotmaker/asset-runtime/[^`]+)`", content)
+            assert references, f"{skill_name} must reference the published asset runtime"
+            for reference in references:
+                assert (target / reference).exists(), (
+                    f"{skill_name} references a missing published runtime path: {reference}"
+                )
+
     def test_published_runtime_imports_without_the_source_checkout(self, tmp_path):
         target = tmp_path / "target"
         publish_asset_runtime(REPO_ROOT, target)

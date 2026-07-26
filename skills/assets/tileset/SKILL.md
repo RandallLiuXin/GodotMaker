@@ -12,7 +12,7 @@ use the same request and result contract.
 ## Contract
 
 Read and enforce the common request and result contract in
-`skills/assets/_shared/asset-skill-contract.md`. Accept only a request whose
+`.godotmaker/asset-runtime/asset-skill-contract.md`. Accept only a request whose
 `asset_type` is `tileset`; require a stable `asset_id`, a concise `brief`, and
 an explicit `spec`. Return the common result object with:
 
@@ -67,7 +67,7 @@ layout. It only provides pixels for the explicit recipe below.
 ## Explicit Recipe
 
 Put all runtime semantics in `request.spec`, using the exact field shapes
-accepted by `skills/assets/_shared/asset_compiler/tileset.py`. The minimum
+accepted by `.godotmaker/asset-runtime/asset_compiler/tileset.py`. The minimum
 recipe is:
 
 ```json

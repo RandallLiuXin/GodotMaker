@@ -10,7 +10,7 @@ arc, aura loop, dust, or another detached foreground effect. A request produces
 either one static `Texture2D` effect or one independently animated
 `SpriteFrames` effect.
 
-Read `../_shared/asset-skill-contract.md` before accepting a request. First
+Read `.godotmaker/asset-runtime/asset-skill-contract.md` before accepting a request. First
 validate the shared request/result shape with
 `tools/asset_skill_contract_check.py`, then validate this family contract with
 `tools/asset_animated_bundle_contract_check.py --kind request`. For final

@@ -13,7 +13,7 @@ geometry.
 ## Invocation
 
 Accept one asset request matching the shared Asset Skill request schema in
-`skills/assets/_shared/schema/asset-skill-request.schema.json`. Require
+`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
 `asset_type` to be `background-map`. Validate the returned document against the
 shared result schema and checker before returning it.
 

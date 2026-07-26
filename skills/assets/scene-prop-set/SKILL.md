@@ -8,7 +8,7 @@ backgrounds, UI, characters, effects, terrain, or scene placement.
 ## Contract
 
 Accept the shared asset request contract from
-`skills/assets/_shared/asset-skill-contract.md` with
+`.godotmaker/asset-runtime/asset-skill-contract.md` with
 `asset_type: "scene-prop-set"`. The family-specific `spec` is the exact JSON
 declaration passed to `tools/asset_atlas_assemble.py --declaration`; no
 conversion or inferred fields are allowed:
@@ -64,7 +64,7 @@ objects, or worker-dispatch details.
 3. Use `tools/asset_atlas_assemble.py` to build the one physical PNG and its
    adjacent metadata from explicit fixed slots. The written metadata is the
    only source for runtime regions.
-4. Use `skills/assets/_shared/asset_compiler/atlas_texture.py` once per region
+4. Use `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py` once per region
    to compile an independent `AtlasTexture`. Pass its `metadata_path` and the
    exact logical region name; the `.tres` filename must match that name.
 5. Run shared L0-L4 validation per output. L4 must prove the loaded resource
@@ -74,7 +74,7 @@ objects, or worker-dispatch details.
    if a region is absent or invalid; never return the entire atlas as one prop.
 
 Common schema processing, compiler routing, and validation are reused only
-from `skills/assets/_shared/`; no family-local copy of a schema, compiler,
+ from `.godotmaker/asset-runtime/`; no family-local copy of a schema, compiler,
 validator, packing, or trimming routine is permitted.
 
 ## Prompt Requirements

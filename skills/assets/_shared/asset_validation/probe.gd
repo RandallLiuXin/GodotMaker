@@ -58,7 +58,7 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 						var type_name := str(theme_type)
 						var styleboxes := {}
 						for style_name in resource.get_stylebox_list(theme_type):
-							var stylebox := resource.get_stylebox(style_name, theme_type)
+							var stylebox: StyleBox = resource.get_stylebox(style_name, theme_type)
 							var stylebox_facts := {"class": stylebox.get_class()}
 							if stylebox.is_class("StyleBoxFlat"):
 								var flat := stylebox as StyleBoxFlat
@@ -147,9 +147,9 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 					for animation_name in resource.get_animation_names():
 						var frame_paths := []
 						var frame_durations := []
-						var frame_count := resource.get_frame_count(animation_name)
+						var frame_count: int = resource.get_frame_count(animation_name)
 						for frame_index in range(frame_count):
-							var texture := resource.get_frame_texture(animation_name, frame_index)
+							var texture: Texture2D = resource.get_frame_texture(animation_name, frame_index)
 							frame_paths.append(texture.resource_path if texture != null else "")
 							frame_durations.append(resource.get_frame_duration(animation_name, frame_index))
 						animations.append({

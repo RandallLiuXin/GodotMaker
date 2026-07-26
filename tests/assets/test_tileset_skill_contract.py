@@ -14,7 +14,7 @@ sys.path.insert(0, str(SKILL_DIR))
 
 from asset_compiler import CompileRequest, CompilerError  # noqa: E402
 from asset_compiler import tileset as compiler  # noqa: E402
-from asset_validation import ProbeReport, ProbeResult  # noqa: E402
+from asset_validation import ProbeReport, ProbeResult, ValidationError  # noqa: E402
 from asset_validation.godot_probe import GodotProbe  # noqa: E402
 from standalone_validation import TileSetSkillError, compile_and_validate  # noqa: E402
 
@@ -27,7 +27,7 @@ def test_tileset_skill_is_standalone_and_reuses_shared_contracts():
     text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
     assert text.startswith("---\nname: tileset\n")
     for shared_path in (
-        "skills/assets/_shared/asset-skill-contract.md",
+        ".godotmaker/asset-runtime/asset-skill-contract.md",
         "asset_compiler.tileset.register_into()",
         "asset_validation.tileset.register_into()",
         "standalone_validation.compile_and_validate()",
@@ -199,6 +199,36 @@ def test_standalone_runner_maps_a_godot_setup_failure_to_l3(tmp_path, monkeypatc
         "L0": True, "L1": True, "L2": True, "L3": False, "L4": False,
     }
     assert "godot_path must be a non-empty string" in validated["validation"]["notes"]
+
+
+def test_standalone_runner_reports_l1_before_an_l2_validation_error(tmp_path, monkeypatch):
+    request = {
+        "asset_type": "tileset",
+        "asset_id": "grassland",
+        "brief": "A grassland tile atlas.",
+        "spec": _fixture(),
+    }
+    source_path = "res://assets/generated/tileset/grassland/grassland_atlas.png"
+    source = tmp_path / source_path.removeprefix("res://")
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"png")
+    result = {
+        "asset_type": "tileset",
+        "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
+        "sources": [{"path": source_path, "layout": "tile_atlas"}],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    def fail_compile(_request):
+        raise ValidationError("compiler result disagrees with request")
+
+    monkeypatch.setattr(compiler, "compile_tileset", fail_compile)
+    validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+
+    assert validated["validation"]["levels"] == {
+        "L0": True, "L1": True, "L2": False, "L3": False, "L4": False,
+    }
 
 
 def test_standalone_runner_rejects_an_unvalidated_extra_runtime_output(tmp_path):
