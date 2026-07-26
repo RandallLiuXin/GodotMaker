@@ -1,0 +1,25 @@
+{
+  "godot_path": "/path/to/godot",
+  "tile_shape": "square",
+  "tile_size": [16, 16],
+  "physics_layers": [{"collision_layer": 1, "collision_mask": 1}],
+  "terrain_sets": [{
+    "mode": 0,
+    "terrains": [{"name": "grass", "color": [0.2, 0.8, 0.3]}]
+  }],
+  "sources": [{
+    "id": 0,
+    "texture": "res://assets/generated/tileset/grassland/grassland_atlas.png",
+    "region_size": [16, 16],
+    "margins": [0, 0],
+    "separation": [0, 0],
+    "tiles": [{
+      "coords": [0, 0],
+      "terrain_set": 0,
+      "terrain": 0,
+      "peering_bits": [{"bit": 0, "terrain": 0}],
+      "collision_polygons": [{"layer": 0, "points": [[0, 0], [16, 0], [16, 16], [0, 16]]}],
+      "alternatives": [{"id": 1, "probability": 0.25}]
+    }]
+  }]
+}
