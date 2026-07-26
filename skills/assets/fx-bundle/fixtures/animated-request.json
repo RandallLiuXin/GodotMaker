@@ -1,0 +1,19 @@
+{
+  "asset_type": "fx-bundle",
+  "asset_id": "impact",
+  "brief": "A short blue impact burst that plays once.",
+  "provider": "native",
+  "spec": {
+    "mode": "animated",
+    "required_actions": ["impact"],
+    "actions": [
+      {
+        "name": "impact",
+        "frame_names": ["impact_01", "impact_02", "impact_03"],
+        "fps": 14,
+        "loop": false,
+        "frame_durations": [1, 0.5, 1]
+      }
+    ]
+  }
+}

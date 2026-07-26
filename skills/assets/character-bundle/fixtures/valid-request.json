@@ -1,0 +1,28 @@
+{
+  "asset_type": "character-bundle",
+  "asset_id": "player",
+  "brief": "A side-view pixel knight with a readable idle and one attack.",
+  "references": [
+    { "role": "canonical", "path": "res://references/player_canonical.png" }
+  ],
+  "provider": "native",
+  "spec": {
+    "required_actions": ["idle", "attack"],
+    "actions": [
+      {
+        "name": "idle",
+        "frame_names": ["idle_01", "idle_02"],
+        "fps": 8,
+        "loop": true,
+        "frame_durations": [1, 0.75]
+      },
+      {
+        "name": "attack",
+        "frame_names": ["attack_01", "attack_02", "attack_03"],
+        "fps": 12,
+        "loop": false,
+        "frame_durations": [1, 0.5, 1]
+      }
+    ]
+  }
+}

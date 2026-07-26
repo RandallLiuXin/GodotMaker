@@ -1,0 +1,7 @@
+{
+  "asset_type": "fx-bundle",
+  "asset_id": "pickup",
+  "brief": "A single bright pickup sparkle with a transparent background.",
+  "provider": "native",
+  "spec": { "mode": "static" }
+}
