@@ -167,7 +167,7 @@ def test_tileset_builder_failure_preserves_existing_artifact(godot_bin, godot_pr
 def test_tileset_builder_accepts_json_integer_float_tile_shape(godot_bin, godot_project):
     source = godot_project / "assets/generated/tileset/grass/atlas.png"
     source.parent.mkdir(parents=True)
-    source.write_bytes(_png(16, 16))
+    source.write_bytes(_png(32, 16))
     request = CompileRequest(
         production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
         source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
@@ -213,6 +213,52 @@ def test_tileset_l4_accepts_omitted_animation_defaults(godot_bin, godot_project)
     ))
 
 
+def test_tileset_l4_accepts_float32_round_trips(godot_bin, godot_project):
+    source = godot_project / "assets/generated/tileset/grass/atlas.png"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(_png(32, 16))
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/float32.tres", project_root=godot_project,
+        spec={
+            "godot_path": godot_bin, "tile_size": [16, 16],
+            "terrain_sets": [{"terrains": [{"name": "grass", "color": [0.2, 0.8, 0.3]}]}],
+            "sources": [{
+                "texture": "res://assets/generated/tileset/grass/atlas.png",
+                "region_size": [16, 16],
+                "tiles": [{
+                    "coords": [0, 0], "probability": 0.3,
+                    "animation": {
+                        "columns": 2, "frames_count": 2, "speed": 1.3,
+                        "frame_durations": [
+                            {"frame": 0, "duration": 0.1},
+                            {"frame": 1, "duration": 0.9},
+                        ],
+                    },
+                }],
+            }],
+        },
+    )
+    registry = CompilerRegistry()
+    compiler.register_into(registry)
+    registry.compile(request)
+    report = GodotProbe(godot_bin).probe(
+        godot_project, [ProbeRequest(request.artifact_path, "TileSet", ("tileset",))]
+    )
+    facts = report.resources[0].structure["tileset"]
+    loaded_tile = facts["sources"][0]["tiles"][0]
+    assert loaded_tile["probability"] == pytest.approx(0.3, abs=1e-6)
+    assert loaded_tile["animation"]["speed"] == pytest.approx(1.3, abs=1e-6)
+    assert loaded_tile["animation"]["frame_durations"] == pytest.approx([0.1, 0.9], abs=1e-6)
+    assert facts["terrain_sets"][0]["terrains"][0]["color"] == pytest.approx([0.2, 0.8, 0.3, 1.0], abs=1e-6)
+    structures.validate_tileset(StructureRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path=request.source_path, artifact_type="TileSet", artifact_path=request.artifact_path,
+        project_root=godot_project, probe=report.resources[0], spec=request.spec,
+    ))
+
+
 def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_project):
     """Real compiler → ResourceLoader coverage for the v1 square atlas path."""
     fixture = REPO_ROOT / "tests" / "assets" / "fixtures" / "orthogonal_tileset_tilemap.tscn"
@@ -234,7 +280,7 @@ def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_pr
             "navigation_layers": [{}],
             "occlusion_layers": [{}],
             "custom_data_layers": [{"name": "kind", "type": 4}],
-            "terrain_sets": [{"terrains": [{"name": "grass", "color": [0, 1, 0]}]}],
+            "terrain_sets": [{"terrains": [{"name": "grass", "color": [0.2, 0.8, 0.3]}]}],
             "sources": [{
                 "id": 3,
                 "texture": "res://assets/generated/tileset/grass/atlas.png",
