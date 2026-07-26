@@ -33,9 +33,11 @@ an explicit `spec`. Return the common result object with:
 }
 ```
 
-One invocation may return further logical runtime outputs only when every one
-is declared in the request and independently satisfies the shared result
-contract. The primary output is always the `TileSet` above.
+The shared contract permits multiple logical outputs, but this v1 TileSet skill
+supports exactly one runtime output: the `TileSet` above. It rejects any extra
+runtime output at L0 rather than marking an uncompiled or unvalidated resource
+as ready. Reference outputs remain allowed by the shared contract and do not
+enter runtime L2-L4 validation.
 
 Do not read or require tags, stage state, `ASSETS.md`, either generated
 manifest, or any `/gm-asset` mode. Do not register outputs or decide worker

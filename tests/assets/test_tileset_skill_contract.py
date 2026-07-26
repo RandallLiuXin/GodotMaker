@@ -16,7 +16,7 @@ from asset_compiler import CompileRequest, CompilerError  # noqa: E402
 from asset_compiler import tileset as compiler  # noqa: E402
 from asset_validation import ProbeReport, ProbeResult  # noqa: E402
 from asset_validation.godot_probe import GodotProbe  # noqa: E402
-from standalone_validation import compile_and_validate  # noqa: E402
+from standalone_validation import TileSetSkillError, compile_and_validate  # noqa: E402
 
 
 def _fixture() -> dict:
@@ -199,3 +199,25 @@ def test_standalone_runner_maps_a_godot_setup_failure_to_l3(tmp_path, monkeypatc
         "L0": True, "L1": True, "L2": True, "L3": False, "L4": False,
     }
     assert "godot_path must be a non-empty string" in validated["validation"]["notes"]
+
+
+def test_standalone_runner_rejects_an_unvalidated_extra_runtime_output(tmp_path):
+    request = {
+        "asset_type": "tileset",
+        "asset_id": "grassland",
+        "brief": "A grassland tile atlas.",
+        "spec": _fixture(),
+    }
+    result = {
+        "asset_type": "tileset",
+        "outputs": [
+            {"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"},
+            {"role": "runtime", "path": "res://assets/generated/tileset/grassland/unvalidated.tres", "godot_type": "Texture2D"},
+        ],
+        "sources": [{"path": "res://assets/generated/tileset/grassland/grassland_atlas.png", "layout": "tile_atlas"}],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    with pytest.raises(TileSetSkillError, match="exactly one runtime output"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")

@@ -33,15 +33,11 @@ class TileSetSkillError(Exception):
 _LEVELS = ("L0", "L1", "L2", "L3", "L4")
 
 
-def _primary_output(result: Mapping[str, Any]) -> Mapping[str, Any]:
-    outputs = [
-        output
-        for output in result["outputs"]
-        if output["role"] == "runtime" and output.get("godot_type") == "TileSet"
-    ]
-    if len(outputs) != 1:
+def _runtime_output(result: Mapping[str, Any]) -> Mapping[str, Any]:
+    outputs = [output for output in result["outputs"] if output["role"] == "runtime"]
+    if len(outputs) != 1 or outputs[0].get("godot_type") != "TileSet":
         raise TileSetSkillError(
-            "a standalone tileset result must declare exactly one runtime TileSet output"
+            "v1 standalone tileset supports exactly one runtime output, and it must be TileSet"
         )
     return outputs[0]
 
@@ -115,7 +111,7 @@ def compile_and_validate(
         check_result(result)
         if request["asset_type"] != "tileset" or result["asset_type"] != "tileset":
             raise TileSetSkillError("standalone TileSet validation requires asset_type 'tileset'")
-        output = _primary_output(result)
+        output = _runtime_output(result)
         atlas_paths = _atlas_sources(request, result)
     except (AssetContractError, TileSetSkillError) as exc:
         raise TileSetSkillError(f"L0 standalone contract failed: {exc}") from exc
