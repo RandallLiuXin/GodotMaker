@@ -17,7 +17,7 @@ extends SceneTree
 # Structural facts a resource may be asked to report for L4. The set is closed:
 # an unknown check is an error, never a silent pass. A family skill adds its
 # check name here together with the Python structure validator that consumes it.
-const KNOWN_CHECKS := ["texture2d", "atlas_texture", "spriteframes", "tileset", "theme"]
+const KNOWN_CHECKS := ["texture2d", "atlas_texture", "spriteframes", "stylebox_texture", "tileset", "theme"]
 
 
 func _parse_user_args() -> Dictionary:
@@ -163,6 +163,23 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 					structure[check] = {"animations": animations}
 				else:
 					structure[check] = {"error": "resource is a %s, not SpriteFrames" % resource.get_class()}
+			"stylebox_texture":
+				if resource.is_class("StyleBoxTexture"):
+					var style_box: StyleBoxTexture = resource
+					var texture_path := ""
+					if style_box.texture != null:
+						texture_path = style_box.texture.resource_path
+					var region := style_box.region_rect
+					structure[check] = {
+						"has_texture": style_box.texture != null,
+						"texture_path": texture_path,
+						"texture_region": [region.position.x, region.position.y, region.size.x, region.size.y],
+						"border": [style_box.texture_margin_left, style_box.texture_margin_top, style_box.texture_margin_right, style_box.texture_margin_bottom],
+						"expand_margin": [style_box.expand_margin_left, style_box.expand_margin_top, style_box.expand_margin_right, style_box.expand_margin_bottom],
+						"axis_stretch": [style_box.axis_stretch_horizontal, style_box.axis_stretch_vertical],
+					}
+				else:
+					structure[check] = {"error": "resource is a %s, not StyleBoxTexture" % resource.get_class()}
 	return structure
 
 func _tile_descriptor(tile_set: TileSet, source: TileSetAtlasSource, coords: Vector2i, alternative: int) -> Dictionary:

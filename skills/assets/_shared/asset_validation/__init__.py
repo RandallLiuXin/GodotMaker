@@ -41,6 +41,8 @@ from .structure import (
     KNOWN_ARTIFACT_TYPES,
     ATLAS_TEXTURE_CHECKS,
     ATLAS_TEXTURE_VALIDATOR_ID,
+    STYLEBOX_TEXTURE_CHECKS,
+    STYLEBOX_TEXTURE_VALIDATOR_ID,
     TEXTURE2D_CHECKS,
     TEXTURE2D_VALIDATOR_ID,
     StructureRequest,
@@ -50,6 +52,7 @@ from .structure import (
     build_default_structures,
     validate_texture2d,
     validate_atlas_texture,
+    validate_stylebox_texture,
 )
 
 __all__ = [
@@ -57,6 +60,8 @@ __all__ = [
     "KNOWN_ARTIFACT_TYPES",
     "ATLAS_TEXTURE_CHECKS",
     "ATLAS_TEXTURE_VALIDATOR_ID",
+    "STYLEBOX_TEXTURE_CHECKS",
+    "STYLEBOX_TEXTURE_VALIDATOR_ID",
     "LEVELS",
     "LEVEL_BY_ID",
     "NOT_RUN",
@@ -88,4 +93,5 @@ __all__ = [
     "find_godot",
     "validate_texture2d",
     "validate_atlas_texture",
+    "validate_stylebox_texture",
 ]

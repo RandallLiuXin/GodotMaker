@@ -33,6 +33,7 @@ from ._bridge import LAYOUT_ARTIFACT_TYPES
 from .contract import ValidationError
 from .godot_probe import PROBE_CHECKS, ProbeResult
 from asset_compiler.atlas_texture import read_atlas_texture_input
+from asset_compiler.stylebox_texture import read_stylebox_texture_input
 
 # Every artifact type the frozen stable-entry relation allows. A validator for a
 # type outside it could never run, so registering one is a mistake, not a
@@ -213,6 +214,8 @@ TEXTURE2D_VALIDATOR_ID = "texture2d_structure"
 TEXTURE2D_CHECKS = ("texture2d",)
 ATLAS_TEXTURE_VALIDATOR_ID = "atlas_texture_fixed_slot_structure"
 ATLAS_TEXTURE_CHECKS = ("atlas_texture",)
+STYLEBOX_TEXTURE_VALIDATOR_ID = "stylebox_texture_nine_slice_structure"
+STYLEBOX_TEXTURE_CHECKS = ("stylebox_texture",)
 
 
 def validate_texture2d(request: StructureRequest) -> dict[str, Any]:
@@ -282,6 +285,51 @@ def validate_atlas_texture(request: StructureRequest) -> dict[str, Any]:
     }
 
 
+def _exact_numbers(actual: Any, expected: list[int | float], label: str) -> None:
+    if not isinstance(actual, list) or len(actual) != len(expected):
+        raise ValidationError(f"the loaded StyleBoxTexture reported no {label}")
+    if any(type(value) not in (int, float) or isinstance(value, bool) for value in actual):
+        raise ValidationError(f"the loaded StyleBoxTexture reported an invalid {label}")
+    if list(actual) != expected:
+        raise ValidationError(
+            f"the loaded StyleBoxTexture {label} is {actual!r}, not {expected!r}"
+        )
+
+
+def validate_stylebox_texture(request: StructureRequest) -> dict[str, Any]:
+    """Require Godot's loaded StyleBoxTexture to retain every recipe fact."""
+    try:
+        expected = read_stylebox_texture_input(request)
+    except Exception as exc:
+        raise ValidationError(str(exc)) from exc
+    structure = request.checked_structure("stylebox_texture")
+    if structure.get("has_texture") is not True:
+        raise ValidationError("the loaded StyleBoxTexture has no texture")
+    if structure.get("texture_path") != expected.texture_path:
+        raise ValidationError(
+            "the loaded StyleBoxTexture texture_path is "
+            f"{structure.get('texture_path')!r}, not {expected.texture_path!r}"
+        )
+    _exact_numbers(structure.get("texture_region"), list(expected.texture_region), "texture_region")
+    _exact_numbers(structure.get("border"), list(expected.border), "border")
+    _exact_numbers(structure.get("expand_margin"), list(expected.expand_margin), "expand_margin")
+    _exact_numbers(
+        structure.get("axis_stretch"),
+        [
+            {"stretch": 0, "tile": 1, "tile_fit": 2}[expected.axis_stretch[0]],
+            {"stretch": 0, "tile": 1, "tile_fit": 2}[expected.axis_stretch[1]],
+        ],
+        "axis_stretch",
+    )
+    return {
+        "texture_path": expected.texture_path,
+        "texture_region": list(expected.texture_region),
+        "border": list(expected.border),
+        "expand_margin": list(expected.expand_margin),
+        "axis_stretch": {"horizontal": expected.axis_stretch[0], "vertical": expected.axis_stretch[1]},
+    }
+
+
 def build_default_structures() -> StructureValidatorRegistry:
     """Return a new registry holding every validator the shared layer ships."""
     from . import sprite_frames
@@ -292,6 +340,12 @@ def build_default_structures() -> StructureValidatorRegistry:
         validator_id=TEXTURE2D_VALIDATOR_ID,
         validator=validate_texture2d,
         checks=TEXTURE2D_CHECKS,
+    )
+    registry.register(
+        artifact_type="StyleBoxTexture",
+        validator_id=STYLEBOX_TEXTURE_VALIDATOR_ID,
+        validator=validate_stylebox_texture,
+        checks=STYLEBOX_TEXTURE_CHECKS,
     )
     registry.register(
         artifact_type="AtlasTexture",
