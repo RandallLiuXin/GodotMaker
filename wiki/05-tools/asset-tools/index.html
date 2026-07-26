@@ -3176,6 +3176,8 @@ arbitrary ClassDB types:</p>
 </tr>
 </tbody>
 </table>
+<p>Reference-only entries may use only <code>pending</code>, <code>source_ready</code>, or <code>failed</code>;
+<code>source_ready</code> is their sole completion state and is not runtime <code>ready</code>.</p>
 <p>Manual entry point:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>tools/asset_stable_entry.py<span class="w"> </span>&lt;entry_draft.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--write<span class="w"> </span>--check-files
 </code></pre></div>
@@ -3199,7 +3201,7 @@ read.</p>
 entries. It revalidates every entry and referenced file first. Runtime rows
 require a <code>ready</code> non-reference entry, so they become <code>generated</code> only when the
 asset is worker-consumable. A <code>screen-reference</code> row may instead complete at
-<code>source_ready</code> and remain repeatable at <code>ready</code> when its finalized reference
+<code>source_ready</code> when its finalized reference
 file, canonical stable entry, and root-index pointer pass validation. The
 updater validates the reference file plus every root-index pointer without
 requiring unrelated pending entries to have files. This records the same entry
