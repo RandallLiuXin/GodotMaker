@@ -135,7 +135,35 @@ def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_pr
         production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
         source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
         artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=godot_project,
-        spec={"godot_path": godot_bin, "tile_shape": "square", "tile_size": [16, 16], "sources": [{"id": 3, "texture": "res://assets/generated/tileset/grass/atlas.png", "region_size": [16, 16], "margins": [0, 0], "separation": [0, 0], "tiles": [{"coords": [0, 0], "animation": {"mode": "default", "columns": 1, "frames_count": 1, "speed": 1.0, "frame_durations": [{"frame": 0, "duration": 1.0}]}}]}]},
+        spec={
+            "godot_path": godot_bin,
+            "tile_shape": "square",
+            "tile_size": [16, 16],
+            "physics_layers": [{}],
+            "navigation_layers": [{}],
+            "occlusion_layers": [{}],
+            "custom_data_layers": [{"name": "kind", "type": 4}],
+            "terrain_sets": [{"terrains": [{"name": "grass", "color": [0.2, 0.8, 0.3]}]}],
+            "sources": [{
+                "id": 3,
+                "texture": "res://assets/generated/tileset/grass/atlas.png",
+                "region_size": [16, 16],
+                "margins": [0, 0],
+                "separation": [0, 0],
+                "tiles": [{
+                    "coords": [0, 0],
+                    "terrain_set": 0,
+                    "terrain": 0,
+                    "peering_bits": [{"bit": 0, "terrain": 0}],
+                    "custom_data": [{"layer": 0, "value": "grass"}],
+                    "collision_polygons": [{"layer": 0, "points": [[0, 0], [16, 0], [16, 16]]}],
+                    "occlusion_polygons": [{"layer": 0, "points": [[0, 0], [16, 0], [16, 16]]}],
+                    "navigation_polygons": [{"layer": 0, "points": [[0, 0], [16, 0], [16, 16]]}],
+                    "alternatives": [{"id": 1, "z_index": 2, "custom_data": [{"layer": 0, "value": "alt"}]}],
+                    "animation": {"mode": "default", "columns": 1, "frames_count": 1, "speed": 1.0, "frame_durations": [{"frame": 0, "duration": 1.0}]},
+                }],
+            }],
+        },
     )
     registry = CompilerRegistry()
     compiler.register_into(registry)

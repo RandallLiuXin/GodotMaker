@@ -101,20 +101,26 @@ func _tile_descriptor(tile_set: TileSet, source: TileSetAtlasSource, coords: Vec
 	var collisions := []
 	for layer in tile_set.get_physics_layers_count():
 		var polygons := []
-		for polygon in data.get_collision_polygons_count(layer): polygons.append(data.get_collision_polygon_points(layer, polygon).to_array())
+		for polygon in data.get_collision_polygons_count(layer): polygons.append(_points_json(data.get_collision_polygon_points(layer, polygon)))
 		collisions.append(polygons)
 	var occlusions := []
 	for layer in tile_set.get_occlusion_layers_count():
 		var polygons := []
 		for polygon in data.get_occluder_polygons_count(layer):
 			var item = data.get_occluder_polygon(layer, polygon)
-			polygons.append([] if item == null else item.polygon.to_array())
+			polygons.append([] if item == null else _points_json(item.polygon))
 		occlusions.append(polygons)
 	var navigation := []
 	for layer in tile_set.get_navigation_layers_count():
 		var polygon = data.get_navigation_polygon(layer)
-		navigation.append([] if polygon == null else polygon.vertices.to_array())
+		navigation.append([] if polygon == null else _points_json(polygon.vertices))
 	return {"id": alternative, "texture_origin": [data.texture_origin.x, data.texture_origin.y], "z_index": data.z_index, "y_sort_origin": data.y_sort_origin, "probability": data.probability, "terrain_set": data.terrain_set, "terrain": data.terrain, "peering_bits": peering, "custom_data": custom, "collision_polygons": collisions, "occlusion_polygons": occlusions, "navigation_polygons": navigation}
+
+func _points_json(points: PackedVector2Array) -> Array:
+	var result := []
+	for point in points:
+		result.append([point.x, point.y])
+	return result
 
 func _physics_layers(tile_set: TileSet) -> Array:
 	var result := []
