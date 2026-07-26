@@ -58,24 +58,31 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 						var type_name := str(theme_type)
 						var styleboxes := {}
 						for style_name in resource.get_stylebox_list(theme_type):
-							var stylebox := resource.get_stylebox(style_name, theme_type)
-							var stylebox_facts := {"class": stylebox.get_class()}
-							if stylebox.is_class("StyleBoxFlat"):
-								var flat := stylebox as StyleBoxFlat
-								stylebox_facts["border_width"] = {
-									"left": flat.border_width_left,
-									"top": flat.border_width_top,
-									"right": flat.border_width_right,
-									"bottom": flat.border_width_bottom,
-								}
+							var stylebox: StyleBox = resource.get_stylebox(style_name, theme_type)
+							var stylebox_facts := _theme_stylebox_facts(stylebox)
 							styleboxes[str(style_name)] = stylebox_facts
+						var colors := {}
+						for item_name in resource.get_color_list(theme_type):
+							colors[str(item_name)] = _color_json(resource.get_color(item_name, theme_type))
+						var font_sizes := {}
+						for item_name in resource.get_font_size_list(theme_type):
+							font_sizes[str(item_name)] = resource.get_font_size(item_name, theme_type)
+						var constants := {}
+						for item_name in resource.get_constant_list(theme_type):
+							constants[str(item_name)] = resource.get_constant(item_name, theme_type)
+						var fonts := {}
+						for item_name in resource.get_font_list(theme_type):
+							fonts[str(item_name)] = _resource_path(resource.get_font(item_name, theme_type))
+						var icons := {}
+						for item_name in resource.get_icon_list(theme_type):
+							icons[str(item_name)] = _resource_path(resource.get_icon(item_name, theme_type))
 						types[type_name] = {
 							"variation_base": str(resource.get_type_variation_base(theme_type)),
-							"colors": resource.get_color_list(theme_type),
-							"font_sizes": resource.get_font_size_list(theme_type),
-							"constants": resource.get_constant_list(theme_type),
-							"fonts": resource.get_font_list(theme_type),
-							"icons": resource.get_icon_list(theme_type),
+							"colors": colors.keys(), "color_values": colors,
+							"font_sizes": font_sizes.keys(), "font_size_values": font_sizes,
+							"constants": constants.keys(), "constant_values": constants,
+							"fonts": fonts.keys(), "font_paths": fonts,
+							"icons": icons.keys(), "icon_paths": icons,
 							"styles": resource.get_stylebox_list(theme_type),
 							"styleboxes": styleboxes,
 						}
@@ -147,9 +154,9 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 					for animation_name in resource.get_animation_names():
 						var frame_paths := []
 						var frame_durations := []
-						var frame_count := resource.get_frame_count(animation_name)
+						var frame_count: int = resource.get_frame_count(animation_name)
 						for frame_index in range(frame_count):
-							var texture := resource.get_frame_texture(animation_name, frame_index)
+							var texture: Texture2D = resource.get_frame_texture(animation_name, frame_index)
 							frame_paths.append(texture.resource_path if texture != null else "")
 							frame_durations.append(resource.get_frame_duration(animation_name, frame_index))
 						animations.append({
@@ -181,6 +188,38 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 				else:
 					structure[check] = {"error": "resource is a %s, not StyleBoxTexture" % resource.get_class()}
 	return structure
+
+
+func _color_json(color: Color) -> Array:
+	return [color.r, color.g, color.b, color.a]
+
+
+func _resource_path(resource: Resource) -> String:
+	return "" if resource == null else resource.resource_path
+
+
+func _theme_stylebox_facts(stylebox: StyleBox) -> Dictionary:
+	var facts := {"class": stylebox.get_class()}
+	if stylebox.is_class("StyleBoxFlat"):
+		var flat := stylebox as StyleBoxFlat
+		facts["border_width"] = {
+			"left": flat.border_width_left, "top": flat.border_width_top,
+			"right": flat.border_width_right, "bottom": flat.border_width_bottom,
+		}
+		facts["properties"] = {
+			"bg_color": _color_json(flat.bg_color), "border_color": _color_json(flat.border_color),
+			"corner_radius": [flat.corner_radius_top_left, flat.corner_radius_top_right, flat.corner_radius_bottom_right, flat.corner_radius_bottom_left],
+			"border_width": [flat.border_width_left, flat.border_width_top, flat.border_width_right, flat.border_width_bottom],
+			"content_margin": [flat.content_margin_left, flat.content_margin_top, flat.content_margin_right, flat.content_margin_bottom],
+			"expand_margin": [flat.expand_margin_left, flat.expand_margin_top, flat.expand_margin_right, flat.expand_margin_bottom],
+			"shadow_color": _color_json(flat.shadow_color), "shadow_size": flat.shadow_size,
+			"shadow_offset": [flat.shadow_offset.x, flat.shadow_offset.y], "anti_aliasing": flat.anti_aliasing,
+		}
+	elif stylebox.is_class("StyleBoxEmpty"):
+		facts["properties"] = {
+			"content_margin": [stylebox.content_margin_left, stylebox.content_margin_top, stylebox.content_margin_right, stylebox.content_margin_bottom],
+		}
+	return facts
 
 func _tile_descriptor(tile_set: TileSet, source: TileSetAtlasSource, coords: Vector2i, alternative: int) -> Dictionary:
 	var data := source.get_tile_data(coords, alternative)

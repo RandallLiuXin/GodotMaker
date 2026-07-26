@@ -9,7 +9,7 @@ Use this skill for a player character, enemy, NPC, summon, boss, or other
 recurring creature identity. It produces one `SpriteFrames` resource for one
 actor or skin, containing every required named body action.
 
-Read `../_shared/asset-skill-contract.md` before accepting a request. First
+Read `.godotmaker/asset-runtime/asset-skill-contract.md` before accepting a request. First
 validate the shared request/result shape with
 `tools/asset_skill_contract_check.py`, then validate this family contract with
 `tools/asset_animated_bundle_contract_check.py --kind request`. For final

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .contract import CompileRequest, CompilerError
+from ._stable_entry import StableEntryError, assert_within_output_dir, resolve_res_path
 from .registry import CompilerRegistry, CompilerRoute
 
 COMPILER_ID = "theme_recipe"
@@ -25,7 +26,6 @@ THEME_CHECKS = ("theme",)
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _COLOR = re.compile(r"^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$")
-_RES_PATH = re.compile(r"^res://(?!.*(?:^|/)\.\.?/)[^\s]+$")
 _THEME_TYPES = frozenset(
     {
         "Button", "CheckBox", "CheckButton", "Label", "LineEdit",
@@ -282,24 +282,53 @@ def _validate_resource_content(file_path: Path, expected_type: str, suffix: str,
         _fail(f"{label}.path is not valid {expected_type} content: {file_path.name}")
 
 
-def _resource(value: Any, label: str, *, expected_type: str, root: Path) -> tuple[str, str]:
+def _resource(
+    value: Any,
+    label: str,
+    *,
+    expected_type: str,
+    root: Path,
+    production_family: str,
+    asset_id: str,
+) -> tuple[str, str]:
     item = _mapping(value, label)
     if set(item) != {"type", "path"} or item.get("type") != expected_type:
         _fail(f"{label} must have exactly type {expected_type!r} and path")
     path = item.get("path")
-    if not isinstance(path, str) or not _RES_PATH.fullmatch(path):
+    if not isinstance(path, str):
         _fail(f"{label}.path must be a safe res:// path")
+    try:
+        resolved = resolve_res_path(root, path, label=f"{label}.path")
+    except StableEntryError as exc:
+        _fail(f"{label}.path must be a safe res:// path: {exc}")
     suffix = Path(path).suffix.lower()
     if suffix not in _RESOURCE_EXTENSIONS[expected_type]:
         _fail(f"{label}.path is not a supported {expected_type} resource")
-    file_path = root / path[len("res://"):]
+    try:
+        file_path = assert_within_output_dir(
+            root,
+            resolved,
+            production_family=production_family,
+            asset_id=asset_id,
+            label=f"{label}.path",
+        )
+    except StableEntryError as exc:
+        _fail(f"{label}.path must be a safe res:// path: {exc}")
     if not file_path.is_file():
         _fail(f"{label}.path does not exist: {path}")
     _validate_resource_content(file_path, expected_type, suffix, label)
     return path, expected_type
 
 
-def _item_rows(recipe: Mapping[str, Any], section: str, variations: set[str], variation_bases: Mapping[str, str], root: Path) -> list[tuple[str, str, str]]:
+def _item_rows(
+    recipe: Mapping[str, Any],
+    section: str,
+    variations: set[str],
+    variation_bases: Mapping[str, str],
+    root: Path,
+    production_family: str,
+    asset_id: str,
+) -> list[tuple[str, str, str]]:
     rows: list[tuple[str, str, str]] = []
     for index, raw in enumerate(_list(recipe[section], section)):
         item = _mapping(raw, f"{section}[{index}]")
@@ -317,10 +346,10 @@ def _item_rows(recipe: Mapping[str, Any], section: str, variations: set[str], va
         elif section == "constants":
             encoded = str(_number(value, f"{section}[{index}].value", integer=True))
         elif section == "fonts":
-            path, _ = _resource(value, f"{section}[{index}].value", expected_type="FontFile", root=root)
+            path, _ = _resource(value, f"{section}[{index}].value", expected_type="FontFile", root=root, production_family=production_family, asset_id=asset_id)
             encoded = f'ExtResource("Font_{index}")'
         elif section == "icons":
-            path, _ = _resource(value, f"{section}[{index}].value", expected_type="Texture2D", root=root)
+            path, _ = _resource(value, f"{section}[{index}].value", expected_type="Texture2D", root=root, production_family=production_family, asset_id=asset_id)
             encoded = f'ExtResource("Icon_{index}")'
         else:
             encoded = _identifier(value, f"{section}[{index}].value")
@@ -409,7 +438,13 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
     variation_bases = dict(variations)
 
     root = request.project_root
-    sections = {section: _item_rows(recipe, section, variation_names, variation_bases, root) for section in ("colors", "font_sizes", "constants", "fonts", "icons")}
+    sections = {
+        section: _item_rows(
+            recipe, section, variation_names, variation_bases, root,
+            request.production_family, request.asset_id,
+        )
+        for section in ("colors", "font_sizes", "constants", "fonts", "icons")
+    }
     boxes, box_types = _styleboxes(recipe)
     styles: list[tuple[str, str, str]] = []
     for index, raw in enumerate(_list(recipe["styles"], "styles")):
@@ -430,7 +465,14 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
     external: list[tuple[str, str, str]] = []
     for section, resource_type, prefix in (("fonts", "FontFile", "Font"), ("icons", "Texture2D", "Icon")):
         for index, raw in enumerate(_list(recipe[section], section)):
-            path, _ = _resource(_mapping(raw, f"{section}[{index}]")["value"], f"{section}[{index}].value", expected_type=resource_type, root=root)
+            path, _ = _resource(
+                _mapping(raw, f"{section}[{index}]")["value"],
+                f"{section}[{index}].value",
+                expected_type=resource_type,
+                root=root,
+                production_family=request.production_family,
+                asset_id=request.asset_id,
+            )
             external.append((f"{prefix}_{index}", resource_type, path))
     lines = ["[gd_resource type=\"Theme\" load_steps=" + str(1 + len(external) + len(boxes)) + " format=3]", ""]
     for resource_id, resource_type, path in external:
@@ -439,7 +481,7 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
         lines.extend([f'[sub_resource type="{box_types[box_id]}" id="StyleBox_{box_id}"]', *boxes[box_id], ""])
     lines.extend(["[resource]"])
     for name, base in sorted(variations):
-        lines.append(f'{name}/variation_base = &"{base}"')
+        lines.append(f'{name}/base_type = &"{base}"')
     category = {"colors": "colors", "font_sizes": "font_sizes", "constants": "constants", "fonts": "fonts", "icons": "icons"}
     for section in ("colors", "font_sizes", "constants", "fonts", "icons"):
         for theme_type, name, value in sorted(sections[section]):
@@ -457,7 +499,7 @@ def register_into(registry: CompilerRegistry) -> CompilerRoute:
 
 
 def validate_theme_structure(request: Any) -> dict[str, Any]:
-    """Require Godot to report a non-empty Theme with a real type variation."""
+    """Require Godot to retain every explicitly declared Theme recipe value."""
     from asset_validation.contract import ValidationError
 
     structure = request.checked_structure("theme")
@@ -490,10 +532,101 @@ def validate_theme_structure(request: Any) -> dict[str, Any]:
             declared_items += len(values)
     if declared_items == 0:
         raise ValidationError("the loaded Theme has no declared Theme items")
+    recipe_path = request.project_root / request.source_path.removeprefix("res://")
+    try:
+        recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValidationError(f"cannot read Theme recipe for L4 value validation: {exc}") from exc
+    if not isinstance(recipe, Mapping):
+        raise ValidationError("Theme recipe for L4 value validation is malformed")
+    for variation in recipe.get("variations", []):
+        if not isinstance(variation, Mapping):
+            raise ValidationError("Theme recipe variation is malformed")
+        actual = types.get(variation.get("name"))
+        if not isinstance(actual, Mapping) or actual.get("variation_base") != variation.get("base_type"):
+            raise ValidationError("loaded Theme type variation does not match the recipe")
+    for section, facts_key in (
+        ("colors", "color_values"), ("font_sizes", "font_size_values"),
+        ("constants", "constant_values"), ("fonts", "font_paths"),
+        ("icons", "icon_paths"),
+    ):
+        for item in recipe.get(section, []):
+            if not isinstance(item, Mapping):
+                raise ValidationError(f"Theme recipe {section} item is malformed")
+            actual_type = types.get(item.get("type"))
+            values = actual_type.get(facts_key) if isinstance(actual_type, Mapping) else None
+            if not isinstance(values, Mapping) or item.get("name") not in values:
+                raise ValidationError(f"loaded Theme {section} item does not match the recipe")
+            expected_value = item.get("value")
+            actual_value = values[item["name"]]
+            if section == "colors":
+                expected_value = _theme_color_values(expected_value)
+                if not _same_theme_numbers(actual_value, expected_value):
+                    raise ValidationError("loaded Theme color does not match the recipe")
+            elif section in {"fonts", "icons"}:
+                if not isinstance(expected_value, Mapping) or actual_value != expected_value.get("path"):
+                    raise ValidationError(f"loaded Theme {section} item does not match the recipe")
+            elif actual_value != expected_value:
+                raise ValidationError(f"loaded Theme {section} item does not match the recipe")
+    boxes = recipe.get("styleboxes", {})
+    if not isinstance(boxes, Mapping):
+        raise ValidationError("Theme recipe styleboxes are malformed")
+    for style in recipe.get("styles", []):
+        if not isinstance(style, Mapping):
+            raise ValidationError("Theme recipe style item is malformed")
+        actual_type = types.get(style.get("type"))
+        actual_box = actual_type.get("styleboxes", {}).get(style.get("name")) if isinstance(actual_type, Mapping) else None
+        expected_box = boxes.get(style.get("stylebox"))
+        if not isinstance(actual_box, Mapping) or not isinstance(expected_box, Mapping):
+            raise ValidationError("loaded Theme StyleBox does not match the recipe")
+        if actual_box.get("class") != expected_box.get("type"):
+            raise ValidationError("loaded Theme StyleBox type does not match the recipe")
+        actual_properties = actual_box.get("properties")
+        expected_properties = expected_box.get("properties")
+        if not isinstance(actual_properties, Mapping) or not isinstance(expected_properties, Mapping):
+            raise ValidationError("loaded Theme StyleBox properties are malformed")
+        for name, expected_value in expected_properties.items():
+            if name not in actual_properties or not _same_theme_stylebox_value(name, actual_properties[name], expected_value):
+                raise ValidationError("loaded Theme StyleBox value does not match the recipe")
     return {
         "types": sorted(types), "variations": sorted(variations),
         "requested_variation": requested_variation, "theme_items": declared_items,
     }
+
+
+def _theme_color_values(value: Any) -> list[float]:
+    if not isinstance(value, str) or not _COLOR.fullmatch(value):
+        return []
+    source = value[1:]
+    result = [int(source[index:index + 2], 16) / 255 for index in range(0, 6, 2)]
+    result.append(int(source[6:8], 16) / 255 if len(source) == 8 else 1.0)
+    return result
+
+
+def _same_theme_numbers(actual: Any, expected: list[float]) -> bool:
+    return (
+        isinstance(actual, list)
+        and len(actual) == len(expected)
+        and all(
+            type(value) in (int, float)
+            and math.isfinite(float(value))
+            and math.isclose(float(value), wanted, rel_tol=1e-6, abs_tol=1e-6)
+            for value, wanted in zip(actual, expected)
+        )
+    )
+
+
+def _same_theme_stylebox_value(name: str, actual: Any, expected: Any) -> bool:
+    if name in {"bg_color", "border_color", "shadow_color"}:
+        return _same_theme_numbers(actual, _theme_color_values(expected))
+    if name in {"corner_radius", "border_width", "shadow_size"}:
+        wanted = [expected] * 4 if name != "shadow_size" else expected
+        return actual == wanted
+    if name in {"content_margin", "expand_margin"}:
+        return _same_theme_numbers(actual, [float(expected)] * 4)
+    if name == "shadow_offset":
+        return _same_theme_numbers(actual, [float(value) for value in expected])
+    return actual == expected
 
 
 def register_structure_into(structures: Any) -> Any:

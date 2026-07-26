@@ -106,7 +106,7 @@ def test_headless_godot_loads_spriteframes_and_reports_its_animation_structure(
              "res://assets/generated/character-bundle/hero/idle_2.png"]
     for path in paths:
         _png(godot_project / path.removeprefix("res://"))
-    action = _action("idle", loop=False, fps=8, paths=paths, durations=[1, 0.5])
+    action = _action("idle", loop=False, fps=12.3, paths=paths, durations=[0.1, 0.9])
     registry = CompilerRegistry()
     sprite_frames.register_into(registry)
     result = registry.compile(_request(godot_project, [action]))
@@ -118,10 +118,17 @@ def test_headless_godot_loads_spriteframes_and_reports_its_animation_structure(
     structure = report.resources[0].structure["spriteframes"]
     assert report.resources[0].loaded is True
     assert report.resources[0].type_matches is True
-    assert structure["animations"] == [{
-        "name": "idle", "fps": 8.0, "loop": False, "frame_count": 2,
-        "frame_paths": paths, "frame_durations": [1.0, 0.5],
-    }]
+    animation = structure["animations"][0]
+    assert animation["name"] == "idle"
+    assert animation["fps"] == 12.3
+    assert animation["frame_paths"] == paths
+    assert animation["frame_durations"] == pytest.approx([0.1, 0.9], abs=1e-6)
+    assert build_default_structures().validate(StructureRequest(
+        production_family="character-bundle", asset_id="hero", source_layout_type="grid_sheet",
+        source_path=result.godot_artifact.path, artifact_type="SpriteFrames",
+        artifact_path=result.godot_artifact.path, project_root=godot_project,
+        probe=report.resources[0], spec={"actions": [action]},
+    )) == {"animations": ["idle"]}
 
 
 def test_l4_validator_checks_the_explicit_timing_and_texture_contract(tmp_path):

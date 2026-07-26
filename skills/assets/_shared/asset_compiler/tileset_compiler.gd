@@ -20,9 +20,15 @@ func _points(values: Array) -> PackedVector2Array:
 	return result
 
 func _shape(value: Variant) -> int:
-	if value is int and value >= TileSet.TILE_SHAPE_SQUARE and value <= TileSet.TILE_SHAPE_HEXAGON:
-		return value
-	push_error("invalid normalized tile_shape"); quit(2); return TileSet.TILE_SHAPE_SQUARE
+	if not (value is int or value is float):
+		return -1
+	var number: float = float(value)
+	if not is_finite(number) or floor(number) != number:
+		return -1
+	var shape: int = int(number)
+	if shape >= TileSet.TILE_SHAPE_SQUARE and shape <= TileSet.TILE_SHAPE_HEXAGON:
+		return shape
+	return -1
 
 func _color(value: Array) -> Color:
 	if value.size() != 4: push_error("normalized color needs four channels"); quit(2); return Color.WHITE
@@ -84,13 +90,16 @@ func _tile_data(source: TileSetAtlasSource, coords: Vector2i, alternative: int, 
 		var polygon := NavigationPolygon.new(); polygon.add_outline(_points(navigation["points"])); polygon.make_polygons_from_outlines()
 		data.set_navigation_polygon(layer, polygon)
 
-func _source(tile_set: TileSet, item: Dictionary, fallback_id: int) -> void:
+func _source(tile_set: TileSet, item: Dictionary, fallback_id: int) -> bool:
 	var source := TileSetAtlasSource.new()
 	source.texture = load(item["texture"])
-	if source.texture == null: push_error("cannot load atlas texture " + item["texture"]); quit(2); return
+	if source.texture == null:
+		push_error("cannot load atlas texture " + item["texture"])
+		return false
 	source.texture_region_size = _v2(item.get("region_size", item.get("tile_size", [16, 16])))
 	source.margins = _v2(item.get("margins", [0, 0]))
 	source.separation = _v2(item.get("separation", [0, 0]))
+	tile_set.add_source(source, int(item.get("id", fallback_id)))
 	for tile in item["tiles"]:
 		var coords := _v2(tile["coords"])
 		source.create_tile(coords)
@@ -107,16 +116,22 @@ func _source(tile_set: TileSet, item: Dictionary, fallback_id: int) -> void:
 			source.set_tile_animation_separation(coords, _v2(animation.get("separation", [0, 0])))
 			source.set_tile_animation_speed(coords, float(animation.get("speed", 1.0)))
 			for frame in animation.get("frame_durations", []): source.set_tile_animation_frame_duration(coords, int(frame["frame"]), float(frame["duration"]))
-	tile_set.add_source(source, int(item.get("id", fallback_id)))
+	return true
 
 func _initialize() -> void:
 	var args := _args(); var file := FileAccess.open(args.get("recipe", ""), FileAccess.READ)
 	if file == null: push_error("cannot read TileSet recipe"); quit(2); return
 	var recipe = JSON.parse_string(file.get_as_text()); file.close()
 	if typeof(recipe) != TYPE_DICTIONARY: push_error("TileSet recipe must be an object"); quit(2); return
-	var tile_set := TileSet.new(); tile_set.tile_shape = _shape(recipe.get("tile_shape", "square")); tile_set.tile_size = _v2(recipe["tile_size"])
+	var tile_shape := _shape(recipe.get("tile_shape", "square"))
+	if tile_shape < TileSet.TILE_SHAPE_SQUARE:
+		push_error("invalid normalized tile_shape"); quit(2); return
+	var tile_set := TileSet.new(); tile_set.tile_shape = tile_shape; tile_set.tile_size = _v2(recipe["tile_size"])
 	_layers(tile_set, recipe)
-	for index in recipe["sources"].size(): _source(tile_set, recipe["sources"][index], index)
+	for index in recipe["sources"].size():
+		if not _source(tile_set, recipe["sources"][index], index):
+			quit(2)
+			return
 	var error := ResourceSaver.save(tile_set, args.get("output", ""))
 	if error != OK: push_error("ResourceSaver.save failed: " + str(error)); quit(error); return
 	quit()

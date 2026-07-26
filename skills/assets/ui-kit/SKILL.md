@@ -13,7 +13,7 @@ composite screen, readable text, or gameplay geometry.
 ## Invocation
 
 Accept one asset request matching the shared Asset Skill request schema in
-`skills/assets/_shared/schema/asset-skill-request.schema.json`. Require
+`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
 `asset_type` to be `ui-kit`. First validate the returned document against the shared result schema and checker, then enforce the closed UI request and
 request-to-result binding with `tools/asset_ui_card_contract_check.py`.
 `spec` must declare one Theme recipe/output/variation, the complete requested

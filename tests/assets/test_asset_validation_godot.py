@@ -6,6 +6,7 @@ when no engine is reachable -- CI installs pytest and pillow only -- so a
 contributor with Godot 4.4+ installed runs them and CI does not.
 """
 import json
+import shutil
 import struct
 import subprocess
 import sys
@@ -294,10 +295,31 @@ def test_a_generated_texture_reaches_ready_through_real_godot(godot_bin, godot_p
 def test_a_compiled_theme_recipe_reaches_ready_through_real_godot(godot_bin, godot_project):
     """The compiler output must survive real Theme loading and L4 inspection."""
     recipe_path = "res://assets/generated/ui-kit/skin/skin.json"
+    font_path = "res://assets/generated/ui-kit/skin/font.ttf"
+    icon_path = "res://assets/generated/ui-kit/skin/icon.png"
+    font_file = godot_project / font_path.removeprefix("res://")
+    font_file.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(Path("C:/Windows/Fonts/arial.ttf"), font_file)
+    _write(godot_project, icon_path, _png(8, 8))
     _write(
         godot_project,
         recipe_path,
-        b'''{"version":1,"colors":[{"type":"Button","name":"font_color","value":"#FFFFFFFF"}],"font_sizes":[],"constants":[],"fonts":[],"icons":[],"styleboxes":{"normal":{"type":"StyleBoxFlat","properties":{"bg_color":"#112233FF","border_width":2}},"focus":{"type":"StyleBoxEmpty","properties":{}}},"styles":[{"type":"Button","name":"normal","stylebox":"normal"},{"type":"Button","name":"focus","stylebox":"focus"}],"variations":[{"name":"PrimaryButton","base_type":"Button"}]}''',
+        json.dumps({
+            "version": 1,
+            "colors": [{"type": "Button", "name": "font_color", "value": "#112233FF"}],
+            "font_sizes": [{"type": "Button", "name": "font_size", "value": 19}],
+            "constants": [{"type": "Button", "name": "outline_size", "value": 2}],
+            "fonts": [{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": font_path}}],
+            "icons": [{"type": "Button", "name": "icon", "value": {"type": "Texture2D", "path": icon_path}}],
+            "styleboxes": {
+                "normal": {"type": "StyleBoxFlat", "properties": {
+                    "bg_color": "#112233FF", "border_width": 2, "content_margin": 1.5,
+                }},
+                "focus": {"type": "StyleBoxEmpty", "properties": {}},
+            },
+            "styles": [{"type": "Button", "name": "normal", "stylebox": "normal"}, {"type": "Button", "name": "focus", "stylebox": "focus"}],
+            "variations": [{"name": "PrimaryButton", "base_type": "Button"}],
+        }).encode(),
     )
     registry = build_default_registry()
     theme.register_into(registry)
@@ -328,7 +350,7 @@ def test_a_compiled_theme_recipe_reaches_ready_through_real_godot(godot_bin, god
     assert result.levels[4].details["variations"] == ["PrimaryButton"]
     border = result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["normal"]["border_width"]
     assert border == {"left": 2, "top": 2, "right": 2, "bottom": 2}
-    assert result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["focus"] == {"class": "StyleBoxEmpty"}
+    assert result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["focus"]["class"] == "StyleBoxEmpty"
 def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
     godot_bin, godot_project
 ):
@@ -406,7 +428,7 @@ def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
     assert "atlas_path" in tampered.failure.error
 
 
-def test_stylebox_texture_reaches_ready_with_its_exact_nine_slice_recipe(
+def test_stylebox_texture_region_atlas_reaches_ready_with_float32_expand_margins(
     godot_bin, godot_project
 ):
     base = "res://assets/generated/ui-kit/panel"
@@ -415,7 +437,7 @@ def test_stylebox_texture_reaches_ready_with_its_exact_nine_slice_recipe(
     request = CompileRequest(
         production_family="ui-kit",
         asset_id="panel",
-        source_layout_type="single",
+        source_layout_type="region_atlas",
         source_path=f"{base}/panel.png",
         artifact_type="StyleBoxTexture",
         artifact_path=f"{base}/panel.tres",
@@ -423,12 +445,15 @@ def test_stylebox_texture_reaches_ready_with_its_exact_nine_slice_recipe(
         spec={
             "texture_region": [2, 1, 12, 10],
             "border": [3, 2, 3, 2],
-            "expand_margin": [1, 1.5, 2, 0],
+            "expand_margin": [0.3, 0.7, 1.1, 2.2],
             "axis_stretch": {"horizontal": "tile_fit", "vertical": "stretch"},
         },
     )
     compiled = registry.compile(request)
-    entry = _entry(godot_artifact=compiled.godot_artifact.to_dict())
+    entry = _entry(
+        source_layout={"type": "region_atlas", "path": request.source_path},
+        godot_artifact=compiled.godot_artifact.to_dict(),
+    )
     result = ValidationLadder(
         registry=registry,
         structures=build_default_structures(),

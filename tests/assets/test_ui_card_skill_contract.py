@@ -119,9 +119,17 @@ def _good_probe(request: dict, result: dict, *, theme_variation: str | None = No
         resources = []
         for item in requests:
             if item.expected_type == "Theme":
-                structure = {"theme": {"types": {variation: {
+                button = {
+                    "variation_base": "", "colors": ["font_color"], "font_sizes": [],
+                    "constants": [], "fonts": [], "icons": [], "styles": [],
+                    "color_values": {"font_color": [1.0, 1.0, 1.0, 1.0]},
+                    "font_size_values": {}, "constant_values": {}, "font_paths": {}, "icon_paths": {},
+                }
+                structure = {"theme": {"types": {"Button": button, variation: {
                     "variation_base": "Button", "colors": ["font_color"], "font_sizes": [],
                     "constants": [], "fonts": [], "icons": [], "styles": [],
+                    "color_values": {"font_color": [1.0, 1.0, 1.0, 1.0]},
+                    "font_size_values": {}, "constant_values": {}, "font_paths": {}, "icon_paths": {},
                 }}}}
             elif item.expected_type == "StyleBoxTexture":
                 structure = {"stylebox_texture": {

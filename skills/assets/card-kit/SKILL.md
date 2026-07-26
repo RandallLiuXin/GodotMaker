@@ -14,7 +14,7 @@ composite screen, readable text, or scene layout.
 ## Invocation
 
 Accept one asset request matching the shared Asset Skill request schema in
-`skills/assets/_shared/schema/asset-skill-request.schema.json`. Require
+`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
 `asset_type` to be `card-kit`. Validate the returned document against the
 shared result schema and checker, then validate its closed family contract with
 `tools/asset_ui_card_contract_check.py`. `spec` declares the Theme recipe and
