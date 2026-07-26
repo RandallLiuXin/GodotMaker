@@ -9,9 +9,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = REPO_ROOT / "skills" / "assets" / "tileset"
 FIXTURE = SKILL_DIR / "fixtures" / "orthogonal-square-recipe.json"
 sys.path.insert(0, str(REPO_ROOT / "skills" / "assets" / "_shared"))
+sys.path.insert(0, str(REPO_ROOT / "tools"))
+sys.path.insert(0, str(SKILL_DIR))
 
 from asset_compiler import CompileRequest, CompilerError  # noqa: E402
 from asset_compiler import tileset as compiler  # noqa: E402
+from asset_validation import ProbeReport, ProbeResult  # noqa: E402
+from asset_validation.godot_probe import GodotProbe  # noqa: E402
+from standalone_validation import compile_and_validate  # noqa: E402
 
 
 def _fixture() -> dict:
@@ -25,6 +30,7 @@ def test_tileset_skill_is_standalone_and_reuses_shared_contracts():
         "skills/assets/_shared/asset-skill-contract.md",
         "asset_compiler.tileset.register_into()",
         "asset_validation.tileset.register_into()",
+        "standalone_validation.compile_and_validate()",
     ):
         assert shared_path in text
     for forbidden_dependency in (
@@ -73,3 +79,123 @@ def test_orthogonal_square_fixture_is_compiler_acceptable_except_for_its_placeho
     )
     with pytest.raises(CompilerError, match="Godot binary was not found"):
         compiler.compile_tileset(request)
+
+
+def test_standalone_runner_maps_request_result_l0_to_l4_without_a_stable_entry(
+    tmp_path, monkeypatch
+):
+    """Exercise the executable standalone flow without manifest-shaped state."""
+    root = tmp_path
+    (root / "project.godot").write_text("[application]\nconfig/name=\"test\"\n", encoding="utf-8")
+    request = {
+        "asset_type": "tileset",
+        "asset_id": "grassland",
+        "brief": "A grassland tile atlas.",
+        "spec": _fixture(),
+    }
+    source_path = "res://assets/generated/tileset/grassland/grassland_atlas.png"
+    source = root / source_path.removeprefix("res://")
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"png")
+    result = {
+        "asset_type": "tileset",
+        "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
+        "sources": [{"path": source_path, "layout": "tile_atlas"}],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    def fake_compile(compile_request):
+        artifact = root / compile_request.artifact_path.removeprefix("res://")
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_text("[gd_resource type=\"TileSet\"]\n", encoding="utf-8")
+        return {"sources": 1, "tile_size": [16, 16]}
+
+    facts = {
+        "tileset": {
+            "source_count": 1,
+            "tile_count": 1,
+            "alternative_count": 1,
+            "tile_shape": 0,
+            "tile_size": [16, 16],
+            "sources": [{
+                "id": 0,
+                "region_size": [16, 16],
+                "margins": [0, 0],
+                "separation": [0, 0],
+                "tiles": [{
+                    "coords": [0, 0], "texture_origin": [0, 0], "z_index": 0,
+                    "y_sort_origin": 0, "probability": 1.0, "terrain_set": 0,
+                    "terrain": 0, "peering_bits": [0] + [-1] * 15,
+                    "custom_data": [], "collision_polygons": [[[[0, 0], [16, 0], [16, 16], [0, 16]]]],
+                    "occlusion_polygons": [], "navigation_polygons": [], "alternatives": [{
+                        "id": 1, "texture_origin": [0, 0], "z_index": 0, "y_sort_origin": 0,
+                        "probability": 0.25, "terrain_set": -1, "terrain": -1,
+                        "peering_bits": [-1] * 16, "custom_data": [], "collision_polygons": [[]],
+                        "occlusion_polygons": [], "navigation_polygons": [],
+                    }],
+                }],
+            }],
+            "physics_layers_count": 1, "navigation_layers_count": 0,
+            "occlusion_layers_count": 0, "custom_data_layers_count": 0,
+            "terrain_sets_count": 1,
+            "physics_layers": [{"collision_layer": 1, "collision_mask": 1}],
+            "navigation_layers": [], "occlusion_layers": [], "custom_data_layers": [],
+            "terrain_sets": [{"mode": 0, "terrains": [{"name": "grass", "color": [0.2, 0.8, 0.3, 1.0]}]}],
+        }
+    }
+
+    def fake_probe(self, project_root, requests):
+        assert project_root == root
+        assert requests[0].checks == ("tileset",)
+        return ProbeReport(
+            godot_version="test",
+            resources=(ProbeResult(requests[0].res_path, "TileSet", True, "TileSet", True, structure=facts),),
+        )
+
+    monkeypatch.setattr(compiler, "compile_tileset", fake_compile)
+    monkeypatch.setattr(GodotProbe, "probe", fake_probe)
+    validated = compile_and_validate(request, result, project_root=root, godot_path="godot")
+
+    assert validated["validation"] == {
+        "passed": True,
+        "levels": {"L0": True, "L1": True, "L2": True, "L3": True, "L4": True},
+    }
+    assert "processing_status" not in validated
+    assert "godot_artifact" not in validated
+
+
+def test_standalone_runner_maps_a_godot_setup_failure_to_l3(tmp_path, monkeypatch):
+    root = tmp_path
+    request = {
+        "asset_type": "tileset",
+        "asset_id": "grassland",
+        "brief": "A grassland tile atlas.",
+        "spec": _fixture(),
+    }
+    source_path = "res://assets/generated/tileset/grassland/grassland_atlas.png"
+    source = root / source_path.removeprefix("res://")
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"png")
+    result = {
+        "asset_type": "tileset",
+        "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
+        "sources": [{"path": source_path, "layout": "tile_atlas"}],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    def fake_compile(compile_request):
+        artifact = root / compile_request.artifact_path.removeprefix("res://")
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_text("[gd_resource type=\"TileSet\"]\n", encoding="utf-8")
+        return {"sources": 1, "tile_size": [16, 16]}
+
+    monkeypatch.setattr(compiler, "compile_tileset", fake_compile)
+    validated = compile_and_validate(request, result, project_root=root, godot_path="")
+
+    assert validated["validation"]["passed"] is False
+    assert validated["validation"]["levels"] == {
+        "L0": True, "L1": True, "L2": True, "L3": False, "L4": False,
+    }
+    assert "godot_path must be a non-empty string" in validated["validation"]["notes"]

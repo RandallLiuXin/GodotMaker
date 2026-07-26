@@ -118,13 +118,22 @@ explicit alternative.
    `CompilerRegistry`, then compile the `tile_atlas` to `TileSet` route. The
    shared registry owns staging and atomic commit; this skill does not write a
    hand-authored `.tres` (L2).
-5. Run the shared validation ladder with a headless Godot binary. It proves the
-   TileSet loads and matches `TileSet` (L3), then register
+5. Run `standalone_validation.compile_and_validate()` for the standalone path.
+   Its L0 runs the shared request/result checker only; it does not construct or
+   read a stable entry. Its L1 verifies every declared atlas source. For every
+   call it creates a fresh `CompilerRegistry`, registers
+   `asset_compiler.tileset.register_into()`, and compiles the declared
+   `tile_atlas` to `TileSet` route (L2). It then uses `GodotProbe` to load the
+   returned runtime path as `TileSet` (L3), creates a fresh
+   `StructureValidatorRegistry`, and registers
    `asset_validation.tileset.register_into()` to compare the loaded source,
    tile, alternative, animation, layer, terrain, polygon, and custom-data
    structure against the declared recipe (L4).
-6. Return the common result only when L0-L4 pass. Report a failed validation
-   result otherwise; do not claim runtime readiness from source-image quality.
+6. The standalone runner maps those five outcomes to
+   `result.validation.levels` and returns a shared-contract result. It reports
+   a failed validation result for L1-L4 failures; an invalid L0 request/result
+   pair is rejected before there is a valid result to return. Do not claim
+   runtime readiness from source-image quality.
 
 ## Delivery
 
