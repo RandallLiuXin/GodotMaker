@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from math import isfinite
 import sys
 from pathlib import Path
 from typing import Any
@@ -193,7 +194,8 @@ def build_action_entry_draft(
     ]
     action_name = _string(metadata, "action_name", "metadata")
     fps = metadata.get("fps")
-    if type(fps) not in (int, float) or isinstance(fps, bool) or fps <= 0:
+    if (type(fps) not in (int, float) or isinstance(fps, bool)
+            or not isfinite(fps) or fps <= 0):
         raise ActionEntryDraftError("metadata.fps must be a positive number")
     loop = metadata.get("loop")
     if type(loop) is not bool:
@@ -203,7 +205,8 @@ def build_action_entry_draft(
         raise ActionEntryDraftError(
             "metadata.frame_durations must have one value per frame"
         )
-    if any(type(value) not in (int, float) or isinstance(value, bool) or value <= 0
+    if any(type(value) not in (int, float) or isinstance(value, bool)
+           or not isfinite(value) or value <= 0
            for value in durations):
         raise ActionEntryDraftError("metadata.frame_durations values must be positive numbers")
 

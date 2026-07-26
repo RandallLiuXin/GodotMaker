@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+from math import isfinite
 import shutil
 import sys
 import tempfile
@@ -433,13 +434,15 @@ def process_action_sheet(
     frame_names = _parse_names(names, cols * rows)
     if not isinstance(action_name, str) or not action_name.strip():
         raise ActionProcessError("--action-name is required")
-    if type(fps) not in (int, float) or isinstance(fps, bool) or fps <= 0:
+    if (type(fps) not in (int, float) or isinstance(fps, bool)
+            or not isfinite(fps) or fps <= 0):
         raise ActionProcessError("--fps must be a positive number")
     if type(loop) is not bool:
         raise ActionProcessError("--loop or --no-loop is required")
     if not isinstance(frame_durations, list) or len(frame_durations) != len(frame_names):
         raise ActionProcessError("--frame-durations must have one value per frame")
-    if any(type(value) not in (int, float) or isinstance(value, bool) or value <= 0
+    if any(type(value) not in (int, float) or isinstance(value, bool)
+           or not isfinite(value) or value <= 0
            for value in frame_durations):
         raise ActionProcessError("--frame-durations values must be positive numbers")
 

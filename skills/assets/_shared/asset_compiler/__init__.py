@@ -36,6 +36,7 @@ def build_default_registry() -> CompilerRegistry:
     """Return a new registry holding every compiler the shared layer ships."""
     registry = CompilerRegistry()
     texture2d.register_into(registry)
+    sprite_frames.register_into(registry)
     return registry
 
 

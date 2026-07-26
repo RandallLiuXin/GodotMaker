@@ -195,6 +195,24 @@ def test_shared_scale_must_be_boolean(tmp_path):
 
 
 @pytest.mark.parametrize(
+    "field, value, message",
+    [
+        ("fps", float("nan"), "metadata.fps must be a positive number"),
+        ("fps", float("inf"), "metadata.fps must be a positive number"),
+        ("frame_durations", [1.0, float("nan")], "metadata.frame_durations values must be positive numbers"),
+        ("frame_durations", [1.0, float("inf")], "metadata.frame_durations values must be positive numbers"),
+    ],
+)
+def test_nonfinite_animation_timing_is_rejected(tmp_path, field, value, message):
+    metadata = make_metadata()
+    metadata[field] = value
+    produce(tmp_path, metadata)
+
+    with pytest.raises(ActionEntryDraftError, match=message):
+        build(tmp_path, write_metadata(tmp_path, metadata))
+
+
+@pytest.mark.parametrize(
     "sheet_path",
     [
         "assets/sprites/player_idle_sheet.png",

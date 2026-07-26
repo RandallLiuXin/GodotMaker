@@ -303,3 +303,33 @@ def test_cli_outputs_json(tmp_path):
         "player_idle_idle_03.png",
         "player_idle_idle_04.png",
     ]
+
+
+@pytest.mark.parametrize(
+    "flag, value, message",
+    [
+        ("--fps", "nan", "--fps must be a positive number"),
+        ("--frame-durations", "1,inf,1,1", "--frame-durations values must be positive numbers"),
+    ],
+)
+def test_cli_rejects_nonfinite_animation_timing(tmp_path, flag, value, message):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source)
+    arguments = [
+        sys.executable,
+        str(TOOLS_DIR / "asset_action_process.py"),
+        "--source", str(source),
+        "--out-dir", str(tmp_path / "processed"),
+        "--grid", "2x2",
+        "--names", "idle_01,idle_02,idle_03,idle_04",
+        "--kind", "body",
+        "--action-name", "idle",
+        "--fps", "8",
+        "--no-loop",
+        "--frame-durations", "1,1,1,1",
+    ]
+    arguments[arguments.index(flag) + 1] = value
+    result = subprocess.run(arguments, capture_output=True, text=True, check=False)
+
+    assert result.returncode == 1
+    assert json.loads(result.stdout)["error"] == message

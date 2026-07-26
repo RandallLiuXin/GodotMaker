@@ -8,7 +8,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(SHARED_DIR))
 
-from asset_compiler import CompileRequest, CompilerError, CompilerRegistry, sprite_frames  # noqa: E402
+from asset_compiler import (  # noqa: E402
+    CompileRequest,
+    CompilerError,
+    CompilerRegistry,
+    build_default_registry,
+    sprite_frames,
+)
 from asset_validation import (  # noqa: E402
     GodotProbe,
     ProbeRequest,
@@ -16,7 +22,6 @@ from asset_validation import (  # noqa: E402
     StructureRequest,
     build_default_structures,
 )
-from asset_validation import sprite_frames as sprite_frames_validation  # noqa: E402
 
 
 def _png(path: Path) -> None:
@@ -54,8 +59,7 @@ def test_compiles_multiple_explicit_actions_with_order_timing_and_loop(tmp_path)
         _png(project / path.removeprefix("res://"))
     actions = [_action("idle", loop=False, fps=8, paths=idle, durations=[1, 0.5]),
                _action("run", loop=True, fps=12, paths=run, durations=[2])]
-    registry = CompilerRegistry()
-    sprite_frames.register_into(registry)
+    registry = build_default_registry()
 
     result = registry.compile(_request(project, actions))
 
@@ -125,7 +129,6 @@ def test_l4_validator_checks_the_explicit_timing_and_texture_contract(tmp_path):
                      paths=["res://assets/generated/character-bundle/hero/idle.png"],
                      durations=[0.5])
     structures = build_default_structures()
-    sprite_frames_validation.register_into(structures)
     request = StructureRequest(
         production_family="character-bundle", asset_id="hero", source_layout_type="grid_sheet",
         source_path="res://assets/generated/character-bundle/hero/hero_sheet.png",
