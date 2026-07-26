@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+import math
 from pathlib import Path
 from typing import Any, Callable
 
@@ -296,6 +297,21 @@ def _exact_numbers(actual: Any, expected: list[int | float], label: str) -> None
         )
 
 
+def _float32_numbers(actual: Any, expected: list[int | float], label: str) -> None:
+    if not isinstance(actual, list) or len(actual) != len(expected):
+        raise ValidationError(f"the loaded StyleBoxTexture reported no {label}")
+    if any(type(value) not in (int, float) or isinstance(value, bool) for value in actual):
+        raise ValidationError(f"the loaded StyleBoxTexture reported an invalid {label}")
+    if not all(
+        math.isfinite(float(value))
+        and math.isclose(float(value), float(wanted), rel_tol=1e-6, abs_tol=1e-6)
+        for value, wanted in zip(actual, expected)
+    ):
+        raise ValidationError(
+            f"the loaded StyleBoxTexture {label} is {actual!r}, not {expected!r}"
+        )
+
+
 def validate_stylebox_texture(request: StructureRequest) -> dict[str, Any]:
     """Require Godot's loaded StyleBoxTexture to retain every recipe fact."""
     try:
@@ -312,7 +328,7 @@ def validate_stylebox_texture(request: StructureRequest) -> dict[str, Any]:
         )
     _exact_numbers(structure.get("texture_region"), list(expected.texture_region), "texture_region")
     _exact_numbers(structure.get("border"), list(expected.border), "border")
-    _exact_numbers(structure.get("expand_margin"), list(expected.expand_margin), "expand_margin")
+    _float32_numbers(structure.get("expand_margin"), list(expected.expand_margin), "expand_margin")
     _exact_numbers(
         structure.get("axis_stretch"),
         [

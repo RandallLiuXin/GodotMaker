@@ -10,6 +10,7 @@ from .structure import StructureRequest, StructureValidatorRegistry
 
 VALIDATOR_ID = "spriteframes_structure"
 CHECKS = ("spriteframes",)
+_FLOAT32_ROUND_TRIP_TOLERANCE = 1e-6
 
 
 def validate_spriteframes(request: StructureRequest) -> dict[str, Any]:
@@ -44,7 +45,10 @@ def validate_spriteframes(request: StructureRequest) -> dict[str, Any]:
             raise ValidationError(f"SpriteFrames animation {name!r} frame order or texture binding differs from the spec")
         reported = found.get("frame_durations")
         if not isinstance(reported, list) or len(reported) != len(durations) or any(
-            not isclose(float(left), float(right), rel_tol=0, abs_tol=1e-9)
+            not isclose(
+                float(left), float(right), rel_tol=_FLOAT32_ROUND_TRIP_TOLERANCE,
+                abs_tol=_FLOAT32_ROUND_TRIP_TOLERANCE,
+            )
             for left, right in zip(reported, durations)
         ):
             raise ValidationError(f"SpriteFrames animation {name!r} relative frame durations differ from the spec")

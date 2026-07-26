@@ -116,6 +116,29 @@ def test_tileset_recipe_rejects_unknown_enums_and_invalid_colours(recipe, messag
         compiler.compile_tileset(request)
 
 
+@pytest.mark.parametrize("alternative", [False, True])
+def test_tileset_recipe_rejects_duplicate_navigation_polygon_layers(tmp_path, alternative):
+    tile = {"coords": [0, 0]}
+    polygons = [
+        {"layer": 0, "points": [[0, 0], [16, 0], [0, 16]]},
+        {"layer": 0, "points": [[1, 1], [15, 1], [1, 15]]},
+    ]
+    if alternative:
+        tile["alternatives"] = [{"id": 1, "navigation_polygons": polygons}]
+    else:
+        tile["navigation_polygons"] = polygons
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=tmp_path,
+        spec=_spec(navigation_layers=[{}], sources=[{
+            "texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [tile],
+        }]),
+    )
+    with pytest.raises(CompilerError, match="duplicate navigation polygons"):
+        compiler._recipe(request)
+
+
 def _png(width: int, height: int) -> bytes:
     def chunk(tag, data):
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
@@ -259,6 +282,93 @@ def test_tileset_l4_accepts_float32_round_trips(godot_bin, godot_project):
         source_path=request.source_path, artifact_type="TileSet", artifact_path=request.artifact_path,
         project_root=godot_project, probe=report.resources[0], spec=request.spec,
     ))
+
+
+def test_tileset_real_godot_handles_multiple_sources_defaults_and_polygon_float32(godot_bin, godot_project):
+    for name in ("first", "second"):
+        source = godot_project / f"assets/generated/tileset/grass/{name}.png"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_bytes(_png(32, 16))
+    integer_points = [[0, 0], [16, 0], [0, 16]]
+    decimal_points = [[0.3, 0.7], [15.5, 0.7], [0.3, 15.2]]
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/first.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/matrix.tres", project_root=godot_project,
+        spec={
+            "godot_path": godot_bin, "tile_size": [16, 16],
+            "physics_layers": [{}], "navigation_layers": [{}], "occlusion_layers": [{}],
+            "custom_data_layers": [
+                {"name": "enabled", "type": 1}, {"name": "count", "type": 2},
+                {"name": "weight", "type": 3}, {"name": "label", "type": 4},
+            ],
+            "terrain_sets": [{"terrains": [{"name": "grass"}]}],
+            "sources": [
+                {"id": 3, "texture": "res://assets/generated/tileset/grass/first.png", "region_size": [16, 16], "tiles": [
+                    {"coords": [0, 0], "terrain_set": 0, "terrain": 0,
+                     "custom_data": [{"layer": 0, "value": True}],
+                     "collision_polygons": [{"layer": 0, "points": integer_points}],
+                     "occlusion_polygons": [{"layer": 0, "points": integer_points}],
+                     "navigation_polygons": [{"layer": 0, "points": integer_points}]},
+                    {"coords": [1, 0]},
+                ]},
+                {"id": 4, "texture": "res://assets/generated/tileset/grass/second.png", "region_size": [16, 16], "tiles": [
+                    {"coords": [0, 0], "terrain_set": 0, "terrain": 0,
+                     "alternatives": [{"id": 1, "terrain_set": 0, "terrain": 0,
+                         "custom_data": [{"layer": 3, "value": "alt"}],
+                         "collision_polygons": [{"layer": 0, "points": decimal_points}],
+                         "occlusion_polygons": [{"layer": 0, "points": decimal_points}],
+                         "navigation_polygons": [{"layer": 0, "points": decimal_points}]}]},
+                    {"coords": [1, 0]},
+                ]},
+            ],
+        },
+    )
+    registry = CompilerRegistry()
+    compiler.register_into(registry)
+    registry.compile(request)
+    report = GodotProbe(godot_bin).probe(
+        godot_project, [ProbeRequest(request.artifact_path, "TileSet", ("tileset",))]
+    )
+    facts = report.resources[0].structure["tileset"]
+    assert facts["source_count"] == 2
+    assert [len(source["tiles"]) for source in facts["sources"]] == [2, 2]
+    assert facts["sources"][0]["tiles"][1]["custom_data"] == [False, 0, 0.0, ""]
+    alternative = facts["sources"][1]["tiles"][0]["alternatives"][0]
+    assert alternative["custom_data"] == [False, 0, 0.0, "alt"]
+    assert alternative["collision_polygons"][0][0][0] == pytest.approx([0.3, 0.7], abs=1e-6)
+    structures.validate_tileset(StructureRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path=request.source_path, artifact_type="TileSet", artifact_path=request.artifact_path,
+        project_root=godot_project, probe=report.resources[0], spec=request.spec,
+    ))
+    alternative["collision_polygons"][0][0][0] = [0.7, 0.7]
+    with pytest.raises(ValidationError, match="alternative data"):
+        structures.validate_tileset(StructureRequest(
+            production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+            source_path=request.source_path, artifact_type="TileSet", artifact_path=request.artifact_path,
+            project_root=godot_project, probe=report.resources[0], spec=request.spec,
+        ))
+
+
+def test_compile_tileset_does_not_mutate_nested_spec_across_direct_calls(godot_bin, godot_project):
+    source = godot_project / "assets/generated/tileset/grass/atlas.png"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(_png(16, 16))
+    request = CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/stable.tres", project_root=godot_project,
+        spec={"godot_path": godot_bin, "tile_size": [16, 16], "sources": [{
+            "texture": "res://assets/generated/tileset/grass/atlas.png",
+            "tiles": [{"coords": [0, 0], "animation": {"mode": "random_start_times", "frames_count": 1}}],
+        }]},
+    )
+    compiler.compile_tileset(request)
+    compiler.compile_tileset(request)
+    assert request.spec["sources"][0]["tiles"][0]["animation"] == {
+        "mode": "random_start_times", "frames_count": 1,
+    }
 
 
 def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_project):

@@ -13,6 +13,7 @@ CHECKS = ("tileset",)
 _SHAPES = {"square": 0, "isometric": 1, "half_offset_square": 2, "hexagon": 3}
 _ANIMATION_MODES = {"default": 0, "random_start_times": 1, "max": 2}
 _FLOAT32_ROUND_TRIP_TOLERANCE = 1e-6
+_CUSTOM_DATA_DEFAULTS = {1: False, 2: 0, 3: 0.0, 4: ""}
 
 
 def _same_float32_round_trip(actual: Any, expected: Any) -> bool:
@@ -47,11 +48,43 @@ def _same_terrain_sets(actual: Any, expected: Any) -> bool:
                 return False
             if actual_terrain.get("name") != expected_terrain.get("name"):
                 return False
-            actual_color = actual_terrain.get("color")
-            expected_color = expected_terrain.get("color")
-            if not isinstance(actual_color, list) or not isinstance(expected_color, list) or len(actual_color) != len(expected_color):
+            if "color" in expected_terrain:
+                actual_color = actual_terrain.get("color")
+                expected_color = expected_terrain["color"]
+                if not isinstance(actual_color, list) or not isinstance(expected_color, list) or len(actual_color) != len(expected_color):
+                    return False
+                if not all(_same_float32_round_trip(value, expected_value) for value, expected_value in zip(actual_color, expected_color)):
+                    return False
+    return True
+
+
+def _same_polygon_layers(actual: Any, expected: Any) -> bool:
+    if not isinstance(actual, list) or not isinstance(expected, list) or len(actual) != len(expected):
+        return False
+    for actual_layer, expected_layer in zip(actual, expected):
+        if not isinstance(actual_layer, list) or not isinstance(expected_layer, list) or len(actual_layer) != len(expected_layer):
+            return False
+        for actual_polygon, expected_polygon in zip(actual_layer, expected_layer):
+            if not isinstance(actual_polygon, list) or not isinstance(expected_polygon, list) or len(actual_polygon) != len(expected_polygon):
                 return False
-            if not all(_same_float32_round_trip(value, expected_value) for value, expected_value in zip(actual_color, expected_color)):
+            for actual_point, expected_point in zip(actual_polygon, expected_polygon):
+                if not isinstance(actual_point, list) or not isinstance(expected_point, list) or len(actual_point) != 2 or len(expected_point) != 2:
+                    return False
+                if not all(_same_float32_round_trip(value, wanted) for value, wanted in zip(actual_point, expected_point)):
+                    return False
+    return True
+
+
+def _same_navigation_polygons(actual: Any, expected: Any) -> bool:
+    if not isinstance(actual, list) or not isinstance(expected, list) or len(actual) != len(expected):
+        return False
+    for actual_polygon, expected_polygon in zip(actual, expected):
+        if not isinstance(actual_polygon, list) or not isinstance(expected_polygon, list) or len(actual_polygon) != len(expected_polygon):
+            return False
+        for actual_point, expected_point in zip(actual_polygon, expected_polygon):
+            if not isinstance(actual_point, list) or not isinstance(expected_point, list) or len(actual_point) != 2 or len(expected_point) != 2:
+                return False
+            if not all(_same_float32_round_trip(value, wanted) for value, wanted in zip(actual_point, expected_point)):
                 return False
     return True
 
@@ -69,7 +102,10 @@ def _expected_tile(tile: dict[str, Any], spec: dict[str, Any], *, alternative: b
     peering = [-1] * 16
     for item in tile.get("peering_bits", []):
         peering[item["bit"]] = item["terrain"]
-    custom = [None] * len(spec.get("custom_data_layers", []))
+    custom = [
+        _CUSTOM_DATA_DEFAULTS.get(layer.get("type", 0))
+        for layer in spec.get("custom_data_layers", [])
+    ]
     for item in tile.get("custom_data", []):
         custom[item["layer"]] = item.get("value")
     return {"id": tile.get("id", 0 if not alternative else None), "texture_origin": tile.get("texture_origin", [0, 0]), "z_index": tile.get("z_index", 0), "y_sort_origin": tile.get("y_sort_origin", 0), "probability": tile.get("probability", 1.0), "terrain_set": tile.get("terrain_set", -1), "terrain": tile.get("terrain", -1), "peering_bits": peering, "custom_data": custom, "collision_polygons": physics, "occlusion_polygons": occlusion, "navigation_polygons": navigation}
@@ -80,10 +116,13 @@ def _expected_layers(spec: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     for terrain_set in spec.get("terrain_sets", []):
         terrains = []
         for terrain in terrain_set.get("terrains", []):
-            color = terrain.get("color", [1.0, 1.0, 1.0, 1.0])
-            if len(color) == 3:
-                color = [*color, 1.0]
-            terrains.append({"name": terrain.get("name", ""), "color": color})
+            expected_terrain = {"name": terrain.get("name", "")}
+            if "color" in terrain:
+                color = terrain["color"]
+                if len(color) == 3:
+                    color = [*color, 1.0]
+                expected_terrain["color"] = color
+            terrains.append(expected_terrain)
         terrain_sets.append({"mode": terrain_set.get("mode", 0), "terrains": terrains})
     return {
         "physics_layers": [{"collision_layer": item.get("collision_layer", 1), "collision_mask": item.get("collision_mask", 1)} for item in spec.get("physics_layers", [])],
@@ -172,6 +211,10 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
                 matches = (
                     _same_float32_round_trip(loaded.get(key), value)
                     if key == "probability"
+                    else _same_polygon_layers(loaded.get(key), value)
+                    if key in {"collision_polygons", "occlusion_polygons"}
+                    else _same_navigation_polygons(loaded.get(key), value)
+                    if key == "navigation_polygons"
                     else loaded.get(key) == value
                 )
                 if key != "id" and not matches:
@@ -187,6 +230,10 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
                 alternative_matches = all(
                     _same_float32_round_trip(actual_alternative.get(key), expected_value)
                     if key == "probability"
+                    else _same_polygon_layers(actual_alternative.get(key), expected_value)
+                    if key in {"collision_polygons", "occlusion_polygons"}
+                    else _same_navigation_polygons(actual_alternative.get(key), expected_value)
+                    if key == "navigation_polygons"
                     else actual_alternative.get(key) == expected_value
                     for key, expected_value in expected_alternative.items()
                 )

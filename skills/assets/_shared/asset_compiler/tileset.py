@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import subprocess
 import tempfile
+from copy import deepcopy
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -43,7 +44,7 @@ def _color(value: Any, label: str) -> list[float]:
 
 
 def _recipe(request: CompileRequest) -> dict[str, Any]:
-    spec = dict(request.spec)
+    spec = deepcopy(dict(request.spec))
     binary = spec.pop("godot_path", None)
     if not isinstance(binary, str) or not binary.strip():
         raise CompilerError("TileSet spec requires a non-empty godot_path")
@@ -79,6 +80,15 @@ def _recipe(request: CompileRequest) -> dict[str, Any]:
             for alternative in tile.get("alternatives", []):
                 if not isinstance(alternative, Mapping) or type(alternative.get("id")) is not int or alternative["id"] <= 0:
                     raise CompilerError("alternative id must be a positive integer")
+            for item, label in [(tile, "tile"), *[(alternative, "alternative") for alternative in tile.get("alternatives", [])]]:
+                seen_navigation_layers: set[Any] = set()
+                for polygon in item.get("navigation_polygons", []):
+                    if not isinstance(polygon, Mapping):
+                        continue
+                    layer = polygon.get("layer")
+                    if layer in seen_navigation_layers:
+                        raise CompilerError(f"{label} cannot declare duplicate navigation polygons for one layer")
+                    seen_navigation_layers.add(layer)
             animation = tile.get("animation")
             if animation is not None:
                 if not isinstance(animation, Mapping):
