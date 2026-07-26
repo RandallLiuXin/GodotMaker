@@ -24,6 +24,7 @@ from asset_compiler import (  # noqa: E402
     CompilerError,
     CompilerRegistry,
     build_default_registry,
+    theme,
 )
 from asset_validation import (  # noqa: E402
     NOT_RUN,
@@ -290,6 +291,44 @@ def test_a_generated_texture_reaches_ready_through_real_godot(godot_bin, godot_p
     assert result.levels[4].details["height"] == 16
 
 
+def test_a_compiled_theme_recipe_reaches_ready_through_real_godot(godot_bin, godot_project):
+    """The compiler output must survive real Theme loading and L4 inspection."""
+    recipe_path = "res://assets/generated/ui-kit/skin/skin.json"
+    _write(
+        godot_project,
+        recipe_path,
+        b'''{"version":1,"colors":[{"type":"Button","name":"font_color","value":"#FFFFFFFF"}],"font_sizes":[],"constants":[],"fonts":[],"icons":[],"styleboxes":{"normal":{"type":"StyleBoxFlat","properties":{"bg_color":"#112233FF","border_width":2}},"focus":{"type":"StyleBoxEmpty","properties":{}}},"styles":[{"type":"Button","name":"normal","stylebox":"normal"},{"type":"Button","name":"focus","stylebox":"focus"}],"variations":[{"name":"PrimaryButton","base_type":"Button"}]}''',
+    )
+    registry = build_default_registry()
+    theme.register_into(registry)
+    compiled = registry.compile(
+        CompileRequest(
+            production_family="ui-kit",
+            asset_id="skin",
+            source_layout_type="theme_recipe",
+            source_path=recipe_path,
+            artifact_type="Theme",
+            artifact_path="res://assets/generated/ui-kit/skin/skin.tres",
+            project_root=godot_project,
+        )
+    )
+    structures = build_default_structures()
+    theme.register_structure_into(structures)
+    entry = _entry(
+        asset_id="skin",
+        source_layout={"type": "theme_recipe", "path": recipe_path},
+        godot_artifact=compiled.godot_artifact.to_dict(),
+    )
+    result = ValidationLadder(
+        registry=registry, structures=structures, probe=GodotProbe(godot_bin)
+    ).run(entry, project_root=godot_project, receipt=compiled.receipt)
+
+    assert result.ready is True, result.to_dict()
+    assert result.levels[3].details["godot_class"] == "Theme"
+    assert result.levels[4].details["variations"] == ["PrimaryButton"]
+    border = result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["normal"]["border_width"]
+    assert border == {"left": 2, "top": 2, "right": 2, "bottom": 2}
+    assert result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["focus"] == {"class": "StyleBoxEmpty"}
 def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
     godot_bin, godot_project
 ):

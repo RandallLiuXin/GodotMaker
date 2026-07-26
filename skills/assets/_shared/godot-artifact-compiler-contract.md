@@ -188,10 +188,16 @@ match the recipe exactly.
 ## Boundary
 
 `_shared/` holds cross-skill material only. It has no `SKILL.md` and is not
-independently triggerable. It ships the shared `Texture2D` and fixed-slot
-`AtlasTexture`, and `StyleBoxTexture` routes; `SpriteFrames`, `Theme`, and
+independently triggerable. It ships the shared `Texture2D`, fixed-slot
+`AtlasTexture`, `SpriteFrames`, and `StyleBoxTexture` routes; `Theme` and
 `TileSet` remain family-specific compilers registered through
 `CompilerRegistry.register()`.
+
+`asset_compiler/theme.py` is the UI family's `theme_recipe -> Theme` compiler.
+It validates the recipe's closed ClassDB type, item-property, resource, and
+StyleBox-reference sets before serializing a deterministic `.tres`; callers
+register it, and its `theme` L4 structure validator, into their per-run
+registries.
 
 There is no module-level default registry instance. A caller builds one with
 `build_default_registry()` and every family compiler for that run registers into
