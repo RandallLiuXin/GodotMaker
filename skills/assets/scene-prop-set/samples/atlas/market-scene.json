@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "atlas_path": "res://assets/generated/scene-prop-set/market-scene/market-scene.png",
+  "regions": [
+    {"name": "market_stall", "rect": [0, 0, 96, 96], "pivot": [0.5, 1.0], "nine_slice": null},
+    {"name": "signpost", "rect": [112, 0, 32, 64], "pivot": [0.5, 1.0], "nine_slice": null},
+    {"name": "water_well", "rect": [160, 0, 64, 64], "pivot": [0.5, 1.0], "nine_slice": null}
+  ]
+}

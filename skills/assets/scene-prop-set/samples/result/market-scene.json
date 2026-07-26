@@ -1,0 +1,13 @@
+{
+  "asset_type": "scene-prop-set",
+  "outputs": [
+    {"role": "runtime", "name": "market_stall", "path": "res://assets/generated/scene-prop-set/market-scene/market_stall.tres", "godot_type": "AtlasTexture"},
+    {"role": "runtime", "name": "signpost", "path": "res://assets/generated/scene-prop-set/market-scene/signpost.tres", "godot_type": "AtlasTexture"},
+    {"role": "runtime", "name": "water_well", "path": "res://assets/generated/scene-prop-set/market-scene/water_well.tres", "godot_type": "AtlasTexture"}
+  ],
+  "sources": [
+    {"path": "res://assets/generated/scene-prop-set/market-scene/market-scene.png", "layout": "region_atlas"}
+  ],
+  "previews": [],
+  "validation": {"passed": true, "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true}}
+}
