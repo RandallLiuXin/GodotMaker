@@ -2737,6 +2737,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <ul>
 <li>Added a recipe-only native TileSet atlas compiler with declared tile semantics and L4 source, tile, alternative, layer, and tile-size verification.</li>
 <li>Added a deterministic SpriteFrames compiler that aggregates explicitly timed normalized action PNGs, rejects missing required actions, and serializes independent frame texture bindings for character bundles and animated FX.</li>
+<li>Added a deterministic StyleBoxTexture compiler for reusable UI borders, with explicit texture regions, nine-slice borders, expand margins, and stretch axes verified through headless Godot.</li>
 <li>Published first-class Asset Skills for Claude Code, Codex, and OpenCode together with their project-local shared compiler, validator, and schema runtime under <code>.godotmaker/asset-runtime/</code>.</li>
 <li>Added a fail-closed <code>asset_runtime_resolver.py</code> that converts a registered ASSETS.md <code>manifest_entry</code> into the minimal ready worker runtime snapshot (#106).</li>
 <li>Added <code>tools/asset_atlas_assemble.py</code> for reproducible fixed-slot physical PNG atlases and region metadata; it rejects implicit packing, trimming, heuristic discovery, invalid bounds, overlap, size mismatches, and missing source PNGs.</li>
