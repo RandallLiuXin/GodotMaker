@@ -243,6 +243,66 @@ def test_fx_handoff_rejects_result_that_bypasses_request_mode(request_name, resu
         check_bundle_handoff(request, result)
 
 
+@pytest.mark.parametrize(
+    "validation",
+    [
+        pytest.param(
+            {"passed": False, "levels": {"L0": True, "L1": True, "L2": True, "L3": False, "L4": False}},
+            id="passed-false",
+        ),
+        pytest.param({"passed": True}, id="missing-levels"),
+        pytest.param(
+            {"passed": False, "levels": {"L0": True, "L1": True, "L2": True, "L3": False, "L4": True}},
+            id="l3-false",
+        ),
+        pytest.param(
+            {"passed": False, "levels": {"L0": True, "L1": True, "L2": True, "L3": True, "L4": False}},
+            id="l4-false",
+        ),
+    ],
+)
+def test_runtime_handoff_rejects_non_ready_l0_to_l4_validation(validation):
+    request = _fx_request()
+    result = _fixture("fx-bundle", "animated-result.json")
+    result["validation"] = validation
+    with pytest.raises(AnimatedBundleContractError):
+        check_bundle_handoff(request, result)
+
+
+@pytest.mark.parametrize(
+    "validation",
+    [
+        pytest.param({"passed": False, "levels": {"L0": False}}, id="passed-false"),
+        pytest.param({"passed": True}, id="missing-levels"),
+        pytest.param({"passed": False, "levels": {"L3": False}}, id="l3-false"),
+        pytest.param({"passed": False, "levels": {"L4": False}}, id="l4-false"),
+    ],
+)
+def test_handoff_cli_rejects_non_ready_validation(tmp_path, validation):
+    request_path = tmp_path / "request.json"
+    result_path = tmp_path / "result.json"
+    request_path.write_text(json.dumps(_fx_request()), encoding="utf-8")
+    result = _fixture("fx-bundle", "animated-result.json")
+    result["validation"] = validation
+    result_path.write_text(json.dumps(result), encoding="utf-8")
+
+    process = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "tools/asset_animated_bundle_contract_check.py"),
+            "--request",
+            str(request_path),
+            "--result",
+            str(result_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert process.returncode == 1
+    assert json.loads(process.stdout)["ok"] is False
+
+
 @pytest.mark.parametrize("family", ["character-bundle", "fx-bundle"])
 def test_animated_skills_name_the_callable_family_validation_path(family):
     skill = (REPO_ROOT / "skills" / "assets" / family / "SKILL.md").read_text(encoding="utf-8")

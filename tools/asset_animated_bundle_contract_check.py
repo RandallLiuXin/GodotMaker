@@ -169,6 +169,22 @@ def _source_layouts(data: dict[str, Any]) -> set[str]:
     return {source.get("layout") for source in data["sources"] if isinstance(source, dict)}
 
 
+def _require_ready_validation(result: dict[str, Any]) -> None:
+    """Require explicit L0-L4 success only at the final runtime handoff."""
+    validation = result["validation"]
+    if validation.get("passed") is not True:
+        raise AnimatedBundleContractError("final runtime handoff requires validation.passed to be true")
+    levels = validation.get("levels")
+    required_levels = ("L0", "L1", "L2", "L3", "L4")
+    if not isinstance(levels, dict):
+        raise AnimatedBundleContractError("final runtime handoff requires explicit L0-L4 validation levels")
+    incomplete = [level for level in required_levels if levels.get(level) is not True]
+    if incomplete:
+        raise AnimatedBundleContractError(
+            "final runtime handoff requires passing validation levels: " + ", ".join(incomplete)
+        )
+
+
 def check_bundle_result(data: Any) -> dict[str, Any]:
     """Validate a bundle result's intrinsic runtime-output boundary.
 
@@ -217,6 +233,7 @@ def check_bundle_handoff(request: Any, result: Any) -> dict[str, Any]:
     result_check = check_bundle_result(result)
     if request["asset_type"] != result["asset_type"]:
         raise AnimatedBundleContractError("request.asset_type must match result.asset_type")
+    _require_ready_validation(result)
 
     if request["asset_type"] == "fx-bundle":
         runtime = _runtime_outputs(result)

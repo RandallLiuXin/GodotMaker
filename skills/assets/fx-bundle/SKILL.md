@@ -16,9 +16,10 @@ validate the shared request/result shape with
 `tools/asset_animated_bundle_contract_check.py --kind request`. For final
 runtime handoff, call the same checker with `--request <request.json> --result
 <result.json>`; this is required to bind `spec.mode` to the output type and
-source layout. The family checker is the callable enforcement for the `spec`
-rules below; the shared checker alone intentionally validates only cross-family
-shape.
+source layout. Final handoff accepts only `validation.passed: true` with
+explicit passing `L0` through `L4` evidence. The family checker is the callable
+enforcement for the `spec` rules below; the shared checker alone intentionally
+validates only cross-family shape.
 
 ## Standalone boundary
 
