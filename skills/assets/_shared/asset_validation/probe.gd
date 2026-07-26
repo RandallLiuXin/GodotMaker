@@ -56,6 +56,19 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 					var types := {}
 					for theme_type in resource.get_type_list():
 						var type_name := str(theme_type)
+						var styleboxes := {}
+						for style_name in resource.get_stylebox_list(theme_type):
+							var stylebox := resource.get_stylebox(style_name, theme_type)
+							var stylebox_facts := {"class": stylebox.get_class()}
+							if stylebox.is_class("StyleBoxFlat"):
+								var flat := stylebox as StyleBoxFlat
+								stylebox_facts["border_width"] = {
+									"left": flat.border_width_left,
+									"top": flat.border_width_top,
+									"right": flat.border_width_right,
+									"bottom": flat.border_width_bottom,
+								}
+							styleboxes[str(style_name)] = stylebox_facts
 						types[type_name] = {
 							"variation_base": str(resource.get_type_variation_base(theme_type)),
 							"colors": resource.get_color_list(theme_type),
@@ -64,6 +77,7 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 							"fonts": resource.get_font_list(theme_type),
 							"icons": resource.get_icon_list(theme_type),
 							"styles": resource.get_stylebox_list(theme_type),
+							"styleboxes": styleboxes,
 						}
 					structure[check] = {"types": types}
 				else:

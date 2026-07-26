@@ -8,10 +8,13 @@ Theme API fields itself.
 from __future__ import annotations
 
 import json
+import math
 import re
+import struct
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 from .contract import CompileRequest, CompilerError
 from .registry import CompilerRegistry, CompilerRoute
@@ -91,10 +94,15 @@ _RESOURCE_EXTENSIONS = {
     "FontFile": frozenset({".ttf", ".otf", ".woff", ".woff2"}),
     "Texture2D": frozenset({".png", ".webp", ".jpg", ".jpeg", ".svg"}),
 }
-_STYLEBOX_PROPERTIES = frozenset({
-    "bg_color", "border_color", "corner_radius", "border_width", "content_margin",
-    "expand_margin", "shadow_color", "shadow_size", "shadow_offset", "anti_aliasing",
-})
+_STYLEBOX_PROPERTIES = {
+    "StyleBoxFlat": frozenset({
+        "bg_color", "border_color", "corner_radius", "border_width", "content_margin",
+        "expand_margin", "shadow_color", "shadow_size", "shadow_offset", "anti_aliasing",
+    }),
+    # StyleBoxEmpty inherits content margins from StyleBox, but none of the
+    # drawing, border, expand, or shadow fields owned by StyleBoxFlat.
+    "StyleBoxEmpty": frozenset({"content_margin"}),
+}
 
 
 def _fail(message: str) -> None:
@@ -136,7 +144,12 @@ def _color(value: Any, label: str) -> str:
 
 
 def _number(value: Any, label: str, *, minimum: float = 0, integer: bool = False) -> int | float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < minimum:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or value < minimum
+    ):
         _fail(f"{label} must be a {'non-negative ' if minimum == 0 else ''}number")
     if integer and (type(value) is not int or value < minimum):
         _fail(f"{label} must be a non-negative integer")
@@ -148,6 +161,110 @@ def _vector2(value: Any, label: str) -> str:
     if len(values) != 2:
         _fail(f"{label} must contain exactly two numbers")
     return "Vector2(" + ", ".join(str(_number(part, label)) for part in values) + ")"
+
+
+def _valid_sfnt(payload: bytes) -> bool:
+    """Check the bounded offset-table layout shared by TTF and OTF fonts."""
+    if len(payload) < 12 or payload[:4] not in {b"\x00\x01\x00\x00", b"true", b"OTTO"}:
+        return False
+    table_count = struct.unpack(">H", payload[4:6])[0]
+    directory_end = 12 + table_count * 16
+    if table_count == 0 or directory_end > len(payload):
+        return False
+    for index in range(table_count):
+        offset = 12 + index * 16
+        table_offset, table_length = struct.unpack(">II", payload[offset + 8:offset + 16])
+        if table_offset + table_length > len(payload):
+            return False
+    return True
+
+
+def _valid_woff(payload: bytes) -> bool:
+    if len(payload) < 44 or payload[:4] != b"wOFF":
+        return False
+    declared_length = struct.unpack(">I", payload[8:12])[0]
+    table_count = struct.unpack(">H", payload[12:14])[0]
+    directory_end = 44 + table_count * 20
+    if declared_length != len(payload) or table_count == 0 or directory_end > len(payload):
+        return False
+    for index in range(table_count):
+        offset = 44 + index * 20
+        table_offset, compressed_length = struct.unpack(">II", payload[offset + 4:offset + 12])
+        if table_offset + compressed_length > len(payload):
+            return False
+    return True
+
+
+def _valid_woff2(payload: bytes) -> bool:
+    return (
+        len(payload) >= 48
+        and payload[:4] == b"wOF2"
+        and struct.unpack(">I", payload[8:12])[0] == len(payload)
+        and struct.unpack(">H", payload[12:14])[0] > 0
+    )
+
+
+def _valid_jpeg(payload: bytes) -> bool:
+    if not payload.startswith(b"\xff\xd8"):
+        return False
+    index = 2
+    while index + 4 <= len(payload):
+        if payload[index] != 0xFF:
+            return False
+        while index < len(payload) and payload[index] == 0xFF:
+            index += 1
+        if index >= len(payload):
+            return False
+        marker = payload[index]
+        index += 1
+        if marker in {0xD8, 0xD9} or 0xD0 <= marker <= 0xD7:
+            continue
+        if index + 2 > len(payload):
+            return False
+        length = struct.unpack(">H", payload[index:index + 2])[0]
+        if length < 2 or index + length > len(payload):
+            return False
+        if marker in {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}:
+            return length >= 8 and payload[index + 3:index + 7] != b"\x00\x00\x00\x00"
+        index += length
+    return False
+
+
+def _valid_texture(payload: bytes, suffix: str) -> bool:
+    if suffix == ".png":
+        return (
+            len(payload) >= 45
+            and payload.startswith(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+            and payload[16:24] != b"\x00" * 8
+            and payload[-12:-4] == b"\x00\x00\x00\x00IEND"
+        )
+    if suffix == ".webp":
+        return len(payload) >= 16 and payload[:4] == b"RIFF" and payload[8:12] == b"WEBP" and struct.unpack("<I", payload[4:8])[0] + 8 == len(payload)
+    if suffix in {".jpg", ".jpeg"}:
+        return _valid_jpeg(payload)
+    if suffix == ".svg":
+        try:
+            root = ElementTree.fromstring(payload)
+        except ElementTree.ParseError:
+            return False
+        return root.tag.rsplit("}", 1)[-1] == "svg"
+    return False
+
+
+def _validate_resource_content(file_path: Path, expected_type: str, suffix: str, label: str) -> None:
+    try:
+        payload = file_path.read_bytes()
+    except OSError as exc:
+        _fail(f"{label}.path cannot be read: {exc}")
+    valid = (
+        _valid_sfnt(payload) if expected_type == "FontFile" and suffix in {".ttf", ".otf"}
+        else _valid_woff(payload) if expected_type == "FontFile" and suffix == ".woff"
+        else _valid_woff2(payload) if expected_type == "FontFile" and suffix == ".woff2"
+        else _valid_texture(payload, suffix) if expected_type == "Texture2D"
+        else False
+    )
+    if not valid:
+        _fail(f"{label}.path is not valid {expected_type} content: {file_path.name}")
 
 
 def _resource(value: Any, label: str, *, expected_type: str, root: Path) -> tuple[str, str]:
@@ -163,6 +280,7 @@ def _resource(value: Any, label: str, *, expected_type: str, root: Path) -> tupl
     file_path = root / path[len("res://"):]
     if not file_path.is_file():
         _fail(f"{label}.path does not exist: {path}")
+    _validate_resource_content(file_path, expected_type, suffix, label)
     return path, expected_type
 
 
@@ -211,15 +329,19 @@ def _styleboxes(recipe: Mapping[str, Any]) -> tuple[dict[str, list[str]], dict[s
             _fail(f"styleboxes.{box_id}.properties may not be empty for StyleBoxFlat")
         lines: list[str] = []
         for name in sorted(properties):
-            if name not in _STYLEBOX_PROPERTIES:
-                _fail(f"styleboxes.{box_id}.properties has unsupported StyleBox property: {name}")
+            if name not in _STYLEBOX_PROPERTIES[box["type"]]:
+                _fail(f"styleboxes.{box_id}.properties has unsupported {box['type']} property: {name}")
             value = properties[name]
             if name in {"bg_color", "border_color", "shadow_color"}:
                 lines.append(f"{name} = {_color(value, f'styleboxes.{box_id}.{name}')}")
-            elif name in {"corner_radius", "border_width"}:
+            elif name == "corner_radius":
                 number = _number(value, f"styleboxes.{box_id}.{name}", integer=True)
                 for edge in ("top_left", "top_right", "bottom_right", "bottom_left"):
                     lines.append(f"{name}_{edge} = {number}")
+            elif name == "border_width":
+                number = _number(value, f"styleboxes.{box_id}.{name}", integer=True)
+                for edge in ("left", "top", "right", "bottom"):
+                    lines.append(f"border_width_{edge} = {number}")
             elif name in {"content_margin", "expand_margin"}:
                 number = _number(value, f"styleboxes.{box_id}.{name}")
                 for edge in ("left", "top", "right", "bottom"):
@@ -244,7 +366,12 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
     if Path(request.source_path).suffix.lower() != ".json":
         _fail("source_path must name a JSON theme recipe")
     try:
-        recipe = json.loads(request.source_file().read_text(encoding="utf-8"))
+        recipe = json.loads(
+            request.source_file().read_text(encoding="utf-8"),
+            parse_constant=lambda token: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON number: {token}")
+            ),
+        )
     except (OSError, ValueError) as exc:
         _fail(f"cannot read valid JSON from {request.source_path}: {exc}")
     recipe = _mapping(recipe, "root")

@@ -295,7 +295,7 @@ def test_a_compiled_theme_recipe_reaches_ready_through_real_godot(godot_bin, god
     _write(
         godot_project,
         recipe_path,
-        b'''{"version":1,"colors":[{"type":"Button","name":"font_color","value":"#FFFFFFFF"}],"font_sizes":[],"constants":[],"fonts":[],"icons":[],"styleboxes":{"normal":{"type":"StyleBoxFlat","properties":{"bg_color":"#112233FF"}}},"styles":[{"type":"Button","name":"normal","stylebox":"normal"}],"variations":[{"name":"PrimaryButton","base_type":"Button"}]}''',
+        b'''{"version":1,"colors":[{"type":"Button","name":"font_color","value":"#FFFFFFFF"}],"font_sizes":[],"constants":[],"fonts":[],"icons":[],"styleboxes":{"normal":{"type":"StyleBoxFlat","properties":{"bg_color":"#112233FF","border_width":2}},"focus":{"type":"StyleBoxEmpty","properties":{}}},"styles":[{"type":"Button","name":"normal","stylebox":"normal"},{"type":"Button","name":"focus","stylebox":"focus"}],"variations":[{"name":"PrimaryButton","base_type":"Button"}]}''',
     )
     registry = build_default_registry()
     theme.register_into(registry)
@@ -324,6 +324,9 @@ def test_a_compiled_theme_recipe_reaches_ready_through_real_godot(godot_bin, god
     assert result.ready is True, result.to_dict()
     assert result.levels[3].details["godot_class"] == "Theme"
     assert result.levels[4].details["variations"] == ["PrimaryButton"]
+    border = result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["normal"]["border_width"]
+    assert border == {"left": 2, "top": 2, "right": 2, "bottom": 2}
+    assert result.levels[3].details["structure"]["theme"]["types"]["Button"]["styleboxes"]["focus"] == {"class": "StyleBoxEmpty"}
 
 
 def test_headless_godot_rejects_a_corrupt_resource(godot_bin, godot_project):

@@ -70,6 +70,29 @@ def test_compiles_a_complete_theme_with_a_variation_deterministically(tmp_path):
     assert 'Button/styles/normal = SubResource("StyleBox_button_normal")' in text
 
 
+def test_serializes_stylebox_flat_border_width_to_its_real_edge_properties(tmp_path):
+    recipe = _recipe()
+    recipe["styleboxes"]["button_normal"]["properties"]["border_width"] = 3
+    _write_recipe(tmp_path, recipe)
+    _compile(tmp_path)
+
+    text = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_text(encoding="utf-8")
+    for edge in ("left", "top", "right", "bottom"):
+        assert f"border_width_{edge} = 3" in text
+    assert "border_width_top_left" not in text
+
+
+def test_allows_an_empty_stylebox_without_flat_only_properties(tmp_path):
+    recipe = _recipe(
+        styleboxes={"focus": {"type": "StyleBoxEmpty", "properties": {}}},
+        styles=[{"type": "Button", "name": "focus", "stylebox": "focus"}],
+    )
+    _write_recipe(tmp_path, recipe)
+    _compile(tmp_path)
+    text = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_text(encoding="utf-8")
+    assert '[sub_resource type="StyleBoxEmpty" id="StyleBox_focus"]' in text
+
+
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
@@ -78,6 +101,7 @@ def test_compiles_a_complete_theme_with_a_variation_deterministically(tmp_path):
         (lambda recipe: recipe["colors"].__setitem__(0, {"type": "Label", "name": "icon_normal_color", "value": "#FFFFFF"}), "allowed colors property for Label"),
         (lambda recipe: recipe["styles"].__setitem__(0, {"type": "Button", "name": "normal", "stylebox": "missing"}), "unknown StyleBox"),
         (lambda recipe: recipe["styleboxes"]["button_normal"].__setitem__("type", "Resource"), "StyleBoxFlat or StyleBoxEmpty"),
+        (lambda recipe: recipe["styleboxes"]["button_normal"].update({"type": "StyleBoxEmpty", "properties": {"bg_color": "#FFFFFF"}}), "unsupported StyleBoxEmpty property"),
     ],
 )
 def test_rejects_untrusted_type_property_and_stylebox_references(tmp_path, mutate, message):
@@ -88,10 +112,43 @@ def test_rejects_untrusted_type_property_and_stylebox_references(tmp_path, mutat
         _compile(tmp_path)
 
 
-def test_rejects_missing_or_wrongly_typed_external_resources(tmp_path):
+def test_rejects_missing_external_resources(tmp_path):
     recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://outside.ttf"}}])
     _write_recipe(tmp_path, recipe)
     with pytest.raises(CompilerError, match="does not exist"):
+        _compile(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("section", "resource_type", "path"),
+    [
+        ("fonts", "FontFile", "res://fake.ttf"),
+        ("icons", "Texture2D", "res://fake.png"),
+    ],
+)
+def test_rejects_wrongly_typed_external_resource_content(tmp_path, section, resource_type, path):
+    (tmp_path / path[len("res://"):]).write_bytes(b"not a resource")
+    item = {"type": "Button", "name": "font" if section == "fonts" else "icon", "value": {"type": resource_type, "path": path}}
+    _write_recipe(tmp_path, _recipe(**{section: [item]}))
+    with pytest.raises(CompilerError, match=f"not valid {resource_type} content"):
+        _compile(tmp_path)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_rejects_non_finite_json_numbers_before_serialization(tmp_path, value):
+    recipe = _recipe()
+    recipe["styleboxes"]["button_normal"]["properties"]["content_margin"] = value
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="non-finite JSON number"):
+        _compile(tmp_path)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_rejects_non_finite_vector_values_before_serialization(tmp_path, value):
+    recipe = _recipe()
+    recipe["styleboxes"]["button_normal"]["properties"]["shadow_offset"] = [value, 1]
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="non-finite JSON number"):
         _compile(tmp_path)
 
 
