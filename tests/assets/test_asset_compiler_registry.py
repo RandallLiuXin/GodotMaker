@@ -910,10 +910,9 @@ def test_texture2d_compiler_rejects_a_separate_artifact_path_directly(project):
         )
 
 
-def test_default_registry_ships_only_the_texture2d_route():
-    # No concrete AtlasTexture, SpriteFrames, Theme, StyleBoxTexture, or TileSet
-    # compiler belongs to the shared layer; each lands with its asset skill.
+def test_default_registry_ships_the_shared_texture_and_spriteframes_routes():
     assert [route.key for route in build_default_registry().routes()] == [
+        ("grid_sheet", "SpriteFrames"),
         ("single", "Texture2D")
     ]
 
@@ -922,9 +921,9 @@ def test_each_build_returns_an_independent_registry():
     # There is no module-level singleton: registering a family compiler must not
     # leak into a registry another caller builds.
     first = build_default_registry()
-    _register(first, "grid_sheet", "SpriteFrames")
-    assert len(first.routes()) == 2
-    assert len(build_default_registry().routes()) == 1
+    _register(first, "theme_recipe", "Theme")
+    assert len(first.routes()) == 3
+    assert len(build_default_registry().routes()) == 2
 
 
 def test_relative_project_root_compiles_without_double_anchoring(tmp_path, monkeypatch):
@@ -1129,7 +1128,7 @@ def test_bridge_imports_the_package_without_tools_on_the_path(tmp_path):
         f"sys.path.insert(0, {str(SHARED_DIR)!r})\n"
         "assert 'asset_stable_entry' not in sys.modules\n"
         "import asset_compiler\n"
-        "print(asset_compiler.build_default_registry().routes()[0].compiler_id)\n"
+        "print(asset_compiler.build_default_registry().resolve('single', 'Texture2D').compiler_id)\n"
     )
     env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
     completed = subprocess.run(

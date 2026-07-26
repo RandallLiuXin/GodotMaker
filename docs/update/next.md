@@ -18,6 +18,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Added
 
 - Added a recipe-only native TileSet atlas compiler with declared tile semantics and L4 source, tile, alternative, layer, and tile-size verification.
+- Added a deterministic SpriteFrames compiler that aggregates explicitly timed normalized action PNGs, rejects missing required actions, and serializes independent frame texture bindings for character bundles and animated FX.
 - Published first-class Asset Skills for Claude Code, Codex, and OpenCode together with their project-local shared compiler, validator, and schema runtime under `.godotmaker/asset-runtime/`.
 - Added a fail-closed `asset_runtime_resolver.py` that converts a registered ASSETS.md `manifest_entry` into the minimal ready worker runtime snapshot (#106).
 - Added `tools/asset_atlas_assemble.py` for reproducible fixed-slot physical PNG atlases and region metadata; it rejects implicit packing, trimming, heuristic discovery, invalid bounds, overlap, size mismatches, and missing source PNGs.

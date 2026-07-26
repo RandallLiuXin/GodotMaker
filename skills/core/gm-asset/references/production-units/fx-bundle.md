@@ -46,6 +46,10 @@ python tools/asset_action_process.py \
   --grid <COLSxROWS> \
   --names <frame_names> \
   --kind fx \
+  --action-name <action_name> \
+  --fps <fps> \
+  --no-loop \
+  --frame-durations <duration_per_frame,...> \
   --final-dir <runtime_dir> \
   --final-prefix <asset_id>
 ```
@@ -78,8 +82,9 @@ Draft selected one-frame entries with `tools/asset_curation_entry_draft.py`
 (`--production-family fx-bundle --source-layout single`).
 Draft animated FX entries with `tools/asset_action_entry_draft.py`
 (`--production-family fx-bundle`), which writes `source_layout.type: grid_sheet`.
-Both stop at `processing_status: source_ready` with no `godot_artifact`; the
-`SpriteFrames` compiler is not implemented yet.
+Both stop at `processing_status: source_ready` with no `godot_artifact`; each
+animated FX action supplies explicit FPS, loop state, frame order, and relative
+frame durations to one SpriteFrames compile.
 Do not use a source sheet as an independent final effect.
 
 ## Outputs
