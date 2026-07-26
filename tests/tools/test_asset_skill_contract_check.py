@@ -122,6 +122,20 @@ def test_empty_sources_and_previews_are_allowed():
     assert check_result(data)["ok"] is True
 
 
+def test_failed_result_can_report_no_outputs():
+    data = valid_result()
+    data["asset_type"] = "platform-strip"
+    data["outputs"] = []
+    data["sources"] = []
+    data["previews"] = []
+    data["validation"] = {"passed": False, "notes": "Atlas validation failed."}
+
+    result = check_result(data)
+    assert result["ok"] is True
+    assert result["output_count"] == 0
+    assert result["runtime_output_count"] == 0
+
+
 @pytest.mark.parametrize(
     "path",
     [

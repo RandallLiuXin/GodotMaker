@@ -13,9 +13,10 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 1. Execute directly.
 2. Do not spawn subagents.
 3. Read the brief completely before writing files.
-4. Read exactly one First Entry Document from the brief.
-5. Read only provider and shared docs listed in the brief or referenced by the
-   First Entry Document.
+4. Read exactly one production contract from the brief: either a First Entry
+   Document or a named first-class Asset Skill.
+5. Read only provider and shared docs listed in the brief or referenced by that
+   production contract.
 6. Write only the output paths listed in the brief.
 7. Do not modify `ASSETS.md`.
 8. Do not modify planning docs.
@@ -38,16 +39,23 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 ## Execution Order
 
 1. Read the brief.
-2. Read the First Entry Document.
+2. Read the production contract. When the brief names a first-class Asset
+   Skill, invoke it with the supplied generic request instead of reading a
+   production-unit document.
 3. Read the provider document.
 4. Read listed shared docs.
 5. Generate or claim source images.
 6. Stop the affected asset path when source generation or claim fails.
 7. Run required processing tools for claimed or provided sources.
-8. Write prompt files, reports, and stable entry draft files.
-9. Validate stable entry content and referenced files.
-10. Verify listed output files exist.
-11. Write the Asset Producer Report.
+8. For a first-class Asset Skill result, validate the generic result with
+   `tools/asset_skill_contract_check.py`; if it passed, adapt its sources,
+   outputs, and validation evidence into this report and the declared
+   deterministic draft-builder inputs. If it failed, report the failure and do
+   not write a stable-entry draft.
+9. Write prompt files, reports, and stable entry draft files.
+10. Validate stable entry content and referenced files.
+11. Verify listed output files exist.
+12. Write the Asset Producer Report.
 
 ## Prompt Rules
 
@@ -77,6 +85,7 @@ When a prompt depends on an existing image:
 
 ### Production Unit
 - First Entry Document: {path}
+- First-class Asset Skill: {name or none}
 - Provider: {path}
 - Configured Provider: {provider from plan.provider}
 - Used Provider: {provider actually used}
@@ -100,4 +109,7 @@ When a prompt depends on an existing image:
 
 ### Handoff
 {Which stable entries the manager should register and which ASSETS.md rows they update.}
+
+### Asset Skill Result
+{Validated generic result summary for a first-class Skill, or none.}
 ```
