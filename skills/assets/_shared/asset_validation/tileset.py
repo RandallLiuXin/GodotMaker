@@ -13,7 +13,7 @@ CHECKS = ("tileset",)
 _SHAPES = {"square": 0, "isometric": 1, "half_offset_square": 2, "hexagon": 3}
 _ANIMATION_MODES = {"default": 0, "random_start_times": 1, "max": 2}
 _FLOAT32_ROUND_TRIP_TOLERANCE = 1e-6
-_CUSTOM_DATA_DEFAULTS = {1: False, 2: 0, 3: 0.0, 4: ""}
+_CUSTOM_DATA_DEFAULTS = {0: None, 1: False, 2: 0, 3: 0.0, 4: ""}
 
 
 def _same_float32_round_trip(actual: Any, expected: Any) -> bool:
@@ -86,6 +86,22 @@ def _same_navigation_polygons(actual: Any, expected: Any) -> bool:
                 return False
             if not all(_same_float32_round_trip(value, wanted) for value, wanted in zip(actual_point, expected_point)):
                 return False
+    return True
+
+
+def _same_custom_data(actual: Any, expected: Any, layers: list[dict[str, Any]]) -> bool:
+    if not isinstance(actual, list) or not isinstance(expected, list) or len(actual) != len(expected) or len(actual) != len(layers):
+        return False
+    expected_types = {0: type(None), 1: bool, 2: int, 4: str}
+    for actual_value, expected_value, layer in zip(actual, expected, layers):
+        value_type = layer.get("type", 0)
+        if value_type == 3:
+            if not _same_float32_round_trip(actual_value, expected_value):
+                return False
+        elif value_type not in expected_types or type(actual_value) is not expected_types[value_type] or type(expected_value) is not expected_types[value_type]:
+            return False
+        elif actual_value != expected_value:
+            return False
     return True
 
 
@@ -215,6 +231,8 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
                     if key in {"collision_polygons", "occlusion_polygons"}
                     else _same_navigation_polygons(loaded.get(key), value)
                     if key == "navigation_polygons"
+                    else _same_custom_data(loaded.get(key), value, request.spec.get("custom_data_layers", []))
+                    if key == "custom_data"
                     else loaded.get(key) == value
                 )
                 if key != "id" and not matches:
@@ -234,6 +252,8 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
                     if key in {"collision_polygons", "occlusion_polygons"}
                     else _same_navigation_polygons(actual_alternative.get(key), expected_value)
                     if key == "navigation_polygons"
+                    else _same_custom_data(actual_alternative.get(key), expected_value, request.spec.get("custom_data_layers", []))
+                    if key == "custom_data"
                     else actual_alternative.get(key) == expected_value
                     for key, expected_value in expected_alternative.items()
                 )

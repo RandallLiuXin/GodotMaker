@@ -99,6 +99,15 @@ At TileSet scope, explicitly declare any `physics_layers`,
 `terrain_sets`. Terrain peering bits, polygons, custom data, alternatives, and
 animation timing are recipe data. Never infer them from the atlas image.
 
+TileSet v1 custom data is deliberately limited to Godot's scalar Variant
+types: `NIL` (type `0`, value `null`), `bool` (`1`), `int` (`2`), `float`
+(`3`, finite JSON number), and `String` (`4`). Each `custom_data[].value` must
+match the declared layer type exactly; arrays, objects, resources, vectors, and
+all other Variant types are outside v1 and must be rejected before Godot runs.
+Only one custom-data value and one terrain peering bit may be declared per
+layer/bit on a tile or alternative. Polygon layers and terrain references must
+refer to declared layer and terrain indexes.
+
 An animation declares `mode` (`default`, `random_start_times`, or `max`),
 positive `frames_count`, positive `columns`, non-negative `separation`,
 positive `speed`, and optional continuous `frame_durations`. Each alternative

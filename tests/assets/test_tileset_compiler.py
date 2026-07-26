@@ -29,6 +29,15 @@ def _spec(**changes):
     return recipe
 
 
+def _recipe_request(tmp_path, spec):
+    return CompileRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=tmp_path,
+        spec=spec,
+    )
+
+
 def test_tileset_route_is_explicit_and_does_not_mutate_the_shared_default_registry():
     registry = CompilerRegistry()
     compiler.register_into(registry)
@@ -137,6 +146,83 @@ def test_tileset_recipe_rejects_duplicate_navigation_polygon_layers(tmp_path, al
     )
     with pytest.raises(CompilerError, match="duplicate navigation polygons"):
         compiler._recipe(request)
+
+
+def test_tileset_recipe_accepts_only_the_five_v1_custom_data_scalars(tmp_path):
+    recipe = compiler._recipe(_recipe_request(tmp_path, _spec(
+        custom_data_layers=[
+            {"name": "nothing", "type": 0}, {"name": "enabled", "type": 1},
+            {"name": "count", "type": 2}, {"name": "weight", "type": 3},
+            {"name": "label", "type": 4},
+        ],
+        sources=[{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{
+            "coords": [0, 0],
+            "custom_data": [
+                {"layer": 0, "value": None}, {"layer": 1, "value": True},
+                {"layer": 2, "value": 7}, {"layer": 3, "value": -0.25},
+                {"layer": 4, "value": "grass"},
+            ],
+            "alternatives": [{"id": 1, "custom_data": [{"layer": 4, "value": "alt"}]}],
+        }]}],
+    )))
+    assert recipe["sources"][0]["tiles"][0]["custom_data"][-1]["value"] == "grass"
+    assert recipe["sources"][0]["tiles"][0]["alternatives"][0]["custom_data"] == [{"layer": 4, "value": "alt"}]
+
+
+@pytest.mark.parametrize(
+    "layer_type, value, message",
+    [
+        (0, "not-nil", "NIL scalar"),
+        (1, 1, "bool scalar"),
+        (2, True, "int scalar"),
+        (3, float("nan"), "finite number"),
+        (4, ["nested"], "String scalar"),
+    ],
+)
+def test_tileset_recipe_rejects_non_scalar_or_mismatched_custom_data(tmp_path, layer_type, value, message):
+    request = _recipe_request(tmp_path, _spec(
+        custom_data_layers=[{"name": "value", "type": layer_type}],
+        sources=[{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{
+            "coords": [0, 0], "custom_data": [{"layer": 0, "value": value}],
+        }]}],
+    ))
+    with pytest.raises(CompilerError, match=message):
+        compiler._recipe(request)
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "texture_origin": [0, "bad"]}]}]}, "texture_origin"),
+        ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "z_index": 4097}]}]}, "z_index"),
+        ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "y_sort_origin": 1.5}]}]}, "y_sort_origin"),
+        ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "probability": float("inf")}]}]}, "probability"),
+        ({"physics_layers": [{}], "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "collision_polygons": [{"layer": 1, "points": [[0, 0], [1, 0], [0, 1]]}]}]}]}, "collision polygon layer"),
+        ({"terrain_sets": [{"terrains": [{"name": "grass"}]}], "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "terrain_set": 1}]}]}, "terrain_set"),
+        ({"terrain_sets": [{"terrains": [{"name": "grass"}]}], "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "terrain_set": 0, "peering_bits": [{"bit": 16, "terrain": 0}]}]}]}, "peering bit"),
+        ({"terrain_sets": [{"terrains": [{"name": "grass"}]}], "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "terrain_set": 0, "peering_bits": [{"bit": 0, "terrain": 1}]}]}]}, "peering terrain"),
+        ({"physics_layers": [{}], "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "collision_polygons": [{"layer": 0, "points": [[0, 0], [1, 0]]}]}]}]}, "at least three points"),
+        ({"terrain_sets": [{"terrains": [{"name": "grass"}]}], "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "terrain_set": 0, "peering_bits": [{"bit": 0, "terrain": 0}, {"bit": 0, "terrain": 0}]}]}]}, "duplicate peering bits"),
+        ({"custom_data_layers": [{"name": "value", "type": 2}], "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "custom_data": [{"layer": 0, "value": 1}, {"layer": 0, "value": 2}]}]}]}, "duplicate custom data layers"),
+    ],
+)
+def test_tileset_recipe_rejects_invalid_declared_tile_semantics(tmp_path, changes, message):
+    with pytest.raises(CompilerError, match=message):
+        compiler._recipe(_recipe_request(tmp_path, _spec(**changes)))
+
+
+def test_tileset_recipe_rejects_duplicate_tile_coords_and_alternative_ids(tmp_path):
+    source = "res://assets/generated/tileset/grass/atlas.png"
+    duplicate_coords = _recipe_request(tmp_path, _spec(sources=[{
+        "texture": source, "tiles": [{"coords": [0, 0]}, {"coords": [0, 0]}],
+    }]))
+    duplicate_alternatives = _recipe_request(tmp_path, _spec(sources=[{
+        "texture": source, "tiles": [{"coords": [0, 0], "alternatives": [{"id": 1}, {"id": 1}]}],
+    }]))
+    with pytest.raises(CompilerError, match="duplicate tile coords"):
+        compiler._recipe(duplicate_coords)
+    with pytest.raises(CompilerError, match="duplicate alternative ids"):
+        compiler._recipe(duplicate_alternatives)
 
 
 def _png(width: int, height: int) -> bytes:
