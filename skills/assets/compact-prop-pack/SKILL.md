@@ -11,25 +11,31 @@ Skill.
 
 Accept the shared asset request contract from
 `skills/assets/_shared/asset-skill-contract.md` with
-`asset_type: "compact-prop-pack"`. The family-specific `spec` must declare one
-physical atlas and its fixed logical slots:
+`asset_type: "compact-prop-pack"`. The family-specific `spec` is the exact
+JSON declaration passed to `tools/asset_atlas_assemble.py --declaration`; no
+conversion or inferred fields are allowed:
 
 ```json
 {
+  "version": 1,
   "atlas": {
     "width": 192,
-    "height": 64,
-    "slots": [
-      { "name": "coin", "rect": [0, 0, 32, 32], "source": "coin.png" },
-      { "name": "crate", "rect": [48, 0, 48, 48], "source": "crate.png" }
-    ]
-  }
+    "height": 64
+  },
+  "slots": [
+    { "name": "coin", "rect": [0, 0, 32, 32], "source": "sources/coin.png" },
+    { "name": "crate", "rect": [48, 0, 48, 48], "source": "sources/crate.png", "pivot": [0.5, 1.0] }
+  ]
 }
 ```
 
 Every slot name is a logical prop id. Slot rectangles are explicit, positive,
 non-overlapping pixel rectangles in `[x, y, width, height]` form. Do not
 choose slots by packing, trimming, crop detection, or heuristic discovery.
+`source` is a project-root-relative PNG path. `pivot` is optional and defaults
+to `[0.5, 0.5]` through the assembler; when supplied it must be a two-value
+coordinate from 0 to 1. The `version`, `atlas`, and top-level `slots` keys are
+required exactly as shown.
 
 The physical atlas and metadata have stable paths:
 

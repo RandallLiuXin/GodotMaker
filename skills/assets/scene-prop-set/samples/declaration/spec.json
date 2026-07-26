@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "atlas": {"width": 224, "height": 96},
+  "slots": [
+    {"name": "market_stall", "rect": [0, 0, 96, 96], "source": "sources/market_stall.png"},
+    {"name": "signpost", "rect": [112, 0, 32, 64], "source": "sources/signpost.png", "pivot": [0.5, 1.0]},
+    {"name": "water_well", "rect": [160, 0, 64, 64], "source": "sources/water_well.png", "pivot": [0.5, 1.0]}
+  ]
+}

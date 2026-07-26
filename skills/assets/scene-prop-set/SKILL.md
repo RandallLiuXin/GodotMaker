@@ -9,25 +9,31 @@ backgrounds, UI, characters, effects, terrain, or scene placement.
 
 Accept the shared asset request contract from
 `skills/assets/_shared/asset-skill-contract.md` with
-`asset_type: "scene-prop-set"`. The family-specific `spec` declares one
-physical atlas and fixed logical-object slots:
+`asset_type: "scene-prop-set"`. The family-specific `spec` is the exact JSON
+declaration passed to `tools/asset_atlas_assemble.py --declaration`; no
+conversion or inferred fields are allowed:
 
 ```json
 {
+  "version": 1,
   "atlas": {
     "width": 256,
-    "height": 128,
-    "slots": [
-      { "name": "market_stall", "rect": [0, 0, 96, 96], "source": "market_stall.png" },
-      { "name": "signpost", "rect": [112, 0, 32, 64], "source": "signpost.png" }
-    ]
-  }
+    "height": 128
+  },
+  "slots": [
+    { "name": "market_stall", "rect": [0, 0, 96, 96], "source": "sources/market_stall.png" },
+    { "name": "signpost", "rect": [112, 0, 32, 64], "source": "sources/signpost.png", "pivot": [0.5, 1.0] }
+  ]
 }
 ```
 
 Every slot name is a logical scene-prop id. Rectangles are explicit,
 positive, non-overlapping pixel rectangles in `[x, y, width, height]` form.
 The Skill never auto-packs, trims, detects, or discovers a region.
+`source` is a project-root-relative PNG path. `pivot` is optional and defaults
+to `[0.5, 0.5]` through the assembler; when supplied it must be a two-value
+coordinate from 0 to 1. The `version`, `atlas`, and top-level `slots` keys are
+required exactly as shown.
 
 The physical atlas and its metadata use these stable paths:
 
