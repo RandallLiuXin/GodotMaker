@@ -12,6 +12,15 @@ sys.path.insert(0, str(TOOLS_DIR))
 from asset_action_process import ActionProcessError, process_action_sheet  # noqa: E402
 
 
+def animation_args():
+    return {
+        "action_name": "idle",
+        "fps": 8,
+        "loop": False,
+        "frame_durations": [1, 1, 1, 1],
+    }
+
+
 def make_action_sheet(path: Path, *, missing_last: bool = False):
     path.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("RGBA", (80, 80), (255, 0, 255, 255))
@@ -60,6 +69,7 @@ def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
         tag="v0.1.0",
         final_dir=tmp_path / "assets" / "sprites",
         final_prefix="player_idle",
+        **animation_args(),
     )
 
     assert result["ok"] is True
@@ -103,6 +113,7 @@ def test_process_action_sheet_rejects_missing_required_frame(tmp_path):
             grid="2x2",
             names="idle_01,idle_02,idle_03,idle_04",
             asset_id="player_idle",
+            **animation_args(),
         )
 
 
@@ -117,6 +128,7 @@ def test_process_action_sheet_rejects_edge_touch_by_default(tmp_path):
             grid="2x2",
             names="idle_01,idle_02,idle_03,idle_04",
             asset_id="player_idle",
+            **animation_args(),
         )
 
 
@@ -135,6 +147,7 @@ def test_process_action_sheet_recovers_edge_touch_with_history(tmp_path):
         recovery_timestamp="20260609-120000",
         final_dir=tmp_path / "assets" / "sprites",
         final_prefix="player_idle",
+        **animation_args(),
     )
 
     recovery = result["source_recovery"]
@@ -168,6 +181,7 @@ def test_process_action_sheet_recovery_rejects_frame_count_mismatch(tmp_path):
             asset_id="player_idle",
             recover_edge_touch=True,
             recovery_timestamp="20260609-120000",
+            **animation_args(),
         )
     assert not (source.parent / "history" / "player_idle_source.20260609-120000.png").exists()
 
@@ -196,6 +210,7 @@ def test_process_action_sheet_rejects_body_scale_drift(tmp_path):
             names="idle_01,idle_02,idle_03,idle_04",
             asset_id="player_idle",
             scale_reference_metadata=reference_meta,
+            **animation_args(),
         )
 
 
@@ -211,6 +226,7 @@ def test_process_action_sheet_requires_final_prefix_with_final_dir(tmp_path):
             names="idle_01,idle_02,idle_03,idle_04",
             asset_id="player_idle",
             final_dir=tmp_path / "assets" / "sprites",
+            **animation_args(),
         )
 
 
@@ -226,6 +242,7 @@ def test_process_action_sheet_does_not_double_prefix_runtime_frames(tmp_path):
         asset_id="player_idle",
         final_dir=tmp_path / "assets" / "sprites",
         final_prefix="player_idle",
+        **animation_args(),
     )
 
     assert [Path(path).name for path in result["final_frame_paths"]] == [
@@ -262,6 +279,13 @@ def test_cli_outputs_json(tmp_path):
             str(tmp_path / "assets" / "sprites"),
             "--final-prefix",
             "player_idle",
+            "--action-name",
+            "idle",
+            "--fps",
+            "8",
+            "--no-loop",
+            "--frame-durations",
+            "1,1,1,1",
         ],
         capture_output=True,
         text=True,

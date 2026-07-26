@@ -74,6 +74,10 @@ python tools/asset_action_process.py \
   --grid <COLSxROWS> \
   --names <frame_names> \
   --kind body \
+  --action-name <action_name> \
+  --fps <fps> \
+  --loop \
+  --frame-durations <duration_per_frame,...> \
   --final-dir <runtime_dir> \
   --final-prefix <asset_id>
 ```
@@ -112,9 +116,10 @@ a frame count that disagrees with the listed frames, any non-empty
 `edge_touch_frames`, a missing scale reference, and any runtime path outside the
 stable output directory — do not hand-write either file to get past those checks.
 
-The draft carries no `godot_artifact`. A `grid_sheet` becomes worker-consumable
-only once the `SpriteFrames` compiler and the L0-L4 runner exist; neither is
-implemented, so the asset stops here.
+The support metadata records the action name, FPS, loop state, ordered frame
+paths, and one relative duration per frame. The SpriteFrames compiler aggregates
+all required actions for an actor or skin; do not publish an individual action
+as a separate runtime animation resource.
 
 Keep `source_recovery.report` and `source_recovery.archived_source_path` when
 recovery is used.

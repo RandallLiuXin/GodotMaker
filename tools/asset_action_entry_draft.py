@@ -191,6 +191,21 @@ def build_action_entry_draft(
         )
         for index, frame in enumerate(frames)
     ]
+    action_name = _string(metadata, "action_name", "metadata")
+    fps = metadata.get("fps")
+    if type(fps) not in (int, float) or isinstance(fps, bool) or fps <= 0:
+        raise ActionEntryDraftError("metadata.fps must be a positive number")
+    loop = metadata.get("loop")
+    if type(loop) is not bool:
+        raise ActionEntryDraftError("metadata.loop must be boolean")
+    durations = metadata.get("frame_durations")
+    if not isinstance(durations, list) or len(durations) != frame_count:
+        raise ActionEntryDraftError(
+            "metadata.frame_durations must have one value per frame"
+        )
+    if any(type(value) not in (int, float) or isinstance(value, bool) or value <= 0
+           for value in durations):
+        raise ActionEntryDraftError("metadata.frame_durations values must be positive numbers")
 
     support_relative = (
         f"{stable_output_dir(production_family, asset_id)}/{asset_id}.json"
@@ -200,6 +215,10 @@ def build_action_entry_draft(
         "sheet_path": sheet_res,
         "frame_count": frame_count,
         "frame_paths": frame_res,
+        "action_name": action_name,
+        "fps": float(fps),
+        "loop": loop,
+        "frame_durations": [float(value) for value in durations],
         "align": align,
         "shared_scale": shared_scale,
         "edge_touch_frames": [],
