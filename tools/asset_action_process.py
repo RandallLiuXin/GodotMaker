@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+from math import isfinite
 import shutil
 import sys
 import tempfile
@@ -409,6 +410,10 @@ def process_action_sheet(
     align: str = "feet",
     shared_scale: bool = True,
     duration: int = 160,
+    action_name: str | None = None,
+    fps: float | None = None,
+    loop: bool | None = None,
+    frame_durations: list[float] | None = None,
     reject_edge_touch: bool = True,
     recover_edge_touch: bool = False,
     recovery_timestamp: str | None = None,
@@ -427,6 +432,19 @@ def process_action_sheet(
         raise ActionProcessError("--fit-scale must be positive")
     cols, rows = _parse_grid(grid)
     frame_names = _parse_names(names, cols * rows)
+    if not isinstance(action_name, str) or not action_name.strip():
+        raise ActionProcessError("--action-name is required")
+    if (type(fps) not in (int, float) or isinstance(fps, bool)
+            or not isfinite(fps) or fps <= 0):
+        raise ActionProcessError("--fps must be a positive number")
+    if type(loop) is not bool:
+        raise ActionProcessError("--loop or --no-loop is required")
+    if not isinstance(frame_durations, list) or len(frame_durations) != len(frame_names):
+        raise ActionProcessError("--frame-durations must have one value per frame")
+    if any(type(value) not in (int, float) or isinstance(value, bool)
+           or not isfinite(value) or value <= 0
+           for value in frame_durations):
+        raise ActionProcessError("--frame-durations values must be positive numbers")
 
     output_dir = Path(output_dir)
     candidate_dir = output_dir / "candidates"
@@ -545,6 +563,10 @@ def process_action_sheet(
         "align": align,
         "shared_scale": shared_scale,
         "duration": duration,
+        "action_name": action_name,
+        "fps": float(fps),
+        "loop": loop,
+        "frame_durations": [float(value) for value in frame_durations],
         "curation_report_path": str(curation_report),
         "initial_curation_report_path": (
             str(initial_curation_report) if source_recovery is not None else None
@@ -585,6 +607,12 @@ def _main() -> int:
     parser.add_argument("--scale-tolerance", type=float, default=0.15)
     parser.add_argument("--final-dir", type=Path)
     parser.add_argument("--final-prefix")
+    parser.add_argument("--action-name", required=True)
+    parser.add_argument("--fps", required=True, type=float)
+    loop_group = parser.add_mutually_exclusive_group(required=True)
+    loop_group.add_argument("--loop", dest="loop", action="store_true")
+    loop_group.add_argument("--no-loop", dest="loop", action="store_false")
+    parser.add_argument("--frame-durations", required=True)
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
 
@@ -607,6 +635,10 @@ def _main() -> int:
             scale_tolerance=args.scale_tolerance,
             final_dir=args.final_dir,
             final_prefix=args.final_prefix,
+            action_name=args.action_name,
+            fps=args.fps,
+            loop=args.loop,
+            frame_durations=[float(value) for value in args.frame_durations.split(",")],
             report=args.report,
         )
     except ActionProcessError as exc:

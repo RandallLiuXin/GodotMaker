@@ -14,7 +14,7 @@ re-imported self-registering module into an import-time crash.
 """
 from __future__ import annotations
 
-from . import atlas_texture, texture2d
+from . import atlas_texture, sprite_frames, texture2d
 from .contract import (
     CompileReceipt,
     CompileRequest,
@@ -37,6 +37,7 @@ def build_default_registry() -> CompilerRegistry:
     registry = CompilerRegistry()
     texture2d.register_into(registry)
     atlas_texture.register_into(registry)
+    sprite_frames.register_into(registry)
     return registry
 
 
@@ -54,5 +55,6 @@ __all__ = [
     "is_same_file",
     "require_text",
     "atlas_texture",
+    "sprite_frames",
     "texture2d",
 ]

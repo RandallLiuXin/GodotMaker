@@ -35,6 +35,10 @@ def make_metadata(asset_id=ASSET_ID, family=FAMILY, frame_count=2, **overrides):
         ],
         "align": "feet",
         "shared_scale": True,
+        "action_name": "idle",
+        "fps": 8,
+        "loop": False,
+        "frame_durations": [1.0] * frame_count,
         "edge_touch_frames": [],
         "scale_reference": {"checked": True, "source": "idle"},
     }
@@ -104,6 +108,10 @@ def test_support_metadata_carries_the_deterministic_action_facts(tmp_path):
     assert all(path.startswith(f"res://{stable_dir()}/") for path in support["frame_paths"])
     assert support["align"] == "feet"
     assert support["shared_scale"] is True
+    assert support["action_name"] == "idle"
+    assert support["fps"] == 8.0
+    assert support["loop"] is False
+    assert support["frame_durations"] == [1.0, 1.0, 1.0]
     assert support["edge_touch_frames"] == []
     assert support["scale_reference"] == {"checked": True, "source": "idle"}
     assert support["source_metadata_path"].startswith(".godotmaker/asset-generation/")
@@ -183,6 +191,24 @@ def test_shared_scale_must_be_boolean(tmp_path):
     produce(tmp_path, metadata)
 
     with pytest.raises(ActionEntryDraftError, match="shared_scale must be boolean"):
+        build(tmp_path, write_metadata(tmp_path, metadata))
+
+
+@pytest.mark.parametrize(
+    "field, value, message",
+    [
+        ("fps", float("nan"), "metadata.fps must be a positive number"),
+        ("fps", float("inf"), "metadata.fps must be a positive number"),
+        ("frame_durations", [1.0, float("nan")], "metadata.frame_durations values must be positive numbers"),
+        ("frame_durations", [1.0, float("inf")], "metadata.frame_durations values must be positive numbers"),
+    ],
+)
+def test_nonfinite_animation_timing_is_rejected(tmp_path, field, value, message):
+    metadata = make_metadata()
+    metadata[field] = value
+    produce(tmp_path, metadata)
+
+    with pytest.raises(ActionEntryDraftError, match=message):
         build(tmp_path, write_metadata(tmp_path, metadata))
 
 

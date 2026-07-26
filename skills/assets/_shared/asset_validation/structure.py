@@ -284,6 +284,8 @@ def validate_atlas_texture(request: StructureRequest) -> dict[str, Any]:
 
 def build_default_structures() -> StructureValidatorRegistry:
     """Return a new registry holding every validator the shared layer ships."""
+    from . import sprite_frames
+
     registry = StructureValidatorRegistry()
     registry.register(
         artifact_type="Texture2D",
@@ -297,4 +299,5 @@ def build_default_structures() -> StructureValidatorRegistry:
         validator=validate_atlas_texture,
         checks=ATLAS_TEXTURE_CHECKS,
     )
+    sprite_frames.register_into(registry)
     return registry
