@@ -15,16 +15,40 @@ _ANIMATION_MODES = {"default": 0, "random_start_times": 1, "max": 2}
 
 def _expected_tile(tile: dict[str, Any], spec: dict[str, Any], *, alternative: bool = False) -> dict[str, Any]:
     physics = [[] for _ in spec.get("physics_layers", [])]
-    for item in tile.get("collision_polygons", []): physics[item["layer"]].append(item["points"])
+    for item in tile.get("collision_polygons", []):
+        physics[item["layer"]].append(item["points"])
     occlusion = [[] for _ in spec.get("occlusion_layers", [])]
-    for item in tile.get("occlusion_polygons", []): occlusion[item["layer"]].append(item["points"])
+    for item in tile.get("occlusion_polygons", []):
+        occlusion[item["layer"]].append(item["points"])
     navigation = [[] for _ in spec.get("navigation_layers", [])]
-    for item in tile.get("navigation_polygons", []): navigation[item["layer"]] = item["points"]
+    for item in tile.get("navigation_polygons", []):
+        navigation[item["layer"]] = item["points"]
     peering = [-1] * 16
-    for item in tile.get("peering_bits", []): peering[item["bit"]] = item["terrain"]
+    for item in tile.get("peering_bits", []):
+        peering[item["bit"]] = item["terrain"]
     custom = [None] * len(spec.get("custom_data_layers", []))
-    for item in tile.get("custom_data", []): custom[item["layer"]] = item.get("value")
+    for item in tile.get("custom_data", []):
+        custom[item["layer"]] = item.get("value")
     return {"id": tile.get("id", 0 if not alternative else None), "texture_origin": tile.get("texture_origin", [0, 0]), "z_index": tile.get("z_index", 0), "y_sort_origin": tile.get("y_sort_origin", 0), "probability": tile.get("probability", 1.0), "terrain_set": tile.get("terrain_set", -1), "terrain": tile.get("terrain", -1), "peering_bits": peering, "custom_data": custom, "collision_polygons": physics, "occlusion_polygons": occlusion, "navigation_polygons": navigation}
+
+
+def _expected_layers(spec: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    terrain_sets = []
+    for terrain_set in spec.get("terrain_sets", []):
+        terrains = []
+        for terrain in terrain_set.get("terrains", []):
+            color = terrain.get("color", [1.0, 1.0, 1.0, 1.0])
+            if len(color) == 3:
+                color = [*color, 1.0]
+            terrains.append({"name": terrain.get("name", ""), "color": color})
+        terrain_sets.append({"mode": terrain_set.get("mode", 0), "terrains": terrains})
+    return {
+        "physics_layers": [{"collision_layer": item.get("collision_layer", 1), "collision_mask": item.get("collision_mask", 1)} for item in spec.get("physics_layers", [])],
+        "navigation_layers": [{"layers": item.get("layers", 1)} for item in spec.get("navigation_layers", [])],
+        "occlusion_layers": [{"light_mask": item.get("light_mask", 1)} for item in spec.get("occlusion_layers", [])],
+        "custom_data_layers": [{"name": item.get("name", ""), "type": item.get("type", 0)} for item in spec.get("custom_data_layers", [])],
+        "terrain_sets": terrain_sets,
+    }
 
 
 def validate_tileset(request: StructureRequest) -> dict[str, Any]:
@@ -88,11 +112,12 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
             for alternative, actual_alternative in zip(expected_alternatives, loaded_alternatives):
                 if actual_alternative != _expected_tile(alternative, request.spec, alternative=True):
                     raise ValidationError("loaded TileSet alternative data does not match the recipe")
+    normalized_layers = _expected_layers(request.spec)
     for key in ("physics_layers", "navigation_layers", "occlusion_layers", "custom_data_layers", "terrain_sets"):
         expected = len(request.spec.get(key, []))
         if facts.get(key + "_count") != expected:
             raise ValidationError(f"loaded TileSet {key} count does not match the recipe")
-        if facts.get(key) != request.spec.get(key, []):
+        if facts.get(key) != normalized_layers[key]:
             raise ValidationError(f"loaded TileSet {key} data does not match the recipe")
     return dict(facts)
 

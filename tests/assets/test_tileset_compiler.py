@@ -1,7 +1,9 @@
 """Contract tests for the explicit v1 TileSet atlas path."""
 from pathlib import Path
+import shutil
 import sys
 import struct
+import subprocess
 import zlib
 
 import pytest
@@ -83,6 +85,18 @@ def test_tileset_structure_validator_fails_on_unexpected_loaded_tile_count():
         structures.validate_tileset(request)
 
 
+def test_l4_normalizes_rgb_and_default_layer_recipe_values():
+    normalized = structures._expected_layers({
+        "physics_layers": [{}],
+        "terrain_sets": [{"terrains": [{"name": "grass", "color": [0.2, 0.4, 0.6]}]}],
+    })
+    assert normalized["physics_layers"] == [{"collision_layer": 1, "collision_mask": 1}]
+    assert normalized["terrain_sets"][0] == {
+        "mode": 0,
+        "terrains": [{"name": "grass", "color": [0.2, 0.4, 0.6, 1.0]}],
+    }
+
+
 @pytest.mark.parametrize(
     "recipe, message",
     [
@@ -112,6 +126,8 @@ def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_pr
     """Real compiler → ResourceLoader coverage for the v1 square atlas path."""
     fixture = REPO_ROOT / "tests" / "assets" / "fixtures" / "orthogonal_tileset_tilemap.tscn"
     assert fixture.is_file()
+    fixture_target = godot_project / "orthogonal_tileset_tilemap.tscn"
+    shutil.copyfile(fixture, fixture_target)
     source = godot_project / "assets/generated/tileset/grass/atlas.png"
     source.parent.mkdir(parents=True)
     source.write_bytes(_png(16, 16))
@@ -121,8 +137,26 @@ def test_orthogonal_fixture_compiles_and_loads_through_godot(godot_bin, godot_pr
         artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=godot_project,
         spec={"godot_path": godot_bin, "tile_shape": "square", "tile_size": [16, 16], "sources": [{"id": 3, "texture": "res://assets/generated/tileset/grass/atlas.png", "region_size": [16, 16], "margins": [0, 0], "separation": [0, 0], "tiles": [{"coords": [0, 0], "animation": {"mode": "default", "columns": 1, "frames_count": 1, "speed": 1.0, "frame_durations": [{"frame": 0, "duration": 1.0}]}}]}]},
     )
-    registry = CompilerRegistry(); compiler.register_into(registry)
+    registry = CompilerRegistry()
+    compiler.register_into(registry)
     registry.compile(request)
     report = GodotProbe(godot_bin).probe(godot_project, [ProbeRequest(request.artifact_path, "TileSet", ("tileset",))])
     assert report.resources[0].type_matches is True
     assert report.resources[0].structure["tileset"]["sources"][0]["id"] == 3
+    binding_script = godot_project / "bind_fixture.gd"
+    binding_script.write_text(
+        "extends SceneTree\nfunc _init():\n\tvar scene = load('res://orthogonal_tileset_tilemap.tscn').instantiate()\n\tscene.get_node('TileMap').tile_set = load('res://assets/generated/tileset/grass/grass.tres')\n\tquit()\n",
+        encoding="utf-8",
+    )
+    bound = subprocess.run(
+        [godot_bin, "--headless", "--path", str(godot_project), "--script", str(binding_script)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert bound.returncode == 0, bound.stderr or bound.stdout
+    structures.validate_tileset(StructureRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path=request.source_path, artifact_type="TileSet", artifact_path=request.artifact_path,
+        project_root=godot_project, probe=report.resources[0], spec=request.spec,
+    ))
