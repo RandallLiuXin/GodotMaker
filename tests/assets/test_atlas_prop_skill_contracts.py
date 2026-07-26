@@ -116,7 +116,7 @@ def test_public_atlas_fixtures_are_rgba_and_preserve_transparency():
 
 
 def test_public_atlas_declarations_assemble_to_the_result_source_path(tmp_path):
-    for family, (asset_id, expected_names) in FAMILIES.items():
+    for family, (asset_id, _) in FAMILIES.items():
         declaration = _declaration(family)
         source_atlas = _atlas_png(family)
         with Image.open(source_atlas) as image:
@@ -138,9 +138,7 @@ def test_public_atlas_declarations_assemble_to_the_result_source_path(tmp_path):
             project_root=tmp_path,
         )
         assert assembled["atlas_path"] == _result(family)["sources"][0]["path"]
-        assert [region["name"] for region in assembled["regions"]] == list(expected_names)
-        assert assembled["regions"][0]["pivot"] == [0.5, 0.5]
-        assert assembled["regions"][1]["pivot"] == [0.5, 1.0]
+        assert assembled["regions"] == _atlas(family)["regions"]
         with Image.open(source_atlas) as expected, Image.open(tmp_path / output) as actual:
             assert actual.mode == "RGBA"
             assert list(actual.get_flattened_data()) == list(expected.get_flattened_data())

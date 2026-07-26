@@ -3,7 +3,7 @@
   "atlas_path": "res://assets/generated/compact-prop-pack/market-props/market-props.png",
   "regions": [
     {"name": "coin", "rect": [0, 0, 32, 32], "pivot": [0.5, 0.5], "nine_slice": null},
-    {"name": "crate", "rect": [48, 0, 48, 48], "pivot": [0.5, 0.5], "nine_slice": null},
+    {"name": "crate", "rect": [48, 0, 48, 48], "pivot": [0.5, 1.0], "nine_slice": null},
     {"name": "lantern", "rect": [112, 0, 32, 48], "pivot": [0.5, 1.0], "nine_slice": null}
   ]
 }
