@@ -236,6 +236,7 @@ def test_tileset_l4_accepts_float32_round_trips(godot_bin, godot_project):
                             {"frame": 1, "duration": 0.9},
                         ],
                     },
+                    "alternatives": [{"id": 1, "probability": 0.3}],
                 }],
             }],
         },
@@ -251,6 +252,7 @@ def test_tileset_l4_accepts_float32_round_trips(godot_bin, godot_project):
     assert loaded_tile["probability"] == pytest.approx(0.3, abs=1e-6)
     assert loaded_tile["animation"]["speed"] == pytest.approx(1.3, abs=1e-6)
     assert loaded_tile["animation"]["frame_durations"] == pytest.approx([0.1, 0.9], abs=1e-6)
+    assert loaded_tile["alternatives"][0]["probability"] == pytest.approx(0.3, abs=1e-6)
     assert facts["terrain_sets"][0]["terrains"][0]["color"] == pytest.approx([0.2, 0.8, 0.3, 1.0], abs=1e-6)
     structures.validate_tileset(StructureRequest(
         production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",

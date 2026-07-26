@@ -181,7 +181,16 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
             if len(loaded_alternatives) != len(expected_alternatives):
                 raise ValidationError("loaded TileSet alternatives do not match the recipe")
             for alternative, actual_alternative in zip(expected_alternatives, loaded_alternatives):
-                if actual_alternative != _expected_tile(alternative, request.spec, alternative=True):
+                expected_alternative = _expected_tile(
+                    alternative, request.spec, alternative=True
+                )
+                alternative_matches = all(
+                    _same_float32_round_trip(actual_alternative.get(key), expected_value)
+                    if key == "probability"
+                    else actual_alternative.get(key) == expected_value
+                    for key, expected_value in expected_alternative.items()
+                )
+                if not alternative_matches:
                     raise ValidationError("loaded TileSet alternative data does not match the recipe")
     normalized_layers = _expected_layers(request.spec)
     for key in ("physics_layers", "navigation_layers", "occlusion_layers", "custom_data_layers", "terrain_sets"):
