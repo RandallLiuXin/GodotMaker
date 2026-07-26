@@ -5,6 +5,7 @@
   "provider": "native",
   "spec": {
     "mode": "animated",
+    "required_actions": ["impact"],
     "actions": [
       {
         "name": "impact",

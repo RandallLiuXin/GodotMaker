@@ -1,6 +1,7 @@
-"""Public contract fixtures for standalone animated asset skills."""
+"""Public contracts and real SpriteFrames handoff for animated bundle skills."""
 import copy
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -11,8 +12,13 @@ SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 sys.path.insert(0, str(SHARED_DIR))
 
-from asset_compiler import CompileRequest, CompilerError, sprite_frames  # noqa: E402
-from asset_skill_contract_check import check_request, check_result  # noqa: E402
+from asset_animated_bundle_contract_check import (  # noqa: E402
+    AnimatedBundleContractError,
+    build_spriteframes_spec,
+    check_bundle_request,
+    check_bundle_result,
+)
+from asset_compiler import CompileRequest, build_default_registry  # noqa: E402
 
 
 def _fixture(family: str, name: str) -> dict:
@@ -20,97 +26,166 @@ def _fixture(family: str, name: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_character_bundle_fixture_is_a_multi_action_standalone_contract():
-    request = _fixture("character-bundle", "valid-request.json")
+def _character_request() -> dict:
+    return _fixture("character-bundle", "valid-request.json")
+
+
+def _fx_request() -> dict:
+    return _fixture("fx-bundle", "animated-request.json")
+
+
+def test_character_fixture_has_a_valid_multi_action_public_contract():
+    request = _character_request()
     result = _fixture("character-bundle", "valid-result.json")
 
-    assert check_request(request)["asset_type"] == "character-bundle"
-    assert check_result(result)["runtime_output_count"] == 1
-    actions = request["spec"]["actions"]
-    assert request["spec"]["required_actions"] == [action["name"] for action in actions]
-    assert len(actions) == 2
-    assert actions[1]["loop"] is False
-    assert all(len(action["frame_names"]) == len(action["frame_durations"]) for action in actions)
-    assert result["outputs"][0]["godot_type"] == "SpriteFrames"
+    assert check_bundle_request(request)["asset_type"] == "character-bundle"
+    assert check_bundle_result(result)["asset_type"] == "character-bundle"
+    assert request["spec"]["required_actions"] == ["idle", "attack"]
+    assert request["spec"]["actions"][1]["loop"] is False
 
 
-def test_character_bundle_missing_required_action_is_rejected_by_shared_handoff(tmp_path):
-    request = _fixture("character-bundle", "valid-request.json")
-    action = request["spec"]["actions"][0]
-    compiler_request = CompileRequest(
-        production_family="character-bundle",
-        asset_id="player",
-        source_layout_type="grid_sheet",
-        source_path="res://assets/generated/character-bundle/player/player_sheet.png",
-        artifact_type="SpriteFrames",
-        artifact_path="res://assets/generated/character-bundle/player/player.tres",
-        project_root=tmp_path,
-        spec={"required_actions": ["idle", "attack"], "actions": [
-            {
-                "name": action["name"], "loop": action["loop"], "fps": action["fps"],
-                "frame_paths": ["res://assets/generated/character-bundle/player/idle_01.png"],
-                "frame_durations": [action["frame_durations"][0]],
-            }
-        ]},
+def test_family_contract_checker_cli_validates_the_public_fixture():
+    fixture = REPO_ROOT / "skills/assets/fx-bundle/fixtures/animated-request.json"
+    process = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "tools/asset_animated_bundle_contract_check.py"),
+            str(fixture),
+            "--kind",
+            "request",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    frame = tmp_path / "assets/generated/character-bundle/player/idle_01.png"
-    frame.parent.mkdir(parents=True)
-    frame.touch()
-    with pytest.raises(CompilerError, match="missing required actions"):
-        sprite_frames.action_spec(compiler_request)
+    assert process.returncode == 0
+    assert json.loads(process.stdout)["asset_type"] == "fx-bundle"
 
 
-def test_fx_fixtures_keep_static_and_animated_runtime_boundaries_separate():
-    animated = _fixture("fx-bundle", "animated-request.json")
-    animated_result = _fixture("fx-bundle", "animated-result.json")
-    static_request = _fixture("fx-bundle", "static-request.json")
-    static = _fixture("fx-bundle", "static-result.json")
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda d: d["spec"].pop("required_actions"), id="missing-required-actions"),
+        pytest.param(lambda d: d["spec"].update(required_actions=["idle", "idle"]), id="duplicate-required-action"),
+        pytest.param(lambda d: d["spec"]["actions"][1].update(name="idle"), id="duplicate-action-name"),
+        pytest.param(lambda d: d["spec"]["actions"][1].update(name="walk"), id="unexpected-action"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=[]), id="missing-frames"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=["idle", "idle"]), id="duplicate-frame-name"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(fps=0), id="non-positive-fps"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(loop="true"), id="non-boolean-loop"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frame_durations=[1]), id="duration-count-mismatch"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frame_durations=[1, 0]), id="non-positive-duration"),
+        pytest.param(lambda d: d["spec"].update(extra=True), id="unknown-spec-field"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(extra=True), id="unknown-action-field"),
+    ],
+)
+def test_character_request_rejects_every_declared_action_boundary(mutate):
+    request = _character_request()
+    mutate(request)
+    with pytest.raises(AnimatedBundleContractError):
+        check_bundle_request(request)
 
-    assert check_request(animated)["asset_type"] == "fx-bundle"
-    assert check_result(animated_result)["runtime_output_count"] == 1
-    assert check_request(static_request)["asset_type"] == "fx-bundle"
-    assert check_result(static)["runtime_output_count"] == 1
-    action = animated["spec"]["actions"]
-    assert animated["spec"]["mode"] == "animated"
-    assert len(action) == 1
-    assert action[0]["loop"] is False
-    assert len(action[0]["frame_names"]) == len(action[0]["frame_durations"])
-    assert animated_result["outputs"][0]["godot_type"] == "SpriteFrames"
-    assert static_request["spec"] == {"mode": "static"}
-    assert static["outputs"][0]["godot_type"] == "Texture2D"
-    assert static["sources"][0]["layout"] == "single"
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda d: d["outputs"][0].update(godot_type="Texture2D"), id="no-spriteframes"),
+        pytest.param(lambda d: d["outputs"].append({"role": "runtime", "path": "res://assets/generated/character-bundle/player/other.tres", "godot_type": "SpriteFrames"}), id="two-spriteframes"),
+    ],
+)
+def test_character_result_rejects_an_ambiguous_runtime_handoff(mutate):
+    result = _fixture("character-bundle", "valid-result.json")
+    mutate(result)
+    with pytest.raises(AnimatedBundleContractError):
+        check_bundle_result(result)
+
+
+def test_fx_fixture_reaches_the_real_spriteframes_compiler_through_public_handoff(tmp_path):
+    request = _fx_request()
+    action = request["spec"]["actions"][0]
+    output = tmp_path / "assets/generated/fx-bundle/impact"
+    output.mkdir(parents=True)
+    (output / "impact_sheet.png").touch()
+    frame_paths = []
+    for frame_name in action["frame_names"]:
+        frame = output / f"{frame_name}.png"
+        frame.touch()
+        frame_paths.append(f"res://assets/generated/fx-bundle/impact/{frame.name}")
+
+    spec = build_spriteframes_spec(request, {"impact": frame_paths})
+    compiled = build_default_registry().compile(
+        CompileRequest(
+            production_family="fx-bundle",
+            asset_id="impact",
+            source_layout_type="grid_sheet",
+            source_path="res://assets/generated/fx-bundle/impact/impact_sheet.png",
+            artifact_type="SpriteFrames",
+            artifact_path="res://assets/generated/fx-bundle/impact/impact.tres",
+            project_root=tmp_path,
+            spec=spec,
+        )
+    )
+
+    assert spec["required_actions"] == ["impact"]
+    assert compiled.godot_artifact.type == "SpriteFrames"
+    assert '"loop": false' in (output / "impact.tres").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda d: d["spec"].pop("mode"), id="missing-mode"),
+        pytest.param(lambda d: d["spec"].update(mode="looping"), id="unknown-mode"),
+        pytest.param(lambda d: d["spec"].pop("required_actions"), id="missing-required-actions"),
+        pytest.param(lambda d: d["spec"].update(required_actions=["impact", "flash"]), id="multiple-required-actions"),
+        pytest.param(lambda d: d["spec"]["actions"].append(copy.deepcopy(d["spec"]["actions"][0])), id="multiple-actions"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(name="flash"), id="mismatched-action-name"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=[]), id="missing-frames"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=["impact", "impact"]), id="duplicate-frame-name"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(fps=0), id="non-positive-fps"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(loop="false"), id="non-boolean-loop"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frame_durations=[1]), id="duration-count-mismatch"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frame_durations=[1, 0, 1]), id="non-positive-duration"),
+        pytest.param(lambda d: d["spec"].update(extra=True), id="unknown-spec-field"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(extra=True), id="unknown-action-field"),
+    ],
+)
+def test_animated_fx_request_rejects_every_declared_action_boundary(mutate):
+    request = _fx_request()
+    mutate(request)
+    with pytest.raises(AnimatedBundleContractError):
+        check_bundle_request(request)
+
+
+def test_static_fx_rejects_animation_fields_and_keeps_its_texture_result_boundary():
+    request = _fixture("fx-bundle", "static-request.json")
+    result = _fixture("fx-bundle", "static-result.json")
+    assert check_bundle_request(request)["asset_type"] == "fx-bundle"
+    assert check_bundle_result(result)["asset_type"] == "fx-bundle"
+
+    request["spec"]["actions"] = []
+    with pytest.raises(AnimatedBundleContractError, match="not allowed for a static"):
+        check_bundle_request(request)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda d: d["outputs"].append(copy.deepcopy(d["outputs"][0])), id="multiple-runtime-outputs"),
+        pytest.param(lambda d: d["outputs"][0].update(godot_type="Theme"), id="unsupported-runtime-type"),
+        pytest.param(lambda d: d["sources"][0].update(layout="grid_sheet"), id="static-layout-mismatch"),
+    ],
+)
+def test_fx_result_rejects_unsupported_or_ambiguous_runtime_handoff(mutate):
+    result = _fixture("fx-bundle", "static-result.json")
+    mutate(result)
+    with pytest.raises(AnimatedBundleContractError):
+        check_bundle_result(result)
 
 
 @pytest.mark.parametrize("family", ["character-bundle", "fx-bundle"])
-def test_animated_skills_are_standalone_and_do_not_claim_pipeline_or_scene_work(family):
+def test_animated_skills_name_the_callable_family_validation_path(family):
     skill = (REPO_ROOT / "skills" / "assets" / family / "SKILL.md").read_text(encoding="utf-8")
-    for forbidden in ("`ASSETS.md`", "generated manifests", "stable entries", "worker dispatch"):
-        assert forbidden in skill
-    assert "gm mode" not in skill.lower()
-
-
-def test_fx_contract_rejects_a_missing_animated_frame():
-    request = copy.deepcopy(_fixture("fx-bundle", "animated-request.json"))
-    action = request["spec"]["actions"][0]
-    action["frame_durations"].pop()
-    compiler_request = CompileRequest(
-        production_family="fx-bundle",
-        asset_id="impact",
-        source_layout_type="grid_sheet",
-        source_path="res://assets/generated/fx-bundle/impact/impact_sheet.png",
-        artifact_type="SpriteFrames",
-        artifact_path="res://assets/generated/fx-bundle/impact/impact.tres",
-        project_root=REPO_ROOT,
-        spec={
-            "required_actions": [action["name"]],
-            "actions": [{
-                "name": action["name"],
-                "loop": action["loop"],
-                "fps": action["fps"],
-                "frame_paths": ["res://assets/generated/fx-bundle/impact/impact_01.png"],
-                "frame_durations": action["frame_durations"],
-            }],
-        },
-    )
-    with pytest.raises(CompilerError, match="frame_durations"):
-        sprite_frames.action_spec(compiler_request)
+    assert "asset_animated_bundle_contract_check.py" in skill
+    assert "ASSETS.md" in skill
+    assert "generated manifests" in skill

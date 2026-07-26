@@ -10,10 +10,12 @@ arc, aura loop, dust, or another detached foreground effect. A request produces
 either one static `Texture2D` effect or one independently animated
 `SpriteFrames` effect.
 
-Read `../_shared/asset-skill-contract.md` before accepting a request. Validate
-the request and final result with `tools/asset_skill_contract_check.py`; this
-skill's family-specific `spec` rules below add to, rather than replace, that
-shared contract.
+Read `../_shared/asset-skill-contract.md` before accepting a request. First
+validate the shared request/result shape with
+`tools/asset_skill_contract_check.py`, then validate this family contract with
+`tools/asset_animated_bundle_contract_check.py --kind request` or `--kind
+result`. The family checker is the callable enforcement for the `spec` rules
+below; the shared checker alone intentionally validates only cross-family shape.
 
 ## Standalone boundary
 
@@ -29,10 +31,11 @@ The request has `asset_type: "fx-bundle"` and `spec.mode` equal to either
 
 - `static` has one transparent foreground image and no animation contract. It
   returns a `Texture2D` at the image path.
-- `animated` has exactly one named action. The action has non-empty ordered
-  `frame_names`, positive `fps`, an explicit boolean `loop`, and one positive
-  relative duration per frame. Its action name is both required and the sole
-  `SpriteFrames` animation name.
+- `animated` has `required_actions` containing exactly one name and exactly one
+  action with the same name. The action has non-empty ordered `frame_names`,
+  positive `fps`, an explicit boolean `loop`, and one positive relative duration
+  per frame. Its action name is both required and the sole `SpriteFrames`
+  animation name.
 
 Reject mixed static/animated requests, an animated effect with zero or multiple
 actions, missing frames, duplicate frame names, non-positive FPS or durations,
@@ -48,10 +51,13 @@ hard-code loop state.
    `tools/asset_action_process.py` using `kind: fx`, the explicit action name,
    grid, frame names, FPS, loop flag, and frame durations. Use center alignment
    for floating effects, projectiles, and detached FX.
-3. Compile that one action through the shared `grid_sheet` to `SpriteFrames`
-   route. Its compiler input has the action `name`, `fps`, `loop`,
-   `frame_paths`, and `frame_durations`. Validate L0-L4, including headless
-   Godot load and L4 frame order, texture bindings, FPS, loop, and durations.
+3. Pass the processed frame paths and this public request to
+   `build_spriteframes_spec()` from
+   `tools/asset_animated_bundle_contract_check.py`. Compile that one action
+   through the shared `grid_sheet` to `SpriteFrames` route. Its compiler input
+   has `required_actions` plus the action `name`, `fps`, `loop`, `frame_paths`,
+   and `frame_durations`. Validate L0-L4, including headless Godot load and L4
+   frame order, texture bindings, FPS, loop, and durations.
 4. For a static effect, process/select exactly one transparent foreground PNG
    and publish it through the shared `single` to `Texture2D` route. Validate
    its L0-L4 texture evidence.

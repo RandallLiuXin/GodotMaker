@@ -9,10 +9,12 @@ Use this skill for a player character, enemy, NPC, summon, boss, or other
 recurring creature identity. It produces one `SpriteFrames` resource for one
 actor or skin, containing every required named body action.
 
-Read `../_shared/asset-skill-contract.md` before accepting a request. Validate
-the request and final result with `tools/asset_skill_contract_check.py`; this
-skill's family-specific `spec` rules below add to, rather than replace, that
-shared contract.
+Read `../_shared/asset-skill-contract.md` before accepting a request. First
+validate the shared request/result shape with
+`tools/asset_skill_contract_check.py`, then validate this family contract with
+`tools/asset_animated_bundle_contract_check.py --kind request` or `--kind
+result`. The family checker is the callable enforcement for the `spec` rules
+below; the shared checker alone intentionally validates only cross-family shape.
 
 ## Standalone boundary
 
@@ -54,9 +56,12 @@ the `fx-bundle` skill.
    Supply the action name, exact grid and frame names, explicit FPS, explicit
    loop flag, and one relative duration per frame. Use a stable family/asset
    output directory for all normalized PNG frames.
-4. Compile the complete action set once through the shared `grid_sheet` to
-   `SpriteFrames` route. The compiler input uses `required_actions` and action
-   objects with `name`, `fps`, `loop`, `frame_paths`, and `frame_durations`.
+4. Pass the processed frame paths and this public request to
+   `build_spriteframes_spec()` from
+   `tools/asset_animated_bundle_contract_check.py`. Compile the resulting
+   complete action set once through the shared `grid_sheet` to `SpriteFrames`
+   route. The compiler input contains `required_actions` and action objects with
+   `name`, `fps`, `loop`, `frame_paths`, and `frame_durations`.
    Do not publish a per-action SpriteFrames resource or a source sheet as the
    runtime result.
 5. Run L0-L4 validation. L3 must load the compiled resource with headless
