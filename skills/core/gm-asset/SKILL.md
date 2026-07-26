@@ -86,14 +86,14 @@ Use `references/asset-planner.md` for production-unit selection.
 
 | Production unit | First entry document |
 | --- | --- |
-| `screen-reference` | `references/production-units/screen-reference.md` |
+| `screen-reference` | First-class `screen-reference` Asset Skill |
 | `character-bundle` | `references/production-units/character-bundle.md` |
 | `fx-bundle` | `references/production-units/fx-bundle.md` |
 | `ui-kit` | `references/production-units/ui-kit.md` |
 | `card-kit` | `references/production-units/card-kit.md` |
 | `compact-prop-pack` | `references/production-units/compact-prop-pack.md` |
-| `background-map` | `references/production-units/background-map.md` |
-| `platform-strip` | `references/production-units/platform-strip.md` |
+| `background-map` | First-class `background-map` Asset Skill |
+| `platform-strip` | First-class `platform-strip` Asset Skill |
 | `scene-prop-set` | `references/production-units/scene-prop-set.md` |
 
 ## Process

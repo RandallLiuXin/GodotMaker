@@ -1,0 +1,22 @@
+{
+  "asset_type": "platform-strip",
+  "outputs": [
+    {
+      "role": "runtime",
+      "name": "bridge_middle",
+      "path": "res://assets/generated/platform-strip/wood_bridge/bridge_middle.tres",
+      "godot_type": "AtlasTexture"
+    }
+  ],
+  "sources": [
+    {
+      "path": "res://assets/generated/platform-strip/wood_bridge/wood_bridge.png",
+      "layout": "region_atlas"
+    }
+  ],
+  "previews": [],
+  "validation": {
+    "passed": true,
+    "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true}
+  }
+}

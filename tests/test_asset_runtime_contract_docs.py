@@ -127,14 +127,11 @@ def test_production_unit_docs_are_first_entry_points():
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
     units = [
-        "screen-reference",
         "character-bundle",
         "fx-bundle",
         "ui-kit",
         "card-kit",
         "compact-prop-pack",
-        "background-map",
-        "platform-strip",
         "scene-prop-set",
     ]
     for unit in units:
@@ -156,7 +153,6 @@ def test_production_unit_sheet_process_examples_pass_grid():
         "compact-prop-pack",
         "fx-bundle",
         "scene-prop-set",
-        "platform-strip",
     ]
     for unit in units:
         doc = _read(f"skills/core/gm-asset/references/production-units/{unit}.md")
@@ -202,7 +198,6 @@ def test_foreground_production_units_do_not_finalize_source_images():
     ui = _read("skills/core/gm-asset/references/production-units/ui-kit.md")
     props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
     scene_props = _read("skills/core/gm-asset/references/production-units/scene-prop-set.md")
-    platform = _read("skills/core/gm-asset/references/production-units/platform-strip.md")
     character = _read("skills/core/gm-asset/references/production-units/character-bundle.md")
 
     foreground_docs = [fx, ui, props, scene_props]
@@ -219,9 +214,6 @@ def test_foreground_production_units_do_not_finalize_source_images():
     assert "--source-layout region_atlas" in ui
     assert "tools/asset_curation_entry_draft.py" in fx
     assert "tools/asset_action_entry_draft.py" in fx
-    assert "--snap-mode grid" in platform
-    assert "--background magenta" in platform
-    assert "--source-layout region_atlas" in platform
     assert "tools/asset_action_process.py" in character
     assert "tools/asset_action_entry_draft.py" in character
     assert "source_layout.type: grid_sheet" in character
@@ -232,16 +224,6 @@ def test_character_canonical_uses_magenta_finalize():
 
     assert "tools/asset_image_finalize.py" in character
     assert "--background magenta" in character
-
-
-def test_single_image_units_keep_finalize_path():
-    screen = _read("skills/core/gm-asset/references/production-units/screen-reference.md")
-    background = _read("skills/core/gm-asset/references/production-units/background-map.md")
-
-    assert "tools/asset_image_finalize.py" in screen
-    assert "--require-aspect" in screen
-    assert "tools/asset_image_finalize.py" in background
-    assert "--require-aspect" in background
 
 
 def test_asset_planner_routes_foreground_sprites_to_extraction_units():
