@@ -17,7 +17,7 @@ extends SceneTree
 # Structural facts a resource may be asked to report for L4. The set is closed:
 # an unknown check is an error, never a silent pass. A family skill adds its
 # check name here together with the Python structure validator that consumes it.
-const KNOWN_CHECKS := ["texture2d", "theme"]
+const KNOWN_CHECKS := ["texture2d", "atlas_texture", "spriteframes", "theme"]
 
 
 func _parse_user_args() -> Dictionary:
@@ -84,6 +84,46 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 					structure[check] = {
 						"error": "resource is a %s, not a Theme" % resource.get_class(),
 					}
+			"atlas_texture":
+				if resource.is_class("AtlasTexture"):
+					var atlas_texture: AtlasTexture = resource
+					var atlas_path := ""
+					if atlas_texture.atlas != null:
+						atlas_path = atlas_texture.atlas.resource_path
+					var region := atlas_texture.region
+					var margin := atlas_texture.margin
+					structure[check] = {
+						"has_atlas": atlas_texture.atlas != null,
+						"atlas_path": atlas_path,
+						"region": [region.position.x, region.position.y, region.size.x, region.size.y],
+						"margin": [margin.position.x, margin.position.y, margin.size.x, margin.size.y],
+					}
+				else:
+					structure[check] = {
+						"error": "resource is a %s, not an AtlasTexture" % resource.get_class(),
+					}
+			"spriteframes":
+				if resource.is_class("SpriteFrames"):
+					var animations := []
+					for animation_name in resource.get_animation_names():
+						var frame_paths := []
+						var frame_durations := []
+						var frame_count := resource.get_frame_count(animation_name)
+						for frame_index in range(frame_count):
+							var texture := resource.get_frame_texture(animation_name, frame_index)
+							frame_paths.append(texture.resource_path if texture != null else "")
+							frame_durations.append(resource.get_frame_duration(animation_name, frame_index))
+						animations.append({
+							"name": str(animation_name),
+							"fps": resource.get_animation_speed(animation_name),
+							"loop": resource.get_animation_loop(animation_name),
+							"frame_count": frame_count,
+							"frame_paths": frame_paths,
+							"frame_durations": frame_durations,
+						})
+					structure[check] = {"animations": animations}
+				else:
+					structure[check] = {"error": "resource is a %s, not SpriteFrames" % resource.get_class()}
 	return structure
 
 

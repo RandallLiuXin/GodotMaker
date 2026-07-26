@@ -182,7 +182,7 @@ def test_rejects_non_finite_vector_values_before_serialization(tmp_path, value):
 
 def test_registers_only_once_and_is_not_part_of_the_shared_default_registry():
     registry = build_default_registry()
-    assert [route.key for route in registry.routes()] == [("single", "Texture2D")]
+    assert ("theme_recipe", "Theme") not in [route.key for route in registry.routes()]
     theme.register_into(registry)
     with pytest.raises(CompilerError, match="already registered"):
         theme.register_into(registry)
