@@ -55,6 +55,7 @@ from asset_stable_entry import (  # noqa: E402
     REFERENCE_LAYOUTS,
     StableEntryError,
     assert_within_output_dir,
+    check_output_path,
     validate_entry,
 )
 from asset_compiler._stable_entry import resolve_res_path  # noqa: E402
@@ -69,6 +70,7 @@ __all__ = [
     "StableEntryError",
     "assert_within_output_dir",
     "build_default_registry",
+    "check_output_path",
     "is_same_file",
     "prefer_console_godot_path",
     "resolve_res_path",

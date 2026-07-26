@@ -30,16 +30,16 @@ import math
 from pathlib import Path
 from typing import Any, Callable
 
-from ._bridge import LAYOUT_ARTIFACT_TYPES
-from .contract import ValidationError
-from .godot_probe import PROBE_CHECKS, ProbeResult
-from asset_compiler.atlas_texture import read_atlas_texture_input
-from asset_compiler._stable_entry import (
+from ._bridge import (
+    LAYOUT_ARTIFACT_TYPES,
     StableEntryError,
     assert_within_output_dir,
     check_output_path,
     resolve_res_path,
 )
+from .contract import ValidationError
+from .godot_probe import PROBE_CHECKS, ProbeResult
+from asset_compiler.atlas_texture import read_atlas_texture_input
 from asset_compiler.stylebox_texture import read_stylebox_texture_input
 
 # Every artifact type the frozen stable-entry relation allows. A validator for a
@@ -88,7 +88,7 @@ class StructureRequest:
                 asset_id=self.asset_id,
                 label="source_path",
             )
-        except (AttributeError, OSError, StableEntryError, TypeError, ValueError) as exc:
+        except (OSError, StableEntryError, ValueError) as exc:
             raise ValidationError(
                 f"source_path cannot be resolved: {self.source_path!r} ({exc})"
             ) from exc

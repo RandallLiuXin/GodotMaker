@@ -534,7 +534,7 @@ def validate_theme_structure(request: Any) -> dict[str, Any]:
         raise ValidationError("the loaded Theme has no declared Theme items")
     try:
         recipe = json.loads(request.source_file().read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:
         raise ValidationError(f"cannot read Theme recipe for L4 value validation: {exc}") from exc
     if not isinstance(recipe, Mapping):
         raise ValidationError("Theme recipe for L4 value validation is malformed")

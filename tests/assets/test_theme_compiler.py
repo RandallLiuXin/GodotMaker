@@ -1,6 +1,7 @@
 """Contract tests for the deterministic JSON Theme compiler."""
 import json
 import struct
+import subprocess
 import sys
 from pathlib import Path
 
@@ -47,8 +48,8 @@ def _request(root: Path):
     )
 
 
-def _write_recipe(root: Path, recipe):
-    path = root / "assets/generated/ui-kit/main/main.json"
+def _write_recipe(root: Path, recipe, *, source_path="res://assets/generated/ui-kit/main/main.json"):
+    path = root / source_path.removeprefix("res://")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(recipe), encoding="utf-8")
 
@@ -72,7 +73,10 @@ def _structure_request(root: Path, *, source_path="res://assets/generated/ui-kit
             "corner_radius": [8, 8, 8, 8],
         }}},
     }
-    variation = {**button, "variation_base": "Button"}
+    variation = {
+        "variation_base": "Button",
+        "colors": [], "font_sizes": [], "constants": [], "fonts": [], "icons": [], "styles": [],
+    }
     return StructureRequest(
         production_family="ui-kit",
         asset_id="main",
@@ -106,12 +110,26 @@ def test_compiles_a_complete_theme_with_a_variation_deterministically(tmp_path):
     assert 'Button/styles/normal = SubResource("StyleBox_button_normal")' in text
 
 
-def test_structure_validation_reads_a_valid_recipe_through_the_safe_resolver(tmp_path):
+def test_structure_validation_reads_and_compares_the_declared_recipe_through_the_safe_resolver(tmp_path):
     _write_recipe(tmp_path, _recipe())
 
     details = theme.validate_theme_structure(_structure_request(tmp_path))
 
     assert details["variations"] == ["PrimaryButton"]
+    changed = _recipe()
+    changed["font_sizes"][0]["value"] = 19
+    _write_recipe(
+        tmp_path,
+        changed,
+        source_path="res://assets/generated/ui-kit/main/alternate.json",
+    )
+    with pytest.raises(ValidationError, match="loaded Theme font_sizes item does not match the recipe"):
+        theme.validate_theme_structure(
+            _structure_request(
+                tmp_path,
+                source_path="res://assets/generated/ui-kit/main/alternate.json",
+            )
+        )
 
 
 @pytest.mark.parametrize("source_path", [
@@ -126,18 +144,53 @@ def test_structure_validation_rejects_unsafe_recipe_paths_before_reading(tmp_pat
         theme.validate_theme_structure(_structure_request(tmp_path, source_path=source_path))
 
 
-def test_structure_validation_rejects_recipe_symlink_escape_before_reading(tmp_path):
-    outside = tmp_path.parent / "outside-theme-recipe.json"
-    outside.write_text(json.dumps(_recipe()), encoding="utf-8")
-    source = tmp_path / "assets/generated/ui-kit/main/main.json"
-    source.parent.mkdir(parents=True)
-    try:
-        source.symlink_to(outside)
-    except OSError:
-        pytest.skip("symlinks are not permitted on this platform")
+@pytest.mark.parametrize("source_path", [
+    "res://assets/generated/ui-kit/other/main.json",
+    "res://assets/work/ui-kit/main/main.json",
+])
+def test_structure_validation_rejects_readable_recipes_outside_the_stable_directory(tmp_path, source_path):
+    _write_recipe(tmp_path, _recipe(), source_path=source_path)
 
     with pytest.raises(ValidationError, match="source_path cannot be resolved"):
-        theme.validate_theme_structure(_structure_request(tmp_path))
+        theme.validate_theme_structure(_structure_request(tmp_path, source_path=source_path))
+
+
+def _link_directory(link: Path, target: Path) -> None:
+    """Link a directory, using a junction where symlinks need a privilege."""
+    try:
+        link.symlink_to(target, target_is_directory=True)
+        return
+    except (OSError, NotImplementedError):
+        pass
+    if sys.platform != "win32":
+        pytest.skip("directory links not permitted on this platform")
+    completed = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        pytest.skip(f"directory junctions not permitted: {completed.stderr.strip()}")
+
+
+def test_structure_validation_rejects_recipe_directory_link_escape_before_reading(tmp_path):
+    outside = tmp_path.parent / "outside-theme-recipe"
+    outside.mkdir()
+    (outside / "main.json").write_text(json.dumps(_recipe()), encoding="utf-8")
+    source = tmp_path / "assets/generated/ui-kit/main/nested"
+    source.parent.mkdir(parents=True)
+    try:
+        _link_directory(source, outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("directory links are not permitted on this platform")
+
+    with pytest.raises(ValidationError, match="source_path cannot be resolved"):
+        theme.validate_theme_structure(
+            _structure_request(
+                tmp_path,
+                source_path="res://assets/generated/ui-kit/main/nested/main.json",
+            )
+        )
 
 
 def test_structure_validation_normalizes_a_missing_recipe_file(tmp_path):

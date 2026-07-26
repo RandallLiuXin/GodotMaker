@@ -52,6 +52,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Theme L4 validation now rejects recipe paths outside the declaring asset's stable output directory.
 - Restored real Godot validation for Theme and TileSet assets, including safe Theme resource paths and imported TileSet atlases.
 - Reference-only stable entries now accept only `pending`, `source_ready`, or `failed`; only registered `source_ready` entries may promote ASSETS.md reference rows.
 - Existing reference entries persisted as `compiled` or `ready` must be manually corrected to `source_ready` before root-index validation; no migration or compatibility reader is provided.
