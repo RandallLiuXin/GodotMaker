@@ -1,0 +1,30 @@
+{
+  "asset_type": "ui-kit",
+  "asset_id": "adventure_hud",
+  "brief": "A compact adventure HUD skin with a normal button and sword icon.",
+  "spec": {
+    "theme": {
+      "output_name": "main_theme",
+      "recipe_path": "res://assets/generated/ui-kit/adventure_hud/theme_recipe.json",
+      "variation": "PrimaryButton"
+    },
+    "required_states": ["normal"],
+    "styleboxes": [{
+      "output_name": "button_normal",
+      "state": "normal",
+      "source_path": "res://assets/generated/ui-kit/adventure_hud/components.png",
+      "layout": "region_atlas",
+      "texture_region": [0, 0, 16, 16],
+      "border": [4, 4, 4, 4],
+      "expand_margin": [0, 0, 0, 0],
+      "axis_stretch": {"horizontal": "stretch", "vertical": "stretch"}
+    }],
+    "required_regions": ["sword_icon"],
+    "atlas_regions": [{
+      "output_name": "sword_icon",
+      "source_path": "res://assets/generated/ui-kit/adventure_hud/components.png",
+      "metadata_path": "res://assets/generated/ui-kit/adventure_hud/components.json",
+      "logical_asset_id": "sword_icon"
+    }]
+  }
+}

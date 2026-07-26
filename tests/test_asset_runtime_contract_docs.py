@@ -129,8 +129,6 @@ def test_production_unit_docs_are_first_entry_points():
     units = [
         "character-bundle",
         "fx-bundle",
-        "ui-kit",
-        "card-kit",
         "compact-prop-pack",
         "scene-prop-set",
     ]
@@ -148,8 +146,6 @@ def test_production_unit_docs_are_first_entry_points():
 
 def test_production_unit_sheet_process_examples_pass_grid():
     units = [
-        "ui-kit",
-        "card-kit",
         "compact-prop-pack",
         "fx-bundle",
         "scene-prop-set",
@@ -164,43 +160,42 @@ def test_production_unit_sheet_process_examples_pass_grid():
             )
 
 
-def test_ui_and_prop_units_default_to_autoslice():
-    ui = _read("skills/core/gm-asset/references/production-units/ui-kit.md")
-    card = _read("skills/core/gm-asset/references/production-units/card-kit.md")
+def test_prop_units_default_to_autoslice_while_ui_and_card_use_native_resources():
     props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
     curation = _read("skills/core/gm-asset/references/asset-curation.md")
+    ui = _read("skills/assets/ui-kit/SKILL.md")
+    card = _read("skills/assets/card-kit/SKILL.md")
 
-    assert "--snap-mode autoslice" in ui
-    assert "--snap-mode autoslice" in card
     assert "--snap-mode autoslice" in props
-    assert "--snap-mode grid" in ui
-    assert "--snap-mode grid" in card
     assert "--snap-mode grid" in props
+    assert "StyleBoxTexture" in ui
+    assert "AtlasTexture" in ui
+    assert "StyleBoxTexture" in card
+    assert "AtlasTexture" in card
     assert "Use the assigned production-unit doc for extraction" in curation
 
 
 def test_card_kit_is_separate_from_generic_ui_components():
     planner = _read("skills/core/gm-asset/references/asset-planner.md")
-    ui = _read("skills/core/gm-asset/references/production-units/ui-kit.md")
-    card = _read("skills/core/gm-asset/references/production-units/card-kit.md")
+    ui = _read("skills/assets/ui-kit/SKILL.md")
+    card = _read("skills/assets/card-kit/SKILL.md")
 
-    assert "| `card-kit` | `references/production-units/card-kit.md` |" in planner
+    assert "| `card-kit` | First-class `card-kit` Asset Skill |" in planner
     assert "| `card_frame_source` | `card-kit` |" in planner
     assert "| `portrait_frame_source` | `card-kit` |" in planner
-    assert "Do not use this unit for card frames" in ui
-    assert "no card frame or portrait-frame layout" in ui
-    assert "card-game-specific visual assets" in card
-    assert "empty portrait windows and card art windows" in card
+    assert "Do not use it for card frames" in ui
+    assert "portrait frames" in ui
+    assert "card-game-specific UI" in card
+    assert "Keep card-art and portrait windows empty" in card
 
 
 def test_foreground_production_units_do_not_finalize_source_images():
     fx = _read("skills/core/gm-asset/references/production-units/fx-bundle.md")
-    ui = _read("skills/core/gm-asset/references/production-units/ui-kit.md")
     props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
     scene_props = _read("skills/core/gm-asset/references/production-units/scene-prop-set.md")
     character = _read("skills/core/gm-asset/references/production-units/character-bundle.md")
 
-    foreground_docs = [fx, ui, props, scene_props]
+    foreground_docs = [fx, props, scene_props]
     for doc in foreground_docs:
         assert "--background magenta" in doc
         assert "--snap-mode autoslice" in doc
@@ -208,10 +203,8 @@ def test_foreground_production_units_do_not_finalize_source_images():
         assert "asset_image_finalize.py" not in doc
 
     assert "tools/asset_curation_select.py" in fx
-    assert "tools/asset_curation_select.py" in ui
     assert "tools/asset_curation_select.py" in props
     assert "tools/asset_curation_select.py" in scene_props
-    assert "--source-layout region_atlas" in ui
     assert "tools/asset_curation_entry_draft.py" in fx
     assert "tools/asset_action_entry_draft.py" in fx
     assert "tools/asset_action_process.py" in character

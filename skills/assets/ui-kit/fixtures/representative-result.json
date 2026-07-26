@@ -1,0 +1,38 @@
+{
+  "asset_type": "ui-kit",
+  "outputs": [
+    {
+      "role": "runtime",
+      "name": "main_theme",
+      "path": "res://assets/generated/ui-kit/adventure_hud/adventure_hud_theme.tres",
+      "godot_type": "Theme"
+    },
+    {
+      "role": "runtime",
+      "name": "button_normal",
+      "path": "res://assets/generated/ui-kit/adventure_hud/button_normal.tres",
+      "godot_type": "StyleBoxTexture"
+    },
+    {
+      "role": "runtime",
+      "name": "sword_icon",
+      "path": "res://assets/generated/ui-kit/adventure_hud/sword_icon.tres",
+      "godot_type": "AtlasTexture"
+    }
+  ],
+  "sources": [
+    {
+      "path": "res://assets/generated/ui-kit/adventure_hud/theme_recipe.json",
+      "layout": "theme_recipe"
+    },
+    {
+      "path": "res://assets/generated/ui-kit/adventure_hud/components.png",
+      "layout": "region_atlas"
+    }
+  ],
+  "previews": [],
+  "validation": {
+    "passed": true,
+    "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true}
+  }
+}

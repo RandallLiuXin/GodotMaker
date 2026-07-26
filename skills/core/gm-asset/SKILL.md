@@ -89,8 +89,8 @@ Use `references/asset-planner.md` for production-unit selection.
 | `screen-reference` | First-class `screen-reference` Asset Skill |
 | `character-bundle` | `references/production-units/character-bundle.md` |
 | `fx-bundle` | `references/production-units/fx-bundle.md` |
-| `ui-kit` | `references/production-units/ui-kit.md` |
-| `card-kit` | `references/production-units/card-kit.md` |
+| `ui-kit` | First-class `ui-kit` Asset Skill |
+| `card-kit` | First-class `card-kit` Asset Skill |
 | `compact-prop-pack` | `references/production-units/compact-prop-pack.md` |
 | `background-map` | First-class `background-map` Asset Skill |
 | `platform-strip` | First-class `platform-strip` Asset Skill |
@@ -172,6 +172,8 @@ never substitute a deleted production-unit document:
 | `background-map` | First-class Asset Skill: `background-map` |
 | `platform-strip` | First-class Asset Skill: `platform-strip` |
 | `screen-reference` | First-class Asset Skill: `screen-reference` |
+| `ui-kit` | First-class Asset Skill: `ui-kit` |
+| `card-kit` | First-class Asset Skill: `card-kit` |
 
 Brief shape:
 
@@ -183,7 +185,7 @@ Brief shape:
 
 ### Production Contract
 - Legacy unit: First Entry Document: {references/production-units/<unit>.md}
-- First-class unit: First-class Asset Skill: {background-map | platform-strip | screen-reference}
+- First-class unit: First-class Asset Skill: {background-map | platform-strip | screen-reference | ui-kit | card-kit}
 - For a first-class unit, invoke that named Skill with one shared generic asset
   request. Do not read a production-unit path for that family.
 

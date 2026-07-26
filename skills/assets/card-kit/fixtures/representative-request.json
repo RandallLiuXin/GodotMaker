@@ -1,0 +1,32 @@
+{
+  "asset_type": "card-kit",
+  "asset_id": "arcane_deck",
+  "brief": "An arcane rare-card frame with a mana badge.",
+  "spec": {
+    "theme": {
+      "output_name": "card_theme",
+      "recipe_path": "res://assets/generated/card-kit/arcane_deck/theme_recipe.json",
+      "variation": "CardButton"
+    },
+    "required_frames": ["rare_card"],
+    "required_states": ["normal"],
+    "styleboxes": [{
+      "output_name": "rare_card_normal",
+      "frame": "rare_card",
+      "state": "normal",
+      "source_path": "res://assets/generated/card-kit/arcane_deck/card_components.png",
+      "layout": "region_atlas",
+      "texture_region": [0, 0, 32, 48],
+      "border": [6, 6, 6, 6],
+      "expand_margin": [0, 0, 0, 0],
+      "axis_stretch": {"horizontal": "stretch", "vertical": "stretch"}
+    }],
+    "required_regions": ["mana_badge"],
+    "atlas_regions": [{
+      "output_name": "mana_badge",
+      "source_path": "res://assets/generated/card-kit/arcane_deck/card_components.png",
+      "metadata_path": "res://assets/generated/card-kit/arcane_deck/card_components.json",
+      "logical_asset_id": "mana_badge"
+    }]
+  }
+}

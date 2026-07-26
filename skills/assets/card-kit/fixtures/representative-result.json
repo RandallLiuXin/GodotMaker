@@ -1,0 +1,38 @@
+{
+  "asset_type": "card-kit",
+  "outputs": [
+    {
+      "role": "runtime",
+      "name": "card_theme",
+      "path": "res://assets/generated/card-kit/arcane_deck/arcane_deck_theme.tres",
+      "godot_type": "Theme"
+    },
+    {
+      "role": "runtime",
+      "name": "rare_card_normal",
+      "path": "res://assets/generated/card-kit/arcane_deck/rare_card_normal.tres",
+      "godot_type": "StyleBoxTexture"
+    },
+    {
+      "role": "runtime",
+      "name": "mana_badge",
+      "path": "res://assets/generated/card-kit/arcane_deck/mana_badge.tres",
+      "godot_type": "AtlasTexture"
+    }
+  ],
+  "sources": [
+    {
+      "path": "res://assets/generated/card-kit/arcane_deck/theme_recipe.json",
+      "layout": "theme_recipe"
+    },
+    {
+      "path": "res://assets/generated/card-kit/arcane_deck/card_components.png",
+      "layout": "region_atlas"
+    }
+  ],
+  "previews": [],
+  "validation": {
+    "passed": true,
+    "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true}
+  }
+}
