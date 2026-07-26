@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ._stable_entry import resolve_res_path
+from ._stable_entry import StableEntryError, resolve_res_path, safe_identifier
 from .contract import CompileRequest, CompilerError, require_text
 from .registry import CompilerRegistry, CompilerRoute
 
@@ -104,15 +104,10 @@ def read_atlas_texture_input(request: Any) -> AtlasTextureInput:
     logical_asset_id = require_text(
         spec.get("logical_asset_id"), "AtlasTexture spec.logical_asset_id"
     )
-    if (
-        logical_asset_id in {".", ".."}
-        or logical_asset_id != logical_asset_id.strip()
-        or logical_asset_id.endswith(".")
-        or any(char in logical_asset_id for char in "\\/:;*?\"<>|")
-    ):
-        raise CompilerError(
-            "AtlasTexture spec.logical_asset_id must be a single safe path segment"
-        )
+    try:
+        safe_identifier(logical_asset_id, "AtlasTexture spec.logical_asset_id")
+    except StableEntryError as exc:
+        raise CompilerError(str(exc)) from exc
     if not metadata_path.endswith(".json"):
         raise CompilerError("AtlasTexture spec.metadata_path must end in .json")
     artifact_stem = Path(request.artifact_path).stem

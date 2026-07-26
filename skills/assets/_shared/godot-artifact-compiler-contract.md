@@ -156,7 +156,8 @@ regions, and writes an independent `.tres` for every requested logical asset.
 It serializes the declared `Rect2` unchanged and always sets
 `AtlasTexture.margin` to `Rect2(0, 0, 0, 0)`. It does not pack, trim, discover
 regions, or introduce nine-slice behavior. L4 reloads the resource through
-headless Godot and checks its atlas binding, exact region, and zero margin.
+headless Godot and checks that `AtlasTexture.atlas.resource_path` exactly equals
+the declared physical atlas path, alongside its exact region and zero margin.
 
 ## Boundary
 

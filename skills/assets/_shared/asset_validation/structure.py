@@ -250,6 +250,12 @@ def validate_atlas_texture(request: StructureRequest) -> dict[str, Any]:
     structure = request.checked_structure("atlas_texture")
     if structure.get("has_atlas") is not True:
         raise ValidationError("the loaded AtlasTexture has no atlas texture")
+    actual_atlas_path = structure.get("atlas_path")
+    if actual_atlas_path != expected.atlas_path:
+        raise ValidationError(
+            "the loaded AtlasTexture atlas_path is "
+            f"{actual_atlas_path!r}, not {expected.atlas_path!r}"
+        )
     for rectangle_name, expected_value in (
         ("region", list(expected.region)),
         ("margin", [0, 0, 0, 0]),

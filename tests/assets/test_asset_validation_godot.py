@@ -338,6 +338,34 @@ def test_fixed_slot_atlas_texture_reaches_ready_with_its_exact_region(
     assert result.levels[4].details["region"] == [0, 0, 4, 4]
     assert result.levels[4].details["margin"] == [0, 0, 0, 0]
 
+    # The same region and zero margin cannot prove that the resource still
+    # binds the physical atlas declared by metadata. Tampering only the
+    # ExtResource target must therefore reach L3 but fail the L4 path check.
+    _write(godot_project, f"{base}/other_atlas.png", _png(12, 8))
+    artifact = godot_project / "assets/generated/ui-kit/main_atlas/button.tres"
+    artifact.write_text(
+        artifact.read_text(encoding="utf-8").replace(
+            "main_atlas.png", "other_atlas.png"
+        ),
+        encoding="utf-8",
+    )
+    entry["processing_status"] = "ready"
+    tampered = ValidationLadder(
+        registry=registry,
+        structures=build_default_structures(),
+        probe=GodotProbe(godot_bin),
+    ).run(
+        entry,
+        project_root=godot_project,
+        spec=request.spec,
+        mode=REVALIDATION,
+    )
+
+    assert tampered.ready is False, tampered.to_dict()
+    assert tampered.levels[3].status == PASSED
+    assert tampered.failure.level == "L4"
+    assert "atlas_path" in tampered.failure.error
+
 
 def test_headless_godot_rejects_a_corrupt_resource(godot_bin, godot_project):
     _write(godot_project, "res://assets/generated/ui-kit/panel/panel.png", _png(8, 8))

@@ -14,6 +14,12 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
 from asset_compiler import atlas_texture  # noqa: E402
+from asset_validation import (  # noqa: E402
+    ProbeResult,
+    StructureRequest,
+    ValidationError,
+    validate_atlas_texture,
+)
 
 
 def _png(width: int, height: int) -> bytes:
@@ -117,6 +123,8 @@ def test_atlas_texture_rejects_another_output_type(atlas_project):
     ("spec", "message"),
     [
         ({"metadata_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.json", "logical_asset_id": "../button"}, "safe path segment"),
+        ({"metadata_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.json", "logical_asset_id": "AUX"}, "reserved device name"),
+        ({"metadata_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.json", "logical_asset_id": "button\u001f"}, "safe path segment"),
         ({"metadata_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.json", "logical_asset_id": "icon"}, "filename must match"),
     ],
 )
@@ -125,3 +133,35 @@ def test_atlas_texture_binds_the_logical_id_to_a_safe_output_name(
 ):
     with pytest.raises(CompilerError, match=message):
         build_default_registry().compile(_request(atlas_project, spec=spec))
+
+
+def test_l4_rejects_a_loaded_atlas_texture_bound_to_another_png(atlas_project):
+    request = _request(atlas_project)
+    structure_request = StructureRequest(
+        production_family=request.production_family,
+        asset_id=request.asset_id,
+        source_layout_type=request.source_layout_type,
+        source_path=request.source_path,
+        artifact_type=request.artifact_type,
+        artifact_path=request.artifact_path,
+        project_root=request.project_root,
+        spec=request.spec,
+        probe=ProbeResult(
+            res_path=request.artifact_path,
+            expected_type="AtlasTexture",
+            loaded=True,
+            godot_class="AtlasTexture",
+            type_matches=True,
+            structure={
+                "atlas_texture": {
+                    "has_atlas": True,
+                    "atlas_path": "res://assets/generated/ui-kit/main_atlas/other.png",
+                    "region": [0, 0, 4, 4],
+                    "margin": [0, 0, 0, 0],
+                }
+            },
+        ),
+    )
+
+    with pytest.raises(ValidationError, match="atlas_path"):
+        validate_atlas_texture(structure_request)

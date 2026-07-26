@@ -54,10 +54,14 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 			"atlas_texture":
 				if resource.is_class("AtlasTexture"):
 					var atlas_texture: AtlasTexture = resource
+					var atlas_path := ""
+					if atlas_texture.atlas != null:
+						atlas_path = atlas_texture.atlas.resource_path
 					var region := atlas_texture.region
 					var margin := atlas_texture.margin
 					structure[check] = {
 						"has_atlas": atlas_texture.atlas != null,
+						"atlas_path": atlas_path,
 						"region": [region.position.x, region.position.y, region.size.x, region.size.y],
 						"margin": [margin.position.x, margin.position.y, margin.size.x, margin.size.y],
 					}
