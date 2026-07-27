@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
+import json
 from pathlib import Path
+import struct
 from typing import Any
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry
@@ -90,7 +92,11 @@ def _stable_path(family: str, asset_id: str, name: str, suffix: str) -> str:
 def _project_file(root: Path, path: Any, label: str) -> Path:
     if not isinstance(path, str) or not path.strip():
         raise ValidationError(f"{label} must be a non-empty project-relative path")
-    candidate = (root / path).resolve()
+    candidate = (
+        resolve_res_path(root, path, label=label)
+        if path.startswith("res://")
+        else (root / path).resolve()
+    )
     if not candidate.is_relative_to(root.resolve()):
         raise ValidationError(f"{label} resolves outside the project root")
     return candidate
@@ -460,6 +466,88 @@ def _l1_file(root: Path, path: str, *, family: str, asset_id: str) -> Path:
     )
 
 
+def _png_dimensions(path: Path) -> tuple[int, int]:
+    """Read PNG dimensions from IHDR without loading the image into memory."""
+    with path.open("rb") as handle:
+        header = handle.read(24)
+    if (
+        len(header) != 24
+        or header[:8] != b"\x89PNG\r\n\x1a\n"
+        or header[12:16] != b"IHDR"
+    ):
+        raise ValidationError(
+            f"delivered atlas is not a PNG with an IHDR header: {path}"
+        )
+    return struct.unpack(">II", header[16:24])
+
+
+def _verify_prop_delivery(
+    request: Mapping[str, Any], declaration: CompileRequest, root: Path
+) -> None:
+    """Bind delivered atlas dimensions and metadata regions to request.spec."""
+    family, asset_id = request["asset_type"], request["asset_id"]
+    atlas = _l1_file(root, declaration.source_path, family=family, asset_id=asset_id)
+    metadata = _l1_file(
+        root, declaration.spec["metadata_path"], family=family, asset_id=asset_id
+    )
+    if not atlas.is_file() or atlas.stat().st_size <= 0:
+        raise ValidationError(
+            f"standalone source is not a non-empty file: {declaration.source_path}"
+        )
+    if not metadata.is_file() or metadata.stat().st_size <= 0:
+        raise ValidationError(
+            f"atlas metadata is not a non-empty file: {declaration.spec['metadata_path']}"
+        )
+    try:
+        delivered = json.loads(metadata.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValidationError(f"atlas metadata is not valid JSON: {metadata}") from exc
+    if not isinstance(delivered, Mapping) or set(delivered) != {
+        "version",
+        "atlas_path",
+        "regions",
+    }:
+        raise ValidationError(
+            "atlas metadata must contain exactly version, atlas_path, and regions"
+        )
+    if (
+        delivered.get("version") != 1
+        or delivered.get("atlas_path") != declaration.source_path
+    ):
+        raise ValidationError(
+            "atlas metadata does not bind the delivered stable atlas path"
+        )
+    regions = delivered.get("regions")
+    if not isinstance(regions, list):
+        raise ValidationError("atlas metadata regions must be a list")
+    actual: dict[str, list[int]] = {}
+    for region in regions:
+        if (
+            not isinstance(region, Mapping)
+            or not isinstance(region.get("name"), str)
+            or not isinstance(region.get("rect"), list)
+            or len(region["rect"]) != 4
+            or any(type(value) is not int for value in region["rect"])
+            or region["name"] in actual
+        ):
+            raise ValidationError(
+                "atlas metadata regions must have unique named integer rectangles"
+            )
+        actual[region["name"]] = region["rect"]
+    expected = {slot["name"]: slot["rect"] for slot in request["spec"]["slots"]}
+    if actual != expected:
+        raise ValidationError(
+            "atlas metadata regions must exactly match declared slot names and rectangles"
+        )
+    if _png_dimensions(atlas) != (
+        request["spec"]["atlas"]["width"],
+        request["spec"]["atlas"]["height"],
+    ):
+        raise ValidationError(
+            "delivered atlas dimensions do not match the declared atlas"
+        )
+
+
 def compile_and_validate(
     request: Mapping[str, Any],
     result: Mapping[str, Any],
@@ -494,12 +582,14 @@ def compile_and_validate(
             if (
                 not file.is_file()
                 or file.stat().st_size <= 0
-                or file.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n"
+                or _png_dimensions(file) == (0, 0)
             ):
                 raise ValidationError(
                     f"reference image is not a non-empty PNG file: {reference_path}"
                 )
             return _mapped(result, {"L0": True, "L1": True})
+        if family in {"compact-prop-pack", "scene-prop-set"}:
+            _verify_prop_delivery(request, declarations[0][1], root)
         for _, declaration in declarations:
             declaration = CompileRequest(
                 **{**declaration.__dict__, "project_root": root}

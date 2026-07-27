@@ -78,7 +78,7 @@ the `fx-bundle` skill.
 
 ## Result
 
-Return a shared result with at least one runtime output:
+Return a shared result with exactly one runtime output:
 
 ```json
 {

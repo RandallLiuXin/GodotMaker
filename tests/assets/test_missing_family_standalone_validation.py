@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -258,7 +258,7 @@ def test_prop_runner_never_rebuilds_or_overwrites_the_delivered_atlas(tmp_path):
     actual = compile_and_validate(
         request, result, project_root=tmp_path, godot_path="fake"
     )
-    assert actual["validation"]["levels"]["L2"] is False
+    assert actual["validation"]["levels"]["L1"] is False
     assert (atlas.read_bytes(), metadata.read_bytes()) == before
 
 
@@ -290,3 +290,321 @@ def test_animated_bundle_checks_each_declared_sheet_at_l1(tmp_path):
         request, result, project_root=tmp_path, godot_path="fake"
     )
     assert actual["validation"]["levels"]["L1"] is False
+
+
+def _set_good_probe(monkeypatch, structures):
+    class Probe:
+        def __init__(self, _path):
+            pass
+
+        def probe(self, _root, requests):
+            return ProbeReport(
+                "fake",
+                tuple(
+                    ProbeResult(
+                        item.res_path,
+                        item.expected_type,
+                        True,
+                        item.expected_type,
+                        True,
+                        structure=structures[item.res_path],
+                    )
+                    for item in requests
+                ),
+            )
+
+    monkeypatch.setattr(runner, "GodotProbe", Probe)
+
+
+def _prop_handoff(family: str, asset_id: str = "market") -> tuple[dict, dict]:
+    root = f"res://assets/generated/{family}/{asset_id}"
+    slots = [
+        {"name": "coin", "rect": [0, 0, 16, 16], "source": "sources/coin.png"},
+        {"name": "chest", "rect": [16, 0, 16, 16], "source": "sources/chest.png"},
+    ]
+    request = {
+        "asset_type": family,
+        "asset_id": asset_id,
+        "brief": "Two compact props.",
+        "spec": {"version": 1, "atlas": {"width": 32, "height": 16}, "slots": slots},
+    }
+    result = {
+        "asset_type": family,
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": slot["name"],
+                "path": f"{root}/{slot['name']}.tres",
+                "godot_type": "AtlasTexture",
+            }
+            for slot in slots
+        ],
+        "sources": [{"path": f"{root}/{asset_id}.png", "layout": "region_atlas"}],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+    return request, result
+
+
+def _write_prop_delivery(
+    root: Path, request: dict, *, extra_region: bool = False
+) -> None:
+    family, asset_id = request["asset_type"], request["asset_id"]
+    output = root / "assets" / "generated" / family / asset_id
+    output.mkdir(parents=True)
+    atlas = request["spec"]["atlas"]
+    Image.new("RGBA", (atlas["width"], atlas["height"]), (1, 2, 3, 255)).save(
+        output / f"{asset_id}.png"
+    )
+    regions = [
+        {
+            "name": slot["name"],
+            "rect": slot["rect"],
+            "pivot": [0.5, 0.5],
+            "nine_slice": None,
+        }
+        for slot in request["spec"]["slots"]
+    ]
+    if extra_region:
+        regions.append(
+            {
+                "name": "ghost",
+                "rect": [0, 0, 1, 1],
+                "pivot": [0.5, 0.5],
+                "nine_slice": None,
+            }
+        )
+    (output / f"{asset_id}.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "atlas_path": f"res://assets/generated/{family}/{asset_id}/{asset_id}.png",
+                "regions": regions,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize("family", ["compact-prop-pack", "scene-prop-set"])
+def test_prop_families_run_multi_slot_delivery_through_l4(
+    monkeypatch, tmp_path, family
+):
+    request, result = _prop_handoff(family)
+    _write_prop_delivery(tmp_path, request)
+    root = f"res://assets/generated/{family}/market"
+    _set_good_probe(
+        monkeypatch,
+        {
+            f"{root}/coin.tres": {
+                "atlas_texture": {
+                    "has_atlas": True,
+                    "atlas_path": f"{root}/market.png",
+                    "region": [0, 0, 16, 16],
+                    "margin": [0, 0, 0, 0],
+                }
+            },
+            f"{root}/chest.tres": {
+                "atlas_texture": {
+                    "has_atlas": True,
+                    "atlas_path": f"{root}/market.png",
+                    "region": [16, 0, 16, 16],
+                    "margin": [0, 0, 0, 0],
+                }
+            },
+        },
+    )
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"] == {
+        level: True for level in ("L0", "L1", "L2", "L3", "L4")
+    }
+
+
+@pytest.mark.parametrize("mutation", ["rect", "extra-region", "dimensions"])
+def test_prop_delivery_must_exactly_bind_declared_geometry(tmp_path, mutation):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(tmp_path, request, extra_region=mutation == "extra-region")
+    output = tmp_path / "assets/generated/compact-prop-pack/market"
+    metadata = output / "market.json"
+    if mutation == "rect":
+        delivered = json.loads(metadata.read_text(encoding="utf-8"))
+        delivered["regions"][0]["rect"] = [0, 0, 1, 1]
+        metadata.write_text(json.dumps(delivered), encoding="utf-8")
+    elif mutation == "dimensions":
+        Image.new("RGBA", (64, 64), (1, 2, 3, 255)).save(output / "market.png")
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"] == {
+        "L0": True,
+        "L1": False,
+        "L2": False,
+        "L3": False,
+        "L4": False,
+    }
+
+
+@pytest.mark.parametrize("kind", ["single", "atlas"])
+def test_platform_strip_runs_each_supported_source_type_to_l4(
+    monkeypatch, tmp_path, kind
+):
+    asset_id = "bridge"
+    root = f"res://assets/generated/platform-strip/{asset_id}"
+    request = {
+        "asset_type": "platform-strip",
+        "asset_id": asset_id,
+        "brief": "A bridge.",
+        "spec": {"kind": kind, "segments": [{"name": "left"}, {"name": "right"}]},
+    }
+    if kind == "single":
+        result = {
+            "asset_type": "platform-strip",
+            "outputs": [
+                {
+                    "role": "runtime",
+                    "name": name,
+                    "path": f"{root}/{name}.png",
+                    "godot_type": "Texture2D",
+                }
+                for name in ("left", "right")
+            ],
+            "sources": [
+                {"path": f"{root}/{name}.png", "layout": "single"}
+                for name in ("left", "right")
+            ],
+            "previews": [],
+            "validation": {"passed": False},
+        }
+        directory = tmp_path / "assets/generated/platform-strip/bridge"
+        directory.mkdir(parents=True)
+        for name in ("left", "right"):
+            Image.new("RGBA", (8, 8), (1, 2, 3, 255)).save(directory / f"{name}.png")
+        structures = {
+            f"{root}/{name}.png": {"texture2d": {"width": 8, "height": 8}}
+            for name in ("left", "right")
+        }
+    else:
+        result = {
+            "asset_type": "platform-strip",
+            "outputs": [
+                {
+                    "role": "runtime",
+                    "name": name,
+                    "path": f"{root}/{name}.tres",
+                    "godot_type": "AtlasTexture",
+                }
+                for name in ("left", "right")
+            ],
+            "sources": [{"path": f"{root}/bridge.png", "layout": "region_atlas"}],
+            "previews": [],
+            "validation": {"passed": False},
+        }
+        directory = tmp_path / "assets/generated/platform-strip/bridge"
+        directory.mkdir(parents=True)
+        Image.new("RGBA", (16, 8), (1, 2, 3, 255)).save(directory / "bridge.png")
+        (directory / "bridge.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "atlas_path": f"{root}/bridge.png",
+                    "regions": [
+                        {
+                            "name": "left",
+                            "rect": [0, 0, 8, 8],
+                            "pivot": [0.5, 0.5],
+                            "nine_slice": None,
+                        },
+                        {
+                            "name": "right",
+                            "rect": [8, 0, 8, 8],
+                            "pivot": [0.5, 0.5],
+                            "nine_slice": None,
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        structures = {
+            f"{root}/{name}.tres": {
+                "atlas_texture": {
+                    "has_atlas": True,
+                    "atlas_path": f"{root}/bridge.png",
+                    "region": rect,
+                    "margin": [0, 0, 0, 0],
+                }
+            }
+            for name, rect in (("left", [0, 0, 8, 8]), ("right", [8, 0, 8, 8]))
+        }
+    _set_good_probe(monkeypatch, structures)
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["passed"] is True, actual["validation"]
+
+
+@pytest.mark.parametrize(
+    ("family", "request_name", "result_name"),
+    [
+        ("character-bundle", "valid-request.json", "valid-result.json"),
+        ("fx-bundle", "animated-request.json", "animated-result.json"),
+        ("fx-bundle", "static-request.json", "static-result.json"),
+    ],
+)
+def test_bundles_run_declared_static_and_multi_action_outputs_to_l4(
+    monkeypatch, tmp_path, family, request_name, result_name
+):
+    fixtures = REPO_ROOT / "skills/assets" / family / "fixtures"
+    request = json.loads((fixtures / request_name).read_text(encoding="utf-8"))
+    result = json.loads((fixtures / result_name).read_text(encoding="utf-8"))
+    asset_id = request["asset_id"]
+    output = tmp_path / "assets" / "generated" / family / asset_id
+    output.mkdir(parents=True)
+    for preview in result["previews"]:
+        preview_file = tmp_path / preview["path"].removeprefix("res://")
+        preview_file.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGBA", (8, 8), (1, 2, 3, 255)).save(preview_file)
+    runtime = result["outputs"][0]
+    if runtime["godot_type"] == "Texture2D":
+        Image.new("RGBA", (8, 8), (1, 2, 3, 255)).save(output / f"{asset_id}.png")
+        structures = {runtime["path"]: {"texture2d": {"width": 8, "height": 8}}}
+    else:
+        for source in result["sources"]:
+            Image.new("RGBA", (8, 8), (1, 2, 3, 255)).save(
+                output / Path(source["path"]).name
+            )
+        for action in request["spec"]["actions"]:
+            for frame in action["frame_names"]:
+                Image.new("RGBA", (1, 1), (1, 2, 3, 255)).save(
+                    output / f"{asset_id}_{action['name']}_{frame}.png"
+                )
+        animations = [
+            {
+                "name": action["name"],
+                "loop": action["loop"],
+                "fps": action["fps"],
+                "frame_paths": [
+                    f"res://assets/generated/{family}/{asset_id}/{asset_id}_{action['name']}_{frame}.png"
+                    for frame in action["frame_names"]
+                ],
+                "frame_count": len(action["frame_names"]),
+                "frame_durations": action["frame_durations"],
+            }
+            for action in request["spec"]["actions"]
+        ]
+        structures = {runtime["path"]: {"spriteframes": {"animations": animations}}}
+    _set_good_probe(monkeypatch, structures)
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["passed"] is True, actual["validation"]
