@@ -1041,19 +1041,21 @@ class TestPublishedAssetRuntime:
                     f"{skill_name} references a missing published runtime path: {reference}"
                 )
 
-    @pytest.mark.parametrize(
-        "publish_project,skill_root",
-        [
-            (_publish_claude_project, ".claude/skills"),
-            (_publish_codex_project, ".agents/skills"),
-            (_publish_opencode_project, ".opencode/skills"),
-        ],
-    )
+    @pytest.mark.parametrize("agent", publish.AGENT_CHOICES)
     def test_published_standalone_runners_import_and_validate_without_source_checkout(
-        self, tmp_path, monkeypatch, publish_project, skill_root
+        self, tmp_path, monkeypatch, agent
     ):
+        publish_project = {
+            publish.AGENT_CLAUDE_CODE: _publish_claude_project,
+            publish.AGENT_CODEX: _publish_codex_project,
+            publish.AGENT_OPENCODE: _publish_opencode_project,
+        }[agent]
+        skill_root = publish.get_agent_adapter(agent).skill_root
         result = publish_project(tmp_path, monkeypatch)
         target = result[0] if isinstance(result, tuple) else result
+        # A publish target can contain an unrelated _shared directory; this
+        # must not override the project-owned runtime.
+        (target / skill_root / "_shared").mkdir()
 
         script = f'''\
 import importlib.util
@@ -1062,13 +1064,15 @@ import sys
 from pathlib import Path
 
 target = Path.cwd().resolve()
-source_root = Path({str(REPO_ROOT)!r}).resolve()
-assert source_root not in [Path(path).resolve() for path in sys.path if path]
 skills = target / {skill_root!r}
+runtime = target / ".godotmaker" / "asset-runtime"
+tools = target / "tools"
 
 def load_runner(name, family):
+    runner = skills / family / "standalone_validation.py"
+    assert runner.parents[3] == target
     spec = importlib.util.spec_from_file_location(
-        name, skills / family / "standalone_validation.py"
+        name, runner
     )
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -1081,6 +1085,13 @@ card_kit = load_runner("published_card_kit_validation", "card-kit")
 assert callable(tileset.compile_and_validate)
 assert callable(ui_kit.compile_and_validate)
 assert callable(card_kit.compile_and_validate)
+
+import asset_compiler
+import asset_skill_contract_check
+
+assert Path(asset_compiler.__file__).resolve().is_relative_to(runtime)
+assert Path(asset_skill_contract_check.__file__).resolve().is_relative_to(tools)
+assert sys.path[-2:] == [str(runtime), str(tools)]
 
 recipe = json.loads(
     (skills / "tileset" / "fixtures" / "orthogonal-square-recipe.json").read_text(
@@ -1125,38 +1136,52 @@ assert validated["validation"]["levels"] == {{
         assert completed.returncode == 0, completed.stderr
 
     @pytest.mark.parametrize(
-        "agent,skill_root",
+        "missing_path,expected_message",
         [
-            (publish.AGENT_CLAUDE_CODE, ".claude/skills"),
-            (publish.AGENT_CODEX, ".agents/skills"),
-            (publish.AGENT_OPENCODE, ".opencode/skills"),
+            (Path(".godotmaker") / "asset-runtime", "asset runtime is missing"),
+            (Path("tools"), "tools directory is missing"),
         ],
     )
-    def test_published_standalone_runner_reports_missing_runtime(
-        self, tmp_path, agent, skill_root
+    def test_published_standalone_runners_report_missing_dependencies(
+        self, tmp_path, missing_path, expected_message
     ):
         target = tmp_path / "target"
-        skills_target = target / skill_root
-        publish_skills(REPO_ROOT, skills_target, agent)
-        runner = skills_target / "tileset" / "standalone_validation.py"
-        expected_runtime = target / ".godotmaker" / "asset-runtime"
+        skills_target = target / publish.get_agent_adapter(
+            publish.AGENT_CODEX
+        ).skill_root
+        publish_skills(REPO_ROOT, skills_target, publish.AGENT_CODEX)
+        publish_asset_runtime(REPO_ROOT, target)
+        publish_directory(REPO_ROOT / "tools", target / "tools", "tools/")
+        if missing_path.name == "asset-runtime":
+            # A stray published _shared directory must not be mistaken for the
+            # source-checkout runtime when the project runtime is missing.
+            (skills_target / "_shared").mkdir()
+        missing = target / missing_path
+        rmtree_force(missing)
 
         script = f'''\
 import importlib.util
 from pathlib import Path
 
-runner = Path({str(runner)!r})
-spec = importlib.util.spec_from_file_location("missing_runtime_runner", runner)
-module = importlib.util.module_from_spec(spec)
-assert spec.loader is not None
-try:
-    spec.loader.exec_module(module)
-except ImportError as error:
-    message = str(error)
-    assert "GodotMaker asset runtime is missing" in message
-    assert {str(expected_runtime)!r} in message
-else:
-    raise AssertionError("published standalone runner imported without its runtime")
+skills = Path({str(skills_target)!r})
+missing = Path({str(missing)!r})
+for family in ("tileset", "ui-kit", "card-kit"):
+    runner = skills / family / "standalone_validation.py"
+    spec = importlib.util.spec_from_file_location(
+        f"missing_{{family}}_runner", runner
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    try:
+        spec.loader.exec_module(module)
+    except ImportError as error:
+        message = str(error)
+        assert {expected_message!r} in message
+        assert str(missing) in message
+        if missing.name == "asset-runtime":
+            assert str(skills / "_shared") in message
+    else:
+        raise AssertionError(f"{{family}} imported without {{missing}}")
 '''
         environment = os.environ.copy()
         environment.pop("PYTHONPATH", None)

@@ -23,27 +23,39 @@ def _configure_runtime_imports() -> None:
     runtime is deliberately deployed once at ``.godotmaker/asset-runtime``.
     """
     runner = Path(__file__).resolve()
+    project_root = runner.parents[3]
     source_runtime = runner.parents[1] / "_shared"
-    if source_runtime.is_dir():
-        runtime = source_runtime
-        project_root = runner.parents[3]
-    else:
-        project_root = runner.parents[3]
-        runtime = project_root / ".godotmaker" / "asset-runtime"
+    runtime_candidates = (
+        project_root / ".godotmaker" / "asset-runtime",
+        source_runtime,
+    )
+    source_layout = (
+        runner.parents[1].name == "assets"
+        and runner.parents[2].name == "skills"
+    )
+    runtime = next(
+        (
+            path for path in runtime_candidates
+            if path.is_dir() and (path != source_runtime or source_layout)
+        ),
+        None,
+    )
     tools = project_root / "tools"
-    if not runtime.is_dir():
+    if runtime is None:
         raise ImportError(
             "GodotMaker asset runtime is missing for standalone tileset validation: "
-            f"expected {runtime}"
+            "checked " + ", ".join(str(path) for path in runtime_candidates)
         )
     if not tools.is_dir():
         raise ImportError(
             "GodotMaker tools directory is missing for standalone tileset validation: "
             f"expected {tools}"
         )
+    # Appended, never inserted: these flat directories must not shadow the
+    # standard library or installed packages for the rest of the process.
     for path in (str(runtime), str(tools)):
         if path not in sys.path:
-            sys.path.insert(0, path)
+            sys.path.append(path)
 
 
 _configure_runtime_imports()
