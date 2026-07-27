@@ -14,8 +14,12 @@ geometry.
 
 Accept one asset request matching the shared Asset Skill request schema in
 `.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
-`asset_type` to be `background-map`. Validate the returned document against the
-shared result schema and checker before returning it.
+`asset_type` to be `background-map`. Run
+`standalone_validation.compile_and_validate()` before returning it. The runner
+checks the family binding and stable path at L0, the PNG at L1, the registered
+`single -> Texture2D` route at L2, and real headless Godot load plus Texture2D
+structure at L3/L4; it overwrites rather than trusts caller-supplied validation.
+It begins from the shared result schema and checker, then proves the result.
 
 This skill can be invoked directly or by an orchestrator; its request and
 result are identical in both cases. Do not read or write `ASSETS.md`, tags,

@@ -61,7 +61,10 @@ hard-code loop state.
    through the shared `grid_sheet` to `SpriteFrames` route. Its compiler input
    has `required_actions` plus the action `name`, `fps`, `loop`, `frame_paths`,
    and `frame_durations`. Validate L0-L4, including headless Godot load and L4
-   frame order, texture bindings, FPS, loop, and durations.
+   frame order, texture bindings, FPS, loop, and durations. Use
+   `standalone_validation.compile_and_validate()` to perform that work; it
+   derives stable processed frame paths using `<asset_id>_<action>_<frame>.png`
+   and overwrites any supplied validation assertion.
 4. For a static effect, process/select exactly one transparent foreground PNG
    and publish it through the shared `single` to `Texture2D` route. Validate
    its L0-L4 texture evidence.
@@ -87,4 +90,4 @@ An animated result has one `SpriteFrames` runtime output:
 
 A static result has one `Texture2D` runtime output whose path is the selected
 single image and whose source layout is `single`. Set `validation.passed` only
-after the applicable L0-L4 checks pass.
+from the standalone runner after the applicable L0-L4 checks pass.

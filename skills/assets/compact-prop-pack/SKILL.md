@@ -1,3 +1,8 @@
+---
+name: compact-prop-pack
+description: Produce standalone fixed-slot AtlasTexture resources for compact reusable props.
+---
+
 # Compact Prop Pack
 
 Produce a standalone atlas-backed set of small, independently usable props:
@@ -70,7 +75,10 @@ names exactly match the corresponding metadata region names.
    `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py`, passing only
    `metadata_path` and that region's `logical_asset_id` in the compiler spec.
    The artifact filename must equal the logical id.
-5. Run the shared L0-L4 validation ladder for every runtime output. L4 must
+5. Run `standalone_validation.compile_and_validate()` for L0-L4 on every runtime output.
+   It validates the declaration/result binding, assembles the atlas, compiles
+   each declared AtlasTexture, then runs real headless Godot L3/L4; it never
+   trusts result validation supplied by a caller. L4 must
    confirm the exact declared region, the shared atlas path, and zero margin.
 6. Return the shared result object only after every requested logical output
    passes. A failed or absent slot fails the invocation; do not substitute a

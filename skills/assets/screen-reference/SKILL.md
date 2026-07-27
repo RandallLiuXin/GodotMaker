@@ -13,8 +13,12 @@ It is reference-only: it does not create a runtime Godot resource, has no
 
 Accept one asset request matching the shared Asset Skill request schema in
 `.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
-`asset_type` to be `screen-reference`. Validate the returned document against
-the shared result schema and checker before returning it.
+`asset_type` to be `screen-reference`. Run
+`standalone_validation.compile_and_validate()` before returning it. This
+reference-only runner binds the fixed reference path at L0 and verifies the
+image file at L1; it never enters the runtime L2-L4 ladder and overwrites any
+caller-supplied validation claim.
+It begins from the shared result schema and checker, then proves the result.
 
 This skill can be invoked directly or by an orchestrator with the same contract.
 Do not read or write `ASSETS.md`, tags, stage state, generated manifests, or

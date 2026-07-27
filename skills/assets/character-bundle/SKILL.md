@@ -68,7 +68,11 @@ the `fx-bundle` skill.
    `name`, `fps`, `loop`, `frame_paths`, and `frame_durations`.
    Do not publish a per-action SpriteFrames resource or a source sheet as the
    runtime result.
-5. Run L0-L4 validation. L3 must load the compiled resource with headless
+5. Run `standalone_validation.compile_and_validate()` for L0-L4 validation.
+   It derives each processed frame path as
+   `res://assets/generated/character-bundle/<asset_id>/<asset_id>_<action>_<frame>.png`,
+   compiles with a fresh registry, and overwrites rather than trusting result
+   validation. L3 must load the compiled resource with headless
    Godot; L4 must confirm the action names, order, frame bindings, FPS, loop
    values, and relative durations.
 
@@ -98,5 +102,6 @@ Return a shared result with at least one runtime output:
 }
 ```
 
-Set `validation.passed` only after all required actions and L0-L4 checks pass.
+Set `validation.passed` only from the runner result after all required actions
+and L0-L4 checks pass.
 When any action is incomplete, do not return a runtime `SpriteFrames` result.

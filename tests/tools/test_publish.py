@@ -1082,9 +1082,20 @@ def load_runner(name, family):
 tileset = load_runner("published_tileset_validation", "tileset")
 ui_kit = load_runner("published_ui_kit_validation", "ui-kit")
 card_kit = load_runner("published_card_kit_validation", "card-kit")
+background_map = load_runner("published_background_map_validation", "background-map")
+platform_strip = load_runner("published_platform_strip_validation", "platform-strip")
+screen_reference = load_runner("published_screen_reference_validation", "screen-reference")
+character_bundle = load_runner("published_character_bundle_validation", "character-bundle")
+fx_bundle = load_runner("published_fx_bundle_validation", "fx-bundle")
+compact_prop_pack = load_runner("published_compact_prop_pack_validation", "compact-prop-pack")
+scene_prop_set = load_runner("published_scene_prop_set_validation", "scene-prop-set")
 assert callable(tileset.compile_and_validate)
 assert callable(ui_kit.compile_and_validate)
 assert callable(card_kit.compile_and_validate)
+assert all(callable(module.compile_and_validate) for module in (
+    background_map, platform_strip, screen_reference, character_bundle,
+    fx_bundle, compact_prop_pack, scene_prop_set,
+))
 
 import asset_compiler
 import asset_skill_contract_check
@@ -1165,7 +1176,11 @@ from pathlib import Path
 
 skills = Path({str(skills_target)!r})
 missing = Path({str(missing)!r})
-for family in ("tileset", "ui-kit", "card-kit"):
+for family in (
+    "tileset", "ui-kit", "card-kit", "background-map", "platform-strip",
+    "screen-reference", "character-bundle", "fx-bundle", "compact-prop-pack",
+    "scene-prop-set",
+):
     runner = skills / family / "standalone_validation.py"
     spec = importlib.util.spec_from_file_location(
         f"missing_{{family}}_runner", runner
