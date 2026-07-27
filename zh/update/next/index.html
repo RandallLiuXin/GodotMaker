@@ -2773,6 +2773,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Published asset validation runners now work after installing GodotMaker into Claude Code, Codex, or OpenCode projects.</li>
 <li>Restored real Godot validation for Theme and TileSet assets, including safe Theme resource paths and imported TileSet atlases.</li>
 <li>Reference-only stable entries now accept only <code>pending</code>, <code>source_ready</code>, or <code>failed</code>; only registered <code>source_ready</code> entries may promote ASSETS.md reference rows.</li>
 <li>Existing reference entries persisted as <code>compiled</code> or <code>ready</code> must be manually corrected to <code>source_ready</code> before root-index validation; no migration or compatibility reader is provided.</li>
