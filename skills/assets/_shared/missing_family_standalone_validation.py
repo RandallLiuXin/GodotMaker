@@ -34,6 +34,7 @@ from asset_animated_bundle_contract_check import (
     check_bundle_request,
     check_bundle_result,
 )
+from asset_atlas_assemble import validate_fixed_slot_rectangles
 
 
 class MissingFamilySkillError(Exception):
@@ -369,6 +370,7 @@ def _check_props(
         )
     slots = spec["slots"]
     names: list[str] = []
+    rectangles: list[tuple[int, int, int, int]] = []
     for index, raw_slot in enumerate(slots):
         if not isinstance(raw_slot, Mapping):
             raise MissingFamilySkillError(f"{family} slots[{index}] must be an object")
@@ -396,6 +398,11 @@ def _check_props(
             raise MissingFamilySkillError(
                 f"{family} slots[{index}] must be a valid fixed-slot declaration"
             )
+        rectangles.append(tuple(rect))
+        try:
+            validate_fixed_slot_rectangles(rectangles, atlas["width"], atlas["height"])
+        except ValueError as exc:
+            raise MissingFamilySkillError(f"{family} {exc}") from exc
         names.append(name)
     if len(set(names)) != len(names):
         raise MissingFamilySkillError(

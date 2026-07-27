@@ -78,9 +78,10 @@ def _pivot(value: Any, label: str) -> list[float]:
     return pivot
 
 
-def _rectangles_overlap(
+def rectangles_overlap(
     left: tuple[int, int, int, int], right: tuple[int, int, int, int]
 ) -> bool:
+    """Return whether two positive [x, y, width, height] rectangles overlap."""
     left_x, left_y, left_width, left_height = left
     right_x, right_y, right_width, right_height = right
     return not (
@@ -89,6 +90,18 @@ def _rectangles_overlap(
         or left_y + left_height <= right_y
         or right_y + right_height <= left_y
     )
+
+
+def validate_fixed_slot_rectangles(
+    rectangles: list[tuple[int, int, int, int]], atlas_width: int, atlas_height: int
+) -> None:
+    """Reject fixed slot rectangles outside an atlas or overlapping a prior slot."""
+    for index, rect in enumerate(rectangles):
+        x, y, width, height = rect
+        if x + width > atlas_width or y + height > atlas_height:
+            raise ValueError(f"slots[{index}].rect is outside the declared atlas bounds")
+        if any(rectangles_overlap(rect, existing) for existing in rectangles[:index]):
+            raise ValueError(f"slots[{index}].rect overlaps another declared slot")
 
 
 def _load_png(path: Path):
@@ -300,11 +313,12 @@ def assemble_atlas(
             raise AtlasAssemblyError(f"Slot name is duplicated: {name}")
         names.add(name)
         rect = _rect(slot.get("rect"), f"{label}.rect")
-        x, y, width, height = rect
-        if x + width > atlas_width or y + height > atlas_height:
-            raise AtlasAssemblyError(f"{label}.rect is outside the declared atlas bounds")
-        if any(_rectangles_overlap(rect, existing) for existing in rectangles):
-            raise AtlasAssemblyError(f"{label}.rect overlaps another declared slot")
+        try:
+            validate_fixed_slot_rectangles(
+                [*rectangles, rect], atlas_width, atlas_height
+            )
+        except ValueError as exc:
+            raise AtlasAssemblyError(f"declaration.{exc}") from exc
         rectangles.append(rect)
         source = slot.get("source")
         if not isinstance(source, str) or not source.strip():

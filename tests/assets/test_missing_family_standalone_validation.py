@@ -216,6 +216,92 @@ def test_prop_slot_errors_fail_closed_at_l0(tmp_path, source):
         compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
 
 
+@pytest.mark.parametrize("family", ["compact-prop-pack", "scene-prop-set"])
+@pytest.mark.parametrize(
+    ("slots", "message"),
+    [
+        pytest.param(
+            [
+                {"name": "left", "rect": [0, 0, 4, 4], "source": "left.png"},
+                {"name": "right", "rect": [4, 0, 4, 4], "source": "right.png"},
+            ],
+            None,
+            id="edge-touching-is-valid",
+        ),
+        pytest.param(
+            [
+                {"name": "left", "rect": [0, 0, 6, 6], "source": "left.png"},
+                {"name": "right", "rect": [4, 4, 4, 4], "source": "right.png"},
+            ],
+            "overlaps another declared slot",
+            id="partial-overlap",
+        ),
+        pytest.param(
+            [
+                {"name": "outer", "rect": [0, 0, 8, 8], "source": "outer.png"},
+                {"name": "inner", "rect": [2, 2, 2, 2], "source": "inner.png"},
+            ],
+            "overlaps another declared slot",
+            id="complete-containment",
+        ),
+        pytest.param(
+            [
+                {"name": "first", "rect": [0, 0, 4, 4], "source": "first.png"},
+                {"name": "second", "rect": [0, 0, 4, 4], "source": "second.png"},
+            ],
+            "overlaps another declared slot",
+            id="identical-rectangles",
+        ),
+        pytest.param(
+            [
+                {"name": "top_left", "rect": [0, 0, 4, 4], "source": "top_left.png"},
+                {"name": "top_right", "rect": [4, 0, 4, 4], "source": "top_right.png"},
+                {"name": "bottom", "rect": [0, 4, 8, 4], "source": "bottom.png"},
+            ],
+            None,
+            id="valid-multi-slot-layout",
+        ),
+        pytest.param(
+            [{"name": "outside", "rect": [6, 0, 3, 2], "source": "outside.png"}],
+            "outside the declared atlas bounds",
+            id="outside-atlas-bounds",
+        ),
+    ],
+)
+def test_prop_fixed_slot_geometry_fails_closed_at_l0(tmp_path, family, slots, message):
+    root = f"res://assets/generated/{family}/props"
+    request = {
+        "asset_type": family,
+        "asset_id": "props",
+        "brief": "props",
+        "spec": {"version": 1, "atlas": {"width": 8, "height": 8}, "slots": slots},
+    }
+    result = {
+        "asset_type": family,
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": slot["name"],
+                "path": f"{root}/{slot['name']}.tres",
+                "godot_type": "AtlasTexture",
+            }
+            for slot in slots
+        ],
+        "sources": [{"path": f"{root}/props.png", "layout": "region_atlas"}],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    if message is None:
+        actual = compile_and_validate(
+            request, result, project_root=tmp_path, godot_path="fake"
+        )
+        assert actual["validation"]["levels"]["L0"] is True
+    else:
+        with pytest.raises(MissingFamilySkillError, match=message):
+            compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
 def test_prop_runner_never_rebuilds_or_overwrites_the_delivered_atlas(tmp_path):
     output = tmp_path / "assets/generated/compact-prop-pack/props"
     output.mkdir(parents=True)
@@ -417,6 +503,21 @@ def test_prop_families_run_multi_slot_delivery_through_l4(
 
     actual = compile_and_validate(
         request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"] == {
+        level: True for level in ("L0", "L1", "L2", "L3", "L4")
+    }
+
+
+def test_compact_prop_multi_slot_delivery_runs_through_real_godot_l4(
+    godot_project, godot_bin
+):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(godot_project, request)
+
+    actual = compile_and_validate(
+        request, result, project_root=godot_project, godot_path=godot_bin
     )
 
     assert actual["validation"]["levels"] == {
