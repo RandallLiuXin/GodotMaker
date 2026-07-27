@@ -1,6 +1,7 @@
 """Contract tests for the deterministic JSON Theme compiler."""
 import json
 import struct
+import subprocess
 import sys
 from pathlib import Path
 
@@ -10,6 +11,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "skills" / "assets" / "_shared"))
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry, theme  # noqa: E402
+from asset_validation import ProbeResult, ValidationError  # noqa: E402
+from asset_validation.structure import StructureRequest  # noqa: E402
 
 
 def _recipe(**overrides):
@@ -45,8 +48,8 @@ def _request(root: Path):
     )
 
 
-def _write_recipe(root: Path, recipe):
-    path = root / "assets/generated/ui-kit/main/main.json"
+def _write_recipe(root: Path, recipe, *, source_path="res://assets/generated/ui-kit/main/main.json"):
+    path = root / source_path.removeprefix("res://")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(recipe), encoding="utf-8")
 
@@ -55,6 +58,42 @@ def _compile(root: Path):
     registry = build_default_registry()
     theme.register_into(registry)
     return registry.compile(_request(root))
+
+
+def _structure_request(root: Path, *, source_path="res://assets/generated/ui-kit/main/main.json"):
+    button = {
+        "variation_base": "",
+        "colors": ["font_color"], "font_sizes": ["font_size"], "constants": ["outline_size"],
+        "fonts": [], "icons": [], "styles": ["normal"],
+        "color_values": {"font_color": [1.0, 1.0, 1.0, 1.0]},
+        "font_size_values": {"font_size": 18}, "constant_values": {"outline_size": 1},
+        "font_paths": {}, "icon_paths": {},
+        "styleboxes": {"normal": {"class": "StyleBoxFlat", "properties": {
+            "bg_color": [16 / 255, 32 / 255, 48 / 255, 1.0],
+            "corner_radius": [8, 8, 8, 8],
+        }}},
+    }
+    variation = {
+        "variation_base": "Button",
+        "colors": [], "font_sizes": [], "constants": [], "fonts": [], "icons": [], "styles": [],
+    }
+    return StructureRequest(
+        production_family="ui-kit",
+        asset_id="main",
+        source_layout_type="theme_recipe",
+        source_path=source_path,
+        artifact_type="Theme",
+        artifact_path="res://assets/generated/ui-kit/main/main.tres",
+        project_root=root,
+        probe=ProbeResult(
+            res_path="res://assets/generated/ui-kit/main/main.tres",
+            expected_type="Theme",
+            loaded=True,
+            godot_class="Theme",
+            type_matches=True,
+            structure={"theme": {"types": {"Button": button, "PrimaryButton": variation}}},
+        ),
+    )
 
 
 def test_compiles_a_complete_theme_with_a_variation_deterministically(tmp_path):
@@ -69,6 +108,94 @@ def test_compiles_a_complete_theme_with_a_variation_deterministically(tmp_path):
     assert 'PrimaryButton/base_type = &"Button"' in text
     assert "Button/colors/font_color = Color(1, 1, 1, 1)" in text
     assert 'Button/styles/normal = SubResource("StyleBox_button_normal")' in text
+
+
+def test_structure_validation_reads_and_compares_the_declared_recipe_through_the_safe_resolver(tmp_path):
+    _write_recipe(tmp_path, _recipe())
+
+    details = theme.validate_theme_structure(_structure_request(tmp_path))
+
+    assert details["variations"] == ["PrimaryButton"]
+    changed = _recipe()
+    changed["font_sizes"][0]["value"] = 19
+    _write_recipe(
+        tmp_path,
+        changed,
+        source_path="res://assets/generated/ui-kit/main/alternate.json",
+    )
+    with pytest.raises(ValidationError, match="loaded Theme font_sizes item does not match the recipe"):
+        theme.validate_theme_structure(
+            _structure_request(
+                tmp_path,
+                source_path="res://assets/generated/ui-kit/main/alternate.json",
+            )
+        )
+
+
+@pytest.mark.parametrize("source_path", [
+    "res://assets/generated/ui-kit/main/../outside.json",
+    "res:///outside.json",
+    "C:/outside.json",
+])
+def test_structure_validation_rejects_unsafe_recipe_paths_before_reading(tmp_path, source_path):
+    _write_recipe(tmp_path, _recipe())
+
+    with pytest.raises(ValidationError, match="source_path cannot be resolved"):
+        theme.validate_theme_structure(_structure_request(tmp_path, source_path=source_path))
+
+
+@pytest.mark.parametrize("source_path", [
+    "res://assets/generated/ui-kit/other/main.json",
+    "res://assets/work/ui-kit/main/main.json",
+])
+def test_structure_validation_rejects_readable_recipes_outside_the_stable_directory(tmp_path, source_path):
+    _write_recipe(tmp_path, _recipe(), source_path=source_path)
+
+    with pytest.raises(ValidationError, match="source_path cannot be resolved"):
+        theme.validate_theme_structure(_structure_request(tmp_path, source_path=source_path))
+
+
+def _link_directory(link: Path, target: Path) -> None:
+    """Link a directory, using a junction where symlinks need a privilege."""
+    try:
+        link.symlink_to(target, target_is_directory=True)
+        return
+    except (OSError, NotImplementedError):
+        pass
+    if sys.platform != "win32":
+        pytest.skip("directory links not permitted on this platform")
+    completed = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        pytest.skip(f"directory junctions not permitted: {completed.stderr.strip()}")
+
+
+def test_structure_validation_rejects_recipe_directory_link_escape_before_reading(tmp_path):
+    outside = tmp_path.parent / "outside-theme-recipe"
+    outside.mkdir()
+    (outside / "main.json").write_text(json.dumps(_recipe()), encoding="utf-8")
+    source = tmp_path / "assets/generated/ui-kit/main/nested"
+    source.parent.mkdir(parents=True)
+    try:
+        _link_directory(source, outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("directory links are not permitted on this platform")
+
+    with pytest.raises(ValidationError, match="source_path cannot be resolved"):
+        theme.validate_theme_structure(
+            _structure_request(
+                tmp_path,
+                source_path="res://assets/generated/ui-kit/main/nested/main.json",
+            )
+        )
+
+
+def test_structure_validation_normalizes_a_missing_recipe_file(tmp_path):
+    with pytest.raises(ValidationError, match="cannot read Theme recipe"):
+        theme.validate_theme_structure(_structure_request(tmp_path))
 
 
 def test_serializes_stylebox_flat_border_width_to_its_real_edge_properties(tmp_path):
