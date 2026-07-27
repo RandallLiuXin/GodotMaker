@@ -1,3 +1,8 @@
+---
+name: scene-prop-set
+description: Produce standalone fixed-slot AtlasTexture resources for scene-derived foreground props.
+---
+
 # Scene Prop Set
 
 Produce a standalone atlas-backed set of foreground props derived from a
@@ -67,7 +72,10 @@ objects, or worker-dispatch details.
 4. Use `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py` once per region
    to compile an independent `AtlasTexture`. Pass its `metadata_path` and the
    exact logical region name; the `.tres` filename must match that name.
-5. Run shared L0-L4 validation per output. L4 must prove the loaded resource
+5. Run `standalone_validation.compile_and_validate()` for L0-L4 per output. It binds the
+   declared slot set, assembles the physical atlas, compiles every AtlasTexture,
+   and performs real headless Godot L3/L4 without trusting a result validation
+   claim. L4 must prove the loaded resource
    refers to the shared atlas, retains its exact declared region, and has a
    zero margin.
 6. Return every requested logical output only when it validates. Fail closed

@@ -13,8 +13,12 @@ for characters, enemies, UI, compact props, or full scenic backgrounds.
 
 Accept one asset request matching the shared Asset Skill request schema in
 `.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
-`asset_type` to be `platform-strip`. Validate the returned document against the
-shared result schema and checker before returning it.
+`asset_type` to be `platform-strip`. `spec` is `{ "kind": "single" | "atlas",
+"segments": [{"name": "..."}] }`; it declares the complete logical segment
+set. Run `standalone_validation.compile_and_validate()` before returning it.
+The runner binds every segment to its stable Texture2D or AtlasTexture path,
+executes the applicable compiler route, then runs real headless Godot L3/L4.
+It begins from the shared result schema and checker, then proves the result.
 
 This skill can be invoked directly or by an orchestrator with the same contract.
 Do not read or write `ASSETS.md`, tags, stage state, generated manifests, or
@@ -36,6 +40,8 @@ worker dispatch state.
    `.tres` `AtlasTexture` with zero margin. Do not use automatic packing,
    trimming, heuristic region discovery, or an undeclared region.
 5. Load the declared result in Godot and validate its reported resource type.
+   The public runner, rather than a self-reported validation object, owns this
+   L0-L4 verdict.
 
 ## Result
 
