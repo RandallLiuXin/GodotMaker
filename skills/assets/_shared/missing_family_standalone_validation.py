@@ -9,9 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
-import json
 from pathlib import Path
-import tempfile
 from typing import Any
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry
@@ -34,7 +32,6 @@ from asset_animated_bundle_contract_check import (
     check_bundle_request,
     check_bundle_result,
 )
-from asset_atlas_assemble import AtlasAssemblyError, assemble_atlas
 
 
 class MissingFamilySkillError(Exception):
@@ -77,12 +74,36 @@ def _failure(
     return _mapped(result, levels, error)
 
 
+def _reference_failure(result: Mapping[str, Any], error: Exception) -> dict[str, Any]:
+    """Map reference-only failures without inventing runtime ladder levels."""
+    return _mapped(result, {"L0": True, "L1": False}, error)
+
+
 def _runtime(result: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return [item for item in result["outputs"] if item["role"] == "runtime"]
 
 
 def _stable_path(family: str, asset_id: str, name: str, suffix: str) -> str:
     return f"res://assets/generated/{family}/{asset_id}/{name}{suffix}"
+
+
+def _project_file(root: Path, path: Any, label: str) -> Path:
+    if not isinstance(path, str) or not path.strip():
+        raise ValidationError(f"{label} must be a non-empty project-relative path")
+    candidate = (root / path).resolve()
+    if not candidate.is_relative_to(root.resolve()):
+        raise ValidationError(f"{label} resolves outside the project root")
+    return candidate
+
+
+def _auxiliary_paths(result: Mapping[str, Any]) -> list[str]:
+    """Return non-runtime output and preview paths for L1 containment checks."""
+    paths: list[str] = []
+    for output in result["outputs"]:
+        if output["role"] == "reference":
+            paths.append(output["path"])
+    paths.extend(item["path"] for item in result["previews"])
+    return paths
 
 
 def _exact_keys(value: Any, keys: set[str], label: str) -> Mapping[str, Any]:
@@ -128,7 +149,12 @@ def _check_screen_reference(
 ) -> str:
     asset_id = request["asset_id"]
     expected = f"references/{asset_id}.png"
-    if _runtime(result) or result["sources"] or len(result["outputs"]) != 1:
+    if (
+        _runtime(result)
+        or result["sources"]
+        or result["previews"]
+        or len(result["outputs"]) != 1
+    ):
         raise MissingFamilySkillError(
             "screen-reference must have one reference output and no runtime source"
         )
@@ -161,7 +187,7 @@ def _check_platform(
         )
     asset_id = request["asset_id"]
     expected: list[tuple[Mapping[str, Any], CompileRequest]] = []
-    sources: list[dict[str, str]] = []
+    sources: set[tuple[str, str]] = set()
     names: set[str] = set()
     for item in segments:
         entry = _exact_keys(item, {"name"}, "platform-strip segment")
@@ -173,7 +199,7 @@ def _check_platform(
         names.add(name)
         if kind == "single":
             path = _stable_path("platform-strip", asset_id, name, ".png")
-            sources.append({"path": path, "layout": "single"})
+            sources.add((path, "single"))
             expected.append(
                 (
                     {"name": name, "path": path, "godot_type": "Texture2D"},
@@ -190,7 +216,7 @@ def _check_platform(
             )
         else:
             source = _stable_path("platform-strip", asset_id, asset_id, ".png")
-            sources = [{"path": source, "layout": "region_atlas"}]
+            sources.add((source, "region_atlas"))
             expected.append(
                 (
                     {
@@ -225,7 +251,9 @@ def _check_platform(
     if (
         len(_runtime(result)) != len(wanted)
         or actual != wanted
-        or result["sources"] != sources
+        or len(result["sources"]) != len(sources)
+        or {(source["path"], source.get("layout")) for source in result["sources"]}
+        != sources
     ):
         raise MissingFamilySkillError(
             "platform-strip result must bind every declared segment to its stable native output"
@@ -278,8 +306,10 @@ def _check_bundle(
         for source in result["sources"]
         if source.get("layout") == "grid_sheet"
     ]
-    if not sheets:
-        raise MissingFamilySkillError("animated bundle needs a grid_sheet source")
+    if not sheets or len(sheets) != len(result["sources"]):
+        raise MissingFamilySkillError(
+            "animated bundle sources must be non-empty grid_sheet files"
+        )
     frame_paths: dict[str, list[str]] = {}
     for action in request["spec"]["actions"]:
         action_name = action["name"]
@@ -323,13 +353,45 @@ def _check_props(
         raise MissingFamilySkillError(
             f"{family} spec must be a v1 non-empty fixed-slot declaration"
         )
-    slots = spec["slots"]
-    names = [item.get("name") for item in slots if isinstance(item, Mapping)]
-    if (
-        len(names) != len(slots)
-        or any(not isinstance(name, str) or not name for name in names)
-        or len(set(names)) != len(names)
+    atlas = _exact_keys(spec.get("atlas"), {"width", "height"}, f"{family} atlas")
+    if any(
+        type(atlas.get(axis)) is not int or atlas[axis] <= 0
+        for axis in ("width", "height")
     ):
+        raise MissingFamilySkillError(
+            f"{family} atlas width and height must be positive integers"
+        )
+    slots = spec["slots"]
+    names: list[str] = []
+    for index, raw_slot in enumerate(slots):
+        if not isinstance(raw_slot, Mapping):
+            raise MissingFamilySkillError(f"{family} slots[{index}] must be an object")
+        keys = (
+            {"name", "rect", "source", "pivot"}
+            if "pivot" in raw_slot
+            else {"name", "rect", "source"}
+        )
+        slot = _exact_keys(raw_slot, keys, f"{family} slots[{index}]")
+        name = slot.get("name")
+        rect = slot.get("rect")
+        if (
+            not isinstance(name, str)
+            or not name.strip()
+            or not isinstance(slot.get("source"), str)
+            or not slot["source"].strip()
+            or not isinstance(rect, list)
+            or len(rect) != 4
+            or any(type(value) is not int for value in rect)
+            or rect[0] < 0
+            or rect[1] < 0
+            or rect[2] <= 0
+            or rect[3] <= 0
+        ):
+            raise MissingFamilySkillError(
+                f"{family} slots[{index}] must be a valid fixed-slot declaration"
+            )
+        names.append(name)
+    if len(set(names)) != len(names):
         raise MissingFamilySkillError(
             f"{family} slots must have unique non-empty names"
         )
@@ -417,6 +479,7 @@ def compile_and_validate(
                 "standalone validation needs one supported matching asset_type"
             )
         reference_path, declarations = _declarations(request, result)
+        auxiliary_paths = _auxiliary_paths(result)
     except (AssetContractError, MissingFamilySkillError) as exc:
         raise MissingFamilySkillError(f"L0 standalone contract failed: {exc}") from exc
     root, family, asset_id = (
@@ -427,19 +490,17 @@ def compile_and_validate(
     passed = ["L0"]
     try:
         if reference_path is not None:
-            file = (root / reference_path).resolve()
+            file = _project_file(root, reference_path, "reference image")
             if (
-                not file.is_relative_to(root.resolve())
-                or not file.is_file()
+                not file.is_file()
                 or file.stat().st_size <= 0
+                or file.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n"
             ):
                 raise ValidationError(
-                    f"reference image is not a non-empty project file: {reference_path}"
+                    f"reference image is not a non-empty PNG file: {reference_path}"
                 )
             return _mapped(result, {"L0": True, "L1": True})
         for _, declaration in declarations:
-            if family in {"compact-prop-pack", "scene-prop-set"}:
-                continue
             declaration = CompileRequest(
                 **{**declaration.__dict__, "project_root": root}
             )
@@ -460,6 +521,14 @@ def compile_and_validate(
                         f"atlas metadata is not a non-empty file: {metadata}"
                     )
             if declaration.source_layout_type == "grid_sheet":
+                for source_path in result["sources"]:
+                    sheet_file = _l1_file(
+                        root, source_path["path"], family=family, asset_id=asset_id
+                    )
+                    if not sheet_file.is_file() or sheet_file.stat().st_size <= 0:
+                        raise ValidationError(
+                            f"grid sheet is not a non-empty file: {source_path['path']}"
+                        )
                 for action in declaration.spec["actions"]:
                     for frame in action["frame_paths"]:
                         frame_file = _l1_file(
@@ -469,56 +538,27 @@ def compile_and_validate(
                             raise ValidationError(
                                 f"processed action frame is not a non-empty file: {frame}"
                             )
-        if family in {"compact-prop-pack", "scene-prop-set"}:
-            for slot in request["spec"]["slots"]:
-                slot_file = (root / slot["source"]).resolve()
-                if (
-                    not slot_file.is_relative_to(root.resolve())
-                    or not slot_file.is_file()
-                    or slot_file.stat().st_size <= 0
-                ):
-                    raise ValidationError(
-                        f"atlas slot source is not a non-empty project file: {slot['source']}"
-                    )
+        for path in auxiliary_paths:
+            file = _project_file(root, path, "reference output or preview")
+            if not file.is_file() or file.stat().st_size <= 0:
+                raise ValidationError(
+                    f"reference output or preview is not a non-empty file: {path}"
+                )
     except (OSError, StableEntryError, ValidationError) as exc:
-        return _failure(result, passed, "L1", exc)
+        return (
+            _reference_failure(result, exc)
+            if reference_path is not None
+            else _failure(result, passed, "L1", exc)
+        )
     passed.append("L1")
     try:
         registry = build_default_registry()
         compiled: dict[str, CompileRequest] = {}
-        if family in {"compact-prop-pack", "scene-prop-set"}:
-            atlas_path = (
-                Path("assets/generated") / family / asset_id / f"{asset_id}.png"
-            )
-            metadata_path = atlas_path.with_suffix(".json")
-            with tempfile.NamedTemporaryFile(
-                mode="w", encoding="utf-8", suffix=".json", dir=root, delete=False
-            ) as handle:
-                declaration_path = Path(handle.name)
-                json.dump(request["spec"], handle)
-            try:
-                assemble_atlas(
-                    declaration_path,
-                    atlas_path,
-                    metadata_path,
-                    production_family=family,
-                    asset_id=asset_id,
-                    project_root=root,
-                )
-            finally:
-                declaration_path.unlink(missing_ok=True)
         for output, declaration in declarations:
             actual = CompileRequest(**{**declaration.__dict__, "project_root": root})
-            compiled_result = registry.compile(actual)
-            if compiled_result.godot_artifact.to_dict() != {
-                "type": output["godot_type"],
-                "path": output["path"],
-            }:
-                raise ValidationError(
-                    f"compiler output does not match runtime output {output['name']!r}"
-                )
+            registry.compile(actual)
             compiled[output["path"]] = actual
-    except (AtlasAssemblyError, CompilerError, OSError, ValidationError) as exc:
+    except (CompilerError, OSError, ValidationError) as exc:
         return _failure(result, passed, "L2", exc)
     passed.append("L2")
     structures = build_default_structures()

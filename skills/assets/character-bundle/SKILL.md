@@ -76,9 +76,6 @@ the `fx-bundle` skill.
    Godot; L4 must confirm the action names, order, frame bindings, FPS, loop
    values, and relative durations.
 
-Optional portraits are separate `Texture2D` runtime outputs. They must not
-replace the actor's primary `SpriteFrames` output.
-
 ## Result
 
 Return a shared result with at least one runtime output:
