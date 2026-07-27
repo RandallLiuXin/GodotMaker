@@ -55,6 +55,10 @@ def test_tileset_skill_documents_recipe_only_semantics_and_l0_to_l4():
         "occlusion polygons",
         "alternatives",
         "animation",
+        "NIL",
+        "all other Variant types are outside v1",
+        "relative\n weight",
+        "Unknown or misspelled\nfields are rejected",
     ):
         assert field in text
     assert "Never infer them from the atlas image." in text
@@ -127,20 +131,23 @@ def test_standalone_runner_maps_request_result_l0_to_l4_without_a_stable_entry(
                     "coords": [0, 0], "texture_origin": [0, 0], "z_index": 0,
                     "y_sort_origin": 0, "probability": 1.0, "terrain_set": 0,
                     "terrain": 0, "peering_bits": [0] + [-1] * 15,
-                    "custom_data": [], "collision_polygons": [[[[0, 0], [16, 0], [16, 16], [0, 16]]]],
+                    "custom_data": [None, True, 1, 0.5, "grass"], "collision_polygons": [[[[0, 0], [16, 0], [16, 16], [0, 16]]]],
                     "occlusion_polygons": [], "navigation_polygons": [], "alternatives": [{
                         "id": 1, "texture_origin": [0, 0], "z_index": 0, "y_sort_origin": 0,
                         "probability": 0.25, "terrain_set": -1, "terrain": -1,
-                        "peering_bits": [-1] * 16, "custom_data": [], "collision_polygons": [[]],
+                        "peering_bits": [-1] * 16, "custom_data": [None, False, 0, 0.0, ""], "collision_polygons": [[]],
                         "occlusion_polygons": [], "navigation_polygons": [],
                     }],
                 }],
             }],
             "physics_layers_count": 1, "navigation_layers_count": 0,
-            "occlusion_layers_count": 0, "custom_data_layers_count": 0,
+            "occlusion_layers_count": 0, "custom_data_layers_count": 5,
             "terrain_sets_count": 1,
             "physics_layers": [{"collision_layer": 1, "collision_mask": 1}],
-            "navigation_layers": [], "occlusion_layers": [], "custom_data_layers": [],
+            "navigation_layers": [], "occlusion_layers": [], "custom_data_layers": [
+                {"name": "nothing", "type": 0}, {"name": "walkable", "type": 1},
+                {"name": "cost", "type": 2}, {"name": "weight", "type": 3}, {"name": "kind", "type": 4},
+            ],
             "terrain_sets": [{"mode": 0, "terrains": [{"name": "grass", "color": [0.2, 0.8, 0.3, 1.0]}]}],
         }
     }
