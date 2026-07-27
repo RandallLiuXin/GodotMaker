@@ -1,6 +1,6 @@
 # Core 技能
 
-Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十二个由角色技能自动加载的支撑技能。本页对两类技能都有说明。
+Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十三个由角色技能自动加载的支撑技能。本页对两类技能都有说明。
 
 ## 角色技能
 
@@ -40,6 +40,12 @@ Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十二
 |------|-----------|----------|
 | `godot-api` | Godot 4 引擎类文档——方法、属性、信号和枚举 | `/gm-build`、`/gm-fixgap` |
 | `gecs` | gecs ECS 插件的 API 参考（Entity、Component、System、World、QueryBuilder） | `/gm-build`、`/gm-fixgap` |
+
+### 插件类
+
+| 技能 | 提供的内容 | 被谁加载 |
+|------|-----------|----------|
+| `phantom-camera` | 可选 Phantom Camera 插件指南，覆盖跟随摄像机、摄像机区域、过渡、震屏和过场式镜头移动 | 项目选择使用 Phantom Camera 时由 `/gm-build`、`/gm-fixgap` 加载 |
 
 ### 构建与运行类
 
