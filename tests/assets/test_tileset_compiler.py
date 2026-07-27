@@ -250,6 +250,36 @@ def test_tileset_recipe_rejects_invalid_declared_tile_semantics(tmp_path, change
         compiler._recipe(_recipe_request(tmp_path, _spec(**changes)))
 
 
+@pytest.mark.parametrize("alternative", [False, True])
+def test_tileset_recipe_rejects_empty_collision_polygons_for_tiles_and_alternatives(tmp_path, alternative):
+    collision = {"layer": 0, "points": []}
+    tile = {"coords": [0, 0]}
+    if alternative:
+        tile["alternatives"] = [{"id": 1, "collision_polygons": [collision]}]
+    else:
+        tile["collision_polygons"] = [collision]
+    request = _recipe_request(tmp_path, _spec(
+        physics_layers=[{}],
+        sources=[{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [tile]}],
+    ))
+    with pytest.raises(CompilerError, match="collision polygon points must contain at least three points"):
+        compiler._recipe(request)
+
+
+def test_tileset_recipe_continues_to_allow_empty_occlusion_and_navigation_polygons(tmp_path):
+    recipe = compiler._recipe(_recipe_request(tmp_path, _spec(
+        occlusion_layers=[{}], navigation_layers=[{}],
+        sources=[{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{
+            "coords": [0, 0],
+            "occlusion_polygons": [{"layer": 0, "points": []}],
+            "navigation_polygons": [{"layer": 0, "points": []}],
+        }]}],
+    )))
+    tile = recipe["sources"][0]["tiles"][0]
+    assert tile["occlusion_polygons"][0]["points"] == []
+    assert tile["navigation_polygons"][0]["points"] == []
+
+
 def test_tileset_recipe_rejects_duplicate_tile_coords_and_alternative_ids(tmp_path):
     source = "res://assets/generated/tileset/grass/atlas.png"
     duplicate_coords = _recipe_request(tmp_path, _spec(sources=[{
@@ -534,6 +564,43 @@ def test_tileset_real_godot_handles_multiple_sources_defaults_and_polygon_float3
             source_path=request.source_path, artifact_type="TileSet", artifact_path=request.artifact_path,
             project_root=godot_project, probe=report.resources[0], spec=request.spec,
         ))
+
+
+def test_tileset_real_godot_validates_collision_polygons_and_rejects_empty_ones_before_invocation(
+    godot_bin, godot_project, monkeypatch,
+):
+    source = godot_project / "assets/generated/tileset/grass/atlas.png"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(_png(16, 16))
+
+    def request_for(points, binary):
+        return CompileRequest(
+            production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+            source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+            artifact_path="res://assets/generated/tileset/grass/collision.tres", project_root=godot_project,
+            spec={"godot_path": binary, "tile_size": [16, 16], "physics_layers": [{}], "sources": [{
+                "texture": "res://assets/generated/tileset/grass/atlas.png",
+                "tiles": [{"coords": [0, 0], "collision_polygons": [{"layer": 0, "points": points}]}],
+            }]},
+        )
+
+    valid = request_for([[0, 0], [16, 0], [0, 16]], godot_bin)
+    compiler.compile_tileset(valid)
+    report = GodotProbe(godot_bin).probe(
+        godot_project, [ProbeRequest(valid.artifact_path, "TileSet", ("tileset",))]
+    )
+    structures.validate_tileset(StructureRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path=valid.source_path, artifact_type="TileSet", artifact_path=valid.artifact_path,
+        project_root=godot_project, probe=report.resources[0], spec=valid.spec,
+    ))
+
+    def must_not_invoke_godot(*args, **kwargs):
+        raise AssertionError("empty collision polygons must fail during L2 before Godot is invoked")
+
+    monkeypatch.setattr(compiler.subprocess, "run", must_not_invoke_godot)
+    with pytest.raises(CompilerError, match="collision polygon points must contain at least three points"):
+        compiler.compile_tileset(request_for([], "not-a-godot-binary"))
 
 
 def test_compile_tileset_does_not_mutate_nested_spec_across_direct_calls(godot_bin, godot_project):

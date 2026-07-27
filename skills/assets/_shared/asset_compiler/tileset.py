@@ -100,8 +100,10 @@ def _layer_index(value: Any, label: str, count: int) -> int:
     return index
 
 
-def _polygon_points(value: Any, label: str) -> list[list[float]]:
+def _polygon_points(value: Any, label: str, *, allow_empty: bool = True) -> list[list[float]]:
     points = _list(value, f"{label} points")
+    if len(points) < 3 and not allow_empty:
+        raise CompilerError(f"{label} points must contain at least three points")
     if len(points) in (1, 2):
         raise CompilerError(f"{label} points must be empty or contain at least three points")
     normalized: list[list[float]] = []
@@ -207,7 +209,10 @@ def _validate_tile_data(item: dict[str, Any], spec: dict[str, Any], label: str) 
                 raise CompilerError(f"{label} cannot declare duplicate navigation polygons for one layer")
             if key == "navigation_polygons":
                 seen_navigation_layers.add(layer)
-            polygon["points"] = _polygon_points(polygon.get("points"), f"{label} {family} polygon")
+            polygon["points"] = _polygon_points(
+                polygon.get("points"), f"{label} {family} polygon",
+                allow_empty=key != "collision_polygons",
+            )
 
 
 def _validate_animation(animation: Any) -> dict[str, Any]:
