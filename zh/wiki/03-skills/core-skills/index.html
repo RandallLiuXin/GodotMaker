@@ -856,7 +856,7 @@
   <a href="#_4" class="md-nav__link">
     <span class="md-ellipsis">
       
-        构建与运行类
+        插件类
       
     </span>
   </a>
@@ -865,6 +865,17 @@
         
           <li class="md-nav__item">
   <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        构建与运行类
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
     <span class="md-ellipsis">
       
         评估类
@@ -2713,7 +2724,7 @@
   <a href="#_4" class="md-nav__link">
     <span class="md-ellipsis">
       
-        构建与运行类
+        插件类
       
     </span>
   </a>
@@ -2722,6 +2733,17 @@
         
           <li class="md-nav__item">
   <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        构建与运行类
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
     <span class="md-ellipsis">
       
         评估类
@@ -2757,7 +2779,7 @@
 
 
 <h1 id="core">Core 技能<a class="headerlink" href="#core" title="Permanent link">&para;</a></h1>
-<p>Core 技能分为两类：九个以 <code>/gm-*</code> 暴露的角色技能，以及十二个由角色技能自动加载的支撑技能。本页对两类技能都有说明。</p>
+<p>Core 技能分为两类：九个以 <code>/gm-*</code> 暴露的角色技能，以及十三个由角色技能自动加载的支撑技能。本页对两类技能都有说明。</p>
 <h2 id="_1">角色技能<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
 <p>共有九个角色技能，每个负责游戏创建的一部分。正常路径下，<code>godotmaker-cli</code> 会按顺序驱动它们；手动模式下，你可以按同样顺序运行 <code>/gm-*</code> 角色命令，因为每个角色都要求前一个角色已经完成才能开始。</p>
 <table>
@@ -2879,7 +2901,24 @@
 </tr>
 </tbody>
 </table>
-<h3 id="_4">构建与运行类<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<h3 id="_4">插件类<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>技能</th>
+<th>提供的内容</th>
+<th>被谁加载</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>phantom-camera</code></td>
+<td>可选 Phantom Camera 插件指南，覆盖跟随摄像机、摄像机区域、过渡、震屏和过场式镜头移动</td>
+<td>项目选择使用 Phantom Camera 时由 <code>/gm-build</code>、<code>/gm-fixgap</code> 加载</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_5">构建与运行类<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -2906,7 +2945,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="_5">评估类<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<h3 id="_6">评估类<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>

@@ -853,6 +853,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#building-and-running" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2710,6 +2721,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#building-and-running" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2757,7 +2779,7 @@
 
 
 <h1 id="core-skills">Core Skills<a class="headerlink" href="#core-skills" title="Permanent link">&para;</a></h1>
-<p>Core skills come in two kinds: the nine role skills exposed as <code>/gm-*</code> commands, and twelve supporting skills that role skills load automatically. This page covers both.</p>
+<p>Core skills come in two kinds: the nine role skills exposed as <code>/gm-*</code> commands, and thirteen supporting skills that role skills load automatically. This page covers both.</p>
 <h2 id="role-skills">Role skills<a class="headerlink" href="#role-skills" title="Permanent link">&para;</a></h2>
 <p>There are nine role skills, each responsible for one part of game creation. In the normal path, <code>godotmaker-cli</code> drives them in order; in manual mode, run the <code>/gm-*</code> role commands in the same sequence because each role expects the previous one to be complete.</p>
 <table>
@@ -2876,6 +2898,23 @@
 <td><code>gecs</code></td>
 <td>API reference for the gecs ECS addon (Entity, Component, System, World, QueryBuilder)</td>
 <td><code>/gm-build</code>, <code>/gm-fixgap</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="addon">Addon<a class="headerlink" href="#addon" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>What it provides</th>
+<th>Loaded by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>phantom-camera</code></td>
+<td>Optional Phantom Camera addon guidance for follow cameras, camera zones, transitions, shake, and cutscene-style camera moves</td>
+<td><code>/gm-build</code>, <code>/gm-fixgap</code> when the project opts into Phantom Camera</td>
 </tr>
 </tbody>
 </table>
