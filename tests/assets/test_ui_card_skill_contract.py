@@ -219,6 +219,21 @@ def test_skill_local_ui_card_adapter_rejects_the_other_legal_family(tmp_path, ad
         )
 
 
+@pytest.mark.parametrize("adapter", ["ui-kit", "card-kit"])
+@pytest.mark.parametrize("invalid_input", ["request", "result"])
+def test_skill_local_ui_card_adapter_maps_non_objects_to_l0(tmp_path, adapter, invalid_input):
+    request = _request(adapter)
+    result = _result(request)
+    if invalid_input == "request":
+        request = []
+    else:
+        result = []
+    with pytest.raises(UICardSkillError, match="L0 standalone contract failed"):
+        _source_adapter(adapter).compile_and_validate(
+            request, result, project_root=tmp_path, godot_path="godot"
+        )
+
+
 @pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
 def test_theme_runtime_output_requires_the_declared_stable_path(family):
     request = _request(family)
