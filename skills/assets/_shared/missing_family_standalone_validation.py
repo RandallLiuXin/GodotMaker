@@ -11,8 +11,9 @@ from collections.abc import Mapping
 from copy import deepcopy
 import json
 from pathlib import Path
-import struct
 from typing import Any
+
+from PIL import Image
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry
 from asset_compiler._stable_entry import (
@@ -467,18 +468,19 @@ def _l1_file(root: Path, path: str, *, family: str, asset_id: str) -> Path:
 
 
 def _png_dimensions(path: Path) -> tuple[int, int]:
-    """Read PNG dimensions from IHDR without loading the image into memory."""
-    with path.open("rb") as handle:
-        header = handle.read(24)
-    if (
-        len(header) != 24
-        or header[:8] != b"\x89PNG\r\n\x1a\n"
-        or header[12:16] != b"IHDR"
-    ):
-        raise ValidationError(
-            f"delivered atlas is not a PNG with an IHDR header: {path}"
-        )
-    return struct.unpack(">II", header[16:24])
+    """Fully verify and decode a PNG before returning its dimensions."""
+    try:
+        with Image.open(path) as image:
+            if image.format != "PNG":
+                raise ValidationError("delivered image is not a PNG")
+            image.verify()
+        with Image.open(path) as image:
+            if image.format != "PNG":
+                raise ValidationError("delivered image is not a PNG")
+            image.load()
+            return image.size
+    except (OSError, SyntaxError, ValueError) as exc:
+        raise ValidationError("delivered image is not a decodable PNG") from exc
 
 
 def _verify_prop_delivery(
@@ -579,13 +581,25 @@ def compile_and_validate(
     try:
         if reference_path is not None:
             file = _project_file(root, reference_path, "reference image")
-            if (
-                not file.is_file()
-                or file.stat().st_size <= 0
-                or _png_dimensions(file) == (0, 0)
-            ):
+            try:
+                is_non_empty = file.is_file() and file.stat().st_size > 0
+            except OSError as exc:
                 raise ValidationError(
-                    f"reference image is not a non-empty PNG file: {reference_path}"
+                    f"reference image cannot be read: {reference_path}"
+                ) from exc
+            if not is_non_empty:
+                raise ValidationError(
+                    f"reference image is not a non-empty file: {reference_path}"
+                )
+            try:
+                dimensions = _png_dimensions(file)
+            except ValidationError as exc:
+                raise ValidationError(
+                    f"reference image is not a decodable PNG: {reference_path}"
+                ) from exc
+            if dimensions[0] <= 0 or dimensions[1] <= 0:
+                raise ValidationError(
+                    f"reference image has invalid dimensions: {reference_path}"
                 )
             return _mapped(result, {"L0": True, "L1": True})
         if family in {"compact-prop-pack", "scene-prop-set"}:
