@@ -149,6 +149,14 @@ def _expected_layers(spec: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     }
 
 
+def _source_id(source: dict[str, Any], index: int) -> int:
+    return source.get("id", index)
+
+
+def _source_region_size(source: dict[str, Any], tile_size: Any) -> Any:
+    return source.get("region_size", source.get("tile_size", tile_size))
+
+
 def validate_tileset(request: StructureRequest) -> dict[str, Any]:
     facts = request.checked_structure("tileset")
     sources = request.spec.get("sources")
@@ -175,16 +183,42 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
     actual_sources = facts.get("sources")
     if not isinstance(actual_sources, list) or len(actual_sources) != len(sources):
         raise ValidationError("loaded TileSet source descriptors are incomplete")
-    for index, (expected, actual) in enumerate(zip(sources, actual_sources)):
-        if not isinstance(expected, dict) or not isinstance(actual, dict):
+    expected_sources = {
+        _source_id(source, index): source
+        for index, source in enumerate(sources)
+        if isinstance(source, dict)
+    }
+    actual_sources_by_id = {
+        source.get("id"): source
+        for source in actual_sources
+        if isinstance(source, dict)
+    }
+    if set(actual_sources_by_id) != set(expected_sources):
+        raise ValidationError("loaded TileSet source ids do not match the recipe")
+    for source_id, expected in expected_sources.items():
+        actual = actual_sources_by_id[source_id]
+        if not isinstance(actual, dict):
             raise ValidationError("TileSet source descriptor is malformed")
-        for key, default in (("id", index), ("region_size", expected_size), ("margins", [0, 0]), ("separation", [0, 0])):
+        for key, default in (("id", source_id), ("region_size", _source_region_size(expected, expected_size)), ("margins", [0, 0]), ("separation", [0, 0])):
             if actual.get(key) != expected.get(key, default):
-                raise ValidationError(f"loaded TileSet source {index} {key} does not match the recipe")
+                raise ValidationError(f"loaded TileSet source {source_id} {key} does not match the recipe")
         actual_tiles = actual.get("tiles")
         if not isinstance(actual_tiles, list) or len(actual_tiles) != len(expected.get("tiles", [])):
-            raise ValidationError(f"loaded TileSet source {index} tile descriptors are incomplete")
-        for tile, loaded in zip(expected.get("tiles", []), actual_tiles):
+            raise ValidationError(f"loaded TileSet source {source_id} tile descriptors are incomplete")
+        expected_tiles = {
+            tuple(tile.get("coords", [])): tile
+            for tile in expected.get("tiles", [])
+            if isinstance(tile, dict)
+        }
+        actual_tiles_by_coords = {
+            tuple(tile.get("coords", [])): tile
+            for tile in actual_tiles
+            if isinstance(tile, dict)
+        }
+        if set(actual_tiles_by_coords) != set(expected_tiles):
+            raise ValidationError(f"loaded TileSet source {source_id} tile coordinates do not match the recipe")
+        for coords, tile in expected_tiles.items():
+            loaded = actual_tiles_by_coords[coords]
             for key, default in (("coords", None), ("texture_origin", [0, 0]), ("z_index", 0), ("y_sort_origin", 0), ("probability", 1.0), ("terrain_set", -1), ("terrain", -1)):
                 actual_value = loaded.get(key)
                 expected_value = tile.get(key, default)
@@ -241,7 +275,20 @@ def validate_tileset(request: StructureRequest) -> dict[str, Any]:
             expected_alternatives = tile.get("alternatives", [])
             if len(loaded_alternatives) != len(expected_alternatives):
                 raise ValidationError("loaded TileSet alternatives do not match the recipe")
-            for alternative, actual_alternative in zip(expected_alternatives, loaded_alternatives):
+            expected_alternatives_by_id = {
+                alternative.get("id"): alternative
+                for alternative in expected_alternatives
+                if isinstance(alternative, dict)
+            }
+            actual_alternatives_by_id = {
+                alternative.get("id"): alternative
+                for alternative in loaded_alternatives
+                if isinstance(alternative, dict)
+            }
+            if set(actual_alternatives_by_id) != set(expected_alternatives_by_id):
+                raise ValidationError("loaded TileSet alternative ids do not match the recipe")
+            for alternative_id, alternative in expected_alternatives_by_id.items():
+                actual_alternative = actual_alternatives_by_id[alternative_id]
                 expected_alternative = _expected_tile(
                     alternative, request.spec, alternative=True
                 )

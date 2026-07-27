@@ -94,6 +94,45 @@ def test_tileset_structure_validator_fails_on_unexpected_loaded_tile_count():
         structures.validate_tileset(request)
 
 
+def test_tileset_l4_matches_sources_tiles_and_alternatives_by_identity_not_declaration_order():
+    def loaded_tile(coords, alternatives=None):
+        return {
+            "coords": coords, "texture_origin": [0, 0], "z_index": 0,
+            "y_sort_origin": 0, "probability": 1.0, "terrain_set": -1,
+            "terrain": -1, "peering_bits": [-1] * 16, "custom_data": [],
+            "collision_polygons": [], "occlusion_polygons": [],
+            "navigation_polygons": [], "alternatives": alternatives or [],
+        }
+
+    alternative_one = {**loaded_tile([1, 0]), "id": 1}
+    alternative_three = {**loaded_tile([1, 0]), "id": 3}
+    spec = _spec(sources=[
+        {"id": 5, "texture": "res://assets/generated/tileset/grass/first.png", "tile_size": [32, 32], "tiles": [{
+            "coords": [1, 0], "alternatives": [{"id": 3}, {"id": 1}],
+        }]},
+        {"id": 3, "texture": "res://assets/generated/tileset/grass/second.png", "tiles": [{"coords": [0, 0]}]},
+    ])
+    facts = {"tileset": {
+        "source_count": 2, "tile_count": 2, "alternative_count": 2,
+        "tile_shape": 0, "tile_size": [16, 16],
+        "sources": [
+            {"id": 3, "region_size": [16, 16], "margins": [0, 0], "separation": [0, 0], "tiles": [loaded_tile([0, 0])]},
+            {"id": 5, "region_size": [32, 32], "margins": [0, 0], "separation": [0, 0], "tiles": [loaded_tile([1, 0], [alternative_one, alternative_three])]},
+        ],
+        "physics_layers_count": 0, "navigation_layers_count": 0,
+        "occlusion_layers_count": 0, "custom_data_layers_count": 0,
+        "terrain_sets_count": 0, "physics_layers": [], "navigation_layers": [],
+        "occlusion_layers": [], "custom_data_layers": [], "terrain_sets": [],
+    }}
+    request = StructureRequest(
+        production_family="tileset", asset_id="grass", source_layout_type="tile_atlas",
+        source_path="res://assets/generated/tileset/grass/atlas.png", artifact_type="TileSet",
+        artifact_path="res://assets/generated/tileset/grass/grass.tres", project_root=Path("."),
+        probe=ProbeResult("res://x", "TileSet", True, "TileSet", True, structure=facts), spec=spec,
+    )
+    structures.validate_tileset(request)
+
+
 def test_l4_normalizes_rgb_and_default_layer_recipe_values():
     normalized = structures._expected_layers({
         "physics_layers": [{}],
@@ -194,7 +233,7 @@ def test_tileset_recipe_rejects_non_scalar_or_mismatched_custom_data(tmp_path, l
     "changes, message",
     [
         ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "texture_origin": [0, "bad"]}]}]}, "texture_origin"),
-        ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "z_index": 4097}]}]}, "z_index"),
+        ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "z_index": 1.5}]}]}, "z_index"),
         ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "y_sort_origin": 1.5}]}]}, "y_sort_origin"),
         ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "probability": float("inf")}]}]}, "probability"),
         ({"physics_layers": [{}], "sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "collision_polygons": [{"layer": 1, "points": [[0, 0], [1, 0], [0, 1]]}]}]}]}, "collision polygon layer"),
@@ -223,6 +262,66 @@ def test_tileset_recipe_rejects_duplicate_tile_coords_and_alternative_ids(tmp_pa
         compiler._recipe(duplicate_coords)
     with pytest.raises(CompilerError, match="duplicate alternative ids"):
         compiler._recipe(duplicate_alternatives)
+
+
+def test_tileset_recipe_keeps_probability_as_a_non_negative_relative_weight(tmp_path):
+    recipe = compiler._recipe(_recipe_request(tmp_path, _spec(sources=[{
+        "texture": "res://assets/generated/tileset/grass/atlas.png",
+        "tiles": [{"coords": [0, 0], "probability": 3.0}],
+    }])))
+    assert recipe["sources"][0]["tiles"][0]["probability"] == 3.0
+    negative = _recipe_request(tmp_path, _spec(sources=[{
+        "texture": "res://assets/generated/tileset/grass/atlas.png",
+        "tiles": [{"coords": [0, 0], "probability": -0.1}],
+    }]))
+    with pytest.raises(CompilerError, match="probability must be non-negative"):
+        compiler._recipe(negative)
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "probabilty": 0.25}]}]}, "unsupported fields: probabilty"),
+        ({"sources": [{"texture": "res://assets/generated/tileset/grass/atlas.png", "tiles": [{"coords": [0, 0], "alternatives": [{"id": 1, "z-index": 2}]}]}]}, "unsupported fields: z-index"),
+        ({"physics_layers": [{"collision-layer": 1}]}, "unsupported fields: collision-layer"),
+        ({"terrain_sets": [{"terrains": [{"name": "grass", "colour": [1, 1, 1]}]}]}, "unsupported fields: colour"),
+    ],
+)
+def test_tileset_recipe_rejects_unknown_recipe_fields(tmp_path, changes, message):
+    with pytest.raises(CompilerError, match=message):
+        compiler._recipe(_recipe_request(tmp_path, _spec(**changes)))
+
+
+def test_tileset_recipe_rejects_invalid_peering_bits_for_shape_and_mode(tmp_path):
+    source = "res://assets/generated/tileset/grass/atlas.png"
+    invalid_square = _recipe_request(tmp_path, _spec(terrain_sets=[{"mode": 0, "terrains": [{"name": "grass"}]}], sources=[{
+        "texture": source, "tiles": [{"coords": [0, 0], "terrain_set": 0, "peering_bits": [{"bit": 2, "terrain": 0}]}],
+    }]))
+    invalid_corners = _recipe_request(tmp_path, _spec(terrain_sets=[{"mode": 1, "terrains": [{"name": "grass"}]}], sources=[{
+        "texture": source, "tiles": [{"coords": [0, 0], "terrain_set": 0, "peering_bits": [{"bit": 0, "terrain": 0}]}],
+    }]))
+    valid_square = _recipe_request(tmp_path, _spec(terrain_sets=[{"mode": 0, "terrains": [{"name": "grass"}]}], sources=[{
+        "texture": source, "tiles": [{"coords": [0, 0], "terrain_set": 0, "peering_bits": [{"bit": 3, "terrain": 0}]}],
+    }]))
+    with pytest.raises(CompilerError, match="invalid for the tile_shape and terrain mode"):
+        compiler._recipe(invalid_square)
+    with pytest.raises(CompilerError, match="invalid for the tile_shape and terrain mode"):
+        compiler._recipe(invalid_corners)
+    compiler._recipe(valid_square)
+
+
+def test_tileset_recipe_rejects_duplicate_custom_data_layer_names_and_empty_declared_durations(tmp_path):
+    duplicate_names = _recipe_request(tmp_path, _spec(
+        custom_data_layers=[{"name": "cost", "type": 2}, {"name": "cost", "type": 3}],
+    ))
+    empty_durations = _recipe_request(tmp_path, _spec(sources=[{
+        "texture": "res://assets/generated/tileset/grass/atlas.png",
+        "tiles": [{"coords": [0, 0], "animation": {"frames_count": 2, "frame_durations": []}}],
+    }]))
+    with pytest.raises(CompilerError, match="layer names must be unique"):
+        compiler._recipe(duplicate_names)
+    with pytest.raises(CompilerError, match="frame_durations must declare every frame"):
+        compiler._recipe(empty_durations)
 
 
 def _png(width: int, height: int) -> bytes:

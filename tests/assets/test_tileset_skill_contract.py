@@ -57,6 +57,8 @@ def test_tileset_skill_documents_recipe_only_semantics_and_l0_to_l4():
         "animation",
         "NIL",
         "all other Variant types are outside v1",
+        "relative\n weight",
+        "Unknown or misspelled\nfields are rejected",
     ):
         assert field in text
     assert "Never infer them from the atlas image." in text
