@@ -1,5 +1,6 @@
 """Executable standalone contracts for ui-kit and card-kit Asset Skills."""
 import json
+import importlib.util
 import struct
 import sys
 import zlib
@@ -20,7 +21,7 @@ from asset_ui_card_contract_check import (  # noqa: E402
 )
 from asset_validation import ProbeReport, ProbeResult  # noqa: E402
 from asset_validation.godot_probe import GodotProbe  # noqa: E402
-from ui_card_standalone_validation import compile_and_validate  # noqa: E402
+from ui_card_standalone_validation import UICardSkillError, compile_and_validate  # noqa: E402
 
 
 def _png(width: int, height: int) -> bytes:
@@ -73,7 +74,7 @@ def _result(request: dict) -> dict:
     return {
         "asset_type": request["asset_type"],
         "outputs": [
-            {"role": "runtime", "name": "theme", "path": f"{root}/theme.tres", "godot_type": "Theme"},
+            {"role": "runtime", "name": "theme", "path": f"{root}/{request['asset_id']}_theme.tres", "godot_type": "Theme"},
             {"role": "runtime", "name": box["output_name"], "path": f"{root}/{box['output_name']}.tres", "godot_type": "StyleBoxTexture"},
             {"role": "runtime", "name": "icon", "path": f"{root}/icon.tres", "godot_type": "AtlasTexture"},
         ],
@@ -84,6 +85,15 @@ def _result(request: dict) -> dict:
         "previews": [],
         "validation": {"passed": False},
     }
+
+
+def _source_adapter(family: str):
+    path = REPO_ROOT / "skills" / "assets" / family / "standalone_validation.py"
+    spec = importlib.util.spec_from_file_location(f"{family}_adapter", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
 
 
 def _write_sources(root: Path, request: dict, *, recipe_variation: str | None = None) -> None:
@@ -199,6 +209,23 @@ def test_standalone_runner_maps_missing_source_to_l1(tmp_path):
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
     assert validated["validation"]["levels"] == {"L0": True, "L1": False, "L2": False, "L3": False, "L4": False}
+
+
+@pytest.mark.parametrize(("adapter", "other"), [("ui-kit", "card-kit"), ("card-kit", "ui-kit")])
+def test_skill_local_ui_card_adapter_rejects_the_other_legal_family(tmp_path, adapter, other):
+    with pytest.raises(UICardSkillError, match="L0 standalone contract failed"):
+        _source_adapter(adapter).compile_and_validate(
+            _request(other), _result(_request(other)), project_root=tmp_path, godot_path="godot"
+        )
+
+
+@pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
+def test_theme_runtime_output_requires_the_declared_stable_path(family):
+    request = _request(family)
+    result = _result(request)
+    result["outputs"][0]["path"] = result["outputs"][0]["path"].replace("_theme.tres", ".tres")
+    with pytest.raises(UICardContractError, match="theme.output_name"):
+        check_ui_card_handoff(request, result)
 
 
 def test_standalone_runner_maps_invalid_nine_slice_to_l2(tmp_path):

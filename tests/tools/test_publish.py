@@ -1134,6 +1134,59 @@ validated = tileset.compile_and_validate(
 assert validated["validation"]["levels"] == {{
     "L0": True, "L1": False, "L2": False, "L3": False, "L4": False,
 }}
+
+wrong_path_result = {{
+    "asset_type": "tileset",
+    "outputs": [{{
+        "role": "runtime",
+        "path": "res://assets/generated/tileset/grassland/not-the-asset-id.tres",
+        "godot_type": "TileSet",
+    }}],
+    "sources": [{{"path": source_path, "layout": "tile_atlas"}}],
+    "previews": [], "validation": {{"passed": False}},
+}}
+try:
+    tileset.compile_and_validate(
+        {{"asset_type": "tileset", "asset_id": "grassland", "brief": "A grassland tile atlas.", "spec": recipe}},
+        wrong_path_result, project_root=target, godot_path="godot",
+    )
+except tileset.TileSetSkillError as exc:
+    assert "L0 standalone contract failed" in str(exc)
+else:
+    raise AssertionError("published tileset adapter accepted a noncanonical runtime path")
+
+background_request = {{"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."}}
+background_result = {{
+    "asset_type": "background-map",
+    "outputs": [{{"role": "runtime", "name": "sky", "path": "res://assets/generated/background-map/sky/sky.png", "godot_type": "Texture2D"}}],
+    "sources": [{{"path": "res://assets/generated/background-map/sky/sky.png", "layout": "single"}}],
+    "previews": [], "validation": {{"passed": False}},
+}}
+for adapter in (platform_strip, screen_reference, character_bundle, fx_bundle, compact_prop_pack, scene_prop_set):
+    try:
+        adapter.compile_and_validate(background_request, background_result, project_root=target, godot_path="godot")
+    except adapter.MissingFamilySkillError as exc:
+        assert "L0 standalone contract failed" in str(exc)
+    else:
+        raise AssertionError("published family adapter accepted another family")
+platform_request = {{"asset_type": "platform-strip", "asset_id": "bridge", "brief": "A bridge.", "spec": {{"kind": "single", "segments": [{{"name": "center"}}]}}}}
+platform_result = {{"asset_type": "platform-strip", "outputs": [{{"role": "runtime", "name": "center", "path": "res://assets/generated/platform-strip/bridge/center.png", "godot_type": "Texture2D"}}], "sources": [{{"path": "res://assets/generated/platform-strip/bridge/center.png", "layout": "single"}}], "previews": [], "validation": {{"passed": False}}}}
+try:
+    background_map.compile_and_validate(platform_request, platform_result, project_root=target, godot_path="godot")
+except background_map.MissingFamilySkillError as exc:
+    assert "L0 standalone contract failed" in str(exc)
+else:
+    raise AssertionError("published background-map adapter accepted another family")
+
+for adapter, other in ((ui_kit, "card-kit"), (card_kit, "ui-kit")):
+    request = json.loads((skills / other / "fixtures" / "representative-request.json").read_text(encoding="utf-8"))
+    result = json.loads((skills / other / "fixtures" / "representative-result.json").read_text(encoding="utf-8"))
+    try:
+        adapter.compile_and_validate(request, result, project_root=target, godot_path="godot")
+    except adapter.UICardSkillError as exc:
+        assert "L0 standalone contract failed" in str(exc)
+    else:
+        raise AssertionError("published UI/Card adapter accepted another family")
 '''
         environment = os.environ.copy()
         environment.pop("PYTHONPATH", None)

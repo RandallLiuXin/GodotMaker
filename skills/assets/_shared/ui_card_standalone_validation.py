@@ -74,7 +74,8 @@ def _l1_paths(spec: Mapping[str, Any]) -> list[str]:
 
 
 def compile_and_validate(
-    request: Mapping[str, Any], result: Mapping[str, Any], *, project_root: Path, godot_path: str
+    request: Mapping[str, Any], result: Mapping[str, Any], *, project_root: Path, godot_path: str,
+    expected_family: str | None = None,
 ) -> dict[str, Any]:
     """Compile and validate every declared standalone UI/card resource.
 
@@ -83,6 +84,13 @@ def compile_and_validate(
     own registry and probes every runtime output returned to the caller.
     """
     try:
+        if expected_family is not None and (
+            request.get("asset_type") != expected_family
+            or result.get("asset_type") != expected_family
+        ):
+            raise UICardSkillError(
+                f"standalone adapter requires asset_type {expected_family!r}"
+            )
         handoff = check_ui_card_handoff(request, result)
         spec = handoff["request"]["spec"]
         if not isinstance(spec, Mapping):

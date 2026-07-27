@@ -256,5 +256,29 @@ def test_standalone_runner_rejects_an_unvalidated_extra_runtime_output(tmp_path)
         "validation": {"passed": False},
     }
 
-    with pytest.raises(TileSetSkillError, match="exactly one runtime output"):
+    with pytest.raises(TileSetSkillError, match="exactly one stable TileSet runtime output"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+
+
+@pytest.mark.parametrize("mutation", ["runtime", "result-source", "recipe-source", "multiple-sources"])
+def test_standalone_runner_rejects_noncanonical_stable_tileset_paths(tmp_path, mutation):
+    request = {
+        "asset_type": "tileset", "asset_id": "grassland", "brief": "A grassland tile atlas.",
+        "spec": _fixture(),
+    }
+    result = {
+        "asset_type": "tileset",
+        "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
+        "sources": [{"path": "res://assets/generated/tileset/grassland/grassland_atlas.png", "layout": "tile_atlas"}],
+        "previews": [], "validation": {"passed": False},
+    }
+    if mutation == "runtime":
+        result["outputs"][0]["path"] = "res://assets/generated/tileset/grassland/not-the-asset-id.tres"
+    elif mutation == "result-source":
+        result["sources"][0]["path"] = "res://assets/generated/tileset/grassland/not-the-asset-id.png"
+    elif mutation == "recipe-source":
+        request["spec"]["sources"][0]["texture"] = "res://assets/generated/tileset/grassland/not-the-asset-id.png"
+    else:
+        request["spec"]["sources"].append(dict(request["spec"]["sources"][0]))
+    with pytest.raises(TileSetSkillError, match="L0 standalone contract failed"):
         compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")

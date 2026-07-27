@@ -43,7 +43,11 @@ def _runtime() -> None:
 _runtime()
 from missing_family_standalone_validation import (  # noqa: E402
     MissingFamilySkillError,
-    compile_and_validate,
+    compile_and_validate as _compile_and_validate,
 )
+
+
+def compile_and_validate(request, result, *, project_root, godot_path):
+    return _compile_and_validate(request, result, project_root=project_root, godot_path=godot_path, expected_family="compact-prop-pack")
 
 __all__ = ("MissingFamilySkillError", "compile_and_validate")
