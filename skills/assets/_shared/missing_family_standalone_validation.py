@@ -12,8 +12,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 from typing import Any
-
-from PIL import Image
+import warnings
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry
 from asset_compiler._stable_entry import (
@@ -470,16 +469,28 @@ def _l1_file(root: Path, path: str, *, family: str, asset_id: str) -> Path:
 def _png_dimensions(path: Path) -> tuple[int, int]:
     """Fully verify and decode a PNG before returning its dimensions."""
     try:
-        with Image.open(path) as image:
-            if image.format != "PNG":
-                raise ValidationError("delivered image is not a PNG")
-            image.verify()
-        with Image.open(path) as image:
-            if image.format != "PNG":
-                raise ValidationError("delivered image is not a PNG")
-            image.load()
-            return image.size
-    except (OSError, SyntaxError, ValueError) as exc:
+        from PIL import Image
+    except ImportError as exc:
+        raise ValidationError("Pillow is required to validate delivered PNG images") from exc
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(path) as image:
+                if image.format != "PNG":
+                    raise ValidationError("delivered image is not a PNG")
+                image.verify()
+            with Image.open(path) as image:
+                if image.format != "PNG":
+                    raise ValidationError("delivered image is not a PNG")
+                image.load()
+                return image.size
+    except (
+        OSError,
+        SyntaxError,
+        ValueError,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+    ) as exc:
         raise ValidationError("delivered image is not a decodable PNG") from exc
 
 
@@ -541,7 +552,13 @@ def _verify_prop_delivery(
         raise ValidationError(
             "atlas metadata regions must exactly match declared slot names and rectangles"
         )
-    if _png_dimensions(atlas) != (
+    try:
+        dimensions = _png_dimensions(atlas)
+    except ValidationError as exc:
+        raise ValidationError(
+            f"delivered atlas is not a decodable PNG: {declaration.source_path}"
+        ) from exc
+    if dimensions != (
         request["spec"]["atlas"]["width"],
         request["spec"]["atlas"]["height"],
     ):
@@ -592,15 +609,11 @@ def compile_and_validate(
                     f"reference image is not a non-empty file: {reference_path}"
                 )
             try:
-                dimensions = _png_dimensions(file)
+                _png_dimensions(file)
             except ValidationError as exc:
                 raise ValidationError(
                     f"reference image is not a decodable PNG: {reference_path}"
                 ) from exc
-            if dimensions[0] <= 0 or dimensions[1] <= 0:
-                raise ValidationError(
-                    f"reference image has invalid dimensions: {reference_path}"
-                )
             return _mapped(result, {"L0": True, "L1": True})
         if family in {"compact-prop-pack", "scene-prop-set"}:
             _verify_prop_delivery(request, declarations[0][1], root)

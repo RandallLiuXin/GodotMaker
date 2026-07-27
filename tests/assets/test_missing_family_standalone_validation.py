@@ -188,6 +188,18 @@ def _zero_width_png() -> bytes:
     )
 
 
+def _decompression_bomb_png() -> bytes:
+    return b"".join(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            _png_chunk(
+                b"IHDR", struct.pack(">IIBBBBB", 30000, 30000, 8, 6, 0, 0, 0)
+            ),
+            _png_chunk(b"IEND", b""),
+        )
+    )
+
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -197,6 +209,7 @@ def _zero_width_png() -> bytes:
         ),
         pytest.param(b"not a png", id="non-png"),
         pytest.param(_zero_width_png(), id="zero-width"),
+        pytest.param(_decompression_bomb_png(), id="decompression-bomb"),
     ],
 )
 def test_screen_reference_rejects_undecodable_pngs(tmp_path, payload):
@@ -239,6 +252,33 @@ def test_screen_reference_rejects_png_with_bad_idat_crc(tmp_path):
         "passed": False,
         "levels": {"L0": True, "L1": False},
         "notes": "reference image is not a decodable PNG: references/title.png",
+    }
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(b"not a png", id="non-png"),
+        pytest.param(_decompression_bomb_png(), id="decompression-bomb"),
+    ],
+)
+def test_prop_atlas_rejects_bad_png_with_a_stable_source_path(tmp_path, payload):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(tmp_path, request)
+    atlas = tmp_path / "assets/generated/compact-prop-pack/market/market.png"
+    atlas.write_bytes(payload)
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="not-used"
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {level: level == "L0" for level in ("L0", "L1", "L2", "L3", "L4")},
+        "notes": (
+            "delivered atlas is not a decodable PNG: "
+            "res://assets/generated/compact-prop-pack/market/market.png"
+        ),
     }
 
 
