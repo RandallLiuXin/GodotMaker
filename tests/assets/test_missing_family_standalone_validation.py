@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import struct
 import sys
 import zlib
@@ -51,6 +52,42 @@ def _background_result(
             "levels": {"L0": True, "L1": True, "L2": True, "L3": True, "L4": True},
         },
     }
+
+
+def _source_adapter(family: str):
+    path = REPO_ROOT / "skills" / "assets" / family / "standalone_validation.py"
+    spec = importlib.util.spec_from_file_location(f"{family}_adapter", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_skill_local_adapters_reject_a_legal_request_for_another_family(tmp_path):
+    request = {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."}
+    for family in (
+        "platform-strip", "screen-reference", "character-bundle", "fx-bundle",
+        "compact-prop-pack", "scene-prop-set",
+    ):
+        with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
+            _source_adapter(family).compile_and_validate(
+                request, _background_result(), project_root=tmp_path, godot_path="fake"
+            )
+
+    platform_request = {
+        "asset_type": "platform-strip", "asset_id": "bridge", "brief": "A bridge.",
+        "spec": {"kind": "single", "segments": [{"name": "center"}]},
+    }
+    platform_result = {
+        "asset_type": "platform-strip",
+        "outputs": [{"role": "runtime", "name": "center", "path": "res://assets/generated/platform-strip/bridge/center.png", "godot_type": "Texture2D"}],
+        "sources": [{"path": "res://assets/generated/platform-strip/bridge/center.png", "layout": "single"}],
+        "previews": [], "validation": {"passed": False},
+    }
+    with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
+        _source_adapter("background-map").compile_and_validate(
+            platform_request, platform_result, project_root=tmp_path, godot_path="fake"
+        )
 
 
 def test_background_runner_does_not_trust_a_forged_successful_validation(tmp_path):

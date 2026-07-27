@@ -580,11 +580,19 @@ def compile_and_validate(
     *,
     project_root: Path,
     godot_path: str,
+    expected_family: str | None = None,
 ) -> dict[str, Any]:
     """Execute the real applicable ladder for one of the seven missing families."""
     try:
         check_request(request)
         check_result(result)
+        if expected_family is not None and (
+            request["asset_type"] != expected_family
+            or result["asset_type"] != expected_family
+        ):
+            raise MissingFamilySkillError(
+                f"standalone adapter requires asset_type {expected_family!r}"
+            )
         if (
             request["asset_type"] not in _FAMILIES
             or result["asset_type"] != request["asset_type"]

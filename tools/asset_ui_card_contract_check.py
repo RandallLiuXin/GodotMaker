@@ -254,7 +254,15 @@ def check_ui_card_handoff(request: Any, result: Any) -> dict[str, Any]:
 
     theme = spec["theme"]
     theme_output = runtime.get(theme["output_name"])
-    if theme_output is None or theme_output.get("godot_type") != "Theme":
+    expected_theme_path = (
+        f"res://assets/generated/{request['asset_type']}/{request['asset_id']}/"
+        f"{request['asset_id']}_theme.tres"
+    )
+    if (
+        theme_output is None
+        or theme_output.get("godot_type") != "Theme"
+        or theme_output.get("path") != expected_theme_path
+    ):
         raise UICardContractError("theme.output_name must bind to one Theme runtime output")
     if (theme["recipe_path"], "theme_recipe") not in sources:
         raise UICardContractError("theme.recipe_path must be a theme_recipe result source")

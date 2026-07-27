@@ -45,6 +45,10 @@ def _configure_runtime_imports() -> None:
 
 _configure_runtime_imports()
 
-from ui_card_standalone_validation import UICardSkillError, compile_and_validate  # noqa: E402
+from ui_card_standalone_validation import UICardSkillError, compile_and_validate as _compile_and_validate  # noqa: E402
+
+
+def compile_and_validate(request, result, *, project_root, godot_path):
+    return _compile_and_validate(request, result, project_root=project_root, godot_path=godot_path, expected_family="card-kit")
 
 __all__ = ["UICardSkillError", "compile_and_validate"]

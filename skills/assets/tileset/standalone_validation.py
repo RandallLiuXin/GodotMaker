@@ -87,35 +87,38 @@ class TileSetSkillError(Exception):
 _LEVELS = ("L0", "L1", "L2", "L3", "L4")
 
 
-def _runtime_output(result: Mapping[str, Any]) -> Mapping[str, Any]:
+def _runtime_output(result: Mapping[str, Any], asset_id: str) -> Mapping[str, Any]:
     outputs = [output for output in result["outputs"] if output["role"] == "runtime"]
-    if len(outputs) != 1 or outputs[0].get("godot_type") != "TileSet":
+    expected_path = f"res://assets/generated/tileset/{asset_id}/{asset_id}.tres"
+    if (
+        len(outputs) != 1
+        or outputs[0].get("godot_type") != "TileSet"
+        or outputs[0].get("path") != expected_path
+    ):
         raise TileSetSkillError(
-            "v1 standalone tileset supports exactly one runtime output, and it must be TileSet"
+            "v1 standalone tileset requires exactly one stable TileSet runtime output"
         )
     return outputs[0]
 
 
 def _atlas_sources(request: Mapping[str, Any], result: Mapping[str, Any]) -> list[str]:
     recipe_sources = request.get("spec", {}).get("sources")
-    if not isinstance(recipe_sources, list) or not recipe_sources:
-        raise TileSetSkillError("tileset spec requires a non-empty sources list")
-    declared = {
-        source["path"]
-        for source in result["sources"]
-        if source.get("layout") == "tile_atlas"
-    }
-    paths: list[str] = []
-    for source in recipe_sources:
-        if not isinstance(source, Mapping) or not isinstance(source.get("texture"), str):
-            raise TileSetSkillError("every tileset recipe source requires a texture path")
-        texture = source["texture"]
-        if texture not in declared:
-            raise TileSetSkillError(
-                "every tileset recipe texture must be declared as a tile_atlas result source"
-            )
-        paths.append(texture)
-    return paths
+    asset_id = request["asset_id"]
+    expected_path = f"res://assets/generated/tileset/{asset_id}/{asset_id}_atlas.png"
+    if (
+        not isinstance(recipe_sources, list)
+        or len(recipe_sources) != 1
+        or not isinstance(recipe_sources[0], Mapping)
+        or recipe_sources[0].get("texture") != expected_path
+    ):
+        raise TileSetSkillError(
+            "tileset spec requires exactly one stable atlas texture source"
+        )
+    if result["sources"] != [{"path": expected_path, "layout": "tile_atlas"}]:
+        raise TileSetSkillError(
+            "tileset result requires exactly its one stable tile_atlas source"
+        )
+    return [expected_path]
 
 
 def _mapped_result(
@@ -165,7 +168,7 @@ def compile_and_validate(
         check_result(result)
         if request["asset_type"] != "tileset" or result["asset_type"] != "tileset":
             raise TileSetSkillError("standalone TileSet validation requires asset_type 'tileset'")
-        output = _runtime_output(result)
+        output = _runtime_output(result, request["asset_id"])
         atlas_paths = _atlas_sources(request, result)
     except (AssetContractError, TileSetSkillError) as exc:
         raise TileSetSkillError(f"L0 standalone contract failed: {exc}") from exc
