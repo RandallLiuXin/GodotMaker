@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import struct
 import sys
+import zlib
 from pathlib import Path
 
 import pytest
@@ -144,6 +146,140 @@ def test_screen_reference_completes_at_l1_without_invoking_runtime_ladder(tmp_pa
         godot_path="not-used",
     )
     assert result["validation"] == {"passed": True, "levels": {"L0": True, "L1": True}}
+
+
+def _screen_reference_request() -> dict:
+    return {
+        "asset_type": "screen-reference",
+        "asset_id": "title",
+        "brief": "A title scene.",
+    }
+
+
+def _screen_reference_result() -> dict:
+    return {
+        "asset_type": "screen-reference",
+        "outputs": [
+            {"role": "reference", "name": "title", "path": "references/title.png"}
+        ],
+        "sources": [],
+        "previews": [],
+        "validation": {"passed": True},
+    }
+
+
+def _png_chunk(kind: bytes, data: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(data))
+        + kind
+        + data
+        + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+    )
+
+
+def _zero_width_png() -> bytes:
+    return b"".join(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            _png_chunk(b"IHDR", struct.pack(">IIBBBBB", 0, 1, 8, 6, 0, 0, 0)),
+            _png_chunk(b"IDAT", zlib.compress(b"")),
+            _png_chunk(b"IEND", b""),
+        )
+    )
+
+
+def _decompression_bomb_png() -> bytes:
+    return b"".join(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            _png_chunk(
+                b"IHDR", struct.pack(">IIBBBBB", 30000, 30000, 8, 6, 0, 0, 0)
+            ),
+            _png_chunk(b"IEND", b""),
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02",
+            id="truncated-ihdr",
+        ),
+        pytest.param(b"not a png", id="non-png"),
+        pytest.param(_zero_width_png(), id="zero-width"),
+        pytest.param(_decompression_bomb_png(), id="decompression-bomb"),
+    ],
+)
+def test_screen_reference_rejects_undecodable_pngs(tmp_path, payload):
+    reference = tmp_path / "references" / "title.png"
+    reference.parent.mkdir()
+    reference.write_bytes(payload)
+
+    actual = compile_and_validate(
+        _screen_reference_request(),
+        _screen_reference_result(),
+        project_root=tmp_path,
+        godot_path="not-used",
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {"L0": True, "L1": False},
+        "notes": "reference image is not a decodable PNG: references/title.png",
+    }
+    assert str(tmp_path) not in actual["validation"]["notes"]
+
+
+def test_screen_reference_rejects_png_with_bad_idat_crc(tmp_path):
+    reference = tmp_path / "references" / "title.png"
+    reference.parent.mkdir()
+    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
+    payload = bytearray(reference.read_bytes())
+    idat = payload.index(b"IDAT")
+    payload[idat + 4] ^= 1
+    reference.write_bytes(payload)
+
+    actual = compile_and_validate(
+        _screen_reference_request(),
+        _screen_reference_result(),
+        project_root=tmp_path,
+        godot_path="not-used",
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {"L0": True, "L1": False},
+        "notes": "reference image is not a decodable PNG: references/title.png",
+    }
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(b"not a png", id="non-png"),
+        pytest.param(_decompression_bomb_png(), id="decompression-bomb"),
+    ],
+)
+def test_prop_atlas_rejects_bad_png_with_a_stable_source_path(tmp_path, payload):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(tmp_path, request)
+    atlas = tmp_path / "assets/generated/compact-prop-pack/market/market.png"
+    atlas.write_bytes(payload)
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="not-used"
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {level: level == "L0" for level in ("L0", "L1", "L2", "L3", "L4")},
+        "notes": (
+            "delivered atlas is not a decodable PNG: "
+            "res://assets/generated/compact-prop-pack/market/market.png"
+        ),
+    }
 
 
 def test_background_executes_l2_to_l4_with_a_real_png_and_probe(monkeypatch, tmp_path):
