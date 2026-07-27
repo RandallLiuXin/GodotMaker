@@ -90,23 +90,40 @@ recipe is:
 `hexagon`; v1 verification is deepest for `square`. Each source has a unique
 non-negative `id`, a `res://` texture path, and an explicit `tiles` list. Each
 tile supplies `coords` and may declare `texture_origin`, `z_index`,
-`y_sort_origin`, `probability`, `terrain_set`, `terrain`, `peering_bits`,
-`custom_data`, collision polygons, navigation polygons, occlusion polygons,
-alternatives, and animation.
+ `y_sort_origin`, `probability`, `terrain_set`, `terrain`, `peering_bits`,
+ `custom_data`, collision polygons, navigation polygons, occlusion polygons,
+ alternatives, and animation. `probability` is a finite non-negative relative
+ weight; it is not capped at `1.0`. Alternative tiles use the same data fields
+ except `coords` and animation; animation belongs to the base tile.
 
 At TileSet scope, explicitly declare any `physics_layers`,
 `navigation_layers`, `occlusion_layers`, `custom_data_layers`, and
 `terrain_sets`. Terrain peering bits, polygons, custom data, alternatives, and
 animation timing are recipe data. Never infer them from the atlas image.
 
+TileSet v1 custom data is deliberately limited to Godot's scalar Variant
+types: `NIL` (type `0`, value `null`), `bool` (`1`), `int` (`2`), `float`
+(`3`, finite JSON number), and `String` (`4`). Each `custom_data[].value` must
+match the declared layer type exactly; arrays, objects, resources, vectors, and
+all other Variant types are outside v1 and must be rejected before Godot runs.
+Only one custom-data value and one terrain peering bit may be declared per
+layer/bit on a tile or alternative. Polygon layers and terrain references must
+refer to declared layer and terrain indexes. Custom-data layer names must be
+unique. Peering bits must be valid for the declared tile shape and terrain-set
+mode; use the orthogonal square path for the deepest v1 evidence.
+
 An animation declares `mode` (`default`, `random_start_times`, or `max`),
 positive `frames_count`, positive `columns`, non-negative `separation`,
-positive `speed`, and optional continuous `frame_durations`. Each alternative
-has a positive integer `id`.
+positive `speed`, and optional continuous `frame_durations`. Omit
+`frame_durations` to use Godot's defaults; when supplied, it must declare every
+frame exactly once in order. Each alternative has a positive integer `id`.
+
+Every recipe object accepts only its documented keys. Unknown or misspelled
+fields are rejected before Godot runs rather than silently ignored.
 
 See `fixtures/orthogonal-square-recipe.json` for the representative orthogonal
 square fixture, including one terrain tile, one collision polygon, and an
-explicit alternative.
+explicit alternative plus all five v1 custom-data scalar types.
 
 ## Processing and Validation
 
