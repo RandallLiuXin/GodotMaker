@@ -48,6 +48,15 @@ hard-code loop state.
 
 ## Produce
 
+### Workspace output boundary
+
+Create project files only under `assets/generated/fx-bundle/<asset_id>/` and
+the permitted `.godot/` import cache. Keep request/result JSON, processing
+scripts, and intermediate candidates in the asset output directory (or an OS
+temporary directory) rather than `eval/`, the project root, or any fixture
+directory. Do not launch the Godot editor: run only the required headless
+validation and consumer-smoke commands.
+
 1. State the effect identity, gameplay role, direction, scale, and either one
    image or the exact requested animation frame count. Keep the foreground effect
    separate on a solid `#FF00FF` source background and include no text or UI.
