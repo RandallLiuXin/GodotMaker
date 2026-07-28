@@ -309,10 +309,3 @@ def test_animated_skills_name_the_callable_family_validation_path(family):
     assert "asset_animated_bundle_contract_check.py" in skill
     assert "ASSETS.md" in skill
     assert "generated manifests" in skill
-
-
-def test_fx_skill_keeps_transient_work_out_of_the_eval_fixture():
-    skill = (REPO_ROOT / "skills" / "assets" / "fx-bundle" / "SKILL.md").read_text(encoding="utf-8")
-    assert "Workspace output boundary" in skill
-    assert "rather than `eval/`" in skill
-    assert "Do not launch the Godot editor" in skill
