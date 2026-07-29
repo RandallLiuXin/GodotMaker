@@ -56,6 +56,6 @@ Honor the requested provider exactly. `native`, `codex`, `gemini`, and `openai` 
 
 Return exactly one shared generic result JSON object and no prose.
 
-For `single`, declare one `sources` entry with `layout: "single"` and one runtime `Texture2D` output per segment. For `atlas`, declare one `sources` entry for the physical atlas with `layout: "region_atlas"` and one runtime `AtlasTexture` output per segment. Use only stable platform-strip paths.
+For `single`, declare one `sources` entry with `layout: "single"` and one runtime `Texture2D` output per segment. For `atlas`, declare one `sources` entry for the physical atlas with `layout: "region_atlas"` and one runtime `AtlasTexture` output per segment. In both forms, declare exactly one labelled preview of the physical source image. Use only stable platform-strip paths.
 
 If the semantic strip contract, provider contract, source art, processing report, fixed slot assembly, compiler, or Godot check cannot complete, return the shared failed result with `outputs: []`, `validation.passed: false`, and explanatory notes. Do not publish partial runtime outputs.
