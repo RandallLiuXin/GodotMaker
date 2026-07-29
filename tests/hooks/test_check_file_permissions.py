@@ -258,7 +258,10 @@ class TestEdgeCases:
 class TestRoleBased:
     """Role-based permissions per current_role file."""
 
-    @pytest.mark.parametrize("ext", [".gd", ".tscn", ".tres"])
+    @pytest.mark.parametrize(
+        "ext",
+        [".gd", ".tscn", ".tres", ".cs", ".csproj", ".sln"],
+    )
     def test_scaffold_can_write_game_code(self, project_dir, ext):
         write_current_role("scaffold")
         _, _, parsed = run_hook(HOOK, {
@@ -289,11 +292,12 @@ class TestRoleBased:
         assert is_blocked(parsed), f"role={role} must not write to e2e/"
 
     @pytest.mark.parametrize("role", ["build", "fixgap"])
-    def test_dispatch_role_blocked_from_game_code(self, project_dir, role):
+    @pytest.mark.parametrize("ext", [".gd", ".tscn", ".tres", ".cs", ".csproj", ".sln"])
+    def test_dispatch_role_blocked_from_game_code(self, project_dir, role, ext):
         write_current_role(role)
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
-            "tool_input": {"file_path": "scripts/move.gd"},
+            "tool_input": {"file_path": f"src/move{ext}"},
             "agent_id": "",
         })
         assert is_blocked(parsed)
@@ -317,7 +321,10 @@ class TestRoleBased:
         })
         assert not is_blocked(parsed), "gdd may tweak project.godot for design changes"
 
-    @pytest.mark.parametrize("ext", [".gd", ".tscn", ".tres"])
+    @pytest.mark.parametrize(
+        "ext",
+        [".gd", ".tscn", ".tres", ".cs", ".csproj", ".sln"],
+    )
     def test_gdd_blocked_from_game_code(self, project_dir, ext):
         write_current_role("gdd")
         _, _, parsed = run_hook(HOOK, {
@@ -524,11 +531,20 @@ class TestSubagentInRole:
         })
         assert is_blocked(parsed)
 
-    def test_worker_can_write_game_code(self, project_dir):
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "systems/move.gd",
+            "src/MoveSystem.cs",
+            "Game.csproj",
+            "Game.sln",
+        ],
+    )
+    def test_worker_can_write_game_code(self, project_dir, path):
         write_current_role("build")
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
-            "tool_input": {"file_path": "systems/move.gd"},
+            "tool_input": {"file_path": path},
             "agent_id": "worker-1",
         })
         assert not is_blocked(parsed)

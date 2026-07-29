@@ -48,8 +48,11 @@ Then read context:
 - `MEMORY.md` index + sub-files (cross-tag accumulating notebook) → avoid repeating known mistakes
 - `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring
 
+- `.godotmaker/config.yaml` → resolve `language_backend`, `unit_test_backend`, `dotnet_target`, and `godot_csharp_project` before dispatching any worker or verifier
+
 ## Hard Rules
 
+<<<<<<< HEAD
 ### Asset Runtime Authority
 
 `ASSETS.md` is the sole runtime-asset authority. For a visual task,
@@ -59,6 +62,9 @@ resolves generated and complete user-provided runtime rows, including uniquely
 named rows introduced by earlier tags.
 
 1. **You CANNOT write .gd/.tscn/.tres directly.** All game code goes through Worker dispatch.
+=======
+1. **You CANNOT write .gd/.tscn/.tres/.cs/.csproj/.sln directly.** All game code and language project files go through Worker dispatch.
+>>>>>>> 841f8c7 (feat: make build pipeline csharp aware)
 2. **You and your workers CANNOT write to e2e/ directory.** E2E tests are owned by the Evaluator.
 3. **Workers CANNOT modify PLAN.md/STRUCTURE.md/ASSETS.md.**
 4. **Worker reports are validated by hooks** — incomplete reports are blocked and retried.
@@ -115,7 +121,7 @@ Translate failures into `pending` tasks at the bottom of `PLAN.md`.
 
 **Config tasks** (any `checks.<name>.result == "error"`, paired with one `tooling_notes[]` entry) — main agent applies directly, NO worker dispatch:
 
-- Routable fallback (`exclude_file` / `scope_narrow` / `add_gdlintrc_rule` / `skip_check`) WITH operand present (per the fallback table in `gm-verify/SKILL.md` Section B) → apply the structured edit using the note's operand. Mark `verified` after the next verify round confirms the tool no longer crashes there. Hard Rule 1 only restricts `.gd/.tscn/.tres`.
+- Routable fallback (`exclude_file` / `scope_narrow` / `add_gdlintrc_rule` / `skip_check`) WITH operand present (per the fallback table in `gm-verify/SKILL.md` Section B) → apply the structured edit using the note's operand. Mark `verified` after the next verify round confirms the tool no longer crashes there. Hard Rule 1 restricts `.gd/.tscn/.tres/.cs/.csproj/.sln`.
 - `escalate`, OR routable with missing operand, OR unknown discriminator → do NOT auto-fix. Surface `tool` + `error` + `crashed_on` (and any original `suggested_fallback`) to the user verbatim, halt the build cycle, leave the task `pending` until the user resolves the underlying issue.
 
 Do NOT delete project code as a "fix" for a tool crash.
@@ -123,6 +129,7 @@ Do NOT delete project code as a "fix" for a tool crash.
 ### Step 1 — Dispatch Workers (until PLAN is clean)
 
 - Read `references/worker-dispatch.md` for the brief template
+- Include the resolved language/unit-test backend plus `dotnet_target` and `godot_csharp_project` (or N/A) in every worker brief.
 - Use `subagent_type: "worker"`. Each worker implements ONE game mechanic function + its tests.
 - Include the relevant Playable Unit fields in each worker brief.
 - For visual tasks, fill the `Asset Runtime Snapshot` and
@@ -141,6 +148,7 @@ Run ONE verifier, then ONE reviewer, on the integrated state:
 
 **Verifier:**
 - Read `references/verifier-dispatch.md` for the brief template
+- Fill verifier commands from config: C# builds `dotnet_target` and, when needed, `godot_csharp_project`, then runs Godot headless and dotnet tests; GDScript uses Godot headless plus gdUnit.
 - Use `subagent_type: "verifier"`. Pass all `completed`-but-not-yet-`verified` workers' deliverables.
 - On FAIL: add NEW `pending` fix tasks in PLAN.md. Failed tasks stay `completed`. Go back to Step 1.
 - On PASS: update those tasks from `completed` → `verified`.
@@ -192,7 +200,8 @@ memory/
 |-------|---------|------|
 | gecs | ECS framework API + patterns | .claude/skills/gecs/SKILL.md |
 | headless-build | Compile verification | .claude/skills/headless-build/SKILL.md |
-| gdunit-driver | Unit test execution | .claude/skills/gdunit-driver/SKILL.md |
+| gdunit-driver | GDScript/gdUnit test execution | .claude/skills/gdunit-driver/SKILL.md |
+| dotnet CLI | C# build and unit test execution | `dotnet build` / `dotnet test --logger trx` |
 | godot-api | Godot API reference | .claude/skills/godot-api/SKILL.md |
 | screenshot | Gameplay screenshot capture | .claude/skills/screenshot/SKILL.md |
 | mcp-driver | Runtime debugging via godot-mcp | .claude/skills/mcp-driver/SKILL.md |

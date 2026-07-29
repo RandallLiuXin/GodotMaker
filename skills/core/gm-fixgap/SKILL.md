@@ -42,8 +42,11 @@ Then read context:
 - `ASSETS.md` → the generated-runtime authority; for a visual task, derive each asset with `tools/asset_result_registration.py --snapshot`
 - `MEMORY.md` index + sub-files → past decisions and known gotchas
 
+- `.godotmaker/config.yaml` → resolve `language_backend`, `unit_test_backend`, `dotnet_target`, and `godot_csharp_project` before dispatching any worker or verifier
+
 ## Hard Rules
 
+<<<<<<< HEAD
 ### Asset Runtime Authority
 
 `ASSETS.md` is the sole runtime-asset authority. For a visual task,
@@ -53,6 +56,9 @@ resolves generated and complete user-provided runtime rows, including uniquely
 named rows introduced by earlier tags.
 
 1. **You CANNOT write .gd/.tscn/.tres directly.** All game code goes through Worker dispatch.
+=======
+1. **You CANNOT write .gd/.tscn/.tres/.cs/.csproj/.sln directly.** All game code and language project files go through Worker dispatch.
+>>>>>>> 841f8c7 (feat: make build pipeline csharp aware)
 2. **You and your workers CANNOT write to e2e/ directory.** E2E tests are owned by the Evaluator.
 3. **Workers CANNOT modify GAP.md/PLAN.md/STRUCTURE.md/ASSETS.md.**
 4. **Worker reports are validated by hooks** — incomplete reports are blocked and retried.
@@ -145,7 +151,7 @@ Translate failures into tasks using the existing `C` / `J` prefixes — verify-s
 - Unknown `static_check.issues[].check` discriminator → use the raw value verbatim, default **C**.
 
 **Config tasks** (`checks.<name>.result == "error"`, paired with `tooling_notes[]`):
-- Routable fallback WITH operand present (per the fallback table in `gm-verify/SKILL.md` Section B) → **J**, execution = **main-agent-direct** (apply the structured edit using the operand; Hard Rule 1 only restricts `.gd/.tscn/.tres`; mark `verified` after the next verify round confirms the crash is gone). NO worker dispatch.
+- Routable fallback WITH operand present (per the fallback table in `gm-verify/SKILL.md` Section B) → **J**, execution = **main-agent-direct** (apply the structured edit using the operand; Hard Rule 1 restricts `.gd/.tscn/.tres/.cs/.csproj/.sln`; mark `verified` after the next verify round confirms the crash is gone). NO worker dispatch.
 - `escalate`, OR routable with missing operand, OR unknown discriminator → **C**, execution = **escalate-to-user** (surface `tool` + `error` + `crashed_on` and any original `suggested_fallback` verbatim, halt the cycle, leave `pending` until the user resolves it). NO worker dispatch.
 
 Each task records its origin via a `Source: verify_report.json | evaluation.json` line in the task block (and `verify` / `evaluation` in the Task Status table). Numbering follows insertion order — existing rows keep their numbers, new rows get the next available number per letter. Execution priority dispatches verify-source before evaluation-source regardless of number.
@@ -177,6 +183,7 @@ For each non-`verified` task in GAP.md:
 Worker-dispatch tasks only — Step 1b classified main-agent-direct and escalate-to-user tasks; handle those per their classification, not here.
 
 - Read `references/worker-dispatch.md` for the brief template.
+- Include the resolved language/unit-test backend plus `dotnet_target` and `godot_csharp_project` (or N/A) in every worker brief.
 - Dispatch verify-source before evaluation-source within `pending`.
 - Use `subagent_type: "worker"`. Max 3 in parallel with disjoint file sets via `isolation: "worktree"`.
 - In each brief, paste the specific finding from GAP.md, the file(s) to modify, and the correct behavior from GDD.md.
@@ -197,6 +204,7 @@ after **all** GAP.md tasks reach `completed`.
 
 **Verifier:**
 - Read `references/verifier-dispatch.md` for the brief template
+- Fill verifier commands from config: C# builds `dotnet_target` and, when needed, `godot_csharp_project`, then runs Godot headless and dotnet tests; GDScript uses Godot headless plus gdUnit.
 - Use `subagent_type: "verifier"`. Pass all completed workers' deliverables.
 - For evaluation-source visual tasks, fill the `Visual Verification` section
   from `references/verifier-dispatch.md`, including the worker self-check
@@ -260,7 +268,8 @@ memory/
 |-------|---------|------|
 | gecs | ECS framework API + patterns | .claude/skills/gecs/SKILL.md |
 | headless-build | Compile verification | .claude/skills/headless-build/SKILL.md |
-| gdunit-driver | Unit test execution | .claude/skills/gdunit-driver/SKILL.md |
+| gdunit-driver | GDScript/gdUnit test execution | .claude/skills/gdunit-driver/SKILL.md |
+| dotnet CLI | C# build and unit test execution | `dotnet build` / `dotnet test --logger trx` |
 | godot-api | Godot API reference | .claude/skills/godot-api/SKILL.md |
 | screenshot | Gameplay screenshot capture | .claude/skills/screenshot/SKILL.md |
 | visual-qa | Screenshot/reference visual checks | .claude/skills/visual-qa/SKILL.md |
