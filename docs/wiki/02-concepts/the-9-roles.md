@@ -1,4 +1,4 @@
-# The 9 pipeline roles + 1 diagnostic role
+﻿# The 9 pipeline roles + 1 diagnostic role
 
 Each role is a slash command you type in Claude Code. The 9 pipeline roles run in order — you will be told if you skipped a prerequisite. The 10th role, `/gm-rescue`, lives outside the main pipeline and is invoked only when something has stuck.
 
@@ -63,7 +63,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 
 ## `/gm-build`
 
-**What it does:** Implements the **current tag's** scope — all the GDScript code, scenes, and unit tests for this tag — by coordinating a team of specialised helpers.
+**What it does:** Implements the **current tag's** scope — all the backend-selected source code, scenes, and unit tests for this tag — by coordinating a team of specialised helpers.
 
 **When to run it:** After `/gm-asset`. Requires a completed `/gm-gdd` for the current tag.
 
@@ -76,7 +76,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 - If any findings were ACCEPTED, the cycle loops back to dispatching Workers
 - The build ends only when every task in `PLAN.md` is `verified` and the last review round added zero ACCEPTED tasks
 
-**What you get:** Game code in `src/`, scenes in `scenes/`, unit tests in `test/` — all scoped to this tag's additions / refactors.
+**What you get:** Game code in `src/`, scenes in `scenes/`, and backend-selected unit tests — all scoped to this tag's additions / refactors.
 
 **Things to know:** You cannot write game code yourself while in this step — the permission system blocks it. The main agent coordinates; Workers do the actual writing. Workers may touch files outside the current tag's scope only when `PLAN.md` has an explicit refactor task naming those files; "cleanup detours" are not allowed. If the same task fails three times, the build stops and asks you what to do.
 
@@ -90,7 +90,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 
 **What happens behind the scenes:**
 - Runs the Godot headless build to check for compile errors
-- Runs all unit tests in `test/` via `gdUnit4`
+- Runs unit tests through the configured unit test backend (`gdUnit4` for GDScript projects, `.NET` test commands for C#/.NET projects)
 - Runs the static project check via `tools/check_project.py` (build/ecs/tests/plan/mcp; e2e gating is the Evaluator's job)
 - Writes the structured verdict to `.godotmaker/verify_report.json` (every run, pass or fail)
 

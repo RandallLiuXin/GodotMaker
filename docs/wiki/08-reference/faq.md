@@ -1,4 +1,4 @@
-# Frequently Asked Questions
+﻿# Frequently Asked Questions
 
 ---
 
@@ -26,7 +26,14 @@ For a small game, expect roughly **5-8 hours of agent runtime**. Your own attent
 
 ### Can I use C# instead of GDScript?
 
-Yes. GodotMaker supports both GDScript and C#. ECS components and systems can be written in either language. Make sure you are using a .NET-enabled Godot build when working with C#.
+Existing Godot .NET projects are supported through the C#/.NET backend: keep
+project-owned gameplay code and standard .NET tests in your `.sln` / `.csproj`,
+and use a .NET-enabled Godot build. GodotMaker does not scaffold a new C#
+architecture yet; the first scaffold pass only recognizes an existing C#/.NET
+project and records the backend. C# ECS static checks are reported as N/A until
+a C# Component/System scanner is implemented.
+Boundary: GodotMaker does not scaffold a new C# architecture during scaffold.
+
 
 ---
 

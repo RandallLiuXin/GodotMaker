@@ -63,7 +63,10 @@ If any check fails, STOP and tell the user which one — finalize must not seal 
 Run these fast gates before archiving. For passing gates, continue silently. For failures, update the root doc to match reality and remember the path for `doc_updates`.
 
 - **PLAN.md**: All tasks are `verified`; Tag Mechanics and Inherited Mechanics sections exist.
-- **STRUCTURE.md**: `extends Component` and `extends System` filenames under `src/` appear in the component/system listings.
+- **STRUCTURE.md**: Read `.godotmaker/config.yaml` `language_backend`. For
+  `gdscript`, `extends Component` and `extends System` filenames under `src/`
+  appear in the component/system listings. For `csharp`, this GDScript/gecs
+  consistency gate is **N/A**; validate the declared C# project structure instead.
 - **ASSETS.md**: Asset paths for current-tag generated rows exist under `assets/` or `references/`.
 - **SCENES.md**: Scene paths referenced for this tag exist on disk.
 - **MEMORY.md**: If a current-tag discovery is now superseded by the final implementation, mark it `(superseded by …)`.
@@ -113,7 +116,11 @@ The bundle JSON on stdout has:
 - `roadmap_entry` (heading + body from ROADMAP.md for `<Tag>`)
 - `plan_tag_mechanics` (list of `<Tag>-Mn` IDs)
 - `previous_tag` + `git_log_since_previous_tag` (`--oneline` slice)
-- `test_count.unit` (count of `test/**/*.gd`) + `test_count.e2e` (count of `e2e/**/test_*.py`)
+- `test_count.unit` + `test_count.unit_backend`: gdUnit projects count
+  `test/**/*.gd`; dotnet projects read the real executed total from the latest
+  passing `.godotmaker/verify_report.json`. A dotnet project without passing
+  verify evidence blocks finalization.
+- `test_count.e2e` (count of `e2e/**/test_*.py`)
 - `evidence.archive_path`, `evidence.e2e_files`, `evidence.screenshots`, `evidence.warnings`
 
 Combine that with PLAN.md task table and `evaluation.json` `minor_issues`, and write `docs/tags/<Tag>/CHANGELOG.md` directly. Keep the entry concise. Use this format:
@@ -147,6 +154,7 @@ Combine that with PLAN.md task table and `evaluation.json` `minor_issues`, and w
 Field sources for the schema below:
 - `summary.tag_mechanics` — bundle `plan_tag_mechanics` (from step 5)
 - `summary.test_count.unit` — bundle `test_count.unit` (direct)
+- Record the evidence backend from bundle `test_count.unit_backend`.
 - `summary.test_count.e2e_tag` + `e2e_regression` — split bundle `test_count.e2e` by which test files were added this tag (use PLAN's task table / git log to decide)
 - `summary.systems_added` + `components_added` — PLAN task table (already in context from step 3)
 - `known_limitations` — `evaluation.json` `minor_issues` + MEMORY.md's "Known limitations" entries

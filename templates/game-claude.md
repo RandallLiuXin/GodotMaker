@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 Generated Godot game project. The `/gm-*` skills drive the build pipeline — invoke them rather than recreating their flow manually.
 
@@ -46,10 +46,10 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 
 ## Conventions
 
-- GDScript for all game logic; English for code and comments
+- Use the configured language backend for project-owned game logic; English for code and comments
 - TDD: write tests alongside implementation
-- One System per file (`{name}_system.gd`), one Component per file (`{name}.gd`)
-- Unit tests in `test/`, named `test_{name}.gd`
+- One System per file and one Component per file using backend-owned source files
+- Unit tests live in the backend-selected test location and naming scheme
 - E2E tests in `e2e/` (maintained by `/gm-evaluate`)
 - Physics callbacks must never manipulate the node tree directly — use deferred calls
 - Only one System writes Transform per entity

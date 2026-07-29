@@ -1,10 +1,12 @@
-# {Project Name}
+﻿# {Project Name}
 
 <!-- Scoped to a single tag (see ROADMAP.md). Captures the structure as
      it exists at the END of this tag — i.e., previous tags' systems +
      this tag's additions / refactors. -->
 
 **Tag:** {vX.Y.Z}
+<!-- List backend-owned source files alongside scenes/resources when a tag adds or changes them. -->
+
 
 ## Dimension: 2D
 
@@ -20,7 +22,7 @@
 ## Component Registry
 
 <!-- All components in the game. Each component is pure data — no methods, no logic. -->
-<!-- Field types use GDScript types: int, float, String, Vector2, Vector3, bool, Array, Dictionary -->
+<!-- Use backend-native field types (for example GDScript Vector2/String or C# Vector2/string). -->
 
 ### Core Components
 
@@ -167,7 +169,7 @@
    - AnimationSystem (requires Sprite2D, creates AnimationPlayer)
 5. DestructionSystem (always last)
 6. Scene marker converter
-7. Integration wiring + gdUnit integration tests
+7. Integration wiring + backend-selected integration tests
 
 ## Asset Hints
 
