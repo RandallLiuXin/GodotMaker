@@ -85,6 +85,9 @@ def test_background_and_platform_runtime_contracts_keep_native_type_boundaries()
     assert "AtlasTexture" in platform
     assert "fixed grid" in platform
     assert "fixed-slot declaration" in platform
+    assert "referenced_image_paths" in platform
+    assert "_source.json" in platform
+    assert "_validation.json" in platform
 
 
 def test_background_map_restores_real_provider_finalize_and_non_pixel_contracts():

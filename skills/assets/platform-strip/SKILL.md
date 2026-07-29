@@ -30,14 +30,14 @@ Grid dimensions are positive integers. Segment names and slots are unique. Decla
 
 `references` is optional. With references, validate every path is readable, preserve each declared role, and pass the actual images to the selected provider. Do not replace image attachments with prompt text. If the pinned provider cannot accept the supplied images, return STOP. Without references, generate from the written brief.
 
-Honor the requested provider exactly. `native`, `codex`, `gemini`, and `openai` never fall back to another provider. For Codex, attach reference images through `referenced_image_paths`. Record the provider, model, prompt, reference paths and roles, provider payload or trace, raw source path, and processing reports under `.godotmaker/asset-generation/`.
+Honor the requested provider exactly. `native`, `codex`, `gemini`, and `openai` never fall back to another provider. For Codex, call the image provider with `referenced_image_paths` containing each readable local reference image. If that attachment cannot be made, STOP. Record the provider, model, prompt, reference paths and roles, provider payload or trace, raw source path, and processing reports under `.godotmaker/asset-generation/`.
 
 ## Produce
 
 1. Reject pixel-art requests. Request non-pixel-art painted, illustrated, or rendered source art. Do not use nearest-neighbor scaling.
 2. Create a layout-only guide with `tools/asset_layout_guide.py` using the declared grid. The guide is not art and is not a runtime output.
 3. Request one real provider source sheet with one horizontal slot per declared segment. Require a solid `#FF00FF` background, a shared walkable top height, no labels, UI, actors, text, props, or grid lines. Preserve the provider's returned pixels as the raw source even when its raster dimensions differ from the target grid.
-4. Store the unmodified provider image at `.godotmaker/asset-generation/sources/<asset_id>_source.png`. Do not create, draw, or alter visual source art with temporary scripts, Pillow, System.Drawing, ImageMagick, SVG, canvas, Godot drawing, or placeholder generation.
+4. Store the unmodified provider image at `.godotmaker/asset-generation/sources/<asset_id>_source.png`. Write `.godotmaker/asset-generation/reports/<asset_id>_source.json` with `ok`, `asset_id`, `provider`, `raw_source`, `raw_source_sha256`, and `generation`. `generation` records `tool: "image_gen"`, a non-empty provider output or call identifier, and the attached-reference count; when references exist it also records `reference_attachment_argument: "referenced_image_paths"`. Record every reference as `{role, path, sha256, attached: true}`. Do not create, draw, or alter visual source art with temporary scripts, Pillow, System.Drawing, ImageMagick, SVG, canvas, Godot drawing, or placeholder generation.
 5. Normalize the real source only with the owned deterministic tools. First use `asset_sheet_process.py` with `--grid 1x1 --background magenta --snap-mode grid` to remove the magenta background and crop the visible source bounds. Then use `asset_image_finalize.py --resize <columns*cell_width>x<rows*cell_height>` to proportionally scale and transparently pad that cropped real source to the declared fixed grid dimensions. Save its report at `.godotmaker/asset-generation/reports/<asset_id>_normalize.json`.
 
 6. Split the normalized source with the owned deterministic tools:
@@ -50,7 +50,7 @@ Honor the requested provider exactly. `native`, `codex`, `gemini`, and `openai` 
 
 7. For `kind: "single"`, publish every processed cell at `res://assets/generated/platform-strip/<asset_id>/<segment>.png` and return it as `Texture2D`.
 8. For `kind: "atlas"`, create an explicit fixed-slot declaration from the processed cells. Assemble it only with `tools/asset_atlas_assemble.py`; publish `<asset_id>.png` and `<asset_id>.json` in the stable platform-strip directory. Each metadata region uses the declared slot rectangle, `pivot: [0.5, 1.0]`, and `nine_slice: null`. Compile every logical region to `res://assets/generated/platform-strip/<asset_id>/<segment>.tres` as `AtlasTexture` with zero margin.
-9. Run `standalone_validation.compile_and_validate()` before returning. Return its L0-L4 result without substituting a self-reported verdict.
+9. Run `standalone_validation.compile_and_validate()` with the configured Godot executable before returning. Save its actual L0-L4 result at `.godotmaker/asset-generation/reports/<asset_id>_validation.json`; do not substitute a self-reported verdict.
 
 ## Result
 
