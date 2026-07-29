@@ -590,7 +590,7 @@ class TestCreateProjectConfig:
         config = tmp_path / ".godotmaker" / "config.yaml"
         assert result == ProjectConfigResult(path=config, created=True)
         assert config.exists()
-        content = config.read_text()
+        content = config.read_text(encoding="utf-8")
         assert "agent: claude-code" in content
         assert "vqa_model: native" in content
         assert "vqa_fallback_model: native" in content
@@ -1534,6 +1534,74 @@ class TestRmtreeForce:
 
 
 class TestCodexPublishParity:
+    def test_force_publish_preserves_project_owned_dotnet_tools_and_backend_config(
+        self, tmp_path, monkeypatch
+    ):
+        def seed_project_owned_files(target):
+            project = target / "tools" / "SampleGame.Cli"
+            project.mkdir(parents=True)
+            (project / "SampleGame.Cli.csproj").write_text(
+                '<Project Sdk="Microsoft.NET.Sdk" />\n',
+                encoding="utf-8",
+            )
+            (project / "Program.cs").write_text(
+                'Console.WriteLine("sample");\n',
+                encoding="utf-8",
+            )
+            config = target / ".godotmaker" / "config.yaml"
+            config.parent.mkdir(parents=True)
+            config.write_text(
+                "language_backend: csharp\n"
+                "unit_test_backend: dotnet\n"
+                "dotnet_target: SampleGame.sln\n"
+                "godot_csharp_project: SampleGame.csproj\n",
+                encoding="utf-8",
+            )
+
+        target, _calls = _publish_codex_project(
+            tmp_path, monkeypatch, before_publish=seed_project_owned_files
+        )
+
+        assert (target / "tools/SampleGame.Cli/SampleGame.Cli.csproj").exists()
+        assert (target / "tools/SampleGame.Cli/Program.cs").exists()
+        config = (target / ".godotmaker/config.yaml").read_text(encoding="utf-8")
+        assert "dotnet_target: SampleGame.sln" in config
+        assert "godot_csharp_project: SampleGame.csproj" in config
+
+    def test_managed_tools_manifest_removes_stale_framework_files_only(
+        self, tmp_path
+    ):
+        source = tmp_path / "source-tools"
+        target = tmp_path / "target-tools"
+        manifest = tmp_path / ".godotmaker" / "published_tools.json"
+        source.mkdir()
+        target.mkdir()
+        (source / "old_framework_tool.py").write_text(
+            "print('old')\n", encoding="utf-8"
+        )
+        project_tool = target / "SampleGame.Cli" / "SampleGame.Cli.csproj"
+        project_tool.parent.mkdir()
+        project_tool.write_text(
+            '<Project Sdk="Microsoft.NET.Sdk" />\n', encoding="utf-8"
+        )
+
+        publish.publish_managed_directory(
+            source, target, manifest, "tools/"
+        )
+        (source / "old_framework_tool.py").unlink()
+        (source / "new_framework_tool.py").write_text(
+            "print('new')\n", encoding="utf-8"
+        )
+        publish.publish_managed_directory(
+            source, target, manifest, "tools/"
+        )
+
+        assert not (target / "old_framework_tool.py").exists()
+        assert (target / "new_framework_tool.py").exists()
+        assert project_tool.exists()
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        assert data["files"] == ["new_framework_tool.py"]
+
     def test_codex_publish_outputs_required_runtime_contract(self, tmp_path, monkeypatch):
         target, _calls = _publish_codex_project(tmp_path, monkeypatch)
 

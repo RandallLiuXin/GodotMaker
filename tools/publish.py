@@ -357,6 +357,16 @@ def copy_tree(src: Path, dst: Path):
         rmtree_force(dst)
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns(*EXCLUDE_DIRS))
 
+def copy_tree_overlay(src: Path, dst: Path):
+    """Copy managed files while preserving project-owned destination extras."""
+    dst.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(
+        src,
+        dst,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(*EXCLUDE_DIRS),
+    )
+
 
 # ── Publish steps ──────────────────────────────────────────────
 
@@ -595,11 +605,83 @@ def publish_directory(
     dst: Path,
     label: str,
     count_pattern: str = "*.py",
+    preserve_extras: bool = False,
 ):
-    """Copy a directory from repo to target, printing file count."""
+    """Copy a directory from repo to target, optionally preserving extras."""
     if not src.exists():
         return
-    copy_tree(src, dst)
+    if preserve_extras:
+        copy_tree_overlay(src, dst)
+    else:
+        copy_tree(src, dst)
+    count = len(list(dst.glob(count_pattern)))
+    print(f"Published {label} ({count} files)")
+
+
+def _managed_source_files(src: Path) -> set[str]:
+    """Return the relative files copied from a framework source directory."""
+    return {
+        path.relative_to(src).as_posix()
+        for path in src.rglob("*")
+        if path.is_file()
+        and not any(part in EXCLUDE_DIRS for part in path.relative_to(src).parts)
+    }
+
+
+def publish_managed_directory(
+    src: Path,
+    dst: Path,
+    manifest: Path,
+    label: str,
+    count_pattern: str = "*.py",
+):
+    """Overlay managed files and remove only files in the prior manifest."""
+    if not src.exists():
+        return
+
+    current = _managed_source_files(src)
+    previous: set[str] = set()
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        previous = {
+            value for value in data.get("files", [])
+            if isinstance(value, str)
+        }
+    except (OSError, json.JSONDecodeError, ValueError):
+        previous = set()
+
+    dst_root = dst.resolve()
+    for relative in sorted(previous - current):
+        rel_path = Path(relative)
+        if rel_path.is_absolute() or ".." in rel_path.parts:
+            continue
+        candidate = dst / rel_path
+        try:
+            candidate.resolve().relative_to(dst_root)
+        except ValueError:
+            continue
+        if candidate.is_file() or candidate.is_symlink():
+            candidate.unlink()
+        parent = candidate.parent
+        while parent != dst and parent.is_dir():
+            try:
+                next(parent.iterdir())
+            except StopIteration:
+                parent.rmdir()
+                parent = parent.parent
+            else:
+                break
+
+    copy_tree_overlay(src, dst)
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {"version": 1, "files": sorted(current)},
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
     count = len(list(dst.glob(count_pattern)))
     print(f"Published {label} ({count} files)")
 
@@ -1231,6 +1313,7 @@ def ensure_gitignore(target: Path, agent: str = AGENT_CLAUDE_CODE):
         ".godotmaker/metrics_current.jsonl",
         ".godotmaker/traces/",
         ".godotmaker/applied_migrations.json",
+        ".godotmaker/published_tools.json",
         ".godotmaker/logs/",
         "reports/",
         "__pycache__/",
@@ -1407,7 +1490,6 @@ def main():
             adapter.templates_dir(target),       # selected agent templates
             target / ".godotmaker" / "hooks",   # .godotmaker/hooks/
             target / ASSET_RUNTIME_TARGET,         # shared asset runtime
-            target / "tools",                   # tools/
         ]:
             if d.exists():
                 print(f"  Cleaning {d}")
@@ -1447,7 +1529,12 @@ def main():
     publish_runtime_references(repo_root, target, agent)
     publish_agents(repo_root, adapter.agents_dir(target), agent)
     publish_agent_plugins(repo_root, target, agent, args.force)
-    publish_directory(repo_root / "tools", target / "tools", "tools/")
+    publish_managed_directory(
+        repo_root / "tools",
+        target / "tools",
+        target / ".godotmaker" / "published_tools.json",
+        "tools/",
+    )
     publish_directory(repo_root / "config", adapter.config_dir(target),
                       "config/", "*")
     godotmaker_dir = target / ".godotmaker"
