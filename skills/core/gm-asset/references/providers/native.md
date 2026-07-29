@@ -22,7 +22,8 @@ When the production unit uses image references:
 3. Record attached path, role, attachment mechanism, and attachment count in
    the provider report.
 4. STOP when the active native path cannot attach the supplied image; a textual
-   path or a visual inspection by the agent is not an attachment.
+   path or a visual inspection by the agent is not an attachment. Do not omit
+   the reference, switch providers, or create a substitute image.
 5. Preserve the invariants listed by the production-unit doc.
 6. Use the planned `source_path` for the generated result.
 

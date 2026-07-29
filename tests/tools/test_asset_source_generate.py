@@ -23,7 +23,11 @@ def make_spec(tmp_path: Path, **overrides):
         "size": "1K",
         "aspect_ratio": "1:1",
     }
-    spec.update(overrides)
+    for key, value in overrides.items():
+        if value is None:
+            spec.pop(key, None)
+        else:
+            spec[key] = value
     path = tmp_path / "spec.json"
     path.write_text(json.dumps(spec), encoding="utf-8")
     return path
@@ -63,6 +67,13 @@ def test_load_spec_requires_explicit_model(tmp_path, monkeypatch):
 
     with pytest.raises(source_generate.SourceGenerateError, match="model"):
         source_generate.load_spec(spec_path)
+
+
+def test_load_spec_allows_an_empty_optional_reference_list(tmp_path):
+    spec = source_generate.load_spec(make_spec(tmp_path, reference_images=None))
+
+    assert spec["reference_images"] == []
+    assert spec["reference_inputs"] == []
 
 
 def test_generate_source_writes_prompt_source_and_report(tmp_path, monkeypatch):
@@ -169,7 +180,11 @@ def test_openai_uses_all_reference_images_for_edit(tmp_path, monkeypatch):
 
 def test_role_preserving_reference_inputs_are_attached_and_reported(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    inputs = write_reference_inputs(tmp_path, 2)
+    refs = write_refs(tmp_path, 2)
+    inputs = [
+        {"role": "style", "path": refs[0]},
+        {"role": "screen", "path": refs[1]},
+    ]
     spec = source_generate.load_spec(
         make_spec(
             tmp_path,
@@ -190,7 +205,7 @@ def test_role_preserving_reference_inputs_are_attached_and_reported(tmp_path, mo
     result = source_generate.generate_source(spec)
 
     assert [item["role"] for item in result["reference_inputs"]] == [
-        "canonical", "style"
+        "style", "screen"
     ]
     assert result["provider_payload"] == {
         "operation": "images.edit",
@@ -200,6 +215,32 @@ def test_role_preserving_reference_inputs_are_attached_and_reported(tmp_path, mo
     assert all(len(item["sha256"]) == 64 for item in result["reference_inputs"])
     report = json.loads((tmp_path / result["report_path"]).read_text(encoding="utf-8"))
     assert report["reference_inputs"] == result["reference_inputs"]
+
+
+@pytest.mark.parametrize(
+    ("reference_inputs", "error"),
+    [
+        ([{"role": "palette", "path": "reference.png"}], "not allowed"),
+        ([{"role": "style", "path": "missing.png"}], "not found"),
+    ],
+)
+def test_load_spec_rejects_invalid_role_preserved_references(tmp_path, reference_inputs, error):
+    with pytest.raises(source_generate.SourceGenerateError, match=error):
+        source_generate.load_spec(make_spec(tmp_path, reference_inputs=reference_inputs))
+
+
+def test_load_spec_rejects_ambiguous_reference_input_forms(tmp_path):
+    reference = tmp_path / "reference.png"
+    write_png(reference)
+
+    with pytest.raises(source_generate.SourceGenerateError, match="either"):
+        source_generate.load_spec(
+            make_spec(
+                tmp_path,
+                reference_images=[str(reference)],
+                reference_inputs=[{"role": "style", "path": str(reference)}],
+            )
+        )
 
 
 def test_role_preserving_reference_input_must_be_readable(tmp_path):

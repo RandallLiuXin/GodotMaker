@@ -164,6 +164,102 @@ def test_batch_claim_supports_scene_reference_plan_shape(tmp_path):
     assert (tmp_path / ".godotmaker/asset-generation/sources/scene_shop_source.png").exists()
 
 
+def test_batch_claim_preserves_verified_codex_reference_provenance(tmp_path):
+    source = tmp_path / "generated.png"
+    reference = tmp_path / "style.png"
+    make_png(source)
+    make_png(reference)
+    plan = tmp_path / "plan.json"
+    report = tmp_path / "report.json"
+    reference_record = {"role": "style", "path": str(reference)}
+    write_json(plan, {"items": [{
+        "asset_id": "A01",
+        "source_path": ".godotmaker/sources/A01.png",
+        "references": [reference_record],
+    }]})
+    write_json(report, {"assets": [{
+        "asset_id": "A01",
+        "generated_path": str(source),
+        "references": [reference_record],
+        "provider_trace": {
+            "provider": "codex",
+            "image_model": "gpt-image-test",
+            "image_model_identity": "runtime_reported",
+            "coding_model": "gpt-5.6-terra",
+            "reasoning": "medium",
+            "tool_call_id": "imagegen-call-1",
+            "referenced_image_paths": [str(reference)],
+        },
+    }]})
+
+    result = claim_codex_image_batch(plan, report, project_root=tmp_path)
+
+    assert result["assets"][0]["references"] == [reference_record]
+    assert result["assets"][0]["provider_trace"]["referenced_image_paths"] == [str(reference)]
+
+
+def test_batch_claim_accepts_subscription_runtime_without_image_model_identity(tmp_path):
+    source = tmp_path / "generated.png"
+    make_png(source)
+    plan = tmp_path / "plan.json"
+    report = tmp_path / "report.json"
+    write_json(plan, {"items": [{
+        "asset_id": "A01",
+        "source_path": ".godotmaker/sources/A01.png",
+        "require_provider_trace": True,
+    }]})
+    write_json(report, {"assets": [{
+        "asset_id": "A01",
+        "generated_path": str(source),
+        "references": [],
+        "provider_trace": {
+            "provider": "codex",
+            "coding_model": "gpt-5.6-terra",
+            "reasoning": "medium",
+            "tool_call_id": "imagegen-call-1",
+            "image_model_identity": "not_exposed_by_subscription_runtime",
+            "referenced_image_paths": [],
+        },
+    }]})
+
+    result = claim_codex_image_batch(plan, report, project_root=tmp_path)
+
+    trace = result["assets"][0]["provider_trace"]
+    assert trace["image_model_identity"] == "not_exposed_by_subscription_runtime"
+    assert "image_model" not in trace
+
+
+@pytest.mark.parametrize(
+    "report_update",
+    [
+        {},
+        {"provider_trace": {
+            "provider": "codex", "image_model": "gpt-image-test",
+            "image_model_identity": "runtime_reported",
+            "coding_model": "gpt-5.6-terra", "reasoning": "medium",
+            "tool_call_id": "imagegen-call-1", "referenced_image_paths": [],
+        }},
+    ],
+)
+def test_batch_claim_fails_closed_without_verified_reference_attachment(tmp_path, report_update):
+    source = tmp_path / "generated.png"
+    reference = tmp_path / "style.png"
+    make_png(source)
+    make_png(reference)
+    plan = tmp_path / "plan.json"
+    report = tmp_path / "report.json"
+    reference_record = {"role": "style", "path": str(reference)}
+    write_json(plan, {"items": [{
+        "asset_id": "A01", "source_path": ".godotmaker/sources/A01.png",
+        "references": [reference_record],
+    }]})
+    item = {"asset_id": "A01", "generated_path": str(source), **report_update}
+    write_json(report, {"assets": [item]})
+
+    with pytest.raises(CodexImageClaimError, match="provider_trace|does not prove"):
+        claim_codex_image_batch(plan, report, project_root=tmp_path)
+
+
 def test_batch_claim_rejects_missing_generated_path(tmp_path):
     plan = tmp_path / "plan.json"
     report = tmp_path / "generated-paths.json"

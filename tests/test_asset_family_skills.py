@@ -79,10 +79,48 @@ def test_background_and_platform_runtime_contracts_keep_native_type_boundaries()
 
     assert "Texture2D" in background
     assert "Godot's normal PNG import" in background
+    assert "Do not write `ASSET_RESULT.json`" in background
+    assert "--report .godotmaker/asset-generation/reports" in background
     assert "Texture2D" in platform
     assert "AtlasTexture" in platform
     assert "explicitly declared grid" in platform
     assert "automatic packing" in platform
+
+
+def test_background_map_restores_real_provider_finalize_and_non_pixel_contracts():
+    background = (ASSETS_DIR / "background-map" / "SKILL.md").read_text(encoding="utf-8")
+    codex = (
+        REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "providers" / "codex.md"
+    ).read_text(encoding="utf-8")
+
+    for required in (
+        "References are optional.",
+        "readable image",
+        "Do not substitute another provider",
+        "asset_image_finalize.py",
+        "--require-aspect",
+        "source_layout: single",
+        "godot_artifact: Texture2D",
+        "non-pixel-art",
+        "Pillow, System.Drawing, ImageMagick",
+        "referenced_image_paths",
+        "GM_EVAL_GODOT_PATH",
+    ):
+        assert required in background
+    assert "referenced_image_paths" in codex
+    assert "putting a path in text" in codex
+
+
+def test_shared_asset_contract_examples_do_not_require_pixel_art():
+    shared_contract = (ASSETS_DIR / "_shared" / "asset-skill-contract.md").read_text(
+        encoding="utf-8"
+    )
+    character_request = (
+        ASSETS_DIR / "_shared" / "samples" / "request" / "character-bundle.json"
+    ).read_text(encoding="utf-8")
+
+    assert "pixel-art" not in shared_contract.lower()
+    assert "pixel-art" not in character_request.lower()
 
 
 def test_screen_reference_cannot_be_misrepresented_as_a_runtime_asset():

@@ -139,8 +139,8 @@ exists so the pair is a registered, validated, receipted outcome rather than an
 unregistered combination.
 
 v1 introduces no general texture-import profile system. Import settings stay
-Godot's defaults plus the project-wide pixel-art baseline; per-texture mipmap,
-repeat, compression, and filtering choices remain worker decisions.
+Godot's defaults; per-texture mipmap, repeat, compression, and filtering choices
+remain worker decisions.
 
 ## AtlasTexture
 

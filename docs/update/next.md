@@ -55,6 +55,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Background-map now preserves optional reference-image provenance, uses the declared provider without fallback, and deterministically finalizes non-pixel-art Texture2D backgrounds.
 - Theme L4 validation now rejects recipe paths outside the declaring asset's stable output directory.
 - Published asset validation runners now work after installing GodotMaker into Claude Code, Codex, or OpenCode projects.
 - Restored real Godot validation for Theme and TileSet assets, including safe Theme resource paths and imported TileSet atlases.

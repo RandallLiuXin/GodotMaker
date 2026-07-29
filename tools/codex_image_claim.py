@@ -139,7 +139,31 @@ def _string(value: Any, field: str, *, item_label: str) -> str:
     return value.strip()
 
 
-def _planned_items(plan: Any) -> dict[str, dict[str, str]]:
+def _reference_items(value: Any, *, item_label: str) -> list[dict[str, str]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise CodexImageClaimError(f"{item_label}.references must be a list")
+    references: list[dict[str, str]] = []
+    for index, reference in enumerate(value):
+        label = f"{item_label}.references[{index}]"
+        if not isinstance(reference, dict) or set(reference) != {"role", "path"}:
+            raise CodexImageClaimError(
+                f"{label} must contain exactly role and path"
+            )
+        role = _string(reference.get("role"), "role", item_label=label)
+        if role not in {"canonical", "style", "screen"}:
+            raise CodexImageClaimError(
+                f"{label}.role must be canonical, style, or screen"
+            )
+        references.append({
+            "role": role,
+            "path": _string(reference.get("path"), "path", item_label=label),
+        })
+    return references
+
+
+def _planned_items(plan: Any) -> dict[str, dict[str, Any]]:
     if not isinstance(plan, dict):
         raise CodexImageClaimError("Plan must be a JSON object")
 
@@ -154,7 +178,7 @@ def _planned_items(plan: Any) -> dict[str, dict[str, str]]:
     if not raw_items:
         raise CodexImageClaimError("Plan must contain items, anchor_item, or parallel_items")
 
-    planned: dict[str, dict[str, str]] = {}
+    planned: dict[str, dict[str, Any]] = {}
     for index, item in enumerate(raw_items):
         if not isinstance(item, dict):
             raise CodexImageClaimError(f"plan item {index} must be an object")
@@ -166,11 +190,22 @@ def _planned_items(plan: Any) -> dict[str, dict[str, str]]:
             raise CodexImageClaimError(f"{label}.source_path must stay within the project")
         if asset_id in planned:
             raise CodexImageClaimError(f"Duplicate planned asset_id: {asset_id}")
-        planned[asset_id] = {"asset_id": asset_id, "source_path": source_path}
+        required_trace = item.get("require_provider_trace", False)
+        if type(required_trace) is not bool:
+            raise CodexImageClaimError(
+                f"{label}.require_provider_trace must be a boolean"
+            )
+        references = _reference_items(item.get("references"), item_label=label)
+        planned[asset_id] = {
+            "asset_id": asset_id,
+            "source_path": source_path,
+            "references": references,
+            "require_provider_trace": required_trace or bool(references),
+        }
     return planned
 
 
-def _reported_generated_paths(report: Any) -> dict[str, str]:
+def _reported_generated_paths(report: Any) -> dict[str, dict[str, Any]]:
     if isinstance(report, list):
         raw_items = report
     elif isinstance(report, dict):
@@ -191,7 +226,7 @@ def _reported_generated_paths(report: Any) -> dict[str, str]:
     if not isinstance(raw_items, list) or not raw_items:
         raise CodexImageClaimError("Generation report must contain a non-empty assets list")
 
-    generated_paths: dict[str, str] = {}
+    generated_paths: dict[str, dict[str, Any]] = {}
     for index, item in enumerate(raw_items):
         if not isinstance(item, dict):
             raise CodexImageClaimError(f"report asset {index} must be an object")
@@ -200,8 +235,69 @@ def _reported_generated_paths(report: Any) -> dict[str, str]:
         generated_path = _string(item.get("generated_path"), "generated_path", item_label=label)
         if asset_id in generated_paths:
             raise CodexImageClaimError(f"Duplicate reported asset_id: {asset_id}")
-        generated_paths[asset_id] = generated_path
+        generated_paths[asset_id] = {"generated_path": generated_path, "item": item}
     return generated_paths
+
+
+def _provider_trace(
+    planned: dict[str, Any], reported: dict[str, Any], *, asset_id: str
+) -> dict[str, Any] | None:
+    """Validate the image-generation evidence before a claimed source is accepted."""
+    if not planned["require_provider_trace"]:
+        return None
+    trace = reported["item"].get("provider_trace")
+    if not isinstance(trace, dict):
+        raise CodexImageClaimError(
+            f"Generation report for {asset_id} is missing provider_trace"
+        )
+    required_fields = (
+        "provider", "coding_model", "reasoning", "tool_call_id",
+        "image_model_identity", "referenced_image_paths",
+    )
+    for field in required_fields[:-1]:
+        _string(trace.get(field), field, item_label=f"provider_trace for {asset_id}")
+    if trace["provider"] != "codex":
+        raise CodexImageClaimError(
+            f"provider_trace for {asset_id}.provider must be codex"
+        )
+    image_model_identity = trace["image_model_identity"]
+    if image_model_identity == "runtime_reported":
+        _string(
+            trace.get("image_model"),
+            "image_model",
+            item_label=f"provider_trace for {asset_id}",
+        )
+    elif image_model_identity != "not_exposed_by_subscription_runtime":
+        raise CodexImageClaimError(
+            f"provider_trace for {asset_id}.image_model_identity must be "
+            "runtime_reported or not_exposed_by_subscription_runtime"
+        )
+    attachment_paths = trace.get("referenced_image_paths")
+    if not isinstance(attachment_paths, list) or any(
+        not isinstance(path, str) or not path.strip() for path in attachment_paths
+    ):
+        raise CodexImageClaimError(
+            f"provider_trace for {asset_id}.referenced_image_paths must be a string list"
+        )
+    expected_paths = [reference["path"] for reference in planned["references"]]
+    if attachment_paths != expected_paths:
+        raise CodexImageClaimError(
+            f"provider_trace for {asset_id} does not prove every planned reference attachment"
+        )
+    reported_references = _reference_items(
+        reported["item"].get("references"), item_label=f"report asset {asset_id}"
+    )
+    if reported_references != planned["references"]:
+        raise CodexImageClaimError(
+            f"Generation report for {asset_id} does not preserve planned reference roles"
+        )
+    verified_trace = {
+        field: trace[field]
+        for field in required_fields
+    }
+    if image_model_identity == "runtime_reported":
+        verified_trace["image_model"] = trace["image_model"]
+    return verified_trace
 
 
 def claim_codex_image_batch(
@@ -226,13 +322,18 @@ def claim_codex_image_batch(
     results = []
     for asset_id, item in planned.items():
         output = project_root / item["source_path"]
-        generated_path = _path_from_arg(generated_paths[asset_id])
+        reported = generated_paths[asset_id]
+        trace = _provider_trace(item, reported, asset_id=asset_id)
+        generated_path = _path_from_arg(reported["generated_path"])
         if generated_path.resolve() == output.resolve():
             raise CodexImageClaimError(
                 f"generated_path for {asset_id} must not be the planned source_path: {output}"
             )
         result = claim_codex_image(str(generated_path), output, asset_id=asset_id)
         result["source_path"] = item["source_path"]
+        if trace is not None:
+            result["references"] = item["references"]
+            result["provider_trace"] = trace
         results.append(result)
 
     batch_result = {
