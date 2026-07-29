@@ -3,6 +3,7 @@
 
 import argparse
 import base64
+import hashlib
 import io
 import json
 import sys
@@ -61,6 +62,7 @@ ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS))
 OPENAI_MODEL = "gpt-image-2"
 OPENAI_MAX_REFERENCE_IMAGES = 16
 OPENAI_COSTS = {"1:1": 5, "portrait": 7, "landscape": 7}
+REFERENCE_ROLES = {"canonical", "style", "screen"}
 
 
 def _split_model_selector(selector: str, *, default_provider: str,
@@ -124,75 +126,86 @@ def _optional_string(data: dict, field: str, default: str) -> str:
     return value
 
 
-def _reference_images(data: dict) -> list[Path]:
-    raw = data.get("reference_images", [])
-    if raw is None:
-        return []
-    if not isinstance(raw, list):
-        raise SourceGenerateError("Spec field 'reference_images' must be a list")
-    paths: list[Path] = []
-    for index, item in enumerate(raw):
-        if not isinstance(item, str) or not item.strip():
-            raise SourceGenerateError(f"reference_images[{index}] must be a non-empty string")
-        path = Path(item)
-        _validate_reference_image(path)
-        paths.append(path)
-    return paths
-
-
-def _validate_reference_image(path: Path) -> None:
-    """Fail before provider dispatch when an alleged reference is not an image."""
-    if not path.is_file():
-        raise SourceGenerateError(f"Reference image not found or unreadable: {path}")
+def _readable_reference(path: Path) -> None:
+    """Reject a missing or unreadable reference before any provider call."""
     try:
         from PIL import Image
 
         with Image.open(path) as image:
             image.verify()
-    except (OSError, SyntaxError, ValueError) as exc:
-        raise SourceGenerateError(f"Reference image not found or unreadable: {path}") from exc
+        with Image.open(path) as image:
+            image.load()
+    except Exception as exc:
+        raise SourceGenerateError(f"Reference image is not readable: {path}") from exc
 
 
 def _reference_inputs(data: dict) -> list[dict[str, object]]:
-    """Load role-preserved reference inputs for provider provenance.
+    """Read visible references while preserving their production role.
 
-    ``reference_images`` predates first-class Asset Skills and has no role
-    information.  Keep accepting it for existing production units, but let a
-    family that needs reference provenance use ``reference_inputs`` instead.
+    ``reference_images`` is retained for existing production units. New callers
+    should use ``reference_inputs`` so provider provenance can prove both the
+    attached file and the role the prompt/production contract assigned to it.
     """
-    raw = data.get("reference_inputs")
-    if raw is None:
-        return [
-            {"role": "unspecified", "path": path}
-            for path in _reference_images(data)
-        ]
-    if "reference_images" in data:
+    if "reference_inputs" in data and "reference_images" in data:
         raise SourceGenerateError(
-            "Spec must use either 'reference_inputs' or 'reference_images', not both"
+            "Spec must use either 'reference_inputs' or legacy 'reference_images', not both"
         )
-    if not isinstance(raw, list):
-        raise SourceGenerateError("Spec field 'reference_inputs' must be a list")
+    if "reference_inputs" in data:
+        raw = data["reference_inputs"]
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise SourceGenerateError("Spec field 'reference_inputs' must be a list")
+        inputs: list[dict[str, object]] = []
+        for index, item in enumerate(raw):
+            if not isinstance(item, dict) or set(item) != {"role", "path"}:
+                raise SourceGenerateError(
+                    f"reference_inputs[{index}] must contain exactly role and path"
+                )
+            role, raw_path = item["role"], item["path"]
+            if not isinstance(role, str) or role not in REFERENCE_ROLES:
+                raise SourceGenerateError(
+                    f"reference_inputs[{index}].role is not allowed: {role!r}"
+                )
+            if not isinstance(raw_path, str) or not raw_path.strip():
+                raise SourceGenerateError(
+                    f"reference_inputs[{index}].path must be a non-empty string"
+                )
+            path = Path(raw_path)
+            if not path.is_file():
+                raise SourceGenerateError(f"Reference image not found: {path}")
+            _readable_reference(path)
+            inputs.append({"role": role, "path": path})
+        return inputs
 
-    inputs: list[dict[str, object]] = []
+    raw = data.get("reference_images", [])
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise SourceGenerateError("Spec field 'reference_images' must be a list")
+    inputs = []
     for index, item in enumerate(raw):
-        if not isinstance(item, dict) or set(item) != {"role", "path"}:
-            raise SourceGenerateError(
-                f"reference_inputs[{index}] must contain exactly 'role' and 'path'"
-            )
-        role = item["role"]
-        if role not in {"canonical", "style", "screen"}:
-            raise SourceGenerateError(
-                f"reference_inputs[{index}].role must be canonical, style, or screen"
-            )
-        path_value = item["path"]
-        if not isinstance(path_value, str) or not path_value.strip():
-            raise SourceGenerateError(
-                f"reference_inputs[{index}].path must be a non-empty string"
-            )
-        path = Path(path_value)
-        _validate_reference_image(path)
-        inputs.append({"role": role, "path": path})
+        if not isinstance(item, str) or not item.strip():
+            raise SourceGenerateError(f"reference_images[{index}] must be a non-empty string")
+        path = Path(item)
+        if not path.is_file():
+            raise SourceGenerateError(f"Reference image not found: {path}")
+        _readable_reference(path)
+        inputs.append({"role": None, "path": path})
     return inputs
+
+
+def _reference_provenance(inputs: list[dict[str, object]]) -> list[dict[str, object]]:
+    return [
+        {
+            "role": item["role"],
+            "path": _json_path(item["path"]),
+            "mime_type": _mime_for_image(item["path"]),
+            "bytes": item["path"].stat().st_size,
+            "sha256": hashlib.sha256(item["path"].read_bytes()).hexdigest(),
+        }
+        for item in inputs
+    ]
 
 
 def _generate_gemini(spec, output: Path, model_name: str):
@@ -418,10 +431,16 @@ def generate_source(spec: dict) -> dict[str, object]:
         "source_path": _json_path(output),
         "prompt_path": _json_path(spec["prompt_path"]),
         "reference_images": [_json_path(path) for path in spec["reference_images"]],
-        "reference_inputs": [
-            {"role": item["role"], "path": _json_path(item["path"])}
-            for item in spec["reference_inputs"]
-        ],
+        "reference_inputs": _reference_provenance(spec["reference_inputs"]),
+        "provider_payload": {
+            "operation": (
+                "images.edit" if backend == "openai" and spec["reference_images"]
+                else "images.generate" if backend == "openai"
+                else "models.generate_content"
+            ),
+            "reference_input_count": len(spec["reference_images"]),
+            "references_attached": bool(spec["reference_images"]),
+        },
         "cost_cents": cost,
         "bytes": final["bytes"],
         "width": final["width"],

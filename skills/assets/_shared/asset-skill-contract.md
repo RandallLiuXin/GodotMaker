@@ -63,7 +63,7 @@ not independently triggerable.
 {
   "asset_type": "character-bundle",
   "asset_id": "player",
-  "brief": "A small hand-painted knight with idle and run actions, side view.",
+  "brief": "A small hand-painted knight with idle and run actions, side view; do not use pixel art.",
   "references": [
     { "role": "canonical", "path": "res://references/player_canonical.png" }
   ],
@@ -141,7 +141,9 @@ each `runtime` output into its own stable entry with one primary
 Raw generated or claimed source images the outputs were compiled from. Each
 entry is `{ path, layout? }`. `layout` describes pixel organization and is one of
 `single`, `grid_sheet`, `region_atlas`, `action_frames`, `theme_recipe`,
-`tile_atlas`. `sources` may be empty (for example a reference-only result).
+`tile_atlas`. `sources` may be empty only when the family contract has no raw
+source to preserve; a generated screen reference records its deterministic raw
+provider source.
 
 ### previews
 

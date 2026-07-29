@@ -21,6 +21,21 @@ For each generated image:
 8. Do not report a project `source_path` as `generated_path`.
 9. Do not create placeholder or procedural images when generation fails.
 
+## Reference Images
+
+References are optional. When a production unit supplies one or more required
+references, each is binding input rather than prompt-only context:
+
+1. verify every path is a readable image before calling `image_gen`;
+2. preserve its production role in the generation prompt and provider report;
+3. call `image_gen` with `referenced_image_paths` containing every required
+   local reference path; putting a path in text is not reference use;
+4. record the exact attached paths, roles, and `referenced_image_paths` count
+   in the provider report, plus configured coding model and reasoning effort;
+5. STOP when the active Codex image path cannot accept those attachments.
+   Record the image model when the runtime exposes it; otherwise record
+   `image_model_identity: not_exposed_by_subscription_runtime`.
+
 Generated-path report shape:
 
 ```json
@@ -45,25 +60,6 @@ Generated-path report shape:
   "failures": []
 }
 ```
-
-## Reference Images
-
-When the production brief supplies one or more image references:
-
-1. Validate every local path is a readable image before calling the provider.
-2. Preserve each declared `canonical`, `style`, or `screen` role in the prompt
-   record and provider report.
-3. Call Codex `image_gen` with every reference as a real image attachment via
-   `referenced_image_paths`; putting a path in text or merely describing it is
-   not reference use.
-4. If the active Codex image path cannot attach every required image, stop the
-   affected asset. Do not omit a reference, switch providers, or create a
-   substitute image.
-5. Record the configured coding model and reasoning effort. Record the image
-   model when the runtime exposes it; otherwise record
-   `image_model_identity: not_exposed_by_subscription_runtime`. An opaque
-   subscription-backed image model is an auditable limitation, not permission
-   to omit the provider, tool-call, or reference-attachment trace.
 
 Failure report shape:
 
@@ -138,7 +134,9 @@ For each asset:
 5. Do not inspect unrelated Codex threads.
 6. Do not choose files by modified time.
 7. Do not copy files.
-8. Do not create placeholder or procedural images.
+8. When an asset has references, pass every source_path reference to `image_gen`
+   through `referenced_image_paths` and report the attached paths and roles.
+9. Do not create placeholder or procedural images.
 
 Assets:
 - id: <asset_id>

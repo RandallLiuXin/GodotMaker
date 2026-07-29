@@ -213,6 +213,9 @@ def test_screen_reference_completes_at_l1_without_invoking_runtime_ladder(tmp_pa
     reference = tmp_path / "references" / "title.png"
     reference.parent.mkdir()
     Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
+    raw_source = tmp_path / ".godotmaker/asset-generation/sources/title_source.png"
+    raw_source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(raw_source)
     result = compile_and_validate(
         {
             "asset_type": "screen-reference",
@@ -224,7 +227,12 @@ def test_screen_reference_completes_at_l1_without_invoking_runtime_ladder(tmp_pa
             "outputs": [
                 {"role": "reference", "name": "title", "path": "references/title.png"}
             ],
-            "sources": [],
+            "sources": [
+                {
+                    "path": ".godotmaker/asset-generation/sources/title_source.png",
+                    "layout": "single",
+                }
+            ],
             "previews": [],
             "validation": {"passed": False},
         },
@@ -248,9 +256,36 @@ def _screen_reference_result() -> dict:
         "outputs": [
             {"role": "reference", "name": "title", "path": "references/title.png"}
         ],
-        "sources": [],
+        "sources": [
+            {
+                "path": ".godotmaker/asset-generation/sources/title_source.png",
+                "layout": "single",
+            }
+        ],
         "previews": [],
         "validation": {"passed": True},
+    }
+
+
+def test_screen_reference_rejects_a_missing_deterministic_raw_source(tmp_path):
+    reference = tmp_path / "references" / "title.png"
+    reference.parent.mkdir()
+    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
+
+    actual = compile_and_validate(
+        _screen_reference_request(),
+        _screen_reference_result(),
+        project_root=tmp_path,
+        godot_path="not-used",
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {"L0": True, "L1": False},
+        "notes": (
+            "raw screen-reference source is not a non-empty file: "
+            ".godotmaker/asset-generation/sources/title_source.png"
+        ),
     }
 
 

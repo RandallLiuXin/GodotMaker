@@ -1,45 +1,108 @@
 ---
 name: screen-reference
-description: Generate and validate a full-screen visual reference for scene direction and evaluation, without producing a runtime asset.
+description: Generate, finalize, and validate a non-pixel-art full-screen visual reference for scene direction and evaluation, without producing a runtime asset.
 ---
 
 # Screen Reference Asset
 
-Use this skill for full-screen scene references and visual evaluation targets.
-It is reference-only: it does not create a runtime Godot resource, has no
-`godot_artifact`, and must not enter worker runtime handoff.
+Use this Skill for a full-screen visual anchor for scene direction and visual
+evaluation. It is reference-only: it does not create a runtime Godot resource,
+has no `godot_artifact`, and must not enter worker runtime handoff.
+Do not compile it to `Texture2D`, `AtlasTexture`, or any other native runtime
+resource.
+
+Do not request or produce pixel art. Do not use nearest-neighbor scaling to
+imitate pixel art. Raw visual material may come only from the selected image
+provider or an explicitly supplied user source/reference. Do not create art,
+placeholder images, colour blocks, SVGs, canvases, Godot drawings, or image
+assets with ad-hoc scripts.
 
 ## Invocation
 
-Accept one asset request matching the shared Asset Skill request schema in
+Accept one request matching the shared Asset Skill request schema in
 `.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
-`asset_type` to be `screen-reference`. Run
-`standalone_validation.compile_and_validate()` before returning it. This
-reference-only runner binds the fixed reference path at L0 and verifies the
-image file at L1; it never enters the runtime L2-L4 ladder and overwrites any
-caller-supplied validation claim.
-It begins from the shared result schema and checker, then proves the result.
+`asset_type` to be `screen-reference`. `references` is optional. When it is
+present and non-empty, every `{ role, path }` is a required visual input:
 
-This skill can be invoked directly or by an orchestrator with the same contract.
+1. resolve the path inside the project and require a readable image before
+   calling a provider;
+2. preserve its `canonical`, `style`, or `screen` role in the prompt and
+   source-generation provenance;
+3. attach the actual image bytes to the selected provider request. A path
+   mentioned only in text is not an attachment;
+4. STOP before writing a raw source or final output when an input is unreadable
+   or the selected provider cannot attach it.
+
+Use the configured provider named by the request or production brief. `native`,
+`codex`, `gemini`, and `openai` are binding selections: execute that documented
+path or STOP. Never silently switch providers. For `codex`, non-empty
+references require the `image_gen` call's `referenced_image_paths` argument.
+
+This Skill can be invoked directly or by an orchestrator with the same contract.
 Do not read or write `ASSETS.md`, tags, stage state, generated manifests, or
-worker dispatch state.
+worker dispatch state. The `/gm-asset` manager later registers the approved
+finalize report through `asset_finalize_entry_draft.py`.
 
-## Produce
+## Production contract
 
-1. Use the brief and visible references to describe the game genre, scene
-   purpose, camera or viewpoint, gameplay-visible objects, approximate layout,
-   requested HUD or UI elements, style language, target aspect, and orientation.
-2. Generate one source image per requested scene. Do not add labels, callouts,
-   debug overlays, or unrequested objects.
-3. Finalize the accepted image at `references/<asset_id>.png` after checking
-   the requested aspect and dimensions.
-4. Preserve it as a visual reference only. Do not compile it to `Texture2D`,
-   `AtlasTexture`, or any other native runtime resource.
+`spec` must declare the target `size` (`WIDTHxHEIGHT`) and `aspect_ratio`
+(`WIDTH:HEIGHT`). Build a prompt that names the game and screen purpose,
+camera/viewpoint, visible gameplay objects, approximate layout, HUD or UI safe
+regions, style language, target aspect/orientation, and each supplied reference
+role. Do not add labels, callouts, debug overlays, or unrequested objects.
+
+For every accepted image, retain these deterministic paths:
+
+1. prompt: `.godotmaker/asset-generation/prompts/<asset_id>.txt`;
+2. raw provider source: `.godotmaker/asset-generation/sources/<asset_id>_source.png`;
+3. source/provider report: `.godotmaker/asset-generation/reports/<asset_id>_source.json`;
+4. final reference: `references/<asset_id>.png`;
+5. finalize report: `.godotmaker/asset-generation/reports/<asset_id>_finalize.json`.
+
+For `openai` and `gemini`, write a source-generation spec using
+`reference_inputs` for role-preserving references, then run:
+
+```bash
+python tools/asset_source_generate.py --spec <spec.json>
+```
+
+The successful source report must identify the selected provider and model,
+actual reference attachment count, each reference role/path/hash, raw source,
+and prompt path. For `native` and `codex`, use their provider documents and
+write an equivalent JSON report before finalization. It must contain `ok: true`,
+`asset_id`, `raw_source`, `raw_source_sha256`, `reference_attachment_count`, and a
+`generation` object with `tool: "image_gen"`. When references are supplied,
+that object must also record `reference_attachment_argument:
+"referenced_image_paths"` and the matching attachment count, and each
+`reference_inputs` item must preserve `role`, `path`, `sha256`, and
+`attached: true`. A missing report, provider failure, or absent attachment
+evidence is a STOP.
+
+Finalize only the provider/user source with the existing controlled tool:
+
+```bash
+python tools/asset_image_finalize.py \
+  --source .godotmaker/asset-generation/sources/<asset_id>_source.png \
+  --out references/<asset_id>.png \
+  --label <asset_id> \
+  --require-aspect <WIDTH:HEIGHT> \
+  --resize <WIDTHxHEIGHT> \
+  > .godotmaker/asset-generation/reports/<asset_id>_finalize.json
+```
+
+If aspect validation or finalization fails, STOP. The manager must use the
+captured finalize report to create the stable entry draft with
+`source_layout.type: reference`, `processing_status: source_ready`, and no
+`godot_artifact`; never hand-write that entry.
 
 ## Result
 
-Return the shared generic result with one `reference` output, no `godot_type`,
-and no runtime outputs:
+Return the shared generic result with one reference output, its deterministic
+raw source, no `godot_type`, and no runtime outputs. Run
+`standalone_validation.compile_and_validate()` before returning it; it replaces
+any caller-supplied validation claim and proves the stable final reference and
+raw source are readable PNG files.
+It begins from the shared result schema and checker, then proves the result.
 
 ```json
 {
@@ -49,7 +112,10 @@ and no runtime outputs:
     "name": "<asset_id>",
     "path": "references/<asset_id>.png"
   }],
-  "sources": [],
+  "sources": [{
+    "path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
+    "layout": "single"
+  }],
   "previews": [],
   "validation": {
     "passed": true,
@@ -58,5 +124,7 @@ and no runtime outputs:
 }
 ```
 
-If generation or aspect validation fails, report `validation.passed: false`
-with notes. Never present a screen reference as a worker-consumable asset.
+L2-L4 are not applicable because a screen reference has no Godot artifact and
+is never handed to a worker. Preserve the provider and finalize reports so the
+manager and private Eval can audit the production gates separately; L5 is not
+applicable and L6 is visual/semantic review.

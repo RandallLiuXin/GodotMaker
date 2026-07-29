@@ -38,9 +38,10 @@ python tools/asset_source_generate.py --spec <spec.json>
 ## Reference Images
 
 Put every required local reference in `reference_inputs` as
-`{"role":"canonical|style|screen","path":"<local path>"}`. Use only images
-listed by the production-unit brief or selected by the manager. The generator
-records each role and path in its provider report.
+`{ "role": "canonical|style|screen", "path": "<local image path>" }`. Use
+only images listed by the production-unit brief or selected by the manager. The
+tool validates that every input is readable, sends its actual file bytes through
+the image-edit endpoint, and records role/path/hash provenance in its report.
 
 When `reference_inputs` is non-empty, the source generator uses the OpenAI image
 edit endpoint and sends every listed reference image. One reference is sent as a
