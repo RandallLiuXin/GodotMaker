@@ -55,6 +55,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Pre-push checks now isolate temporary Git repositories from the invoking worktree's hook environment.
 - Platform-strip assets now retain controlled provider-source claims and validator-produced readiness evidence.
 - Platform-strip now requires a fixed cap/repeat/cap grid, preserves transparent cell bounds during deterministic slicing, and validates stable AtlasTexture regions against the real source sheet.
 - Background-map now preserves optional reference-image provenance, uses the declared provider without fallback, and deterministically finalizes non-pixel-art Texture2D backgrounds.

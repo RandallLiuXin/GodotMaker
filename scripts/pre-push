@@ -10,6 +10,10 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
+# Pytest creates independent temporary Git repositories. Hooks inherit this
+# worktree's Git metadata, so clear it before nested Git commands run.
+unset $(git rev-parse --local-env-vars)
+
 echo "[pre-push] Running CI-equivalent checks locally..."
 
 # 1. ruff (mirrors CI lint-python)
