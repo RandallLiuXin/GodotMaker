@@ -1,6 +1,6 @@
-# 项目配置
+﻿# 项目配置
 
-`.godotmaker/config.yaml` 是每个项目独立的配置文件，用来选择智能体运行时、角色模型、视觉 QA 模型和资源生成模型。它位于游戏项目目录中，因此不同游戏可以使用不同配置。
+`.godotmaker/config.yaml` 是每个项目独立的配置文件，用来选择智能体运行时、语言和单元测试后端、角色模型、视觉 QA 模型和资源生成模型。它位于游戏项目目录中，因此不同游戏可以使用不同配置。
 
 ## 文件如何创建
 
@@ -11,6 +11,14 @@
 **`pipeline.model`** — 可选的 `godotmaker-cli` 模型覆盖项，用于自动 build/evaluate 阶段。GodotMaker 框架会保留 `.godotmaker/config.yaml` 里的这个值，但不会直接消费它；请使用所选 agent runtime 支持的模型 ID，具体以 `godotmaker-cli` / GodotMakerApp 文档为准。
 
 **`agent`** — 当前项目选择的编码智能体运行时，例如 `claude-code`、`codex` 或 `opencode`。
+
+**`language_backend`** — 项目自有玩法代码的语言选择器。支持 `auto`、`gdscript` 和 `csharp`。`auto` 对空白脚手架项目保持默认 GDScript 路径，并在已经存在 `.sln` / `.csproj` 时识别已有 Godot .NET 项目。
+
+**`unit_test_backend`** — 单元测试选择器。支持 `auto`、`gdunit` 和 `dotnet`。`auto` 对 GDScript 项目使用 gdUnit4，对已有 C#/.NET 项目使用标准 .NET test 命令。
+
+**`dotnet_target`** — 当 `unit_test_backend` 解析为 `dotnet` 时使用的可选项目相对 solution 或 test project 路径。验证器能自动发现唯一明确的 `.sln` 或测试 `.csproj` 时可以省略；不要写成 `auto`，因为该字段会按路径解析。
+
+**`godot_csharp_project`** — 可选项目相对 Godot C# `.csproj` 路径，用于 build/import 检查；当它和 `dotnet_target` 不同时填写。
 
 **`worker_model`** — 编写游戏代码的 Claude 模型。默认是 `sonnet`；需要更强实现推理的游戏可改为 `opus`。
 
@@ -29,6 +37,11 @@
 
 ```yaml
 agent: claude-code
+
+language_backend: auto
+unit_test_backend: auto
+# dotnet_target: tests/MyGame.Tests/MyGame.Tests.csproj
+# godot_csharp_project: MyGame.csproj
 
 # 可选的 godotmaker-cli pipeline 模型覆盖项。
 # pipeline:
@@ -120,6 +133,15 @@ agent: codex
 godotmaker-cli --agent claude-code
 godotmaker-cli --agent codex
 godotmaker-cli --agent opencode
+```
+
+验证已有 Godot .NET 项目并指定 solution：
+
+```yaml
+language_backend: csharp
+unit_test_backend: dotnet
+dotnet_target: MyGame.sln
+godot_csharp_project: MyGame.csproj
 ```
 
 覆盖自动 pipeline 阶段使用的所选 agent 模型时，请使用当前 `godotmaker-cli` /

@@ -42,20 +42,26 @@ Section B to stdout. Capture stdout.
 
 What the script does:
 
-- Reads `godot_path` from `.claude/godotmaker.yaml`; falls back to
-  plain `godot` from PATH. A missing or broken binary surfaces as a
+- Selects one of the supported backend pairs from `.godotmaker/config.yaml`:
+  **GDScript + gdUnit** or **C# + dotnet test**. `language_backend` and
+  `unit_test_backend` may be explicit or `auto`; ambiguous detection is a
+  tooling error, never a silent fallback.
+- Reads `godot_path` from `.claude/godotmaker.yaml`; falls back to plain
+  `godot` from PATH. A missing or broken binary surfaces as a
   `tooling_notes[].suggested_fallback = "escalate"` entry.
-- Runs `<godot_path> --headless --quit` and writes blocking Godot diagnostics
-  to `checks.build.errors[]`.
-- Runs `<godot_path> --headless ... res://addons/gdUnit4/bin/GdUnitCmdTool.gd
-  --ignoreHeadlessMode --add res://test/ --report-directory <temp>` and
-  parses the generated JUnit XML into
-  `checks.unit_tests.{passed, failed, failures[]}`. Stdout is diagnostic
-  fallback only.
-- Stubs `checks.lint` as `pass` with `format_drift: null`. Do NOT
-  re-enable here.
-- Delegates `checks.static_check` to
-  `python tools/check_project.py <project_dir> --build --ecs --tests --plan --mcp`.
+- For GDScript, runs the existing Godot headless build and gdUnit command,
+  parsing JUnit XML as before.
+- For C#, runs `dotnet build <dotnet_target>`, builds the declared
+  `godot_csharp_project` separately when needed, then runs Godot Mono
+  headless. Unit tests run through `dotnet test --no-build --no-restore
+  --logger trx`; the runner parses every generated TRX file rather than
+  trusting stdout.
+- Stubs `checks.lint` as `pass` with `format_drift: null`. Do NOT re-enable
+  here.
+- Delegates common static checks to `check_project.py`. GDScript projects
+  also run gecs Component/System and gdUnit discovery. C# projects report
+  those checks as **SKIP / N/A** in `checks.static_check.skipped_checks`;
+  they are not counted as passed checks.
 - Exit code 0 = ran to completion (per-check pass/fail is in the JSON).
 
 ## Sanity-check the script output
@@ -67,7 +73,9 @@ Before writing the report, validate. Block on any of these:
 - Any of the four `checks.{build,unit_tests,lint,static_check}`
   entries is absent
 - `result == "pass"` but `tooling_notes` is non-empty — re-run or escalate
-- `checks.unit_tests.passed + .failed == 0` — spot-check by running the gdUnit4 command directly with `--report-directory <temp>`
+- `checks.unit_tests.passed + .failed + .skipped == 0` — spot-check with the
+  backend-selected command: gdUnit with `--report-directory <temp>`, or
+  `dotnet test` with a fresh TRX results directory.
 - Any `tooling_notes` entry whose `crashed_on` looks unrelated to the
   failing check
 
@@ -88,12 +96,14 @@ command for the chat side.
 ## Verification Report
 
 ### Build
+Backend: GDScript | C#
 Result: PASS | FAIL
 {If FAIL, one line per checks.build.errors[] entry: `- {file}:{line}: {message}` (file/line may be empty)}
 
 ### Unit Tests
+Framework: gdunit | dotnet
 Result: PASS | FAIL
-{N passed, M failed}
+{N passed, M failed, K skipped}
 {If FAIL, one line per checks.unit_tests.failures[]: `- {test}: {message}`}
 
 ### Lint
@@ -102,6 +112,7 @@ Status: SKIP (gdtoolkit disabled — ROADMAP R-112)
 ### Static Check
 Result: PASS | FAIL
 {If FAIL, one line per checks.static_check.issues[]: `- {check}: {detail}`}
+{For each skipped check: `- SKIP / N/A: {check}: {reason}`}
 
 ### Overall: PASS | FAIL
 
@@ -121,6 +132,13 @@ Schema:
 {
   "result": "pass | fail",
   "ts": "<UTC ISO 8601 timestamp, e.g. 2026-05-07T14:23:00Z>",
+  "backend": {
+    "language": "gdscript | csharp",
+    "unit_tests": "gdunit | dotnet",
+    "selection": "config | auto | legacy-default",
+    "dotnet_target": null,
+    "godot_csharp_project": null
+  },
   "checks": {
     "build": {
       "result": "pass | fail | error",
@@ -130,8 +148,11 @@ Schema:
     },
     "unit_tests": {
       "result": "pass | warn | fail | error",
+      "framework": "gdunit | dotnet",
+      "total": 624,
       "passed": 624,
       "failed": 0,
+      "skipped": 0,
       "failures": [
         {"test": "test_player_input::test_jump", "message": "expected 10, got 0"}
       ],
@@ -153,6 +174,9 @@ Schema:
       "result": "pass | fail | error",
       "issues": [
         {"check": "missing_unit_test", "detail": "s_level_up_overlay has no test"}
+      ],
+      "skipped_checks": [
+        {"check": "gdscript_gecs", "reason": "N/A for language_backend=csharp"}
       ]
     }
   },

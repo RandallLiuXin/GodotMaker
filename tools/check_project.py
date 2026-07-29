@@ -29,7 +29,18 @@ from agent_runtime import (
 )
 from godot_output import classify_godot_headless_output
 
+try:
+    from verification_backend import (
+        BackendSelectionError,
+        select_verification_backend,
+    )
+except ImportError:  # pragma: no cover - legacy installs do not ship selector yet
+    BackendSelectionError = None
+    select_verification_backend = None
+
 PLACEHOLDER_KEYWORDS = ["placeholder", "todo", "stub", "not implemented"]
+CSHARP_BACKEND = "csharp"
+GDSCRIPT_BACKEND = "gdscript"
 
 
 class CheckResult:
@@ -37,6 +48,8 @@ class CheckResult:
         self.passed = []
         self.failed = []
         self.warnings = []
+        self.skipped = []
+        self.errors = []
 
     def ok(self, msg: str):
         self.passed.append(msg)
@@ -50,9 +63,24 @@ class CheckResult:
         self.warnings.append(msg)
         print(f"[WARN] {msg}")
 
+    def skip(self, msg: str):
+        self.skipped.append(msg)
+        print(f"[SKIP] {msg}")
+
+    def error(self, msg: str):
+        self.errors.append(msg)
+        print(f"[ERROR] {msg}")
+
     @property
     def success(self) -> bool:
-        return len(self.failed) == 0
+        return len(self.failed) == 0 and len(self.errors) == 0
+
+
+def detect_language_backend(project_dir: Path) -> str:
+    if select_verification_backend is None:
+        return GDSCRIPT_BACKEND
+    selection = select_verification_backend(project_dir)
+    return selection.language_backend
 
 
 def find_gd_files(project_dir: Path, pattern: str) -> list[Path]:
@@ -107,7 +135,102 @@ def _run_headless_godot(godot_path: str, project_dir: Path
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
-def check_build(project_dir: Path, result: CheckResult):
+def _run_godot_version(godot_path: str) -> tuple[int, str]:
+    """Return the configured Godot executable's version output."""
+    proc = subprocess.run(
+        [godot_path, "--version"],
+        capture_output=True, text=True, encoding="utf-8",
+        errors="replace", timeout=15,
+    )
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+def _git_output(proc: subprocess.CompletedProcess) -> str:
+    return ((proc.stderr or "") + (proc.stdout or "")).strip()
+
+
+def _is_unborn_head(output: str) -> bool:
+    lowered = output.lower()
+    return (
+        "ambiguous argument 'head'" in lowered
+        or "unknown revision" in lowered
+        or "needed a single revision" in lowered
+        or "bad revision 'head'" in lowered
+    )
+
+
+def _is_dubious_ownership(output: str) -> bool:
+    lowered = output.lower()
+    return "dubious ownership" in lowered or "safe.directory" in lowered
+
+
+def _git_safe_directory_path(project_dir: Path) -> str:
+    return project_dir.resolve().as_posix()
+
+
+def _check_git_head(project_dir: Path, result: CheckResult):
+    base_cmd = ["git", "-C", str(project_dir), "rev-parse", "--verify", "HEAD^{commit}"]
+    try:
+        proc = subprocess.run(base_cmd, capture_output=True, text=True, timeout=10)
+    except FileNotFoundError:
+        result.error("git executable not found; cannot verify HEAD")
+        return
+    except subprocess.TimeoutExpired:
+        result.error("git rev-parse --verify HEAD^{commit} timed out")
+        return
+
+    if proc.returncode == 0 and proc.stdout.strip():
+        result.ok(f"git HEAD resolves ({proc.stdout.strip()[:8]})")
+        return
+
+    output = _git_output(proc)
+    if _is_unborn_head(output):
+        result.fail(".git/ exists but HEAD does not resolve "
+                    "(no commits yet — run `git commit`)")
+        return
+    if not _is_dubious_ownership(output):
+        detail = output or "no git stdout/stderr output"
+        result.error(f"git rev-parse HEAD failed: {detail[:240]}")
+        return
+
+    safe_directory = _git_safe_directory_path(project_dir)
+    retry_cmd = [
+        "git", "-c", f"safe.directory={safe_directory}",
+        "-C", str(project_dir), "rev-parse", "--verify", "HEAD^{commit}",
+    ]
+    try:
+        retry = subprocess.run(
+            retry_cmd, capture_output=True, text=True, timeout=10,
+        )
+    except FileNotFoundError:
+        result.error("git executable not found during dubious ownership retry")
+        return
+    except subprocess.TimeoutExpired:
+        result.error("git rev-parse timed out after dubious ownership retry")
+        return
+
+    if retry.returncode == 0 and retry.stdout.strip():
+        result.warn(
+            "git HEAD resolves after command-level safe.directory "
+            f"({retry.stdout.strip()[:8]}; safe.directory={safe_directory})"
+        )
+        return
+    detail = _git_output(retry) or "no git stdout/stderr output"
+    result.error(
+        "git dubious ownership retry failed with command-level "
+        f"safe.directory={safe_directory}: {detail[:240]}"
+    )
+
+
+def check_git(project_dir: Path, result: CheckResult):
+    print("\n--- Git HEAD ---")
+    if not (project_dir / ".git").exists():
+        result.fail(".git/ missing ? worker worktree isolation needs HEAD")
+    else:
+        _check_git_head(project_dir, result)
+
+
+def check_build(project_dir: Path, result: CheckResult, language_backend: str):
     """gm-scaffold readiness check — all of Step 4 in one command.
 
     Verifies (in order):
@@ -137,6 +260,9 @@ def check_build(project_dir: Path, result: CheckResult):
 
     # 2. Required addon directories and addon-only shape
     for addon, contract in SCAFFOLD_ADDON_CONTRACTS.items():
+        if language_backend == CSHARP_BACKEND and addon in {"gecs", "gdUnit4"}:
+            result.skip(f"C# backend skips {addon} addon contract")
+            continue
         addon_path = contract["path"]
         addon_dir = project_dir / addon_path
         if addon_dir.is_dir():
@@ -190,20 +316,7 @@ def check_build(project_dir: Path, result: CheckResult):
     if not (project_dir / ".git").exists():
         result.fail(".git/ missing — worker worktree isolation needs HEAD")
     else:
-        try:
-            proc = subprocess.run(
-                ["git", "-C", str(project_dir), "rev-parse", "HEAD"],
-                capture_output=True, text=True, timeout=10,
-            )
-            if proc.returncode == 0 and proc.stdout.strip():
-                result.ok(f"git HEAD resolves ({proc.stdout.strip()[:8]})")
-            else:
-                result.fail(".git/ exists but HEAD does not resolve "
-                            "(no commits yet — run `git commit`)")
-        except FileNotFoundError:
-            result.warn("git executable not found — skipping HEAD check")
-        except subprocess.TimeoutExpired:
-            result.warn("git rev-parse timed out — check the repo manually")
+        _check_git_head(project_dir, result)
 
     # 7. Headless parse
     godot_path = read_godot_path(project_dir)
@@ -215,6 +328,30 @@ def check_build(project_dir: Path, result: CheckResult):
         )
         return
     godot_path = prefer_console_godot_path(godot_path)
+    if language_backend == CSHARP_BACKEND:
+        try:
+            version_rc, version_output = _run_godot_version(godot_path)
+        except FileNotFoundError:
+            result.fail(f"godot executable not found at {godot_path!r} — "
+                        f"fix {config_path} or re-run publish")
+            return
+        except subprocess.TimeoutExpired:
+            result.fail("godot --version did not finish within 15s")
+            return
+        version = version_output.strip().splitlines()
+        version_label = version[-1] if version else "(no version output)"
+        if version_rc != 0:
+            result.fail(
+                f"C# backend could not query Godot Mono/.NET version: {version_label}"
+            )
+            return
+        if "mono" not in version_output.lower():
+            result.fail(
+                "C# backend requires Godot Mono/.NET; "
+                f"configured executable reports {version_label}"
+            )
+            return
+        result.ok(f"Godot Mono/.NET runtime detected ({version_label})")
     try:
         rc, output = _run_headless_godot(godot_path, project_dir)
     except FileNotFoundError:
@@ -241,9 +378,12 @@ def check_build(project_dir: Path, result: CheckResult):
         )
 
 
-def check_ecs(project_dir: Path, result: CheckResult):
+def check_ecs(project_dir: Path, result: CheckResult, language_backend: str):
     """Check ECS framework (gecs) setup."""
     print("\n--- ECS (gecs) ---")
+    if language_backend == CSHARP_BACKEND:
+        result.skip("C# backend skips GDScript/gecs ECS scan")
+        return
 
     # Check gecs addon
     gecs_dir = project_dir / "addons" / "gecs"
@@ -297,9 +437,12 @@ def check_ecs(project_dir: Path, result: CheckResult):
         result.fail("No System files found (files extending System)")
 
 
-def check_tests(project_dir: Path, result: CheckResult):
+def check_tests(project_dir: Path, result: CheckResult, language_backend: str):
     """Check that unit tests exist for systems."""
     print("\n--- Unit Tests (gdUnit4) ---")
+    if language_backend == CSHARP_BACKEND:
+        result.skip("C# backend skips gdUnit4/GDScript unit-test scan")
+        return
 
     # Check gdUnit4 addon
     gdunit_dir = project_dir / "addons" / "gdUnit4"
@@ -527,6 +670,7 @@ def main():
     parser.add_argument("--ecs", action="store_true", help="Check ECS (gecs) setup")
     parser.add_argument("--tests", action="store_true", help="Check unit test coverage")
     parser.add_argument("--e2e", action="store_true", help="Check e2e test setup")
+    parser.add_argument("--git", action="store_true", help="Check git HEAD only")
     parser.add_argument("--plan", action="store_true", help="Check planning documents")
     parser.add_argument("--mcp", action="store_true", help="Check MCP registration")
     parser.add_argument("--all", action="store_true", help="Run all checks")
@@ -539,21 +683,39 @@ def main():
         sys.exit(2)
 
     run_all = args.all or not any([
-        args.build, args.ecs, args.tests, args.e2e, args.plan, args.mcp
+        args.build, args.ecs, args.tests, args.e2e, args.git, args.plan, args.mcp
     ])
 
     result = CheckResult()
 
     print(f"Checking project: {project_dir}")
+    try:
+        language_backend = detect_language_backend(project_dir)
+    except Exception as exc:
+        if BackendSelectionError is not None and isinstance(exc, BackendSelectionError):
+            result.error(f"verification backend selection failed: {exc}")
+            print(f"\n{'='*50}")
+            print("Total: 1 checks")
+            print("  PASS: 0")
+            print("  FAIL: 0")
+            print("  WARN: 0")
+            print("  SKIP: 0")
+            print("  ERROR: 1")
+            print("\nResult: CHECKS FAILED")
+            sys.exit(1)
+        raise
+    print(f"Language backend: {language_backend}")
 
     if run_all or args.build:
-        check_build(project_dir, result)
+        check_build(project_dir, result, language_backend)
     if run_all or args.ecs:
-        check_ecs(project_dir, result)
+        check_ecs(project_dir, result, language_backend)
     if run_all or args.tests:
-        check_tests(project_dir, result)
+        check_tests(project_dir, result, language_backend)
     if run_all or args.e2e:
         check_e2e(project_dir, result)
+    if args.git:
+        check_git(project_dir, result)
     if run_all or args.plan:
         check_plan(project_dir, result)
     if run_all or args.mcp:
@@ -561,11 +723,16 @@ def main():
 
     # Summary
     print(f"\n{'='*50}")
-    total = len(result.passed) + len(result.failed) + len(result.warnings)
+    total = (
+        len(result.passed) + len(result.failed) + len(result.warnings)
+        + len(result.skipped) + len(result.errors)
+    )
     print(f"Total: {total} checks")
     print(f"  PASS: {len(result.passed)}")
     print(f"  FAIL: {len(result.failed)}")
     print(f"  WARN: {len(result.warnings)}")
+    print(f"  SKIP: {len(result.skipped)}")
+    print(f"  ERROR: {len(result.errors)}")
 
     if result.success:
         print("\nResult: ALL CHECKS PASSED")
@@ -574,6 +741,8 @@ def main():
         print("Failed checks:")
         for f in result.failed:
             print(f"  - {f}")
+        for e in result.errors:
+            print(f"  - {e}")
 
     sys.exit(0 if result.success else 1)
 

@@ -1,6 +1,6 @@
-# Project config
+﻿# Project config
 
-`.godotmaker/config.yaml` is per-project: it selects the agent runtime, role models, visual QA model, and asset generation model for a game project. It lives inside the project folder, so different games can use different settings.
+`.godotmaker/config.yaml` is per-project: it selects the agent runtime, language and unit test backends, role models, visual QA model, and asset generation model for a game project. It lives inside the project folder, so different games can use different settings.
 
 ## How it gets created
 
@@ -13,6 +13,14 @@ Framework developers and manual-mode users can still create the same file with `
 **`pipeline.model`** - optional `godotmaker-cli` model override for automated build/evaluate stages. The GodotMaker framework preserves this value in `.godotmaker/config.yaml` but does not consume it directly; use a model ID supported by the selected agent runtime, as documented by `godotmaker-cli` / GodotMakerApp.
 
 **`agent`** — selected coding-agent runtime, such as `claude-code`, `codex`, or `opencode`.
+
+**`language_backend`** — project-owned gameplay language selector. Supported values are `auto`, `gdscript`, and `csharp`. `auto` keeps the default GDScript path for empty scaffolded projects and recognizes existing Godot .NET projects when `.sln` / `.csproj` files are already present.
+
+**`unit_test_backend`** - unit test selector. Supported values are `auto`, `gdunit`, and `dotnet`. `auto` uses gdUnit4 for GDScript projects and standard .NET test commands for existing C#/.NET projects.
+
+**`dotnet_target`** - optional project-relative solution or test project path used when `unit_test_backend` resolves to `dotnet`. Omit it when the verifier can auto-discover a single obvious `.sln` or test `.csproj`; do not set it to `auto` because this field is parsed as a path.
+
+**`godot_csharp_project`** - optional project-relative Godot C# `.csproj` used for build/import checks when it differs from `dotnet_target`.
 
 **`worker_model`** — which Claude model writes game code. Defaults to `sonnet`; set it to `opus` for games that need heavier implementation reasoning.
 
@@ -34,6 +42,11 @@ The default config looks like this:
 # Deployed to .godotmaker/config.yaml by publish script
 
 agent: claude-code
+
+language_backend: auto
+unit_test_backend: auto
+# dotnet_target: tests/MyGame.Tests/MyGame.Tests.csproj
+# godot_csharp_project: MyGame.csproj
 
 # Optional godotmaker-cli pipeline model override.
 # pipeline:
@@ -128,6 +141,15 @@ To use OpenAI for API-backed image generation:
 
 ```yaml
 asset_image_model: openai:gpt-image-2
+```
+
+To verify an existing Godot .NET project with a specific solution:
+
+```yaml
+language_backend: csharp
+unit_test_backend: dotnet
+dotnet_target: MyGame.sln
+godot_csharp_project: MyGame.csproj
 ```
 
 To override the selected agent model used for automated pipeline stages, use a
