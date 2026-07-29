@@ -43,14 +43,14 @@ Honor the requested provider exactly. `native`, `codex`, `gemini`, and `openai` 
 6. Split the normalized source with the owned deterministic tools:
 
    ```powershell
-   python tools/asset_sheet_process.py --source <normalized-source> --out-dir <processed-dir> --grid <columns>x<rows> --names <segment-names-in-slot-order> --background transparent --snap-mode grid --preserve-cell-bounds --report <sheet-report.json>
+   python tools/asset_sheet_process.py --source <normalized-source> --out-dir <processed-dir> --grid <columns>x<rows> --names <segment-names-in-slot-order> --background magenta --snap-mode grid --preserve-cell-bounds --report <sheet-report.json>
    ```
 
-   Use the report to reject missing art, a non-transparent background, opaque magenta pixels, edge-touching art that breaks the declared slot, or a cell that does not retain its fixed dimensions.
+   Use `magenta` here even after normalization: the provider sheet may retain chroma-key pixels outside the visible AABB. Use the report to reject missing art, opaque magenta pixels, edge-touching art that breaks the declared slot, or a cell that does not retain its fixed dimensions.
 
 7. For `kind: "single"`, publish every processed cell at `res://assets/generated/platform-strip/<asset_id>/<segment>.png` and return it as `Texture2D`.
 8. For `kind: "atlas"`, create an explicit fixed-slot declaration from the processed cells. Assemble it only with `tools/asset_atlas_assemble.py`; publish `<asset_id>.png` and `<asset_id>.json` in the stable platform-strip directory. Each metadata region uses the declared slot rectangle, `pivot: [0.5, 1.0]`, and `nine_slice: null`. Compile every logical region to `res://assets/generated/platform-strip/<asset_id>/<segment>.tres` as `AtlasTexture` with zero margin.
-9. Run `standalone_validation.compile_and_validate()` with the configured Godot executable before returning. Save its actual L0-L4 result at `.godotmaker/asset-generation/reports/<asset_id>_validation.json`; do not substitute a self-reported verdict.
+9. Run `standalone_validation.compile_and_validate()` with exactly `GM_EVAL_GODOT_PATH` or `GODOT_BIN` when either is configured; do not search for or substitute another Godot executable. Save its actual L0-L4 result at `.godotmaker/asset-generation/reports/<asset_id>_validation.json`; do not substitute a self-reported verdict.
 
 ## Result
 
