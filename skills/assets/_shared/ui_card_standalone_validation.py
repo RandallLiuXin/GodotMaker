@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
+import subprocess
 from typing import Any
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry, theme
@@ -18,7 +19,7 @@ class UICardSkillError(Exception):
     """Raised when a standalone UI/card request-result pair cannot enter L0."""
 
 
-_LEVELS = ("L0", "L1", "L2", "L3", "L4")
+_LEVELS = ("L0", "L1", "L2", "L3", "L4", "L5")
 
 
 def _mapped_result(result: Mapping[str, Any], levels: Mapping[str, bool], *, error: str | None = None) -> dict[str, Any]:
@@ -77,6 +78,34 @@ def _l1_paths(spec: Mapping[str, Any]) -> list[str]:
     for region in spec["atlas_regions"]:
         paths.extend((region["source_path"], region["metadata_path"]))
     return paths
+
+
+def _run_consumer_smoke(root: Path, godot_path: str, theme_path: str) -> None:
+    """Bind the generated Theme to representative Controls without creating art."""
+    script = root / ".godotmaker" / "ui-card-consumer-smoke.gd"
+    script.parent.mkdir(parents=True, exist_ok=True)
+    script.write_text(
+        "extends SceneTree\n"
+        "func _init():\n"
+        f"    var theme = load(\"{theme_path}\") as Theme\n"
+        "    if theme == null:\n"
+        "        push_error(\"UI consumer could not load Theme\")\n"
+        "        quit(1)\n"
+        "        return\n"
+        "    for control in [Button.new(), Panel.new(), PanelContainer.new(), LineEdit.new(), TextEdit.new(), ProgressBar.new(), TabBar.new(), TabContainer.new(), CheckBox.new(), CheckButton.new(), HSlider.new(), VSlider.new(), HScrollBar.new(), VScrollBar.new(), OptionButton.new(), PopupMenu.new()]:\n"
+        "        control.theme = theme\n"
+        "        root.add_child(control)\n"
+        "    print(\"UI_CARD_CONSUMER_SMOKE_OK\")\n"
+        "    quit()\n",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        [godot_path, "--headless", "--path", str(root), "--script", str(script)],
+        capture_output=True, text=True, timeout=60, check=False,
+    )
+    if completed.returncode != 0 or "UI_CARD_CONSUMER_SMOKE_OK" not in completed.stdout:
+        details = (completed.stdout + "\n" + completed.stderr).strip()
+        raise ValidationError(f"UI consumer smoke failed: {details or completed.returncode}")
 
 
 def compile_and_validate(
@@ -185,4 +214,9 @@ def compile_and_validate(
             )
     except ValidationError as exc:
         return _failure(result, passed, "L4", exc)
+    passed.append("L4")
+    try:
+        _run_consumer_smoke(root, godot_path, spec["theme"]["output_name"] and runtime[spec["theme"]["output_name"]]["path"])
+    except (OSError, subprocess.SubprocessError, ValidationError) as exc:
+        return _failure(result, passed, "L5", exc)
     return _mapped_result(result, {level: True for level in _LEVELS})

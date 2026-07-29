@@ -42,7 +42,7 @@ SOURCE_LAYOUTS = {
     "theme_recipe",
     "tile_atlas",
 }
-VALIDATION_LEVELS = {"L0", "L1", "L2", "L3", "L4"}
+VALIDATION_LEVELS = {"L0", "L1", "L2", "L3", "L4", "L5"}
 
 ASSET_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 GODOT_TYPE_PATTERN = re.compile(r"^[A-Z][A-Za-z0-9]+$")

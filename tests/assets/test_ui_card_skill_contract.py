@@ -263,17 +263,18 @@ def test_family_contract_allows_a_declared_resource_bundle_without_theme(tmp_pat
 
 
 @pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
-def test_standalone_runner_executes_l0_to_l4_for_every_runtime_output(tmp_path, monkeypatch, family):
+def test_standalone_runner_executes_l0_to_l5_for_every_runtime_output(tmp_path, monkeypatch, family):
     request = _request(family)
     result = _result(request)
     _write_sources(tmp_path, request)
     monkeypatch.setattr(GodotProbe, "probe", _good_probe(request, result))
+    monkeypatch.setattr("ui_card_standalone_validation._run_consumer_smoke", lambda *args: None)
 
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
     assert validated["validation"] == {
         "passed": True,
-        "levels": {"L0": True, "L1": True, "L2": True, "L3": True, "L4": True},
+        "levels": {"L0": True, "L1": True, "L2": True, "L3": True, "L4": True, "L5": True},
     }
     assert all((tmp_path / item["path"].removeprefix("res://")).is_file() for item in result["outputs"])
 
@@ -284,7 +285,7 @@ def test_standalone_runner_maps_missing_source_to_l1(tmp_path):
 
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
-    assert validated["validation"]["levels"] == {"L0": True, "L1": False, "L2": False, "L3": False, "L4": False}
+    assert validated["validation"]["levels"] == {"L0": True, "L1": False, "L2": False, "L3": False, "L4": False, "L5": False}
 
 
 @pytest.mark.parametrize(("adapter", "other"), [("ui-kit", "card-kit"), ("card-kit", "ui-kit")])
@@ -327,7 +328,7 @@ def test_standalone_runner_maps_invalid_nine_slice_to_l2(tmp_path):
 
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
-    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": False, "L3": False, "L4": False}, validated["validation"]["notes"]
+    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": False, "L3": False, "L4": False, "L5": False}, validated["validation"]["notes"]
     assert "border exceeds" in validated["validation"]["notes"]
 
 
@@ -347,7 +348,7 @@ def test_standalone_runner_maps_missing_declared_atlas_region_to_l2(tmp_path):
 
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
-    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": False, "L3": False, "L4": False}
+    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": False, "L3": False, "L4": False, "L5": False}
     assert "declares no region" in validated["validation"]["notes"]
 
 
@@ -410,7 +411,7 @@ def test_standalone_runner_maps_godot_type_failure_to_l3(tmp_path, monkeypatch):
     monkeypatch.setattr(GodotProbe, "probe", wrong_type)
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
-    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": True, "L3": False, "L4": False}
+    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": True, "L3": False, "L4": False, "L5": False}
 
 
 def test_standalone_runner_maps_structure_failure_to_l4(tmp_path, monkeypatch):
@@ -428,7 +429,7 @@ def test_standalone_runner_maps_structure_failure_to_l4(tmp_path, monkeypatch):
     monkeypatch.setattr(GodotProbe, "probe", invalid_structure)
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
-    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": True, "L3": True, "L4": False}
+    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": True, "L3": True, "L4": False, "L5": False}
 
 
 def test_standalone_runner_maps_requested_theme_variation_mismatch_to_l4(tmp_path, monkeypatch):
@@ -439,5 +440,5 @@ def test_standalone_runner_maps_requested_theme_variation_mismatch_to_l4(tmp_pat
 
     validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
 
-    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": True, "L3": True, "L4": False}
+    assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": True, "L3": True, "L4": False, "L5": False}
     assert "requested variation" in validated["validation"]["notes"]

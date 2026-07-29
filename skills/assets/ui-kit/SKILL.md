@@ -76,6 +76,18 @@ manifests, stable entries, or worker dispatch state.
    loading; L6 visual review is an independent Eval layer. A failed
    state, atlas rectangle, Theme binding, consumer load, or trace is not ready.
 
+For all Godot validation commands, use the configured `GODOT_BIN` executable
+when it is present. Do not assume that a `godot` command is on `PATH`, and do
+not substitute another Godot installation. If no configured executable can run
+the required validation, return a failed result rather than claiming readiness.
+
+## Return format
+
+Finish with exactly one generic Asset Skill result JSON object. On success it
+is the validated result; on STOP it has the same generic keys, no outputs, and
+`validation.passed: false` with a concrete note. Do not replace that object
+with prose, Markdown links, or a summary: callers use it as the handoff.
+
 The worker owns final `Control` and `Container` page layout. The returned
 Theme, StyleBoxes, and AtlasTextures are the reusable visual system; a
 reference establishes visual language, not pixel-perfect screen layout.
