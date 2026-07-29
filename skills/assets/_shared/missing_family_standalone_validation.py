@@ -205,29 +205,52 @@ def _check_screen_reference(
 def _check_platform(
     request: Mapping[str, Any], result: Mapping[str, Any]
 ) -> list[tuple[Mapping[str, Any], CompileRequest]]:
-    spec = _exact_keys(request.get("spec"), {"kind", "segments"}, "platform-strip spec")
+    spec = _exact_keys(
+        request.get("spec"), {"kind", "grid", "segments"}, "platform-strip spec"
+    )
     kind = spec.get("kind")
+    grid = _exact_keys(
+        spec.get("grid"), {"columns", "rows", "cell_width", "cell_height"},
+        "platform-strip grid",
+    )
     segments = spec.get("segments")
     if (
         kind not in {"single", "atlas"}
         or not isinstance(segments, list)
-        or not segments
+        or len(segments) < 3
+        or any(type(grid.get(key)) is not int or grid[key] <= 0 for key in grid)
     ):
         raise MissingFamilySkillError(
-            "platform-strip spec needs kind single/atlas and non-empty segments"
+            "platform-strip spec needs kind, a positive fixed grid, and at least three segments"
         )
     asset_id = request["asset_id"]
     expected: list[tuple[Mapping[str, Any], CompileRequest]] = []
     sources: set[tuple[str, str]] = set()
     names: set[str] = set()
+    slots: set[tuple[int, int]] = set()
+    roles: list[str] = []
     for item in segments:
-        entry = _exact_keys(item, {"name"}, "platform-strip segment")
+        entry = _exact_keys(item, {"name", "role", "slot"}, "platform-strip segment")
         name = entry.get("name")
-        if not isinstance(name, str) or not name or name in names:
+        role = entry.get("role")
+        slot = entry.get("slot")
+        if (
+            not isinstance(name, str)
+            or not name
+            or name in names
+            or role not in {"left_cap", "repeat_middle", "right_cap"}
+            or not isinstance(slot, list)
+            or len(slot) != 2
+            or any(type(value) is not int for value in slot)
+            or not (0 <= slot[0] < grid["columns"] and 0 <= slot[1] < grid["rows"])
+            or tuple(slot) in slots
+        ):
             raise MissingFamilySkillError(
-                "platform-strip segment names must be unique non-empty strings"
+                "platform-strip segments need unique names, valid roles, and unique grid slots"
             )
         names.add(name)
+        slots.add(tuple(slot))
+        roles.append(role)
         if kind == "single":
             path = _stable_path("platform-strip", asset_id, name, ".png")
             sources.add((path, "single"))
@@ -272,6 +295,14 @@ def _check_platform(
                     ),
                 )
             )
+    if (
+        roles.count("left_cap") != 1
+        or roles.count("right_cap") != 1
+        or roles.count("repeat_middle") < 1
+    ):
+        raise MissingFamilySkillError(
+            "platform-strip needs exactly one left_cap, one right_cap, and at least one repeat_middle"
+        )
     actual = {
         (item.get("name"), item.get("path"), item.get("godot_type"))
         for item in _runtime(result)
@@ -598,6 +629,117 @@ def _verify_prop_delivery(
         )
 
 
+def _verify_platform_png(
+    path: Path, expected_dimensions: tuple[int, int]
+) -> None:
+    """Verify a processed platform cell or atlas keeps transparent non-art pixels."""
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise ValidationError("Pillow is required to validate platform-strip PNG images") from exc
+    try:
+        with Image.open(path) as image:
+            if image.format != "PNG" or image.mode != "RGBA":
+                raise ValidationError("platform-strip output must be an RGBA PNG")
+            image.load()
+            if image.size != expected_dimensions:
+                raise ValidationError("platform-strip output dimensions do not match its fixed grid")
+            pixels = list(image.get_flattened_data())
+    except (OSError, SyntaxError, ValueError) as exc:
+        raise ValidationError(f"platform-strip output is not a decodable PNG: {path}") from exc
+    if not any(pixel[3] == 0 for pixel in pixels):
+        raise ValidationError("platform-strip output must retain transparent background pixels")
+    if any(pixel[:3] == (255, 0, 255) and pixel[3] > 0 for pixel in pixels):
+        raise ValidationError("platform-strip output contains opaque magenta background pixels")
+
+
+def _verify_platform_source_and_references(
+    request: Mapping[str, Any], root: Path
+) -> None:
+    """Verify the real source and any optional image inputs are readable project files."""
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise ValidationError("Pillow is required to validate platform-strip image inputs") from exc
+
+    paths = [
+        (f".godotmaker/asset-generation/sources/{request['asset_id']}_source.png", "raw provider source")
+    ]
+    paths.extend((item["path"], f"platform-strip reference {item['role']}") for item in request.get("references", []))
+    for path, label in paths:
+        file = _project_file(root, path, label)
+        if not file.is_file() or file.stat().st_size <= 0:
+            raise ValidationError(f"{label} is not a non-empty readable file: {path}")
+        try:
+            with Image.open(file) as image:
+                image.verify()
+            with Image.open(file) as image:
+                image.load()
+        except (OSError, SyntaxError, ValueError) as exc:
+            raise ValidationError(f"{label} is not a decodable image: {path}") from exc
+
+
+def _verify_platform_delivery(
+    request: Mapping[str, Any], declarations: list[tuple[Mapping[str, Any], CompileRequest]], root: Path
+) -> None:
+    """Bind platform-strip cells, atlas regions, and transparency to its fixed slot contract."""
+    family, asset_id, spec = request["asset_type"], request["asset_id"], request["spec"]
+    grid = spec["grid"]
+    cell_size = (grid["cell_width"], grid["cell_height"])
+    _verify_platform_source_and_references(request, root)
+    if spec["kind"] == "single":
+        for _, declaration in declarations:
+            source = _l1_file(root, declaration.source_path, family=family, asset_id=asset_id)
+            _verify_platform_png(source, cell_size)
+        return
+
+    declaration = declarations[0][1]
+    atlas = _l1_file(root, declaration.source_path, family=family, asset_id=asset_id)
+    metadata = _l1_file(root, declaration.spec["metadata_path"], family=family, asset_id=asset_id)
+    if not atlas.is_file() or atlas.stat().st_size <= 0:
+        raise ValidationError(f"standalone source is not a non-empty file: {declaration.source_path}")
+    if not metadata.is_file() or metadata.stat().st_size <= 0:
+        raise ValidationError(f"atlas metadata is not a non-empty file: {declaration.spec['metadata_path']}")
+    try:
+        delivered = json.loads(metadata.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValidationError(f"atlas metadata is not valid JSON: {metadata}") from exc
+    if not isinstance(delivered, Mapping) or set(delivered) != {"version", "atlas_path", "regions"}:
+        raise ValidationError("platform-strip atlas metadata must contain exactly version, atlas_path, and regions")
+    if delivered.get("version") != 1 or delivered.get("atlas_path") != declaration.source_path:
+        raise ValidationError("platform-strip atlas metadata does not bind the delivered stable atlas path")
+    regions = delivered.get("regions")
+    if not isinstance(regions, list):
+        raise ValidationError("platform-strip atlas metadata regions must be a list")
+    expected = {
+        item["name"]: [
+            item["slot"][0] * cell_size[0], item["slot"][1] * cell_size[1], *cell_size
+        ]
+        for item in spec["segments"]
+    }
+    actual: dict[str, list[int]] = {}
+    for region in regions:
+        if (
+            not isinstance(region, Mapping)
+            or set(region) != {"name", "rect", "pivot", "nine_slice"}
+            or not isinstance(region.get("name"), str)
+            or not isinstance(region.get("rect"), list)
+            or len(region["rect"]) != 4
+            or any(type(value) is not int for value in region["rect"])
+            or region["name"] in actual
+            or region.get("pivot") != [0.5, 1.0]
+            or region.get("nine_slice") is not None
+        ):
+            raise ValidationError("platform-strip atlas metadata regions must use declared rects and bottom-center pivots")
+        actual[region["name"]] = region["rect"]
+    if actual != expected:
+        raise ValidationError("platform-strip atlas metadata regions must exactly match declared slots")
+    _verify_platform_png(
+        atlas,
+        (grid["columns"] * cell_size[0], grid["rows"] * cell_size[1]),
+    )
+
+
 def compile_and_validate(
     request: Mapping[str, Any],
     result: Mapping[str, Any],
@@ -674,7 +816,9 @@ def compile_and_validate(
                     f".godotmaker/asset-generation/sources/{asset_id}_source.png"
                 ) from exc
             return _mapped(result, {"L0": True, "L1": True})
-        if family in {"compact-prop-pack", "scene-prop-set"}:
+        if family == "platform-strip":
+            _verify_platform_delivery(request, declarations, root)
+        elif family in {"compact-prop-pack", "scene-prop-set"}:
             _verify_prop_delivery(request, declarations[0][1], root)
         for _, declaration in declarations:
             declaration = CompileRequest(

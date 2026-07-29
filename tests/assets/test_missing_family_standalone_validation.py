@@ -76,12 +76,20 @@ def test_skill_local_adapters_reject_a_legal_request_for_another_family(tmp_path
 
     platform_request = {
         "asset_type": "platform-strip", "asset_id": "bridge", "brief": "A bridge.",
-        "spec": {"kind": "single", "segments": [{"name": "center"}]},
+        "spec": {
+            "kind": "single",
+            "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+            "segments": [
+                {"name": "left", "role": "left_cap", "slot": [0, 0]},
+                {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+                {"name": "right", "role": "right_cap", "slot": [2, 0]},
+            ],
+        },
     }
     platform_result = {
         "asset_type": "platform-strip",
-        "outputs": [{"role": "runtime", "name": "center", "path": "res://assets/generated/platform-strip/bridge/center.png", "godot_type": "Texture2D"}],
-        "sources": [{"path": "res://assets/generated/platform-strip/bridge/center.png", "layout": "single"}],
+        "outputs": [{"role": "runtime", "name": "middle", "path": "res://assets/generated/platform-strip/bridge/middle.png", "godot_type": "Texture2D"}],
+        "sources": [{"path": "res://assets/generated/platform-strip/bridge/middle.png", "layout": "single"}],
         "previews": [], "validation": {"passed": False},
     }
     with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
@@ -184,7 +192,15 @@ def test_platform_atlas_requires_every_declared_logical_output(tmp_path):
         "asset_type": "platform-strip",
         "asset_id": "bridge",
         "brief": "A bridge.",
-        "spec": {"kind": "atlas", "segments": [{"name": "left"}, {"name": "middle"}]},
+        "spec": {
+            "kind": "atlas",
+            "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+            "segments": [
+                {"name": "left", "role": "left_cap", "slot": [0, 0]},
+                {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+                {"name": "right", "role": "right_cap", "slot": [2, 0]},
+            ],
+        },
     }
     result = {
         "asset_type": "platform-strip",
@@ -207,6 +223,43 @@ def test_platform_atlas_requires_every_declared_logical_output(tmp_path):
     }
     with pytest.raises(MissingFamilySkillError, match="every declared segment"):
         compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+
+
+def test_platform_strip_rejects_an_unreadable_optional_reference_at_l1(tmp_path):
+    root = "res://assets/generated/platform-strip/bridge"
+    request = {
+        "asset_type": "platform-strip",
+        "asset_id": "bridge",
+        "brief": "A bridge.",
+        "references": [{"role": "style", "path": "references/missing.png"}],
+        "spec": {
+            "kind": "single",
+            "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+            "segments": [
+                {"name": "left", "role": "left_cap", "slot": [0, 0]},
+                {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+                {"name": "right", "role": "right_cap", "slot": [2, 0]},
+            ],
+        },
+    }
+    result = {
+        "asset_type": "platform-strip",
+        "outputs": [
+            {"role": "runtime", "name": name, "path": f"{root}/{name}.png", "godot_type": "Texture2D"}
+            for name in ("left", "middle", "right")
+        ],
+        "sources": [{"path": f"{root}/{name}.png", "layout": "single"} for name in ("left", "middle", "right")],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+    raw_source = tmp_path / ".godotmaker/asset-generation/sources/bridge_source.png"
+    raw_source.parent.mkdir(parents=True)
+    Image.new("RGBA", (24, 8), (1, 2, 3, 255)).save(raw_source)
+
+    actual = compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+    assert actual["validation"]["levels"] == {"L0": True, "L1": False, "L2": False, "L3": False, "L4": False}
+    assert "platform-strip reference style" in actual["validation"]["notes"]
 
 
 def test_screen_reference_completes_at_l1_without_invoking_runtime_ladder(tmp_path):
@@ -818,7 +871,15 @@ def test_platform_strip_runs_each_supported_source_type_to_l4(
         "asset_type": "platform-strip",
         "asset_id": asset_id,
         "brief": "A bridge.",
-        "spec": {"kind": kind, "segments": [{"name": "left"}, {"name": "right"}]},
+        "spec": {
+            "kind": kind,
+            "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+            "segments": [
+                {"name": "left", "role": "left_cap", "slot": [0, 0]},
+                {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+                {"name": "right", "role": "right_cap", "slot": [2, 0]},
+            ],
+        },
     }
     if kind == "single":
         result = {
@@ -830,22 +891,24 @@ def test_platform_strip_runs_each_supported_source_type_to_l4(
                     "path": f"{root}/{name}.png",
                     "godot_type": "Texture2D",
                 }
-                for name in ("left", "right")
+                for name in ("left", "middle", "right")
             ],
             "sources": [
                 {"path": f"{root}/{name}.png", "layout": "single"}
-                for name in ("left", "right")
+                for name in ("left", "middle", "right")
             ],
             "previews": [],
             "validation": {"passed": False},
         }
         directory = tmp_path / "assets/generated/platform-strip/bridge"
         directory.mkdir(parents=True)
-        for name in ("left", "right"):
-            Image.new("RGBA", (8, 8), (1, 2, 3, 255)).save(directory / f"{name}.png")
+        for name in ("left", "middle", "right"):
+            image = Image.new("RGBA", (8, 8), (1, 2, 3, 255))
+            image.putpixel((0, 0), (0, 0, 0, 0))
+            image.save(directory / f"{name}.png")
         structures = {
             f"{root}/{name}.png": {"texture2d": {"width": 8, "height": 8}}
-            for name in ("left", "right")
+            for name in ("left", "middle", "right")
         }
     else:
         result = {
@@ -857,7 +920,7 @@ def test_platform_strip_runs_each_supported_source_type_to_l4(
                     "path": f"{root}/{name}.tres",
                     "godot_type": "AtlasTexture",
                 }
-                for name in ("left", "right")
+                for name in ("left", "middle", "right")
             ],
             "sources": [{"path": f"{root}/bridge.png", "layout": "region_atlas"}],
             "previews": [],
@@ -865,7 +928,9 @@ def test_platform_strip_runs_each_supported_source_type_to_l4(
         }
         directory = tmp_path / "assets/generated/platform-strip/bridge"
         directory.mkdir(parents=True)
-        Image.new("RGBA", (16, 8), (1, 2, 3, 255)).save(directory / "bridge.png")
+        image = Image.new("RGBA", (24, 8), (1, 2, 3, 255))
+        image.putpixel((0, 0), (0, 0, 0, 0))
+        image.save(directory / "bridge.png")
         (directory / "bridge.json").write_text(
             json.dumps(
                 {
@@ -875,13 +940,19 @@ def test_platform_strip_runs_each_supported_source_type_to_l4(
                         {
                             "name": "left",
                             "rect": [0, 0, 8, 8],
-                            "pivot": [0.5, 0.5],
+                            "pivot": [0.5, 1.0],
+                            "nine_slice": None,
+                        },
+                        {
+                            "name": "middle",
+                            "rect": [8, 0, 8, 8],
+                            "pivot": [0.5, 1.0],
                             "nine_slice": None,
                         },
                         {
                             "name": "right",
-                            "rect": [8, 0, 8, 8],
-                            "pivot": [0.5, 0.5],
+                            "rect": [16, 0, 8, 8],
+                            "pivot": [0.5, 1.0],
                             "nine_slice": None,
                         },
                     ],
@@ -898,8 +969,15 @@ def test_platform_strip_runs_each_supported_source_type_to_l4(
                     "margin": [0, 0, 0, 0],
                 }
             }
-            for name, rect in (("left", [0, 0, 8, 8]), ("right", [8, 0, 8, 8]))
+            for name, rect in (
+                ("left", [0, 0, 8, 8]),
+                ("middle", [8, 0, 8, 8]),
+                ("right", [16, 0, 8, 8]),
+            )
         }
+    raw_source = tmp_path / ".godotmaker/asset-generation/sources/bridge_source.png"
+    raw_source.parent.mkdir(parents=True)
+    Image.new("RGBA", (24, 8), (1, 2, 3, 255)).save(raw_source)
     _set_good_probe(monkeypatch, structures)
 
     actual = compile_and_validate(

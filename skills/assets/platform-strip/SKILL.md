@@ -1,82 +1,61 @@
 ---
 name: platform-strip
-description: Generate collision-aligned horizontal platform pieces as Texture2D segments or explicitly declared AtlasTexture regions.
+description: Generate non-pixel-art, horizontally repeatable platform strips from real image sources as fixed Texture2D cells or AtlasTexture regions.
 ---
 
 # Platform Strip Asset
 
-Use this skill for floors, bridges, platforms, rails, pipes, long hazards,
-terrain chunks, and other collision-aligned horizontal pieces. Do not use it
-for characters, enemies, UI, compact props, or full scenic backgrounds.
+Use for collision-aligned floors, bridges, rails, pipes, terrain ledges, and long horizontal hazards. Do not use for characters, UI, compact props, full backgrounds, or pixel art.
 
-## Invocation
+## Contract
 
-Accept one asset request matching the shared Asset Skill request schema in
-`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
-`asset_type` to be `platform-strip`. `spec` is `{ "kind": "single" | "atlas",
-"segments": [{"name": "..."}] }`; it declares the complete logical segment
-set. Run `standalone_validation.compile_and_validate()` before returning it.
-The runner binds every segment to its stable Texture2D or AtlasTexture path,
-executes the applicable compiler route, then runs real headless Godot L3/L4.
-It begins from the shared result schema and checker, then proves the result.
+Accept the shared Asset Skill request schema at `.godotmaker/asset-runtime/schema/asset-skill-request.schema.json` with `asset_type: "platform-strip"`.
+Use the shared result schema and checker. This skill can be invoked directly or by an orchestrator with the same contract. Do not read or write `ASSETS.md`, tags, stage state, or generated manifests.
 
-This skill can be invoked directly or by an orchestrator with the same contract.
-Do not read or write `ASSETS.md`, tags, stage state, generated manifests, or
-worker dispatch state.
-
-## Produce
-
-1. From the brief, declare the segment list: left cap, repeat middle, right
-   cap, plus any explicitly requested slope or variant. Keep a walkable top
-   edge and y-position consistent across compatible cells.
-2. Generate a source with a solid `#FF00FF` background and no actors, UI,
-   text, or labels. Process fixed cells with an explicitly declared grid; do
-   not infer segmentation from a loose collage.
-3. For a selected independent segment, publish its PNG at
-   `res://assets/generated/platform-strip/<asset_id>/<segment>.png` and return
-   it as `Texture2D` through Godot's default import.
-4. For a shared strip atlas, assemble a physical PNG from declared fixed slots
-   and publish exact region metadata. Compile every logical region to its own
-   `.tres` `AtlasTexture` with zero margin. Do not use automatic packing,
-   trimming, heuristic region discovery, or an undeclared region.
-5. Load the declared result in Godot and validate its reported resource type.
-   The public runner, rather than a self-reported validation object, owns this
-   L0-L4 verdict.
-
-## Result
-
-Return the shared generic result. Each output is either:
-
-- a `runtime` `Texture2D` PNG for an independent segment; or
-- a `runtime` `AtlasTexture` `.tres` for a declared region of one physical
-  strip atlas.
-
-For an atlas result, include the physical PNG in `sources` with
-`layout: "region_atlas"`; do not expose the PNG as a substitute for its
-`AtlasTexture` region. A representative atlas result is:
+`spec` must contain exactly:
 
 ```json
 {
-  "asset_type": "platform-strip",
-  "outputs": [{
-    "role": "runtime",
-    "name": "bridge_middle",
-    "path": "res://assets/generated/platform-strip/wood_bridge/bridge_middle.tres",
-    "godot_type": "AtlasTexture"
-  }],
-  "sources": [{
-    "path": "res://assets/generated/platform-strip/wood_bridge/wood_bridge.png",
-    "layout": "region_atlas"
-  }],
-  "previews": [],
-  "validation": {
-    "passed": true,
-    "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true}
-  }
+  "kind": "single" | "atlas",
+  "grid": {"columns": 3, "rows": 1, "cell_width": 160, "cell_height": 80},
+  "segments": [
+    {"name": "left_cap", "role": "left_cap", "slot": [0, 0]},
+    {"name": "repeat_middle", "role": "repeat_middle", "slot": [1, 0]},
+    {"name": "right_cap", "role": "right_cap", "slot": [2, 0]}
+  ]
 }
 ```
 
-If a grid, declared segment, atlas region, or Godot type check fails, return
-`outputs: []` with `validation.passed: false` and explanatory notes. The shared
-result contract accepts an empty output list only for this failed state, so the
-strip never implies it can be used safely.
+Grid dimensions are positive integers. Segment names and slots are unique. Declare exactly one `left_cap`, exactly one `right_cap`, and at least one `repeat_middle`. A request without a repeatable middle segment is unsupported.
+
+`references` is optional. With references, validate every path is readable, preserve each declared role, and pass the actual images to the selected provider. Do not replace image attachments with prompt text. If the pinned provider cannot accept the supplied images, return STOP. Without references, generate from the written brief.
+
+Honor the requested provider exactly. `native`, `codex`, `gemini`, and `openai` never fall back to another provider. For Codex, attach reference images through `referenced_image_paths`. Record the provider, model, prompt, reference paths and roles, provider payload or trace, raw source path, and processing reports under `.godotmaker/asset-generation/`.
+
+## Produce
+
+1. Reject pixel-art requests. Request non-pixel-art painted, illustrated, or rendered source art. Do not use nearest-neighbor scaling.
+2. Create a layout-only guide with `tools/asset_layout_guide.py` using the declared grid. The guide is not art and is not a runtime output.
+3. Request one real provider source sheet with one horizontal slot per declared segment. Require a solid `#FF00FF` background, a shared walkable top height, no labels, UI, actors, text, props, or grid lines. Preserve the provider's returned pixels as the raw source even when its raster dimensions differ from the target grid.
+4. Store the unmodified provider image at `.godotmaker/asset-generation/sources/<asset_id>_source.png`. Do not create, draw, or alter visual source art with temporary scripts, Pillow, System.Drawing, ImageMagick, SVG, canvas, Godot drawing, or placeholder generation.
+5. Normalize the real source only with the owned deterministic tools. First use `asset_sheet_process.py` with `--grid 1x1 --background magenta --snap-mode grid` to remove the magenta background and crop the visible source bounds. Then use `asset_image_finalize.py --resize <columns*cell_width>x<rows*cell_height>` to proportionally scale and transparently pad that cropped real source to the declared fixed grid dimensions. Save its report at `.godotmaker/asset-generation/reports/<asset_id>_normalize.json`.
+
+6. Split the normalized source with the owned deterministic tools:
+
+   ```powershell
+   python tools/asset_sheet_process.py --source <normalized-source> --out-dir <processed-dir> --grid <columns>x<rows> --names <segment-names-in-slot-order> --background transparent --snap-mode grid --preserve-cell-bounds --report <sheet-report.json>
+   ```
+
+   Use the report to reject missing art, a non-transparent background, opaque magenta pixels, edge-touching art that breaks the declared slot, or a cell that does not retain its fixed dimensions.
+
+7. For `kind: "single"`, publish every processed cell at `res://assets/generated/platform-strip/<asset_id>/<segment>.png` and return it as `Texture2D`.
+8. For `kind: "atlas"`, create an explicit fixed-slot declaration from the processed cells. Assemble it only with `tools/asset_atlas_assemble.py`; publish `<asset_id>.png` and `<asset_id>.json` in the stable platform-strip directory. Each metadata region uses the declared slot rectangle, `pivot: [0.5, 1.0]`, and `nine_slice: null`. Compile every logical region to `res://assets/generated/platform-strip/<asset_id>/<segment>.tres` as `AtlasTexture` with zero margin.
+9. Run `standalone_validation.compile_and_validate()` before returning. Return its L0-L4 result without substituting a self-reported verdict.
+
+## Result
+
+Return exactly one shared generic result JSON object and no prose.
+
+For `single`, declare one `sources` entry with `layout: "single"` and one runtime `Texture2D` output per segment. For `atlas`, declare one `sources` entry for the physical atlas with `layout: "region_atlas"` and one runtime `AtlasTexture` output per segment. Use only stable platform-strip paths.
+
+If the semantic strip contract, provider contract, source art, processing report, fixed slot assembly, compiler, or Godot check cannot complete, return the shared failed result with `outputs: []`, `validation.passed: false`, and explanatory notes. Do not publish partial runtime outputs.

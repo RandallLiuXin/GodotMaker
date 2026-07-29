@@ -398,6 +398,7 @@ def process_sheet(
     trim_border: int = 0,
     edge_clean_depth: int = 0,
     edge_touch_margin: int = 0,
+    preserve_cell_bounds: bool = False,
     report: Path | None = None,
 ) -> dict[str, object]:
     """Split a production-shaped grid sheet into cropped per-cell PNGs."""
@@ -423,6 +424,8 @@ def process_sheet(
         raise SheetProcessError("--background must be transparent or magenta")
     if snap_mode not in SNAP_MODES:
         raise SheetProcessError("--snap-mode must be grid or autoslice")
+    if preserve_cell_bounds and snap_mode != "grid":
+        raise SheetProcessError("--preserve-cell-bounds requires --snap-mode grid")
     if component_mode not in COMPONENT_MODES:
         raise SheetProcessError("--component-mode must be all or largest")
     for name, value in {
@@ -610,7 +613,8 @@ def process_sheet(
                     height=cell.height,
                     padding=padding if component_padding is None else component_padding,
                 )
-                cropped = cell.crop(crop_bbox)
+                output_box = (0, 0, cell.width, cell.height) if preserve_cell_bounds else crop_bbox
+                cropped = cell.crop(output_box)
                 path = output_dir / f"{name}.png"
                 cropped.save(path)
                 accepted.append({
@@ -618,6 +622,8 @@ def process_sheet(
                     "path": str(path),
                     "crop_bbox": list(bbox),
                     "padded_crop_bbox": list(crop_bbox),
+                    "output_box": list(output_box),
+                    "preserve_cell_bounds": preserve_cell_bounds,
                     "edge_touch": touches_edge,
                     "trim_border": trim_border,
                     "edge_clean_depth": edge_clean_depth,
@@ -651,6 +657,7 @@ def process_sheet(
         "trim_border": trim_border,
         "edge_clean_depth": edge_clean_depth,
         "edge_touch_margin": edge_touch_margin,
+        "preserve_cell_bounds": preserve_cell_bounds,
         "grid": {"cols": cols, "rows": rows},
         "cell_size": [cell_w, cell_h],
         "candidates": [
@@ -762,6 +769,11 @@ def _main() -> int:
         default=0,
         help="Additional margin treated as edge touch during component checks",
     )
+    parser.add_argument(
+        "--preserve-cell-bounds",
+        action="store_true",
+        help="Keep each accepted grid output at its full fixed cell dimensions",
+    )
     parser.add_argument("--report", default=None, help="Optional JSON report path")
     args = parser.parse_args()
 
@@ -785,6 +797,7 @@ def _main() -> int:
             trim_border=args.trim_border,
             edge_clean_depth=args.edge_clean_depth,
             edge_touch_margin=args.edge_touch_margin,
+            preserve_cell_bounds=args.preserve_cell_bounds,
             report=Path(args.report) if args.report else None,
         )
     except SheetProcessError as exc:
