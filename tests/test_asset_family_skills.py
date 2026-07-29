@@ -75,6 +75,7 @@ def test_background_and_platform_runtime_contracts_keep_native_type_boundaries()
     assert "Texture2D" in background
     assert "Godot's normal PNG import" in background
     assert "Do not write `ASSET_RESULT.json`" in background
+    assert "--report .godotmaker/asset-generation/reports" in background
     assert "Texture2D" in platform
     assert "AtlasTexture" in platform
     assert "explicitly declared grid" in platform
@@ -97,6 +98,8 @@ def test_background_map_restores_real_provider_finalize_and_non_pixel_contracts(
         "godot_artifact: Texture2D",
         "non-pixel-art",
         "Pillow, System.Drawing, ImageMagick",
+        "referenced_image_paths",
+        "GM_EVAL_GODOT_PATH",
     ):
         assert required in background
     assert "referenced_image_paths" in codex

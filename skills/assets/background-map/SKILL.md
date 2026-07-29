@@ -45,6 +45,25 @@ generation. If it cannot execute its declared image-attachment path for every
 reference, STOP with `validation.passed: false` and create no final runtime
 asset.
 
+For Codex, the source report must include this exact auditable trace shape:
+
+```json
+{
+  "provider_trace": {
+    "provider": "codex",
+    "coding_model": "<configured coding model>",
+    "reasoning": "<configured reasoning effort>",
+    "tool_call_id": "<image_gen call identity>",
+    "image_model_identity": "runtime_reported|not_exposed_by_subscription_runtime",
+    "referenced_image_paths": ["<actual local image attachment path>"]
+  }
+}
+```
+
+When `image_model_identity` is `runtime_reported`, include non-empty
+`image_model`. Do not substitute a generated-path string, a prose explanation,
+or a role-only record for this trace.
+
 For every attempt, retain these project-local records under
 `.godotmaker/asset-generation/`:
 
@@ -79,7 +98,7 @@ existing real image.
      --label <asset_id> \
      --require-aspect <WIDTH:HEIGHT> \
      --resize <WIDTHxHEIGHT> \
-     > .godotmaker/asset-generation/reports/<asset_id>_finalize.json
+     --report .godotmaker/asset-generation/reports/<asset_id>_finalize.json
    ```
 
    The source aspect must pass before resizing. On failure, keep the attempt
@@ -88,7 +107,9 @@ existing real image.
    provenance. The orchestrator derives its stable `source_layout: single` and
    `godot_artifact: Texture2D` handoff from this result; this Skill never writes
    manifests itself.
-5. Verify that Godot can import and load that PNG as `Texture2D`.
+5. Verify that Godot can import and load that PNG as `Texture2D`. When
+   `GM_EVAL_GODOT_PATH` or `GODOT_BIN` is configured, invoke that exact
+   executable; otherwise invoke the project-configured `godot` command.
 
 Godot's normal PNG import is the native resource path for this family; do not
 create a redundant `.tres` merely to wrap the image.

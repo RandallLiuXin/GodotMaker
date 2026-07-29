@@ -293,6 +293,28 @@ def test_cli_no_origin_flag(tmp_path):
     assert not (tmp_path / "assets" / "origin" / "coin.png").exists()
 
 
+def test_cli_writes_utf8_json_report_without_shell_redirection(tmp_path):
+    source = tmp_path / "generated" / "coin.png"
+    output = tmp_path / "assets" / "img" / "coin.png"
+    report = tmp_path / "reports" / "coin-finalize.json"
+    make_png(source)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_image_finalize.py"),
+            "--source", str(source), "--out", str(output), "--report", str(report),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert report.read_bytes()[:2] != b"\xff\xfe"
+    assert json.loads(report.read_text(encoding="utf-8"))["path"] == str(output)
+
+
 def test_cli_removes_magenta_background_when_requested(tmp_path):
     source = tmp_path / "generated" / "boss.png"
     output = tmp_path / "assets" / "sprites" / "boss.png"

@@ -149,6 +149,25 @@ def _atomic_save(image, output: Path, image_format: str) -> None:
             tmp_path.unlink()
 
 
+def _write_json_report(output: Path, value: dict[str, object]) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        delete=False,
+        dir=str(output.parent),
+        suffix=".json",
+    ) as handle:
+        json.dump(value, handle, ensure_ascii=False)
+        handle.write("\n")
+        tmp_path = Path(handle.name)
+    try:
+        tmp_path.replace(output)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
 def _fit_with_padding(image, size: tuple[int, int]):
     """Resize preserving aspect ratio, padding to exactly ``size``.
 
@@ -327,6 +346,7 @@ def _main() -> int:
     )
     parser.add_argument("--format", default="png", choices=["png"], help="Output format")
     parser.add_argument("--label", default=None, help="Optional asset label for JSON output")
+    parser.add_argument("--report", default=None, help="Optional UTF-8 JSON report path")
     parser.add_argument(
         "--background",
         default="none",
@@ -363,6 +383,8 @@ def _main() -> int:
     except ImageFinalizeError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
+    if args.report:
+        _write_json_report(Path(args.report), result)
     print(json.dumps(result))
     return 0
 
