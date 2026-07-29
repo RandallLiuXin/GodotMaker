@@ -135,10 +135,64 @@ def _reference_images(data: dict) -> list[Path]:
         if not isinstance(item, str) or not item.strip():
             raise SourceGenerateError(f"reference_images[{index}] must be a non-empty string")
         path = Path(item)
-        if not path.exists():
-            raise SourceGenerateError(f"Reference image not found: {path}")
+        _validate_reference_image(path)
         paths.append(path)
     return paths
+
+
+def _validate_reference_image(path: Path) -> None:
+    """Fail before provider dispatch when an alleged reference is not an image."""
+    if not path.is_file():
+        raise SourceGenerateError(f"Reference image not found or unreadable: {path}")
+    try:
+        from PIL import Image
+
+        with Image.open(path) as image:
+            image.verify()
+    except (OSError, SyntaxError, ValueError) as exc:
+        raise SourceGenerateError(f"Reference image not found or unreadable: {path}") from exc
+
+
+def _reference_inputs(data: dict) -> list[dict[str, object]]:
+    """Load role-preserved reference inputs for provider provenance.
+
+    ``reference_images`` predates first-class Asset Skills and has no role
+    information.  Keep accepting it for existing production units, but let a
+    family that needs reference provenance use ``reference_inputs`` instead.
+    """
+    raw = data.get("reference_inputs")
+    if raw is None:
+        return [
+            {"role": "unspecified", "path": path}
+            for path in _reference_images(data)
+        ]
+    if "reference_images" in data:
+        raise SourceGenerateError(
+            "Spec must use either 'reference_inputs' or 'reference_images', not both"
+        )
+    if not isinstance(raw, list):
+        raise SourceGenerateError("Spec field 'reference_inputs' must be a list")
+
+    inputs: list[dict[str, object]] = []
+    for index, item in enumerate(raw):
+        if not isinstance(item, dict) or set(item) != {"role", "path"}:
+            raise SourceGenerateError(
+                f"reference_inputs[{index}] must contain exactly 'role' and 'path'"
+            )
+        role = item["role"]
+        if role not in {"canonical", "style", "screen"}:
+            raise SourceGenerateError(
+                f"reference_inputs[{index}].role must be canonical, style, or screen"
+            )
+        path_value = item["path"]
+        if not isinstance(path_value, str) or not path_value.strip():
+            raise SourceGenerateError(
+                f"reference_inputs[{index}].path must be a non-empty string"
+            )
+        path = Path(path_value)
+        _validate_reference_image(path)
+        inputs.append({"role": role, "path": path})
+    return inputs
 
 
 def _generate_gemini(spec, output: Path, model_name: str):
@@ -292,7 +346,8 @@ def load_spec(path: Path) -> dict:
     selector = _required_string(data, "model")
     size = _optional_string(data, "size", "1K")
     aspect_ratio = _optional_string(data, "aspect_ratio", "1:1")
-    reference_images = _reference_images(data)
+    reference_inputs = _reference_inputs(data)
+    reference_images = [item["path"] for item in reference_inputs]
     report_path = data.get("report_path")
     if report_path is not None and (not isinstance(report_path, str) or not report_path.strip()):
         raise SourceGenerateError("Spec field 'report_path' must be a non-empty string")
@@ -306,6 +361,7 @@ def load_spec(path: Path) -> dict:
         "size": size,
         "aspect_ratio": aspect_ratio,
         "reference_images": reference_images,
+        "reference_inputs": reference_inputs,
         "report_path": Path(report_path) if report_path else None,
     }
 
@@ -362,6 +418,10 @@ def generate_source(spec: dict) -> dict[str, object]:
         "source_path": _json_path(output),
         "prompt_path": _json_path(spec["prompt_path"]),
         "reference_images": [_json_path(path) for path in spec["reference_images"]],
+        "reference_inputs": [
+            {"role": item["role"], "path": _json_path(item["path"])}
+            for item in spec["reference_inputs"]
+        ],
         "cost_cents": cost,
         "bytes": final["bytes"],
         "width": final["width"],

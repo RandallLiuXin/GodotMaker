@@ -17,7 +17,7 @@ Write one spec per generated source under
   "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
   "size": "1K",
   "aspect_ratio": "1:1",
-  "reference_images": [],
+  "reference_inputs": [],
   "report_path": ".godotmaker/asset-generation/reports/<asset_id>_source.json"
 }
 ```
@@ -37,10 +37,12 @@ python tools/asset_source_generate.py --spec <spec.json>
 
 ## Reference Images
 
-Put every required local reference path in `reference_images`. Use only images
-listed by the production-unit brief or selected by the manager.
+Put every required local reference in `reference_inputs` as
+`{"role":"canonical|style|screen","path":"<local path>"}`. Use only images
+listed by the production-unit brief or selected by the manager. The generator
+records each role and path in its provider report.
 
-When `reference_images` is non-empty, the source generator uses the OpenAI image
+When `reference_inputs` is non-empty, the source generator uses the OpenAI image
 edit endpoint and sends every listed reference image. One reference is sent as a
 single image file; multiple references are sent as an image-file list.
 

@@ -11,9 +11,9 @@ It registers with ``writes_artifact=False``, which is what makes
 registry enforces both halves of that rule; this module only has to declare
 which side it is on.
 
-v1 adds no texture-import profile system. Import settings stay Godot's defaults
-plus the project-wide pixel-art baseline; per-texture mipmap, repeat,
-compression, and filtering choices remain worker decisions.
+v1 adds no texture-import profile system. Import settings stay Godot's defaults;
+per-texture mipmap, repeat, compression, and filtering choices remain worker
+decisions.
 """
 from __future__ import annotations
 

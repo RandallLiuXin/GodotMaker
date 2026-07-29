@@ -63,7 +63,7 @@ not independently triggerable.
 {
   "asset_type": "character-bundle",
   "asset_id": "player",
-  "brief": "A small pixel-art knight with idle and run actions, side view.",
+  "brief": "A small hand-painted knight with idle and run actions, side view.",
   "references": [
     { "role": "canonical", "path": "res://references/player_canonical.png" }
   ],

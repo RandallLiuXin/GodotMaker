@@ -24,7 +24,11 @@ def make_spec(tmp_path: Path, **overrides):
         "aspect_ratio": "1:1",
         "reference_images": [],
     }
-    spec.update(overrides)
+    for key, value in overrides.items():
+        if value is None:
+            spec.pop(key, None)
+        else:
+            spec[key] = value
     path = tmp_path / "spec.json"
     path.write_text(json.dumps(spec), encoding="utf-8")
     return path
@@ -56,6 +60,13 @@ def test_load_spec_requires_explicit_model(tmp_path, monkeypatch):
 
     with pytest.raises(source_generate.SourceGenerateError, match="model"):
         source_generate.load_spec(spec_path)
+
+
+def test_load_spec_allows_an_empty_optional_reference_list(tmp_path):
+    spec = source_generate.load_spec(make_spec(tmp_path, reference_images=None))
+
+    assert spec["reference_images"] == []
+    assert spec["reference_inputs"] == []
 
 
 def test_generate_source_writes_prompt_source_and_report(tmp_path, monkeypatch):
@@ -158,6 +169,81 @@ def test_openai_uses_all_reference_images_for_edit(tmp_path, monkeypatch):
     assert seen["prompt"] == spec["prompt"]
     assert seen["size"] == "1024x1024"
     assert (tmp_path / spec["source_path"]).exists()
+
+
+def test_generate_source_preserves_reference_roles_in_provider_report(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    references = write_refs(tmp_path, 2)
+    spec = source_generate.load_spec(
+        make_spec(
+            tmp_path,
+            reference_images=None,
+            reference_inputs=[
+                {"role": "style", "path": references[0]},
+                {"role": "screen", "path": references[1]},
+            ],
+            report_path=".godotmaker/asset-generation/reports/coin_source.json",
+        )
+    )
+
+    def fake_grok(spec_data, output, _model_name):
+        assert spec_data["reference_images"] == [Path(path) for path in references]
+        write_png(output)
+
+    monkeypatch.setattr(source_generate, "_generate_grok", fake_grok)
+    result = source_generate.generate_source(spec)
+
+    expected = [
+        {"role": "style", "path": references[0].replace("\\", "/")},
+        {"role": "screen", "path": references[1].replace("\\", "/")},
+    ]
+    assert result["reference_inputs"] == expected
+    report = json.loads((tmp_path / result["report_path"]).read_text(encoding="utf-8"))
+    assert report["reference_inputs"] == expected
+
+
+@pytest.mark.parametrize(
+    ("reference_inputs", "error"),
+    [
+        ([{"role": "palette", "path": "reference.png"}], "role"),
+        ([{"role": "style", "path": "missing.png"}], "unreadable"),
+    ],
+)
+def test_load_spec_rejects_invalid_role_preserved_references(tmp_path, reference_inputs, error):
+    spec_path = make_spec(
+        tmp_path,
+        reference_images=None,
+        reference_inputs=reference_inputs,
+    )
+
+    with pytest.raises(source_generate.SourceGenerateError, match=error):
+        source_generate.load_spec(spec_path)
+
+
+def test_load_spec_rejects_a_non_image_reference(tmp_path):
+    invalid = tmp_path / "not-an-image.png"
+    invalid.write_text("not an image", encoding="utf-8")
+    spec_path = make_spec(
+        tmp_path,
+        reference_images=None,
+        reference_inputs=[{"role": "style", "path": str(invalid)}],
+    )
+
+    with pytest.raises(source_generate.SourceGenerateError, match="unreadable"):
+        source_generate.load_spec(spec_path)
+
+
+def test_load_spec_rejects_ambiguous_reference_input_forms(tmp_path):
+    reference = tmp_path / "reference.png"
+    write_png(reference)
+    spec_path = make_spec(
+        tmp_path,
+        reference_images=[str(reference)],
+        reference_inputs=[{"role": "style", "path": str(reference)}],
+    )
+
+    with pytest.raises(source_generate.SourceGenerateError, match="either"):
+        source_generate.load_spec(spec_path)
 
 
 @pytest.mark.parametrize(

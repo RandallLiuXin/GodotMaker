@@ -23,7 +23,7 @@ def valid_request():
     return {
         "asset_type": "character-bundle",
         "asset_id": "player",
-        "brief": "A small pixel-art knight with idle and run actions.",
+        "brief": "A small hand-painted knight with idle and run actions.",
         "references": [
             {"role": "canonical", "path": "res://references/player_canonical.png"}
         ],

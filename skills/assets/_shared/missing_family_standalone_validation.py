@@ -82,6 +82,26 @@ def _reference_failure(result: Mapping[str, Any], error: Exception) -> dict[str,
     return _mapped(result, {"L0": True, "L1": False}, error)
 
 
+def _terminal_generation_stop(result: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Accept a declared no-output provider stop without inventing an artifact.
+
+    A provider or required-reference failure happens before L1 can observe a
+    source file.  It is still a valid L0 request/result pair, but treating it as
+    a malformed successful background would make a fail-closed STOP impossible.
+    """
+    validation = result["validation"]
+    if validation.get("passed") is not False:
+        return None
+    if result["outputs"] or result["sources"] or result["previews"]:
+        return None
+    note = validation.get("notes")
+    if not isinstance(note, str) or not note.strip():
+        raise MissingFamilySkillError(
+            "a no-output generation STOP must include a validation note"
+        )
+    return _mapped(result, {"L0": True, "L1": False}, ValidationError(note))
+
+
 def _runtime(result: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return [item for item in result["outputs"] if item["role"] == "runtime"]
 
@@ -600,6 +620,9 @@ def compile_and_validate(
             raise MissingFamilySkillError(
                 "standalone validation needs one supported matching asset_type"
             )
+        stopped = _terminal_generation_stop(result)
+        if stopped is not None:
+            return stopped
         reference_path, declarations = _declarations(request, result)
         auxiliary_paths = _auxiliary_paths(result)
     except (AssetContractError, MissingFamilySkillError) as exc:

@@ -16,10 +16,14 @@ Use this file only when `.godotmaker/config.yaml` sets
 
 When the production unit uses image references:
 
-1. Make each reference visible to the active runtime before generation.
-2. State the reference role in the prompt.
-3. Preserve the invariants listed by the production-unit doc.
-4. Use the planned `source_path` for the generated result.
+1. Validate each local reference image path before generation.
+2. Pass each image as a real attachment through the active runtime's native
+   image-generation API; making it visible or writing its path into text is not
+   sufficient.
+3. State and preserve the reference role and invariants in the provider report.
+4. If the runtime has no image-attachment path, stop the affected asset. Do not
+   omit the reference, switch providers, or create a substitute image.
+5. Use the planned `source_path` for the generated result.
 
 ## Handoff
 

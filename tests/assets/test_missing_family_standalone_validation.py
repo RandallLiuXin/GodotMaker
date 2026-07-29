@@ -107,6 +107,55 @@ def test_background_runner_does_not_trust_a_forged_successful_validation(tmp_pat
     }
 
 
+def test_background_runner_preserves_a_no_output_provider_or_reference_stop(tmp_path):
+    result = {
+        "asset_type": "background-map",
+        "outputs": [],
+        "sources": [],
+        "previews": [],
+        "validation": {"passed": False, "notes": "style reference is unreadable"},
+    }
+
+    actual = compile_and_validate(
+        {
+            "asset_type": "background-map",
+            "asset_id": "sky",
+            "brief": "A blue sky.",
+            "references": [{"role": "style", "path": "res://references/missing.png"}],
+            "provider": "codex",
+        },
+        result,
+        project_root=tmp_path,
+        godot_path="godot",
+    )
+
+    assert actual["outputs"] == []
+    assert actual["sources"] == []
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {"L0": True, "L1": False},
+        "notes": "style reference is unreadable",
+    }
+
+
+def test_background_runner_rejects_an_unexplained_no_output_stop(tmp_path):
+    result = {
+        "asset_type": "background-map",
+        "outputs": [],
+        "sources": [],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    with pytest.raises(MissingFamilySkillError, match="must include a validation note"):
+        compile_and_validate(
+            {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+            result,
+            project_root=tmp_path,
+            godot_path="godot",
+        )
+
+
 @pytest.mark.parametrize(
     "result",
     [
