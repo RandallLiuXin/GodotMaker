@@ -2779,6 +2779,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Background-map now preserves optional reference-image provenance, uses the declared provider without fallback, and deterministically finalizes non-pixel-art Texture2D backgrounds.</li>
 <li>Theme L4 validation now rejects recipe paths outside the declaring asset's stable output directory.</li>
 <li>Published asset validation runners now work after installing GodotMaker into Claude Code, Codex, or OpenCode projects.</li>
 <li>Restored real Godot validation for Theme and TileSet assets, including safe Theme resource paths and imported TileSet atlases.</li>
