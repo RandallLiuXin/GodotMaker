@@ -70,7 +70,7 @@ The successful source report must identify the selected provider and model,
 actual reference attachment count, each reference role/path/hash, raw source,
 and prompt path. For `native` and `codex`, use their provider documents and
 write an equivalent JSON report before finalization. It must contain `ok: true`,
-`raw_source`, `raw_source_sha256`, `reference_attachment_count`, and a
+`asset_id`, `raw_source`, `raw_source_sha256`, `reference_attachment_count`, and a
 `generation` object with `tool: "image_gen"`. When references are supplied,
 that object must also record `reference_attachment_argument:
 "referenced_image_paths"` and the matching attachment count, and each
