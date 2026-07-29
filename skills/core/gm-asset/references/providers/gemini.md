@@ -17,7 +17,7 @@ Write one spec per generated source under
   "source_path": ".godotmaker/asset-generation/sources/<asset_id>_source.png",
   "size": "1K",
   "aspect_ratio": "1:1",
-  "reference_images": [],
+  "reference_inputs": [],
   "report_path": ".godotmaker/asset-generation/reports/<asset_id>_source.json"
 }
 ```
@@ -30,8 +30,11 @@ python tools/asset_source_generate.py --spec <spec.json>
 
 ## Reference Images
 
-Put every required local reference path in `reference_images`. Use only images
-listed by the production-unit brief or selected by the manager.
+Put every required local reference in `reference_inputs` as
+`{ "role": "canonical|style|screen", "path": "<local image path>" }`. Use
+only images listed by the production-unit brief or selected by the manager. The
+tool validates that every input is readable, sends its actual bytes as a Gemini
+image part, and records role/path/hash provenance in its report.
 
 ## Handoff
 

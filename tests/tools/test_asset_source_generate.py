@@ -22,7 +22,6 @@ def make_spec(tmp_path: Path, **overrides):
         "source_path": ".godotmaker/asset-generation/sources/coin_source.png",
         "size": "1K",
         "aspect_ratio": "1:1",
-        "reference_images": [],
     }
     spec.update(overrides)
     path = tmp_path / "spec.json"
@@ -48,6 +47,14 @@ def write_refs(tmp_path: Path, count: int) -> list[str]:
         write_png(path)
         refs.append(str(path))
     return refs
+
+
+def write_reference_inputs(tmp_path: Path, count: int) -> list[dict[str, str]]:
+    roles = ("canonical", "style", "screen")
+    return [
+        {"role": roles[index % len(roles)], "path": path}
+        for index, path in enumerate(write_refs(tmp_path, count))
+    ]
 
 
 def test_load_spec_requires_explicit_model(tmp_path, monkeypatch):
@@ -158,6 +165,54 @@ def test_openai_uses_all_reference_images_for_edit(tmp_path, monkeypatch):
     assert seen["prompt"] == spec["prompt"]
     assert seen["size"] == "1024x1024"
     assert (tmp_path / spec["source_path"]).exists()
+
+
+def test_role_preserving_reference_inputs_are_attached_and_reported(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    inputs = write_reference_inputs(tmp_path, 2)
+    spec = source_generate.load_spec(
+        make_spec(
+            tmp_path,
+            model="openai:gpt-image-2",
+            reference_inputs=inputs,
+            report_path=".godotmaker/asset-generation/reports/coin_source.json",
+        )
+    )
+
+    def fake_openai(spec_data, output, model_name):
+        assert model_name == "gpt-image-2"
+        assert [str(path) for path in spec_data["reference_images"]] == [
+            item["path"] for item in inputs
+        ]
+        write_png(output)
+
+    monkeypatch.setattr(source_generate, "_generate_openai", fake_openai)
+    result = source_generate.generate_source(spec)
+
+    assert [item["role"] for item in result["reference_inputs"]] == [
+        "canonical", "style"
+    ]
+    assert result["provider_payload"] == {
+        "operation": "images.edit",
+        "reference_input_count": 2,
+        "references_attached": True,
+    }
+    assert all(len(item["sha256"]) == 64 for item in result["reference_inputs"])
+    report = json.loads((tmp_path / result["report_path"]).read_text(encoding="utf-8"))
+    assert report["reference_inputs"] == result["reference_inputs"]
+
+
+def test_role_preserving_reference_input_must_be_readable(tmp_path):
+    unreadable = tmp_path / "broken.png"
+    unreadable.write_text("not an image", encoding="utf-8")
+
+    with pytest.raises(source_generate.SourceGenerateError, match="not readable"):
+        source_generate.load_spec(
+            make_spec(
+                tmp_path,
+                reference_inputs=[{"role": "style", "path": str(unreadable)}],
+            )
+        )
 
 
 @pytest.mark.parametrize(

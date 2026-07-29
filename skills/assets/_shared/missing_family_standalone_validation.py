@@ -156,14 +156,18 @@ def _check_screen_reference(
 ) -> str:
     asset_id = request["asset_id"]
     expected = f"references/{asset_id}.png"
+    expected_source = f".godotmaker/asset-generation/sources/{asset_id}_source.png"
     if (
         _runtime(result)
-        or result["sources"]
         or result["previews"]
         or len(result["outputs"]) != 1
     ):
         raise MissingFamilySkillError(
             "screen-reference must have one reference output and no runtime source"
+        )
+    if result["sources"] != [{"path": expected_source, "layout": "single"}]:
+        raise MissingFamilySkillError(
+            "screen-reference must declare its deterministic raw single source"
         )
     output = result["outputs"][0]
     if (
@@ -628,6 +632,23 @@ def compile_and_validate(
             except ValidationError as exc:
                 raise ValidationError(
                     f"reference image is not a decodable PNG: {reference_path}"
+                ) from exc
+            raw_source = _project_file(
+                root,
+                f".godotmaker/asset-generation/sources/{asset_id}_source.png",
+                "raw screen-reference source",
+            )
+            if not raw_source.is_file() or raw_source.stat().st_size <= 0:
+                raise ValidationError(
+                    "raw screen-reference source is not a non-empty file: "
+                    f".godotmaker/asset-generation/sources/{asset_id}_source.png"
+                )
+            try:
+                _png_dimensions(raw_source)
+            except ValidationError as exc:
+                raise ValidationError(
+                    "raw screen-reference source is not a decodable PNG: "
+                    f".godotmaker/asset-generation/sources/{asset_id}_source.png"
                 ) from exc
             return _mapped(result, {"L0": True, "L1": True})
         if family in {"compact-prop-pack", "scene-prop-set"}:
