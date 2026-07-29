@@ -122,3 +122,7 @@ Use the requested stable asset id in every path. A failed aspect, import, or
 load check must return `validation.passed: false` with an explanatory note;
 never claim a failed background is ready. Provider/reference failure must return
 the same failed result with no runtime output.
+
+Emit that generic result JSON directly as the final response, including for a
+STOP. Do not write `ASSET_RESULT.json`, a manifest, or a linked result file in
+place of returning the JSON: direct callers consume the response itself.

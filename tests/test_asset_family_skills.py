@@ -74,6 +74,7 @@ def test_background_and_platform_runtime_contracts_keep_native_type_boundaries()
 
     assert "Texture2D" in background
     assert "Godot's normal PNG import" in background
+    assert "Do not write `ASSET_RESULT.json`" in background
     assert "Texture2D" in platform
     assert "AtlasTexture" in platform
     assert "explicitly declared grid" in platform
