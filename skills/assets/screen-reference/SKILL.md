@@ -69,8 +69,14 @@ python tools/asset_source_generate.py --spec <spec.json>
 The successful source report must identify the selected provider and model,
 actual reference attachment count, each reference role/path/hash, raw source,
 and prompt path. For `native` and `codex`, use their provider documents and
-write an equivalent report before finalization. A missing report, provider
-failure, or absent attachment evidence is a STOP.
+write an equivalent JSON report before finalization. It must contain `ok: true`,
+`raw_source`, `raw_source_sha256`, `reference_attachment_count`, and a
+`generation` object with `tool: "image_gen"`. When references are supplied,
+that object must also record `reference_attachment_argument:
+"referenced_image_paths"` and the matching attachment count, and each
+`reference_inputs` item must preserve `role`, `path`, `sha256`, and
+`attached: true`. A missing report, provider failure, or absent attachment
+evidence is a STOP.
 
 Finalize only the provider/user source with the existing controlled tool:
 
