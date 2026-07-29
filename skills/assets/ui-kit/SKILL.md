@@ -76,6 +76,19 @@ manifests, stable entries, or worker dispatch state.
    loading; L6 visual review is an independent Eval layer. A failed
    state, atlas rectangle, Theme binding, consumer load, or trace is not ready.
 
+Write the complete derived request (including every baseline `spec` declaration)
+to `ui_kit_request.json` and the candidate generic result to
+`ui_kit_result.json`. Run the public validator exactly once after all resources
+are written:
+
+```powershell
+python tools/asset_ui_card_validate.py --request ui_kit_request.json --result ui_kit_result.json --project-root . --godot-path $env:GODOT_BIN
+```
+
+It overwrites `ui_kit_result.json` with validator-owned L0-L5 facts. Return
+that file only when its `validation.passed` is true; otherwise return the
+validator's failed generic result. Never hand-write L-level values.
+
 For all Godot validation commands, use the configured `GODOT_BIN` executable
 when it is present. Do not assume that a `godot` command is on `PATH`, and do
 not substitute another Godot installation. If no configured executable can run
