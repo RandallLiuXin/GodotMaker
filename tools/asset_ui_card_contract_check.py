@@ -27,6 +27,10 @@ _FAMILIES = {
         "states": {"normal", "hover", "pressed", "disabled", "selected", "locked"}
     },
 }
+_UI_PROVIDERS = {"native", "codex", "gemini", "openai"}
+_UI_REQUIRED_STATES = {"normal", "hover", "pressed", "disabled", "focus"}
+_UI_MINIMUM_STYLEBOXES = 27
+_UI_MINIMUM_ICONS = 16
 
 _PIXEL_ART_REQUEST = re.compile(r"\bpixel(?:[-\s]?art)\b", re.IGNORECASE)
 _PIXEL_ART_NEGATION = re.compile(r"\b(?:not|non)(?:[-\s]+[a-z]+){0,2}[-\s]*$", re.IGNORECASE)
@@ -210,8 +214,8 @@ def _spec(request: Mapping[str, Any], issues: list[str]) -> dict[str, Any] | Non
 
     actual_states = [item["state"] for item in boxes]
     if family == "ui-kit":
-        if set(actual_states) != set(states) or len(actual_states) != len(states):
-            issues.append("ui-kit styleboxes must declare exactly one entry for every required_state")
+        if not set(states).issubset(actual_states):
+            issues.append("ui-kit styleboxes must declare every required_state")
     else:
         actual_frames = [item.get("frame") for item in boxes]
         pairs = [(item.get("frame"), item["state"]) for item in boxes]
@@ -223,7 +227,50 @@ def _spec(request: Mapping[str, Any], issues: list[str]) -> dict[str, Any] | Non
     actual_regions = [item["output_name"] for item in atlas_regions]
     if set(actual_regions) != set(regions) or len(actual_regions) != len(regions):
         issues.append("atlas_regions must declare exactly one entry for every required_region")
+    if family == "ui-kit":
+        if set(states) != _UI_REQUIRED_STATES or len(states) != len(_UI_REQUIRED_STATES):
+            issues.append("ui-kit required_states must declare normal, hover, pressed, disabled, and focus")
+        if len(boxes) < _UI_MINIMUM_STYLEBOXES:
+            issues.append(f"ui-kit must declare at least {_UI_MINIMUM_STYLEBOXES} textured component/state StyleBoxes")
+        if len(atlas_regions) < _UI_MINIMUM_ICONS:
+            issues.append(f"ui-kit must declare at least {_UI_MINIMUM_ICONS} AtlasTexture utility icons")
+        if not {item["source_path"] for item in boxes} or not {item["source_path"] for item in atlas_regions}:
+            issues.append("ui-kit must retain separate component and icon source sheets")
     return {"theme": theme, "styleboxes": boxes, "atlas_regions": atlas_regions}
+
+
+def _ui_input_gate(request: Mapping[str, Any], issues: list[str]) -> None:
+    """Require the binding inputs that make a UI Theme visually coherent."""
+    references = request.get("references")
+    if not isinstance(references, list) or not references:
+        issues.append("ui-kit requires at least one binding image reference")
+    provider = request.get("provider")
+    if provider not in _UI_PROVIDERS:
+        issues.append("ui-kit provider must be one of native, codex, gemini, openai")
+
+
+def validate_ui_reference_inputs(request: Mapping[str, Any], project_root: Path) -> None:
+    """Fail closed before generation when a required UI reference is unreadable."""
+    if request.get("asset_type") != "ui-kit":
+        return
+    references = request.get("references")
+    if not isinstance(references, list) or not references:
+        raise UICardContractError("ui-kit requires at least one binding image reference")
+    for index, reference in enumerate(references):
+        if not isinstance(reference, Mapping) or reference.get("role") not in {"canonical", "style", "screen"}:
+            raise UICardContractError(f"ui-kit reference[{index}] must preserve a supported role")
+        raw_path = reference.get("path")
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise UICardContractError(f"ui-kit reference[{index}].path must be a non-empty image path")
+        target = Path(raw_path)
+        if not target.is_absolute():
+            target = Path(project_root) / target
+        try:
+            from PIL import Image
+            with Image.open(target) as image:
+                image.verify()
+        except (ImportError, OSError, ValueError) as exc:
+            raise UICardContractError(f"ui-kit reference[{index}] is not a readable image: {raw_path}: {exc}") from exc
 
 
 def check_ui_card_request(data: Any) -> dict[str, Any]:
@@ -237,6 +284,8 @@ def check_ui_card_request(data: Any) -> dict[str, Any]:
     if data["asset_type"] == "card-kit" and _requests_pixel_art(data["brief"]):
         raise UICardContractError("card-kit does not support pixel-art requests")
     issues: list[str] = []
+    if data["asset_type"] == "ui-kit":
+        _ui_input_gate(data, issues)
     normalized = _spec(data, issues)
     if issues:
         raise UICardContractError("; ".join(issues))

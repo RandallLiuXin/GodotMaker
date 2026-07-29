@@ -65,17 +65,40 @@ def _request(family: str) -> dict:
     if family == "card-kit":
         stylebox["frame"] = "rare_card"
         spec["required_frames"] = ["rare_card"]
-    return {"asset_type": family, "asset_id": asset_id, "brief": "A valid UI recipe.", "spec": spec}
+    else:
+        states = ["normal", "hover", "pressed", "disabled", "focus"]
+        spec["required_states"] = states
+        spec["styleboxes"] = [{
+            **stylebox, "output_name": f"style_{index}", "state": states[index % len(states)],
+            "source_path": f"{root}/components.png",
+        } for index in range(27)]
+        spec["required_regions"] = [f"icon_{index}" for index in range(16)]
+        spec["atlas_regions"] = [{
+            "output_name": f"icon_{index}", "source_path": f"{root}/icons.png",
+            "metadata_path": f"{root}/icons.json", "logical_asset_id": f"icon_{index}",
+        } for index in range(16)]
+    request = {"asset_type": family, "asset_id": asset_id, "brief": "A valid UI recipe.", "spec": spec}
+    if family == "ui-kit":
+        request["provider"] = "codex"
+        request["references"] = [{"role": "style", "path": "references/test-ui.png"}]
+    return request
 
 
 def _result(request: dict) -> dict:
     root = f"res://assets/generated/{request['asset_type']}/{request['asset_id']}"
-    box = request["spec"]["styleboxes"][0]
+    boxes = request["spec"]["styleboxes"]
+    regions = request["spec"]["atlas_regions"]
     outputs = [
-        {"role": "runtime", "name": box["output_name"], "path": f"{root}/{box['output_name']}.tres", "godot_type": "StyleBoxTexture"},
-        {"role": "runtime", "name": "icon", "path": f"{root}/icon.tres", "godot_type": "AtlasTexture"},
+        *[{"role": "runtime", "name": box["output_name"], "path": f"{root}/{box['output_name']}.tres", "godot_type": "StyleBoxTexture"} for box in boxes],
+        *[{"role": "runtime", "name": region["output_name"], "path": f"{root}/{region['output_name']}.tres", "godot_type": "AtlasTexture"} for region in regions],
     ]
-    sources = [{"path": box["source_path"], "layout": "region_atlas"}]
+    sources = [
+        {"path": source_path, "layout": "region_atlas"}
+        for source_path in sorted(
+            {box["source_path"] for box in boxes}
+            | {region["source_path"] for region in regions}
+        )
+    ]
     theme = request["spec"].get("theme")
     if theme is not None:
         outputs.insert(0, {
@@ -103,6 +126,10 @@ def _source_adapter(family: str):
 
 def _write_sources(root: Path, request: dict, *, recipe_variation: str | None = None) -> None:
     spec = request["spec"]
+    if request["asset_type"] == "ui-kit":
+        reference = root / "references/test-ui.png"
+        reference.parent.mkdir(parents=True, exist_ok=True)
+        reference.write_bytes(_png(1, 1))
     theme = spec.get("theme")
     if theme is not None:
         recipe = {
@@ -115,15 +142,15 @@ def _write_sources(root: Path, request: dict, *, recipe_variation: str | None = 
         recipe_file = root / theme["recipe_path"].removeprefix("res://")
         recipe_file.parent.mkdir(parents=True, exist_ok=True)
         recipe_file.write_text(json.dumps(recipe), encoding="utf-8")
-    box = spec["styleboxes"][0]
-    image_file = root / box["source_path"].removeprefix("res://")
-    image_file.parent.mkdir(parents=True, exist_ok=True)
-    image_file.write_bytes(_png(32, 32))
+    for source_path in {box["source_path"] for box in spec["styleboxes"]} | {region["source_path"] for region in spec["atlas_regions"]}:
+        image_file = root / source_path.removeprefix("res://")
+        image_file.parent.mkdir(parents=True, exist_ok=True)
+        image_file.write_bytes(_png(32, 32))
     region = spec["atlas_regions"][0]
     metadata = {
         "version": 1,
         "atlas_path": region["source_path"],
-        "regions": [{"name": "icon", "rect": [16, 0, 8, 8], "pivot": [0.5, 0.5], "nine_slice": None}],
+        "regions": [{"name": item["logical_asset_id"], "rect": [16, 0, 8, 8], "pivot": [0.5, 0.5], "nine_slice": None} for item in spec["atlas_regions"]],
     }
     (root / region["metadata_path"].removeprefix("res://")).write_text(json.dumps(metadata), encoding="utf-8")
 
@@ -180,9 +207,18 @@ def test_closed_family_contract_binds_every_declared_output_and_source(family):
 
 def test_ui_contract_rejects_a_missing_requested_hover_state():
     request = _request("ui-kit")
-    request["spec"]["required_states"].append("hover")
+    request["spec"]["required_states"].remove("hover")
 
     with pytest.raises(UICardContractError, match="required_state"):
+        check_ui_card_request(request)
+
+
+@pytest.mark.parametrize("field", ["references", "provider"])
+def test_ui_contract_requires_a_binding_reference_and_provider_pin(field):
+    request = _request("ui-kit")
+    request.pop(field)
+
+    with pytest.raises(UICardContractError, match="ui-kit"):
         check_ui_card_request(request)
 
 

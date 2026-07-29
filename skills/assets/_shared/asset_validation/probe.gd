@@ -199,7 +199,7 @@ func _resource_path(resource: Resource) -> String:
 
 
 func _theme_stylebox_facts(stylebox: StyleBox) -> Dictionary:
-	var facts := {"class": stylebox.get_class()}
+	var facts := {"class": stylebox.get_class(), "resource_path": stylebox.resource_path}
 	if stylebox.is_class("StyleBoxFlat"):
 		var flat := stylebox as StyleBoxFlat
 		facts["border_width"] = {

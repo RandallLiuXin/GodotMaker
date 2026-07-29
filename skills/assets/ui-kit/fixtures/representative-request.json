@@ -1,6 +1,8 @@
 {
   "asset_type": "ui-kit",
   "asset_id": "adventure_hud",
+  "provider": "codex",
+  "references": [{"role": "style", "path": "references/adventure-ui.png"}],
   "brief": "A compact adventure HUD skin with a normal button and sword icon.",
   "spec": {
     "theme": {

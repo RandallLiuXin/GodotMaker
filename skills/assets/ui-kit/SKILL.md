@@ -1,24 +1,36 @@
 ---
 name: ui-kit
-description: Produce a standalone UI skin with native Theme, StyleBoxTexture, and AtlasTexture resources for reusable controls.
+description: Produce a complete reusable non-pixel-art Godot UI Theme from a binding visual reference, including provider-generated UI source sheets, processed atlases, StyleBoxTexture state resources, AtlasTexture icons, and Theme bindings.
 ---
 
 # UI Kit Asset
 
-Use this skill for a reusable UI skin: interface icons, panels, tabs, badges,
-progress bars, and button states. It produces visual resources, not a scene or
-layout. Do not use it for card frames, portrait frames, character art, a full
-composite screen, readable text, or gameplay geometry.
+Use this skill to make one reusable visual Theme, not a page or a Control
+layout. The result supplies interface icons, panels, and button states a worker
+needs to construct later screens. It does not create a composite screen, readable UI copy,
+characters, logos, or gameplay geometry.
 
-## Invocation
+Read [references/theme-baseline.md](references/theme-baseline.md) before
+planning. That is the complete common-control contract; do not ask the caller
+to repeat it in their brief.
 
-Accept one asset request matching the shared Asset Skill request schema in
-`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
-`asset_type` to be `ui-kit`. First validate the returned document against the shared result schema and checker, then enforce the closed UI request and
-request-to-result binding with `tools/asset_ui_card_contract_check.py`.
-`spec` must declare one Theme recipe/output/variation, the complete requested
-button-state set, one explicit StyleBoxTexture recipe for each state, and every
-requested atlas region. The common checker alone is not sufficient.
+## Input gate
+
+Accept the shared Asset Skill request schema and require `asset_type: ui-kit`.
+Validate the returned document with the shared result schema and checker before
+running the family binding checks.
+Require one or more `references` with a readable local image path. Preserve
+every `role`. A missing, unreadable, or unattached reference is a STOP, before
+calling a provider or writing generated output. Pixel-art requests are not
+supported and are a STOP.
+
+Respect the declared `provider` exactly (`native`, `codex`, `gemini`, or
+`openai`). Do not substitute another provider. Pass every reference as an
+actual image attachment, not a prompt path: the Codex route uses
+`referenced_image_paths`; the other routes use their declared attachment path.
+Record provider, image model identity when exposed, coding model, reasoning,
+reference roles, exact attached paths, and tool/provider call identity in the
+generation trace. STOP if the declared route cannot attach the references.
 
 This skill can be invoked directly or by an orchestrator with the same
 contract. Do not read or write `ASSETS.md`, tags, stage state, generated
@@ -26,60 +38,44 @@ manifests, stable entries, or worker dispatch state.
 
 ## Produce
 
-1. Use the brief plus visible style or screen references to choose a coherent
-   skin. The LLM supplies the visual recipe: palette, hierarchy, icon language,
-   panel treatment, button-state treatment, and the requested reusable pieces.
-2. Write one closed `theme_recipe` JSON document and compile it to the main
-   `Theme` at
-   `res://assets/generated/ui-kit/<asset_id>/<asset_id>_theme.tres`. Declare at
-   least one type variation and all requested Theme colors, constants, fonts,
-   icons, and StyleBox bindings through the legal recipe schema.
-3. For every textured panel, scalable border, or button-state frame, declare an
-   explicit `StyleBoxTexture` recipe: source PNG, texture region, four borders,
-   expand margins, and horizontal/vertical stretch axes. Compile each recipe
-   to its own `.tres`; use nine-slice borders instead of stretching a whole
-   panel image.
-4. For icon sheets or fixed button-state sheets, assemble a physical atlas from
-   declared slots and metadata. Compile each named runtime region to an
-   independent zero-margin `AtlasTexture`; do not use packing, trimming,
-   inferred regions, or a PNG atlas as a substitute for a region resource.
-5. Cover every requested button state explicitly (`normal`, `hover`, `pressed`,
-   `disabled`, and `focus` when requested). Missing requested states are a
-   failed result, not a visual fallback.
-6. Run `standalone_validation.compile_and_validate()` before returning the
-   result. It validates the family binding at L0, verifies every recipe/image/
-   metadata file at L1, compiles every declared Theme, StyleBoxTexture, and
-   AtlasTexture with a fresh registry at L2, probes every runtime output in
-   headless Godot at L3, and validates every returned structure at L4. The deterministic tools
-   own legal serialization, resource-type completeness, Godot loading, and
-   structure checks; they do not claim to generate a good visual design by
-   themselves.
-   Theme L4 requires the exact `spec.theme.variation` to exist in the loaded
-   Theme; another declared variation does not satisfy the request.
+1. Derive a closed `theme_plan.json` from the brief and reference. It owns
+   palette, contrast, outline/shadow language, shape vocabulary, texture
+   treatment, semantic component/state mapping, and all baseline component
+   bindings. The template is a deterministic skeleton; it is not visual art.
+2. Make at least three provider-generated non-text UI source sheets: state and
+   frame treatments, form/navigation treatments, and a utility-icon sheet.
+   They must share the same binding reference in the actual provider call. Do
+   not generate a screen mockup in place of reusable UI source art.
+3. Use only the existing controlled tools to process actual provider or user
+   images: `asset_image_finalize.py`, `asset_sheet_process.py`,
+   `asset_curation_select.py`, and `asset_atlas_assemble.py`. Use autoslice
+   for separated source pieces, preserve the reports, and use fixed slots for
+   every final atlas rectangle. Do not draw, synthesize, recolor, or replace
+   art with Pillow, SVG, canvas, ImageMagick, Godot drawing, inline scripts, or
+   placeholders.
+4. Compile every textured state/frame to an explicit `StyleBoxTexture` with
+   an exact source region, border, margins, and stretch axes. Compile every
+   icon to a zero-margin `AtlasTexture` using its declared atlas rectangle.
+5. Compile StyleBoxTexture and AtlasTexture resources first. Then compile the
+   main `Theme` at
+   `res://assets/generated/ui-kit/<asset_id>/<asset_id>_theme.tres`, binding
+   those external StyleBoxTexture and AtlasTexture resources to the complete
+   baseline Theme matrix. Theme variations must be real bindings, not names
+   without state resources.
+6. Return the generic result with `source_layout` sources and independent
+   `godot_artifact` runtime outputs. Keep every path under
+   `res://assets/generated/ui-kit/<asset_id>/`. `sources` includes the theme
+   plan/recipe, raw-source provenance, final sheets, atlas metadata, and
+   processing reports through their applicable layouts; `validation` comes
+   from the validator, never from self-reporting.
+7. Run applicable L0-L5 before returning: L0-L4 cover closed contract,
+   source/trace and
+   file checks, native compilation, headless Godot load, structural binding
+   checks, and a small consumer scene that displays the complete state and
+   component matrix. The deterministic tools validate serialization and Godot
+   loading; L6 visual review is an independent Eval layer. A failed
+   state, atlas rectangle, Theme binding, consumer load, or trace is not ready.
 
-The worker owns `Control` and `Container` layout. Reference images establish
-visual direction only; they are not pixel-perfect layout oracles. A worker
-binds the returned Theme and applies the supplied StyleBoxTexture or
-AtlasTexture resources where its concrete controls need them.
-
-## Result
-
-Return the shared generic result. A successful invocation returns independent
-native outputs rather than one opaque bundle:
-
-- one runtime `Theme` for the skin and its type variations;
-- one runtime `StyleBoxTexture` for each declared scalable panel or state
-  frame; and
-- one runtime `AtlasTexture` for each declared icon or sheet region.
-
-The result may include only the requested resource kinds, but every listed
-runtime output must have a successful L0-L4 result. `sources` records the
-`theme_recipe` JSON and each `region_atlas` or `single` PNG used by those
-resources. The runner maps its actual L0-L4 verdict into `validation`; callers
-must not self-report those levels. Representative request/result files are in
-`fixtures/`.
-
-If recipe validation, a requested button state, a nine-slice declaration, an
-atlas region, or a Godot type check fails, return `outputs: []` with
-`validation.passed: false` and explanatory notes. Never report a partly loaded
-skin as ready.
+The worker owns final `Control` and `Container` page layout. The returned
+Theme, StyleBoxes, and AtlasTextures are the reusable visual system; a
+reference establishes visual language, not pixel-perfect screen layout.

@@ -11,7 +11,7 @@ from asset_compiler._stable_entry import StableEntryError, assert_within_output_
 from asset_validation import GodotProbe, ProbeRequest, ValidationError, build_default_structures
 from asset_validation.structure import StructureRequest
 from asset_skill_contract_check import AssetContractError, check_result
-from asset_ui_card_contract_check import UICardContractError, check_ui_card_handoff
+from asset_ui_card_contract_check import UICardContractError, check_ui_card_handoff, validate_ui_reference_inputs
 
 
 class UICardSkillError(Exception):
@@ -107,6 +107,7 @@ def compile_and_validate(
     root = Path(project_root)
     passed = ["L0"]
     try:
+        validate_ui_reference_inputs(request, root)
         for path in _l1_paths(spec):
             file_path = assert_within_output_dir(
                 root, resolve_res_path(root, path, label="declared standalone source"),
@@ -115,7 +116,7 @@ def compile_and_validate(
             )
             if not file_path.is_file() or file_path.stat().st_size <= 0:
                 raise ValidationError(f"declared standalone source is not a non-empty file: {path}")
-    except (OSError, StableEntryError, ValidationError) as exc:
+    except (OSError, StableEntryError, ValidationError, UICardContractError) as exc:
         return _failure(result, passed, "L1", exc)
 
     passed.append("L1")
