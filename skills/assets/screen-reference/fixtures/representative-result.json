@@ -7,7 +7,12 @@
       "path": "references/main_menu.png"
     }
   ],
-  "sources": [],
+  "sources": [
+    {
+      "path": ".godotmaker/asset-generation/sources/main_menu_source.png",
+      "layout": "single"
+    }
+  ],
   "previews": [],
   "validation": {
     "passed": true,

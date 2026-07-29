@@ -62,7 +62,12 @@ def test_representative_fixture_matches_the_public_family_contract(family, expec
     assert output.get("godot_type") == expected["godot_type"]
 
     if expected["source_layout"] is None:
-        assert result["sources"] == []
+        assert result["sources"] == [
+            {
+                "path": ".godotmaker/asset-generation/sources/main_menu_source.png",
+                "layout": "single",
+            }
+        ]
         assert not any(item["role"] == "runtime" for item in result["outputs"])
     else:
         assert result["sources"][0]["layout"] == expected["source_layout"]
@@ -84,10 +89,13 @@ def test_screen_reference_cannot_be_misrepresented_as_a_runtime_asset():
     screen = (ASSETS_DIR / "screen-reference" / "SKILL.md").read_text(encoding="utf-8")
 
     assert "reference-only" in screen
-    assert "has no\n`godot_artifact`" in screen
+    assert "has no `godot_artifact`" in screen
     assert "must not enter worker runtime handoff" in screen
     assert "no `godot_type`" in screen
     assert "Do not compile it to `Texture2D`" in screen
+    assert "Do not request or produce pixel art" in screen
+    assert "reference_inputs" in screen
+    assert "asset_image_finalize.py" in screen
 
 
 def test_gm_asset_keeps_no_second_authoritative_copy_of_extracted_families():

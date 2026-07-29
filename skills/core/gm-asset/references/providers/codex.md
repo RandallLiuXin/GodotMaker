@@ -21,6 +21,19 @@ For each generated image:
 8. Do not report a project `source_path` as `generated_path`.
 9. Do not create placeholder or procedural images when generation fails.
 
+## Reference Images
+
+References are optional. When a production unit supplies one or more required
+references, each is binding input rather than prompt-only context:
+
+1. verify every path is a readable image before calling `image_gen`;
+2. preserve its production role in the generation prompt and provider report;
+3. call `image_gen` with `referenced_image_paths` containing every required
+   local reference path; do not replace this with text that names a path;
+4. record the exact attached paths, roles, and `referenced_image_paths` count
+   in the provider report;
+5. STOP when the active Codex image path cannot accept those attachments.
+
 Generated-path report shape:
 
 ```json
@@ -105,7 +118,9 @@ For each asset:
 5. Do not inspect unrelated Codex threads.
 6. Do not choose files by modified time.
 7. Do not copy files.
-8. Do not create placeholder or procedural images.
+8. When an asset has references, pass every source_path reference to `image_gen`
+   through `referenced_image_paths` and report the attached paths and roles.
+9. Do not create placeholder or procedural images.
 
 Assets:
 - id: <asset_id>
