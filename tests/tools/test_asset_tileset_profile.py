@@ -214,6 +214,9 @@ def test_material_composition_selects_named_water_and_vegetation_materials(tmp_p
     assert report["materials"]["foreground"]["name"] == "shallow_water"
     assert report["materials"]["background"]["name"] == "riverbank_vegetation"
     with Image.open(atlas) as composed:
+        background = composed.convert("RGBA").crop((0, 0, 24, 24))
+        red, green, blue, _alpha = background.getpixel((12, 12))
+        assert green > blue > red
         full_foreground = composed.convert("RGBA").crop((6 * 24, 5 * 24, 7 * 24, 6 * 24))
         red, green, blue, _alpha = full_foreground.getpixel((12, 12))
         assert blue > green > red

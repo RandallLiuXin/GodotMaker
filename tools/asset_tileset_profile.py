@@ -322,10 +322,10 @@ def _select_material_patch(image: Image.Image, *, material: str) -> tuple[float,
 
 def _material_family(material: str) -> str:
     normalized = material.strip().lower().replace("-", "_").replace(" ", "_")
-    if any(token in normalized for token in ("water", "river", "lake", "ocean", "sea")):
-        return "water"
     if any(token in normalized for token in ("grass", "moss", "vegetation", "foliage", "leaf")):
         return "vegetation"
+    if any(token in normalized for token in ("water", "river", "lake", "ocean", "sea")):
+        return "water"
     return "earth"
 
 

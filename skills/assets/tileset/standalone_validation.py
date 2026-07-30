@@ -53,7 +53,7 @@ def _configure_runtime_imports() -> None:
         )
     # Appended, never inserted: these flat directories must not shadow the
     # standard library or installed packages for the rest of the process.
-    for path in (str(runtime), str(tools)):
+    for path in (str(runner.parent), str(runtime), str(tools)):
         if path not in sys.path:
             sys.path.append(path)
 
