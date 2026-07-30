@@ -1010,6 +1010,7 @@ class TestPublishedAssetRuntime:
         assert (runtime / "schema" / "asset-skill-request.schema.json").exists()
         assert (runtime / "asset_compiler" / "registry.py").exists()
         assert (runtime / "asset_validation" / "ladder.py").exists()
+        assert (runtime / "tools" / "codex_image_claim.py").exists()
         assert not (target / skill_root / "_shared").exists()
 
     @pytest.mark.parametrize(

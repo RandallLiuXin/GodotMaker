@@ -79,7 +79,7 @@ def test_tileset_skill_limits_production_to_fixed_profile_templates():
     assert "`spec.autotile_profile` is required" in text
     assert "Agents must not enumerate 15/47 cells" in text
     assert "asset_tileset_profile.py" in text
-    assert "tools/codex_image_claim.py --plan" in text
+    assert ".godotmaker/asset-runtime/tools/codex_image_claim.py --plan" in text
     assert "--atlas-declaration-out" in text
     assert "GM_EVAL_GODOT_PATH" in text
 
