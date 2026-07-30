@@ -83,8 +83,16 @@ def test_background_and_platform_runtime_contracts_keep_native_type_boundaries()
     assert "--report .godotmaker/asset-generation/reports" in background
     assert "Texture2D" in platform
     assert "AtlasTexture" in platform
-    assert "explicitly declared grid" in platform
-    assert "automatic packing" in platform
+    assert "fixed grid" in platform
+    assert "fixed-slot declaration" in platform
+    assert "referenced_image_paths" in platform
+    assert "_source.json" in platform
+    assert "_validation.json" in platform
+    assert "tools/codex_image_claim.py --plan" in platform
+    assert "never hand-write provenance JSON" in platform
+    assert "Split the raw provider sheet before any crop, resize, or padding" in platform
+    assert "Never normalize the whole sheet as one image" in platform
+    assert "one `sources` entry with `layout: \"single\"` for every processed segment" in platform
 
 
 def test_background_map_restores_real_provider_finalize_and_non_pixel_contracts():

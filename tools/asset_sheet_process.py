@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from bisect import bisect_right
 import json
 import math
 import re
@@ -398,6 +399,7 @@ def process_sheet(
     trim_border: int = 0,
     edge_clean_depth: int = 0,
     edge_touch_margin: int = 0,
+    preserve_cell_bounds: bool = False,
     report: Path | None = None,
 ) -> dict[str, object]:
     """Split a production-shaped grid sheet into cropped per-cell PNGs."""
@@ -423,6 +425,8 @@ def process_sheet(
         raise SheetProcessError("--background must be transparent or magenta")
     if snap_mode not in SNAP_MODES:
         raise SheetProcessError("--snap-mode must be grid or autoslice")
+    if preserve_cell_bounds and snap_mode != "grid":
+        raise SheetProcessError("--preserve-cell-bounds requires --snap-mode grid")
     if component_mode not in COMPONENT_MODES:
         raise SheetProcessError("--component-mode must be all or largest")
     for name, value in {
@@ -454,8 +458,8 @@ def process_sheet(
         width, height = image.size
         if not _has_transparent_pixels(image):
             raise SheetProcessError("Source sheet must have transparency after background cleanup")
-        if width % cols != 0 or height % rows != 0:
-            raise SheetProcessError("Source dimensions must divide evenly by grid")
+        column_edges = [(width * index) // cols for index in range(cols + 1)]
+        row_edges = [(height * index) // rows for index in range(rows + 1)]
         cell_w = width // cols
         cell_h = height // rows
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -469,14 +473,16 @@ def process_sheet(
                 rect_left, rect_top, rect_right, rect_bottom = rect
                 center_x = (rect_left + rect_right - 1) / 2
                 center_y = (rect_top + rect_bottom - 1) / 2
-                col = min(cols - 1, max(0, int(center_x // cell_w)))
-                row = min(rows - 1, max(0, int(center_y // cell_h)))
+                col = min(cols - 1, max(0, bisect_right(column_edges, center_x) - 1))
+                row = min(rows - 1, max(0, bisect_right(row_edges, center_y) - 1))
                 rects_by_index.setdefault(row * cols + col, []).append(rect)
 
             for index, name in enumerate(cell_names):
                 row, col = divmod(index, cols)
-                left = col * cell_w
-                top = row * cell_h
+                left = column_edges[col]
+                top = row_edges[row]
+                right = column_edges[col + 1]
+                bottom = row_edges[row + 1]
                 cell_rects = sorted(
                     rects_by_index.get(index, []),
                     key=_rect_area,
@@ -488,7 +494,7 @@ def process_sheet(
                     "state": "candidate",
                     "index": index,
                     "grid": [col, row],
-                    "source_box": [left, top, left + cell_w, top + cell_h],
+                    "source_box": [left, top, right, bottom],
                     "component_mode": component_mode,
                     "component_count": 0,
                     "selected_component_area": None,
@@ -511,7 +517,7 @@ def process_sheet(
                     "state": "candidate",
                     "index": index,
                     "grid": [col, row],
-                    "source_box": [left, top, left + cell_w, top + cell_h],
+                    "source_box": [left, top, right, bottom],
                     "component_mode": component_mode,
                     "component_count": len(cell_rects),
                     "selected_component_area": selected_area,
@@ -557,9 +563,11 @@ def process_sheet(
         else:
             for index, name in enumerate(cell_names):
                 row, col = divmod(index, cols)
-                left = col * cell_w
-                top = row * cell_h
-                cell = image.crop((left, top, left + cell_w, top + cell_h))
+                left = column_edges[col]
+                top = row_edges[row]
+                right = column_edges[col + 1]
+                bottom = row_edges[row + 1]
+                cell = image.crop((left, top, right, bottom))
                 cell = _trim_border(cell, pixels=trim_border)
                 cell = _clean_edge_noise(cell, depth=edge_clean_depth)
                 components = _connected_components(cell, min_area=min_component_area)
@@ -575,7 +583,7 @@ def process_sheet(
                     "state": "candidate",
                     "index": index,
                     "grid": [col, row],
-                    "source_box": [left, top, left + cell_w, top + cell_h],
+                    "source_box": [left, top, right, bottom],
                     "component_mode": component_mode,
                     "component_count": len(components),
                     "selected_component_area": (
@@ -610,7 +618,8 @@ def process_sheet(
                     height=cell.height,
                     padding=padding if component_padding is None else component_padding,
                 )
-                cropped = cell.crop(crop_bbox)
+                output_box = (0, 0, cell.width, cell.height) if preserve_cell_bounds else crop_bbox
+                cropped = cell.crop(output_box)
                 path = output_dir / f"{name}.png"
                 cropped.save(path)
                 accepted.append({
@@ -618,6 +627,8 @@ def process_sheet(
                     "path": str(path),
                     "crop_bbox": list(bbox),
                     "padded_crop_bbox": list(crop_bbox),
+                    "output_box": list(output_box),
+                    "preserve_cell_bounds": preserve_cell_bounds,
                     "edge_touch": touches_edge,
                     "trim_border": trim_border,
                     "edge_clean_depth": edge_clean_depth,
@@ -651,8 +662,10 @@ def process_sheet(
         "trim_border": trim_border,
         "edge_clean_depth": edge_clean_depth,
         "edge_touch_margin": edge_touch_margin,
+        "preserve_cell_bounds": preserve_cell_bounds,
         "grid": {"cols": cols, "rows": rows},
         "cell_size": [cell_w, cell_h],
+        "cell_bounds": {"columns": column_edges, "rows": row_edges},
         "candidates": [
             {
                 "candidate_id": f"{asset_id or source.stem}.{item['name']}",
@@ -762,6 +775,11 @@ def _main() -> int:
         default=0,
         help="Additional margin treated as edge touch during component checks",
     )
+    parser.add_argument(
+        "--preserve-cell-bounds",
+        action="store_true",
+        help="Keep each accepted grid output at its full fixed cell dimensions",
+    )
     parser.add_argument("--report", default=None, help="Optional JSON report path")
     args = parser.parse_args()
 
@@ -785,6 +803,7 @@ def _main() -> int:
             trim_border=args.trim_border,
             edge_clean_depth=args.edge_clean_depth,
             edge_touch_margin=args.edge_touch_margin,
+            preserve_cell_bounds=args.preserve_cell_bounds,
             report=Path(args.report) if args.report else None,
         )
     except SheetProcessError as exc:

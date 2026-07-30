@@ -1169,8 +1169,29 @@ for adapter in (platform_strip, screen_reference, character_bundle, fx_bundle, c
         assert "L0 standalone contract failed" in str(exc)
     else:
         raise AssertionError("published family adapter accepted another family")
-platform_request = {{"asset_type": "platform-strip", "asset_id": "bridge", "brief": "A bridge.", "spec": {{"kind": "single", "segments": [{{"name": "center"}}]}}}}
-platform_result = {{"asset_type": "platform-strip", "outputs": [{{"role": "runtime", "name": "center", "path": "res://assets/generated/platform-strip/bridge/center.png", "godot_type": "Texture2D"}}], "sources": [{{"path": "res://assets/generated/platform-strip/bridge/center.png", "layout": "single"}}], "previews": [], "validation": {{"passed": False}}}}
+platform_request = {{
+    "asset_type": "platform-strip", "asset_id": "bridge", "brief": "A bridge.",
+    "spec": {{
+        "kind": "single", "grid": {{"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8}},
+        "segments": [
+            {{"name": "left", "role": "left_cap", "slot": [0, 0]}},
+            {{"name": "middle", "role": "repeat_middle", "slot": [1, 0]}},
+            {{"name": "right", "role": "right_cap", "slot": [2, 0]}},
+        ],
+    }},
+}}
+platform_result = {{
+    "asset_type": "platform-strip",
+    "outputs": [
+        {{"role": "runtime", "name": name, "path": f"res://assets/generated/platform-strip/bridge/{{name}}.png", "godot_type": "Texture2D"}}
+        for name in ("left", "middle", "right")
+    ],
+    "sources": [
+        {{"path": f"res://assets/generated/platform-strip/bridge/{{name}}.png", "layout": "single"}}
+        for name in ("left", "middle", "right")
+    ],
+    "previews": [], "validation": {{"passed": False}},
+}}
 try:
     background_map.compile_and_validate(platform_request, platform_result, project_root=target, godot_path="godot")
 except background_map.MissingFamilySkillError as exc:

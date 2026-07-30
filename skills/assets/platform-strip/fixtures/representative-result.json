@@ -3,8 +3,20 @@
   "outputs": [
     {
       "role": "runtime",
-      "name": "bridge_middle",
-      "path": "res://assets/generated/platform-strip/wood_bridge/bridge_middle.tres",
+      "name": "bridge_left_cap",
+      "path": "res://assets/generated/platform-strip/wood_bridge/bridge_left_cap.tres",
+      "godot_type": "AtlasTexture"
+    },
+    {
+      "role": "runtime",
+      "name": "bridge_repeat_middle",
+      "path": "res://assets/generated/platform-strip/wood_bridge/bridge_repeat_middle.tres",
+      "godot_type": "AtlasTexture"
+    },
+    {
+      "role": "runtime",
+      "name": "bridge_right_cap",
+      "path": "res://assets/generated/platform-strip/wood_bridge/bridge_right_cap.tres",
       "godot_type": "AtlasTexture"
     }
   ],
