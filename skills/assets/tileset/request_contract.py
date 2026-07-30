@@ -14,7 +14,7 @@ _TOP_LEVEL = {"asset_type", "asset_id", "brief", "provider", "references", "spec
 _SPEC = {"autotile_profile", "tile_size", "terrain", "semantic_metadata"}
 _TERRAIN = {"name", "foreground_material", "background_material"}
 _METADATA = {"custom_data_layers", "physics_layers", "navigation_layers", "roles"}
-_ROLE_NAMES = {"foreground_full", "background_full"}
+_ROLE_NAMES = {"foreground_full", "foreground_isolated"}
 _ROLE = {"custom_data", "physics", "navigation"}
 
 

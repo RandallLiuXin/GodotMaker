@@ -40,11 +40,22 @@ _DIRECTION_NAMES = {
     0: "right", 3: "bottom_right", 4: "bottom", 7: "bottom_left",
     8: "left", 11: "top_left", 12: "top", 15: "top_right",
 }
-_EDGE_CORNERS = {
-    "top": (11, 15),
-    "right": (15, 3),
-    "bottom": (3, 7),
-    "left": (7, 11),
+_PEERING_POINTS = (
+    ("top_left", 11), ("top", 12), ("top_right", 15),
+    ("left", 8), ("right", 0),
+    ("bottom_left", 7), ("bottom", 4), ("bottom_right", 3),
+)
+_EDGE_POINTS = {
+    "top": (11, 12, 15),
+    "right": (15, 0, 3),
+    "bottom": (7, 4, 3),
+    "left": (11, 8, 7),
+}
+_BLOB_CORNER_DEPENDENCIES = {
+    3: (0, 4),
+    7: (4, 8),
+    11: (8, 12),
+    15: (12, 0),
 }
 
 
@@ -80,19 +91,19 @@ def _blob_47() -> TileSetProfile:
     Slots are ordered deterministically by side mask then legal corner mask;
     slot (7, 5) is intentionally unused.
     """
-    adjacent_sides = ((0, 1), (1, 2), (2, 3), (3, 0))
     combinations: list[tuple[int, ...]] = []
     for side_mask in range(16):
+        sides = tuple(side for index, side in enumerate(_SIDES) if side_mask & (1 << index))
         allowed_corners = [
-            corner_index
-            for corner_index, (first_side, second_side) in enumerate(adjacent_sides)
-            if side_mask & (1 << first_side) and side_mask & (1 << second_side)
+            corner
+            for corner in _CORNERS
+            if set(_BLOB_CORNER_DEPENDENCIES[corner]).issubset(sides)
         ]
         for corner_mask in range(1 << len(allowed_corners)):
-            bits = [side for index, side in enumerate(_SIDES) if side_mask & (1 << index)]
+            bits = list(sides)
             bits.extend(
-                _CORNERS[corner_index]
-                for local_index, corner_index in enumerate(allowed_corners)
+                corner
+                for local_index, corner in enumerate(allowed_corners)
                 if corner_mask & (1 << local_index)
             )
             combinations.append(tuple(bits))
@@ -145,23 +156,26 @@ def profile_manifest(profile_name: str) -> dict[str, Any]:
                 "reserved": False,
                 "label": "terrain_" + ("_".join(directions) if directions else "center"),
                 "peering_bits": list(tile.peering_bits),
+                "geometry_mask": {name: int(bit in tile.peering_bits) for name, bit in _PEERING_POINTS},
                 "edge_signature": _edge_signature(tile),
             })
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "profile": profile.name,
         "grid": {"columns": profile.columns, "rows": profile.rows},
         "terrain_mode": profile.terrain_mode,
+        "peering_bit_layout": {name: bit for name, bit in _PEERING_POINTS},
+        "slot_order": "side_mask_then_legal_corner_subset_v1" if profile.name == "blob_47" else "corner_mask_row_major_v1",
         "slots": slots,
     }
 
 
 def _edge_signature(tile: ProfileTile) -> dict[str, list[int]]:
-    """Return the fixed terrain-presence bits at each physical tile edge."""
+    """Return the exact corner, side, corner values at each physical edge."""
     present = set(tile.peering_bits)
     return {
-        direction: [int(first in present), int(second in present)]
-        for direction, (first, second) in _EDGE_CORNERS.items()
+        direction: [int(bit in present) for bit in bits]
+        for direction, bits in _EDGE_POINTS.items()
     }
 
 
@@ -261,7 +275,7 @@ def compose_profile_material_atlas(
     foreground = source.crop(foreground_box).resize((tile_width, tile_height), Image.Resampling.LANCZOS)
     atlas = Image.new("RGBA", (profile.columns * tile_width, profile.rows * tile_height), (0, 0, 0, 0))
     for tile in profile.tiles:
-        mask = _terrain_mask(tile, tile_width, tile_height)
+        mask = _terrain_mask(tile, tile_width, tile_height, terrain_mode=profile.terrain_mode)
         composed = Image.composite(foreground, background, mask)
         atlas.alpha_composite(composed, (tile.coords[0] * tile_width, tile.coords[1] * tile_height))
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -270,8 +284,8 @@ def compose_profile_material_atlas(
         "profile": profile.name,
         "input": str(material_source),
         "output": str(output),
-        "operation": "deterministic_profile_material_composite_v1",
-        "terrain_mask": "bilinear_corner_profile_v1",
+        "operation": "deterministic_profile_material_composite_v2",
+        "terrain_mask": "piecewise_bilinear_8bit_peering_profile_v2",
         "materials": {
             "background": {
                 "name": background_material,
@@ -338,31 +352,75 @@ def _material_score(pixel: tuple[float, ...] | tuple[int, ...], family: str) -> 
     return red - green * 0.45 - blue * 0.25
 
 
-def _terrain_mask(tile: ProfileTile, width: int, height: int) -> Image.Image:
-    """Render the profile's four terrain corners as a softly antialiased mask."""
+def _terrain_mask(tile: ProfileTile, width: int, height: int, *, terrain_mode: int) -> Image.Image:
+    """Render an antialiased mask from the profile's exact peering geometry.
+
+    Marching Squares has only corner peering bits and retains its original
+    bilinear mask. Blob 47 uses all eight square peering points: four corners
+    and the midpoint of every edge, around its always-present terrain center.
+    The outermost pixels are explicitly set from the same edge signatures
+    exposed in the manifest, which guarantees that two compatible cells meet
+    without a one-pixel topology disagreement.
+    """
     present = set(tile.peering_bits)
-    top_left = int(11 in present)
-    top_right = int(15 in present)
-    bottom_left = int(7 in present)
-    bottom_right = int(3 in present)
+    top_left, top_right = int(11 in present), int(15 in present)
+    bottom_left, bottom_right = int(7 in present), int(3 in present)
+    uses_8bit_peering = terrain_mode == 0
+    controls = (
+        (top_left, int(12 in present), top_right),
+        (int(8 in present), int(uses_8bit_peering), int(0 in present)),
+        (bottom_left, int(4 in present), bottom_right),
+    )
     mask = Image.new("L", (width, height))
     values: list[int] = []
     for row in range(height):
         y = (row + 0.5) / height
         for column in range(width):
             x = (column + 0.5) / width
-            value = (
-                top_left * (1 - x) * (1 - y)
-                + top_right * x * (1 - y)
-                + bottom_left * (1 - x) * y
-                + bottom_right * x * y
-            )
-            # A narrow smoothstep band avoids jagged diagonal borders while
-            # leaving every profile corner categorically grass or terrain.
-            softened = max(0.0, min(1.0, (value - 0.34) / 0.32))
-            values.append(round(softened * 255))
+            if uses_8bit_peering:
+                value = _piecewise_bilinear(controls, x, y)
+            else:
+                value = (
+                    top_left * (1 - x) * (1 - y)
+                    + top_right * x * (1 - y)
+                    + bottom_left * (1 - x) * y
+                    + bottom_right * x * y
+                )
+            values.append(_softened_alpha(value))
     mask.putdata(values)
+    signatures = _edge_signature(tile)
+    for column in range(width):
+        position = (column + 0.5) / width
+        mask.putpixel((column, 0), _softened_alpha(_edge_value(signatures["top"], position)))
+        mask.putpixel((column, height - 1), _softened_alpha(_edge_value(signatures["bottom"], position)))
+    for row in range(height):
+        position = (row + 0.5) / height
+        mask.putpixel((0, row), _softened_alpha(_edge_value(signatures["left"], position)))
+        mask.putpixel((width - 1, row), _softened_alpha(_edge_value(signatures["right"], position)))
     return mask
+
+
+def _piecewise_bilinear(controls: tuple[tuple[int, int, int], ...], x: float, y: float) -> float:
+    """Interpolate a 3x3 peering grid while preserving its eight boundaries."""
+    column = min(int(x * 2), 1)
+    row = min(int(y * 2), 1)
+    local_x = x * 2 - column
+    local_y = y * 2 - row
+    top = controls[row][column] * (1 - local_x) + controls[row][column + 1] * local_x
+    bottom = controls[row + 1][column] * (1 - local_x) + controls[row + 1][column + 1] * local_x
+    return top * (1 - local_y) + bottom * local_y
+
+
+def _edge_value(points: list[int], position: float) -> float:
+    """Interpolate a corner, midpoint, corner sequence at a physical edge."""
+    if position < 0.5:
+        return points[0] * (1 - position * 2) + points[1] * position * 2
+    return points[1] * (2 - position * 2) + points[2] * (position * 2 - 1)
+
+
+def _softened_alpha(value: float) -> int:
+    """Keep categorical peering samples while softening only the transition band."""
+    return round(max(0.0, min(1.0, (value - 0.34) / 0.32)) * 255)
 
 
 def _positive_int(value: int, label: str) -> int:
@@ -404,44 +462,58 @@ def _rgb_distance(first: tuple[int, int, int], second: tuple[int, int, int]) -> 
 
 
 def diagnose_profile_edge_semantics(image: Image.Image, profile: TileSetProfile, *, tile_width: int, tile_height: int) -> dict[str, Any]:
-    """Check whether painted corner materials agree with the fixed profile.
+    """Check whether painted peering-point materials agree with the profile.
 
-    Each Godot corner peering bit is sampled from a small, inward-facing corner
-    patch. The output names every mismatch so an agent can repair the source or
+    Each relevant Godot peering bit is sampled from a small, inward-facing
+    patch. This includes the four edge midpoints for Blob 47, so a sheet cannot
+    pass merely because its corners look correct while its side geometry is
+    wrong. The output names every mismatch so an agent can repair the source or
     processing parameters before compiling instead of treating a valid .tres
     as proof that visual transitions are usable.
     """
     prototype, threshold = _terrain_color_prototype(image, profile, tile_width, tile_height)
-    patch = max(2, min(tile_width, tile_height) // 6)
+    patch = max(2, min(tile_width, tile_height) // 12)
     mismatches: list[dict[str, Any]] = []
+    points: tuple[tuple[str, int | None], ...] = _PEERING_POINTS if profile.terrain_mode == 0 else tuple(
+        (name, bit) for name, bit in _PEERING_POINTS if bit in _CORNERS
+    )
+    if profile.terrain_mode == 0:
+        points += (("center", None),)
     for tile in profile.tiles:
         left, top = tile.coords[0] * tile_width, tile.coords[1] * tile_height
         present = set(tile.peering_bits)
-        for bit, name, x_offset, y_offset in (
-            (11, "top_left", 0, 0),
-            (15, "top_right", tile_width - patch, 0),
-            (7, "bottom_left", 0, tile_height - patch),
-            (3, "bottom_right", tile_width - patch, tile_height - patch),
-        ):
+        offsets = {
+            11: (0, 0),
+            12: ((tile_width - patch) // 2, 0),
+            15: (tile_width - patch, 0),
+            8: (0, (tile_height - patch) // 2),
+            0: (tile_width - patch, (tile_height - patch) // 2),
+            7: (0, tile_height - patch),
+            4: ((tile_width - patch) // 2, tile_height - patch),
+            3: (tile_width - patch, tile_height - patch),
+            None: ((tile_width - patch) // 2, (tile_height - patch) // 2),
+        }
+        for name, bit in points:
+            x_offset, y_offset = offsets[bit]
             colors = [pixel[:3] for pixel in image.crop((left + x_offset, top + y_offset, left + x_offset + patch, top + y_offset + patch)).get_flattened_data() if pixel[3] > 0]
             terrain_fraction = (
                 sum(_rgb_distance(pixel, prototype) <= threshold for pixel in colors) / len(colors)
                 if colors else 0.0
             )
-            expected_terrain = bit in present
+            expected_terrain = bit is None or bit in present
             matched = terrain_fraction >= 0.55 if expected_terrain else terrain_fraction <= 0.45
             if not matched:
                 mismatches.append({
                     "coords": list(tile.coords),
-                    "corner": name,
+                    "peering_point": name,
                     "expected": "terrain" if expected_terrain else "non_terrain",
                     "terrain_fraction": round(terrain_fraction, 3),
                 })
     return {
-        "method": "full_terrain_corner_color_envelope_v1",
+        "method": "full_terrain_peering_point_color_envelope_v2",
         "terrain_rgb": list(prototype),
         "threshold": round(threshold, 3),
-        "checked_corners": len(profile.tiles) * 4,
+        "checked_peering_points": len(profile.tiles) * len(points),
         "mismatch_count": len(mismatches),
         "mismatches": mismatches,
     }
@@ -596,8 +668,8 @@ def _semantic_overrides(
     roles = semantic_metadata.get("roles", {})
     custom_layers = {item["name"]: index for index, item in enumerate(semantic_metadata.get("custom_data_layers", []))}
     full_foreground = next((tile for tile in profile.tiles if set(_CORNERS).issubset(tile.peering_bits)), None)
-    full_background = next((tile for tile in profile.tiles if not tile.peering_bits), None)
-    for role_name, tile in (("foreground_full", full_foreground), ("background_full", full_background)):
+    isolated_foreground = next((tile for tile in profile.tiles if not tile.peering_bits), None)
+    for role_name, tile in (("foreground_full", full_foreground), ("foreground_isolated", isolated_foreground)):
         role = roles.get(role_name)
         if not role:
             continue

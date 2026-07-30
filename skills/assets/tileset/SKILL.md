@@ -37,7 +37,7 @@ Production supports exactly these versioned profiles:
 
 `tools/asset_tileset_profile.py` is the fixed source of truth for slot coordinates, edge signatures, and peering bits. Provider guides, final atlas validation, recipe generation, and compiler input must derive from that one implementation. Agents must not enumerate 15/47 cells or hand-write `.tres` resources.
 
-The profile generator emits `tile_size`, `margins`, `separation`, `terrain_sets`, and `peering_bits` deterministically. Physics, navigation, and custom data may be declared in `spec.semantic_metadata`; they are applied only to named semantic roles such as `foreground_full`, never inferred from pixels. This Skill does not support animated TileSets, occlusion, or alternatives. Unknown or misspelled fields are rejected.
+The profile generator emits `tile_size`, `margins`, `separation`, `terrain_sets`, and `peering_bits` deterministically. Physics, navigation, and custom data may be declared in `spec.semantic_metadata`; they are applied only to named semantic roles such as `foreground_full` or `foreground_isolated`, never inferred from pixels. In `blob_47`, the no-peering-bit slot is the isolated current terrain, not a complete background tile. This Skill does not support animated TileSets, occlusion, or alternatives. Unknown or misspelled fields are rejected.
 
 ## References, Provider, And Trace
 

@@ -21,6 +21,7 @@ from asset_tileset_profile import (  # noqa: E402
     build_profile_recipe,
     compile_profile_recipe,
     get_profile,
+    profile_manifest,
 )
 from request_contract import TileSetRequestError, check_tileset_request  # noqa: E402
 from PIL import Image  # noqa: E402
@@ -112,6 +113,10 @@ def test_tileset_request_contract_is_typed_and_has_no_output_paths():
     animation["spec"]["semantic_metadata"] = {"roles": {"foreground_full": {"animation": {}}}}
     with pytest.raises(TileSetRequestError, match="unknown fields"):
         check_tileset_request(animation)
+    obsolete_role = _public_request()
+    obsolete_role["spec"]["semantic_metadata"] = {"roles": {"background_full": {}}}
+    with pytest.raises(TileSetRequestError, match="unknown roles"):
+        check_tileset_request(obsolete_role)
 
 
 def test_blob_profile_compiles_to_a_native_tileset(godot_bin, godot_project):
@@ -143,7 +148,20 @@ def test_blob_profile_compiles_to_a_native_tileset(godot_bin, godot_project):
         [ProbeRequest("res://assets/generated/tileset/coast/coast.tres", "TileSet", ("tileset",))],
     )
     assert report.resources[0].type_matches is True
-    assert report.resources[0].structure["tileset"]["tile_count"] == 47
+    tileset = report.resources[0].structure["tileset"]
+    assert tileset["tile_count"] == 47
+    # Godot reports terrain peering bits in numeric order; compare that loaded
+    # representation to the fixed profile without depending on input ordering.
+    expected = {
+        tuple(slot["coords"]): tuple(sorted(slot["peering_bits"]))
+        for slot in profile_manifest("blob_47")["slots"]
+        if not slot["reserved"]
+    }
+    loaded = {
+        tuple(tile["coords"]): tuple(index for index, terrain in enumerate(tile["peering_bits"]) if terrain == 0)
+        for tile in tileset["sources"][0]["tiles"]
+    }
+    assert loaded == expected
 
 
 def test_orthogonal_square_fixture_is_compiler_acceptable_except_for_its_placeholder_binary(tmp_path):

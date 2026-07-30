@@ -12,6 +12,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from asset_tileset_profile import (  # noqa: E402
     TileSetProfileError,
+    _terrain_mask,
     _resolve_runtime_root,
     build_profile_atlas_declaration,
     build_profile_recipe,
@@ -22,6 +23,23 @@ from asset_tileset_profile import (  # noqa: E402
     profile_manifest,
     write_transparent_profile_slot,
     validate_profile_atlas,
+)
+
+
+EXPECTED_BLOB_47_PEERING_BITS = (
+    (), (0,), (4,), (0, 4), (0, 4, 3), (8,), (0, 8), (4, 8), (4, 8, 7),
+    (0, 4, 8), (0, 4, 8, 3), (0, 4, 8, 7), (0, 4, 8, 3, 7), (12,),
+    (0, 12), (0, 12, 15), (4, 12), (0, 4, 12), (0, 4, 12, 3),
+    (0, 4, 12, 15), (0, 4, 12, 3, 15), (8, 12), (8, 12, 11),
+    (0, 8, 12), (0, 8, 12, 11), (0, 8, 12, 15), (0, 8, 12, 11, 15),
+    (4, 8, 12), (4, 8, 12, 7), (4, 8, 12, 11), (4, 8, 12, 7, 11),
+    (0, 4, 8, 12), (0, 4, 8, 12, 3), (0, 4, 8, 12, 7),
+    (0, 4, 8, 12, 3, 7), (0, 4, 8, 12, 11), (0, 4, 8, 12, 3, 11),
+    (0, 4, 8, 12, 7, 11), (0, 4, 8, 12, 3, 7, 11), (0, 4, 8, 12, 15),
+    (0, 4, 8, 12, 3, 15), (0, 4, 8, 12, 7, 15),
+    (0, 4, 8, 12, 3, 7, 15), (0, 4, 8, 12, 11, 15),
+    (0, 4, 8, 12, 3, 11, 15), (0, 4, 8, 12, 7, 11, 15),
+    (0, 4, 8, 12, 3, 7, 11, 15),
 )
 
 
@@ -44,7 +62,16 @@ def _semantic_atlas(path: Path, profile_name: str, cell_size: int = 24) -> None:
         if set((3, 7, 11, 15)).issubset(tile.peering_bits):
             image.paste(dirt, (left, top, left + cell_size, top + cell_size))
             continue
-        for bit, x_offset, y_offset in ((11, 0, 0), (15, cell_size - patch, 0), (7, 0, cell_size - patch), (3, cell_size - patch, cell_size - patch)):
+        points = [(11, 0, 0), (15, cell_size - patch, 0), (7, 0, cell_size - patch), (3, cell_size - patch, cell_size - patch)]
+        if profile.terrain_mode == 0:
+            points.extend([
+                (12, (cell_size - patch) // 2, 0),
+                (8, 0, (cell_size - patch) // 2),
+                (0, cell_size - patch, (cell_size - patch) // 2),
+                (4, (cell_size - patch) // 2, cell_size - patch),
+            ])
+            image.paste(dirt, (left + (cell_size - patch) // 2, top + (cell_size - patch) // 2, left + (cell_size + patch) // 2, top + (cell_size + patch) // 2))
+        for bit, x_offset, y_offset in points:
             if bit in tile.peering_bits:
                 image.paste(dirt, (left + x_offset, top + y_offset, left + x_offset + patch, top + y_offset + patch))
     image.save(path)
@@ -113,18 +140,18 @@ def test_profile_recipe_maps_role_based_physics_navigation_and_custom_data():
             "navigation_layers": [{"name": "walkable_ground"}],
             "roles": {
                 "foreground_full": {"custom_data": {"surface_kind": "water"}, "physics": "full_cell", "navigation": "none"},
-                "background_full": {"custom_data": {"surface_kind": "ground"}, "physics": "none", "navigation": "full_cell"},
+                "foreground_isolated": {"custom_data": {"surface_kind": "water_isolated"}, "physics": "full_cell", "navigation": "none"},
             },
         },
     )
     assert recipe["physics_layers"] == [{"collision_layer": 1, "collision_mask": 0}]
     assert recipe["navigation_layers"] == [{"layers": 1}]
     foreground = next(tile for tile in recipe["sources"][0]["tiles"] if {3, 7, 11, 15}.issubset({item["bit"] for item in tile["peering_bits"]}))
-    background = next(tile for tile in recipe["sources"][0]["tiles"] if not tile["peering_bits"])
+    isolated = next(tile for tile in recipe["sources"][0]["tiles"] if not tile["peering_bits"])
     assert foreground["custom_data"] == [{"layer": 0, "value": "water"}]
     assert foreground["collision_polygons"][0]["points"] == [[0, 0], [32, 0], [32, 32], [0, 32]]
-    assert background["custom_data"] == [{"layer": 0, "value": "ground"}]
-    assert background["navigation_polygons"][0]["points"] == [[0, 0], [32, 0], [32, 32], [0, 32]]
+    assert isolated["custom_data"] == [{"layer": 0, "value": "water_isolated"}]
+    assert isolated["collision_polygons"][0]["points"] == [[0, 0], [32, 0], [32, 32], [0, 32]]
 
 
 def test_blob_profile_corner_bits_always_have_their_adjacent_sides():
@@ -137,6 +164,57 @@ def test_blob_profile_corner_bits_always_have_their_adjacent_sides():
         for corner, sides in dependencies.items():
             if corner in bits:
                 assert sides.issubset(bits), slot
+
+
+def test_blob_profile_pins_all_47_godot_peering_masks_and_manifest_geometry():
+    profile = get_profile("blob_47")
+    assert tuple(tile.peering_bits for tile in profile.tiles) == EXPECTED_BLOB_47_PEERING_BITS
+    manifest = profile_manifest("blob_47")
+    assert manifest["schema_version"] == 3
+    assert manifest["peering_bit_layout"] == {
+        "top_left": 11, "top": 12, "top_right": 15,
+        "left": 8, "right": 0,
+        "bottom_left": 7, "bottom": 4, "bottom_right": 3,
+    }
+    assert manifest["slot_order"] == "side_mask_then_legal_corner_subset_v1"
+    slots = [slot for slot in manifest["slots"] if not slot["reserved"]]
+    assert tuple(tuple(slot["peering_bits"]) for slot in slots) == EXPECTED_BLOB_47_PEERING_BITS
+    assert slots[0]["geometry_mask"] == {
+        "top_left": 0, "top": 0, "top_right": 0, "left": 0,
+        "right": 0, "bottom_left": 0, "bottom": 0, "bottom_right": 0,
+    }
+    assert slots[-1]["geometry_mask"] == {
+        "top_left": 1, "top": 1, "top_right": 1, "left": 1,
+        "right": 1, "bottom_left": 1, "bottom": 1, "bottom_right": 1,
+    }
+
+
+def test_blob_profile_masks_are_unique_centered_and_seam_continuous():
+    profile = get_profile("blob_47")
+    masks = {
+        tile.coords: _terrain_mask(tile, 32, 32, terrain_mode=profile.terrain_mode)
+        for tile in profile.tiles
+    }
+    assert len({mask.tobytes() for mask in masks.values()}) == 47
+    assert masks[(0, 0)].getpixel((16, 16)) == 255
+
+    slots = {
+        tuple(slot["coords"]): slot
+        for slot in profile_manifest("blob_47")["slots"]
+        if not slot["reserved"]
+    }
+    horizontal_matches = 0
+    vertical_matches = 0
+    for left_coords, left_slot in slots.items():
+        for right_coords, right_slot in slots.items():
+            if left_slot["edge_signature"]["right"] == right_slot["edge_signature"]["left"]:
+                horizontal_matches += 1
+                assert list(masks[left_coords].crop((31, 0, 32, 32)).get_flattened_data()) == list(masks[right_coords].crop((0, 0, 1, 32)).get_flattened_data())
+            if left_slot["edge_signature"]["bottom"] == right_slot["edge_signature"]["top"]:
+                vertical_matches += 1
+                assert list(masks[left_coords].crop((0, 31, 32, 32)).get_flattened_data()) == list(masks[right_coords].crop((0, 0, 32, 1)).get_flattened_data())
+    assert horizontal_matches > 0
+    assert vertical_matches > 0
 
 
 def test_profile_manifest_and_guide_expose_every_fixed_slot(tmp_path):
@@ -154,7 +232,7 @@ def test_profile_manifest_exposes_fixed_edge_signatures():
     first_terrain = manifest["slots"][1]
     assert first_terrain["coords"] == [1, 0]
     assert first_terrain["edge_signature"] == {
-        "top": [0, 0], "right": [0, 1], "bottom": [1, 0], "left": [0, 0],
+        "top": [0, 0, 0], "right": [0, 0, 1], "bottom": [0, 0, 1], "left": [0, 0, 0],
     }
 
 
@@ -172,7 +250,26 @@ def test_profile_seam_diagnostics_report_incorrect_corner_material(tmp_path):
     report = validate_profile_atlas(atlas, "marching_squares_15", tile_width=24, tile_height=24, check_seams=True)
     assert report["seam_diagnostics"]["mismatch_count"] == 1
     assert report["seam_diagnostics"]["mismatches"][0]["coords"] == [1, 0]
-    assert report["seam_diagnostics"]["mismatches"][0]["corner"] == "bottom_right"
+    assert report["seam_diagnostics"]["mismatches"][0]["peering_point"] == "bottom_right"
+
+
+def test_blob_profile_seam_diagnostics_cover_all_eight_bits_and_center(tmp_path):
+    atlas = tmp_path / "blob-semantic.png"
+    _semantic_atlas(atlas, "blob_47")
+    profile = get_profile("blob_47")
+    passed = diagnose_profile_edge_semantics(Image.open(atlas).convert("RGBA"), profile, tile_width=24, tile_height=24)
+    assert passed["checked_peering_points"] == 47 * 9
+    assert passed["mismatch_count"] == 0
+
+    with Image.open(atlas) as opened:
+        image = opened.convert("RGBA")
+    image.paste((45, 165, 70, 255), (24 + 22, 11, 24 + 24, 13))
+    image.save(atlas)
+    report = validate_profile_atlas(atlas, "blob_47", tile_width=24, tile_height=24, check_seams=True)
+    mismatch = report["seam_diagnostics"]["mismatches"]
+    assert len(mismatch) == 1
+    assert mismatch[0]["coords"] == [1, 0]
+    assert mismatch[0]["peering_point"] == "right"
 
 
 def test_material_composition_repairs_topology_without_flat_color_corner_patches(tmp_path):
@@ -189,7 +286,7 @@ def test_material_composition_repairs_topology_without_flat_color_corner_patches
         tile_width=24,
         tile_height=24,
     )
-    assert report["operation"] == "deterministic_profile_material_composite_v1"
+    assert report["operation"] == "deterministic_profile_material_composite_v2"
     validated = validate_profile_atlas(atlas, "marching_squares_15", tile_width=24, tile_height=24, check_seams=True)
     assert validated["seam_diagnostics"]["mismatch_count"] == 0
     with Image.open(atlas) as composed:
@@ -214,9 +311,9 @@ def test_material_composition_selects_named_water_and_vegetation_materials(tmp_p
     assert report["materials"]["foreground"]["name"] == "shallow_water"
     assert report["materials"]["background"]["name"] == "riverbank_vegetation"
     with Image.open(atlas) as composed:
-        background = composed.convert("RGBA").crop((0, 0, 24, 24))
-        red, green, blue, _alpha = background.getpixel((12, 12))
-        assert green > blue > red
+        isolated = composed.convert("RGBA").crop((0, 0, 24, 24))
+        red, green, blue, _alpha = isolated.getpixel((12, 12))
+        assert blue > green > red
         full_foreground = composed.convert("RGBA").crop((6 * 24, 5 * 24, 7 * 24, 6 * 24))
         red, green, blue, _alpha = full_foreground.getpixel((12, 12))
         assert blue > green > red
