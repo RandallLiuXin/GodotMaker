@@ -1,27 +1,24 @@
 {
   "asset_type": "character-bundle",
   "asset_id": "player",
-  "brief": "A side-view pixel knight with a readable idle and one attack.",
+  "brief": "A hand-drawn cel-shaded side-view knight with a readable idle and a sword attack on a transparent background.",
   "references": [
     { "role": "canonical", "path": "res://references/player_canonical.png" }
   ],
   "provider": "native",
   "spec": {
-    "required_actions": ["idle", "attack"],
+    "visual_style": "hand-drawn cel-shaded fantasy",
+    "frame_canvas_px": 256,
     "actions": [
       {
         "name": "idle",
-        "frame_names": ["idle_01", "idle_02"],
-        "fps": 8,
-        "loop": true,
-        "frame_durations": [1, 0.75]
+        "intent": "A calm full-body stance with a subtle breathing and weight-shift cycle.",
+        "loop": true
       },
       {
         "name": "attack",
-        "frame_names": ["attack_01", "attack_02", "attack_03"],
-        "fps": 12,
-        "loop": false,
-        "frame_durations": [1, 0.5, 1]
+        "intent": "A side-view sword strike with anticipation, a readable hit pose, and recovery.",
+        "loop": false
       }
     ]
   }

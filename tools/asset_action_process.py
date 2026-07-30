@@ -25,6 +25,10 @@ class ActionProcessError(Exception):
     """Raised when a character action sheet cannot be processed."""
 
 
+def _is_power_of_two(value: int) -> bool:
+    return value > 0 and value & (value - 1) == 0
+
+
 def _parse_grid(value: str) -> tuple[int, int]:
     raw = value.lower().strip()
     if "x" not in raw:
@@ -232,15 +236,27 @@ def _check_scale_reference(
     return result
 
 
+def _reference_median_height(reference_path: Path) -> float:
+    try:
+        reference = json.loads(reference_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ActionProcessError(f"Scale reference metadata is not readable: {reference_path}") from exc
+    height = _median(_frame_heights_from_metadata(reference))
+    if height is None:
+        raise ActionProcessError("Scale reference metadata has no frame heights")
+    return height
+
+
 def _copy_runtime_outputs(
     frame_paths: list[Path],
     sheet_path: Path,
+    gif_path: Path,
     *,
     final_dir: Path | None,
     final_prefix: str | None,
-) -> tuple[list[str], str | None]:
+) -> tuple[list[str], str | None, str | None]:
     if final_dir is None:
-        return [str(path) for path in frame_paths], None
+        return [str(path) for path in frame_paths], None, None
     if not final_prefix:
         raise ActionProcessError("--final-prefix is required when --final-dir is used")
     final_dir.mkdir(parents=True, exist_ok=True)
@@ -258,7 +274,9 @@ def _copy_runtime_outputs(
         final_frames.append(str(target))
     final_sheet = final_dir / f"{final_prefix}_sheet.png"
     shutil.copy2(sheet_path, final_sheet)
-    return final_frames, str(final_sheet)
+    final_gif = final_dir / f"{final_prefix}.gif"
+    shutil.copy2(gif_path, final_gif)
+    return final_frames, str(final_sheet), str(final_gif)
 
 
 def _utc_timestamp() -> str:
@@ -405,7 +423,7 @@ def process_action_sheet(
     component_mode: str = "largest",
     component_padding: int = 8,
     min_component_area: int = 100,
-    cell_size: int = 128,
+    cell_size: int = 256,
     fit_scale: float = 0.85,
     align: str = "feet",
     shared_scale: bool = True,
@@ -419,6 +437,7 @@ def process_action_sheet(
     recovery_timestamp: str | None = None,
     scale_reference_metadata: Path | None = None,
     scale_tolerance: float = 0.15,
+    match_scale_reference: bool = False,
     final_dir: Path | None = None,
     final_prefix: str | None = None,
     report: Path | None = None,
@@ -426,8 +445,8 @@ def process_action_sheet(
     """Normalize one action sheet into frames, a transparent sheet, GIF, and metadata."""
     if align not in {"center", "bottom", "feet"}:
         raise ActionProcessError("--align must be center, bottom, or feet")
-    if cell_size <= 0:
-        raise ActionProcessError("--cell-size must be positive")
+    if not _is_power_of_two(cell_size):
+        raise ActionProcessError("--cell-size must be a positive power of two")
     if fit_scale <= 0:
         raise ActionProcessError("--fit-scale must be positive")
     cols, rows = _parse_grid(grid)
@@ -525,6 +544,36 @@ def process_action_sheet(
         align=align,
         shared_scale=shared_scale,
     )
+    scale_normalization: dict[str, object] | None = None
+    if match_scale_reference:
+        if scale_reference_metadata is None:
+            raise ActionProcessError("--match-scale-reference requires --scale-reference-metadata")
+        current_height = _median(_frame_heights_from_metadata({"frames": frame_meta}))
+        reference_height = _reference_median_height(scale_reference_metadata)
+        if current_height is None:
+            raise ActionProcessError("Current action metadata has no frame heights")
+        effective_fit_scale = fit_scale * reference_height / current_height
+        # A normalized frame must retain transparent padding so feet alignment
+        # remains meaningful instead of clipping provider artwork at the cell edge.
+        if effective_fit_scale <= 0 or effective_fit_scale > 0.95:
+            raise ActionProcessError(
+                "Body scale cannot be matched within the normalized cell safely: "
+                f"requested fit scale {effective_fit_scale:.3f}"
+            )
+        normalized, frame_meta = _normalize_frames(
+            [candidates[name] for name in frame_names],
+            cell_size=cell_size,
+            fit_scale=effective_fit_scale,
+            align=align,
+            shared_scale=shared_scale,
+        )
+        scale_normalization = {
+            "mode": "reference_median_height",
+            "reference_metadata_path": str(scale_reference_metadata),
+            "initial_fit_scale": fit_scale,
+            "effective_fit_scale": effective_fit_scale,
+            "reference_median_height": reference_height,
+        }
     frame_paths = []
     for name, frame, meta in zip(frame_names, normalized, frame_meta):
         path = frame_dir / f"{name}.png"
@@ -538,9 +587,10 @@ def process_action_sheet(
     sheet.save(sheet_path)
     gif_path = output_dir / "animation.gif"
     _save_gif(normalized, gif_path, duration=duration)
-    final_frames, final_sheet = _copy_runtime_outputs(
+    final_frames, final_sheet, final_gif = _copy_runtime_outputs(
         frame_paths,
         sheet_path,
+        gif_path,
         final_dir=final_dir,
         final_prefix=final_prefix,
     )
@@ -559,7 +609,7 @@ def process_action_sheet(
         "component_padding": component_padding,
         "min_component_area": min_component_area,
         "cell_size": cell_size,
-        "fit_scale": fit_scale,
+        "fit_scale": scale_normalization["effective_fit_scale"] if scale_normalization else fit_scale,
         "align": align,
         "shared_scale": shared_scale,
         "duration": duration,
@@ -579,6 +629,8 @@ def process_action_sheet(
         "gif_path": str(gif_path),
         "final_frame_paths": final_frames,
         "final_sheet_path": final_sheet,
+        "final_gif_path": final_gif,
+        "scale_normalization": scale_normalization,
     }
     metadata["scale_reference"] = _check_scale_reference(
         metadata,
@@ -601,10 +653,18 @@ def _main() -> int:
     parser.add_argument("--asset-id")
     parser.add_argument("--tag")
     parser.add_argument("--background", choices=["transparent", "magenta"], default="magenta")
+    parser.add_argument(
+        "--cell-size",
+        type=int,
+        default=256,
+        help="Power-of-two runtime frame canvas in pixels (default: 256)",
+    )
     parser.add_argument("--align", choices=["center", "bottom", "feet"])
     parser.add_argument("--recover-edge-touch", action="store_true")
     parser.add_argument("--scale-reference-metadata", type=Path)
     parser.add_argument("--scale-tolerance", type=float, default=0.15)
+    parser.add_argument("--fit-scale", type=float, default=0.85)
+    parser.add_argument("--match-scale-reference", action="store_true")
     parser.add_argument("--final-dir", type=Path)
     parser.add_argument("--final-prefix")
     parser.add_argument("--action-name", required=True)
@@ -628,11 +688,14 @@ def _main() -> int:
             asset_id=args.asset_id,
             tag=args.tag,
             background=args.background,
+            cell_size=args.cell_size,
             component_mode=component_mode,
             align=align,
             recover_edge_touch=args.recover_edge_touch,
             scale_reference_metadata=args.scale_reference_metadata,
             scale_tolerance=args.scale_tolerance,
+            fit_scale=args.fit_scale,
+            match_scale_reference=args.match_scale_reference,
             final_dir=args.final_dir,
             final_prefix=args.final_prefix,
             action_name=args.action_name,

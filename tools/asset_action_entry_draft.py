@@ -14,11 +14,10 @@ listed frames, an empty ``edge_touch_frames`` set, a recorded scale reference,
 and containment of every runtime path inside the asset's stable output
 directory.
 
-The draft stops at ``processing_status: source_ready`` and carries no
-``godot_artifact``. A ``grid_sheet`` asset becomes worker-consumable only once a
-native compiler produces its ``SpriteFrames`` and the L0-L4 runner verifies it;
-neither exists yet, so declaring anything further here would be a false
-readiness claim.
+Single-action drafts stop at ``processing_status: source_ready`` and carry no
+``godot_artifact``. Character-bundle mode receives every required action,
+constructs the one shared ``SpriteFrames`` resource with the native compiler,
+and then writes a ready draft.
 """
 from __future__ import annotations
 
@@ -38,6 +37,16 @@ from asset_stable_entry import (
     stable_output_dir,
     validate_entry,
 )
+from asset_animated_bundle_contract_check import (
+    AnimatedBundleContractError,
+    build_spriteframes_spec,
+    check_bundle_request,
+)
+
+SHARED_ROOT = Path(__file__).resolve().parents[1] / "skills" / "assets" / "_shared"
+if str(SHARED_ROOT) not in sys.path:
+    sys.path.insert(0, str(SHARED_ROOT))
+from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
 
 SOURCE_LAYOUT_TYPE = "grid_sheet"
 DRAFT_STATUS = "source_ready"
@@ -84,6 +93,10 @@ def _project_relative(raw_path: str, project_root: Path) -> str:
 
 def _res(project_relative: str) -> str:
     return f"res://{project_relative}"
+
+
+def _power_of_two(value: Any) -> bool:
+    return type(value) is int and value > 0 and value & (value - 1) == 0
 
 
 def _checked_output(
@@ -282,11 +295,154 @@ def write_action_entry_draft(
     }
 
 
+def _load_request(path: Path) -> dict[str, Any]:
+    request = _load_object(path, "request")
+    try:
+        check_bundle_request(request)
+    except AnimatedBundleContractError as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
+    if request["asset_type"] != "character-bundle":
+        raise ActionEntryDraftError("--request must describe a character-bundle")
+    return request
+
+
+def build_character_bundle_entry_draft(
+    metadata_paths: list[Path],
+    *,
+    request_path: Path,
+    asset_id: str,
+    tag: str,
+    project_root: Path,
+) -> dict[str, Any]:
+    """Build one ready SpriteFrames stable entry from every required action."""
+    request = _load_request(request_path)
+    if request["asset_id"] != asset_id:
+        raise ActionEntryDraftError("--asset-id must match request.asset_id")
+    if not tag.strip():
+        raise ActionEntryDraftError("--tag must be a non-empty string")
+
+    required_actions = request["spec"]["required_actions"]
+    frame_canvas_px = request["spec"].get("frame_canvas_px", 256)
+    if not _power_of_two(frame_canvas_px):
+        raise ActionEntryDraftError("request.spec.frame_canvas_px must be a positive power-of-two integer")
+    if len(metadata_paths) != len(required_actions):
+        raise ActionEntryDraftError("--metadata must contain one report per required action")
+
+    by_action: dict[str, dict[str, Any]] = {}
+    built_by_action: dict[str, dict[str, Any]] = {}
+    for metadata_path in metadata_paths:
+        metadata = _load_object(metadata_path, "metadata")
+        action_name = _string(metadata, "action_name", "metadata")
+        if action_name in by_action:
+            raise ActionEntryDraftError(f"duplicate action metadata: {action_name}")
+        if metadata.get("align") != "feet":
+            raise ActionEntryDraftError("character action metadata.align must be feet")
+        if metadata.get("shared_scale") is not True:
+            raise ActionEntryDraftError("character action metadata.shared_scale must be true")
+        if metadata.get("cell_size") != frame_canvas_px:
+            raise ActionEntryDraftError(
+                "character action metadata.cell_size must match request.spec.frame_canvas_px"
+            )
+        by_action[action_name] = metadata
+        built_by_action[action_name] = build_action_entry_draft(
+            metadata_path,
+            asset_id=asset_id,
+            tag=tag,
+            production_family="character-bundle",
+            project_root=project_root,
+        )
+
+    if set(by_action) != set(required_actions):
+        raise ActionEntryDraftError("action metadata names must match request.spec.required_actions")
+
+    baseline_action = required_actions[0]
+    for action_name in required_actions[1:]:
+        reference = by_action[action_name].get("scale_reference")
+        if not isinstance(reference, dict) or reference.get("checked") is not True:
+            raise ActionEntryDraftError(
+                f"character action {action_name} must record a checked scale reference"
+            )
+
+    frame_paths_by_action = {
+        action_name: built_by_action[action_name]["support"]["frame_paths"]
+        for action_name in required_actions
+    }
+    try:
+        compiler_spec = build_spriteframes_spec(request, frame_paths_by_action)
+    except AnimatedBundleContractError as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
+
+    artifact_path = _res(
+        f"{stable_output_dir('character-bundle', asset_id)}/{asset_id}.tres"
+    )
+    source_path = built_by_action[baseline_action]["support"]["sheet_path"]
+    entry = {
+        "version": SCHEMA_VERSION,
+        "asset_id": asset_id,
+        "tag": tag,
+        "production_family": "character-bundle",
+        "source_layout": {"type": SOURCE_LAYOUT_TYPE, "path": source_path},
+        "godot_artifact": {"type": "SpriteFrames", "path": artifact_path},
+        "processing_status": "ready",
+    }
+    try:
+        validate_entry(entry, project_root=Path(project_root))
+        build_default_registry().compile(
+            CompileRequest(
+                "character-bundle",
+                asset_id,
+                "grid_sheet",
+                source_path,
+                "SpriteFrames",
+                artifact_path,
+                Path(project_root),
+                compiler_spec,
+            )
+        )
+    except (CompilerError, StableEntryError) as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
+
+    support = {
+        "version": SCHEMA_VERSION,
+        "canonical_action": baseline_action,
+        "frame_canvas_px": frame_canvas_px,
+        "actions": [built_by_action[action_name]["support"] for action_name in required_actions],
+    }
+    return {"entry": entry, "support": support, "support_path": (
+        f"{stable_output_dir('character-bundle', asset_id)}/{asset_id}.json"
+    )}
+
+
+def write_character_bundle_entry_draft(
+    metadata_paths: list[Path],
+    *,
+    request_path: Path,
+    asset_id: str,
+    tag: str,
+    project_root: Path,
+    out: Path,
+) -> dict[str, Any]:
+    built = build_character_bundle_entry_draft(
+        metadata_paths,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=tag,
+        project_root=project_root,
+    )
+    support_path = Path(project_root) / built["support_path"]
+    support_path.parent.mkdir(parents=True, exist_ok=True)
+    support_path.write_text(json.dumps(built["support"], indent=2) + "\n", encoding="utf-8")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(built["entry"], indent=2) + "\n", encoding="utf-8")
+    return {"ok": True, "draft": str(out), "support": built["support_path"], "asset_id": asset_id, "tag": tag}
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(
         description="Build a v1 stable-entry draft and support metadata from action output"
     )
-    parser.add_argument("--metadata", required=True, type=Path)
+    parser.add_argument("--metadata", required=True, type=Path, action="append")
+    parser.add_argument("--request", type=Path)
     parser.add_argument("--asset-id", required=True)
     parser.add_argument("--tag", required=True)
     parser.add_argument("--production-family", required=True)
@@ -295,14 +451,28 @@ def _main() -> int:
     args = parser.parse_args()
 
     try:
-        result = write_action_entry_draft(
-            args.metadata,
-            asset_id=args.asset_id,
-            tag=args.tag,
-            production_family=args.production_family,
-            project_root=args.project_root,
-            out=args.out,
-        )
+        if args.request:
+            if args.production_family != "character-bundle":
+                raise ActionEntryDraftError("--request bundle mode supports character-bundle only")
+            result = write_character_bundle_entry_draft(
+                args.metadata,
+                request_path=args.request,
+                asset_id=args.asset_id,
+                tag=args.tag,
+                project_root=args.project_root,
+                out=args.out,
+            )
+        else:
+            if len(args.metadata) != 1:
+                raise ActionEntryDraftError("single-action mode accepts exactly one --metadata")
+            result = write_action_entry_draft(
+                args.metadata[0],
+                asset_id=args.asset_id,
+                tag=args.tag,
+                production_family=args.production_family,
+                project_root=args.project_root,
+                out=args.out,
+            )
     except ActionEntryDraftError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1

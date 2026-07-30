@@ -74,6 +74,7 @@ def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
 
     assert result["ok"] is True
     assert result["frame_count"] == 4
+    assert result["cell_size"] == 256
     assert result["align"] == "feet"
     assert result["shared_scale"] is True
     assert result["scale_reference"] == {"checked": False}
@@ -83,6 +84,8 @@ def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
     assert Path(result["curation_report_path"]).exists()
     assert len(result["final_frame_paths"]) == 4
     assert Path(result["final_sheet_path"]).exists()
+    assert Path(result["final_gif_path"]).exists()
+    assert Path(result["final_gif_path"]).name == "player_idle.gif"
     assert Path(result["final_sheet_path"]).name == "player_idle_sheet.png"
     assert [Path(path).name for path in result["final_frame_paths"]] == [
         "player_idle_idle_01.png",
@@ -97,6 +100,7 @@ def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
         for frame in result["frames"]
     }
     assert len(bottom_edges) == 1
+    assert {Image.open(Path(path)).size for path in result["final_frame_paths"]} == {(256, 256)}
     meta = json.loads(Path(result["report"]).read_text(encoding="utf-8"))
     assert meta["frame_labels"] == ["idle_01", "idle_02", "idle_03", "idle_04"]
     assert meta["final_sheet_path"] == result["final_sheet_path"]
@@ -214,6 +218,58 @@ def test_process_action_sheet_rejects_body_scale_drift(tmp_path):
         )
 
 
+def test_process_action_sheet_matches_reference_scale_without_replacing_source_art(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    reference_meta = tmp_path / "reference-meta.json"
+    make_action_sheet(source)
+    reference_meta.write_text(
+        json.dumps(
+            {
+                "frames": [
+                    {"output_size": [80, 80]},
+                    {"output_size": [80, 80]},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04",
+        asset_id="player_idle",
+        fit_scale=0.5,
+        scale_reference_metadata=reference_meta,
+        match_scale_reference=True,
+        **animation_args(),
+    )
+
+    normalization = result["scale_normalization"]
+    assert isinstance(normalization, dict)
+    assert normalization["mode"] == "reference_median_height"
+    assert normalization["initial_fit_scale"] == 0.5
+    assert result["scale_reference"]["ratio"] == pytest.approx(1.0)
+    assert all(frame["candidate_path"] for frame in result["frames"])
+
+
+def test_process_action_sheet_requires_reference_for_scale_matching(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source)
+
+    with pytest.raises(ActionProcessError, match="requires --scale-reference-metadata"):
+        process_action_sheet(
+            source,
+            tmp_path / "processed",
+            grid="2x2",
+            names="idle_01,idle_02,idle_03,idle_04",
+            asset_id="player_idle",
+            match_scale_reference=True,
+            **animation_args(),
+        )
+
+
 def test_process_action_sheet_requires_final_prefix_with_final_dir(tmp_path):
     source = tmp_path / "player_idle_source.png"
     make_action_sheet(source)
@@ -296,6 +352,7 @@ def test_cli_outputs_json(tmp_path):
     data = json.loads(result.stdout)
     assert data["ok"] is True
     assert data["frame_count"] == 4
+    assert data["cell_size"] == 256
     assert Path(data["gif_path"]).exists()
     assert [Path(path).name for path in data["final_frame_paths"]] == [
         "player_idle_idle_01.png",
@@ -333,3 +390,18 @@ def test_cli_rejects_nonfinite_animation_timing(tmp_path, flag, value, message):
 
     assert result.returncode == 1
     assert json.loads(result.stdout)["error"] == message
+
+
+def test_process_action_sheet_rejects_a_non_power_of_two_runtime_canvas(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source)
+
+    with pytest.raises(ActionProcessError, match="positive power of two"):
+        process_action_sheet(
+            source,
+            tmp_path / "processed",
+            grid="2x2",
+            names="idle_01,idle_02,idle_03,idle_04",
+            cell_size=192,
+            **animation_args(),
+        )

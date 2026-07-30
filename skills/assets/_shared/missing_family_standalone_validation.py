@@ -372,14 +372,41 @@ def _check_bundle(
         raise MissingFamilySkillError(
             "animated bundle must bind its stable SpriteFrames output"
         )
-    sheets = [
-        source["path"]
-        for source in result["sources"]
-        if source.get("layout") == "grid_sheet"
-    ]
-    if not sheets or len(sheets) != len(result["sources"]):
+    if family == "character-bundle":
+        has_user_identity = any(
+            item.get("role") == "canonical"
+            for item in request.get("references", [])
+            if isinstance(item, Mapping)
+        )
+        reference_outputs = [item for item in result["outputs"] if item.get("role") == "reference"]
+        canonical_path = _stable_path(family, asset_id, f"{asset_id}_canonical", ".png")
+        if not has_user_identity and (
+            len(reference_outputs) != 1
+            or reference_outputs[0].get("name") != "canonical"
+            or reference_outputs[0].get("path") != canonical_path
+        ):
+            raise MissingFamilySkillError(
+                "a character-bundle without a user canonical reference must deliver its generated canonical image"
+            )
+        if has_user_identity and reference_outputs:
+            raise MissingFamilySkillError(
+                "a character-bundle with a user canonical reference must not replace it with an extra generated canonical output"
+            )
+    if family == "character-bundle":
+        expected_sheets = [
+            _stable_path(family, asset_id, f"{asset_id}_{action['name']}_sheet", ".png")
+            for action in request["spec"]["actions"]
+        ]
+    else:
+        expected_sheets = [_stable_path(family, asset_id, asset_id, "_sheet.png")]
+    sheets = [source.get("path") for source in result["sources"]]
+    if (
+        len(sheets) != len(expected_sheets)
+        or any(source.get("layout") != "grid_sheet" for source in result["sources"])
+        or sheets != expected_sheets
+    ):
         raise MissingFamilySkillError(
-            "animated bundle sources must be non-empty grid_sheet files"
+            "animated bundle sources must contain one stable grid_sheet per action"
         )
     frame_paths: dict[str, list[str]] = {}
     for action in request["spec"]["actions"]:
@@ -747,6 +774,56 @@ def _verify_platform_delivery(
     )
 
 
+def _resolved_character_request(
+    request: Mapping[str, Any], project_root: Path
+) -> Mapping[str, Any]:
+    """Load the Skill-resolved request required for character runtime validation."""
+    if request.get("asset_type") != "character-bundle":
+        return request
+    spec = request.get("spec")
+    if isinstance(spec, Mapping) and "required_actions" in spec:
+        return request
+    try:
+        check_bundle_request(request)
+    except AnimatedBundleContractError as exc:
+        raise MissingFamilySkillError(str(exc)) from exc
+    asset_id = request.get("asset_id")
+    if not isinstance(asset_id, str) or not asset_id:
+        raise MissingFamilySkillError("character-bundle request.asset_id must be a non-empty string")
+    resolved_path = (
+        Path(project_root) / ".godotmaker" / "asset-generation" / "plans"
+        / f"{asset_id}_resolved_request.json"
+    )
+    try:
+        resolved = json.loads(resolved_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise MissingFamilySkillError(
+            "character-bundle runtime validation requires the archived resolved request: "
+            f"{resolved_path}"
+        ) from exc
+    if not isinstance(resolved, Mapping):
+        raise MissingFamilySkillError("character-bundle resolved request must be a JSON object")
+    if (
+        resolved.get("asset_type") != "character-bundle"
+        or resolved.get("asset_id") != asset_id
+        or resolved.get("provider") != request.get("provider")
+        or resolved.get("references", []) != request.get("references", [])
+    ):
+        raise MissingFamilySkillError(
+            "character-bundle resolved request must bind the public asset, provider, and references"
+        )
+    public_actions = spec.get("actions") if isinstance(spec, Mapping) else None
+    resolved_spec = resolved.get("spec")
+    if not isinstance(public_actions, list) or not isinstance(resolved_spec, Mapping):
+        raise MissingFamilySkillError("character-bundle action plan cannot be resolved")
+    public_names = [item.get("name") for item in public_actions if isinstance(item, Mapping)]
+    if public_names != resolved_spec.get("required_actions"):
+        raise MissingFamilySkillError(
+            "character-bundle resolved request must retain public action names in order"
+        )
+    return resolved
+
+
 def compile_and_validate(
     request: Mapping[str, Any],
     result: Mapping[str, Any],
@@ -756,6 +833,7 @@ def compile_and_validate(
     expected_family: str | None = None,
 ) -> dict[str, Any]:
     """Execute the real applicable ladder for one of the seven missing families."""
+    root = Path(project_root)
     try:
         check_request(request)
         check_result(result)
@@ -776,15 +854,12 @@ def compile_and_validate(
         stopped = _terminal_generation_stop(result)
         if stopped is not None:
             return stopped
+        request = _resolved_character_request(request, root)
         reference_path, declarations = _declarations(request, result)
         auxiliary_paths = _auxiliary_paths(result)
     except (AssetContractError, MissingFamilySkillError) as exc:
         raise MissingFamilySkillError(f"L0 standalone contract failed: {exc}") from exc
-    root, family, asset_id = (
-        Path(project_root),
-        request["asset_type"],
-        request["asset_id"],
-    )
+    family, asset_id = request["asset_type"], request["asset_id"]
     passed = ["L0"]
     try:
         if reference_path is not None:
