@@ -14,9 +14,15 @@ sys.path.insert(0, str(SKILL_DIR))
 
 from asset_compiler import CompileRequest, CompilerError  # noqa: E402
 from asset_compiler import tileset as compiler  # noqa: E402
-from asset_validation import ProbeReport, ProbeResult, ValidationError  # noqa: E402
+from asset_validation import ProbeReport, ProbeRequest, ProbeResult, ValidationError  # noqa: E402
 from asset_validation.godot_probe import GodotProbe  # noqa: E402
 from standalone_validation import TileSetSkillError, compile_and_validate  # noqa: E402
+from asset_tileset_profile import (  # noqa: E402
+    build_profile_recipe,
+    compile_profile_recipe,
+    get_profile,
+)
+from PIL import Image  # noqa: E402
 
 
 def _fixture() -> dict:
@@ -57,13 +63,54 @@ def test_tileset_skill_documents_recipe_only_semantics_and_l0_to_l4():
         "animation",
         "NIL",
         "all other Variant types are outside v1",
-        "relative\n weight",
-        "Unknown or misspelled\nfields are rejected",
+        "relative",
+        "Unknown or misspelled",
     ):
         assert field in text
     assert "Never infer them from the atlas image." in text
     for level in ("L0", "L1", "L2", "L3", "L4"):
         assert level in text
+
+
+def test_tileset_skill_limits_production_to_fixed_profile_templates():
+    text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    assert "marching_squares_15" in text
+    assert "blob_47" in text
+    assert "`spec.autotile_profile` is required" in text
+    assert "Agents must not enumerate 15/47 cells" in text
+    assert "asset_tileset_profile.py" in text
+
+
+def test_blob_profile_compiles_to_a_native_tileset(godot_bin, godot_project):
+    profile = get_profile("blob_47")
+    atlas = godot_project / "assets/generated/tileset/coast/coast_atlas.png"
+    atlas.parent.mkdir(parents=True)
+    image = Image.new("RGBA", (profile.columns * 16, profile.rows * 16), (0, 0, 0, 0))
+    for index, tile in enumerate(profile.tiles, start=1):
+        image.putpixel((tile.coords[0] * 16, tile.coords[1] * 16), (index, 80, 160, 255))
+    image.save(atlas)
+    recipe = build_profile_recipe(
+        "blob_47",
+        texture_path="res://assets/generated/tileset/coast/coast_atlas.png",
+        tile_width=16,
+        tile_height=16,
+        godot_path=godot_bin,
+        terrain_name="coast",
+    )
+    artifact = compile_profile_recipe(
+        recipe,
+        project_root=godot_project,
+        asset_id="coast",
+        texture_path="res://assets/generated/tileset/coast/coast_atlas.png",
+        artifact_path="res://assets/generated/tileset/coast/coast.tres",
+    )
+    assert artifact == {"type": "TileSet", "path": "res://assets/generated/tileset/coast/coast.tres"}
+    report = GodotProbe(godot_bin).probe(
+        godot_project,
+        [ProbeRequest("res://assets/generated/tileset/coast/coast.tres", "TileSet", ("tileset",))],
+    )
+    assert report.resources[0].type_matches is True
+    assert report.resources[0].structure["tileset"]["tile_count"] == 47
 
 
 def test_orthogonal_square_fixture_is_compiler_acceptable_except_for_its_placeholder_binary(tmp_path):

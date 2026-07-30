@@ -17,6 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- Added deterministic marching-squares-15 and blob-47 TileSet profile templates with fixed atlas guides, strict image validation, and native resource compilation.
+
 - Added fail-closed standalone L0-L4 execution for the remaining first-class Asset Skills, with published runners and native Godot resource verification.
 
 - Added a standalone TileSet Asset Skill with an explicit atlas and recipe contract, shared compiler and validation reuse, and an orthogonal-square fixture.
