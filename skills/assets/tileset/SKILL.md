@@ -35,7 +35,7 @@ Production supports exactly these versioned profiles:
 
 `spec.autotile_profile` is required. If an interactive caller omits it, ask whether the request needs simple rule-based boundaries or natural detailed corners, make a recommendation from the brief, and wait for the selection. If the caller cannot answer, STOP before provider work. Never guess, fall back, or accept another profile.
 
-`tools/asset_tileset_profile.py` is the fixed source of truth for slot coordinates and peering bits. Provider guides, final atlas validation, recipe generation, and compiler input must derive from that one implementation. Agents must not enumerate 15/47 cells or hand-write `.tres` resources.
+`tools/asset_tileset_profile.py` is the fixed source of truth for slot coordinates, edge signatures, and peering bits. Provider guides, final atlas validation, recipe generation, and compiler input must derive from that one implementation. Agents must not enumerate 15/47 cells or hand-write `.tres` resources.
 
 The profile generator emits `tile_size`, `margins`, `separation`, `terrain_sets`, and `peering_bits` deterministically. Physics, navigation, occlusion, custom data, alternatives, and animation are request-specific. Do not infer collision polygons, navigation polygons, occlusion polygons, terrain names, or animation from pixels. Never infer them from the atlas image. The compiler supports `NIL`, bool, int, float, and String custom data; all other Variant types are outside v1. Alternatives retain their relative
 weight, and Unknown or misspelled
@@ -43,7 +43,7 @@ fields are rejected.
 
 ## References, Provider, And Trace
 
-References are optional. With references, resolve every `res://` path against the project root, verify it is readable, preserve its `canonical`, `style`, or `screen` role, and attach the actual image to the selected provider. A textual path is not an attachment. If attachment fails, STOP.
+References are optional. With references, resolve every `res://` path against the project root, verify it is readable, preserve its `canonical`, `style`, or `screen` role, and attach the actual image to the selected provider. A textual path is not an attachment. If attachment fails, STOP. A profile-layout reference is binding only for its declared profile: attach a `marching_squares_15` layout reference when generating that profile and a `blob_47` layout reference when generating that profile; do not attach an incompatible profile diagram merely as extra prompt context.
 
 Honor `provider` exactly: `native`, `codex`, `gemini`, and `openai` never fall back to another provider. For Codex, call image generation with `referenced_image_paths` containing every readable local reference. Before the call, write a one-item plan with `require_provider_trace: true`. After the call, write a generated-path report containing the actual image path, the Codex tool-call identity, configured coding model/reasoning, image-model identity (or `not_exposed_by_subscription_runtime`), every reference role, and the exact attached paths. Then claim it with `python .godotmaker/asset-runtime/tools/codex_image_claim.py --plan <plan.json> --report <generated-paths.json> --project-root . --out-report .godotmaker/asset-generation/reports/<asset_id>_source.json`. Missing or incomplete provider trace is a STOP; never copy a generated image directly into the project. Use `asset_source_generate.py` for Gemini/OpenAI API-backed generation.
 
@@ -58,7 +58,7 @@ Retain the controlled claim result, prompt, raw source, reference roles and path
      --manifest-out .godotmaker/asset-generation/work/<asset_id>_profile.json `
      --guide-out .godotmaker/asset-generation/work/<asset_id>_profile_guide.png
    ```
-2. Generate and claim one real provider source sheet. It must fill every required profile slot, preserve the reserved transparent slot, and contain no labels, UI, actors, or text. Preserve the controlled claimed source unchanged. If the provider paints a reserved slot, clear only that declared slot to alpha and record the repair reason and recheck.
+2. Generate and claim one real provider source sheet. It must fill every required profile slot, preserve the reserved transparent slot, and contain no labels, UI, actors, or text. The source must honor the profile guide's terrain corners: an edge or corner that the profile assigns to the terrain must visibly use the terrain material, and an unassigned corner must visibly use the adjacent material. Preserve the controlled claimed source unchanged. If the provider paints a reserved slot, clear only that declared slot to alpha and record the repair reason and recheck.
 3. Use `asset_sheet_process.py --snap-mode grid --preserve-cell-bounds` to split the source sheet. Use `asset_image_finalize.py` for transparent-background, AABB, alignment, or scale repair when diagnostics require it. Create the fixed atlas declaration and reserved transparent cell with the profile tool, then reassemble with `asset_atlas_assemble.py`; do not write a declaration script:
 
    ```powershell
@@ -84,12 +84,13 @@ Retain the controlled claim result, prompt, raw source, reference roles and path
      --terrain-name <terrain-name> `
      --recipe-out .godotmaker/asset-generation/work/<asset_id>_tileset_recipe.json `
      --report .godotmaker/asset-generation/reports/<asset_id>_profile.json `
+     --enforce-seams `
      --project-root . `
      --asset-id <asset_id> `
      --artifact res://assets/generated/tileset/<asset_id>/<asset_id>.tres
    ```
 
-   The command rejects a wrong atlas size, empty required slot, or non-empty reserved slot before it emits a recipe. It then calls the existing native TileSet compiler. Replacing atlas art means rerunning this command, not asking an agent to rebuild metadata.
+   The command rejects a wrong atlas size, empty required slot, non-empty reserved slot, or a terrain-corner material mismatch before it emits a recipe. Its retained seam diagnostics name every bad tile and corner. It then calls the existing native TileSet compiler. Replacing atlas art means rerunning this command, not asking an agent to rebuild metadata.
 5. Apply only explicit request-specific semantic overrides to the generated recipe. The base recipe declares one square source, zero margins and separation, profile terrain set/terrain `0`, and all fixed peering bits.
 6. Run `standalone_validation.compile_and_validate()`. It uses `asset_compiler.tileset.register_into()` and `asset_validation.tileset.register_into()` on fresh registries. Its L0 checks the public contract; L1 checks the atlas; L2 compiles; L3 loads the returned TileSet in headless Godot; and L4 compares the loaded source, tile, terrain, polygon, custom-data, alternative, and animation structure to the generated recipe.
 

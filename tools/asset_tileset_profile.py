@@ -40,6 +40,12 @@ _DIRECTION_NAMES = {
     0: "right", 3: "bottom_right", 4: "bottom", 7: "bottom_left",
     8: "left", 11: "top_left", 12: "top", 15: "top_right",
 }
+_EDGE_CORNERS = {
+    "top": (11, 15),
+    "right": (15, 3),
+    "bottom": (3, 7),
+    "left": (7, 11),
+}
 
 
 def _marching_squares_15() -> TileSetProfile:
@@ -139,13 +145,23 @@ def profile_manifest(profile_name: str) -> dict[str, Any]:
                 "reserved": False,
                 "label": "terrain_" + ("_".join(directions) if directions else "center"),
                 "peering_bits": list(tile.peering_bits),
+                "edge_signature": _edge_signature(tile),
             })
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "profile": profile.name,
         "grid": {"columns": profile.columns, "rows": profile.rows},
         "terrain_mode": profile.terrain_mode,
         "slots": slots,
+    }
+
+
+def _edge_signature(tile: ProfileTile) -> dict[str, list[int]]:
+    """Return the fixed terrain-presence bits at each physical tile edge."""
+    present = set(tile.peering_bits)
+    return {
+        direction: [int(first in present), int(second in present)]
+        for direction, (first, second) in _EDGE_CORNERS.items()
     }
 
 
@@ -223,12 +239,84 @@ def _slot_alpha_count(image: Image.Image, left: int, top: int, width: int, heigh
     return int(alpha.getbbox() is not None)
 
 
+def _terrain_color_prototype(image: Image.Image, profile: TileSetProfile, tile_width: int, tile_height: int) -> tuple[tuple[int, int, int], float]:
+    """Derive a conservative terrain-color envelope from the full-terrain slot.
+
+    This is intentionally a diagnostic, not a semantic segmentation model. The
+    full-terrain slot is the one provider-authored source known to represent the
+    selected Godot terrain at every corner, so it supplies a stable color
+    reference for detecting an obviously wrong material at a boundary corner.
+    """
+    full_tile = next((tile for tile in profile.tiles if set(_CORNERS).issubset(tile.peering_bits)), None)
+    if full_tile is None:
+        raise TileSetProfileError(f"{profile.name} has no full-terrain diagnostic slot")
+    left, top = full_tile.coords[0] * tile_width, full_tile.coords[1] * tile_height
+    colors = [pixel[:3] for pixel in image.crop((left, top, left + tile_width, top + tile_height)).get_flattened_data() if pixel[3] > 0]
+    if not colors:
+        raise TileSetProfileError(f"{profile.name} full-terrain diagnostic slot is transparent")
+    channels = tuple(sorted(pixel[index] for pixel in colors)[len(colors) // 2] for index in range(3))
+    distances = sorted(_rgb_distance(pixel, channels) for pixel in colors)
+    # Keep decoration and small highlights from turning the entire non-terrain
+    # material into a false match while retaining ordinary hand-painted shade.
+    threshold = max(36.0, distances[int((len(distances) - 1) * 0.70)] + 20.0)
+    return channels, threshold
+
+
+def _rgb_distance(first: tuple[int, int, int], second: tuple[int, int, int]) -> float:
+    return sum((left - right) ** 2 for left, right in zip(first, second)) ** 0.5
+
+
+def diagnose_profile_edge_semantics(image: Image.Image, profile: TileSetProfile, *, tile_width: int, tile_height: int) -> dict[str, Any]:
+    """Check whether painted corner materials agree with the fixed profile.
+
+    Each Godot corner peering bit is sampled from a small, inward-facing corner
+    patch. The output names every mismatch so an agent can repair the source or
+    processing parameters before compiling instead of treating a valid .tres
+    as proof that visual transitions are usable.
+    """
+    prototype, threshold = _terrain_color_prototype(image, profile, tile_width, tile_height)
+    patch = max(2, min(tile_width, tile_height) // 6)
+    mismatches: list[dict[str, Any]] = []
+    for tile in profile.tiles:
+        left, top = tile.coords[0] * tile_width, tile.coords[1] * tile_height
+        present = set(tile.peering_bits)
+        for bit, name, x_offset, y_offset in (
+            (11, "top_left", 0, 0),
+            (15, "top_right", tile_width - patch, 0),
+            (7, "bottom_left", 0, tile_height - patch),
+            (3, "bottom_right", tile_width - patch, tile_height - patch),
+        ):
+            colors = [pixel[:3] for pixel in image.crop((left + x_offset, top + y_offset, left + x_offset + patch, top + y_offset + patch)).get_flattened_data() if pixel[3] > 0]
+            terrain_fraction = (
+                sum(_rgb_distance(pixel, prototype) <= threshold for pixel in colors) / len(colors)
+                if colors else 0.0
+            )
+            expected_terrain = bit in present
+            matched = terrain_fraction >= 0.55 if expected_terrain else terrain_fraction <= 0.45
+            if not matched:
+                mismatches.append({
+                    "coords": list(tile.coords),
+                    "corner": name,
+                    "expected": "terrain" if expected_terrain else "non_terrain",
+                    "terrain_fraction": round(terrain_fraction, 3),
+                })
+    return {
+        "method": "full_terrain_corner_color_envelope_v1",
+        "terrain_rgb": list(prototype),
+        "threshold": round(threshold, 3),
+        "checked_corners": len(profile.tiles) * 4,
+        "mismatch_count": len(mismatches),
+        "mismatches": mismatches,
+    }
+
+
 def validate_profile_atlas(
     atlas_path: Path,
     profile_name: str,
     *,
     tile_width: int,
     tile_height: int,
+    check_seams: bool = False,
 ) -> dict[str, Any]:
     """Verify one processed atlas against a fixed profile's physical slots."""
     profile = get_profile(profile_name)
@@ -264,7 +352,7 @@ def validate_profile_atlas(
             f"{profile.name} atlas has non-transparent reserved slots: {occupied_reserved}"
         )
 
-    return {
+    report = {
         "profile": profile.name,
         "grid": {"columns": profile.columns, "rows": profile.rows},
         "tile_size": [tile_width, tile_height],
@@ -272,6 +360,14 @@ def validate_profile_atlas(
         "reserved_slots": [list(coords) for coords in profile.reserved_slots],
         "atlas": str(atlas_path),
     }
+    if check_seams:
+        report["seam_diagnostics"] = diagnose_profile_edge_semantics(
+            image,
+            profile,
+            tile_width=tile_width,
+            tile_height=tile_height,
+        )
+    return report
 
 
 def build_profile_recipe(
@@ -422,6 +518,7 @@ def _main() -> int:
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--asset-id")
     parser.add_argument("--artifact", help="res:// TileSet path to compile after recipe generation")
+    parser.add_argument("--enforce-seams", action="store_true", help="fail when painted corner materials disagree with the fixed profile")
     arguments = parser.parse_args()
     if arguments.manifest_out:
         _write_json_atomic(arguments.manifest_out, profile_manifest(arguments.profile))
@@ -460,7 +557,20 @@ def _main() -> int:
     if any(value is not None for value in compile_values) and any(value is None for value in compile_values):
         parser.error("--project-root, --asset-id, and --artifact must be supplied together")
     try:
-        report = validate_profile_atlas(arguments.atlas, arguments.profile, tile_width=width, tile_height=height)
+        report = validate_profile_atlas(
+            arguments.atlas,
+            arguments.profile,
+            tile_width=width,
+            tile_height=height,
+            check_seams=arguments.enforce_seams,
+        )
+        seam = report.get("seam_diagnostics")
+        if seam and seam["mismatch_count"]:
+            if arguments.report:
+                _write_json_atomic(arguments.report, report)
+            raise TileSetProfileError(
+                f"{arguments.profile} atlas has {seam['mismatch_count']} terrain corner seam mismatches; inspect the retained report"
+            )
         recipe = build_profile_recipe(
             arguments.profile,
             texture_path=arguments.texture,

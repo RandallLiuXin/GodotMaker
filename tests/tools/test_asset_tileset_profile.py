@@ -16,6 +16,7 @@ from asset_tileset_profile import (  # noqa: E402
     build_profile_atlas_declaration,
     build_profile_recipe,
     create_profile_guide,
+    diagnose_profile_edge_semantics,
     get_profile,
     profile_manifest,
     write_transparent_profile_slot,
@@ -28,6 +29,23 @@ def _atlas(path: Path, profile_name: str, cell_size: int = 8) -> None:
     image = Image.new("RGBA", (profile.columns * cell_size, profile.rows * cell_size), (0, 0, 0, 0))
     for index, tile in enumerate(profile.tiles, start=1):
         image.putpixel((tile.coords[0] * cell_size, tile.coords[1] * cell_size), (index % 255, 80, 160, 255))
+    image.save(path)
+
+
+def _semantic_atlas(path: Path, profile_name: str, cell_size: int = 24) -> None:
+    profile = get_profile(profile_name)
+    grass, dirt = (45, 165, 70, 255), (180, 105, 45, 255)
+    image = Image.new("RGBA", (profile.columns * cell_size, profile.rows * cell_size), (0, 0, 0, 0))
+    patch = cell_size // 6
+    for tile in profile.tiles:
+        left, top = tile.coords[0] * cell_size, tile.coords[1] * cell_size
+        image.paste(grass, (left, top, left + cell_size, top + cell_size))
+        if set((3, 7, 11, 15)).issubset(tile.peering_bits):
+            image.paste(dirt, (left, top, left + cell_size, top + cell_size))
+            continue
+        for bit, x_offset, y_offset in ((11, 0, 0), (15, cell_size - patch, 0), (7, 0, cell_size - patch), (3, cell_size - patch, cell_size - patch)):
+            if bit in tile.peering_bits:
+                image.paste(dirt, (left + x_offset, top + y_offset, left + x_offset + patch, top + y_offset + patch))
     image.save(path)
 
 
@@ -100,6 +118,32 @@ def test_profile_manifest_and_guide_expose_every_fixed_slot(tmp_path):
     assert returned == manifest
     with Image.open(guide) as image:
         assert image.size == (128, 128)
+
+
+def test_profile_manifest_exposes_fixed_edge_signatures():
+    manifest = profile_manifest("marching_squares_15")
+    first_terrain = manifest["slots"][1]
+    assert first_terrain["coords"] == [1, 0]
+    assert first_terrain["edge_signature"] == {
+        "top": [0, 0], "right": [0, 1], "bottom": [1, 0], "left": [0, 0],
+    }
+
+
+def test_profile_seam_diagnostics_report_incorrect_corner_material(tmp_path):
+    atlas = tmp_path / "semantic.png"
+    _semantic_atlas(atlas, "marching_squares_15")
+    with Image.open(atlas) as opened:
+        image = opened.convert("RGBA")
+    profile = get_profile("marching_squares_15")
+    passed = diagnose_profile_edge_semantics(image, profile, tile_width=24, tile_height=24)
+    assert passed["mismatch_count"] == 0
+
+    image.paste((45, 165, 70, 255), (24 + 20, 20, 24 + 24, 24))
+    image.save(atlas)
+    report = validate_profile_atlas(atlas, "marching_squares_15", tile_width=24, tile_height=24, check_seams=True)
+    assert report["seam_diagnostics"]["mismatch_count"] == 1
+    assert report["seam_diagnostics"]["mismatches"][0]["coords"] == [1, 0]
+    assert report["seam_diagnostics"]["mismatches"][0]["corner"] == "bottom_right"
 
 
 def test_profile_declaration_uses_fixed_row_major_cell_sources(tmp_path):

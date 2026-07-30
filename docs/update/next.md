@@ -57,6 +57,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Fixed TileSet profile validation to diagnose terrain-corner seam mismatches against the deterministic matching template before compilation.
+
 - Fixed deterministic TileSet profiles to compile from published standalone runtimes and emit fixed atlas assembly declarations without agent-authored layout scripts.
 
 - Pre-push checks now isolate temporary Git repositories from the invoking worktree's hook environment.
