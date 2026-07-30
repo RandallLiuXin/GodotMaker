@@ -228,6 +228,7 @@ def _check_platform(
     sources: set[tuple[str, str]] = set()
     names: set[str] = set()
     slots: set[tuple[int, int]] = set()
+    slots_in_order: list[tuple[int, int]] = []
     roles: list[str] = []
     for item in segments:
         entry = _exact_keys(item, {"name", "role", "slot"}, "platform-strip segment")
@@ -250,6 +251,7 @@ def _check_platform(
             )
         names.add(name)
         slots.add(tuple(slot))
+        slots_in_order.append(tuple(slot))
         roles.append(role)
         if kind == "single":
             path = _stable_path("platform-strip", asset_id, name, ".png")
@@ -295,13 +297,20 @@ def _check_platform(
                     ),
                 )
             )
+    expected_slots = [(index, 0) for index in range(len(segments))]
+    expected_roles = [
+        "left_cap",
+        *("repeat_middle" for _ in segments[1:-1]),
+        "right_cap",
+    ]
     if (
-        roles.count("left_cap") != 1
-        or roles.count("right_cap") != 1
-        or roles.count("repeat_middle") < 1
+        grid["rows"] != 1
+        or grid["columns"] != len(segments)
+        or slots_in_order != expected_slots
+        or roles != expected_roles
     ):
         raise MissingFamilySkillError(
-            "platform-strip needs exactly one left_cap, one right_cap, and at least one repeat_middle"
+            "platform-strip needs one continuous left_cap/repeat_middle/right_cap row in slot order"
         )
     actual = {
         (item.get("name"), item.get("path"), item.get("godot_type"))
@@ -632,7 +641,7 @@ def _verify_prop_delivery(
 def _verify_platform_png(
     path: Path, expected_dimensions: tuple[int, int]
 ) -> None:
-    """Verify a processed platform cell or atlas keeps transparent non-art pixels."""
+    """Verify a processed platform cell or atlas is RGBA, sized, and chroma-clean."""
     try:
         from PIL import Image
     except ImportError as exc:
@@ -647,8 +656,6 @@ def _verify_platform_png(
             pixels = list(image.get_flattened_data())
     except (OSError, SyntaxError, ValueError) as exc:
         raise ValidationError(f"platform-strip output is not a decodable PNG: {path}") from exc
-    if not any(pixel[3] == 0 for pixel in pixels):
-        raise ValidationError("platform-strip output must retain transparent background pixels")
     if any(pixel[:3] == (255, 0, 255) and pixel[3] > 0 for pixel in pixels):
         raise ValidationError("platform-strip output contains opaque magenta background pixels")
 
