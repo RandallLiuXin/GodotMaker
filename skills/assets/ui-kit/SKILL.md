@@ -9,6 +9,8 @@ Use this skill to make one reusable visual Theme, not a page or a Control
 layout. The result supplies interface icons, panels, and button states a worker
 needs to construct later screens. It does not create a composite screen, readable UI copy,
 characters, logos, or gameplay geometry.
+Do not use it for card frames.
+Do not use it for portrait frames.
 
 Read [references/theme-baseline.md](references/theme-baseline.md) before
 planning. That is the complete common-control contract; do not ask the caller
@@ -19,8 +21,10 @@ sheets.
 
 ## Input gate
 
-Accept the shared Asset Skill request schema and require `asset_type: ui-kit`.
-Validate the returned document with the shared result schema and checker before
+Accept the shared Asset Skill request schema at
+`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json` and require
+`asset_type: ui-kit`. Validate the returned document with the shared result schema and checker at
+`.godotmaker/asset-runtime/schema/asset-skill-result.schema.json` before
 running the family binding checks.
 Require one or more `references` with a readable local image path. Preserve
 every `role`. A missing, unreadable, or unattached reference is a STOP, before
@@ -59,23 +63,34 @@ manifests, stable entries, or worker dispatch state.
    ```
 
    Use each plan entry as one provider call. Attach every reference as an
-   actual image input in every call. The plan's prompt is authoritative: its
-   flat `#FF00FF` canvas is a color key, never artwork; every component stays
-   separated by visible key-color gaps and away from canvas edges. Never turn
-   a screen mockup into a source sheet.
+   actual image input in every call. Use the plan's component names, row-major
+   order, target sizes, atlas dimensions, and slot rectangles unchanged. Use
+   the plan prompt unchanged. Never turn a screen mockup into a source sheet.
 3. Make exactly the three provider-generated source sheets named by the plan:
    state/frame, form/navigation, and utility icons. Save each raw provider
    image, its exact prompt, attached reference roles and paths, provider/image
    model, coding model, reasoning, call id, and attempt number. A source sheet
    without this provenance is incomplete.
-4. Use only the existing controlled tools to process actual provider or user
-   images: `asset_image_finalize.py`, `asset_sheet_process.py`,
-   `asset_curation_select.py`, and `asset_atlas_assemble.py`. Use autoslice
-   for separated source pieces, preserve the reports, and use fixed slots for
-   every final atlas rectangle. Run `asset_image_finalize.py --background
-   magenta` before autoslice. Do not draw, synthesize, recolor, or replace art
-   with Pillow, SVG, canvas, ImageMagick, Godot drawing, inline scripts, or
-   placeholders.
+4. Process each provider sheet with the existing controlled tools:
+
+   - Run `asset_image_finalize.py --background magenta --no-origin` once to
+     create the transparent processing source and report.
+   - Run `asset_sheet_process.py --snap-mode autoslice` without `--grid`. Pass
+     the plan's ordered component names through `--names` and preserve the
+     report.
+   - Require the detected region count to equal the plan component count.
+     Regenerate only that provider sheet when the count, separation, or edge
+     checks fail.
+   - Run `asset_image_finalize.py --resize <slot_width>x<slot_height>
+     --no-origin` for every accepted candidate. Use the plan slot target size.
+   - Write the fixed-slot atlas declaration from the plan atlas dimensions and
+     slot rectangles. Point each slot at its normalized candidate.
+   - Run `asset_atlas_assemble.py` once per sheet. Preserve its physical atlas
+     and metadata.
+
+   Do not pass provider source-sheet rectangles into a compiler. Do not draw,
+   synthesize, recolor, or replace art with Pillow, SVG, canvas, ImageMagick,
+   Godot drawing, inline scripts, or placeholders.
 5. Compile every textured state/frame to an explicit `StyleBoxTexture` with
    an exact source region, border, margins, and stretch axes. Compile every
    icon to a zero-margin `AtlasTexture` using its declared atlas rectangle.

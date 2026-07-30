@@ -31,6 +31,9 @@ _STYLEBOXES = (
     "text_normal", "text_focus", "text_disabled", "progress_background", "progress_fill",
     "tab_selected", "tab_unselected", "tooltip_panel", "popup_menu_panel",
     "popup_menu_hover", "popup_menu_disabled", "popup_menu_separator",
+    "hslider_track", "vslider_track", "hscrollbar_track", "hscrollbar_grabber",
+    "vscrollbar_track", "vscrollbar_grabber", "option_button_normal",
+    "option_button_hover",
 )
 _ICONS = (
     "icon_left_arrow", "icon_right_arrow", "icon_up_arrow", "icon_down_arrow",
@@ -38,6 +41,9 @@ _ICONS = (
     "icon_settings", "icon_add", "icon_remove", "icon_lock", "icon_unlock",
     "icon_checkbox_checked", "icon_checkbox_unchecked", "icon_radio_selected",
     "icon_radio_unselected", "icon_submenu", "icon_status",
+    "checkbox_unchecked", "checkbox_checked", "check_button_unchecked",
+    "check_button_checked", "hslider_grabber", "hslider_grabber_highlight",
+    "vslider_grabber", "vslider_grabber_highlight", "form_submenu_arrow",
 )
 _BUTTON_STATES = ("normal", "hover", "pressed", "disabled", "focus")
 
@@ -84,20 +90,31 @@ def _styles() -> list[dict[str, str]]:
         {"type": "TabContainer", "name": "tab_selected", "stylebox": "tab_selected"},
         {"type": "TabContainer", "name": "tab_unselected", "stylebox": "tab_unselected"},
     ])
-    for theme_type in ("CheckBox", "CheckButton", "OptionButton"):
+    for theme_type in ("CheckBox", "CheckButton"):
         rows.extend({"type": theme_type, "name": state, "stylebox": f"button_{state}"} for state in _BUTTON_STATES)
-    for theme_type in ("HSlider", "VSlider"):
+    rows.extend({
+        "type": "OptionButton",
+        "name": state,
+        "stylebox": (
+            f"option_button_{state}" if state in {"normal", "hover"} else f"button_{state}"
+        ),
+    } for state in _BUTTON_STATES)
+    for theme_type, track in (("HSlider", "hslider_track"), ("VSlider", "vslider_track")):
         rows.extend([
-            {"type": theme_type, "name": "slider", "stylebox": "line_normal"},
+            {"type": theme_type, "name": "slider", "stylebox": track},
             {"type": theme_type, "name": "grabber_area", "stylebox": "secondary_normal"},
             {"type": theme_type, "name": "grabber_area_highlight", "stylebox": "primary_normal"},
         ])
-    for theme_type in ("HScrollBar", "VScrollBar"):
+    for theme_type, track, grabber in (
+        ("HScrollBar", "hscrollbar_track", "hscrollbar_grabber"),
+        ("VScrollBar", "vscrollbar_track", "vscrollbar_grabber"),
+    ):
         rows.extend([
-            {"type": theme_type, "name": "scroll", "stylebox": "line_normal"},
-            {"type": theme_type, "name": "scroll_focus", "stylebox": "line_focus"},
-            {"type": theme_type, "name": "grabber", "stylebox": "secondary_normal"},
-            {"type": theme_type, "name": "grabber_highlight", "stylebox": "primary_normal"},
+            {"type": theme_type, "name": "scroll", "stylebox": track},
+            {"type": theme_type, "name": "scroll_focus", "stylebox": track},
+            {"type": theme_type, "name": "grabber", "stylebox": grabber},
+            {"type": theme_type, "name": "grabber_highlight", "stylebox": grabber},
+            {"type": theme_type, "name": "grabber_pressed", "stylebox": grabber},
         ])
     rows.extend([
         {"type": "PopupMenu", "name": "panel", "stylebox": "popup_menu_panel"},
@@ -111,19 +128,23 @@ def _styles() -> list[dict[str, str]]:
 def _icons(asset_root: str) -> list[dict[str, Any]]:
     path = {name: {"type": "AtlasTexture", "path": f"{asset_root}/{name}.tres"} for name in _ICONS}
     return [
-        {"type": "CheckBox", "name": "checked", "value": path["icon_checkbox_checked"]},
-        {"type": "CheckBox", "name": "unchecked", "value": path["icon_checkbox_unchecked"]},
-        {"type": "CheckButton", "name": "checked", "value": path["icon_checkbox_checked"]},
-        {"type": "CheckButton", "name": "unchecked", "value": path["icon_checkbox_unchecked"]},
-        {"type": "OptionButton", "name": "arrow", "value": path["icon_submenu"]},
+        {"type": "CheckBox", "name": "checked", "value": path["checkbox_checked"]},
+        {"type": "CheckBox", "name": "unchecked", "value": path["checkbox_unchecked"]},
+        {"type": "CheckButton", "name": "checked", "value": path["check_button_checked"]},
+        {"type": "CheckButton", "name": "unchecked", "value": path["check_button_unchecked"]},
+        {"type": "HSlider", "name": "grabber", "value": path["hslider_grabber"]},
+        {"type": "HSlider", "name": "grabber_highlight", "value": path["hslider_grabber_highlight"]},
+        {"type": "VSlider", "name": "grabber", "value": path["vslider_grabber"]},
+        {"type": "VSlider", "name": "grabber_highlight", "value": path["vslider_grabber_highlight"]},
+        {"type": "OptionButton", "name": "arrow", "value": path["form_submenu_arrow"]},
         {"type": "TabBar", "name": "increment", "value": path["icon_right_arrow"]},
         {"type": "TabBar", "name": "decrement", "value": path["icon_left_arrow"]},
         {"type": "PopupMenu", "name": "checked", "value": path["icon_checkbox_checked"]},
         {"type": "PopupMenu", "name": "unchecked", "value": path["icon_checkbox_unchecked"]},
         {"type": "PopupMenu", "name": "radio_checked", "value": path["icon_radio_selected"]},
         {"type": "PopupMenu", "name": "radio_unchecked", "value": path["icon_radio_unselected"]},
-        {"type": "PopupMenu", "name": "submenu", "value": path["icon_submenu"]},
-        {"type": "PopupMenu", "name": "submenu_mirrored", "value": path["icon_submenu"]},
+        {"type": "PopupMenu", "name": "submenu", "value": path["form_submenu_arrow"]},
+        {"type": "PopupMenu", "name": "submenu_mirrored", "value": path["form_submenu_arrow"]},
     ]
 
 

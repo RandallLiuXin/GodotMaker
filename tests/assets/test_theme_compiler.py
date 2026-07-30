@@ -152,6 +152,36 @@ def test_rejects_theme_stylebox_paths_outside_the_declared_runtime_outputs(tmp_p
         )
 
 
+def test_compiles_native_slider_icons_and_scrollbar_pressed_style(tmp_path):
+    source = tmp_path / "assets/generated/ui-kit/main/hslider_grabber.tres"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text(
+        '[gd_resource type="AtlasTexture" load_steps=1 format=3]\n\n[resource]\n',
+        encoding="utf-8",
+    )
+    recipe = _recipe(
+        icons=[{
+            "type": "HSlider",
+            "name": "grabber",
+            "value": {
+                "type": "AtlasTexture",
+                "path": "res://assets/generated/ui-kit/main/hslider_grabber.tres",
+            },
+        }],
+        styles=[
+            {"type": "Button", "name": "normal", "stylebox": "button_normal"},
+            {"type": "HScrollBar", "name": "grabber_pressed", "stylebox": "button_normal"},
+        ],
+    )
+    _write_recipe(tmp_path, recipe)
+
+    _compile(tmp_path)
+
+    text = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_text(encoding="utf-8")
+    assert 'HSlider/icons/grabber = ExtResource("Icon_0")' in text
+    assert 'HScrollBar/styles/grabber_pressed = SubResource("StyleBox_button_normal")' in text
+
+
 def test_structure_validation_reads_and_compares_the_declared_recipe_through_the_safe_resolver(tmp_path):
     _write_recipe(tmp_path, _recipe())
 

@@ -14,6 +14,7 @@ class UISourcePlanError(Exception):
 
 
 PIXEL_LANGUAGE = re.compile(r"\b(?:non[- ]?pixel(?:[- ]?art)?|not\s+pixel(?:[- ]?art)?)\b", re.IGNORECASE)
+SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -28,6 +29,80 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def _clean_visual_direction(brief: str) -> str:
     return " ".join(PIXEL_LANGUAGE.sub("", brief).split())
+
+
+def _positive_int(value: Any, label: str) -> int:
+    if type(value) is not int or value <= 0:
+        raise UISourcePlanError(f"{label} must be a positive integer")
+    return value
+
+
+def _sheet_layout(sheet: dict[str, Any]) -> tuple[list[dict[str, str]], dict[str, Any], list[dict[str, Any]]]:
+    sheet_id = sheet.get("id")
+    source_name = sheet.get("source_name")
+    components = sheet.get("components")
+    atlas = sheet.get("atlas")
+    if not isinstance(sheet_id, str) or not SAFE_NAME.fullmatch(sheet_id):
+        raise UISourcePlanError("source-sheet scheme contains an invalid sheet id")
+    if not isinstance(source_name, str) or not source_name.endswith(".png"):
+        raise UISourcePlanError(f"source-sheet scheme {sheet_id} has an invalid source_name")
+    if not isinstance(components, list) or not components:
+        raise UISourcePlanError(f"source-sheet scheme {sheet_id} has no components")
+    if not isinstance(atlas, dict):
+        raise UISourcePlanError(f"source-sheet scheme {sheet_id} has no atlas layout")
+
+    columns = _positive_int(atlas.get("columns"), f"{sheet_id}.atlas.columns")
+    rows = _positive_int(atlas.get("rows"), f"{sheet_id}.atlas.rows")
+    gutter = _positive_int(atlas.get("gutter"), f"{sheet_id}.atlas.gutter")
+    cell_size = atlas.get("cell_size")
+    if not isinstance(cell_size, list) or len(cell_size) != 2:
+        raise UISourcePlanError(f"{sheet_id}.atlas.cell_size must be [width, height]")
+    cell_width = _positive_int(cell_size[0], f"{sheet_id}.atlas.cell_size[0]")
+    cell_height = _positive_int(cell_size[1], f"{sheet_id}.atlas.cell_size[1]")
+    if len(components) > columns * rows:
+        raise UISourcePlanError(f"{sheet_id} components exceed atlas grid capacity")
+
+    parsed_components: list[dict[str, str]] = []
+    slots: list[dict[str, Any]] = []
+    seen_names: set[str] = set()
+    for index, component in enumerate(components):
+        if not isinstance(component, dict):
+            raise UISourcePlanError(f"{sheet_id}.components[{index}] must be an object")
+        name = component.get("name")
+        label = component.get("label")
+        if not isinstance(name, str) or not SAFE_NAME.fullmatch(name):
+            raise UISourcePlanError(f"{sheet_id}.components[{index}].name is invalid")
+        if name in seen_names:
+            raise UISourcePlanError(f"{sheet_id} component name is duplicated: {name}")
+        if not isinstance(label, str) or not label.strip():
+            raise UISourcePlanError(f"{sheet_id}.components[{index}].label is invalid")
+        seen_names.add(name)
+        parsed_components.append({"name": name, "label": label.strip()})
+        row, column = divmod(index, columns)
+        slots.append({
+            "index": index,
+            "name": name,
+            "label": label.strip(),
+            "target_size": [cell_width, cell_height],
+            "rect": [
+                gutter + column * (cell_width + gutter),
+                gutter + row * (cell_height + gutter),
+                cell_width,
+                cell_height,
+            ],
+        })
+
+    atlas_plan = {
+        "source_name": f"{sheet_id}_atlas.png",
+        "metadata_name": f"{sheet_id}_atlas.json",
+        "columns": columns,
+        "rows": rows,
+        "cell_size": [cell_width, cell_height],
+        "gutter": gutter,
+        "width": columns * cell_width + (columns + 1) * gutter,
+        "height": rows * cell_height + (rows + 1) * gutter,
+    }
+    return parsed_components, atlas_plan, slots
 
 
 def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, rendering_medium: str) -> dict[str, Any]:
@@ -50,7 +125,13 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
     background = scheme.get("background")
     composition = scheme.get("composition")
     sheets = scheme.get("sheets")
-    if not isinstance(background, dict) or background.get("color") != "#FF00FF" or not isinstance(composition, dict) or not isinstance(sheets, list):
+    if (
+        not isinstance(background, dict)
+        or background.get("color") != "#FF00FF"
+        or not isinstance(composition, dict)
+        or composition.get("reading_order") != "row_major"
+        or not isinstance(sheets, list)
+    ):
         raise UISourcePlanError("source-sheet scheme is malformed")
     direction = _clean_visual_direction(brief)
     common = (
@@ -63,12 +144,25 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
     )
     planned_sheets = []
     for sheet in sheets:
-        if not isinstance(sheet, dict) or not isinstance(sheet.get("components"), list):
+        if not isinstance(sheet, dict):
             raise UISourcePlanError("source-sheet scheme contains a malformed sheet")
-        components = [str(item) for item in sheet["components"]]
-        prompt = common + "Arrange exactly these visual components in the stated reading order, with no rendered labels: " + "; ".join(components) + "."
+        components, atlas, slots = _sheet_layout(sheet)
+        labels = [component["label"] for component in components]
+        prompt = (
+            common
+            + f"Arrange exactly {len(components)} visual components in a {atlas['columns']}-column by {atlas['rows']}-row layout, "
+            "ordered left to right and then top to bottom; leave unused trailing cells empty. "
+            "Render each listed component as one isolated reusable element. Do not render component labels. Components in order: "
+            + "; ".join(labels)
+            + "."
+        )
         planned_sheets.append({
-            "id": sheet["id"], "source_name": sheet["source_name"], "components": components,
+            "id": sheet["id"],
+            "source_name": sheet["source_name"],
+            "components": [component["name"] for component in components],
+            "component_labels": labels,
+            "atlas": atlas,
+            "slots": slots,
             "prompt": prompt,
         })
     return {
@@ -78,7 +172,11 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
         "provider": provider,
         "rendering_medium": rendering_medium.strip(),
         "references": references,
-        "scheme": {"version": scheme.get("version"), "background": background, "composition": composition},
+        "scheme": {
+            "version": scheme.get("version"),
+            "background": background,
+            "composition": composition,
+        },
         "sheets": planned_sheets,
     }
 

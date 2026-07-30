@@ -47,6 +47,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Changed
 
 - UI kit generation now produces color-keyed source sheets, reusable textured Theme states, and AtlasTexture-backed native icon bindings from a required visual reference.
+- UI kit Theme recipes now bind every form/navigation source through native StyleBoxTexture or AtlasTexture properties while retaining general utility icons as independent AtlasTexture resources.
 
 - Added deterministic fixed-slot `AtlasTexture` compilation from atlas metadata, with exact region and zero-margin validation through headless Godot.
 

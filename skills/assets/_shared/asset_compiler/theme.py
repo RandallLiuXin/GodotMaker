@@ -52,13 +52,15 @@ _PROPERTY_NAMES = {
         "icon", "checked", "unchecked", "arrow", "increment", "decrement",
         "checked_disabled", "unchecked_disabled", "radio_checked",
         "radio_checked_disabled", "radio_unchecked", "radio_unchecked_disabled",
-        "submenu", "submenu_mirrored",
+        "submenu", "submenu_mirrored", "grabber", "grabber_highlight",
+        "grabber_disabled", "tick",
     }),
     "styles": frozenset({
         "normal", "hover", "pressed", "disabled", "focus", "read_only",
         "panel", "background", "fill", "tab_selected", "tab_unselected",
         "slider", "grabber_area", "grabber_area_highlight", "scroll",
-        "scroll_focus", "grabber", "grabber_highlight", "separator", "panel_disabled",
+        "scroll_focus", "grabber", "grabber_highlight", "grabber_pressed",
+        "separator", "panel_disabled",
     }),
 }
 _BUTTON_TYPES = frozenset({"Button", "CheckBox", "CheckButton", "OptionButton"})
@@ -89,6 +91,8 @@ def _property_allowed(section: str, theme_type: str, name: str, variation_bases:
                 "radio_checked", "radio_checked_disabled", "radio_unchecked",
                 "radio_unchecked_disabled", "submenu", "submenu_mirrored",
             }
+        if base_type in {"HSlider", "VSlider"}:
+            return name in {"grabber", "grabber_highlight", "grabber_disabled", "tick"}
         return False
     if section == "constants":
         if name in {"icon_max_width", "h_separation"}:
@@ -113,7 +117,7 @@ def _property_allowed(section: str, theme_type: str, name: str, variation_bases:
             return base_type in {"TabBar", "TabContainer"}
         if name in {"slider", "grabber_area", "grabber_area_highlight"}:
             return base_type in {"HSlider", "VSlider"}
-        if name in {"scroll", "scroll_focus", "grabber", "grabber_highlight"}:
+        if name in {"scroll", "scroll_focus", "grabber", "grabber_highlight", "grabber_pressed"}:
             return base_type in {"HScrollBar", "VScrollBar"}
         return base_type == "PopupMenu" and name == "separator"
     return False

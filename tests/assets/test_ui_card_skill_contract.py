@@ -245,10 +245,36 @@ def test_source_sheet_plan_requires_magenta_color_key_and_positive_medium_prompt
     assert all("#FF00FF" in sheet["prompt"] for sheet in plan["sheets"])
     assert all("pixel-art" not in sheet["prompt"].lower() and "pixel art" not in sheet["prompt"].lower() for sheet in plan["sheets"])
     assert all(len(sheet["components"]) >= 16 for sheet in plan["sheets"])
+    assert all("left to right and then top to bottom" in sheet["prompt"] for sheet in plan["sheets"])
+    assert plan["sheets"][0]["components"][0] == "button_normal"
+    assert plan["sheets"][0]["atlas"] == {
+        "source_name": "state_frames_atlas.png",
+        "metadata_name": "state_frames_atlas.json",
+        "columns": 6,
+        "rows": 6,
+        "cell_size": [384, 192],
+        "gutter": 8,
+        "width": 2360,
+        "height": 1208,
+    }
+    assert plan["sheets"][0]["slots"][0]["rect"] == [8, 8, 384, 192]
+    assert plan["sheets"][0]["slots"][1]["rect"] == [400, 8, 384, 192]
+    assert plan["sheets"][2]["slots"][-1]["name"] == "icon_status"
 
 
 def test_ui_theme_recipe_uses_named_stylebox_textures_and_atlas_textures(tmp_path):
     tool = _theme_recipe_tool()
+    scheme = json.loads(
+        (REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    scheme_names = {
+        component["name"]
+        for sheet in scheme["sheets"]
+        for component in sheet["components"]
+    }
+    assert scheme_names == set(tool._STYLEBOXES) | set(tool._ICONS)
     plan = {"tokens": {
         "text": "#F8F2E8", "text_hover": "#FFFFFF", "text_pressed": "#F0C15A",
         "text_disabled": "#8B8490", "text_outline": "#241B2F",
@@ -282,7 +308,10 @@ def test_ui_theme_recipe_uses_named_stylebox_textures_and_atlas_textures(tmp_pat
     compiled = (asset_root / "hud_theme.tres").read_text(encoding="utf-8")
     assert 'ext_resource type="AtlasTexture"' in compiled
     assert 'PopupMenu/styles/panel_disabled' in compiled
-    assert len(recipe["styleboxes"]) == 37
+    assert 'HSlider/icons/grabber' in compiled
+    assert 'OptionButton/styles/normal' in compiled
+    assert len(recipe["styleboxes"]) == 45
+    assert len(tool._ICONS) == 29
 
 
 @pytest.mark.parametrize("field", ["references", "provider"])

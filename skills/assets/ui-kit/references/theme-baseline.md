@@ -39,6 +39,10 @@ baseline components.
   remove, lock, checkbox/radio, arrow/submenu, and progress/status affordances.
 - Use explicit named rectangles for every atlas item. Each runtime icon is an
   `AtlasTexture` with that exact rectangle and a zero margin.
+- Bind checkbox, check-button, slider, scrollbar, option-button, and submenu
+  source items to their native Theme style or icon properties.
+- Publish utility icons without native Theme properties as independent named
+  `AtlasTexture` resources.
 - Bind the compiled `StyleBoxTexture` resources directly into the final Theme;
   do not replace them with `StyleBoxFlat` or code-only colors. State resources
   that communicate different interaction semantics must use distinct source
