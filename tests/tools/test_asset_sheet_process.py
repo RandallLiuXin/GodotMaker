@@ -297,15 +297,24 @@ def test_process_sheet_rejects_edge_touch_when_requested(tmp_path):
     assert not (tmp_path / "out" / "edge.png").exists()
 
 
-def test_process_sheet_rejects_non_divisible_grid(tmp_path):
+def test_process_sheet_partitions_non_divisible_grid_with_full_coverage(tmp_path):
     source = tmp_path / "sheet.png"
     image = Image.new("RGBA", (9, 10), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     draw.rectangle((1, 1, 3, 3), fill=(255, 0, 0, 255))
     image.save(source)
 
-    with pytest.raises(SheetProcessError, match="divide evenly"):
-        process_sheet(source, tmp_path / "out", grid="2x2", snap_mode="grid")
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        grid="2x2",
+        names="a,b,c,d",
+        snap_mode="grid",
+        preserve_cell_bounds=True,
+    )
+
+    assert result["cell_bounds"] == {"columns": [0, 4, 9], "rows": [0, 5, 10]}
+    assert result["accepted"][0]["source_box"] == [0, 0, 4, 5]
 
 
 def test_process_sheet_rejects_opaque_source(tmp_path):

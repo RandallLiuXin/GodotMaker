@@ -91,7 +91,7 @@ def test_background_and_platform_runtime_contracts_keep_native_type_boundaries()
     assert "tools/codex_image_claim.py --plan" in platform
     assert "never hand-write provenance JSON" in platform
     assert "Split the raw provider sheet before any crop, resize, or padding" in platform
-    assert "--grid 1x1" not in platform
+    assert "Never normalize the whole sheet as one image" in platform
     assert "one `sources` entry with `layout: \"single\"` for every processed segment" in platform
 
 

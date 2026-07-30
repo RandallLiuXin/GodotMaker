@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from bisect import bisect_right
 import json
 import math
 import re
@@ -457,8 +458,8 @@ def process_sheet(
         width, height = image.size
         if not _has_transparent_pixels(image):
             raise SheetProcessError("Source sheet must have transparency after background cleanup")
-        if width % cols != 0 or height % rows != 0:
-            raise SheetProcessError("Source dimensions must divide evenly by grid")
+        column_edges = [(width * index) // cols for index in range(cols + 1)]
+        row_edges = [(height * index) // rows for index in range(rows + 1)]
         cell_w = width // cols
         cell_h = height // rows
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -472,14 +473,16 @@ def process_sheet(
                 rect_left, rect_top, rect_right, rect_bottom = rect
                 center_x = (rect_left + rect_right - 1) / 2
                 center_y = (rect_top + rect_bottom - 1) / 2
-                col = min(cols - 1, max(0, int(center_x // cell_w)))
-                row = min(rows - 1, max(0, int(center_y // cell_h)))
+                col = min(cols - 1, max(0, bisect_right(column_edges, center_x) - 1))
+                row = min(rows - 1, max(0, bisect_right(row_edges, center_y) - 1))
                 rects_by_index.setdefault(row * cols + col, []).append(rect)
 
             for index, name in enumerate(cell_names):
                 row, col = divmod(index, cols)
-                left = col * cell_w
-                top = row * cell_h
+                left = column_edges[col]
+                top = row_edges[row]
+                right = column_edges[col + 1]
+                bottom = row_edges[row + 1]
                 cell_rects = sorted(
                     rects_by_index.get(index, []),
                     key=_rect_area,
@@ -491,7 +494,7 @@ def process_sheet(
                     "state": "candidate",
                     "index": index,
                     "grid": [col, row],
-                    "source_box": [left, top, left + cell_w, top + cell_h],
+                    "source_box": [left, top, right, bottom],
                     "component_mode": component_mode,
                     "component_count": 0,
                     "selected_component_area": None,
@@ -514,7 +517,7 @@ def process_sheet(
                     "state": "candidate",
                     "index": index,
                     "grid": [col, row],
-                    "source_box": [left, top, left + cell_w, top + cell_h],
+                    "source_box": [left, top, right, bottom],
                     "component_mode": component_mode,
                     "component_count": len(cell_rects),
                     "selected_component_area": selected_area,
@@ -560,9 +563,11 @@ def process_sheet(
         else:
             for index, name in enumerate(cell_names):
                 row, col = divmod(index, cols)
-                left = col * cell_w
-                top = row * cell_h
-                cell = image.crop((left, top, left + cell_w, top + cell_h))
+                left = column_edges[col]
+                top = row_edges[row]
+                right = column_edges[col + 1]
+                bottom = row_edges[row + 1]
+                cell = image.crop((left, top, right, bottom))
                 cell = _trim_border(cell, pixels=trim_border)
                 cell = _clean_edge_noise(cell, depth=edge_clean_depth)
                 components = _connected_components(cell, min_area=min_component_area)
@@ -578,7 +583,7 @@ def process_sheet(
                     "state": "candidate",
                     "index": index,
                     "grid": [col, row],
-                    "source_box": [left, top, left + cell_w, top + cell_h],
+                    "source_box": [left, top, right, bottom],
                     "component_mode": component_mode,
                     "component_count": len(components),
                     "selected_component_area": (
@@ -660,6 +665,7 @@ def process_sheet(
         "preserve_cell_bounds": preserve_cell_bounds,
         "grid": {"cols": cols, "rows": rows},
         "cell_size": [cell_w, cell_h],
+        "cell_bounds": {"columns": column_edges, "rows": row_edges},
         "candidates": [
             {
                 "candidate_id": f"{asset_id or source.stem}.{item['name']}",

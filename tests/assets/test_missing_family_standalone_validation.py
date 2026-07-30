@@ -326,7 +326,7 @@ def test_platform_strip_splits_before_per_cell_finalization(tmp_path):
         "middle": (0, 255, 0, 255),
         "right": (0, 0, 255, 255),
     }
-    image = Image.new("RGBA", (30, 10), (255, 0, 255, 255))
+    image = Image.new("RGBA", (31, 10), (255, 0, 255, 255))
     for index, color in enumerate(colors.values()):
         for x in range(index * 10 + 1, index * 10 + 9):
             for y in range(1, 9):
@@ -346,9 +346,18 @@ def test_platform_strip_splits_before_per_cell_finalization(tmp_path):
     assert report["accepted_count"] == 3
 
     for name, color in colors.items():
+        cropped_dir = tmp_path / "cropped" / name
+        crop_report = process_sheet(
+            sliced_dir / f"{name}.png",
+            cropped_dir,
+            grid="1x1",
+            names=name,
+            snap_mode="grid",
+        )
+        assert crop_report["accepted_count"] == 1
         finalized = tmp_path / "normalized" / f"{name}.png"
         finalize_image_asset(
-            sliced_dir / f"{name}.png",
+            cropped_dir / f"{name}.png",
             finalized,
             resize="20x20",
             archive_original=False,
