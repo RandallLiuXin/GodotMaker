@@ -15,6 +15,7 @@ from asset_tileset_profile import (  # noqa: E402
     _resolve_runtime_root,
     build_profile_atlas_declaration,
     build_profile_recipe,
+    compose_profile_material_atlas,
     create_profile_guide,
     diagnose_profile_edge_semantics,
     get_profile,
@@ -144,6 +145,27 @@ def test_profile_seam_diagnostics_report_incorrect_corner_material(tmp_path):
     assert report["seam_diagnostics"]["mismatch_count"] == 1
     assert report["seam_diagnostics"]["mismatches"][0]["coords"] == [1, 0]
     assert report["seam_diagnostics"]["mismatches"][0]["corner"] == "bottom_right"
+
+
+def test_material_composition_repairs_topology_without_flat_color_corner_patches(tmp_path):
+    material_source = tmp_path / "materials.png"
+    image = Image.new("RGBA", (96, 96), (45, 165, 70, 255))
+    image.paste((185, 105, 45, 255), (48, 0, 96, 96))
+    material_source.parent.mkdir(parents=True, exist_ok=True)
+    image.save(material_source)
+    atlas = tmp_path / "composed.png"
+    report = compose_profile_material_atlas(
+        "marching_squares_15",
+        material_source=material_source,
+        output=atlas,
+        tile_width=24,
+        tile_height=24,
+    )
+    assert report["operation"] == "deterministic_profile_material_composite_v1"
+    validated = validate_profile_atlas(atlas, "marching_squares_15", tile_width=24, tile_height=24, check_seams=True)
+    assert validated["seam_diagnostics"]["mismatch_count"] == 0
+    with Image.open(atlas) as composed:
+        assert composed.convert("RGBA").crop((0, 0, 24, 24)).getchannel("A").getbbox() is None
 
 
 def test_profile_declaration_uses_fixed_row_major_cell_sources(tmp_path):

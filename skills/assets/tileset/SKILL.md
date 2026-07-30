@@ -45,7 +45,7 @@ fields are rejected.
 
 References are optional. With references, resolve every `res://` path against the project root, verify it is readable, preserve its `canonical`, `style`, or `screen` role, and attach the actual image to the selected provider. A textual path is not an attachment. If attachment fails, STOP. A profile-layout reference is binding only for its declared profile: attach a `marching_squares_15` layout reference when generating that profile and a `blob_47` layout reference when generating that profile; do not attach an incompatible profile diagram merely as extra prompt context.
 
-Honor `provider` exactly: `native`, `codex`, `gemini`, and `openai` never fall back to another provider. For Codex, call image generation with `referenced_image_paths` containing every readable local reference. Before the call, write a one-item plan with `require_provider_trace: true`. After the call, write a generated-path report containing the actual image path, the Codex tool-call identity, configured coding model/reasoning, image-model identity (or `not_exposed_by_subscription_runtime`), every reference role, and the exact attached paths. Then claim it with `python .godotmaker/asset-runtime/tools/codex_image_claim.py --plan <plan.json> --report <generated-paths.json> --project-root . --out-report .godotmaker/asset-generation/reports/<asset_id>_source.json`. Missing or incomplete provider trace is a STOP; never copy a generated image directly into the project. Use `asset_source_generate.py` for Gemini/OpenAI API-backed generation.
+Honor `provider` exactly: `native`, `codex`, `gemini`, and `openai` never fall back to another provider. For Codex, call image generation with `referenced_image_paths` containing every readable local reference. Before the call, write a one-item plan with `require_provider_trace: true` and source target `.godotmaker/asset-generation/source/<asset_id>_provider.png`. After the call, write a generated-path report containing the actual image path, the Codex tool-call identity, configured coding model/reasoning, image-model identity (or `not_exposed_by_subscription_runtime`), every reference role, and the exact attached paths. Then claim it with `python .godotmaker/asset-runtime/tools/codex_image_claim.py --plan <plan.json> --report <generated-paths.json> --project-root . --out-report .godotmaker/asset-generation/reports/<asset_id>_source.json`. Missing or incomplete provider trace is a STOP; never copy a generated image directly into the project. Use `asset_source_generate.py` for Gemini/OpenAI API-backed generation.
 
 Retain the controlled claim result, prompt, raw source, reference roles and paths, processing reports, commands or code, diagnostics, repairs, inputs, outputs, and modified files under `.godotmaker/asset-generation/`. Do not hand-write provider provenance. Diagnostic tools beyond the owned tools are allowed when needed, but the trace must explain why they were used and what recheck passed afterward.
 
@@ -72,6 +72,17 @@ Retain the controlled claim result, prompt, raw source, reference roles and path
      --metadata-out assets/generated/tileset/<asset_id>/<asset_id>_atlas.json `
      --family tileset --asset-id <asset_id> --project-root .
    ```
+   If that direct sheet path fails the profile seam diagnostic, do not paint solid corner blocks over selected cells. Recompose the entire profile from the retained real provider image's grass and terrain materials; this keeps provider-authored visual texture while assigning every transition mask deterministically:
+
+   ```powershell
+   python tools/asset_tileset_profile.py --profile <marching_squares_15|blob_47> `
+     --tile-size <width>x<height> `
+     --material-source .godotmaker/asset-generation/source/<asset_id>_provider.png `
+     --composed-atlas-out assets/generated/tileset/<asset_id>/<asset_id>_atlas.png `
+     --composition-report .godotmaker/asset-generation/reports/<asset_id>_material_composite.json
+   ```
+
+   Retain the composition report and re-run the normal profile command with `--enforce-seams`. The fallback may not hand-write or overlay isolated diagnostic regions; a visually flat patch is not a valid seam repair.
 4. Validate the final atlas and generate the full low-level recipe and native resource with one command:
 
    ```powershell

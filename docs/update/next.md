@@ -58,6 +58,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - Fixed TileSet profile validation to diagnose terrain-corner seam mismatches against the deterministic matching template before compilation.
+- Fixed TileSet seam repairs to deterministically compose profile transitions from provider-authored terrain materials instead of accepting flat color patches.
 
 - Fixed deterministic TileSet profiles to compile from published standalone runtimes and emit fixed atlas assembly declarations without agent-authored layout scripts.
 

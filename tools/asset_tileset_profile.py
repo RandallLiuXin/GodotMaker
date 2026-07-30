@@ -228,6 +228,120 @@ def write_transparent_profile_slot(output: Path, *, tile_width: int, tile_height
     Image.new("RGBA", (tile_width, tile_height), (0, 0, 0, 0)).save(output, format="PNG")
 
 
+def compose_profile_material_atlas(
+    profile_name: str,
+    *,
+    material_source: Path,
+    output: Path,
+    tile_width: int,
+    tile_height: int,
+) -> dict[str, Any]:
+    """Compose an exact terrain topology from real provider-authored materials.
+
+    This is the deterministic repair path for a provider sheet whose grass and
+    dirt painting is attractive but whose individual transition cells do not
+    obey the requested profile. It retains visual material from the claimed
+    provider image, but owns every transition mask in code. No flat color
+    patches or agent-authored atlas declaration are involved.
+    """
+    profile = get_profile(profile_name)
+    tile_width = _positive_int(tile_width, "tile_width")
+    tile_height = _positive_int(tile_height, "tile_height")
+    try:
+        with Image.open(material_source) as opened:
+            source = opened.convert("RGBA")
+    except Exception as exc:
+        raise TileSetProfileError(f"material source is not a readable image: {material_source}") from exc
+
+    grass_score, grass_box = _select_material_patch(source, kind="grass")
+    dirt_score, dirt_box = _select_material_patch(source, kind="dirt")
+    grass = source.crop(grass_box).resize((tile_width, tile_height), Image.Resampling.LANCZOS)
+    dirt = source.crop(dirt_box).resize((tile_width, tile_height), Image.Resampling.LANCZOS)
+    atlas = Image.new("RGBA", (profile.columns * tile_width, profile.rows * tile_height), (0, 0, 0, 0))
+    for tile in profile.tiles:
+        mask = _terrain_mask(tile, tile_width, tile_height)
+        composed = Image.composite(dirt, grass, mask)
+        atlas.alpha_composite(composed, (tile.coords[0] * tile_width, tile.coords[1] * tile_height))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    atlas.save(output, format="PNG")
+    return {
+        "profile": profile.name,
+        "input": str(material_source),
+        "output": str(output),
+        "operation": "deterministic_profile_material_composite_v1",
+        "terrain_mask": "bilinear_corner_profile_v1",
+        "materials": {
+            "grass": {"crop": list(grass_box), "score": round(grass_score, 3)},
+            "terrain": {"crop": list(dirt_box), "score": round(dirt_score, 3)},
+        },
+        "reserved_slots": [list(coords) for coords in profile.reserved_slots],
+    }
+
+
+def _select_material_patch(image: Image.Image, *, kind: str) -> tuple[tuple[int, int, int, int], float]:
+    """Choose a richly colored provider patch without relying on filenames or time."""
+    if kind not in {"grass", "dirt"}:
+        raise ValueError(f"unsupported material kind: {kind}")
+    width, height = image.size
+    patch_width, patch_height = max(8, width // 10), max(8, height // 10)
+    candidates: list[tuple[float, tuple[int, int, int, int]]] = []
+    for row in range(8):
+        for column in range(8):
+            left = int((column + 0.5) * width / 8 - patch_width / 2)
+            top = int((row + 0.5) * height / 8 - patch_height / 2)
+            left = min(max(left, 0), width - patch_width)
+            top = min(max(top, 0), height - patch_height)
+            box = (left, top, left + patch_width, top + patch_height)
+            pixels = [pixel for pixel in image.crop(box).get_flattened_data() if pixel[3] > 0]
+            if not pixels:
+                continue
+            red = sum(pixel[0] for pixel in pixels) / len(pixels)
+            green = sum(pixel[1] for pixel in pixels) / len(pixels)
+            blue = sum(pixel[2] for pixel in pixels) / len(pixels)
+            pixel_scores = [
+                pixel[1] - (pixel[0] + pixel[2]) / 2
+                if kind == "grass" else pixel[0] - pixel[1] * 0.45 - pixel[2] * 0.25
+                for pixel in pixels
+            ]
+            score = green - (red + blue) / 2 if kind == "grass" else red - green * 0.45 - blue * 0.25
+            # A strong average color is insufficient when a patch straddles a
+            # transition. Prefer a material-dominant patch so profile masks do
+            # not import a provider's incorrect boundary into every output tile.
+            dominance = sum(value >= score * 0.7 for value in pixel_scores) / len(pixel_scores)
+            score += dominance * 100
+            candidates.append((score, box))
+    if not candidates:
+        raise TileSetProfileError(f"could not select a {kind} material patch from provider source")
+    return max(candidates, key=lambda item: item[0])
+
+
+def _terrain_mask(tile: ProfileTile, width: int, height: int) -> Image.Image:
+    """Render the profile's four terrain corners as a softly antialiased mask."""
+    present = set(tile.peering_bits)
+    top_left = int(11 in present)
+    top_right = int(15 in present)
+    bottom_left = int(7 in present)
+    bottom_right = int(3 in present)
+    mask = Image.new("L", (width, height))
+    values: list[int] = []
+    for row in range(height):
+        y = (row + 0.5) / height
+        for column in range(width):
+            x = (column + 0.5) / width
+            value = (
+                top_left * (1 - x) * (1 - y)
+                + top_right * x * (1 - y)
+                + bottom_left * (1 - x) * y
+                + bottom_right * x * y
+            )
+            # A narrow smoothstep band avoids jagged diagonal borders while
+            # leaving every profile corner categorically grass or terrain.
+            softened = max(0.0, min(1.0, (value - 0.34) / 0.32))
+            values.append(round(softened * 255))
+    mask.putdata(values)
+    return mask
+
+
 def _positive_int(value: int, label: str) -> int:
     if type(value) is not int or value <= 0:
         raise TileSetProfileError(f"{label} must be a positive integer")
@@ -515,6 +629,9 @@ def _main() -> int:
     parser.add_argument("--cells-dir", type=Path, help="Row-major 01.png... source cells from asset_sheet_process")
     parser.add_argument("--reserved-out", type=Path, help="Transparent PNG emitted for the profile's reserved slot")
     parser.add_argument("--atlas-declaration-out", type=Path, help="Fixed atlas declaration for asset_atlas_assemble")
+    parser.add_argument("--material-source", type=Path, help="Claimed provider image used for deterministic terrain-material composition")
+    parser.add_argument("--composed-atlas-out", type=Path, help="Output atlas path for deterministic terrain-material composition")
+    parser.add_argument("--composition-report", type=Path, help="Trace report for deterministic terrain-material composition")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--asset-id")
     parser.add_argument("--artifact", help="res:// TileSet path to compile after recipe generation")
@@ -545,9 +662,26 @@ def _main() -> int:
                 tile_height=declaration_height,
             ),
         )
+    composition_values = (arguments.material_source, arguments.composed_atlas_out, arguments.composition_report)
+    if any(value is not None for value in composition_values):
+        if any(value is None for value in composition_values):
+            parser.error("--material-source, --composed-atlas-out, and --composition-report are required together")
+        composition_width, composition_height = arguments.tile_size or arguments.guide_cell_size
+        _write_json_atomic(
+            arguments.composition_report,
+            compose_profile_material_atlas(
+                arguments.profile,
+                material_source=arguments.material_source,
+                output=arguments.composed_atlas_out,
+                tile_width=composition_width,
+                tile_height=composition_height,
+            ),
+        )
+        if all(value is None for value in (arguments.atlas, arguments.texture, arguments.godot_path, arguments.terrain_name, arguments.recipe_out)):
+            return 0
     recipe_values = (arguments.atlas, arguments.texture, arguments.tile_size, arguments.godot_path, arguments.terrain_name, arguments.recipe_out)
     if all(value is None for value in recipe_values):
-        if arguments.manifest_out or arguments.guide_out or arguments.atlas_declaration_out:
+        if arguments.manifest_out or arguments.guide_out or arguments.atlas_declaration_out or arguments.composed_atlas_out:
             return 0
         parser.error("supply --manifest-out, --guide-out, or all recipe-generation inputs")
     if any(value is None for value in recipe_values):
