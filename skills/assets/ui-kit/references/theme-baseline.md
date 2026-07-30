@@ -1,7 +1,7 @@
 # Complete UI Theme Baseline
 
-Every successful `ui-kit` run builds and binds this complete non-pixel-art
-baseline. A request brief selects the visual language; it does not remove
+Every successful `ui-kit` run builds and binds this complete Theme baseline.
+A request brief selects the visual language; it does not remove
 baseline components.
 
 ## Theme tokens
@@ -24,8 +24,9 @@ baseline components.
   checked, and unchecked treatment through styles and icons.
 - `HSlider`/`VSlider`: track, grabber area, and highlighted grabber area.
 - `HScrollBar`/`VScrollBar`: scroll, focus, grabber, highlighted grabber.
-- `OptionButton` and `PopupMenu`: interaction states, panel, separator,
-  checked/unchecked, arrow/submenu treatment.
+- `OptionButton`: normal, hover, pressed, disabled, focus, and arrow treatment.
+- `PopupMenu`: panel, disabled panel, hover, separator, checked/unchecked,
+  radio, and submenu-icon treatment using the native PopupMenu property names.
 - `TooltipSurface` variation over `Panel`: a tooltip panel treatment.
 
 ## Source and runtime requirements

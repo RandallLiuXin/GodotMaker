@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the public standalone validation contract for one UI/card handoff."""
+"""Run retryable public standalone diagnostics for one UI/card handoff."""
 from __future__ import annotations
 
 import argparse
@@ -25,6 +25,7 @@ def main() -> int:
     parser.add_argument("--project-root", default=".")
     parser.add_argument("--skill", default=".agents/skills/ui-kit/standalone_validation.py")
     parser.add_argument("--godot-path", default=os.environ.get("GODOT_BIN", ""))
+    parser.add_argument("--allow-failure", action="store_true", help="Return diagnostics without a nonzero process exit")
     args = parser.parse_args()
     root = Path(args.project_root).resolve()
     if not args.godot_path:
@@ -38,7 +39,7 @@ def main() -> int:
     )
     result_path.write_text(json.dumps(validated, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(validated))
-    return 0 if validated["validation"]["passed"] else 1
+    return 0 if validated["validation"]["passed"] or args.allow_failure else 1
 
 
 if __name__ == "__main__":

@@ -22,6 +22,25 @@ from asset_ui_card_contract_check import (  # noqa: E402
 from asset_validation import ProbeReport, ProbeResult  # noqa: E402
 from asset_validation.godot_probe import GodotProbe  # noqa: E402
 from ui_card_standalone_validation import UICardSkillError, compile_and_validate  # noqa: E402
+from asset_compiler import CompileRequest, build_default_registry, theme  # noqa: E402
+
+
+def _source_plan_tool():
+    path = TOOLS / "asset_ui_source_sheet_plan.py"
+    spec = importlib.util.spec_from_file_location("asset_ui_source_sheet_plan", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _theme_recipe_tool():
+    path = TOOLS / "asset_ui_theme_recipe.py"
+    spec = importlib.util.spec_from_file_location("asset_ui_theme_recipe", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
 
 
 def _png(width: int, height: int) -> bytes:
@@ -213,6 +232,59 @@ def test_ui_contract_rejects_a_missing_requested_hover_state():
         check_ui_card_request(request)
 
 
+def test_source_sheet_plan_requires_magenta_color_key_and_positive_medium_prompts():
+    tool = _source_plan_tool()
+    request = _request("ui-kit")
+    request["brief"] = "Create a non-pixel-art hand-painted fantasy shrine theme."
+    scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
+
+    plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+
+    assert plan["scheme"]["background"]["color"] == "#FF00FF"
+    assert len(plan["sheets"]) == 3
+    assert all("#FF00FF" in sheet["prompt"] for sheet in plan["sheets"])
+    assert all("pixel-art" not in sheet["prompt"].lower() and "pixel art" not in sheet["prompt"].lower() for sheet in plan["sheets"])
+    assert all(len(sheet["components"]) >= 16 for sheet in plan["sheets"])
+
+
+def test_ui_theme_recipe_uses_named_stylebox_textures_and_atlas_textures(tmp_path):
+    tool = _theme_recipe_tool()
+    plan = {"tokens": {
+        "text": "#F8F2E8", "text_hover": "#FFFFFF", "text_pressed": "#F0C15A",
+        "text_disabled": "#8B8490", "text_outline": "#241B2F",
+        "text_placeholder": "#A79FB0", "selection": "#7154C9AA", "focus": "#F0C15A",
+    }}
+    recipe = tool.build_theme_recipe(plan, asset_id="hud")
+    asset_root = tmp_path / "assets/generated/ui-kit/hud"
+    asset_root.mkdir(parents=True)
+    for name in tool._STYLEBOXES:
+        (asset_root / f"{name}.tres").write_text('[gd_resource type="StyleBoxTexture" format=3]\n', encoding="utf-8")
+    for name in tool._ICONS:
+        (asset_root / f"{name}.tres").write_text('[gd_resource type="AtlasTexture" format=3]\n', encoding="utf-8")
+    recipe_path = asset_root / "theme_recipe.json"
+    recipe_path.write_text(json.dumps(recipe), encoding="utf-8")
+    request = CompileRequest(
+        production_family="ui-kit", asset_id="hud", source_layout_type="theme_recipe",
+        source_path="res://assets/generated/ui-kit/hud/theme_recipe.json", artifact_type="Theme",
+        artifact_path="res://assets/generated/ui-kit/hud/hud_theme.tres", project_root=tmp_path,
+        spec={
+            "allowed_external_stylebox_paths": [
+                f"res://assets/generated/ui-kit/hud/{name}.tres"
+                for name in tool._STYLEBOXES
+            ],
+        },
+    )
+    registry = build_default_registry()
+    theme.register_into(registry)
+
+    registry.compile(request)
+
+    compiled = (asset_root / "hud_theme.tres").read_text(encoding="utf-8")
+    assert 'ext_resource type="AtlasTexture"' in compiled
+    assert 'PopupMenu/styles/panel_disabled' in compiled
+    assert len(recipe["styleboxes"]) == 37
+
+
 @pytest.mark.parametrize("field", ["references", "provider"])
 def test_ui_contract_requires_a_binding_reference_and_provider_pin(field):
     request = _request("ui-kit")
@@ -373,6 +445,7 @@ def test_standalone_runner_rejects_theme_binding_to_an_undeclared_stylebox(tmp_p
 
     assert validated["validation"]["levels"] == {
         "L0": True, "L1": True, "L2": False, "L3": False, "L4": False,
+        "L5": False,
     }
     assert "declared StyleBoxTexture runtime output" in validated["validation"]["notes"]
 
@@ -394,6 +467,7 @@ def test_standalone_runner_loads_a_theme_bound_to_its_declared_stylebox_texture(
 
     assert validated["validation"]["levels"] == {
         "L0": True, "L1": True, "L2": True, "L3": True, "L4": True,
+        "L5": True,
     }
 
 

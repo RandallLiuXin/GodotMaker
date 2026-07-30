@@ -215,8 +215,15 @@ def compile_and_validate(
     except ValidationError as exc:
         return _failure(result, passed, "L4", exc)
     passed.append("L4")
+    theme_declaration = spec["theme"]
+    if theme_declaration is None:
+        return _mapped_result(result, {level: True for level in _LEVELS if level != "L5"})
     try:
-        _run_consumer_smoke(root, godot_path, spec["theme"]["output_name"] and runtime[spec["theme"]["output_name"]]["path"])
+        _run_consumer_smoke(
+            root,
+            godot_path,
+            runtime[theme_declaration["output_name"]]["path"],
+        )
     except (OSError, subprocess.SubprocessError, ValidationError) as exc:
         return _failure(result, passed, "L5", exc)
     return _mapped_result(result, {level: True for level in _LEVELS})

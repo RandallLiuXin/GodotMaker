@@ -46,6 +46,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- UI kit generation now produces color-keyed source sheets, reusable textured Theme states, and AtlasTexture-backed native icon bindings from a required visual reference.
+
 - Added deterministic fixed-slot `AtlasTexture` compilation from atlas metadata, with exact region and zero-margin validation through headless Godot.
 
 - `/gm-asset` now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body `runtime_artifact` manifest.

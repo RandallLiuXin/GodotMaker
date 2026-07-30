@@ -65,6 +65,22 @@ def test_ui_family_keeps_layout_and_runtime_responsibilities_separate(family):
     assert "deterministic tools" in skill
 
 
+def test_ui_kit_owns_a_color_keyed_three_sheet_provider_plan():
+    skill_root = ASSETS_DIR / "ui-kit"
+    skill = (skill_root / "SKILL.md").read_text(encoding="utf-8")
+    scheme = json.loads((skill_root / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
+
+    assert scheme["background"] == {
+        "color": "#FF00FF", "flat": True, "reserved_for_color_key": True, "forbid_in_art": True,
+    }
+    assert [sheet["id"] for sheet in scheme["sheets"]] == [
+        "state_frames", "form_navigation", "utility_icons",
+    ]
+    assert "asset_ui_source_sheet_plan.py" in skill
+    assert "Treat a\nfailed level as repair input" in skill
+    assert "do not STOP merely because a production validation attempt failed" in skill
+
+
 def test_gm_asset_dispatches_ui_and_card_kits_to_their_named_skills():
     manager = (REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md").read_text(
         encoding="utf-8"

@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "background": {
+    "color": "#FF00FF",
+    "flat": true,
+    "reserved_for_color_key": true,
+    "forbid_in_art": true
+  },
+  "composition": {
+    "separated_components": true,
+    "minimum_gap_px": 24,
+    "forbid_canvas_edge_contact": true,
+    "forbid_scene_or_screen_mockup": true,
+    "forbid_text_and_logos": true
+  },
+  "sheets": [
+    {
+      "id": "state_frames",
+      "source_name": "state_frames_source.png",
+      "components": [
+        "button normal", "button hover", "button pressed", "button disabled", "button focus",
+        "primary button normal", "primary button hover", "primary button pressed", "primary button disabled", "primary button focus",
+        "secondary button normal", "secondary button hover", "secondary button pressed", "secondary button disabled", "secondary button focus",
+        "danger button normal", "danger button hover", "danger button pressed", "danger button disabled", "danger button focus",
+        "panel base", "panel raised", "line edit normal", "line edit focus", "line edit disabled",
+        "text edit normal", "text edit focus", "text edit disabled", "progress background", "progress fill",
+        "tab selected", "tab unselected", "tooltip panel"
+      ]
+    },
+    {
+      "id": "form_navigation",
+      "source_name": "form_navigation_source.png",
+      "components": [
+        "checkbox unchecked", "checkbox checked", "check button unchecked", "check button checked",
+        "horizontal slider track", "horizontal slider grabber", "horizontal slider highlighted grabber",
+        "vertical slider track", "vertical slider grabber", "vertical slider highlighted grabber",
+        "horizontal scrollbar track", "horizontal scrollbar grabber", "vertical scrollbar track", "vertical scrollbar grabber",
+        "option button normal", "option button hover", "popup menu panel", "popup menu hover", "popup menu disabled", "popup menu separator", "submenu arrow"
+      ]
+    },
+    {
+      "id": "utility_icons",
+      "source_name": "utility_icons_source.png",
+      "components": [
+        "left arrow", "right arrow", "up arrow", "down arrow", "back", "close", "confirm", "warning",
+        "information", "settings", "add", "remove", "lock", "unlock", "checkbox checked", "checkbox unchecked",
+        "radio selected", "radio unselected", "submenu", "status"
+      ]
+    }
+  ]
+}
