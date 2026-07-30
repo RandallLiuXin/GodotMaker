@@ -27,6 +27,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added standalone atlas-backed compact-prop-pack and scene-prop-set Skills with deterministic independent AtlasTexture outputs for each declared prop.
 - Added a deterministic SpriteFrames compiler that aggregates explicitly timed normalized action PNGs, rejects missing required actions, and serializes independent frame texture bindings for character bundles and animated FX.
 - Added standalone character-bundle and fx-bundle skills with fail-closed family validation for explicit animation timing, loop, frame order, and native Godot runtime-output contracts.
+- Added fixed 15-cell and 47-cell TileSet profiles with typed requests, deterministic material composition, and optional terrain metadata hand-off.
 - Added a deterministic StyleBoxTexture compiler for reusable UI borders, with explicit texture regions, nine-slice borders, expand margins, and stretch axes verified through headless Godot.
 - Published first-class Asset Skills for Claude Code, Codex, and OpenCode together with their project-local shared compiler, validator, and schema runtime under `.godotmaker/asset-runtime/`.
 - Added a fail-closed `asset_runtime_resolver.py` that converts a registered ASSETS.md `manifest_entry` into the minimal ready worker runtime snapshot (#106).

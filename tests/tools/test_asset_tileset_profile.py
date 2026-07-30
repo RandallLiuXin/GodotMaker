@@ -99,6 +99,34 @@ def test_profile_recipe_generates_complete_fixed_terrain_metadata():
     assert all(all(item["terrain"] == 0 for item in tile["peering_bits"]) for tile in tiles)
 
 
+def test_profile_recipe_maps_role_based_physics_navigation_and_custom_data():
+    recipe = build_profile_recipe(
+        "blob_47",
+        texture_path="res://assets/generated/tileset/shrine/shrine_atlas.png",
+        tile_width=32,
+        tile_height=32,
+        godot_path="godot",
+        terrain_name="shrine_water",
+        semantic_metadata={
+            "custom_data_layers": [{"name": "surface_kind", "type": "String"}],
+            "physics_layers": [{"name": "water_blocker", "collision_layer": 1, "collision_mask": 0}],
+            "navigation_layers": [{"name": "walkable_ground"}],
+            "roles": {
+                "foreground_full": {"custom_data": {"surface_kind": "water"}, "physics": "full_cell", "navigation": "none"},
+                "background_full": {"custom_data": {"surface_kind": "ground"}, "physics": "none", "navigation": "full_cell"},
+            },
+        },
+    )
+    assert recipe["physics_layers"] == [{"collision_layer": 1, "collision_mask": 0}]
+    assert recipe["navigation_layers"] == [{"layers": 1}]
+    foreground = next(tile for tile in recipe["sources"][0]["tiles"] if {3, 7, 11, 15}.issubset({item["bit"] for item in tile["peering_bits"]}))
+    background = next(tile for tile in recipe["sources"][0]["tiles"] if not tile["peering_bits"])
+    assert foreground["custom_data"] == [{"layer": 0, "value": "water"}]
+    assert foreground["collision_polygons"][0]["points"] == [[0, 0], [32, 0], [32, 32], [0, 32]]
+    assert background["custom_data"] == [{"layer": 0, "value": "ground"}]
+    assert background["navigation_polygons"][0]["points"] == [[0, 0], [32, 0], [32, 32], [0, 32]]
+
+
 def test_blob_profile_corner_bits_always_have_their_adjacent_sides():
     dependencies = {3: {0, 4}, 7: {4, 8}, 11: {8, 12}, 15: {12, 0}}
     manifest = profile_manifest("blob_47")
@@ -166,6 +194,29 @@ def test_material_composition_repairs_topology_without_flat_color_corner_patches
     assert validated["seam_diagnostics"]["mismatch_count"] == 0
     with Image.open(atlas) as composed:
         assert composed.convert("RGBA").crop((0, 0, 24, 24)).getchannel("A").getbbox() is None
+
+
+def test_material_composition_selects_named_water_and_vegetation_materials(tmp_path):
+    material_source = tmp_path / "riverside-materials.png"
+    image = Image.new("RGBA", (96, 96), (48, 156, 68, 255))
+    image.paste((42, 118, 205, 255), (48, 0, 96, 96))
+    image.save(material_source)
+    atlas = tmp_path / "riverside-blob.png"
+    report = compose_profile_material_atlas(
+        "blob_47",
+        material_source=material_source,
+        output=atlas,
+        tile_width=24,
+        tile_height=24,
+        foreground_material="shallow_water",
+        background_material="riverbank_vegetation",
+    )
+    assert report["materials"]["foreground"]["name"] == "shallow_water"
+    assert report["materials"]["background"]["name"] == "riverbank_vegetation"
+    with Image.open(atlas) as composed:
+        full_foreground = composed.convert("RGBA").crop((6 * 24, 5 * 24, 7 * 24, 6 * 24))
+        red, green, blue, _alpha = full_foreground.getpixel((12, 12))
+        assert blue > green > red
 
 
 def test_profile_declaration_uses_fixed_row_major_cell_sources(tmp_path):

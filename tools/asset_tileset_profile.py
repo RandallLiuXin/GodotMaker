@@ -235,6 +235,8 @@ def compose_profile_material_atlas(
     output: Path,
     tile_width: int,
     tile_height: int,
+    foreground_material: str = "dirt",
+    background_material: str = "grass",
 ) -> dict[str, Any]:
     """Compose an exact terrain topology from real provider-authored materials.
 
@@ -253,14 +255,14 @@ def compose_profile_material_atlas(
     except Exception as exc:
         raise TileSetProfileError(f"material source is not a readable image: {material_source}") from exc
 
-    grass_score, grass_box = _select_material_patch(source, kind="grass")
-    dirt_score, dirt_box = _select_material_patch(source, kind="dirt")
-    grass = source.crop(grass_box).resize((tile_width, tile_height), Image.Resampling.LANCZOS)
-    dirt = source.crop(dirt_box).resize((tile_width, tile_height), Image.Resampling.LANCZOS)
+    background_score, background_box = _select_material_patch(source, material=background_material)
+    foreground_score, foreground_box = _select_material_patch(source, material=foreground_material)
+    background = source.crop(background_box).resize((tile_width, tile_height), Image.Resampling.LANCZOS)
+    foreground = source.crop(foreground_box).resize((tile_width, tile_height), Image.Resampling.LANCZOS)
     atlas = Image.new("RGBA", (profile.columns * tile_width, profile.rows * tile_height), (0, 0, 0, 0))
     for tile in profile.tiles:
         mask = _terrain_mask(tile, tile_width, tile_height)
-        composed = Image.composite(dirt, grass, mask)
+        composed = Image.composite(foreground, background, mask)
         atlas.alpha_composite(composed, (tile.coords[0] * tile_width, tile.coords[1] * tile_height))
     output.parent.mkdir(parents=True, exist_ok=True)
     atlas.save(output, format="PNG")
@@ -271,17 +273,24 @@ def compose_profile_material_atlas(
         "operation": "deterministic_profile_material_composite_v1",
         "terrain_mask": "bilinear_corner_profile_v1",
         "materials": {
-            "grass": {"crop": list(grass_box), "score": round(grass_score, 3)},
-            "terrain": {"crop": list(dirt_box), "score": round(dirt_score, 3)},
+            "background": {
+                "name": background_material,
+                "crop": list(background_box),
+                "score": round(background_score, 3),
+            },
+            "foreground": {
+                "name": foreground_material,
+                "crop": list(foreground_box),
+                "score": round(foreground_score, 3),
+            },
         },
         "reserved_slots": [list(coords) for coords in profile.reserved_slots],
     }
 
 
-def _select_material_patch(image: Image.Image, *, kind: str) -> tuple[tuple[int, int, int, int], float]:
+def _select_material_patch(image: Image.Image, *, material: str) -> tuple[float, tuple[int, int, int, int]]:
     """Choose a richly colored provider patch without relying on filenames or time."""
-    if kind not in {"grass", "dirt"}:
-        raise ValueError(f"unsupported material kind: {kind}")
+    material_family = _material_family(material)
     width, height = image.size
     patch_width, patch_height = max(8, width // 10), max(8, height // 10)
     candidates: list[tuple[float, tuple[int, int, int, int]]] = []
@@ -298,12 +307,8 @@ def _select_material_patch(image: Image.Image, *, kind: str) -> tuple[tuple[int,
             red = sum(pixel[0] for pixel in pixels) / len(pixels)
             green = sum(pixel[1] for pixel in pixels) / len(pixels)
             blue = sum(pixel[2] for pixel in pixels) / len(pixels)
-            pixel_scores = [
-                pixel[1] - (pixel[0] + pixel[2]) / 2
-                if kind == "grass" else pixel[0] - pixel[1] * 0.45 - pixel[2] * 0.25
-                for pixel in pixels
-            ]
-            score = green - (red + blue) / 2 if kind == "grass" else red - green * 0.45 - blue * 0.25
+            pixel_scores = [_material_score(pixel, material_family) for pixel in pixels]
+            score = _material_score((red, green, blue), material_family)
             # A strong average color is insufficient when a patch straddles a
             # transition. Prefer a material-dominant patch so profile masks do
             # not import a provider's incorrect boundary into every output tile.
@@ -311,8 +316,26 @@ def _select_material_patch(image: Image.Image, *, kind: str) -> tuple[tuple[int,
             score += dominance * 100
             candidates.append((score, box))
     if not candidates:
-        raise TileSetProfileError(f"could not select a {kind} material patch from provider source")
+        raise TileSetProfileError(f"could not select a {material} material patch from provider source")
     return max(candidates, key=lambda item: item[0])
+
+
+def _material_family(material: str) -> str:
+    normalized = material.strip().lower().replace("-", "_").replace(" ", "_")
+    if any(token in normalized for token in ("water", "river", "lake", "ocean", "sea")):
+        return "water"
+    if any(token in normalized for token in ("grass", "moss", "vegetation", "foliage", "leaf")):
+        return "vegetation"
+    return "earth"
+
+
+def _material_score(pixel: tuple[float, ...] | tuple[int, ...], family: str) -> float:
+    red, green, blue = pixel[:3]
+    if family == "water":
+        return blue - red * 0.35 - green * 0.15
+    if family == "vegetation":
+        return green - (red + blue) / 2
+    return red - green * 0.45 - blue * 0.25
 
 
 def _terrain_mask(tile: ProfileTile, width: int, height: int) -> Image.Image:
@@ -495,6 +518,7 @@ def build_profile_recipe(
     terrain_color: list[float] | None = None,
     source_id: int = 0,
     overrides: dict[tuple[int, int], dict[str, Any]] | None = None,
+    semantic_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the complete compiler recipe without asking an agent for bitmasks."""
     profile = get_profile(profile_name)
@@ -509,7 +533,13 @@ def build_profile_recipe(
     if type(source_id) is not int or source_id < 0:
         raise TileSetProfileError("source_id must be a non-negative integer")
 
-    overrides = overrides or {}
+    overrides = _semantic_overrides(
+        profile,
+        tile_width=tile_width,
+        tile_height=tile_height,
+        semantic_metadata=semantic_metadata,
+        overrides=overrides,
+    )
     profile_coords = {tile.coords for tile in profile.tiles}
     unknown = set(overrides).difference(profile_coords)
     if unknown:
@@ -527,7 +557,7 @@ def build_profile_recipe(
     terrain: dict[str, Any] = {"name": terrain_name.strip()}
     if terrain_color is not None:
         terrain["color"] = terrain_color
-    return {
+    recipe = {
         "godot_path": godot_path.strip(),
         "tile_shape": "square",
         "tile_size": [tile_width, tile_height],
@@ -541,6 +571,54 @@ def build_profile_recipe(
             "tiles": tiles,
         }],
     }
+    if semantic_metadata:
+        recipe["custom_data_layers"] = list(semantic_metadata.get("custom_data_layers", []))
+        recipe["physics_layers"] = [
+            {"collision_layer": item["collision_layer"], "collision_mask": item["collision_mask"]}
+            for item in semantic_metadata.get("physics_layers", [])
+        ]
+        recipe["navigation_layers"] = [{"layers": 1} for _ in semantic_metadata.get("navigation_layers", [])]
+    return recipe
+
+
+def _semantic_overrides(
+    profile: TileSetProfile,
+    *,
+    tile_width: int,
+    tile_height: int,
+    semantic_metadata: dict[str, Any] | None,
+    overrides: dict[tuple[int, int], dict[str, Any]] | None,
+) -> dict[tuple[int, int], dict[str, Any]]:
+    """Translate role-based caller metadata without exposing profile coordinates."""
+    resolved = {coords: dict(value) for coords, value in (overrides or {}).items()}
+    if not semantic_metadata:
+        return resolved
+    roles = semantic_metadata.get("roles", {})
+    custom_layers = {item["name"]: index for index, item in enumerate(semantic_metadata.get("custom_data_layers", []))}
+    full_foreground = next((tile for tile in profile.tiles if set(_CORNERS).issubset(tile.peering_bits)), None)
+    full_background = next((tile for tile in profile.tiles if not tile.peering_bits), None)
+    for role_name, tile in (("foreground_full", full_foreground), ("background_full", full_background)):
+        role = roles.get(role_name)
+        if not role:
+            continue
+        if tile is None:
+            raise TileSetProfileError(f"{profile.name} has no {role_name} tile for semantic metadata")
+        item = resolved.setdefault(tile.coords, {})
+        custom_data = role.get("custom_data", {})
+        if custom_data:
+            item["custom_data"] = [
+                {"layer": custom_layers[name], "value": value}
+                for name, value in custom_data.items()
+            ]
+        if role.get("physics") == "full_cell":
+            item["collision_polygons"] = [{"layer": 0, "points": _full_cell_points(tile_width, tile_height)}]
+        if role.get("navigation") == "full_cell":
+            item["navigation_polygons"] = [{"layer": 0, "points": _full_cell_points(tile_width, tile_height)}]
+    return resolved
+
+
+def _full_cell_points(tile_width: int, tile_height: int) -> list[list[int]]:
+    return [[0, 0], [tile_width, 0], [tile_width, tile_height], [0, tile_height]]
 
 
 def _resolve_runtime_root(project_root: Path) -> Path:
@@ -615,7 +693,8 @@ def _parse_size(raw: str) -> tuple[int, int]:
 
 def _main() -> int:
     parser = argparse.ArgumentParser(description="Build a deterministic TileSet recipe from a fixed terrain profile")
-    parser.add_argument("--profile", choices=profile_names(), required=True)
+    parser.add_argument("--profile", choices=profile_names())
+    parser.add_argument("--request", type=Path, help="Public TileSet request JSON; derives profile, tile size, terrain, and semantic metadata")
     parser.add_argument("--atlas", type=Path, help="Processed final atlas PNG")
     parser.add_argument("--texture", help="Matching res:// atlas path")
     parser.add_argument("--tile-size", type=_parse_size)
@@ -637,6 +716,31 @@ def _main() -> int:
     parser.add_argument("--artifact", help="res:// TileSet path to compile after recipe generation")
     parser.add_argument("--enforce-seams", action="store_true", help="fail when painted corner materials disagree with the fixed profile")
     arguments = parser.parse_args()
+    request_spec: dict[str, Any] | None = None
+    if arguments.request:
+        try:
+            request_root = Path(__file__).resolve().parents[1] / "skills" / "assets" / "tileset"
+            if str(request_root) not in sys.path:
+                sys.path.append(str(request_root))
+            from request_contract import TileSetRequestError, check_tileset_request  # pylint: disable=import-outside-toplevel
+            request = check_tileset_request(json.loads(arguments.request.read_text(encoding="utf-8")))
+            request_spec = request["spec"]
+        except (OSError, json.JSONDecodeError, TileSetRequestError) as exc:
+            parser.error(f"invalid --request: {exc}")
+        requested_profile = request_spec["autotile_profile"]
+        if arguments.profile and arguments.profile != requested_profile:
+            parser.error("--profile must match --request spec.autotile_profile")
+        arguments.profile = requested_profile
+        requested_size = (request_spec["tile_size"]["width"], request_spec["tile_size"]["height"])
+        if arguments.tile_size and arguments.tile_size != requested_size:
+            parser.error("--tile-size must match --request spec.tile_size")
+        arguments.tile_size = requested_size
+        requested_terrain = request_spec["terrain"]["name"]
+        if arguments.terrain_name and arguments.terrain_name != requested_terrain:
+            parser.error("--terrain-name must match --request spec.terrain.name")
+        arguments.terrain_name = requested_terrain
+    if not arguments.profile:
+        parser.error("--profile or --request is required")
     if arguments.manifest_out:
         _write_json_atomic(arguments.manifest_out, profile_manifest(arguments.profile))
     if arguments.guide_out:
@@ -675,6 +779,8 @@ def _main() -> int:
                 output=arguments.composed_atlas_out,
                 tile_width=composition_width,
                 tile_height=composition_height,
+                foreground_material=(request_spec or {}).get("terrain", {}).get("foreground_material", "dirt"),
+                background_material=(request_spec or {}).get("terrain", {}).get("background_material", "grass"),
             ),
         )
         if all(value is None for value in (arguments.atlas, arguments.texture, arguments.godot_path, arguments.terrain_name, arguments.recipe_out)):
@@ -712,6 +818,7 @@ def _main() -> int:
             tile_height=height,
             godot_path=arguments.godot_path,
             terrain_name=arguments.terrain_name,
+            semantic_metadata=request_spec.get("semantic_metadata") if request_spec else None,
         )
         _write_json_atomic(arguments.recipe_out, recipe)
         if arguments.artifact:

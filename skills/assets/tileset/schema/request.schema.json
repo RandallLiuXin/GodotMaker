@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TileSet Asset Skill request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["asset_type", "asset_id", "brief", "spec"],
+  "properties": {
+    "asset_type": {"const": "tileset"},
+    "asset_id": {"type": "string", "minLength": 1},
+    "brief": {"type": "string", "minLength": 1},
+    "provider": {"enum": ["native", "codex", "gemini", "openai"]},
+    "references": {"type": "array"},
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["autotile_profile", "tile_size", "terrain"],
+      "properties": {
+        "autotile_profile": {"enum": ["marching_squares_15", "blob_47"]},
+        "tile_size": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {"width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}}
+        },
+        "terrain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "foreground_material", "background_material"],
+          "properties": {"name": {"type": "string", "minLength": 1}, "foreground_material": {"type": "string", "minLength": 1}, "background_material": {"type": "string", "minLength": 1}}
+        },
+        "semantic_metadata": {"type": "object"}
+      }
+    }
+  }
+}
