@@ -38,6 +38,15 @@ def _batch(source: Path, output: Path, names: str, action: str) -> dict:
     )
 
 
+def _gif_frame_durations(path: Path) -> list[int]:
+    durations = []
+    with Image.open(path) as image:
+        for index in range(image.n_frames):
+            image.seek(index)
+            durations.append(image.info["duration"])
+    return durations
+
+
 def test_merge_action_batches_keeps_processed_frame_order_and_runtime_canvas(tmp_path):
     first_source = tmp_path / "raw/attack-a.png"
     second_source = tmp_path / "raw/attack-b.png"
@@ -73,6 +82,30 @@ def test_merge_action_batches_keeps_processed_frame_order_and_runtime_canvas(tmp
         ["attack_01", "attack_02"],
         ["attack_03", "attack_04"],
     ]
+
+
+def test_merge_action_batches_gif_uses_runtime_frame_durations(tmp_path):
+    first_source = tmp_path / "raw/attack-a.png"
+    second_source = tmp_path / "raw/attack-b.png"
+    _source(first_source, (70, 120, 210, 255))
+    _source(second_source, (20, 200, 20, 255))
+    first = _batch(first_source, tmp_path / "work/batch-a", "attack_01,attack_02", "attack_batch_a")
+    second = _batch(second_source, tmp_path / "work/batch-b", "attack_03,attack_04", "attack_batch_b")
+
+    merged = merge_action_batches(
+        [Path(first["report"]), Path(second["report"])],
+        tmp_path / "work/merged",
+        action_name="attack",
+        grid="2x2",
+        names="attack_01,attack_02,attack_03,attack_04",
+        fps=10,
+        loop=False,
+        frame_durations=[1, 1.5, 2, 0.5],
+        final_dir=tmp_path / "assets/generated/character-bundle/hero",
+        final_prefix="hero_attack",
+    )
+
+    assert _gif_frame_durations(Path(merged["gif_path"])) == [100, 150, 200, 50]
 
 
 def test_merge_action_batches_rejects_a_plan_that_reorders_frames(tmp_path):

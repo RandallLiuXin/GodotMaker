@@ -158,20 +158,37 @@ def _compose_sheet(frames: list[Any], *, cols: int, rows: int, cell_size: int):
     return sheet
 
 
-def _save_gif(frames: list[Any], path: Path, *, duration: int) -> None:
+def _gif_frame_durations_ms(fps: float, frame_durations: list[float]) -> list[int]:
+    return [
+        max(10, int(round((1000.0 * float(duration) / float(fps)) / 10.0)) * 10)
+        for duration in frame_durations
+    ]
+
+
+def _save_gif(
+    frames: list[Any],
+    path: Path,
+    *,
+    fps: float,
+    frame_durations: list[float],
+) -> list[int]:
     if not frames:
         raise ActionProcessError("No frames to encode")
+    if len(frame_durations) != len(frames):
+        raise ActionProcessError("GIF frame durations must match the frame count")
+    durations_ms = _gif_frame_durations_ms(fps, frame_durations)
     path.parent.mkdir(parents=True, exist_ok=True)
     frames[0].save(
         path,
         format="GIF",
         save_all=True,
         append_images=frames[1:],
-        duration=duration,
+        duration=durations_ms,
         loop=0,
         disposal=2,
         transparency=0,
     )
+    return durations_ms
 
 
 def _median(values: list[float]) -> float | None:
@@ -304,6 +321,194 @@ def _history_path_for(source: Path, timestamp: str) -> Path:
         index += 1
 
 
+def _visible_pixel_count(alpha: Any, box: tuple[int, int, int, int]) -> int:
+    left, top, right, bottom = box
+    if left >= right or top >= bottom:
+        return 0
+    histogram = alpha.crop(box).histogram()
+    return sum(histogram[1:])
+
+
+def _intersect_rect(
+    first: tuple[int, int, int, int],
+    second: tuple[int, int, int, int],
+) -> tuple[int, int, int, int]:
+    return (
+        max(first[0], second[0]),
+        max(first[1], second[1]),
+        min(first[2], second[2]),
+        min(first[3], second[3]),
+    )
+
+
+def _maximum_weight_assignment(weights: list[list[int]]) -> list[int]:
+    size = len(weights)
+    if size == 0 or any(len(row) != size for row in weights):
+        raise ActionProcessError("Recovery assignment requires a square score matrix")
+
+    max_weight = max(max(row) for row in weights)
+    row_potential = [0] * (size + 1)
+    column_potential = [0] * (size + 1)
+    matched_row = [0] * (size + 1)
+    previous_column = [0] * (size + 1)
+
+    for row in range(1, size + 1):
+        matched_row[0] = row
+        current_column = 0
+        minimum = [float("inf")] * (size + 1)
+        used = [False] * (size + 1)
+        while True:
+            used[current_column] = True
+            current_row = matched_row[current_column]
+            delta = float("inf")
+            next_column = 0
+            for column in range(1, size + 1):
+                if used[column]:
+                    continue
+                cost = max_weight - weights[current_row - 1][column - 1]
+                reduced = cost - row_potential[current_row] - column_potential[column]
+                if reduced < minimum[column]:
+                    minimum[column] = reduced
+                    previous_column[column] = current_column
+                if minimum[column] < delta:
+                    delta = minimum[column]
+                    next_column = column
+            for column in range(size + 1):
+                if used[column]:
+                    row_potential[matched_row[column]] += delta
+                    column_potential[column] -= delta
+                else:
+                    minimum[column] -= delta
+            current_column = next_column
+            if matched_row[current_column] == 0:
+                break
+        while True:
+            next_column = previous_column[current_column]
+            matched_row[current_column] = matched_row[next_column]
+            current_column = next_column
+            if current_column == 0:
+                break
+
+    assignment = [-1] * size
+    for column in range(1, size + 1):
+        assignment[matched_row[column] - 1] = column - 1
+    return assignment
+
+
+def _assign_recovery_rects_to_cells(
+    scan_image: Any,
+    rects: list[tuple[int, int, int, int]],
+    *,
+    cols: int,
+    rows: int,
+) -> tuple[list[tuple[int, int, int, int]], list[dict[str, object]]]:
+    width, height = scan_image.size
+    cell_width = width // cols
+    cell_height = height // rows
+    alpha = scan_image.getchannel("A")
+    try:
+        cell_boxes: list[tuple[int, int, int, int]] = []
+        core_boxes: list[tuple[int, int, int, int]] = []
+        for index in range(cols * rows):
+            row, col = divmod(index, cols)
+            left = col * cell_width
+            top = row * cell_height
+            right = left + cell_width
+            bottom = top + cell_height
+            cell_boxes.append((left, top, right, bottom))
+            inset_x = cell_width // 4
+            inset_y = cell_height // 4
+            core_boxes.append((left + inset_x, top + inset_y, right - inset_x, bottom - inset_y))
+
+        overlaps: list[list[int]] = []
+        core_overlaps: list[list[int]] = []
+        scores: list[list[int]] = []
+        for rect in rects:
+            rect_overlaps = [
+                _visible_pixel_count(alpha, _intersect_rect(rect, cell_box))
+                for cell_box in cell_boxes
+            ]
+            rect_core_overlaps = [
+                _visible_pixel_count(alpha, _intersect_rect(rect, core_box))
+                for core_box in core_boxes
+            ]
+            overlaps.append(rect_overlaps)
+            core_overlaps.append(rect_core_overlaps)
+            scores.append([
+                overlap + core_overlap
+                for overlap, core_overlap in zip(rect_overlaps, rect_core_overlaps)
+            ])
+
+        assigned_cells = _maximum_weight_assignment(scores)
+        ordered: list[tuple[int, int, int, int] | None] = [None] * len(rects)
+        diagnostics: list[dict[str, object] | None] = [None] * len(rects)
+        for rect_index, cell_index in enumerate(assigned_cells):
+            total_foreground_pixels = sum(overlaps[rect_index])
+            assigned_foreground_pixels = (
+                overlaps[rect_index][cell_index]
+                if cell_index >= 0
+                else 0
+            )
+            ownership_ratio = (
+                assigned_foreground_pixels / total_foreground_pixels
+                if total_foreground_pixels > 0
+                else 0.0
+            )
+            if (
+                cell_index < 0
+                or scores[rect_index][cell_index] <= 0
+                or ownership_ratio <= 0.5
+            ):
+                raise ActionRegenerationRequired(
+                    {
+                        "version": 1,
+                        "ok": False,
+                        "status": "needs_regeneration",
+                        "retryable": True,
+                        "reason": "recovery_cell_assignment_failed",
+                        "message": "Autoslice recovery could not assign every frame to one source grid cell",
+                        "found_frame_count": len(rects),
+                        "expected_frame_count": cols * rows,
+                        "assigned_cell": (
+                            [cell_index % cols, cell_index // cols]
+                            if cell_index >= 0
+                            else None
+                        ),
+                        "assigned_foreground_pixels": assigned_foreground_pixels,
+                        "total_foreground_pixels": total_foreground_pixels,
+                        "ownership_ratio": ownership_ratio,
+                        "recommended_action": "regenerate_source",
+                    }
+                )
+            ordered[cell_index] = rects[rect_index]
+            row, col = divmod(cell_index, cols)
+            diagnostics[cell_index] = {
+                "source_cell": [col, row],
+                "source_cell_overlap_pixels": overlaps[rect_index][cell_index],
+                "source_cell_core_overlap_pixels": core_overlaps[rect_index][cell_index],
+                "source_cell_ownership_ratio": ownership_ratio,
+                "assignment_score": scores[rect_index][cell_index],
+                "cell_scores": [
+                    {
+                        "cell": [candidate % cols, candidate // cols],
+                        "foreground_pixels": overlaps[rect_index][candidate],
+                        "core_foreground_pixels": core_overlaps[rect_index][candidate],
+                        "score": scores[rect_index][candidate],
+                    }
+                    for candidate in range(cols * rows)
+                ],
+            }
+
+        if any(rect is None for rect in ordered) or any(item is None for item in diagnostics):
+            raise ActionProcessError("Recovery assignment did not fill every source grid cell")
+        return (
+            [rect for rect in ordered if rect is not None],
+            [item for item in diagnostics if item is not None],
+        )
+    finally:
+        alpha.close()
+
+
 def _write_recovered_action_source(
     source: Path,
     *,
@@ -365,6 +570,12 @@ def _write_recovered_action_source(
             raise ActionProcessError("Source dimensions must divide evenly by grid")
         original_cell_w = width // cols
         original_cell_h = height // rows
+        rects, assignment_diagnostics = _assign_recovery_rects_to_cells(
+            scan_image,
+            rects,
+            cols=cols,
+            rows=rows,
+        )
         padding = max(8, int(min(original_cell_w, original_cell_h) * 0.08))
         max_crop_w = max(rect[2] - rect[0] for rect in rects)
         max_crop_h = max(rect[3] - rect[1] for rect in rects)
@@ -374,7 +585,9 @@ def _write_recovered_action_source(
         canvas_color = MAGENTA_RGB + (255,) if background == "magenta" else (0, 0, 0, 0)
         recovered = Image.new("RGBA", (cell_w * cols, cell_h * rows), canvas_color)
         placements: list[dict[str, object]] = []
-        for index, (name, rect) in enumerate(zip(frame_names, rects)):
+        for index, (name, rect, assignment) in enumerate(
+            zip(frame_names, rects, assignment_diagnostics)
+        ):
             left, top, right, bottom = rect
             crop = scan_image.crop(rect)
             row, col = divmod(index, cols)
@@ -389,6 +602,7 @@ def _write_recovered_action_source(
                     "name": name,
                     "source_bbox": [left, top, right, bottom],
                     "source_size": [crop.width, crop.height],
+                    **assignment,
                     "target_cell": [col, row],
                     "paste_position": [x, y],
                 }
@@ -404,6 +618,7 @@ def _write_recovered_action_source(
             "version": 1,
             "ok": True,
             "method": "autoslice_repack",
+            "ordering_method": "grid_foreground_overlap",
             "archived_source_path": str(archived_source),
             "active_source_path": str(source),
             "background": background,
@@ -447,7 +662,6 @@ def process_action_sheet(
     fit_scale: float = 0.85,
     align: str = "feet",
     shared_scale: bool = True,
-    duration: int = 160,
     action_name: str | None = None,
     fps: float | None = None,
     loop: bool | None = None,
@@ -619,7 +833,12 @@ def process_action_sheet(
     sheet_path = output_dir / "sheet-transparent.png"
     sheet.save(sheet_path)
     gif_path = output_dir / "animation.gif"
-    _save_gif(normalized, gif_path, duration=duration)
+    _save_gif(
+        normalized,
+        gif_path,
+        fps=float(fps),
+        frame_durations=[float(value) for value in frame_durations],
+    )
     final_frames, final_sheet, final_gif = _copy_runtime_outputs(
         frame_paths,
         sheet_path,
@@ -645,7 +864,6 @@ def process_action_sheet(
         "fit_scale": scale_normalization["effective_fit_scale"] if scale_normalization else fit_scale,
         "align": align,
         "shared_scale": shared_scale,
-        "duration": duration,
         "action_name": action_name,
         "fps": float(fps),
         "loop": loop,

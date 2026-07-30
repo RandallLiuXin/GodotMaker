@@ -151,7 +151,12 @@ def merge_action_batches(
         shutil.copy2(sheet_path, final_sheet)
 
         gif_path = output_dir / "animation.gif"
-        _save_gif(frames, gif_path, duration=max(1, round(1000 / float(fps))))
+        _save_gif(
+            frames,
+            gif_path,
+            fps=float(fps),
+            frame_durations=[float(value) for value in frame_durations],
+        )
         final_gif = final_dir / f"{final_prefix}.gif"
         if final_gif.exists():
             raise ActionBatchMergeError(f"merged runtime GIF already exists: {final_gif}")

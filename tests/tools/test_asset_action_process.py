@@ -12,6 +12,8 @@ sys.path.insert(0, str(TOOLS_DIR))
 from asset_action_process import (  # noqa: E402
     ActionProcessError,
     ActionRegenerationRequired,
+    _save_gif,
+    _write_recovered_action_source,
     process_action_sheet,
 )
 
@@ -58,6 +60,27 @@ def make_edge_touch_action_sheet(path: Path, *, missing_last: bool = False):
             continue
         draw.rectangle(box, fill=(40 + index * 20, 80, 220, 255))
     image.save(path)
+
+
+def make_irregular_recovery_sheet(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (120, 100), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((8, 18, 28, 48), fill=(220, 40, 40, 255))
+    draw.rectangle((72, 3, 90, 48), fill=(40, 220, 40, 255))
+    draw.rectangle((90, 24, 116, 27), fill=(40, 220, 40, 255))
+    draw.rectangle((6, 52, 24, 96), fill=(40, 40, 220, 255))
+    draw.rectangle((76, 61, 96, 90), fill=(220, 180, 40, 255))
+    image.save(path)
+
+
+def gif_frame_durations(path: Path) -> list[int]:
+    durations = []
+    with Image.open(path) as image:
+        for index in range(image.n_frames):
+            image.seek(index)
+            durations.append(image.info["duration"])
+    return durations
 
 
 def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
@@ -167,6 +190,7 @@ def test_process_action_sheet_recovers_edge_touch_with_history(tmp_path):
     assert Path(str(recovery["active_source_path"])) == source
     assert source.read_bytes() != original_bytes
     assert recovery["method"] == "autoslice_repack"
+    assert recovery["ordering_method"] == "grid_foreground_overlap"
     assert recovery["original_size"] == [80, 80]
     assert recovery["recovered_size"] == [92, 92]
     assert len(recovery["placements"]) == 4
@@ -174,6 +198,188 @@ def test_process_action_sheet_recovers_edge_touch_with_history(tmp_path):
     assert Path(result["initial_curation_report_path"]).exists()
     assert Path(result["curation_report_path"]).exists()
     assert Path(result["final_sheet_path"]).exists()
+
+
+def test_recovery_reassigns_irregular_components_to_source_grid_order(tmp_path):
+    source = tmp_path / "irregular-source.png"
+    make_irregular_recovery_sheet(source)
+
+    recovery = _write_recovered_action_source(
+        source,
+        output_dir=tmp_path / "processed",
+        grid="2x2",
+        frame_names=["top_left", "top_right", "bottom_left", "bottom_right"],
+        background="transparent",
+        align="feet",
+        timestamp="20260730-120000",
+    )
+
+    assert [placement["name"] for placement in recovery["placements"]] == [
+        "top_left",
+        "top_right",
+        "bottom_left",
+        "bottom_right",
+    ]
+    assert [placement["source_cell"] for placement in recovery["placements"]] == [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1],
+    ]
+    assert all(
+        placement["source_cell"] == placement["target_cell"]
+        for placement in recovery["placements"]
+    )
+    assert recovery["placements"][1]["source_bbox"] == [72, 3, 117, 49]
+    assert recovery["placements"][1]["source_cell_overlap_pixels"] > 0
+    assert recovery["placements"][1]["cell_scores"][0]["foreground_pixels"] == 0
+
+
+def test_recovery_uses_foreground_ownership_for_a_weapon_crossing_a_cell_edge(tmp_path):
+    source = tmp_path / "wide-weapon-source.png"
+    image = Image.new("RGBA", (120, 60), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((8, 12, 25, 50), fill=(220, 40, 40, 255))
+    draw.rectangle((25, 25, 68, 28), fill=(220, 40, 40, 255))
+    draw.rectangle((88, 4, 108, 50), fill=(40, 220, 40, 255))
+    image.save(source)
+
+    recovery = _write_recovered_action_source(
+        source,
+        output_dir=tmp_path / "processed",
+        grid="2x1",
+        frame_names=["wide_attack", "follow_up"],
+        background="transparent",
+        align="feet",
+        timestamp="20260730-120000",
+    )
+
+    assert [placement["source_cell"] for placement in recovery["placements"]] == [
+        [0, 0],
+        [1, 0],
+    ]
+    wide_attack = recovery["placements"][0]
+    assert wide_attack["source_bbox"][2] > 60
+    assert wide_attack["cell_scores"][0]["score"] > wide_attack["cell_scores"][1]["score"]
+
+
+def test_recovery_preserves_rows_when_component_bounding_boxes_overlap_vertically(tmp_path):
+    source = tmp_path / "overlapping-rows-source.png"
+    image = Image.new("RGBA", (120, 100), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((5, 8, 20, 58), fill=(220, 40, 40, 255))
+    draw.rectangle((70, 1, 86, 48), fill=(40, 220, 40, 255))
+    draw.rectangle((35, 45, 50, 96), fill=(40, 40, 220, 255))
+    draw.rectangle((96, 40, 112, 94), fill=(220, 180, 40, 255))
+    image.save(source)
+
+    recovery = _write_recovered_action_source(
+        source,
+        output_dir=tmp_path / "processed",
+        grid="2x2",
+        frame_names=["top_left", "top_right", "bottom_left", "bottom_right"],
+        background="transparent",
+        align="feet",
+        timestamp="20260730-120000",
+    )
+
+    assert [placement["source_cell"] for placement in recovery["placements"]] == [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1],
+    ]
+    assert recovery["placements"][0]["source_bbox"][3] > 50
+    assert recovery["placements"][2]["source_bbox"][1] < 50
+
+
+def test_recovery_requests_regeneration_when_components_cannot_fill_the_grid(tmp_path):
+    source = tmp_path / "ambiguous-source.png"
+    image = Image.new("RGBA", (80, 40), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((4, 8, 14, 30), fill=(220, 40, 40, 255))
+    draw.rectangle((22, 8, 32, 30), fill=(40, 220, 40, 255))
+    image.save(source)
+
+    with pytest.raises(
+        ActionRegenerationRequired,
+        match="could not assign every frame to one source grid cell",
+    ) as caught:
+        _write_recovered_action_source(
+            source,
+            output_dir=tmp_path / "processed",
+            grid="2x1",
+            frame_names=["left", "right"],
+            background="transparent",
+            align="feet",
+            timestamp="20260730-120000",
+        )
+
+    assert caught.value.result["reason"] == "recovery_cell_assignment_failed"
+    assert caught.value.result["retryable"] is True
+
+
+def test_recovery_requests_regeneration_for_a_low_positive_ownership_assignment(tmp_path):
+    source = tmp_path / "low-ownership-source.png"
+    image = Image.new("RGBA", (80, 40), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((4, 2, 14, 8), fill=(220, 40, 40, 255))
+    draw.rectangle((14, 4, 42, 5), fill=(220, 40, 40, 255))
+    draw.rectangle((22, 12, 38, 34), fill=(40, 220, 40, 255))
+    draw.rectangle((38, 20, 43, 22), fill=(40, 220, 40, 255))
+    image.save(source)
+
+    with pytest.raises(ActionRegenerationRequired) as caught:
+        _write_recovered_action_source(
+            source,
+            output_dir=tmp_path / "processed",
+            grid="2x1",
+            frame_names=["left", "right"],
+            background="transparent",
+            align="feet",
+            timestamp="20260730-120000",
+        )
+
+    diagnostic = caught.value.result
+    assert diagnostic["reason"] == "recovery_cell_assignment_failed"
+    assert 0 < diagnostic["ownership_ratio"] < 0.5
+
+
+def test_process_action_sheet_gif_uses_runtime_frame_durations(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source)
+
+    result = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04",
+        asset_id="player_idle",
+        action_name="idle",
+        fps=10,
+        loop=False,
+        frame_durations=[1, 1.5, 2, 0.5],
+    )
+
+    assert gif_frame_durations(Path(result["gif_path"])) == [100, 150, 200, 50]
+
+
+def test_gif_combines_identical_frames_without_changing_total_playback_time(tmp_path):
+    frames = [Image.new("RGBA", (16, 16), (220, 40, 40, 255)) for _ in range(3)]
+    try:
+        gif_path = tmp_path / "identical.gif"
+        requested = _save_gif(
+            frames,
+            gif_path,
+            fps=10,
+            frame_durations=[1, 1.5, 2],
+        )
+
+        assert requested == [100, 150, 200]
+        assert gif_frame_durations(gif_path) == [450]
+    finally:
+        for frame in frames:
+            frame.close()
 
 
 def test_process_action_sheet_recovery_requests_source_regeneration(tmp_path):
