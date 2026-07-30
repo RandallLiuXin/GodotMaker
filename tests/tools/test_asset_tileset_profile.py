@@ -12,10 +12,13 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from asset_tileset_profile import (  # noqa: E402
     TileSetProfileError,
+    _resolve_runtime_root,
+    build_profile_atlas_declaration,
     build_profile_recipe,
     create_profile_guide,
     get_profile,
     profile_manifest,
+    write_transparent_profile_slot,
     validate_profile_atlas,
 )
 
@@ -97,6 +100,35 @@ def test_profile_manifest_and_guide_expose_every_fixed_slot(tmp_path):
     assert returned == manifest
     with Image.open(guide) as image:
         assert image.size == (128, 128)
+
+
+def test_profile_declaration_uses_fixed_row_major_cell_sources(tmp_path):
+    cells = tmp_path / "cells"
+    reserved = tmp_path / "reserved.png"
+    write_transparent_profile_slot(reserved, tile_width=32, tile_height=16)
+    declaration = build_profile_atlas_declaration(
+        "marching_squares_15",
+        cells_dir=cells,
+        reserved_source=reserved,
+        tile_width=32,
+        tile_height=16,
+    )
+    assert declaration["atlas"] == {"width": 128, "height": 64}
+    assert declaration["slots"][0] == {
+        "name": "cell_0_0", "rect": [0, 0, 32, 16], "source": reserved.as_posix(),
+    }
+    assert declaration["slots"][1] == {
+        "name": "cell_1_0", "rect": [32, 0, 32, 16], "source": (cells / "02.png").as_posix(),
+    }
+    with Image.open(reserved) as image:
+        assert image.size == (32, 16)
+        assert image.getchannel("A").getbbox() is None
+
+
+def test_profile_runtime_resolution_prefers_published_runtime(tmp_path):
+    runtime = tmp_path / ".godotmaker" / "asset-runtime"
+    runtime.mkdir(parents=True)
+    assert _resolve_runtime_root(tmp_path) == runtime
 
 
 def test_profile_recipe_rejects_unknown_overrides():

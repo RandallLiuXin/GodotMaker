@@ -169,6 +169,49 @@ def create_profile_guide(profile_name: str, output: Path, *, cell_width: int, ce
     return manifest
 
 
+def build_profile_atlas_declaration(
+    profile_name: str,
+    *,
+    cells_dir: Path,
+    reserved_source: Path,
+    tile_width: int,
+    tile_height: int,
+) -> dict[str, Any]:
+    """Build fixed atlas-assembly slots from the profile's row-major cells.
+
+    ``asset_sheet_process.py`` emits cells as ``01.png``, ``02.png``, and so
+    on in source-grid order. This function keeps that numbering and produces
+    a complete declaration without having an agent enumerate physical slots.
+    """
+    profile = get_profile(profile_name)
+    tile_width = _positive_int(tile_width, "tile_width")
+    tile_height = _positive_int(tile_height, "tile_height")
+    slots = []
+    for index in range(profile.columns * profile.rows):
+        column, row = index % profile.columns, index // profile.columns
+        coords = (column, row)
+        slots.append({
+            "name": f"cell_{column}_{row}",
+            "rect": [column * tile_width, row * tile_height, tile_width, tile_height],
+            "source": str(
+                reserved_source if coords in profile.reserved_slots else cells_dir / f"{index + 1:02d}.png"
+            ).replace("\\", "/"),
+        })
+    return {
+        "version": 1,
+        "atlas": {"width": profile.columns * tile_width, "height": profile.rows * tile_height},
+        "slots": slots,
+    }
+
+
+def write_transparent_profile_slot(output: Path, *, tile_width: int, tile_height: int) -> None:
+    """Write the explicit transparent source image required by a reserved slot."""
+    tile_width = _positive_int(tile_width, "tile_width")
+    tile_height = _positive_int(tile_height, "tile_height")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGBA", (tile_width, tile_height), (0, 0, 0, 0)).save(output, format="PNG")
+
+
 def _positive_int(value: int, label: str) -> int:
     if type(value) is not int or value <= 0:
         raise TileSetProfileError(f"{label} must be a positive integer")
@@ -290,6 +333,18 @@ def build_profile_recipe(
     }
 
 
+def _resolve_runtime_root(project_root: Path) -> Path:
+    root = Path(project_root).resolve()
+    source_runtime = Path(__file__).resolve().parents[1] / "skills" / "assets" / "_shared"
+    candidates = (root / ".godotmaker" / "asset-runtime", source_runtime)
+    runtime_root = next((candidate for candidate in candidates if candidate.is_dir()), None)
+    if runtime_root is None:
+        raise TileSetProfileError(
+            "asset runtime is missing; checked " + ", ".join(str(candidate) for candidate in candidates)
+        )
+    return runtime_root
+
+
 def compile_profile_recipe(
     recipe: dict[str, Any],
     *,
@@ -303,9 +358,8 @@ def compile_profile_recipe(
         raise TileSetProfileError("asset_id must be a non-empty string")
     if not artifact_path.startswith("res://"):
         raise TileSetProfileError("artifact_path must be a res:// path")
-    runtime_root = Path(__file__).resolve().parents[1] / "skills" / "assets" / "_shared"
-    if not runtime_root.is_dir():
-        raise TileSetProfileError(f"asset runtime is missing: {runtime_root}")
+    root = Path(project_root).resolve()
+    runtime_root = _resolve_runtime_root(root)
     if str(runtime_root) not in sys.path:
         sys.path.append(str(runtime_root))
     from asset_compiler import CompileRequest, CompilerRegistry  # pylint: disable=import-outside-toplevel
@@ -318,7 +372,7 @@ def compile_profile_recipe(
         source_path=texture_path,
         artifact_type="TileSet",
         artifact_path=artifact_path,
-        project_root=Path(project_root),
+        project_root=root,
         spec=recipe,
     )
     registry = CompilerRegistry()
@@ -362,6 +416,9 @@ def _main() -> int:
     parser.add_argument("--manifest-out", type=Path)
     parser.add_argument("--guide-out", type=Path)
     parser.add_argument("--guide-cell-size", type=_parse_size, default=(256, 256))
+    parser.add_argument("--cells-dir", type=Path, help="Row-major 01.png... source cells from asset_sheet_process")
+    parser.add_argument("--reserved-out", type=Path, help="Transparent PNG emitted for the profile's reserved slot")
+    parser.add_argument("--atlas-declaration-out", type=Path, help="Fixed atlas declaration for asset_atlas_assemble")
     parser.add_argument("--project-root", type=Path)
     parser.add_argument("--asset-id")
     parser.add_argument("--artifact", help="res:// TileSet path to compile after recipe generation")
@@ -371,9 +428,29 @@ def _main() -> int:
     if arguments.guide_out:
         guide_width, guide_height = arguments.guide_cell_size
         create_profile_guide(arguments.profile, arguments.guide_out, cell_width=guide_width, cell_height=guide_height)
+    declaration_values = (arguments.cells_dir, arguments.reserved_out, arguments.atlas_declaration_out)
+    if any(value is not None for value in declaration_values):
+        if any(value is None for value in declaration_values):
+            parser.error("--cells-dir, --reserved-out, and --atlas-declaration-out are required together")
+        declaration_width, declaration_height = arguments.tile_size or arguments.guide_cell_size
+        write_transparent_profile_slot(
+            arguments.reserved_out,
+            tile_width=declaration_width,
+            tile_height=declaration_height,
+        )
+        _write_json_atomic(
+            arguments.atlas_declaration_out,
+            build_profile_atlas_declaration(
+                arguments.profile,
+                cells_dir=arguments.cells_dir,
+                reserved_source=arguments.reserved_out,
+                tile_width=declaration_width,
+                tile_height=declaration_height,
+            ),
+        )
     recipe_values = (arguments.atlas, arguments.texture, arguments.tile_size, arguments.godot_path, arguments.terrain_name, arguments.recipe_out)
     if all(value is None for value in recipe_values):
-        if arguments.manifest_out or arguments.guide_out:
+        if arguments.manifest_out or arguments.guide_out or arguments.atlas_declaration_out:
             return 0
         parser.error("supply --manifest-out, --guide-out, or all recipe-generation inputs")
     if any(value is None for value in recipe_values):
