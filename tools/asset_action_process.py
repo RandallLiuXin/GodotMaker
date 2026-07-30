@@ -25,6 +25,14 @@ class ActionProcessError(Exception):
     """Raised when a character action sheet cannot be processed."""
 
 
+class ActionRegenerationRequired(ActionProcessError):
+    """Raised when processing completed with a retryable source-image diagnosis."""
+
+    def __init__(self, result: dict[str, Any]) -> None:
+        self.result = result
+        super().__init__(str(result["message"]))
+
+
 def _is_power_of_two(value: int) -> bool:
     return value > 0 and value & (value - 1) == 0
 
@@ -336,8 +344,20 @@ def _write_recovered_action_source(
 
         rects = _autoslice_rects(scan_image)
         if len(rects) != expected:
-            raise ActionProcessError(
-                f"Autoslice recovery found {len(rects)} frames; expected {expected}"
+            message = f"Autoslice recovery found {len(rects)} frames; expected {expected}"
+            raise ActionRegenerationRequired(
+                {
+                    "version": 1,
+                    "ok": False,
+                    "status": "needs_regeneration",
+                    "retryable": True,
+                    "reason": "recovery_frame_count_mismatch",
+                    "message": message,
+                    "source_path": str(source),
+                    "found_frame_count": len(rects),
+                    "expected_frame_count": expected,
+                    "recommended_action": "regenerate_source",
+                }
             )
 
         width, height = image.size
@@ -501,15 +521,28 @@ def process_action_sheet(
     if missing and recover_edge_touch and reject_edge_touch and _has_edge_touch_rejection(curation):
         if curation_report.exists():
             shutil.copy2(curation_report, initial_curation_report)
-        source_recovery = _write_recovered_action_source(
-            source,
-            output_dir=output_dir,
-            grid=grid,
-            frame_names=frame_names,
-            background=background,
-            align=align,
-            timestamp=recovery_timestamp,
-        )
+        try:
+            source_recovery = _write_recovered_action_source(
+                source,
+                output_dir=output_dir,
+                grid=grid,
+                frame_names=frame_names,
+                background=background,
+                align=align,
+                timestamp=recovery_timestamp,
+            )
+        except ActionRegenerationRequired as exc:
+            diagnostic = {
+                **exc.result,
+                "action_name": action_name,
+                "grid": grid,
+                "frame_names": frame_names,
+                "initial_curation_report_path": str(initial_curation_report),
+            }
+            diagnostic_report = report or output_dir / "regeneration-report.json"
+            diagnostic["report"] = str(diagnostic_report)
+            _write_atomic_json(diagnostic_report, diagnostic)
+            raise ActionRegenerationRequired(diagnostic) from exc
         try:
             curation = process_sheet(
                 source,
@@ -704,6 +737,9 @@ def _main() -> int:
             frame_durations=[float(value) for value in args.frame_durations.split(",")],
             report=args.report,
         )
+    except ActionRegenerationRequired as exc:
+        print(json.dumps(exc.result))
+        return 2
     except ActionProcessError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1

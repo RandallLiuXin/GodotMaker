@@ -127,7 +127,6 @@ def test_production_unit_docs_are_first_entry_points():
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
     units = [
-        "character-bundle",
         "fx-bundle",
         "compact-prop-pack",
         "scene-prop-set",
@@ -193,7 +192,7 @@ def test_foreground_production_units_do_not_finalize_source_images():
     fx = _read("skills/core/gm-asset/references/production-units/fx-bundle.md")
     props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
     scene_props = _read("skills/core/gm-asset/references/production-units/scene-prop-set.md")
-    character = _read("skills/core/gm-asset/references/production-units/character-bundle.md")
+    character = _read("skills/assets/character-bundle/SKILL.md")
 
     foreground_docs = [fx, props, scene_props]
     for doc in foreground_docs:
@@ -209,11 +208,11 @@ def test_foreground_production_units_do_not_finalize_source_images():
     assert "tools/asset_action_entry_draft.py" in fx
     assert "tools/asset_action_process.py" in character
     assert "tools/asset_action_entry_draft.py" in character
-    assert "source_layout.type: grid_sheet" in character
+    assert "source_layout: grid_sheet" in character
 
 
 def test_character_canonical_uses_magenta_finalize():
-    character = _read("skills/core/gm-asset/references/production-units/character-bundle.md")
+    character = _read("skills/assets/character-bundle/SKILL.md")
 
     assert "tools/asset_image_finalize.py" in character
     assert "--background magenta" in character
@@ -462,7 +461,10 @@ def test_no_doc_fakes_a_compiled_artifact_or_ready_state():
 def test_production_units_stop_at_source_ready():
     """Every production path must draft `source_ready`, never `ready`."""
     unit_dir = REPO_ROOT / "skills/core/gm-asset/references/production-units"
-    units = sorted(unit_dir.glob("*.md"))
+    units = [
+        path for path in sorted(unit_dir.glob("*.md"))
+        if not path.read_text(encoding="utf-8").startswith("# Historical ")
+    ]
     assert units, "production-unit docs disappeared"
 
     for path in units:
@@ -502,7 +504,10 @@ def test_every_production_unit_routes_through_a_draft_builder():
         "asset_curation_entry_draft.py",
         "asset_finalize_entry_draft.py",
     )
-    units = sorted(unit_dir.glob("*.md"))
+    units = [
+        path for path in sorted(unit_dir.glob("*.md"))
+        if not path.read_text(encoding="utf-8").startswith("# Historical ")
+    ]
     assert units, "production-unit docs disappeared"
 
     missing = [

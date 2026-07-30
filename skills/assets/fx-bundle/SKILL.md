@@ -5,7 +5,7 @@ description: Produce a standalone static Texture2D effect or one explicitly time
 
 # FX Bundle
 
-Before choosing an animated effect's exact frame contract, read `skills/assets/_shared/animation-planning.md`. Use it to turn the requested effect rhythm into a recorded frame plan; its ranges are guidance, not a reason to reject a valid artistic direction.
+Before choosing an animated effect's exact frame contract, read `.godotmaker/asset-runtime/animation-planning.md`. Use it to turn the requested effect rhythm into a recorded frame plan; its ranges are guidance, not a reason to reject a valid artistic direction.
 
 Use this skill for a projectile, impact, explosion, pickup, muzzle flash, slash
 arc, aura loop, dust, or another detached foreground effect. A request produces

@@ -9,7 +9,11 @@ from PIL import Image, ImageDraw
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from asset_action_process import ActionProcessError, process_action_sheet  # noqa: E402
+from asset_action_process import (  # noqa: E402
+    ActionProcessError,
+    ActionRegenerationRequired,
+    process_action_sheet,
+)
 
 
 def animation_args():
@@ -172,11 +176,15 @@ def test_process_action_sheet_recovers_edge_touch_with_history(tmp_path):
     assert Path(result["final_sheet_path"]).exists()
 
 
-def test_process_action_sheet_recovery_rejects_frame_count_mismatch(tmp_path):
+def test_process_action_sheet_recovery_requests_source_regeneration(tmp_path):
     source = tmp_path / "player_idle_source.png"
     make_edge_touch_action_sheet(source, missing_last=True)
+    report = tmp_path / "reports" / "idle-process.json"
 
-    with pytest.raises(ActionProcessError, match="Autoslice recovery found 3 frames; expected 4"):
+    with pytest.raises(
+        ActionRegenerationRequired,
+        match="Autoslice recovery found 3 frames; expected 4",
+    ) as caught:
         process_action_sheet(
             source,
             tmp_path / "processed",
@@ -185,9 +193,52 @@ def test_process_action_sheet_recovery_rejects_frame_count_mismatch(tmp_path):
             asset_id="player_idle",
             recover_edge_touch=True,
             recovery_timestamp="20260609-120000",
+            report=report,
             **animation_args(),
         )
+    diagnostic = caught.value.result
+    assert diagnostic["status"] == "needs_regeneration"
+    assert diagnostic["retryable"] is True
+    assert diagnostic["found_frame_count"] == 3
+    assert diagnostic["expected_frame_count"] == 4
+    assert diagnostic["recommended_action"] == "regenerate_source"
+    assert json.loads(report.read_text(encoding="utf-8")) == diagnostic
     assert not (source.parent / "history" / "player_idle_source.20260609-120000.png").exists()
+
+
+def test_cli_reports_source_regeneration_as_an_intermediate_result(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_edge_touch_action_sheet(source, missing_last=True)
+    report = tmp_path / "reports" / "idle-process.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_action_process.py"),
+            "--source", str(source),
+            "--out-dir", str(tmp_path / "processed"),
+            "--grid", "2x2",
+            "--names", "idle_01,idle_02,idle_03,idle_04",
+            "--kind", "body",
+            "--recover-edge-touch",
+            "--action-name", "idle",
+            "--fps", "8",
+            "--loop",
+            "--frame-durations", "1,1,1,1",
+            "--report", str(report),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    diagnostic = json.loads(result.stdout)
+    assert diagnostic["ok"] is False
+    assert diagnostic["status"] == "needs_regeneration"
+    assert diagnostic["retryable"] is True
+    assert diagnostic["report"] == str(report)
+    assert json.loads(report.read_text(encoding="utf-8")) == diagnostic
 
 
 def test_process_action_sheet_rejects_body_scale_drift(tmp_path):

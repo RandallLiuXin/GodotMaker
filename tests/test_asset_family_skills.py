@@ -176,6 +176,9 @@ def test_gm_asset_dispatches_extracted_families_through_named_skills():
 
 def test_character_bundle_restores_canonical_actions_and_first_class_routing():
     skill = (ASSETS_DIR / "character-bundle" / "SKILL.md").read_text(encoding="utf-8")
+    animation_planning = (ASSETS_DIR / "_shared" / "animation-planning.md").read_text(
+        encoding="utf-8"
+    )
     manager = (REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md").read_text(
         encoding="utf-8"
     )
@@ -192,14 +195,19 @@ def test_character_bundle_restores_canonical_actions_and_first_class_routing():
         "asset_image_finalize.py",
         "asset_action_process.py",
         "--recover-edge-touch",
+        'status: "needs_regeneration"',
         "--scale-reference-metadata",
         "Pixel-art production is unsupported",
         "SpriteFrames",
         "GIF",
         "animation-planning.md",
+        "temporal cadence",
         "identity_anchor_origin",
     ):
         assert required in skill
+    assert "Plan temporal cadence before choosing a frame count." in animation_planning
+    assert "Do not mechanically map one named pose beat to one frame" in animation_planning
+    assert "temporal cadence" in animation_planning
     assert "pixel knight" not in fixture.lower()
     assert '"intent"' in fixture
     assert '"grid"' not in fixture
