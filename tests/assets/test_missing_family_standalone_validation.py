@@ -860,6 +860,50 @@ def test_character_high_level_request_resolves_its_archived_compiler_request(tmp
     assert actual["validation"]["levels"]["L0"] is True
 
 
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        pytest.param(
+            lambda resolved: resolved["spec"].update(frame_canvas_px=512),
+            "retain public frame_canvas_px",
+            id="frame-canvas",
+        ),
+        pytest.param(
+            lambda resolved: resolved["spec"]["actions"][1].update(loop=True),
+            "retain explicit public action loop",
+            id="explicit-loop",
+        ),
+        pytest.param(
+            lambda resolved: resolved["spec"]["actions"][1].update(
+                intent="A different attack."
+            ),
+            "retain public action name and intent",
+            id="intent",
+        ),
+    ],
+)
+def test_character_high_level_request_rejects_a_mismatched_resolved_request(
+    tmp_path, mutate, message
+):
+    fixtures = REPO_ROOT / "skills/assets/character-bundle/fixtures"
+    request = json.loads((fixtures / "valid-request.json").read_text(encoding="utf-8"))
+    resolved = json.loads(
+        (fixtures / "valid-resolved-request.json").read_text(encoding="utf-8")
+    )
+    result = json.loads((fixtures / "valid-result.json").read_text(encoding="utf-8"))
+    mutate(resolved)
+    plans = tmp_path / ".godotmaker/asset-generation/plans"
+    plans.mkdir(parents=True)
+    (plans / "player_resolved_request.json").write_text(
+        json.dumps(resolved), encoding="utf-8"
+    )
+
+    with pytest.raises(MissingFamilySkillError, match=message):
+        compile_and_validate(
+            request, result, project_root=tmp_path, godot_path="fake"
+        )
+
+
 def test_character_high_level_request_requires_its_archived_resolved_request(tmp_path):
     fixtures = REPO_ROOT / "skills/assets/character-bundle/fixtures"
     request = json.loads((fixtures / "valid-request.json").read_text(encoding="utf-8"))

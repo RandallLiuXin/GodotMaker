@@ -322,6 +322,12 @@ def build_character_bundle_entry_draft(
         raise ActionEntryDraftError("--tag must be a non-empty string")
 
     required_actions = request["spec"]["required_actions"]
+    resolved_actions = request["spec"]["actions"]
+    if [action["name"] for action in resolved_actions] != required_actions:
+        raise ActionEntryDraftError(
+            "request.spec.actions must match request.spec.required_actions in order"
+        )
+    expected_by_action = {action["name"]: action for action in resolved_actions}
     frame_canvas_px = request["spec"].get("frame_canvas_px", 256)
     if not _power_of_two(frame_canvas_px):
         raise ActionEntryDraftError("request.spec.frame_canvas_px must be a positive power-of-two integer")
@@ -330,6 +336,7 @@ def build_character_bundle_entry_draft(
 
     by_action: dict[str, dict[str, Any]] = {}
     built_by_action: dict[str, dict[str, Any]] = {}
+    metadata_path_by_action: dict[str, Path] = {}
     for metadata_path in metadata_paths:
         metadata = _load_object(metadata_path, "metadata")
         action_name = _string(metadata, "action_name", "metadata")
@@ -343,24 +350,98 @@ def build_character_bundle_entry_draft(
             raise ActionEntryDraftError(
                 "character action metadata.cell_size must match request.spec.frame_canvas_px"
             )
+        expected = expected_by_action.get(action_name)
+        if expected is None:
+            raise ActionEntryDraftError(
+                f"unexpected character action metadata: {action_name}"
+            )
+        frame_labels = metadata.get("frame_labels")
+        if frame_labels != expected["frame_names"]:
+            raise ActionEntryDraftError(
+                f"character action {action_name} frame_labels must match the resolved request"
+            )
+        expected_grid = {
+            "cols": expected["grid"]["columns"],
+            "rows": expected["grid"]["rows"],
+        }
+        if metadata.get("grid") != expected_grid:
+            raise ActionEntryDraftError(
+                f"character action {action_name} grid must match the resolved request"
+            )
         by_action[action_name] = metadata
-        built_by_action[action_name] = build_action_entry_draft(
+        metadata_path_by_action[action_name] = Path(metadata_path)
+        built = build_action_entry_draft(
             metadata_path,
             asset_id=asset_id,
             tag=tag,
             production_family="character-bundle",
             project_root=project_root,
         )
+        support = built["support"]
+        if support["fps"] != float(expected["fps"]):
+            raise ActionEntryDraftError(
+                f"character action {action_name} fps must match the resolved request"
+            )
+        if support["loop"] is not expected["loop"]:
+            raise ActionEntryDraftError(
+                f"character action {action_name} loop must match the resolved request"
+            )
+        if support["frame_durations"] != [
+            float(value) for value in expected["frame_durations"]
+        ]:
+            raise ActionEntryDraftError(
+                f"character action {action_name} frame_durations must match the resolved request"
+            )
+        expected_sheet_path = _res(
+            f"{stable_output_dir('character-bundle', asset_id)}/"
+            f"{asset_id}_{action_name}_sheet.png"
+        )
+        if support["sheet_path"] != expected_sheet_path:
+            raise ActionEntryDraftError(
+                f"character action {action_name} sheet path must match the stable action path"
+            )
+        expected_frame_paths = [
+            _res(
+                f"{stable_output_dir('character-bundle', asset_id)}/"
+                f"{asset_id}_{action_name}_{label}.png"
+            )
+            for label in frame_labels
+        ]
+        if support["frame_paths"] != expected_frame_paths:
+            raise ActionEntryDraftError(
+                f"character action {action_name} frame paths must match the stable action paths in order"
+            )
+        support["frame_labels"] = list(frame_labels)
+        support["grid"] = expected_grid
+        built_by_action[action_name] = built
 
     if set(by_action) != set(required_actions):
         raise ActionEntryDraftError("action metadata names must match request.spec.required_actions")
 
     baseline_action = required_actions[0]
+    baseline_metadata_path = metadata_path_by_action[baseline_action].resolve()
+    baseline_reference = by_action[baseline_action].get("scale_reference")
+    if (
+        not isinstance(baseline_reference, dict)
+        or baseline_reference.get("checked") is not False
+    ):
+        raise ActionEntryDraftError(
+            "canonical action must be the unchecked scale reference root"
+        )
     for action_name in required_actions[1:]:
         reference = by_action[action_name].get("scale_reference")
         if not isinstance(reference, dict) or reference.get("checked") is not True:
             raise ActionEntryDraftError(
                 f"character action {action_name} must record a checked scale reference"
+            )
+        reference_path = reference.get("reference_metadata_path")
+        if (
+            not isinstance(reference_path, str)
+            or not reference_path
+            or Path(reference_path).resolve() != baseline_metadata_path
+        ):
+            raise ActionEntryDraftError(
+                f"character action {action_name} must use the canonical action scale reference"
             )
 
     frame_paths_by_action = {

@@ -58,6 +58,7 @@ def test_character_resolved_request_retains_the_compiler_boundary():
     assert check_bundle_request(request)["asset_type"] == "character-bundle"
     assert request["spec"]["required_actions"] == ["idle", "attack"]
     assert request["spec"]["frame_canvas_px"] == 256
+    assert request["spec"]["actions"][1]["intent"] == _character_request()["spec"]["actions"][1]["intent"]
 
 
 @pytest.mark.parametrize(
@@ -129,6 +130,7 @@ def test_family_contract_checker_cli_validates_the_public_fixture(tmp_path):
         pytest.param(lambda d: d["spec"]["actions"][1].update(name="walk"), id="unexpected-action"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=[]), id="missing-frames"),
         pytest.param(lambda d: d["spec"]["actions"][0].pop("grid"), id="missing-grid"),
+        pytest.param(lambda d: d["spec"]["actions"][0].pop("intent"), id="missing-intent"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(grid={"columns": 3, "rows": 1}), id="grid-frame-mismatch"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=["idle", "idle"]), id="duplicate-frame-name"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(fps=0), id="non-positive-fps"),

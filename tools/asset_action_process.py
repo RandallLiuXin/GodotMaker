@@ -170,24 +170,28 @@ def _save_gif(
     path: Path,
     *,
     fps: float,
+    loop: bool,
     frame_durations: list[float],
 ) -> list[int]:
     if not frames:
         raise ActionProcessError("No frames to encode")
     if len(frame_durations) != len(frames):
         raise ActionProcessError("GIF frame durations must match the frame count")
+    if type(loop) is not bool:
+        raise ActionProcessError("GIF loop must be boolean")
     durations_ms = _gif_frame_durations_ms(fps, frame_durations)
     path.parent.mkdir(parents=True, exist_ok=True)
-    frames[0].save(
-        path,
-        format="GIF",
-        save_all=True,
-        append_images=frames[1:],
-        duration=durations_ms,
-        loop=0,
-        disposal=2,
-        transparency=0,
-    )
+    save_options = {
+        "format": "GIF",
+        "save_all": True,
+        "append_images": frames[1:],
+        "duration": durations_ms,
+        "disposal": 2,
+        "transparency": 0,
+    }
+    if loop:
+        save_options["loop"] = 0
+    frames[0].save(path, **save_options)
     return durations_ms
 
 
@@ -837,6 +841,7 @@ def process_action_sheet(
         normalized,
         gif_path,
         fps=float(fps),
+        loop=loop,
         frame_durations=[float(value) for value in frame_durations],
     )
     final_frames, final_sheet, final_gif = _copy_runtime_outputs(

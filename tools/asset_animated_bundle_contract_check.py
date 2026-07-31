@@ -65,6 +65,7 @@ def _action(
     label: str,
     issues: list[str],
     require_grid: bool = False,
+    require_intent: bool = False,
 ) -> str | None:
     if not isinstance(raw, dict):
         issues.append(f"{label} must be an object")
@@ -72,11 +73,15 @@ def _action(
     allowed = {"name", "frame_names", "fps", "loop", "frame_durations"}
     if require_grid:
         allowed.add("grid")
+    if require_intent:
+        allowed.add("intent")
     for key in raw:
         if key not in allowed:
             issues.append(f"{label} has unknown field: {key}")
 
     name = _text(raw.get("name"), f"{label}.name", issues)
+    if require_intent:
+        _text(raw.get("intent"), f"{label}.intent", issues)
     frames = raw.get("frame_names")
     if not isinstance(frames, list) or not frames:
         issues.append(f"{label}.frame_names must be a non-empty list")
@@ -122,6 +127,7 @@ def _actions(
     label: str,
     issues: list[str],
     require_grid: bool = False,
+    require_intent: bool = False,
 ) -> list[str]:
     if not isinstance(value, list) or not value:
         issues.append(f"{label} must be a non-empty list")
@@ -131,6 +137,7 @@ def _actions(
         label=f"{label}[{index}]",
         issues=issues,
         require_grid=require_grid,
+        require_intent=require_intent,
     )
              for index, action in enumerate(value)]
     clean = [name for name in names if name is not None]
@@ -193,6 +200,7 @@ def _character_spec(spec: Any, issues: list[str]) -> None:
         label="request.spec.actions",
         issues=issues,
         require_grid=True,
+        require_intent=True,
     )
     if required and actions and set(required) != set(actions):
         missing = sorted(set(required) - set(actions))

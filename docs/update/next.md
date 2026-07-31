@@ -59,6 +59,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 - Character-bundle assets now resolve animation cadence internally, preserve optional canonical references and 256px runtime frames, and regenerate retryable source-image failures before stopping.
+- Character-bundle assembly now binds resolved intent, canvas, frame order, timing, loop state, and scale references through SpriteFrames compilation and GIF previews.
 - Fixed blob-47 TileSet masks, edge signatures, and isolated-terrain semantics to match Godot's eight peering points.
 - Fixed TileSet profile validation to diagnose terrain-corner seam mismatches against the deterministic matching template before compilation.
 - Fixed TileSet seam repairs to deterministically compose profile transitions from provider-authored terrain materials instead of accepting flat color patches.

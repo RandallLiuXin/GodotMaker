@@ -821,6 +821,41 @@ def _resolved_character_request(
         raise MissingFamilySkillError(
             "character-bundle resolved request must retain public action names in order"
         )
+    public_canvas = spec.get("frame_canvas_px", 256)
+    if resolved_spec.get("frame_canvas_px", 256) != public_canvas:
+        raise MissingFamilySkillError(
+            "character-bundle resolved request must retain public frame_canvas_px"
+        )
+    resolved_actions = resolved_spec.get("actions")
+    if not isinstance(resolved_actions, list) or len(resolved_actions) != len(public_actions):
+        raise MissingFamilySkillError(
+            "character-bundle resolved request must retain every public action"
+        )
+    for index, (public_action, resolved_action) in enumerate(
+        zip(public_actions, resolved_actions)
+    ):
+        if not isinstance(public_action, Mapping) or not isinstance(
+            resolved_action, Mapping
+        ):
+            raise MissingFamilySkillError(
+                "character-bundle resolved request actions must be objects"
+            )
+        if (
+            resolved_action.get("name") != public_action.get("name")
+            or resolved_action.get("intent") != public_action.get("intent")
+        ):
+            raise MissingFamilySkillError(
+                "character-bundle resolved request must retain public action "
+                f"name and intent at index {index}"
+            )
+        if (
+            "loop" in public_action
+            and resolved_action.get("loop") is not public_action.get("loop")
+        ):
+            raise MissingFamilySkillError(
+                "character-bundle resolved request must retain explicit public action "
+                f"loop at index {index}"
+            )
     return resolved
 
 

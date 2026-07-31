@@ -83,6 +83,11 @@ def gif_frame_durations(path: Path) -> list[int]:
     return durations
 
 
+def gif_loop(path: Path) -> int | None:
+    with Image.open(path) as image:
+        return image.info.get("loop")
+
+
 def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
     source = tmp_path / "player_idle_source.png"
     make_action_sheet(source)
@@ -362,6 +367,26 @@ def test_process_action_sheet_gif_uses_runtime_frame_durations(tmp_path):
     )
 
     assert gif_frame_durations(Path(result["gif_path"])) == [100, 150, 200, 50]
+    assert gif_loop(Path(result["gif_path"])) is None
+
+
+def test_process_action_sheet_looping_gif_repeats_forever(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source)
+
+    result = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04",
+        asset_id="player_idle",
+        action_name="idle",
+        fps=10,
+        loop=True,
+        frame_durations=[1, 1, 1, 1],
+    )
+
+    assert gif_loop(Path(result["gif_path"])) == 0
 
 
 def test_gif_combines_identical_frames_without_changing_total_playback_time(tmp_path):
@@ -372,6 +397,7 @@ def test_gif_combines_identical_frames_without_changing_total_playback_time(tmp_
             frames,
             gif_path,
             fps=10,
+            loop=False,
             frame_durations=[1, 1.5, 2],
         )
 

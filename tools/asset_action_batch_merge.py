@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from math import isfinite
+from math import isclose, isfinite
 from pathlib import Path
 import shutil
 import sys
@@ -64,6 +64,69 @@ def _batch_frame_paths(report: dict[str, Any], report_path: Path) -> list[Path]:
     return checked
 
 
+def _scale_reference(report: dict[str, Any], report_path: Path) -> dict[str, Any]:
+    reference = report.get("scale_reference")
+    if not isinstance(reference, dict) or type(reference.get("checked")) is not bool:
+        raise ActionBatchMergeError(
+            f"batch report must retain scale_reference.checked: {report_path}"
+        )
+    if reference["checked"] is False:
+        return reference
+
+    metadata_path = reference.get("reference_metadata_path")
+    if not isinstance(metadata_path, str) or not metadata_path:
+        raise ActionBatchMergeError(
+            f"checked batch scale reference must retain its metadata path: {report_path}"
+        )
+    for field in (
+        "current_median_height",
+        "reference_median_height",
+        "ratio",
+        "tolerance",
+    ):
+        _positive(reference.get(field), f"batch scale_reference.{field}")
+    current_height = float(reference["current_median_height"])
+    reference_height = float(reference["reference_median_height"])
+    ratio = float(reference["ratio"])
+    tolerance = float(reference["tolerance"])
+    if not isclose(ratio, current_height / reference_height, rel_tol=1e-6):
+        raise ActionBatchMergeError(
+            f"batch scale_reference.ratio is inconsistent: {report_path}"
+        )
+    if ratio < 1 - tolerance or ratio > 1 + tolerance:
+        raise ActionBatchMergeError(
+            f"batch scale_reference.ratio exceeds tolerance: {report_path}"
+        )
+    return reference
+
+
+def _validate_batch_scale_references(
+    loaded: list[tuple[Path, dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    references = [_scale_reference(batch, path) for path, batch in loaded]
+    if len(references) < 2:
+        return references
+
+    first_reference = references[0]
+    if first_reference["checked"] is False:
+        expected_path = loaded[0][0].resolve()
+        remaining = references[1:]
+    else:
+        expected_path = Path(first_reference["reference_metadata_path"]).resolve()
+        remaining = references
+
+    for reference in remaining:
+        if reference["checked"] is not True:
+            raise ActionBatchMergeError(
+                "every batch after the scale baseline must have a checked scale reference"
+            )
+        if Path(reference["reference_metadata_path"]).resolve() != expected_path:
+            raise ActionBatchMergeError(
+                "all checked batch scale references must use the same metadata path"
+            )
+    return references
+
+
 def merge_action_batches(
     reports: list[Path],
     output_dir: Path,
@@ -106,6 +169,7 @@ def merge_action_batches(
         raise ActionBatchMergeError("all character batch reports must use shared_scale")
     if any(item[1].get("edge_touch_frames") not in ([], None) for item in loaded):
         raise ActionBatchMergeError("batch reports with edge-touch frames cannot be merged")
+    scale_references = _validate_batch_scale_references(loaded)
 
     source_labels: list[str] = []
     source_paths: list[Path] = []
@@ -155,6 +219,7 @@ def merge_action_batches(
             frames,
             gif_path,
             fps=float(fps),
+            loop=loop,
             frame_durations=[float(value) for value in frame_durations],
         )
         final_gif = final_dir / f"{final_prefix}.gif"
@@ -165,9 +230,7 @@ def merge_action_batches(
         for frame in frames:
             frame.close()
 
-    scale_reference = loaded[0][1].get("scale_reference")
-    if not isinstance(scale_reference, dict) or type(scale_reference.get("checked")) is not bool:
-        raise ActionBatchMergeError("batch report must retain scale_reference.checked")
+    scale_reference = scale_references[0]
     metadata: dict[str, object] = {
         "version": 1,
         "ok": True,
@@ -191,8 +254,12 @@ def merge_action_batches(
         "final_gif_path": str(final_gif),
         "scale_reference": scale_reference,
         "source_batches": [
-            {"report": str(path), "frame_labels": batch["frame_labels"]}
-            for path, batch in loaded
+            {
+                "report": str(path),
+                "frame_labels": batch["frame_labels"],
+                "scale_reference": reference,
+            }
+            for (path, batch), reference in zip(loaded, scale_references)
         ],
     }
     meta_path = Path(report) if report is not None else output_dir / "pipeline-meta.json"
