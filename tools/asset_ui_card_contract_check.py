@@ -29,6 +29,7 @@ _FAMILIES = {
 }
 
 _PIXEL_ART_REQUEST = re.compile(r"\bpixel(?:[-\s]?art)\b", re.IGNORECASE)
+_PIXEL_ART_NEGATION = re.compile(r"\b(?:not|non)(?:[-\s]+[a-z]+){0,2}[-\s]*$", re.IGNORECASE)
 
 def _text(value: Any, label: str, issues: list[str]) -> str | None:
     if not isinstance(value, str) or not value.strip():
@@ -84,6 +85,15 @@ def _theme(value: Any, issues: list[str]) -> dict[str, str] | None:
     if not recipe_path.endswith(".json"):
         issues.append("request.spec.theme.recipe_path must end in .json")
     return {"output_name": output_name, "recipe_path": recipe_path, "variation": variation}
+
+
+def _requests_pixel_art(brief: str) -> bool:
+    """Recognize a pixel-art request without rejecting an explicit negation."""
+    for match in _PIXEL_ART_REQUEST.finditer(brief):
+        context = brief[max(0, match.start() - 32):match.start()]
+        if not _PIXEL_ART_NEGATION.search(context):
+            return True
+    return False
 
 
 def _stylebox(value: Any, family: str, index: int, issues: list[str]) -> dict[str, Any] | None:
@@ -152,13 +162,24 @@ def _atlas_region(value: Any, index: int, issues: list[str]) -> dict[str, str] |
 
 def _spec(request: Mapping[str, Any], issues: list[str]) -> dict[str, Any] | None:
     family = request["asset_type"]
-    keys = {"theme", "required_states", "styleboxes", "required_regions", "atlas_regions"}
+    keys = {"required_states", "styleboxes", "required_regions", "atlas_regions"}
     if family == "card-kit":
         keys.add("required_frames")
-    spec = _exact_keys(request.get("spec"), keys, "request.spec", issues)
-    if spec is None:
+    spec = request.get("spec")
+    if not isinstance(spec, Mapping):
+        issues.append("request.spec must be an object")
         return None
-    theme = _theme(spec.get("theme"), issues)
+    actual = set(spec)
+    if actual not in (keys, keys | {"theme"}):
+        missing = sorted(keys - actual)
+        extra = sorted(actual - (keys | {"theme"}))
+        message = "request.spec must contain required family fields and may contain theme"
+        if missing:
+            message += "; missing " + ", ".join(missing)
+        if extra:
+            message += "; unexpected " + ", ".join(extra)
+        issues.append(message)
+    theme = _theme(spec["theme"], issues) if "theme" in spec else None
     states = _names(spec.get("required_states"), "request.spec.required_states", issues)
     allowed_states = _FAMILIES[family]["states"]
     unknown_states = sorted(set(states) - allowed_states)
@@ -213,7 +234,7 @@ def check_ui_card_request(data: Any) -> dict[str, Any]:
         raise UICardContractError(str(exc)) from exc
     if data["asset_type"] not in _FAMILIES:
         raise UICardContractError("asset_type is not ui-kit or card-kit")
-    if data["asset_type"] == "card-kit" and _PIXEL_ART_REQUEST.search(data["brief"]):
+    if data["asset_type"] == "card-kit" and _requests_pixel_art(data["brief"]):
         raise UICardContractError("card-kit does not support pixel-art requests")
     issues: list[str] = []
     normalized = _spec(data, issues)
@@ -254,22 +275,23 @@ def check_ui_card_handoff(request: Any, result: Any) -> dict[str, Any]:
     assert spec is not None
     runtime = _runtime_by_name(result)
     sources = _source_paths(result)
-    expected_names = {spec["theme"]["output_name"]}
-
     theme = spec["theme"]
-    theme_output = runtime.get(theme["output_name"])
-    expected_theme_path = (
-        f"res://assets/generated/{request['asset_type']}/{request['asset_id']}/"
-        f"{request['asset_id']}_theme.tres"
-    )
-    if (
-        theme_output is None
-        or theme_output.get("godot_type") != "Theme"
-        or theme_output.get("path") != expected_theme_path
-    ):
-        raise UICardContractError("theme.output_name must bind to one Theme runtime output")
-    if (theme["recipe_path"], "theme_recipe") not in sources:
-        raise UICardContractError("theme.recipe_path must be a theme_recipe result source")
+    expected_names: set[str] = set()
+    if theme is not None:
+        expected_names.add(theme["output_name"])
+        theme_output = runtime.get(theme["output_name"])
+        expected_theme_path = (
+            f"res://assets/generated/{request['asset_type']}/{request['asset_id']}/"
+            f"{request['asset_id']}_theme.tres"
+        )
+        if (
+            theme_output is None
+            or theme_output.get("godot_type") != "Theme"
+            or theme_output.get("path") != expected_theme_path
+        ):
+            raise UICardContractError("theme.output_name must bind to one Theme runtime output")
+        if (theme["recipe_path"], "theme_recipe") not in sources:
+            raise UICardContractError("theme.recipe_path must be a theme_recipe result source")
 
     for box in spec["styleboxes"]:
         expected_names.add(box["output_name"])

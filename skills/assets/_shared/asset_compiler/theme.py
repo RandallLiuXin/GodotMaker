@@ -366,6 +366,7 @@ def _external_stylebox_texture_path(
     root: Path,
     production_family: str,
     asset_id: str,
+    allowed_paths: frozenset[str] | None,
 ) -> str:
     if set(properties) != {"path"} or not isinstance(properties.get("path"), str):
         _fail(f"{label}.properties must contain exactly a StyleBoxTexture path")
@@ -382,6 +383,8 @@ def _external_stylebox_texture_path(
         _fail(f"{label}.properties.path must be a safe generated resource path: {exc}")
     if file_path.suffix.lower() != ".tres" or not file_path.is_file():
         _fail(f"{label}.properties.path must name an existing StyleBoxTexture .tres")
+    if allowed_paths is not None and path not in allowed_paths:
+        _fail(f"{label}.properties.path must bind a declared StyleBoxTexture runtime output")
     try:
         header = file_path.read_text(encoding="utf-8")[:256]
     except OSError as exc:
@@ -397,6 +400,7 @@ def _styleboxes(
     root: Path,
     production_family: str,
     asset_id: str,
+    allowed_external_stylebox_paths: frozenset[str] | None,
 ) -> tuple[dict[str, list[str]], dict[str, str], dict[str, str]]:
     result: dict[str, list[str]] = {}
     subresources: dict[str, str] = {}
@@ -415,6 +419,7 @@ def _styleboxes(
                 root=root,
                 production_family=production_family,
                 asset_id=asset_id,
+                allowed_paths=allowed_external_stylebox_paths,
             )
             continue
         if not properties and box["type"] == "StyleBoxFlat":
@@ -486,6 +491,17 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
     variation_bases = dict(variations)
 
     root = request.project_root
+    raw_allowed_paths = request.spec.get("allowed_external_stylebox_paths") if isinstance(request.spec, Mapping) else None
+    if raw_allowed_paths is None:
+        allowed_external_stylebox_paths = None
+    elif (
+        not isinstance(raw_allowed_paths, list)
+        or any(not isinstance(path, str) for path in raw_allowed_paths)
+        or len(raw_allowed_paths) != len(set(raw_allowed_paths))
+    ):
+        _fail("allowed_external_stylebox_paths must be a duplicate-free list of resource paths")
+    else:
+        allowed_external_stylebox_paths = frozenset(raw_allowed_paths)
     sections = {
         section: _item_rows(
             recipe, section, variation_names, variation_bases, root,
@@ -498,6 +514,7 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
         root=root,
         production_family=request.production_family,
         asset_id=request.asset_id,
+        allowed_external_stylebox_paths=allowed_external_stylebox_paths,
     )
     all_box_types = {**box_types, **{box_id: "StyleBoxTexture" for box_id in external_boxes}}
     styles: list[tuple[str, str, str]] = []

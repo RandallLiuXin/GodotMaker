@@ -5,22 +5,25 @@ description: Produce reusable card art sources and native Godot card UI resource
 
 # Card Kit Asset
 
-Use this Skill for reusable non-pixel-art card UI: card and portrait frames,
+Use this Skill for reusable non-pixel-art, card-game-specific UI: card frames, portrait frames,
 rarity frames, card/deck slots, resource badges, state overlays, card panels,
 and card buttons. It produces art sources and native Godot resources, not card
-rules, deck logic, a `Control` page, a `PackedScene`, readable text, or a full
+rules, deck logic, a `Control` or `Container` layout, a `PackedScene`, readable text, or a full
 composite screen. A request for pixel art is unsupported and must STOP.
 
 ## Invocation and Boundaries
 
-Accept one shared Asset Skill request with `asset_type: "card-kit"`. First run
+Accept one request matching the shared Asset Skill request schema in
+`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json` with
+`asset_type: "card-kit"`. First run
 `python tools/asset_ui_card_contract_check.py <request.json> --kind request`.
 The family contract owns the Theme recipe/variation, requested frame/state
 pairs, and named atlas regions. The request decides which card resources are
 needed; do not add a default front/back, portrait, rarity, or state bundle.
-This Skill may run directly or through
-`gm-asset`, but it never registers stable entries, edits `ASSETS.md`, tags, or
-stage state. The producer adapter owns that later registration handoff.
+This card-game-specific UI Skill can be invoked directly or by an orchestrator
+through `gm-asset`, but it never registers stable entries, edits `ASSETS.md`, tags, or
+stage state, or writes generated
+manifests. The producer adapter owns that later registration handoff.
 
 `references` is optional. When it is non-empty, each path is binding input:
 
@@ -44,7 +47,8 @@ with `reference_inputs`; it records hashes and attachment provenance.
 Turn the brief into one concrete source plan: frame geometry/orientation,
 empty portrait or card-art safe zones unless finished art is requested, rarity
 language, state treatment, and only the requested component list. A reusable
-card frame is not a flattened example card. Keep generated images free of readable
+card frame is not a flattened example card. Keep card-art and portrait windows empty
+unless the request declares finished art. Keep generated images free of readable
 text, numbers, watermarks, and unrelated composite screens.
 
 Write the prompt and source plan under `.godotmaker/asset-generation/`, then
@@ -102,11 +106,15 @@ ready only after every applicable L0-L4 check passes.
 Return the shared generic result with independently usable native runtime
 resources (`Theme`, `StyleBoxTexture`, and `AtlasTexture`), its `theme_recipe`,
 `single`, or `region_atlas` sources, previews when produced, and final L0-L4
-evidence. Check it with the shared result checker and this family
+evidence. Check it with the shared result schema and checker plus this family
 contract. Before responding, persist that exact generic result JSON at
 `.godotmaker/asset-generation/<asset_id>-result.json`, then return the same
 JSON directly in the final response. The runner, not a self-reported boolean,
 records validation.
+
+The output is reusable card UI, not pixel-perfect `Control` or `Container`
+composition. Consumers choose their own layout and may apply only the declared
+Theme, StyleBoxTexture, or AtlasTexture resources.
 
 For `gm-asset`, the producer adapter translates a successful generic result
 into stable `source_layout + godot_artifact` entries and performs the normal

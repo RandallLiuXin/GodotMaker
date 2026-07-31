@@ -36,7 +36,7 @@ def _recipe(**overrides):
     return value
 
 
-def _request(root: Path):
+def _request(root: Path, *, spec=None):
     return CompileRequest(
         production_family="ui-kit",
         asset_id="main",
@@ -44,7 +44,7 @@ def _request(root: Path):
         source_path="res://assets/generated/ui-kit/main/main.json",
         artifact_type="Theme",
         artifact_path="res://assets/generated/ui-kit/main/main.tres",
-        project_root=root,
+        project_root=root, spec=spec or {},
     )
 
 
@@ -54,10 +54,10 @@ def _write_recipe(root: Path, recipe, *, source_path="res://assets/generated/ui-
     path.write_text(json.dumps(recipe), encoding="utf-8")
 
 
-def _compile(root: Path):
+def _compile(root: Path, *, spec=None):
     registry = build_default_registry()
     theme.register_into(registry)
-    return registry.compile(_request(root))
+    return registry.compile(_request(root, spec=spec))
 
 
 def _structure_request(root: Path, *, source_path="res://assets/generated/ui-kit/main/main.json"):
@@ -129,6 +129,27 @@ def test_compiles_a_theme_that_binds_a_declared_generated_stylebox_texture(tmp_p
     text = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_text(encoding="utf-8")
     assert 'type="StyleBoxTexture" path="res://assets/generated/ui-kit/main/button-frame.tres"' in text
     assert 'Button/styles/normal = ExtResource("StyleBox_button_normal")' in text
+
+
+def test_rejects_theme_stylebox_paths_outside_the_declared_runtime_outputs(tmp_path):
+    frame_path = tmp_path / "assets/generated/ui-kit/main/button-frame.tres"
+    frame_path.parent.mkdir(parents=True)
+    frame_path.write_text('[gd_resource type="StyleBoxTexture" format=3]\n', encoding="utf-8")
+    recipe = _recipe(
+        styleboxes={
+            "button_normal": {
+                "type": "StyleBoxTexture",
+                "properties": {"path": "res://assets/generated/ui-kit/main/button-frame.tres"},
+            }
+        },
+    )
+    _write_recipe(tmp_path, recipe)
+
+    with pytest.raises(CompilerError, match="declared StyleBoxTexture runtime output"):
+        _compile(
+            tmp_path,
+            spec={"allowed_external_stylebox_paths": ["res://assets/generated/ui-kit/main/other.tres"]},
+        )
 
 
 def test_structure_validation_reads_and_compares_the_declared_recipe_through_the_safe_resolver(tmp_path):
