@@ -2736,6 +2736,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
+<p>Added deterministic marching-squares-15 and blob-47 TileSet profile templates with fixed atlas guides, strict image validation, and native resource compilation.</p>
+</li>
+<li>
 <p>Added fail-closed standalone L0-L4 execution for the remaining first-class Asset Skills, with published runners and native Godot resource verification.</p>
 </li>
 <li>
@@ -2746,6 +2749,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Added standalone atlas-backed compact-prop-pack and scene-prop-set Skills with deterministic independent AtlasTexture outputs for each declared prop.</li>
 <li>Added a deterministic SpriteFrames compiler that aggregates explicitly timed normalized action PNGs, rejects missing required actions, and serializes independent frame texture bindings for character bundles and animated FX.</li>
 <li>Added standalone character-bundle and fx-bundle skills with fail-closed family validation for explicit animation timing, loop, frame order, and native Godot runtime-output contracts.</li>
+<li>Added fixed 15-cell and 47-cell TileSet profiles with typed requests, deterministic material composition, and optional terrain metadata hand-off.</li>
 <li>Added a deterministic StyleBoxTexture compiler for reusable UI borders, with explicit texture regions, nine-slice borders, expand margins, and stretch axes verified through headless Godot.</li>
 <li>Published first-class Asset Skills for Claude Code, Codex, and OpenCode together with their project-local shared compiler, validator, and schema runtime under <code>.godotmaker/asset-runtime/</code>.</li>
 <li>Added a fail-closed <code>asset_runtime_resolver.py</code> that converts a registered ASSETS.md <code>manifest_entry</code> into the minimal ready worker runtime snapshot (#106).</li>
@@ -2779,7 +2783,17 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Pre-push checks now isolate temporary Git repositories from the invoking worktree's hook environment.</li>
+<li>Fixed blob-47 TileSet masks, edge signatures, and isolated-terrain semantics to match Godot's eight peering points.</li>
+<li>Fixed TileSet profile validation to diagnose terrain-corner seam mismatches against the deterministic matching template before compilation.</li>
+<li>
+<p>Fixed TileSet seam repairs to deterministically compose profile transitions from provider-authored terrain materials instead of accepting flat color patches.</p>
+</li>
+<li>
+<p>Fixed deterministic TileSet profiles to compile from published standalone runtimes and emit fixed atlas assembly declarations without agent-authored layout scripts.</p>
+</li>
+<li>
+<p>Pre-push checks now isolate temporary Git repositories from the invoking worktree's hook environment.</p>
+</li>
 <li>Platform-strip assets now retain controlled provider-source claims and validator-produced readiness evidence.</li>
 <li>Platform-strip now requires a fixed cap/repeat/cap grid, slices source cells before per-cell finalization, and validates stable AtlasTexture regions against the real source sheet.</li>
 <li>Background-map now preserves optional reference-image provenance, uses the declared provider without fallback, and deterministically finalizes non-pixel-art Texture2D backgrounds.</li>
