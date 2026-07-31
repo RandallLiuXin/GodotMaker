@@ -1,104 +1,55 @@
 ---
 name: character-bundle
-description: Produce one standalone character or skin SpriteFrames resource from a canonical reference and explicitly timed action frames.
+description: Produce one illustrated character SpriteFrames resource from high-level body-action intent, optional character and style references, and a resolved animation plan.
 ---
 
 # Character Bundle
 
-Use this skill for a player character, enemy, NPC, summon, boss, or other
-recurring creature identity. It produces one `SpriteFrames` resource for one
-actor or skin, containing every required named body action.
+Produce one player, enemy, NPC, summon, boss, creature, or skin as one `SpriteFrames` resource. Read `.godotmaker/asset-runtime/asset-skill-contract.md` and `.godotmaker/asset-runtime/animation-planning.md`. This standalone skill does not read or write `ASSETS.md`, tags, stage state, manifests, or worker dispatch state.
 
-Read `.godotmaker/asset-runtime/asset-skill-contract.md` before accepting a request. First
-validate the shared request/result shape with
-`tools/asset_skill_contract_check.py`, then validate this family contract with
-`tools/asset_animated_bundle_contract_check.py --kind request`. For final
-runtime handoff, call the same checker with `--request <request.json> --result
-<result.json>`; a result-only check cannot prove it belongs to this request.
-Final handoff accepts only `validation.passed: true` with explicit passing
-`L0` through `L4` evidence.
-The family checker is the callable enforcement for the `spec` rules below; the
-shared checker alone intentionally validates only cross-family shape.
+## Request and planning
 
-## Standalone boundary
+Require `asset_type: "character-bundle"`. The caller supplies a non-empty ordered `spec.actions` list. Each action needs a unique `name` and a concise `intent` describing pose beats, gameplay feel, and motion trajectory; it may state whether the action loops. The caller does not prescribe frame count, FPS, frame durations, names, or grid. Resolve those from the shared animation-planning guidance. A caller may choose a power-of-two `spec.frame_canvas_px`; otherwise default the runtime canvas to 256 px.
 
-Accept only an asset request. Do not read or require `/gm-asset`, tags, stage
-state, `ASSETS.md`, generated manifests, stable entries, worker dispatch, or
-any other registration state. Return the shared asset result directly; a caller
-may register it separately.
+Before provider dispatch, write `.godotmaker/asset-generation/plans/<asset_id>_animation_plan.json` and `.godotmaker/asset-generation/plans/<asset_id>_resolved_request.json`. The plan top level records `asset_id`, `frame_canvas_px`, and `identity_anchor_origin`. For every action, first resolve temporal cadence: named motion phases, transition frames, and any intentional holds. Then record `name`, `cadence` as an ordered list of `{phase, frame_names}` entries covering every resolved frame exactly once, pose beats, frame count, fps, loop, frame durations, grid, source-batch plan, `runtime_canvas_px`, and rationale. Do not choose the frame count by mechanically assigning one frame to each pose beat. The resolved request has ordered `required_actions`; every resolved action retains its public `intent` and has `name`, `grid`, ordered `frame_names`, positive `fps`, explicit `loop`, and one positive `frame_durations` value per frame. `grid.columns * grid.rows` equals the frame count. Validate this resolved request with `tools/asset_animated_bundle_contract_check.py --kind request` before processing or compiling.
 
-## Request and action contract
+Use exact resolved grid and frame order for a source batch, but do not treat planning guidance as a reason to reject a valid artistic request. When a fixed-size provider source would make a dense action too small for the chosen canvas and safe area, split the action into source batches and preserve every batch's prompt, raw source, attachments, and report. Combine their resolved frames in action order before compiling one SpriteFrames resource.
 
-The request has `asset_type: "character-bundle"`. Its `spec` must contain:
+Use an explicit visual style or attached style image. Examples are `hand-drawn cel-shaded fantasy`, `comic-book ink and flat color`, and `painterly storybook`. Pixel-art production is unsupported in this family; stop clearly when it is requested. Do not use nearest-neighbor resampling.
 
-- `required_actions`: a non-empty, duplicate-free ordered list of action names.
-- `actions`: one object for each required action, with exactly the same names.
-- Each action has `name`, `frame_names`, `fps`, `loop`, and
-  `frame_durations`. `fps` and every relative duration are positive; durations
-  have exactly one value per frame; `loop` is an explicit boolean.
+## References and identity anchor
 
-The ordered `frame_names` define frame order. Never infer timing, reverse an
-action, or default `loop` to `true`. Reject a request when an action is missing,
-duplicated, unexpected, has no frames, or has timing that does not match its
-frames.
+External references are optional. Validate each path is a readable image, preserve its `canonical`, `style`, or `screen` role, resolve `res://` from the project root, and attach the actual images to the declared provider. Never replace an image attachment with a path in prompt text. Use only the declared `native`, `codex`, `gemini`, or `openai` provider; do not silently switch. Stop clearly when the selected provider cannot generate or attach the required images.
 
-`references` may include a `canonical` reference. When it exists, make it
-visible before producing derivative actions and preserve the identity, costume,
-palette, body scale, and feet/bottom anchor. Otherwise create and return a
-canonical reference source before deriving actions. Detached projectiles,
-slashes, muzzle flashes, dust, auras, pickups, and impacts are FX and belong to
-the `fx-bundle` skill.
+Choose one identity anchor:
+
+1. Use a suitable user `canonical` image directly for every action. Do not generate a duplicate canonical merely to satisfy the workflow.
+2. When a user character image is cropped or unsuitable as a full-body action anchor, derive a full-body canonical from it and retain the source relationship.
+3. When no user character image exists, generate a full-body canonical. Finalize it and copy the finalized image to `assets/generated/character-bundle/<asset_id>/<asset_id>_canonical.png`; return it as a `reference` output so the user receives the generated character image.
+
+Record `identity_anchor_origin` as `user_provided`, `provider_derived`, or `provider_generated`. Every action receives the identity anchor as an actual image attachment. It also receives every external reference in role-preserving attachment order.
+
+## Provenance
+
+Keep raw sources, finalized anchors, prompts, reports, rejected attempts, and curation output under `.godotmaker/asset-generation/`. Store a distinct prompt and provider report for every provider attempt, including retries and source batches. Use `canonical/<asset_id>_canonical.png`, `sources/<asset_id>_<action>_source.png`, `reports/<asset_id>_canonical_source.json`, `reports/<asset_id>_<action>_provider.json`, and `reports/<asset_id>_<action>_process.json` for a single source batch; add `_batch<N>` before the suffix for additional batches. Each provider report records provider, model when available, coding model, reasoning, source path, reference roles, attached local paths, attachment count, and `provider_trace`.
+
+`provider_trace` contains `provider`, `tool_call_id`, `image_model_identity`, `coding_model`, `reasoning`, and ordered absolute `referenced_image_paths`. Use `image_model_identity: "not_exposed_by_subscription_runtime"` only when the runtime does not reveal it. For Codex, call image generation once per attempt and pass every attachment through `referenced_image_paths`.
+
+Use only provider outputs or user-provided images as visual sources. Do not draw, synthesize, or edit art with ad hoc Pillow, System.Drawing, ImageMagick, SVG, canvas, Godot drawing, inline scripts, color blocks, placeholders, or fake atlases. Existing controlled asset tools may process real provider or user images.
 
 ## Produce
 
-1. Create or finalize one readable full-body canonical identity source with a
-   stable silhouette and no text or UI.
-2. Generate one body-action source per required action. Use the same character
-   identity and an exact requested grid; do not mix detached FX into the body
-   sheet.
-3. Process every action with `tools/asset_action_process.py` using `kind: body`.
-   Supply the action name, exact grid and frame names, explicit FPS, explicit
-   loop flag, and one relative duration per frame. Use a stable family/asset
-   output directory for all normalized PNG frames.
-4. Pass the processed frame paths and this public request to
-   `build_spriteframes_spec()` from
-   `tools/asset_animated_bundle_contract_check.py`. Compile the resulting
-   complete action set once through the shared `grid_sheet` to `SpriteFrames`
-   route. The compiler input contains `required_actions` and action objects with
-   `name`, `fps`, `loop`, `frame_paths`, and `frame_durations`.
-   Do not publish a per-action SpriteFrames resource or a source sheet as the
-   runtime result.
-5. Run `standalone_validation.compile_and_validate()` for L0-L4 validation.
-   It derives each processed frame path as
-   `res://assets/generated/character-bundle/<asset_id>/<asset_id>_<action>_<frame>.png`,
-   compiles with a fresh registry, and overwrites rather than trusting result
-   validation. L3 must load the compiled resource with headless
-   Godot; L4 must confirm the action names, order, frame bindings, FPS, loop
-   values, and relative durations.
+1. Validate the public request shape. Resolve and archive the animation plan and resolved request.
+2. Select or create the identity anchor. A generated anchor must be full-body, match the selected style, and preserve an intended ground reference. When its provider source uses the controlled magenta background, finalize it with `tools/asset_image_finalize.py --background magenta`; preserve an already-transparent user image rather than replacing its pixels.
+3. For every resolved source batch, generate a sheet with the identity anchor and all external references attached. Prompt for the concrete pose beats, exact grid, full-body separation, safe gutters, selected visual style, and only the intended body action. Keep every intended body and prop contour complete inside its source frame; a wide pose may use the available frame area but must not cross into a neighboring frame.
+4. Process real source sheets with `tools/asset_action_process.py`. Use `--kind body`, `--align feet`, the resolved batch grid and names, `--cell-size <frame_canvas_px>`, and `--recover-edge-touch`. Preserve candidates, recovery reports, frames, transparent sheets, GIFs, and final stable PNG paths. When the tool exits `2` with `status: "needs_regeneration"`, treat it as an actionable intermediate result rather than success or STOP: inspect the preserved report, revise the same action's provider prompt to address the diagnosed source defect, regenerate that action with the same identity anchor and external references attached, and process it again. Do not compile, return a partial action, or STOP merely because the first source attempt needs regeneration. Use the first action as the current scale reference; later actions may use `--scale-reference-metadata` and `--match-scale-reference`. Treat scale diagnostics as a repair signal, not a substitute for visual review.
+5. For an action with more than one source batch, process batches into work paths, then use `tools/asset_action_batch_merge.py` to copy their real processed frames in resolved order and assemble the sole stable sheet/GIF/report. The merge tool is deterministic delivery assembly, not an art source. For every action write one stable frame PNG per frame, one delivery sheet, and one GIF preview under `assets/generated/character-bundle/<asset_id>/`.
+6. Build the one stable entry and one `SpriteFrames` artifact with `tools/asset_action_entry_draft.py --request <resolved-request.json>`. Keep `source_layout: grid_sheet` and `godot_artifact: SpriteFrames`. Do not publish a per-action SpriteFrames, portrait runtime artifact, PackedScene, character controller, or detached FX as the runtime result.
+7. Run `standalone_validation.compile_and_validate()` for L0-L4 using the archived resolved request, not the high-level `ASSET_REQUEST.json`. The validator also resolves that archive when given the high-level request, and rejects a missing or mismatched resolved request. If compiler, Godot load, or consumer smoke fails, inspect the report and attempt a scoped repair or regeneration before returning failure. Do not claim readiness until the repaired artifact passes.
+8. When `eval/consumer_smoke.gd` exists, run it after L0-L4 with every resolved `<action>:<loop>` pair. Preserve its command, executable, output, and JSON report as L5 evidence. Do not use compiler success as a smoke substitute.
 
 ## Result
 
-Return a shared result with exactly one runtime output:
+Return one generic asset result with exactly one runtime `SpriteFrames`, one `grid_sheet` source and one GIF preview per resolved action in action order, and L0-L4 validation. A generated canonical is an additional `reference` output; a user-supplied canonical is not duplicated as output. Keep L5 evidence and provider provenance in their dedicated files, not as extra public result fields.
 
-```json
-{
-  "asset_type": "character-bundle",
-  "outputs": [
-    {
-      "role": "runtime",
-      "name": "player",
-      "path": "res://assets/generated/character-bundle/player/player.tres",
-      "godot_type": "SpriteFrames"
-    }
-  ],
-  "sources": [
-    { "path": "res://assets/generated/character-bundle/player/player_idle_sheet.png", "layout": "grid_sheet" }
-  ],
-  "previews": [],
-  "validation": { "passed": true, "levels": { "L0": true, "L1": true, "L2": true, "L3": true, "L4": true } }
-}
-```
-
-Set `validation.passed` only from the runner result after all required actions
-and L0-L4 checks pass.
-When any action is incomplete, do not return a runtime `SpriteFrames` result.
+When no complete action set can be produced after suitable recovery attempts, return `validation.passed: false` with an explanatory note and no runtime output. Never return a partial SpriteFrames bundle.

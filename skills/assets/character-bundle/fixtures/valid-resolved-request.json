@@ -7,18 +7,26 @@
   ],
   "provider": "native",
   "spec": {
-    "visual_style": "hand-drawn cel-shaded fantasy",
+    "required_actions": ["idle", "attack"],
     "frame_canvas_px": 256,
     "actions": [
       {
         "name": "idle",
         "intent": "A calm full-body stance with a subtle breathing and weight-shift cycle.",
-        "loop": true
+        "grid": { "columns": 4, "rows": 2 },
+        "frame_names": ["idle_01", "idle_02", "idle_03", "idle_04", "idle_05", "idle_06", "idle_07", "idle_08"],
+        "fps": 8,
+        "loop": true,
+        "frame_durations": [1, 1, 1, 1, 1, 1, 1, 1]
       },
       {
         "name": "attack",
         "intent": "A side-view sword strike with anticipation, a readable hit pose, and recovery.",
-        "loop": false
+        "grid": { "columns": 4, "rows": 2 },
+        "frame_names": ["attack_01", "attack_02", "attack_03", "attack_04", "attack_05", "attack_06", "attack_07", "attack_08"],
+        "fps": 12,
+        "loop": false,
+        "frame_durations": [1, 1, 1, 1, 1, 1, 1, 1]
       }
     ]
   }

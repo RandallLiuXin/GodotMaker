@@ -31,19 +31,51 @@ def _character_request() -> dict:
     return _fixture("character-bundle", "valid-request.json")
 
 
+def _resolved_character_request() -> dict:
+    return _fixture("character-bundle", "valid-resolved-request.json")
+
+
 def _fx_request() -> dict:
     return _fixture("fx-bundle", "animated-request.json")
 
 
-def test_character_fixture_has_a_valid_multi_action_public_contract():
+def test_character_fixture_has_a_valid_high_level_public_contract():
     request = _character_request()
     result = _fixture("character-bundle", "valid-result.json")
 
     assert check_bundle_request(request)["asset_type"] == "character-bundle"
     assert check_bundle_result(result)["asset_type"] == "character-bundle"
     assert check_bundle_handoff(request, result)["kind"] == "handoff"
-    assert request["spec"]["required_actions"] == ["idle", "attack"]
+    assert [action["name"] for action in request["spec"]["actions"]] == ["idle", "attack"]
+    assert "required_actions" not in request["spec"]
+    assert "frame_names" not in request["spec"]["actions"][0]
     assert request["spec"]["actions"][1]["loop"] is False
+
+
+def test_character_resolved_request_retains_the_compiler_boundary():
+    request = _resolved_character_request()
+
+    assert check_bundle_request(request)["asset_type"] == "character-bundle"
+    assert request["spec"]["required_actions"] == ["idle", "attack"]
+    assert request["spec"]["frame_canvas_px"] == 256
+    assert request["spec"]["actions"][1]["intent"] == _character_request()["spec"]["actions"][1]["intent"]
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda d: d["spec"].pop("actions"), id="missing-actions"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(intent=""), id="empty-intent"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(frames=8), id="caller-frame-count"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(fps=8), id="caller-fps"),
+        pytest.param(lambda d: d["spec"].update(frame_canvas_px=192), id="non-power-of-two-canvas"),
+    ],
+)
+def test_character_public_request_keeps_animation_resolution_inside_the_skill(mutate):
+    request = _character_request()
+    mutate(request)
+    with pytest.raises(AnimatedBundleContractError):
+        check_bundle_request(request)
 
 
 def test_family_contract_checker_cli_validates_the_public_fixture(tmp_path):
@@ -97,6 +129,9 @@ def test_family_contract_checker_cli_validates_the_public_fixture(tmp_path):
         pytest.param(lambda d: d["spec"]["actions"][1].update(name="idle"), id="duplicate-action-name"),
         pytest.param(lambda d: d["spec"]["actions"][1].update(name="walk"), id="unexpected-action"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=[]), id="missing-frames"),
+        pytest.param(lambda d: d["spec"]["actions"][0].pop("grid"), id="missing-grid"),
+        pytest.param(lambda d: d["spec"]["actions"][0].pop("intent"), id="missing-intent"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(grid={"columns": 3, "rows": 1}), id="grid-frame-mismatch"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=["idle", "idle"]), id="duplicate-frame-name"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(fps=0), id="non-positive-fps"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(loop="true"), id="non-boolean-loop"),
@@ -107,7 +142,7 @@ def test_family_contract_checker_cli_validates_the_public_fixture(tmp_path):
     ],
 )
 def test_character_request_rejects_every_declared_action_boundary(mutate):
-    request = _character_request()
+    request = _resolved_character_request()
     mutate(request)
     with pytest.raises(AnimatedBundleContractError):
         check_bundle_request(request)
@@ -118,7 +153,7 @@ def test_character_request_rejects_every_declared_action_boundary(mutate):
     [
         pytest.param(lambda d: d["outputs"][0].update(godot_type="Texture2D"), id="no-spriteframes"),
         pytest.param(lambda d: d["outputs"].append({"role": "runtime", "path": "res://assets/generated/character-bundle/player/other.tres", "godot_type": "SpriteFrames"}), id="two-spriteframes"),
-        pytest.param(lambda d: d["sources"][0].update(layout="single"), id="non-grid-sheet-source"),
+        pytest.param(lambda d: [source.update(layout="single") for source in d["sources"]], id="non-grid-sheet-source"),
     ],
 )
 def test_character_result_rejects_an_ambiguous_runtime_handoff(mutate):
@@ -308,4 +343,4 @@ def test_animated_skills_name_the_callable_family_validation_path(family):
     skill = (REPO_ROOT / "skills" / "assets" / family / "SKILL.md").read_text(encoding="utf-8")
     assert "asset_animated_bundle_contract_check.py" in skill
     assert "ASSETS.md" in skill
-    assert "generated manifests" in skill
+    assert "manifests" in skill

@@ -87,7 +87,7 @@ Use `references/asset-planner.md` for production-unit selection.
 | Production unit | First entry document |
 | --- | --- |
 | `screen-reference` | First-class `screen-reference` Asset Skill |
-| `character-bundle` | `references/production-units/character-bundle.md` |
+| `character-bundle` | First-class `character-bundle` Asset Skill |
 | `fx-bundle` | `references/production-units/fx-bundle.md` |
 | `ui-kit` | First-class `ui-kit` Asset Skill |
 | `card-kit` | First-class `card-kit` Asset Skill |
@@ -170,6 +170,7 @@ never substitute a deleted production-unit document:
 | Family | Production contract in the brief |
 | --- | --- |
 | `background-map` | First-class Asset Skill: `background-map` |
+| `character-bundle` | First-class Asset Skill: `character-bundle` |
 | `platform-strip` | First-class Asset Skill: `platform-strip` |
 | `screen-reference` | First-class Asset Skill: `screen-reference` |
 | `ui-kit` | First-class Asset Skill: `ui-kit` |
@@ -185,7 +186,7 @@ Brief shape:
 
 ### Production Contract
 - Legacy unit: First Entry Document: {references/production-units/<unit>.md}
-- First-class unit: First-class Asset Skill: {background-map | platform-strip | screen-reference | ui-kit | card-kit}
+- First-class unit: First-class Asset Skill: {background-map | character-bundle | platform-strip | screen-reference | ui-kit | card-kit}
 - For a first-class unit, invoke that named Skill with one shared generic asset
   request. Do not read a production-unit path for that family.
 
@@ -197,6 +198,8 @@ Brief shape:
 - When it passes, map its `sources`, `outputs`, and validation evidence into
   the existing Asset Producer Report and the inputs of the appropriate
   deterministic entry-draft builder.
+- For `character-bundle`, pass the request and every action processing report
+  to `tools/asset_action_entry_draft.py` bundle mode before writing its draft.
 - The manager consumes only that adapted report and its drafts in Step 5; the
   first-class Skill never reads registration, manifest, tag, or stage state.
 

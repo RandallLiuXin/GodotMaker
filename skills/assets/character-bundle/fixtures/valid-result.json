@@ -12,12 +12,20 @@
     {
       "path": "res://assets/generated/character-bundle/player/player_idle_sheet.png",
       "layout": "grid_sheet"
+    },
+    {
+      "path": "res://assets/generated/character-bundle/player/player_attack_sheet.png",
+      "layout": "grid_sheet"
     }
   ],
   "previews": [
     {
-      "path": "res://assets/generated/character-bundle/player/preview_idle.png",
+      "path": "res://assets/generated/character-bundle/player/player_idle.gif",
       "label": "idle"
+    },
+    {
+      "path": "res://assets/generated/character-bundle/player/player_attack.gif",
+      "label": "attack"
     }
   ],
   "validation": {

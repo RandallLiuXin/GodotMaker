@@ -34,16 +34,54 @@ def _positive_number(value: Any, label: str, issues: list[str]) -> None:
         issues.append(f"{label} must be a finite positive number")
 
 
-def _action(raw: Any, *, label: str, issues: list[str]) -> str | None:
+def _power_of_two(value: Any, label: str, issues: list[str]) -> None:
+    if type(value) is not int or value <= 0 or value & (value - 1):
+        issues.append(f"{label} must be a positive power-of-two integer")
+
+
+def _grid(value: Any, label: str, frame_count: int, issues: list[str]) -> None:
+    if not isinstance(value, dict) or set(value) != {"columns", "rows"}:
+        issues.append(f"{label} must contain exactly columns and rows")
+        return
+    columns = value.get("columns")
+    rows = value.get("rows")
+    if type(columns) is not int or columns <= 0:
+        issues.append(f"{label}.columns must be a positive integer")
+    if type(rows) is not int or rows <= 0:
+        issues.append(f"{label}.rows must be a positive integer")
+    if (
+        type(columns) is int
+        and type(rows) is int
+        and columns > 0
+        and rows > 0
+        and columns * rows != frame_count
+    ):
+        issues.append(f"{label} must contain exactly one cell per frame_name")
+
+
+def _action(
+    raw: Any,
+    *,
+    label: str,
+    issues: list[str],
+    require_grid: bool = False,
+    require_intent: bool = False,
+) -> str | None:
     if not isinstance(raw, dict):
         issues.append(f"{label} must be an object")
         return None
     allowed = {"name", "frame_names", "fps", "loop", "frame_durations"}
+    if require_grid:
+        allowed.add("grid")
+    if require_intent:
+        allowed.add("intent")
     for key in raw:
         if key not in allowed:
             issues.append(f"{label} has unknown field: {key}")
 
     name = _text(raw.get("name"), f"{label}.name", issues)
+    if require_intent:
+        _text(raw.get("intent"), f"{label}.intent", issues)
     frames = raw.get("frame_names")
     if not isinstance(frames, list) or not frames:
         issues.append(f"{label}.frame_names must be a non-empty list")
@@ -53,6 +91,8 @@ def _action(raw: Any, *, label: str, issues: list[str]) -> str | None:
                           for index, value in enumerate(frames)]
         if len(set(value for value in checked_frames if value is not None)) != len(frames):
             issues.append(f"{label}.frame_names must not contain duplicates")
+    if require_grid:
+        _grid(raw.get("grid"), f"{label}.grid", len(frames), issues)
 
     _positive_number(raw.get("fps"), f"{label}.fps", issues)
     if type(raw.get("loop")) is not bool:
@@ -81,11 +121,24 @@ def _required_actions(value: Any, *, label: str, issues: list[str]) -> list[str]
     return clean
 
 
-def _actions(value: Any, *, label: str, issues: list[str]) -> list[str]:
+def _actions(
+    value: Any,
+    *,
+    label: str,
+    issues: list[str],
+    require_grid: bool = False,
+    require_intent: bool = False,
+) -> list[str]:
     if not isinstance(value, list) or not value:
         issues.append(f"{label} must be a non-empty list")
         return []
-    names = [_action(action, label=f"{label}[{index}]", issues=issues)
+    names = [_action(
+        action,
+        label=f"{label}[{index}]",
+        issues=issues,
+        require_grid=require_grid,
+        require_intent=require_intent,
+    )
              for index, action in enumerate(value)]
     clean = [name for name in names if name is not None]
     if len(set(clean)) != len(value):
@@ -93,16 +146,62 @@ def _actions(value: Any, *, label: str, issues: list[str]) -> list[str]:
     return clean
 
 
+def _intent_actions(value: Any, *, issues: list[str]) -> list[str]:
+    if not isinstance(value, list) or not value:
+        issues.append("request.spec.actions must be a non-empty list")
+        return []
+    names: list[str] = []
+    for index, raw in enumerate(value):
+        label = f"request.spec.actions[{index}]"
+        if not isinstance(raw, dict):
+            issues.append(f"{label} must be an object")
+            continue
+        # Public character requests describe the motion.  Frame count, timing,
+        # naming, and sheet geometry are resolved by the Asset Skill and only
+        # appear in its internal resolved request.
+        allowed = {"name", "intent", "loop"}
+        for key in raw:
+            if key not in allowed:
+                issues.append(f"{label} has unknown field: {key}")
+        name = _text(raw.get("name"), f"{label}.name", issues)
+        _text(raw.get("intent"), f"{label}.intent", issues)
+        if name is not None:
+            names.append(name)
+        if "loop" in raw and type(raw["loop"]) is not bool:
+            issues.append(f"{label}.loop must be boolean when supplied")
+    if len(set(names)) != len(names):
+        issues.append("request.spec.actions must not contain duplicate action names")
+    return names
+
+
 def _character_spec(spec: Any, issues: list[str]) -> None:
     if not isinstance(spec, dict):
         issues.append("request.spec must be an object")
         return
-    allowed = {"required_actions", "actions"}
+    if "required_actions" not in spec:
+        allowed = {"actions", "frame_canvas_px", "visual_style"}
+        for key in spec:
+            if key not in allowed:
+                issues.append(f"request.spec has unknown field: {key}")
+        _power_of_two(spec.get("frame_canvas_px", 256), "request.spec.frame_canvas_px", issues)
+        if "visual_style" in spec:
+            _text(spec.get("visual_style"), "request.spec.visual_style", issues)
+        _intent_actions(spec.get("actions"), issues=issues)
+        return
+
+    allowed = {"required_actions", "actions", "frame_canvas_px"}
     for key in spec:
         if key not in allowed:
             issues.append(f"request.spec has unknown field: {key}")
     required = _required_actions(spec.get("required_actions"), label="request.spec.required_actions", issues=issues)
-    actions = _actions(spec.get("actions"), label="request.spec.actions", issues=issues)
+    _power_of_two(spec.get("frame_canvas_px", 256), "request.spec.frame_canvas_px", issues)
+    actions = _actions(
+        spec.get("actions"),
+        label="request.spec.actions",
+        issues=issues,
+        require_grid=True,
+        require_intent=True,
+    )
     if required and actions and set(required) != set(actions):
         missing = sorted(set(required) - set(actions))
         extra = sorted(set(actions) - set(required))

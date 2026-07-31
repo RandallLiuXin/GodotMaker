@@ -1,14 +1,18 @@
 {
   "asset_type": "character-bundle",
   "asset_id": "player",
-  "brief": "A small hand-painted knight with idle and run actions, side view, transparent background; do not use pixel art.",
+  "brief": "A hand-drawn cel-shaded side-view knight with idle and run actions on a transparent background.",
   "references": [
     { "role": "canonical", "path": "res://references/player_canonical.png" },
     { "role": "style", "path": "res://references/style_seed.png" }
   ],
   "provider": "native",
   "spec": {
-    "actions": ["idle", "run"],
-    "fps": 8
+    "visual_style": "hand-drawn cel-shaded fantasy",
+    "frame_canvas_px": 256,
+    "actions": [
+      { "name": "idle", "intent": "A calm breathing stance with a small weight shift.", "loop": true },
+      { "name": "run", "intent": "A quick side-view run with contact, passing, and recoil poses.", "loop": true }
+    ]
   }
 }

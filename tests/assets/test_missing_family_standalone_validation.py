@@ -771,19 +771,13 @@ def test_prop_runner_never_rebuilds_or_overwrites_the_delivered_atlas(tmp_path):
 def test_animated_bundle_checks_each_declared_sheet_at_l1(tmp_path):
     request = json.loads(
         (
-            REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-request.json"
+            REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-resolved-request.json"
         ).read_text(encoding="utf-8")
     )
     result = json.loads(
         (
             REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-result.json"
         ).read_text(encoding="utf-8")
-    )
-    result["sources"].append(
-        {
-            "path": "res://assets/generated/character-bundle/player/never_written.png",
-            "layout": "grid_sheet",
-        }
     )
     output = tmp_path / "assets/generated/character-bundle/player"
     output.mkdir(parents=True)
@@ -796,6 +790,127 @@ def test_animated_bundle_checks_each_declared_sheet_at_l1(tmp_path):
         request, result, project_root=tmp_path, godot_path="fake"
     )
     assert actual["validation"]["levels"]["L1"] is False
+
+
+def test_character_without_user_canonical_must_deliver_its_generated_anchor(tmp_path):
+    request = json.loads(
+        (REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-resolved-request.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    request.pop("references")
+    result = json.loads(
+        (REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-result.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    with pytest.raises(MissingFamilySkillError, match="generated canonical image"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
+def test_character_with_user_canonical_cannot_publish_a_duplicate_anchor(tmp_path):
+    request = json.loads(
+        (REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-resolved-request.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    result = json.loads(
+        (REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-result.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    result["outputs"].append(
+        {
+            "role": "reference",
+            "name": "canonical",
+            "path": "res://assets/generated/character-bundle/player/player_canonical.png",
+            "godot_type": "Texture2D",
+        }
+    )
+
+    with pytest.raises(MissingFamilySkillError, match="must not replace"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
+def test_character_high_level_request_resolves_its_archived_compiler_request(tmp_path):
+    fixtures = REPO_ROOT / "skills/assets/character-bundle/fixtures"
+    request = json.loads((fixtures / "valid-request.json").read_text(encoding="utf-8"))
+    resolved = json.loads((fixtures / "valid-resolved-request.json").read_text(encoding="utf-8"))
+    result = json.loads((fixtures / "valid-result.json").read_text(encoding="utf-8"))
+    plans = tmp_path / ".godotmaker/asset-generation/plans"
+    plans.mkdir(parents=True)
+    (plans / "player_resolved_request.json").write_text(
+        json.dumps(resolved), encoding="utf-8"
+    )
+    output = tmp_path / "assets/generated/character-bundle/player"
+    output.mkdir(parents=True)
+    for source in result["sources"]:
+        (output / Path(source["path"]).name).write_bytes(b"x")
+    for preview in result["previews"]:
+        (output / Path(preview["path"]).name).write_bytes(b"x")
+    for action in resolved["spec"]["actions"]:
+        for frame in action["frame_names"]:
+            (output / f"player_{action['name']}_{frame}.png").write_bytes(b"x")
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"]["L0"] is True
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        pytest.param(
+            lambda resolved: resolved["spec"].update(frame_canvas_px=512),
+            "retain public frame_canvas_px",
+            id="frame-canvas",
+        ),
+        pytest.param(
+            lambda resolved: resolved["spec"]["actions"][1].update(loop=True),
+            "retain explicit public action loop",
+            id="explicit-loop",
+        ),
+        pytest.param(
+            lambda resolved: resolved["spec"]["actions"][1].update(
+                intent="A different attack."
+            ),
+            "retain public action name and intent",
+            id="intent",
+        ),
+    ],
+)
+def test_character_high_level_request_rejects_a_mismatched_resolved_request(
+    tmp_path, mutate, message
+):
+    fixtures = REPO_ROOT / "skills/assets/character-bundle/fixtures"
+    request = json.loads((fixtures / "valid-request.json").read_text(encoding="utf-8"))
+    resolved = json.loads(
+        (fixtures / "valid-resolved-request.json").read_text(encoding="utf-8")
+    )
+    result = json.loads((fixtures / "valid-result.json").read_text(encoding="utf-8"))
+    mutate(resolved)
+    plans = tmp_path / ".godotmaker/asset-generation/plans"
+    plans.mkdir(parents=True)
+    (plans / "player_resolved_request.json").write_text(
+        json.dumps(resolved), encoding="utf-8"
+    )
+
+    with pytest.raises(MissingFamilySkillError, match=message):
+        compile_and_validate(
+            request, result, project_root=tmp_path, godot_path="fake"
+        )
+
+
+def test_character_high_level_request_requires_its_archived_resolved_request(tmp_path):
+    fixtures = REPO_ROOT / "skills/assets/character-bundle/fixtures"
+    request = json.loads((fixtures / "valid-request.json").read_text(encoding="utf-8"))
+    result = json.loads((fixtures / "valid-result.json").read_text(encoding="utf-8"))
+
+    with pytest.raises(MissingFamilySkillError, match="archived resolved request"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
 
 
 def _set_good_probe(monkeypatch, structures):
@@ -1098,7 +1213,7 @@ def test_platform_strip_runs_each_supported_source_type_to_l4(
 @pytest.mark.parametrize(
     ("family", "request_name", "result_name"),
     [
-        ("character-bundle", "valid-request.json", "valid-result.json"),
+        ("character-bundle", "valid-resolved-request.json", "valid-result.json"),
         ("fx-bundle", "animated-request.json", "animated-result.json"),
         ("fx-bundle", "static-request.json", "static-result.json"),
     ],

@@ -10,12 +10,23 @@
   ],
   "sources": [
     {
-      "path": "res://assets/generated/character-bundle/player/player.png",
+      "path": "res://assets/generated/character-bundle/player/player_idle_sheet.png",
+      "layout": "grid_sheet"
+    },
+    {
+      "path": "res://assets/generated/character-bundle/player/player_run_sheet.png",
       "layout": "grid_sheet"
     }
   ],
   "previews": [
-    { "path": "res://assets/generated/character-bundle/player/preview_idle.png", "label": "idle" }
+    {
+      "path": "res://assets/generated/character-bundle/player/player_idle.gif",
+      "label": "idle"
+    },
+    {
+      "path": "res://assets/generated/character-bundle/player/player_run.gif",
+      "label": "run"
+    }
   ],
   "validation": {
     "passed": true,

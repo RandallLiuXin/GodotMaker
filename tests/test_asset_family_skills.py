@@ -172,3 +172,46 @@ def test_gm_asset_dispatches_extracted_families_through_named_skills():
     assert "does not register a generic result directly." in manager
     assert "invoke it with the supplied generic request" in producer
     assert "adapt its sources,\n   outputs, and validation evidence" in producer
+
+
+def test_character_bundle_restores_canonical_actions_and_first_class_routing():
+    skill = (ASSETS_DIR / "character-bundle" / "SKILL.md").read_text(encoding="utf-8")
+    animation_planning = (ASSETS_DIR / "_shared" / "animation-planning.md").read_text(
+        encoding="utf-8"
+    )
+    manager = (REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    planner = (
+        REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "asset-planner.md"
+    ).read_text(encoding="utf-8")
+    fixture = (ASSETS_DIR / "character-bundle" / "fixtures" / "valid-request.json").read_text(
+        encoding="utf-8"
+    )
+
+    for required in (
+        "External references are optional.",
+        "referenced_image_paths",
+        "asset_image_finalize.py",
+        "asset_action_process.py",
+        "--recover-edge-touch",
+        'status: "needs_regeneration"',
+        "--scale-reference-metadata",
+        "Pixel-art production is unsupported",
+        "SpriteFrames",
+        "GIF",
+        "animation-planning.md",
+        "temporal cadence",
+        "identity_anchor_origin",
+    ):
+        assert required in skill
+    assert "Plan temporal cadence before choosing a frame count." in animation_planning
+    assert "Do not mechanically map one named pose beat to one frame" in animation_planning
+    assert "temporal cadence" in animation_planning
+    assert "pixel knight" not in fixture.lower()
+    assert '"intent"' in fixture
+    assert '"grid"' not in fixture
+    assert "First-class `character-bundle` Asset Skill" in manager
+    assert "First-class `character-bundle` Asset Skill" in planner
+    character_row = next(line for line in planner.splitlines() if line.startswith("| `character-bundle` |"))
+    assert "Portraits, detached" in character_row
