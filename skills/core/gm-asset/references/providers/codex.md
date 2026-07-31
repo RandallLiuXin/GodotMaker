@@ -81,7 +81,7 @@ Failure report shape:
 After generated paths are reported, run:
 
 ```bash
-python tools/codex_image_claim.py --plan <batch_plan.json> --report <generated_paths.json> --project-root . --out-report <claim_result.json>
+python .godotmaker/asset-runtime/tools/codex_image_claim.py --plan <batch_plan.json> --report <generated_paths.json> --project-root . --out-report <claim_result.json>
 ```
 
 Use the claim result as the provider success record.

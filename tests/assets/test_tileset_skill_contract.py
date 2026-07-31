@@ -14,13 +14,39 @@ sys.path.insert(0, str(SKILL_DIR))
 
 from asset_compiler import CompileRequest, CompilerError  # noqa: E402
 from asset_compiler import tileset as compiler  # noqa: E402
-from asset_validation import ProbeReport, ProbeResult, ValidationError  # noqa: E402
+from asset_validation import ProbeReport, ProbeRequest, ProbeResult, ValidationError  # noqa: E402
 from asset_validation.godot_probe import GodotProbe  # noqa: E402
 from standalone_validation import TileSetSkillError, compile_and_validate  # noqa: E402
+from asset_tileset_profile import (  # noqa: E402
+    build_profile_recipe,
+    compile_profile_recipe,
+    get_profile,
+    profile_manifest,
+)
+from request_contract import TileSetRequestError, check_tileset_request  # noqa: E402
+from PIL import Image  # noqa: E402
 
 
 def _fixture() -> dict:
     return json.loads(FIXTURE.read_text(encoding="utf-8"))
+
+
+def _public_request(asset_id: str = "grassland") -> dict:
+    return {
+        "asset_type": "tileset",
+        "asset_id": asset_id,
+        "brief": "A grassland tile atlas.",
+        "provider": "codex",
+        "spec": {
+            "autotile_profile": "marching_squares_15",
+            "tile_size": {"width": 16, "height": 16},
+            "terrain": {
+                "name": "grassland",
+                "foreground_material": "dirt",
+                "background_material": "grass",
+            },
+        },
+    }
 
 
 def test_tileset_skill_is_standalone_and_reuses_shared_contracts():
@@ -50,20 +76,92 @@ def test_tileset_skill_documents_recipe_only_semantics_and_l0_to_l4():
         "separation",
         "terrain_sets",
         "peering_bits",
-        "collision polygons",
-        "navigation polygons",
-        "occlusion polygons",
-        "alternatives",
-        "animation",
-        "NIL",
-        "all other Variant types are outside v1",
-        "relative\n weight",
-        "Unknown or misspelled\nfields are rejected",
+        "Physics, navigation",
+        "custom data",
+        "does not support animated TileSets",
+        "Unknown or misspelled",
     ):
         assert field in text
-    assert "Never infer them from the atlas image." in text
+    assert "never inferred from pixels" in text
     for level in ("L0", "L1", "L2", "L3", "L4"):
         assert level in text
+
+
+def test_tileset_skill_limits_production_to_fixed_profile_templates():
+    text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    assert "marching_squares_15" in text
+    assert "blob_47" in text
+    assert "`spec.autotile_profile` is required" in text
+    assert "Agents must not enumerate 15/47 cells" in text
+    assert "asset_tileset_profile.py" in text
+    assert ".godotmaker/asset-runtime/tools/codex_image_claim.py --plan" in text
+    assert "--material-source" in text
+    assert "GM_EVAL_GODOT_PATH" in text
+
+
+def test_tileset_request_contract_is_typed_and_has_no_output_paths():
+    assert check_tileset_request(_public_request())["asset_id"] == "grassland"
+    invalid = _public_request()
+    invalid["spec"]["output_path"] = "res://assets/generated/tileset/grassland/grassland.tres"
+    with pytest.raises(TileSetRequestError, match="unknown fields"):
+        check_tileset_request(invalid)
+    missing_profile = _public_request()
+    missing_profile["spec"].pop("autotile_profile")
+    with pytest.raises(TileSetRequestError, match="autotile_profile"):
+        check_tileset_request(missing_profile)
+    animation = _public_request()
+    animation["spec"]["semantic_metadata"] = {"roles": {"foreground_full": {"animation": {}}}}
+    with pytest.raises(TileSetRequestError, match="unknown fields"):
+        check_tileset_request(animation)
+    obsolete_role = _public_request()
+    obsolete_role["spec"]["semantic_metadata"] = {"roles": {"background_full": {}}}
+    with pytest.raises(TileSetRequestError, match="unknown roles"):
+        check_tileset_request(obsolete_role)
+
+
+def test_blob_profile_compiles_to_a_native_tileset(godot_bin, godot_project):
+    profile = get_profile("blob_47")
+    atlas = godot_project / "assets/generated/tileset/coast/coast_atlas.png"
+    atlas.parent.mkdir(parents=True)
+    image = Image.new("RGBA", (profile.columns * 16, profile.rows * 16), (0, 0, 0, 0))
+    for index, tile in enumerate(profile.tiles, start=1):
+        image.putpixel((tile.coords[0] * 16, tile.coords[1] * 16), (index, 80, 160, 255))
+    image.save(atlas)
+    recipe = build_profile_recipe(
+        "blob_47",
+        texture_path="res://assets/generated/tileset/coast/coast_atlas.png",
+        tile_width=16,
+        tile_height=16,
+        godot_path=godot_bin,
+        terrain_name="coast",
+    )
+    artifact = compile_profile_recipe(
+        recipe,
+        project_root=godot_project,
+        asset_id="coast",
+        texture_path="res://assets/generated/tileset/coast/coast_atlas.png",
+        artifact_path="res://assets/generated/tileset/coast/coast.tres",
+    )
+    assert artifact == {"type": "TileSet", "path": "res://assets/generated/tileset/coast/coast.tres"}
+    report = GodotProbe(godot_bin).probe(
+        godot_project,
+        [ProbeRequest("res://assets/generated/tileset/coast/coast.tres", "TileSet", ("tileset",))],
+    )
+    assert report.resources[0].type_matches is True
+    tileset = report.resources[0].structure["tileset"]
+    assert tileset["tile_count"] == 47
+    # Godot reports terrain peering bits in numeric order; compare that loaded
+    # representation to the fixed profile without depending on input ordering.
+    expected = {
+        tuple(slot["coords"]): tuple(sorted(slot["peering_bits"]))
+        for slot in profile_manifest("blob_47")["slots"]
+        if not slot["reserved"]
+    }
+    loaded = {
+        tuple(tile["coords"]): tuple(index for index, terrain in enumerate(tile["peering_bits"]) if terrain == 0)
+        for tile in tileset["sources"][0]["tiles"]
+    }
+    assert loaded == expected
 
 
 def test_orthogonal_square_fixture_is_compiler_acceptable_except_for_its_placeholder_binary(tmp_path):
@@ -91,12 +189,7 @@ def test_standalone_runner_maps_request_result_l0_to_l4_without_a_stable_entry(
     """Exercise the executable standalone flow without manifest-shaped state."""
     root = tmp_path
     (root / "project.godot").write_text("[application]\nconfig/name=\"test\"\n", encoding="utf-8")
-    request = {
-        "asset_type": "tileset",
-        "asset_id": "grassland",
-        "brief": "A grassland tile atlas.",
-        "spec": _fixture(),
-    }
+    request = _public_request()
     source_path = "res://assets/generated/tileset/grassland/grassland_atlas.png"
     source = root / source_path.removeprefix("res://")
     source.parent.mkdir(parents=True)
@@ -162,7 +255,7 @@ def test_standalone_runner_maps_request_result_l0_to_l4_without_a_stable_entry(
 
     monkeypatch.setattr(compiler, "compile_tileset", fake_compile)
     monkeypatch.setattr(GodotProbe, "probe", fake_probe)
-    validated = compile_and_validate(request, result, project_root=root, godot_path="godot")
+    validated = compile_and_validate(request, result, recipe=_fixture(), project_root=root, godot_path="godot")
 
     assert validated["validation"] == {
         "passed": True,
@@ -174,12 +267,7 @@ def test_standalone_runner_maps_request_result_l0_to_l4_without_a_stable_entry(
 
 def test_standalone_runner_maps_a_godot_setup_failure_to_l3(tmp_path, monkeypatch):
     root = tmp_path
-    request = {
-        "asset_type": "tileset",
-        "asset_id": "grassland",
-        "brief": "A grassland tile atlas.",
-        "spec": _fixture(),
-    }
+    request = _public_request()
     source_path = "res://assets/generated/tileset/grassland/grassland_atlas.png"
     source = root / source_path.removeprefix("res://")
     source.parent.mkdir(parents=True)
@@ -199,7 +287,7 @@ def test_standalone_runner_maps_a_godot_setup_failure_to_l3(tmp_path, monkeypatc
         return {"sources": 1, "tile_size": [16, 16]}
 
     monkeypatch.setattr(compiler, "compile_tileset", fake_compile)
-    validated = compile_and_validate(request, result, project_root=root, godot_path="")
+    validated = compile_and_validate(request, result, recipe=_fixture(), project_root=root, godot_path="")
 
     assert validated["validation"]["passed"] is False
     assert validated["validation"]["levels"] == {
@@ -209,12 +297,7 @@ def test_standalone_runner_maps_a_godot_setup_failure_to_l3(tmp_path, monkeypatc
 
 
 def test_standalone_runner_reports_l1_before_an_l2_validation_error(tmp_path, monkeypatch):
-    request = {
-        "asset_type": "tileset",
-        "asset_id": "grassland",
-        "brief": "A grassland tile atlas.",
-        "spec": _fixture(),
-    }
+    request = _public_request()
     source_path = "res://assets/generated/tileset/grassland/grassland_atlas.png"
     source = tmp_path / source_path.removeprefix("res://")
     source.parent.mkdir(parents=True)
@@ -231,7 +314,7 @@ def test_standalone_runner_reports_l1_before_an_l2_validation_error(tmp_path, mo
         raise ValidationError("compiler result disagrees with request")
 
     monkeypatch.setattr(compiler, "compile_tileset", fail_compile)
-    validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+    validated = compile_and_validate(request, result, recipe=_fixture(), project_root=tmp_path, godot_path="godot")
 
     assert validated["validation"]["levels"] == {
         "L0": True, "L1": True, "L2": False, "L3": False, "L4": False,
@@ -239,12 +322,7 @@ def test_standalone_runner_reports_l1_before_an_l2_validation_error(tmp_path, mo
 
 
 def test_standalone_runner_rejects_an_unvalidated_extra_runtime_output(tmp_path):
-    request = {
-        "asset_type": "tileset",
-        "asset_id": "grassland",
-        "brief": "A grassland tile atlas.",
-        "spec": _fixture(),
-    }
+    request = _public_request()
     result = {
         "asset_type": "tileset",
         "outputs": [
@@ -257,15 +335,13 @@ def test_standalone_runner_rejects_an_unvalidated_extra_runtime_output(tmp_path)
     }
 
     with pytest.raises(TileSetSkillError, match="exactly one stable TileSet runtime output"):
-        compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+        compile_and_validate(request, result, recipe=_fixture(), project_root=tmp_path, godot_path="godot")
 
 
 @pytest.mark.parametrize("mutation", ["runtime", "result-source", "recipe-source", "multiple-sources"])
 def test_standalone_runner_rejects_noncanonical_stable_tileset_paths(tmp_path, mutation):
-    request = {
-        "asset_type": "tileset", "asset_id": "grassland", "brief": "A grassland tile atlas.",
-        "spec": _fixture(),
-    }
+    request = _public_request()
+    recipe = _fixture()
     result = {
         "asset_type": "tileset",
         "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
@@ -277,8 +353,8 @@ def test_standalone_runner_rejects_noncanonical_stable_tileset_paths(tmp_path, m
     elif mutation == "result-source":
         result["sources"][0]["path"] = "res://assets/generated/tileset/grassland/not-the-asset-id.png"
     elif mutation == "recipe-source":
-        request["spec"]["sources"][0]["texture"] = "res://assets/generated/tileset/grassland/not-the-asset-id.png"
+        recipe["sources"][0]["texture"] = "res://assets/generated/tileset/grassland/not-the-asset-id.png"
     else:
-        request["spec"]["sources"].append(dict(request["spec"]["sources"][0]))
+        recipe["sources"].append(dict(recipe["sources"][0]))
     with pytest.raises(TileSetSkillError, match="L0 standalone contract failed"):
-        compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+        compile_and_validate(request, result, recipe=recipe, project_root=tmp_path, godot_path="godot")

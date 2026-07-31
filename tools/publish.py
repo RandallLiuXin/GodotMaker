@@ -434,6 +434,15 @@ def publish_asset_runtime(repo_root: Path, target: Path) -> int:
         return 0
     dst = target / ASSET_RUNTIME_TARGET
     copy_tree(src, dst)
+    # The Codex generated-path claim is part of the portable asset runtime:
+    # published Skills must not rely on the framework checkout's top-level
+    # tools directory being present in a consumer project.
+    claim_source = repo_root / "tools" / "codex_image_claim.py"
+    if not claim_source.exists():
+        raise FileNotFoundError(f"asset runtime claim tool is missing: {claim_source}")
+    claim_target = dst / "tools" / claim_source.name
+    claim_target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(claim_source, claim_target)
     count = sum(1 for path in dst.rglob("*") if path.is_file())
     print(f"Published asset runtime: {count} files")
     return count

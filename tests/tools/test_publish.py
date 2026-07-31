@@ -1010,6 +1010,7 @@ class TestPublishedAssetRuntime:
         assert (runtime / "schema" / "asset-skill-request.schema.json").exists()
         assert (runtime / "asset_compiler" / "registry.py").exists()
         assert (runtime / "asset_validation" / "ladder.py").exists()
+        assert (runtime / "tools" / "codex_image_claim.py").exists()
         assert not (target / skill_root / "_shared").exists()
 
     @pytest.mark.parametrize(
@@ -1110,13 +1111,23 @@ recipe = json.loads(
     )
 )
 source_path = "res://assets/generated/tileset/grassland/grassland_atlas.png"
-validated = tileset.compile_and_validate(
-    {{
-        "asset_type": "tileset",
-        "asset_id": "grassland",
-        "brief": "A grassland tile atlas.",
-        "spec": recipe,
+tileset_request = {{
+    "asset_type": "tileset",
+    "asset_id": "grassland",
+    "brief": "A grassland tile atlas.",
+    "provider": "native",
+    "spec": {{
+        "autotile_profile": "marching_squares_15",
+        "tile_size": {{"width": 16, "height": 16}},
+        "terrain": {{
+            "name": "grassland",
+            "foreground_material": "dirt",
+            "background_material": "grass",
+        }},
     }},
+}}
+validated = tileset.compile_and_validate(
+    tileset_request,
     {{
         "asset_type": "tileset",
         "outputs": [{{
@@ -1128,6 +1139,7 @@ validated = tileset.compile_and_validate(
         "previews": [],
         "validation": {{"passed": False}},
     }},
+    recipe=recipe,
     project_root=target,
     godot_path="godot",
 )
@@ -1147,8 +1159,7 @@ wrong_path_result = {{
 }}
 try:
     tileset.compile_and_validate(
-        {{"asset_type": "tileset", "asset_id": "grassland", "brief": "A grassland tile atlas.", "spec": recipe}},
-        wrong_path_result, project_root=target, godot_path="godot",
+        tileset_request, wrong_path_result, recipe=recipe, project_root=target, godot_path="godot",
     )
 except tileset.TileSetSkillError as exc:
     assert "L0 standalone contract failed" in str(exc)

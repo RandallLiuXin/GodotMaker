@@ -17,6 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- Added deterministic marching-squares-15 and blob-47 TileSet profile templates with fixed atlas guides, strict image validation, and native resource compilation.
+
 - Added fail-closed standalone L0-L4 execution for the remaining first-class Asset Skills, with published runners and native Godot resource verification.
 
 - Added a standalone TileSet Asset Skill with an explicit atlas and recipe contract, shared compiler and validation reuse, and an orthogonal-square fixture.
@@ -25,6 +27,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added standalone atlas-backed compact-prop-pack and scene-prop-set Skills with deterministic independent AtlasTexture outputs for each declared prop.
 - Added a deterministic SpriteFrames compiler that aggregates explicitly timed normalized action PNGs, rejects missing required actions, and serializes independent frame texture bindings for character bundles and animated FX.
 - Added standalone character-bundle and fx-bundle skills with fail-closed family validation for explicit animation timing, loop, frame order, and native Godot runtime-output contracts.
+- Added fixed 15-cell and 47-cell TileSet profiles with typed requests, deterministic material composition, and optional terrain metadata hand-off.
 - Added a deterministic StyleBoxTexture compiler for reusable UI borders, with explicit texture regions, nine-slice borders, expand margins, and stretch axes verified through headless Godot.
 - Published first-class Asset Skills for Claude Code, Codex, and OpenCode together with their project-local shared compiler, validator, and schema runtime under `.godotmaker/asset-runtime/`.
 - Added a fail-closed `asset_runtime_resolver.py` that converts a registered ASSETS.md `manifest_entry` into the minimal ready worker runtime snapshot (#106).
@@ -54,6 +57,12 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - The stable-entry schema now validates each `source_layout.type` against its closed compatible Godot artifact-type set, including `StyleBoxTexture` for `single` and `region_atlas`, so mismatches are rejected before reaching a worker.
 
 ## Fixed
+
+- Fixed blob-47 TileSet masks, edge signatures, and isolated-terrain semantics to match Godot's eight peering points.
+- Fixed TileSet profile validation to diagnose terrain-corner seam mismatches against the deterministic matching template before compilation.
+- Fixed TileSet seam repairs to deterministically compose profile transitions from provider-authored terrain materials instead of accepting flat color patches.
+
+- Fixed deterministic TileSet profiles to compile from published standalone runtimes and emit fixed atlas assembly declarations without agent-authored layout scripts.
 
 - Pre-push checks now isolate temporary Git repositories from the invoking worktree's hook environment.
 - Platform-strip assets now retain controlled provider-source claims and validator-produced readiness evidence.

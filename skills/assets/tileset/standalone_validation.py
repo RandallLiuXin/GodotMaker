@@ -53,7 +53,7 @@ def _configure_runtime_imports() -> None:
         )
     # Appended, never inserted: these flat directories must not shadow the
     # standard library or installed packages for the rest of the process.
-    for path in (str(runtime), str(tools)):
+    for path in (str(runner.parent), str(runtime), str(tools)):
         if path not in sys.path:
             sys.path.append(path)
 
@@ -78,6 +78,7 @@ from asset_skill_contract_check import (  # noqa: E402
     check_request,
     check_result,
 )
+from request_contract import TileSetRequestError, check_tileset_request  # noqa: E402
 
 
 class TileSetSkillError(Exception):
@@ -101,9 +102,8 @@ def _runtime_output(result: Mapping[str, Any], asset_id: str) -> Mapping[str, An
     return outputs[0]
 
 
-def _atlas_sources(request: Mapping[str, Any], result: Mapping[str, Any]) -> list[str]:
-    recipe_sources = request.get("spec", {}).get("sources")
-    asset_id = request["asset_id"]
+def _atlas_sources(recipe: Mapping[str, Any], result: Mapping[str, Any], asset_id: str) -> list[str]:
+    recipe_sources = recipe.get("sources")
     expected_path = f"res://assets/generated/tileset/{asset_id}/{asset_id}_atlas.png"
     if (
         not isinstance(recipe_sources, list)
@@ -151,6 +151,7 @@ def compile_and_validate(
     request: Mapping[str, Any],
     result: Mapping[str, Any],
     *,
+    recipe: Mapping[str, Any],
     project_root: Path,
     godot_path: str,
 ) -> dict[str, Any]:
@@ -166,11 +167,12 @@ def compile_and_validate(
     try:
         check_request(request)
         check_result(result)
+        check_tileset_request(request)
         if request["asset_type"] != "tileset" or result["asset_type"] != "tileset":
             raise TileSetSkillError("standalone TileSet validation requires asset_type 'tileset'")
         output = _runtime_output(result, request["asset_id"])
-        atlas_paths = _atlas_sources(request, result)
-    except (AssetContractError, TileSetSkillError) as exc:
+        atlas_paths = _atlas_sources(recipe, result, request["asset_id"])
+    except (AssetContractError, TileSetRequestError, TileSetSkillError) as exc:
         raise TileSetSkillError(f"L0 standalone contract failed: {exc}") from exc
 
     root = Path(project_root)
@@ -200,7 +202,7 @@ def compile_and_validate(
         artifact_type="TileSet",
         artifact_path=output["path"],
         project_root=root,
-        spec=request["spec"],
+        spec=dict(recipe),
     )
     registry = CompilerRegistry()
     tileset_compiler.register_into(registry)
@@ -250,7 +252,7 @@ def compile_and_validate(
                 artifact_path=output["path"],
                 project_root=root,
                 probe=loaded,
-                spec=request["spec"],
+                spec=dict(recipe),
             )
         )
     except ValidationError as exc:
