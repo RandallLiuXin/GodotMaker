@@ -88,7 +88,7 @@ def test_background_and_platform_runtime_contracts_keep_native_type_boundaries()
     assert "referenced_image_paths" in platform
     assert "_source.json" in platform
     assert "_validation.json" in platform
-    assert "tools/codex_image_claim.py --plan" in platform
+    assert ".godotmaker/asset-runtime/tools/codex_image_claim.py --plan" in platform
     assert "never hand-write provenance JSON" in platform
     assert "Split the raw provider sheet before any crop, resize, or padding" in platform
     assert "Never normalize the whole sheet as one image" in platform

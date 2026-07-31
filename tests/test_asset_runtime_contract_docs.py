@@ -76,7 +76,7 @@ def test_provider_contracts_are_separate_from_generic_asset_docs():
     assert "generated_path" in codex
     assert "--out-report" in codex
     assert "exactly one new image file" in codex
-    assert "tools/codex_image_claim.py --plan" in codex
+    assert ".godotmaker/asset-runtime/tools/codex_image_claim.py --plan" in codex
     assert "active coding-agent runtime's native image-generation path" in native
     assert "tools/asset_source_generate.py --spec" in gemini
     assert "generated-path claim protocol" in codex_runtime
@@ -86,7 +86,7 @@ def test_provider_contracts_are_separate_from_generic_asset_docs():
 
     forbidden = [
         "ImageGenerationEnd.saved_path",
-        "tools/codex_image_claim.py --plan",
+        ".godotmaker/asset-runtime/tools/codex_image_claim.py --plan",
         "codex exec --json",
         "generated_images",
         "Sort-Object LastWriteTime",
