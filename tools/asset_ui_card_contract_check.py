@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,7 @@ _FAMILIES = {
     },
 }
 
+_PIXEL_ART_REQUEST = re.compile(r"\bpixel(?:[-\s]?art)\b", re.IGNORECASE)
 
 def _text(value: Any, label: str, issues: list[str]) -> str | None:
     if not isinstance(value, str) or not value.strip():
@@ -211,6 +213,8 @@ def check_ui_card_request(data: Any) -> dict[str, Any]:
         raise UICardContractError(str(exc)) from exc
     if data["asset_type"] not in _FAMILIES:
         raise UICardContractError("asset_type is not ui-kit or card-kit")
+    if data["asset_type"] == "card-kit" and _PIXEL_ART_REQUEST.search(data["brief"]):
+        raise UICardContractError("card-kit does not support pixel-art requests")
     issues: list[str] = []
     normalized = _spec(data, issues)
     if issues:

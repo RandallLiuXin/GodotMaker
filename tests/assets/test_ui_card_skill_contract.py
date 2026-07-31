@@ -186,6 +186,14 @@ def test_card_contract_rejects_a_missing_requested_frame_and_region():
         check_ui_card_request(request)
 
 
+def test_card_contract_rejects_pixel_art_requests():
+    request = _request("card-kit")
+    request["brief"] = "A pixel-art card frame."
+
+    with pytest.raises(UICardContractError, match="does not support pixel-art"):
+        check_ui_card_request(request)
+
+
 @pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
 def test_standalone_runner_executes_l0_to_l4_for_every_runtime_output(tmp_path, monkeypatch, family):
     request = _request(family)

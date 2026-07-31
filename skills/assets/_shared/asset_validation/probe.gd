@@ -219,6 +219,8 @@ func _theme_stylebox_facts(stylebox: StyleBox) -> Dictionary:
 		facts["properties"] = {
 			"content_margin": [stylebox.content_margin_left, stylebox.content_margin_top, stylebox.content_margin_right, stylebox.content_margin_bottom],
 		}
+	elif stylebox.is_class("StyleBoxTexture"):
+		facts["resource_path"] = _resource_path(stylebox)
 	return facts
 
 func _tile_descriptor(tile_set: TileSet, source: TileSetAtlasSource, coords: Vector2i, alternative: int) -> Dictionary:

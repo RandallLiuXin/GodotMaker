@@ -58,6 +58,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Card-kit Asset Skills now compile only the Theme, scalable frames, and fixed AtlasTexture regions requested by each asset request, preserving reusable Godot resources without requiring a fixed card layout.
+
 - Character-bundle assets now resolve animation cadence internally, preserve optional canonical references and 256px runtime frames, and regenerate retryable source-image failures before stopping.
 - Character-bundle assembly now binds resolved intent, canvas, frame order, timing, loop state, and scale references through SpriteFrames compilation and GIF previews.
 - Fixed blob-47 TileSet masks, edge signatures, and isolated-terrain semantics to match Godot's eight peering points.

@@ -359,16 +359,64 @@ def _item_rows(
     return rows
 
 
-def _styleboxes(recipe: Mapping[str, Any]) -> tuple[dict[str, list[str]], dict[str, str]]:
+def _external_stylebox_texture_path(
+    properties: Mapping[str, Any],
+    label: str,
+    *,
+    root: Path,
+    production_family: str,
+    asset_id: str,
+) -> str:
+    if set(properties) != {"path"} or not isinstance(properties.get("path"), str):
+        _fail(f"{label}.properties must contain exactly a StyleBoxTexture path")
+    path = properties["path"]
+    try:
+        file_path = assert_within_output_dir(
+            root,
+            resolve_res_path(root, path, label=f"{label}.properties.path"),
+            production_family=production_family,
+            asset_id=asset_id,
+            label=f"{label}.properties.path",
+        )
+    except StableEntryError as exc:
+        _fail(f"{label}.properties.path must be a safe generated resource path: {exc}")
+    if file_path.suffix.lower() != ".tres" or not file_path.is_file():
+        _fail(f"{label}.properties.path must name an existing StyleBoxTexture .tres")
+    try:
+        header = file_path.read_text(encoding="utf-8")[:256]
+    except OSError as exc:
+        _fail(f"{label}.properties.path cannot be read: {exc}")
+    if '[gd_resource type="StyleBoxTexture"' not in header:
+        _fail(f"{label}.properties.path is not a StyleBoxTexture resource")
+    return path
+
+
+def _styleboxes(
+    recipe: Mapping[str, Any],
+    *,
+    root: Path,
+    production_family: str,
+    asset_id: str,
+) -> tuple[dict[str, list[str]], dict[str, str], dict[str, str]]:
     result: dict[str, list[str]] = {}
     subresources: dict[str, str] = {}
+    external: dict[str, str] = {}
     raw_boxes = _mapping(recipe["styleboxes"], "styleboxes")
     for box_id in sorted(raw_boxes):
         _identifier(box_id, f"styleboxes.{box_id}")
         box = _mapping(raw_boxes[box_id], f"styleboxes.{box_id}")
-        if set(box) != {"type", "properties"} or box["type"] not in {"StyleBoxFlat", "StyleBoxEmpty"}:
-            _fail(f"styleboxes.{box_id} must declare StyleBoxFlat or StyleBoxEmpty with properties")
+        if set(box) != {"type", "properties"} or box["type"] not in {"StyleBoxFlat", "StyleBoxEmpty", "StyleBoxTexture"}:
+            _fail(f"styleboxes.{box_id} must declare StyleBoxFlat, StyleBoxEmpty, or StyleBoxTexture with properties")
         properties = _mapping(box["properties"], f"styleboxes.{box_id}.properties")
+        if box["type"] == "StyleBoxTexture":
+            external[box_id] = _external_stylebox_texture_path(
+                properties,
+                f"styleboxes.{box_id}",
+                root=root,
+                production_family=production_family,
+                asset_id=asset_id,
+            )
+            continue
         if not properties and box["type"] == "StyleBoxFlat":
             _fail(f"styleboxes.{box_id}.properties may not be empty for StyleBoxFlat")
         lines: list[str] = []
@@ -400,7 +448,7 @@ def _styleboxes(recipe: Mapping[str, Any]) -> tuple[dict[str, list[str]], dict[s
                 lines.append(f"anti_aliasing = {'true' if value else 'false'}")
         result[box_id] = lines
         subresources[box_id] = box["type"]
-    return result, subresources
+    return result, subresources, external
 
 
 def compile_theme(request: CompileRequest) -> dict[str, Any]:
@@ -445,7 +493,13 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
         )
         for section in ("colors", "font_sizes", "constants", "fonts", "icons")
     }
-    boxes, box_types = _styleboxes(recipe)
+    boxes, box_types, external_boxes = _styleboxes(
+        recipe,
+        root=root,
+        production_family=request.production_family,
+        asset_id=request.asset_id,
+    )
+    all_box_types = {**box_types, **{box_id: "StyleBoxTexture" for box_id in external_boxes}}
     styles: list[tuple[str, str, str]] = []
     for index, raw in enumerate(_list(recipe["styles"], "styles")):
         item = _mapping(raw, f"styles[{index}]")
@@ -454,7 +508,7 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
         theme_type = _theme_type(item["type"], f"styles[{index}].type", variations=variation_names)
         name = _identifier(item["name"], f"styles[{index}].name")
         box = _identifier(item["stylebox"], f"styles[{index}].stylebox")
-        if not _property_allowed("styles", theme_type, name, variation_bases) or box not in box_types:
+        if not _property_allowed("styles", theme_type, name, variation_bases) or box not in all_box_types:
             _fail(f"styles[{index}] has an unsupported property or unknown StyleBox reference")
         styles.append((theme_type, name, box))
     if len({(kind, name) for kind, name, _ in styles}) != len(styles):
@@ -474,6 +528,7 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
                 asset_id=request.asset_id,
             )
             external.append((f"{prefix}_{index}", resource_type, path))
+    external.extend((f"StyleBox_{box_id}", "StyleBoxTexture", path) for box_id, path in sorted(external_boxes.items()))
     lines = ["[gd_resource type=\"Theme\" load_steps=" + str(1 + len(external) + len(boxes)) + " format=3]", ""]
     for resource_id, resource_type, path in external:
         lines.extend([f'[ext_resource type="{resource_type}" path="{path}" id="{resource_id}"]', ""])
@@ -487,11 +542,16 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
         for theme_type, name, value in sorted(sections[section]):
             lines.append(f"{theme_type}/{category[section]}/{name} = {value}")
     for theme_type, name, box in sorted(styles):
-        lines.append(f'{theme_type}/styles/{name} = SubResource("StyleBox_{box}")')
+        reference = (
+            f'ExtResource("StyleBox_{box}")'
+            if box in external_boxes
+            else f'SubResource("StyleBox_{box}")'
+        )
+        lines.append(f"{theme_type}/styles/{name} = {reference}")
     target = request.artifact_file()
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    return {"variations": [name for name, _ in sorted(variations)], "theme_items": sum(len(items) for items in sections.values()) + len(styles), "styleboxes": sorted(boxes)}
+    return {"variations": [name for name, _ in sorted(variations)], "theme_items": sum(len(items) for items in sections.values()) + len(styles), "styleboxes": sorted(all_box_types)}
 
 
 def register_into(registry: CompilerRegistry) -> CompilerRoute:
@@ -580,6 +640,11 @@ def validate_theme_structure(request: Any) -> dict[str, Any]:
             raise ValidationError("loaded Theme StyleBox does not match the recipe")
         if actual_box.get("class") != expected_box.get("type"):
             raise ValidationError("loaded Theme StyleBox type does not match the recipe")
+        if expected_box.get("type") == "StyleBoxTexture":
+            expected_path = expected_box.get("properties", {}).get("path") if isinstance(expected_box.get("properties"), Mapping) else None
+            if actual_box.get("resource_path") != expected_path:
+                raise ValidationError("loaded Theme StyleBoxTexture path does not match the recipe")
+            continue
         actual_properties = actual_box.get("properties")
         expected_properties = expected_box.get("properties")
         if not isinstance(actual_properties, Mapping) or not isinstance(expected_properties, Mapping):
@@ -587,6 +652,12 @@ def validate_theme_structure(request: Any) -> dict[str, Any]:
         for name, expected_value in expected_properties.items():
             if name not in actual_properties or not _same_theme_stylebox_value(name, actual_properties[name], expected_value):
                 raise ValidationError("loaded Theme StyleBox value does not match the recipe")
+    required_normal_path = request.spec.get("normal_stylebox_path") if isinstance(request.spec, Mapping) else None
+    if required_normal_path is not None:
+        variation = types.get(requested_variation)
+        normal_box = variation.get("styleboxes", {}).get("panel") if isinstance(variation, Mapping) else None
+        if not isinstance(normal_box, Mapping) or normal_box.get("resource_path") != required_normal_path:
+            raise ValidationError("loaded Theme does not bind the card default normal StyleBoxTexture")
     return {
         "types": sorted(types), "variations": sorted(variations),
         "requested_variation": requested_variation, "theme_items": declared_items,

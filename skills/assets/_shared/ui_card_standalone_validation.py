@@ -114,10 +114,9 @@ def compile_and_validate(
 
     passed.append("L1")
     runtime = {output["name"]: output for output in result["outputs"] if output["role"] == "runtime"}
-    declarations: list[tuple[str, Mapping[str, Any], Mapping[str, Any]]] = [
-        ("theme", spec["theme"], runtime[spec["theme"]["output_name"]])
-    ]
+    declarations: list[tuple[str, Mapping[str, Any], Mapping[str, Any]]] = []
     declarations.extend(("stylebox", box, runtime[box["output_name"]]) for box in spec["styleboxes"])
+    declarations.append(("theme", spec["theme"], runtime[spec["theme"]["output_name"]]))
     declarations.extend(("atlas", region, runtime[region["output_name"]]) for region in spec["atlas_regions"])
     compiled_requests: dict[str, CompileRequest] = {}
     try:
