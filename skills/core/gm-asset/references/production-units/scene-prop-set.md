@@ -51,16 +51,12 @@ Process one-item foreground object sources with autoslice:
 python tools/asset_sheet_process.py \
   --source <object_source.png> \
   --out-dir <curation_dir> \
-  --grid <COLSxROWS> \
   --names <object_names> \
   --background magenta \
-  --snap-mode autoslice \
-  --component-mode largest
+  --snap-mode autoslice
 ```
 
-`--grid` is required in both snap modes; in autoslice it sets the cell buckets
-and per-cell names that detected objects are assigned to. Match `--grid` and
-`--names` to the object layout requested in the prompt.
+Match `--names` to the separated objects in row-major reading order.
 
 Do not use a source image or reference mockup as an independent final prop.
 

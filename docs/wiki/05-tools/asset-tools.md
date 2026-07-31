@@ -71,11 +71,10 @@ non-character source sheets.
 
 Required decisions:
 
-1. `--grid <COLSxROWS>`
-2. `--names <comma-separated names>`
-3. `--snap-mode autoslice` for separated objects
-4. `--snap-mode grid` for strict cell grids
-5. `--component-mode largest` for compact UI/icon/prop cells with stray
+1. `--names <comma-separated names>`
+2. `--snap-mode autoslice` for independent separated regions
+3. `--snap-mode grid --grid <COLSxROWS>` for strict cell grids
+4. `--component-mode largest` for compact UI/icon/prop cells with stray
    fragments
 
 Manual entry point:
@@ -84,11 +83,14 @@ Manual entry point:
 python tools/asset_sheet_process.py \
   --source <source.png> \
   --out-dir <curation_dir> \
-  --grid <COLSxROWS> \
   --names <names> \
   --snap-mode <autoslice|grid> \
   --report <report.json>
 ```
+
+Pass `--grid <COLSxROWS>` only with `--snap-mode grid`. Autoslice orders
+independent regions from top to bottom and left to right, and rejects a
+`--names` count that does not match the detected region count.
 
 ## asset_action_process.py
 

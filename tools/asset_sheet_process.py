@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from bisect import bisect_right
 import json
 import math
 import re
@@ -38,17 +37,26 @@ def _parse_grid(value: str) -> tuple[int, int]:
     return cols, rows
 
 
-def _parse_names(value: str | None, total: int) -> list[str]:
+def _parse_name_values(value: str | None) -> list[str] | None:
     if value is None:
-        return [f"{index + 1:02d}" for index in range(total)]
+        return None
     names = [name.strip() for name in value.split(",")]
     if any(not name for name in names):
         raise SheetProcessError("--names cannot contain empty names")
-    if len(names) != total:
-        raise SheetProcessError(f"--names has {len(names)} entries, grid has {total} cells")
     for name in names:
         if not SAFE_NAME_RE.fullmatch(name) or name in {".", ".."}:
             raise SheetProcessError("--names entries must be safe file names")
+    return names
+
+
+def _parse_names(value: str | None, total: int, *, subject: str = "grid cells") -> list[str]:
+    names = _parse_name_values(value)
+    if names is None:
+        return [f"{index + 1:02d}" for index in range(total)]
+    if len(names) != total:
+        raise SheetProcessError(
+            f"--names has {len(names)} entries, detected {subject} has {total} entries"
+        )
     return names
 
 
@@ -258,11 +266,6 @@ def _bbox_touches_margin(
     return left <= margin or top <= margin or right >= width - margin or bottom >= height - margin
 
 
-def _rect_area(rect: tuple[int, int, int, int]) -> int:
-    left, top, right, bottom = rect
-    return max(0, right - left) * max(0, bottom - top)
-
-
 def _rect_has_point(
     rect: tuple[int, int, int, int],
     point: tuple[int, int],
@@ -313,14 +316,6 @@ def _merge_rects(
     )
 
 
-def _union_rects(rects: list[tuple[int, int, int, int]]) -> tuple[int, int, int, int]:
-    left = min(rect[0] for rect in rects)
-    top = min(rect[1] for rect in rects)
-    right = max(rect[2] for rect in rects)
-    bottom = max(rect[3] for rect in rects)
-    return left, top, right, bottom
-
-
 def _autoslice_rects(image) -> list[tuple[int, int, int, int]]:
     alpha = image.getchannel("A")
     pixels = alpha.load()
@@ -360,6 +355,10 @@ def _autoslice_rects(image) -> list[tuple[int, int, int, int]]:
     return rects
 
 
+def _rect_alpha_area(image, rect: tuple[int, int, int, int]) -> int:
+    return sum(image.getchannel("A").crop(rect).histogram()[1:])
+
+
 def _atomic_write_json(path: Path, data: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
@@ -383,7 +382,7 @@ def process_sheet(
     source: Path,
     output_dir: Path,
     *,
-    grid: str,
+    grid: str | None = None,
     snap_mode: str,
     names: str | None = None,
     asset_id: str | None = None,
@@ -402,7 +401,7 @@ def process_sheet(
     preserve_cell_bounds: bool = False,
     report: Path | None = None,
 ) -> dict[str, object]:
-    """Split a production-shaped grid sheet into cropped per-cell PNGs."""
+    """Extract fixed grid cells or independent autoslice regions."""
     try:
         from PIL import Image
     except ImportError as exc:
@@ -417,18 +416,20 @@ def process_sheet(
     if padding < 0:
         raise SheetProcessError("--padding must be zero or positive")
 
-    cols, rows = _parse_grid(grid)
-    total = cols * rows
-    cell_names = _parse_names(names, total)
-
     if background not in {"transparent", "magenta"}:
         raise SheetProcessError("--background must be transparent or magenta")
     if snap_mode not in SNAP_MODES:
         raise SheetProcessError("--snap-mode must be grid or autoslice")
+    if snap_mode == "grid" and grid is None:
+        raise SheetProcessError("--grid is required with --snap-mode grid")
+    if snap_mode == "autoslice" and grid is not None:
+        raise SheetProcessError("--grid is not accepted with --snap-mode autoslice")
     if preserve_cell_bounds and snap_mode != "grid":
         raise SheetProcessError("--preserve-cell-bounds requires --snap-mode grid")
     if component_mode not in COMPONENT_MODES:
         raise SheetProcessError("--component-mode must be all or largest")
+    if snap_mode == "autoslice" and component_mode != "all":
+        raise SheetProcessError("--component-mode is only configurable with --snap-mode grid")
     for name, value in {
         "--component-padding": component_padding,
         "--min-component-area": min_component_area,
@@ -438,6 +439,14 @@ def process_sheet(
     }.items():
         if value is not None and value < 0:
             raise SheetProcessError(f"{name} must be zero or positive")
+
+    cols: int | None = None
+    rows: int | None = None
+    cell_names: list[str] | None = None
+    requested_names = _parse_name_values(names)
+    if snap_mode == "grid":
+        cols, rows = _parse_grid(grid or "")
+        cell_names = _parse_names(names, cols * rows)
 
     image = Image.open(source).convert("RGBA")
     try:
@@ -458,110 +467,98 @@ def process_sheet(
         width, height = image.size
         if not _has_transparent_pixels(image):
             raise SheetProcessError("Source sheet must have transparency after background cleanup")
-        column_edges = [(width * index) // cols for index in range(cols + 1)]
-        row_edges = [(height * index) // rows for index in range(rows + 1)]
-        cell_w = width // cols
-        cell_h = height // rows
+        column_edges: list[int] | None = None
+        row_edges: list[int] | None = None
+        cell_w: int | None = None
+        cell_h: int | None = None
+        if snap_mode == "grid":
+            assert cols is not None and rows is not None
+            column_edges = [(width * index) // cols for index in range(cols + 1)]
+            row_edges = [(height * index) // rows for index in range(rows + 1)]
+            cell_w = width // cols
+            cell_h = height // rows
         output_dir.mkdir(parents=True, exist_ok=True)
 
         accepted: list[dict[str, object]] = []
         rejected: list[dict[str, object]] = []
+        detected_regions: list[dict[str, object]] = []
+        discarded_regions: list[dict[str, object]] = []
+        name_count_mismatch = False
 
         if snap_mode == "autoslice":
-            rects_by_index: dict[int, list[tuple[int, int, int, int]]] = {}
             for rect in _autoslice_rects(image):
-                rect_left, rect_top, rect_right, rect_bottom = rect
-                center_x = (rect_left + rect_right - 1) / 2
-                center_y = (rect_top + rect_bottom - 1) / 2
-                col = min(cols - 1, max(0, bisect_right(column_edges, center_x) - 1))
-                row = min(rows - 1, max(0, bisect_right(row_edges, center_y) - 1))
-                rects_by_index.setdefault(row * cols + col, []).append(rect)
-
-            for index, name in enumerate(cell_names):
-                row, col = divmod(index, cols)
-                left = column_edges[col]
-                top = row_edges[row]
-                right = column_edges[col + 1]
-                bottom = row_edges[row + 1]
-                cell_rects = sorted(
-                    rects_by_index.get(index, []),
-                    key=_rect_area,
-                    reverse=True,
-                )
-                empty_base = {
-                    "name": name,
-                    "candidate_id": f"{asset_id or source.stem}.{name}",
-                    "state": "candidate",
-                    "index": index,
-                    "grid": [col, row],
-                    "source_box": [left, top, right, bottom],
-                    "component_mode": component_mode,
-                    "component_count": 0,
-                    "selected_component_area": None,
-                    "selected_component_bbox": None,
-                }
-                if not cell_rects:
-                    rejected.append({**empty_base, "state": "rejected", "reason": "empty_cell"})
-                    continue
-
-                if component_mode == "largest":
-                    selected_rect = cell_rects[0]
-                    selected_area = _rect_area(selected_rect)
+                alpha_area = _rect_alpha_area(image, rect)
+                region = {"bbox": list(rect), "alpha_area": alpha_area}
+                if alpha_area < min_component_area:
+                    discarded_regions.append({**region, "reason": "below_min_component_area"})
                 else:
-                    selected_rect = _union_rects(cell_rects)
-                    selected_area = sum(_rect_area(rect) for rect in cell_rects)
+                    detected_regions.append(region)
 
-                base = {
-                    "name": name,
-                    "candidate_id": f"{asset_id or source.stem}.{name}",
-                    "state": "candidate",
-                    "index": index,
-                    "grid": [col, row],
-                    "source_box": [left, top, right, bottom],
-                    "component_mode": component_mode,
-                    "component_count": len(cell_rects),
-                    "selected_component_area": selected_area,
-                    "selected_component_bbox": list(selected_rect),
-                }
-                bbox = selected_rect
-                touches_edge = _bbox_touches_margin(
-                    bbox,
-                    width=width,
-                    height=height,
-                    margin=edge_touch_margin,
-                )
-                if touches_edge and reject_edge_touch:
-                    rejected.append({
-                        **base,
-                        "state": "rejected",
-                        "reason": "edge_touch",
-                        "crop_bbox": list(bbox),
-                    })
-                    continue
-
-                crop_bbox = _padded_bbox(
-                    bbox,
-                    width=width,
-                    height=height,
-                    padding=padding if component_padding is None else component_padding,
-                )
-                cropped = image.crop(crop_bbox)
-                path = output_dir / f"{name}.png"
-                cropped.save(path)
-                accepted.append({
-                    **base,
-                    "path": str(path),
-                    "crop_bbox": list(bbox),
-                    "padded_crop_bbox": list(crop_bbox),
-                    "edge_touch": touches_edge,
-                    "trim_border": trim_border,
-                    "edge_clean_depth": edge_clean_depth,
-                    "edge_touch_margin": edge_touch_margin,
-                    "width": cropped.size[0],
-                    "height": cropped.size[1],
+            if requested_names is not None and len(requested_names) != len(detected_regions):
+                name_count_mismatch = True
+                rejected.append({
+                    "state": "rejected",
+                    "reason": "name_count_mismatch",
+                    "expected_count": len(requested_names),
+                    "detected_count": len(detected_regions),
                 })
+            else:
+                region_names = requested_names or [
+                    f"{index + 1:02d}" for index in range(len(detected_regions))
+                ]
+                for index, (name, region) in enumerate(zip(region_names, detected_regions)):
+                    bbox = tuple(region["bbox"])
+                    base = {
+                        "name": name,
+                        "candidate_id": f"{asset_id or source.stem}.{name}",
+                        "state": "candidate",
+                        "index": index,
+                        "grid": None,
+                        "source_box": list(bbox),
+                        "component_mode": "all",
+                        "component_count": 1,
+                        "selected_component_area": region["alpha_area"],
+                        "selected_component_bbox": list(bbox),
+                    }
+                    touches_edge = _bbox_touches_margin(
+                        bbox,
+                        width=width,
+                        height=height,
+                        margin=edge_touch_margin,
+                    )
+                    if touches_edge and reject_edge_touch:
+                        rejected.append({
+                            **base,
+                            "state": "rejected",
+                            "reason": "edge_touch",
+                            "crop_bbox": list(bbox),
+                        })
+                        continue
+
+                    crop_bbox = _padded_bbox(
+                        bbox,
+                        width=width,
+                        height=height,
+                        padding=padding if component_padding is None else component_padding,
+                    )
+                    cropped = image.crop(crop_bbox)
+                    path = output_dir / f"{name}.png"
+                    cropped.save(path)
+                    accepted.append({
+                        **base,
+                        "path": str(path),
+                        "crop_bbox": list(bbox),
+                        "padded_crop_bbox": list(crop_bbox),
+                        "edge_touch": touches_edge,
+                        "trim_border": trim_border,
+                        "edge_clean_depth": edge_clean_depth,
+                        "edge_touch_margin": edge_touch_margin,
+                        "width": cropped.size[0],
+                        "height": cropped.size[1],
+                    })
         else:
-            for index, name in enumerate(cell_names):
+            assert cols is not None and column_edges is not None and row_edges is not None
+            for index, name in enumerate(cell_names or []):
                 row, col = divmod(index, cols)
                 left = column_edges[col]
                 top = row_edges[row]
@@ -644,15 +641,18 @@ def process_sheet(
     else:
         strategy = "solid_background_grid" if background == "magenta" else "transparent_grid"
 
+    autoslice_needs_regeneration = snap_mode == "autoslice" and (
+        name_count_mismatch or bool(rejected) or not accepted
+    )
     result: dict[str, object] = {
         "version": 1,
-        "ok": True,
+        "ok": not autoslice_needs_regeneration,
         "asset_id": asset_id,
         "tag": tag,
         "source": str(source),
         "source_path": str(source),
         "strategy": strategy,
-        "status": "candidate_extracted" if accepted else "needs_regeneration",
+        "status": "needs_regeneration" if autoslice_needs_regeneration or not accepted else "candidate_extracted",
         "background": background,
         "cleanup": cleanup,
         "snap_mode": snap_mode,
@@ -663,9 +663,17 @@ def process_sheet(
         "edge_clean_depth": edge_clean_depth,
         "edge_touch_margin": edge_touch_margin,
         "preserve_cell_bounds": preserve_cell_bounds,
-        "grid": {"cols": cols, "rows": rows},
-        "cell_size": [cell_w, cell_h],
-        "cell_bounds": {"columns": column_edges, "rows": row_edges},
+        "grid": {"cols": cols, "rows": rows} if snap_mode == "grid" else None,
+        "cell_size": [cell_w, cell_h] if snap_mode == "grid" else None,
+        "cell_bounds": (
+            {"columns": column_edges, "rows": row_edges}
+            if snap_mode == "grid"
+            else None
+        ),
+        "expected_region_count": len(requested_names) if requested_names is not None else None,
+        "detected_region_count": len(detected_regions),
+        "detected_regions": detected_regions,
+        "discarded_regions": discarded_regions,
         "candidates": [
             {
                 "candidate_id": f"{asset_id or source.stem}.{item['name']}",
@@ -702,13 +710,8 @@ def _main() -> int:
     parser.add_argument("--out-dir", required=True, help="Output directory")
     parser.add_argument(
         "--grid",
-        required=True,
-        help=(
-            "Grid layout COLSxROWS, e.g. 2x2. Required for both snap modes. "
-            "In grid mode it defines the fixed cells that are cropped. In "
-            "autoslice mode it defines the cell buckets and per-cell naming "
-            "that detected rectangles are assigned to by their center"
-        ),
+        default=None,
+        help="Grid layout COLSxROWS for --snap-mode grid",
     )
     parser.add_argument("--names", default=None, help="Comma-separated output names")
     parser.add_argument("--asset-id", default=None, help="Optional source asset id")
@@ -737,7 +740,7 @@ def _main() -> int:
         "--snap-mode",
         choices=sorted(SNAP_MODES),
         required=True,
-        help="Use fixed grid cells or Godot-style autoslice rectangles",
+        help="Use fixed grid cells or independent Godot-style autoslice regions",
     )
     parser.add_argument(
         "--component-mode",
@@ -811,7 +814,7 @@ def _main() -> int:
         return 1
 
     print(json.dumps(result))
-    return 0
+    return 0 if result.get("ok") else 1
 
 
 if __name__ == "__main__":
