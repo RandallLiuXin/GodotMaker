@@ -57,11 +57,10 @@ guide 用于约束 image generation 的 slot 数量、居中和安全边距。�
 
 必须决定：
 
-1. `--grid <COLSxROWS>`
-2. `--names <comma-separated names>`
-3. 对象已经分离时使用 `--snap-mode autoslice`
-4. 严格 cell 网格使用 `--snap-mode grid`
-5. 紧凑 UI、icon、prop cell 中有零散碎片时使用 `--component-mode largest`
+1. `--names <comma-separated names>`
+2. 独立对象已经分离时使用 `--snap-mode autoslice`
+3. 严格 cell 网格使用 `--snap-mode grid --grid <COLSxROWS>`
+4. 紧凑 UI、icon、prop cell 中有零散碎片时使用 `--component-mode largest`
 
 手动入口：
 
@@ -69,11 +68,13 @@ guide 用于约束 image generation 的 slot 数量、居中和安全边距。�
 python tools/asset_sheet_process.py \
   --source <source.png> \
   --out-dir <curation_dir> \
-  --grid <COLSxROWS> \
   --names <names> \
   --snap-mode <autoslice|grid> \
   --report <report.json>
 ```
+
+只在 `--snap-mode grid` 中传入 `--grid <COLSxROWS>`。Autoslice 按从上到下、
+从左到右输出独立区域；`--names` 数量与检测区域数量不一致时会拒绝语义映射。
 
 ## asset_action_process.py
 

@@ -143,7 +143,7 @@ def test_production_unit_docs_are_first_entry_points():
     assert "## Curation" in runtime
 
 
-def test_production_unit_sheet_process_examples_pass_grid():
+def test_production_unit_autoslice_examples_do_not_pass_grid():
     units = [
         "compact-prop-pack",
         "fx-bundle",
@@ -154,8 +154,9 @@ def test_production_unit_sheet_process_examples_pass_grid():
         for block in doc.split("```"):
             if "python tools/asset_sheet_process.py" not in block:
                 continue
-            assert "--grid" in block, (
-                f"{unit}.md asset_sheet_process example is missing --grid"
+            assert "--snap-mode autoslice" in block
+            assert "--grid" not in block, (
+                f"{unit}.md autoslice example still passes --grid"
             )
 
 

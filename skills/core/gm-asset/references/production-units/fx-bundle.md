@@ -66,16 +66,12 @@ Process one-frame foreground effects:
 python tools/asset_sheet_process.py \
   --source <fx_source.png> \
   --out-dir <curation_dir> \
-  --grid <COLSxROWS> \
   --names <effect_names> \
   --background magenta \
-  --snap-mode autoslice \
-  --component-mode largest
+  --snap-mode autoslice
 ```
 
-`--grid` is required in both snap modes; in autoslice it sets the cell buckets
-and per-cell names that detected effects are assigned to. Match `--grid` and
-`--names` to the one-frame effect layout requested in the prompt.
+Match `--names` to the separated effects in row-major reading order.
 
 Select one-frame foreground effects with `tools/asset_curation_select.py`.
 Draft selected one-frame entries with `tools/asset_curation_entry_draft.py`

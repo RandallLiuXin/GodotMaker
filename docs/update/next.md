@@ -82,7 +82,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Asset readiness promotion now requires a compiler receipt bound to the compiled entry, while already-ready assets can explicitly revalidate without retaining that receipt.
 - Theme recipes now accept only fully decoded raster textures and FreeType-loadable TTF/OTF fonts, rejecting truncated or unsupported resource content before a Theme is written.
 - Failed native Godot artifact compilation now retains the previous stable artifact and atomically commits a validated replacement only after success.
-- Added the required `--grid` (and `--names`) argument to every production-unit `asset_sheet_process.py` example so the ui-kit, card-kit, compact-prop-pack, fx-bundle, scene-prop-set, and platform-strip commands run as written instead of failing on a missing required argument, and clarified that `--grid` is required in both autoslice and grid snap modes.
+- Restored `asset_sheet_process.py --snap-mode autoslice` to independent Godot-style region extraction without grid bucketing or cross-region unions; fixed-grid extraction continues to require `--grid`.
 - Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at `.godotmaker/asset-generation/manifest.json` instead of the analyst's `assets/manifest.json` (#97)
 
 ## Removed
