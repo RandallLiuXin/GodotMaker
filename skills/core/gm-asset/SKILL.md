@@ -88,7 +88,7 @@ Use `references/asset-planner.md` for production-unit selection.
 | --- | --- |
 | `screen-reference` | First-class `screen-reference` Asset Skill |
 | `character-bundle` | First-class `character-bundle` Asset Skill |
-| `fx-bundle` | `references/production-units/fx-bundle.md` |
+| `fx-bundle` | First-class `fx-bundle` Asset Skill |
 | `ui-kit` | First-class `ui-kit` Asset Skill |
 | `card-kit` | First-class `card-kit` Asset Skill |
 | `compact-prop-pack` | First-class `compact-prop-pack` Asset Skill |
@@ -171,6 +171,7 @@ never substitute a deleted production-unit document:
 | --- | --- |
 | `background-map` | First-class Asset Skill: `background-map` |
 | `character-bundle` | First-class Asset Skill: `character-bundle` |
+| `fx-bundle` | First-class Asset Skill: `fx-bundle` |
 | `platform-strip` | First-class Asset Skill: `platform-strip` |
 | `screen-reference` | First-class Asset Skill: `screen-reference` |
 | `ui-kit` | First-class Asset Skill: `ui-kit` |
@@ -188,7 +189,8 @@ Brief shape:
 
 ### Production Contract
 - Legacy unit: First Entry Document: {references/production-units/<unit>.md}
-- First-class unit: First-class Asset Skill: {background-map | character-bundle | platform-strip | screen-reference | ui-kit | card-kit | compact-prop-pack | scene-prop-set}
+- First-class unit: First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | screen-reference | ui-kit | card-kit | compact-prop-pack}
+  | scene-prop-set}
 - For a first-class unit, invoke that named Skill with one shared generic asset
   request. Do not read a production-unit path for that family.
 
@@ -205,6 +207,11 @@ Brief shape:
 - For `compact-prop-pack`, pass the request and fully validated result to
   `tools/asset_compact_prop_pack_entry_draft.py`. It writes one ready logical
   entry draft per AtlasTexture while retaining the shared physical bundle path.
+- For `fx-bundle`, use `tools/asset_curation_entry_draft.py` request mode for a
+   static `single -> Texture2D` result, or `tools/asset_action_entry_draft.py`
+   request mode for its one animated `grid_sheet -> SpriteFrames` result. Both
+   start compiled; pass a ready entry onward only after the Skill's L0-L4
+   production loop succeeds.
 - For `scene-prop-set`, pass the original request, successful result, and first
   declared logical prop to `tools/asset_scene_prop_set_entry_draft.py` before
   writing its ready draft. The builder binds metadata geometry to the request.

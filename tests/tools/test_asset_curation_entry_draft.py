@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
@@ -11,7 +12,9 @@ sys.path.insert(0, str(TOOLS_DIR))
 from asset_curation_entry_draft import (  # noqa: E402
     CurationEntryDraftError,
     build_curation_entry_draft,
+    build_fx_static_entry_draft,
     write_curation_entry_draft,
+    write_fx_static_entry_draft,
 )
 from asset_stable_entry import stable_output_dir, validate_entry  # noqa: E402
 
@@ -296,3 +299,93 @@ def test_write_emits_the_draft_file(tmp_path):
 
     assert result["ok"] is True
     assert out.exists()
+
+
+def _fx_static_inputs(tmp_path):
+    asset_id = "lantern_spark"
+    family = "fx-bundle"
+    relative = final_relative(asset_id, family)
+    image = tmp_path / relative
+    image.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGBA", (16, 16), (255, 192, 0, 160)).save(image)
+    report = make_report()
+    report["candidates"][0].update(
+        candidate_id="fx.lantern_spark",
+        name="lantern_spark",
+        final_path=relative,
+    )
+    report_path = write_report(tmp_path, report)
+    request = {
+        "asset_type": "fx-bundle",
+        "asset_id": asset_id,
+        "brief": "A static lantern spark.",
+        "provider": "codex",
+        "spec": {"mode": "static"},
+    }
+    request_path = tmp_path / "ASSET_REQUEST.json"
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    return asset_id, relative, report_path, request_path
+
+
+def test_fx_static_entry_binds_selected_png_to_texture2d(tmp_path):
+    asset_id, relative, report_path, request_path = _fx_static_inputs(tmp_path)
+
+    entry = build_fx_static_entry_draft(
+        report_path,
+        candidate="lantern_spark",
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=tmp_path,
+    )
+
+    assert entry["processing_status"] == "compiled"
+    assert entry["source_layout"] == {"type": "single", "path": f"res://{relative}"}
+    assert entry["godot_artifact"] == {"type": "Texture2D", "path": f"res://{relative}"}
+
+
+def test_fx_static_entry_requires_the_static_request_mode(tmp_path):
+    asset_id, _, report_path, request_path = _fx_static_inputs(tmp_path)
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    request["spec"] = {
+        "mode": "animated",
+        "required_actions": ["spark"],
+        "actions": [{
+            "name": "spark",
+            "grid": {"columns": 1, "rows": 1},
+            "frame_names": ["spark_01"],
+            "fps": 1,
+            "loop": False,
+            "frame_durations": [1],
+        }],
+    }
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+
+    with pytest.raises(CurationEntryDraftError, match="static fx-bundle"):
+        build_fx_static_entry_draft(
+            report_path,
+            candidate="lantern_spark",
+            request_path=request_path,
+            asset_id=asset_id,
+            tag=TAG,
+            project_root=tmp_path,
+        )
+
+
+def test_fx_static_entry_writer_emits_compiled_draft(tmp_path):
+    asset_id, relative, report_path, request_path = _fx_static_inputs(tmp_path)
+    out = tmp_path / ".godotmaker/asset-generation/work/entries/lantern_spark.json"
+
+    result = write_fx_static_entry_draft(
+        report_path,
+        candidate="lantern_spark",
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=tmp_path,
+        out=out,
+    )
+
+    assert result["ok"] is True
+    assert result["path"] == f"res://{relative}"
+    assert json.loads(out.read_text(encoding="utf-8"))["processing_status"] == "compiled"

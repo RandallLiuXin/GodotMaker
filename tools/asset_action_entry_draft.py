@@ -15,9 +15,10 @@ and containment of every runtime path inside the asset's stable output
 directory.
 
 Single-action drafts stop at ``processing_status: source_ready`` and carry no
-``godot_artifact``. Character-bundle mode receives every required action,
-constructs the one shared ``SpriteFrames`` resource with the native compiler,
-and then writes a ready draft.
+``godot_artifact``. Character-bundle mode receives every required action, while
+animated FX mode receives its one explicit action. The latter constructs one
+shared ``SpriteFrames`` resource with the native compiler and writes a compiled
+entry; the FX Skill promotes it to ready only after L0-L4 pass.
 """
 from __future__ import annotations
 
@@ -295,14 +296,14 @@ def write_action_entry_draft(
     }
 
 
-def _load_request(path: Path) -> dict[str, Any]:
+def _load_bundle_request(path: Path, asset_type: str) -> dict[str, Any]:
     request = _load_object(path, "request")
     try:
         check_bundle_request(request)
     except AnimatedBundleContractError as exc:
         raise ActionEntryDraftError(str(exc)) from exc
-    if request["asset_type"] != "character-bundle":
-        raise ActionEntryDraftError("--request must describe a character-bundle")
+    if request["asset_type"] != asset_type:
+        raise ActionEntryDraftError(f"--request must describe a {asset_type}")
     return request
 
 
@@ -315,7 +316,7 @@ def build_character_bundle_entry_draft(
     project_root: Path,
 ) -> dict[str, Any]:
     """Build one ready SpriteFrames stable entry from every required action."""
-    request = _load_request(request_path)
+    request = _load_bundle_request(request_path, "character-bundle")
     if request["asset_id"] != asset_id:
         raise ActionEntryDraftError("--asset-id must match request.asset_id")
     if not tag.strip():
@@ -494,6 +495,106 @@ def build_character_bundle_entry_draft(
     )}
 
 
+def build_fx_bundle_entry_draft(
+    metadata_path: Path,
+    *,
+    request_path: Path,
+    asset_id: str,
+    tag: str,
+    project_root: Path,
+) -> dict[str, Any]:
+    """Build the compiled SpriteFrames entry for an animated FX request."""
+    request = _load_bundle_request(request_path, "fx-bundle")
+    if request["spec"]["mode"] != "animated":
+        raise ActionEntryDraftError("--request must describe an animated fx-bundle")
+    if request["asset_id"] != asset_id:
+        raise ActionEntryDraftError("--asset-id must match request.asset_id")
+    if not tag.strip():
+        raise ActionEntryDraftError("--tag must be a non-empty string")
+
+    action = request["spec"]["actions"][0]
+    action_name = action["name"]
+    metadata = _load_object(metadata_path, "metadata")
+    if metadata.get("action_name") != action_name:
+        raise ActionEntryDraftError("FX action metadata must match the request action name")
+    if metadata.get("align") != "center":
+        raise ActionEntryDraftError("animated FX metadata.align must be center")
+    if metadata.get("frame_labels") != action["frame_names"]:
+        raise ActionEntryDraftError(
+            "FX action frame_labels must match the request frame_names in order"
+        )
+    expected_grid = {"cols": action["grid"]["columns"], "rows": action["grid"]["rows"]}
+    if metadata.get("grid") != expected_grid:
+        raise ActionEntryDraftError("FX action grid must match the request grid")
+
+    built = build_action_entry_draft(
+        metadata_path,
+        asset_id=asset_id,
+        tag=tag,
+        production_family="fx-bundle",
+        project_root=project_root,
+    )
+    support = built["support"]
+    if support["fps"] != float(action["fps"]):
+        raise ActionEntryDraftError("FX action fps must match the request")
+    if support["loop"] is not action["loop"]:
+        raise ActionEntryDraftError("FX action loop must match the request")
+    if support["frame_durations"] != [float(value) for value in action["frame_durations"]]:
+        raise ActionEntryDraftError("FX action frame_durations must match the request")
+    expected_sheet_path = _res(
+        f"{stable_output_dir('fx-bundle', asset_id)}/{asset_id}_sheet.png"
+    )
+    if support["sheet_path"] != expected_sheet_path:
+        raise ActionEntryDraftError("FX action sheet path must match the stable action path")
+    expected_frame_paths = [
+        _res(
+            f"{stable_output_dir('fx-bundle', asset_id)}/{asset_id}_{action_name}_{label}.png"
+        )
+        for label in action["frame_names"]
+    ]
+    if support["frame_paths"] != expected_frame_paths:
+        raise ActionEntryDraftError("FX action frame paths must match the stable action paths in order")
+
+    try:
+        compiler_spec = build_spriteframes_spec(request, {action_name: support["frame_paths"]})
+    except AnimatedBundleContractError as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
+    artifact_path = _res(f"{stable_output_dir('fx-bundle', asset_id)}/{asset_id}.tres")
+    entry = {
+        "version": SCHEMA_VERSION,
+        "asset_id": asset_id,
+        "tag": tag,
+        "production_family": "fx-bundle",
+        "source_layout": {"type": SOURCE_LAYOUT_TYPE, "path": support["sheet_path"]},
+        "godot_artifact": {"type": "SpriteFrames", "path": artifact_path},
+        "processing_status": "compiled",
+    }
+    try:
+        validate_entry(entry, project_root=Path(project_root))
+        build_default_registry().compile(
+            CompileRequest(
+                "fx-bundle",
+                asset_id,
+                "grid_sheet",
+                support["sheet_path"],
+                "SpriteFrames",
+                artifact_path,
+                Path(project_root),
+                compiler_spec,
+            )
+        )
+    except (CompilerError, StableEntryError) as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
+
+    support["frame_labels"] = list(action["frame_names"])
+    support["grid"] = expected_grid
+    return {
+        "entry": entry,
+        "support": {"version": SCHEMA_VERSION, "action": support},
+        "support_path": f"{stable_output_dir('fx-bundle', asset_id)}/{asset_id}.json",
+    }
+
+
 def write_character_bundle_entry_draft(
     metadata_paths: list[Path],
     *,
@@ -505,6 +606,31 @@ def write_character_bundle_entry_draft(
 ) -> dict[str, Any]:
     built = build_character_bundle_entry_draft(
         metadata_paths,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=tag,
+        project_root=project_root,
+    )
+    support_path = Path(project_root) / built["support_path"]
+    support_path.parent.mkdir(parents=True, exist_ok=True)
+    support_path.write_text(json.dumps(built["support"], indent=2) + "\n", encoding="utf-8")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(built["entry"], indent=2) + "\n", encoding="utf-8")
+    return {"ok": True, "draft": str(out), "support": built["support_path"], "asset_id": asset_id, "tag": tag}
+
+
+def write_fx_bundle_entry_draft(
+    metadata_path: Path,
+    *,
+    request_path: Path,
+    asset_id: str,
+    tag: str,
+    project_root: Path,
+    out: Path,
+) -> dict[str, Any]:
+    """Write the compiled animated FX entry and its action support metadata."""
+    built = build_fx_bundle_entry_draft(
+        metadata_path,
         request_path=request_path,
         asset_id=asset_id,
         tag=tag,
@@ -533,16 +659,32 @@ def _main() -> int:
 
     try:
         if args.request:
-            if args.production_family != "character-bundle":
-                raise ActionEntryDraftError("--request bundle mode supports character-bundle only")
-            result = write_character_bundle_entry_draft(
-                args.metadata,
-                request_path=args.request,
-                asset_id=args.asset_id,
-                tag=args.tag,
-                project_root=args.project_root,
-                out=args.out,
-            )
+            if args.production_family == "character-bundle":
+                result = write_character_bundle_entry_draft(
+                    args.metadata,
+                    request_path=args.request,
+                    asset_id=args.asset_id,
+                    tag=args.tag,
+                    project_root=args.project_root,
+                    out=args.out,
+                )
+            elif args.production_family == "fx-bundle":
+                if len(args.metadata) != 1:
+                    raise ActionEntryDraftError(
+                        "animated fx-bundle mode accepts exactly one --metadata"
+                    )
+                result = write_fx_bundle_entry_draft(
+                    args.metadata[0],
+                    request_path=args.request,
+                    asset_id=args.asset_id,
+                    tag=args.tag,
+                    project_root=args.project_root,
+                    out=args.out,
+                )
+            else:
+                raise ActionEntryDraftError(
+                    "--request bundle mode supports character-bundle or fx-bundle only"
+                )
         else:
             if len(args.metadata) != 1:
                 raise ActionEntryDraftError("single-action mode accepts exactly one --metadata")

@@ -13,7 +13,9 @@ from asset_action_entry_draft import (  # noqa: E402
     ActionEntryDraftError,
     build_action_entry_draft,
     build_character_bundle_entry_draft,
+    build_fx_bundle_entry_draft,
     write_action_entry_draft,
+    write_fx_bundle_entry_draft,
 )
 from asset_stable_entry import stable_output_dir, validate_entry  # noqa: E402
 
@@ -543,3 +545,125 @@ def test_character_bundle_entry_requires_an_unchecked_scale_root(tmp_path):
             tag=TAG,
             project_root=tmp_path,
         )
+
+
+def _fx_bundle_inputs(tmp_path):
+    asset_id = "arc_blast"
+    root = stable_dir(asset_id, "fx-bundle")
+    request = {
+        "asset_type": "fx-bundle",
+        "asset_id": asset_id,
+        "brief": "A centered three-frame arc blast.",
+        "provider": "codex",
+        "spec": {
+            "mode": "animated",
+            "required_actions": ["blast"],
+            "actions": [{
+                "name": "blast",
+                "grid": {"columns": 3, "rows": 1},
+                "frame_names": ["blast_01", "blast_02", "blast_03"],
+                "fps": 12,
+                "loop": False,
+                "frame_durations": [1, 2, 1],
+            }],
+        },
+    }
+    request_path = tmp_path / "ASSET_REQUEST.json"
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    metadata = {
+        "frame_count": 3,
+        "final_sheet_path": f"{root}/{asset_id}_sheet.png",
+        "final_frame_paths": [
+            f"{root}/{asset_id}_blast_{frame}.png"
+            for frame in request["spec"]["actions"][0]["frame_names"]
+        ],
+        "align": "center",
+        "shared_scale": True,
+        "action_name": "blast",
+        "fps": 12,
+        "loop": False,
+        "frame_durations": [1, 2, 1],
+        "edge_touch_frames": [],
+        "scale_reference": {"checked": False},
+        "cell_size": 256,
+        "grid": {"cols": 3, "rows": 1},
+        "frame_labels": ["blast_01", "blast_02", "blast_03"],
+    }
+    for relative in [metadata["final_sheet_path"], *metadata["final_frame_paths"]]:
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGBA", (8, 8), (255, 255, 255, 128)).save(path)
+    metadata_path = tmp_path / ".godotmaker/asset-generation/work/blast/pipeline-meta.json"
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    return asset_id, root, request_path, metadata_path
+
+
+def test_fx_bundle_entry_compiles_exactly_one_explicit_action(tmp_path):
+    asset_id, root, request_path, metadata_path = _fx_bundle_inputs(tmp_path)
+
+    built = build_fx_bundle_entry_draft(
+        metadata_path,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=tmp_path,
+    )
+
+    assert built["entry"]["processing_status"] == "compiled"
+    assert built["entry"]["godot_artifact"] == {
+        "type": "SpriteFrames", "path": f"res://{root}/{asset_id}.tres"
+    }
+    assert (tmp_path / root / f"{asset_id}.tres").is_file()
+    assert built["support"]["action"]["frame_labels"] == [
+        "blast_01", "blast_02", "blast_03"
+    ]
+    assert built["support"]["action"]["frame_paths"] == [
+        f"res://{root}/{asset_id}_blast_blast_01.png",
+        f"res://{root}/{asset_id}_blast_blast_02.png",
+        f"res://{root}/{asset_id}_blast_blast_03.png",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("align", "feet", "metadata.align must be center"),
+        ("grid", {"cols": 1, "rows": 3}, "grid must match"),
+        ("frame_labels", ["blast_02", "blast_01", "blast_03"], "frame_labels must match"),
+    ],
+)
+def test_fx_bundle_entry_rejects_animation_metadata_that_bypasses_the_request(
+    tmp_path, field, value, message
+):
+    asset_id, _, request_path, metadata_path = _fx_bundle_inputs(tmp_path)
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata[field] = value
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    with pytest.raises(ActionEntryDraftError, match=message):
+        build_fx_bundle_entry_draft(
+            metadata_path,
+            request_path=request_path,
+            asset_id=asset_id,
+            tag=TAG,
+            project_root=tmp_path,
+        )
+
+
+def test_fx_bundle_cli_writes_the_compiled_entry(tmp_path):
+    asset_id, root, request_path, metadata_path = _fx_bundle_inputs(tmp_path)
+    out = tmp_path / ".godotmaker/asset-generation/work/entries/arc_blast.json"
+
+    result = write_fx_bundle_entry_draft(
+        metadata_path,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=tmp_path,
+        out=out,
+    )
+
+    assert result["ok"] is True
+    assert result["support"] == f"{root}/{asset_id}.json"
+    assert json.loads(out.read_text(encoding="utf-8"))["processing_status"] == "compiled"

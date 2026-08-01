@@ -203,6 +203,8 @@ def test_fx_fixture_reaches_the_real_spriteframes_compiler_through_public_handof
         pytest.param(lambda d: d["spec"].update(required_actions=["impact", "flash"]), id="multiple-required-actions"),
         pytest.param(lambda d: d["spec"]["actions"].append(copy.deepcopy(d["spec"]["actions"][0])), id="multiple-actions"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(name="flash"), id="mismatched-action-name"),
+        pytest.param(lambda d: d["spec"]["actions"][0].pop("grid"), id="missing-grid"),
+        pytest.param(lambda d: d["spec"]["actions"][0].update(grid={"columns": 2, "rows": 1}), id="grid-frame-mismatch"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=[]), id="missing-frames"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(frame_names=["impact", "impact"]), id="duplicate-frame-name"),
         pytest.param(lambda d: d["spec"]["actions"][0].update(fps=0), id="non-positive-fps"),
@@ -230,6 +232,17 @@ def test_static_fx_rejects_animation_fields_and_keeps_its_texture_result_boundar
     request["spec"]["actions"] = []
     with pytest.raises(AnimatedBundleContractError, match="not allowed for a static"):
         check_bundle_request(request)
+
+
+def test_fx_skill_keeps_static_autoslice_and_animated_grid_paths_separate():
+    skill = (REPO_ROOT / "skills/assets/fx-bundle/SKILL.md").read_text(encoding="utf-8")
+
+    assert "--snap-mode autoslice" in skill
+    assert "Do not supply\n`--grid` to autoslice" in skill
+    assert "semantically form one effect" in skill
+    assert "needs_regeneration" in skill
+    assert "Animation\nnever uses autoslice" in skill
+    assert "--align center" in skill
 
 
 @pytest.mark.parametrize(

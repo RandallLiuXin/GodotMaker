@@ -17,8 +17,10 @@ flashes, slash arcs, aura loops, dust, and detached effects.
 3. Generate the source through the provider doc.
 4. Process action sources with `tools/asset_action_process.py` using
    `kind: fx`.
-5. Process single projectiles, pickups, and one-frame effects with
-   `tools/asset_sheet_process.py --snap-mode autoslice`.
+5. For a single effect, use `tools/asset_sheet_process.py --snap-mode autoslice`
+   only when every disconnected component is an independent logical effect.
+   Preserve semantically collective sparks, fragments, and glow as one full
+   composition through an explicit one-cell route or deterministic finalize.
 6. Use action metadata for animated frames or delivery sheets.
 7. Use selected transparent PNGs for one-frame foreground effects.
 8. Write stable entry drafts.
@@ -73,14 +75,13 @@ python tools/asset_sheet_process.py \
 
 Match `--names` to the separated effects in row-major reading order.
 
-Select one-frame foreground effects with `tools/asset_curation_select.py`.
-Draft selected one-frame entries with `tools/asset_curation_entry_draft.py`
-(`--production-family fx-bundle --source-layout single`).
-Draft animated FX entries with `tools/asset_action_entry_draft.py`
-(`--production-family fx-bundle`), which writes `source_layout.type: grid_sheet`.
-Both stop at `processing_status: source_ready` with no `godot_artifact`; each
-animated FX action supplies explicit FPS, loop state, frame order, and relative
-frame durations to one SpriteFrames compile.
+Select one-frame foreground effects with `tools/asset_curation_select.py`, then
+use `tools/asset_curation_entry_draft.py --request <request.json>` for its compiler-
+bound `single -> Texture2D` compiled entry. Draft animated FX entries with
+`tools/asset_action_entry_draft.py --request <request.json>`; it writes one compiled
+`grid_sheet -> SpriteFrames` entry from the explicit grid, FPS, loop state,
+frame order, and relative frame durations. The FX Skill runs L0-L4 and repairs
+diagnostics before worker handoff.
 Do not use a source sheet as an independent final effect.
 
 ## Outputs
