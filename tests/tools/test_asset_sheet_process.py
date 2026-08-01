@@ -315,6 +315,38 @@ def test_process_sheet_removes_edge_connected_magenta_fringe(tmp_path):
     assert result["accepted"][0]["crop_bbox"] == [2, 2, 8, 8]
 
 
+def test_process_sheet_soft_matte_removes_blended_magenta_spill(tmp_path):
+    source = tmp_path / "magenta_soft_matte.png"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (12, 12), (255, 0, 255, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((3, 3, 8, 8), fill=(80, 120, 70, 255))
+    # This is a foreground/background blend, not an exact key colour.
+    draw.rectangle((2, 2, 9, 9), outline=(185, 25, 190, 255))
+    image.save(source)
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        snap_mode="grid",
+        names="mossy_prop",
+        background="magenta",
+        magenta_soft_matte=True,
+    )
+
+    assert result["cleanup"]["magenta_soft_matte"] is True
+    assert result["cleanup"]["soft_matte_pixels"] > 0
+    candidate = Image.open(tmp_path / "out" / "mossy_prop.png").convert("RGBA")
+    try:
+        assert not any(
+            alpha > 0 and red > green and blue > green
+            for red, green, blue, alpha in candidate.getdata()
+        )
+    finally:
+        candidate.close()
+
+
 def test_process_sheet_rejects_magenta_edge_touch_when_requested(tmp_path):
     source = tmp_path / "magenta_edge.png"
     make_magenta_sheet(source, edge_touch=True)

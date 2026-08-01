@@ -107,18 +107,22 @@ Never fabricate any of those records.
    the whole ordered prop list. Specify shared style, lighting, perspective,
    plentiful gaps between objects, a solid `#FF00FF` background, and no text,
    labels, UI, floor plane, borders, or grid. Archive the raw provider PNG.
-3. Process that sheet with `asset_sheet_process.py --snap-mode autoslice` and
-   `--background magenta`; never pass `--grid` to autoslice. Write the cleaned
-   transparent sheet using `--processed-out`, candidates, AABB report, and
-   report JSON. Supply `--names` in source-sheet reading order. A count mismatch
-   returns `needs_regeneration` with no candidate or processed-sheet output:
-   inspect spacing, names, or source output and regenerate or repair instead
-   of treating it as a final failure.
+3. Process that sheet with `asset_sheet_process.py --snap-mode autoslice`,
+   `--background magenta`, `--magenta-soft-matte`, `--padding 2`, and
+   `--min-component-area 100`; never pass `--grid` to autoslice. The soft matte
+   removes #FF00FF-composited antialiasing and purple spill before candidates
+   are tightly finalized. Write the cleaned transparent sheet using
+   `--processed-out`, candidates, AABB report, and report JSON. Supply `--names`
+   in source-sheet reading order. A count mismatch returns `needs_regeneration`
+   with no candidate or processed-sheet output: inspect spacing, names, or
+   source output and regenerate or repair instead of treating it as a final
+   failure.
 4. Curate the named candidates with `tools/asset_curation_select.py`. Preserve
    the selection and rejection reasons. For every selected prop, call
    `tools/asset_image_finalize.py --resize <slot_width>x<slot_height> --no-origin`
-   into its declared `normalized/` source. This preserves aspect ratio, centers
-   art, and adds transparent padding without writing a shared
+   into its declared `normalized/` source. The matte has already made the
+   candidates transparent, so do not re-key the tight candidate crop here. This
+   preserves aspect ratio, centers art, and adds transparent padding without writing a shared
    `assets/origin/<name>.png`; do not resize the whole source sheet before
    slicing.
 5. Assemble only the finalized sources with `asset_atlas_assemble.py`. Its
