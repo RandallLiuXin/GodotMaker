@@ -67,7 +67,14 @@ def test_scene_props_autoslice_one_source_then_finalize_each_prop_without_stretc
         with Image.open(source_path) as image:
             candidate_sizes[name] = _alpha_bbox(image)
         output = normalized / f"{name}.png"
-        finalize_image_asset(source_path, output, resize=targets[name], label=name, archive_original=False)
+        finalize_image_asset(
+            source_path,
+            output,
+            resize=targets[name],
+            label=name,
+            archive_original=False,
+            background="magenta",
+        )
         source_paths[name] = output.relative_to(tmp_path).as_posix()
 
     final_sizes = {}

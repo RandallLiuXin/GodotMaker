@@ -90,12 +90,20 @@ sidecar evidence, never extra keys in the generic result.
    plane, grid lines, annotations, or watermarks. Keep the provider pixels
    unchanged at `.godotmaker/asset-generation/sources/<asset_id>_source.png`.
 3. Record provenance through the pinned provider's controlled report or claim
-   tool. The record must name provider, coding model, reasoning, image model
-   identity when exposed, prompt, raw source path, input reference paths and
-   roles, and actual attachment paths. For Codex, use
+   tool. For Codex, before the call write a one-item plan under
+   `.godotmaker/asset-generation/` containing its exact project-relative
+   `source_path`, **every** request reference as `{role, path}`, and
+   `require_provider_trace: true` even when references is `[]`. After the one
+   `image_gen` call, write its controlled generated-path report with `asset_id`,
+   `generated_path`, `references`, and `provider_trace` containing provider,
+   coding model, reasoning, image call identity, image-model identity, and the
+   exact `referenced_image_paths` supplied to the call. Then run
    `.godotmaker/asset-runtime/tools/codex_image_claim.py --plan ... --report ...
    --project-root . --out-report .godotmaker/asset-generation/reports/<asset_id>_source.json`.
-   Never hand-write provider provenance.
+   The resulting claim must retain those fields, including empty reference lists
+   for a no-reference request. Never hand-write provider provenance or set
+   `require_provider_trace` false for this family. For API-backed providers, use
+   `tools/asset_source_generate.py --spec` with its controlled report path.
 4. Use the raw source sheet directly with the owned deterministic processor:
 
    ```powershell
@@ -117,8 +125,8 @@ sidecar evidence, never extra keys in the generic result.
 6. Run `tools/asset_image_finalize.py` separately for every selected prop with
    its declared slot size. For a slot named `<logical_prop_id>`, use the
    selected copy as `--source`, the declaration's `source` as `--out`,
-   `--resize <slot-width>x<slot-height>`, `--label <logical_prop_id>`,
-   `--no-origin`, and write
+   `--resize <slot-width>x<slot-height>`, `--background magenta`,
+   `--label <logical_prop_id>`, `--no-origin`, and write
    `.godotmaker/asset-generation/reports/<asset_id>_<logical_prop_id>_finalize.json`.
    preserve aspect ratio and center the prop with transparent padding. Never
    resize the whole sheet before autoslice and never stretch a tall or wide prop
@@ -131,16 +139,26 @@ sidecar evidence, never extra keys in the generic result.
    `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py`, using the
    stable atlas, metadata path, and that exact logical region name. The output
    `.tres` filename must equal its logical prop id.
-9. Run this family's `standalone_validation.py` wrapper and its
-   `compile_and_validate()` function for applicable L0-L4, using exactly
-   `GM_EVAL_GODOT_PATH` or `GODOT_BIN` when configured. The wrapper owns the
-   scene-prop-set binding to the shared validator. L0 binds the request/result,
-   L1 verifies atlas and metadata delivery, L2 compiles, L3 loads through
-   headless Godot, and L4 verifies every AtlasTexture's shared atlas path,
-   exact region, and zero margin. Read diagnostics, repair source, parameters,
-   metadata, or artifacts, then repeat from the affected step. Return ready
-   only after all applicable layers pass; the first check failure is never the
-   final result unless it is a real STOP condition.
+9. Run the controlled validation command below for applicable L0-L4. It owns
+   the family `standalone_validation.py` binding, writes the returned generic
+   result back to `<asset_id>-result.json`, and writes the identical evidence
+   to the required validation report. It must use exactly `GM_EVAL_GODOT_PATH`
+   or `GODOT_BIN` when configured:
+
+   ```powershell
+   $godotPath = if ($env:GM_EVAL_GODOT_PATH) { $env:GM_EVAL_GODOT_PATH } else { $env:GODOT_BIN }
+   & $godotPath --headless --path . --import
+   python tools/asset_scene_prop_set_validate.py --request ASSET_REQUEST.json --result .godotmaker/asset-generation/<asset_id>-result.json --report .godotmaker/asset-generation/reports/<asset_id>_validation.json --project-root . --godot-path $godotPath
+   ```
+
+   The visible import records the pinned engine in the trace; L3 then independently loads every
+   AtlasTexture through the same pinned Godot binary. L0 binds the
+   request/result, L1 verifies atlas and metadata delivery, L2 compiles, L3
+   loads through headless Godot, and L4 verifies every AtlasTexture's shared
+   atlas path, exact region, and zero margin. Read diagnostics, repair source,
+   parameters, metadata, or artifacts, then repeat from the affected step.
+   Return ready only after all applicable layers pass; the first check failure
+   is never the final result unless it is a real STOP condition.
 
 The project-owned deterministic tools above are the preferred processing path.
 Diagnostic repair may also use Pillow, System.Drawing, ImageMagick, SVG,
