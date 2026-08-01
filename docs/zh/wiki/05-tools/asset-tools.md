@@ -18,6 +18,7 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 12. `asset_assets_md_update.py`
 13. `asset_atlas_assemble.py`
 14. `asset_runtime_resolver.py`
+15. `asset_compact_prop_pack_entry_draft.py`
 
 ## asset_source_generate.py
 
@@ -75,6 +76,10 @@ python tools/asset_sheet_process.py \
 
 只在 `--snap-mode grid` 中传入 `--grid <COLSxROWS>`。Autoslice 按从上到下、
 从左到右输出独立区域；`--names` 数量与检测区域数量不一致时会拒绝语义映射。
+
+使用 `--processed-out <transparent-sheet.png>` 可保留清理后的 RGBA source sheet
+供审计。Autoslice 报告名称数量不匹配时不会写出该文件，避免未绑定的 sheet 被
+误认为有效的生产产物。
 
 ## asset_action_process.py
 
