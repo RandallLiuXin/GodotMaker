@@ -1,4 +1,5 @@
 """FX-specific regression coverage for static and animated processing routes."""
+import json
 from pathlib import Path
 import sys
 
@@ -9,6 +10,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
 from asset_action_process import process_action_sheet  # noqa: E402
+from asset_action_entry_draft import build_fx_bundle_entry_draft  # noqa: E402
 from asset_sheet_process import process_sheet  # noqa: E402
 
 
@@ -120,6 +122,7 @@ def test_fx_animation_uses_explicit_grid_and_centered_action_frames(tmp_path):
         align="center",
         final_dir=final_dir,
         final_prefix="forge-impact_impact",
+        final_sheet_name="forge-impact_sheet.png",
     )
 
     assert result["grid"] == {"cols": 2, "rows": 2}
@@ -131,3 +134,40 @@ def test_fx_animation_uses_explicit_grid_and_centered_action_frames(tmp_path):
         "forge-impact_impact_impact_03.png",
         "forge-impact_impact_impact_04.png",
     ]
+    assert Path(result["final_sheet_path"]).name == "forge-impact_sheet.png"
+
+    request = {
+        "asset_type": "fx-bundle",
+        "asset_id": "forge-impact",
+        "brief": "A centered four-frame impact.",
+        "provider": "codex",
+        "spec": {
+            "mode": "animated",
+            "required_actions": ["impact"],
+            "actions": [{
+                "name": "impact",
+                "grid": {"columns": 2, "rows": 2},
+                "frame_names": ["impact_01", "impact_02", "impact_03", "impact_04"],
+                "fps": 16,
+                "loop": False,
+                "frame_durations": [1, 1, 1, 2],
+            }],
+        },
+    }
+    request_path = tmp_path / "ASSET_REQUEST.json"
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    metadata_path = tmp_path / "work" / "fx-pipeline-meta.json"
+    metadata_path.write_text(json.dumps(result), encoding="utf-8")
+
+    built = build_fx_bundle_entry_draft(
+        metadata_path,
+        request_path=request_path,
+        asset_id="forge-impact",
+        tag="v0.1.0",
+        project_root=tmp_path,
+    )
+
+    assert built["entry"]["source_layout"]["path"] == (
+        "res://assets/generated/fx-bundle/forge-impact/forge-impact_sheet.png"
+    )
+    assert (final_dir / "forge-impact.tres").is_file()

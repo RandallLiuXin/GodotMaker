@@ -58,10 +58,11 @@ cell count.
 
 ## Provider, references, and provenance
 
-1. Read the declared provider guide under
-   `skills/core/gm-asset/references/providers/<provider>.md`. Execute that
-   provider route only; do not silently substitute `native`, `codex`, `gemini`,
-   or `openai`.
+1. Read the declared provider guide at
+   `.godotmaker/asset-runtime/references/providers/<provider>.md`. The runtime
+   installs this guide from the shared `gm-asset` provider contract. Execute
+   that provider route only; do not silently substitute `native`, `codex`,
+   `gemini`, or `openai`.
 2. With no references, generate from the request's identity, gameplay role,
    direction, scale, frame count or static target, intended visual style,
    isolated foreground, solid `#FF00FF` source background, and no text or UI.
@@ -83,15 +84,25 @@ cell count.
    claim evidence is a STOP.
 5. Write `.godotmaker/asset-generation/traces/<asset_id>.json`. It contains
    `asset_id`; `provider.requested`, `provider.actual`, and, when applicable,
-   `provider.referenced_image_paths` (the resolved local attachment paths);
-   ordered `references` with the request `role`, `path`, `sha256`, and
-   `attachment`; `artifacts.raw_sources`, `provider_claim`, `process_reports`,
-   `final_frames`, `source_layout`, and `godot_artifact`; and ordered `steps`.
-   Every artifact path is a contained `res://` or project-relative path.
+   `provider.referenced_image_paths` as the exact absolute local paths passed to
+   the image-provider call; ordered `references` with the request `role`,
+   `res://` `path`, `sha256`, and literal
+   `attachment: "referenced_image_paths"`; `artifacts.raw_sources`,
+   `provider_claim`, `process_reports`, `final_frames`, `source_layout`, and
+   `godot_artifact`; and ordered `steps`. `source_layout` and
+   `godot_artifact` are objects with exactly `type` and `path`: animated FX
+   uses `{ "type": "grid_sheet", "path": "res://..._sheet.png" }` and
+   `{ "type": "SpriteFrames", "path": "res://....tres" }`; static FX uses
+   `{ "type": "single", "path": "res://....png" }` and
+   `{ "type": "Texture2D", "path": "res://....png" }`. Every artifact path
+   is a contained `res://` or project-relative path.
    Each step records `reason`, `command_or_code`, `inputs`, `outputs`,
    `modified_files`, `diagnostic`, and `repair`. Project tools are preferred,
    but a temporary image tool or diagnostic script is allowed when this trace
-   is truthful; its name alone is never a failure.
+   is truthful; its name alone is never a failure. When a temporary script is
+   created, list that script's exact path in the same step's `modified_files`
+   as well as the generated assets it changes; do not omit the script merely
+   because it is an implementation detail.
 
 References influence scale, direction, palette, and visual style. Do not claim
 they were attached or validated unless the provider trace proves it.
@@ -112,8 +123,10 @@ STOP condition occurs. Never mark the first failed check as the final result.
 4. The entry builders below write `processing_status: compiled`. Only after all
    applicable L0-L4 levels pass, promote that same stable entry to
    `processing_status: ready`, set `validation.passed: true`, write the final
-   result, and run the request/result handoff checker. L5/L6 visual judgment
-   belongs to the private Eval, not this production Skill.
+   result, and run the request/result handoff checker. Then write that same
+   generic result object to `ASSET_RESULT.json` in the project root and return
+   only its JSON contents: no Markdown links, prose, or alternate result shape.
+   L5/L6 visual judgment belongs to the private Eval, not this production Skill.
 
 ### Godot executable for L3/L4
 
@@ -171,6 +184,13 @@ delivery sheet, GIF preview, processing report, and action metadata. Animation
 never uses autoslice or an atlas assembler. Publish each processed frame at
 `assets/generated/fx-bundle/<asset_id>/<asset_id>_<action>_<frame>.png`; this is
 the canonical frame path consumed by the L0-L4 SpriteFrames validation route.
+Pass `--final-dir assets/generated/fx-bundle/<asset_id>` and
+`--final-prefix <asset_id>_<action>` and `--final-sheet-name
+<asset_id>_sheet.png` to the action processor. Do not use only `<asset_id>` as
+the final prefix: each declared `frame_name` already carries its own ordered
+frame label, so omitting the action prefix changes the stable runtime path. The
+separate final sheet name preserves the one stable source-layout path consumed
+by the SpriteFrames entry compiler.
 
 Compile its one action through the shared `grid_sheet -> SpriteFrames` route:
 
@@ -195,3 +215,25 @@ An animated result has one `SpriteFrames` runtime output and one stable
 `grid_sheet` source. A static result has one `Texture2D` runtime output at the
 same stable PNG path as its `single` source. Both final results include explicit
 passing `L0` through `L4` evidence; no other runtime Godot type is valid.
+`ASSET_RESULT.json` is the final machine-readable handoff, not a report link or
+a summary of another JSON file.
+
+### Trace finalization
+
+Before writing `ASSET_RESULT.json`, reread the emitted trace and validate its
+own paths against the files on disk. `source_layout` and `godot_artifact` live
+inside `trace.artifacts`, never at the trace root. For an animation,
+`trace.artifacts.final_frames` is the exact ordered list from the action
+processor's recorded final-frame paths; do not reconstruct or edit these names
+by string concatenation. Reject and repair the trace if a listed frame is
+missing, the count differs from the request, a field is outside `artifacts`, or
+the layout/artifact `type` and `path` do not match the final result.
+
+```json
+{
+  "artifacts": {
+    "source_layout": { "type": "grid_sheet", "path": "res://assets/generated/fx-bundle/<asset_id>/<asset_id>_sheet.png" },
+    "godot_artifact": { "type": "SpriteFrames", "path": "res://assets/generated/fx-bundle/<asset_id>/<asset_id>.tres" }
+  }
+}
+```

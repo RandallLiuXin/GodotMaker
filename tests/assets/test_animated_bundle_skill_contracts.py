@@ -243,6 +243,14 @@ def test_fx_skill_keeps_static_autoslice_and_animated_grid_paths_separate():
     assert "needs_regeneration" in skill
     assert "Animation\nnever uses autoslice" in skill
     assert "--align center" in skill
+    assert "--final-prefix <asset_id>_<action>" in skill
+    assert "list that script's exact path in the same step's `modified_files`" in skill
+    assert "ASSET_RESULT.json" in skill
+    assert 'attachment: \"referenced_image_paths\"' in skill
+    assert "source_layout` and\n   `godot_artifact` are objects with exactly `type` and `path`" in skill
+    assert ".godotmaker/asset-runtime/references/providers/<provider>.md" in skill
+    assert "source_layout` and `godot_artifact` live\ninside `trace.artifacts`" in skill
+    assert "do not reconstruct or edit these names\nby string concatenation" in skill
 
 
 @pytest.mark.parametrize(

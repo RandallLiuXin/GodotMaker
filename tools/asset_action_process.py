@@ -283,6 +283,7 @@ def _copy_runtime_outputs(
     *,
     final_dir: Path | None,
     final_prefix: str | None,
+    final_sheet_name: str | None,
 ) -> tuple[list[str], str | None, str | None]:
     if final_dir is None:
         return [str(path) for path in frame_paths], None, None
@@ -301,7 +302,11 @@ def _copy_runtime_outputs(
         target = final_dir / output_name
         shutil.copy2(path, target)
         final_frames.append(str(target))
-    final_sheet = final_dir / f"{final_prefix}_sheet.png"
+    if final_sheet_name is not None:
+        if (not final_sheet_name.endswith(".png")
+                or Path(final_sheet_name).name != final_sheet_name):
+            raise ActionProcessError("--final-sheet-name must be a PNG filename without directories")
+    final_sheet = final_dir / (final_sheet_name or f"{final_prefix}_sheet.png")
     shutil.copy2(sheet_path, final_sheet)
     final_gif = final_dir / f"{final_prefix}.gif"
     shutil.copy2(gif_path, final_gif)
@@ -678,6 +683,7 @@ def process_action_sheet(
     match_scale_reference: bool = False,
     final_dir: Path | None = None,
     final_prefix: str | None = None,
+    final_sheet_name: str | None = None,
     report: Path | None = None,
 ) -> dict[str, object]:
     """Normalize one action sheet into frames, a transparent sheet, GIF, and metadata."""
@@ -850,6 +856,7 @@ def process_action_sheet(
         gif_path,
         final_dir=final_dir,
         final_prefix=final_prefix,
+        final_sheet_name=final_sheet_name,
     )
 
     metadata: dict[str, object] = {
@@ -923,6 +930,7 @@ def _main() -> int:
     parser.add_argument("--match-scale-reference", action="store_true")
     parser.add_argument("--final-dir", type=Path)
     parser.add_argument("--final-prefix")
+    parser.add_argument("--final-sheet-name")
     parser.add_argument("--action-name", required=True)
     parser.add_argument("--fps", required=True, type=float)
     loop_group = parser.add_mutually_exclusive_group(required=True)
@@ -954,6 +962,7 @@ def _main() -> int:
             match_scale_reference=args.match_scale_reference,
             final_dir=args.final_dir,
             final_prefix=args.final_prefix,
+            final_sheet_name=args.final_sheet_name,
             action_name=args.action_name,
             fps=args.fps,
             loop=args.loop,
