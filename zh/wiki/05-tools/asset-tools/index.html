@@ -2983,21 +2983,21 @@
 <p>它适用于 icon pack、小型道具包、UI 组件 sheet 和其他非角色 source sheet。</p>
 <p>必须决定：</p>
 <ol>
-<li><code>--grid &lt;COLSxROWS&gt;</code></li>
 <li><code>--names &lt;comma-separated names&gt;</code></li>
-<li>对象已经分离时使用 <code>--snap-mode autoslice</code></li>
-<li>严格 cell 网格使用 <code>--snap-mode grid</code></li>
+<li>独立对象已经分离时使用 <code>--snap-mode autoslice</code></li>
+<li>严格 cell 网格使用 <code>--snap-mode grid --grid &lt;COLSxROWS&gt;</code></li>
 <li>紧凑 UI、icon、prop cell 中有零散碎片时使用 <code>--component-mode largest</code></li>
 </ol>
 <p>手动入口：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/asset_sheet_process.py<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;source.png&gt;<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;curation_dir&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;names&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--snap-mode<span class="w"> </span>&lt;autoslice<span class="p">|</span>grid&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--names<span class="w"> </span>&lt;names&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--snap-mode<span class="w"> </span>&lt;autoslice<span class="p">|</span>grid&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;
 </code></pre></div>
+<p>只在 <code>--snap-mode grid</code> 中传入 <code>--grid &lt;COLSxROWS&gt;</code>。Autoslice 按从上到下、
+从左到右输出独立区域；<code>--names</code> 数量与检测区域数量不一致时会拒绝语义映射。</p>
 <h2 id="asset_action_processpy">asset_action_process.py<a class="headerlink" href="#asset_action_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_process.py</code> 用于处理角色、敌人、NPC、召唤物和动画道具的动作 source。它会写出规范化 frame PNG、<code>sheet-transparent.png</code>、<code>animation.gif</code>、<code>pipeline-meta.json</code> 和中间 curation report。</p>
 <p>必须决定：</p>

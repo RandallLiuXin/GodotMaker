@@ -2814,7 +2814,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Asset readiness promotion now requires a compiler receipt bound to the compiled entry, while already-ready assets can explicitly revalidate without retaining that receipt.</li>
 <li>Theme recipes now accept only fully decoded raster textures and FreeType-loadable TTF/OTF fonts, rejecting truncated or unsupported resource content before a Theme is written.</li>
 <li>Failed native Godot artifact compilation now retains the previous stable artifact and atomically commits a validated replacement only after success.</li>
-<li>Added the required <code>--grid</code> (and <code>--names</code>) argument to every production-unit <code>asset_sheet_process.py</code> example so the ui-kit, card-kit, compact-prop-pack, fx-bundle, scene-prop-set, and platform-strip commands run as written instead of failing on a missing required argument, and clarified that <code>--grid</code> is required in both autoslice and grid snap modes.</li>
+<li>Restored <code>asset_sheet_process.py --snap-mode autoslice</code> to independent Godot-style region extraction without grid bucketing or cross-region unions; fixed-grid extraction continues to require <code>--grid</code>.</li>
 <li>Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at <code>.godotmaker/asset-generation/manifest.json</code> instead of the analyst's <code>assets/manifest.json</code> (#97)</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>

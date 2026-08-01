@@ -2997,10 +2997,9 @@ solid magenta <code>#FF00FF</code> sheets through <code>--background magenta</co
 non-character source sheets.</p>
 <p>Required decisions:</p>
 <ol>
-<li><code>--grid &lt;COLSxROWS&gt;</code></li>
 <li><code>--names &lt;comma-separated names&gt;</code></li>
-<li><code>--snap-mode autoslice</code> for separated objects</li>
-<li><code>--snap-mode grid</code> for strict cell grids</li>
+<li><code>--snap-mode autoslice</code> for independent separated regions</li>
+<li><code>--snap-mode grid --grid &lt;COLSxROWS&gt;</code> for strict cell grids</li>
 <li><code>--component-mode largest</code> for compact UI/icon/prop cells with stray
    fragments</li>
 </ol>
@@ -3008,11 +3007,13 @@ non-character source sheets.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/asset_sheet_process.py<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--source<span class="w"> </span>&lt;source.png&gt;<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--out-dir<span class="w"> </span>&lt;curation_dir&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--grid<span class="w"> </span>&lt;COLSxROWS&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--names<span class="w"> </span>&lt;names&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--snap-mode<span class="w"> </span>&lt;autoslice<span class="p">|</span>grid&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--names<span class="w"> </span>&lt;names&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--snap-mode<span class="w"> </span>&lt;autoslice<span class="p">|</span>grid&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--report<span class="w"> </span>&lt;report.json&gt;
 </code></pre></div>
+<p>Pass <code>--grid &lt;COLSxROWS&gt;</code> only with <code>--snap-mode grid</code>. Autoslice orders
+independent regions from top to bottom and left to right, and rejects a
+<code>--names</code> count that does not match the detected region count.</p>
 <h2 id="asset_action_processpy">asset_action_process.py<a class="headerlink" href="#asset_action_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_process.py</code> processes character, enemy, NPC, summon, and animated
 prop action sources. It writes normalized frame PNGs, <code>sheet-transparent.png</code>,
