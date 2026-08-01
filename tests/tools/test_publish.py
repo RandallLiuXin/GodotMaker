@@ -1011,6 +1011,7 @@ class TestPublishedAssetRuntime:
         assert (runtime / "asset_compiler" / "registry.py").exists()
         assert (runtime / "asset_validation" / "ladder.py").exists()
         assert (runtime / "tools" / "codex_image_claim.py").exists()
+        assert (runtime / "references" / "providers" / "native.md").exists()
         assert not (target / skill_root / "_shared").exists()
 
     @pytest.mark.parametrize(
@@ -1038,9 +1039,16 @@ class TestPublishedAssetRuntime:
             references = re.findall(r"`(\.godotmaker/asset-runtime/[^`]+)`", content)
             assert references, f"{skill_name} must reference the published asset runtime"
             for reference in references:
-                assert (target / reference).exists(), (
-                    f"{skill_name} references a missing published runtime path: {reference}"
-                )
+                if "<provider>" in reference:
+                    providers = ("native", "codex", "gemini", "openai")
+                    assert all(
+                        (target / reference.replace("<provider>", provider)).exists()
+                        for provider in providers
+                    ), f"{skill_name} references missing published provider guides: {reference}"
+                else:
+                    assert (target / reference).exists(), (
+                        f"{skill_name} references a missing published runtime path: {reference}"
+                    )
 
     @pytest.mark.parametrize("agent", publish.AGENT_CHOICES)
     def test_published_standalone_runners_import_and_validate_without_source_checkout(

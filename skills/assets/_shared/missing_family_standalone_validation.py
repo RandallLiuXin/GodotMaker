@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from copy import deepcopy
 import json
+import os
 from pathlib import Path
 from typing import Any
 import warnings
@@ -1047,7 +1048,15 @@ def compile_and_validate(
             )
             for output, _ in declarations
         ]
-        report = GodotProbe(godot_path).probe(root, probe_requests)
+        # Eval runners inject a pinned executable through this variable.  Callers
+        # that retained the historical generic ``godot`` placeholder must not
+        # silently bypass that pin and fall back to PATH.
+        resolved_godot_path = (
+            os.environ.get("GM_EVAL_GODOT_PATH")
+            if godot_path == "godot" and os.environ.get("GM_EVAL_GODOT_PATH")
+            else godot_path
+        )
+        report = GodotProbe(resolved_godot_path).probe(root, probe_requests)
         loaded = {item.res_path: item for item in report.resources}
         for output, _ in declarations:
             item = loaded.get(output["path"])

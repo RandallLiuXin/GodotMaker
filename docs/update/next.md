@@ -60,6 +60,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Compact prop packs now generate one provider-authored source sheet, normalize each curated prop into its declared atlas slot, and publish independently addressable AtlasTexture resources with repaired L0-L4 validation.
 
+- FX bundle production now separates static autoslice and animated grid paths, preserves provider reference claims, and promotes runtime entries only after L0-L4 validation.
 - Card-kit Asset Skills now compile only the Theme, scalable frames, and fixed AtlasTexture regions requested by each asset request, preserving reusable Godot resources without requiring a fixed card layout.
 
 - Character-bundle assets now resolve animation cadence internally, preserve optional canonical references and 256px runtime frames, and regenerate retryable source-image failures before stopping.

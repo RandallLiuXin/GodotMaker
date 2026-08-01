@@ -10,10 +10,10 @@ a producer to honour by hand: the named candidate must exist, be unambiguous, an
 actually be ``selected``; the report's selected/rejected counts must be coherent;
 and the finalized path must sit inside the asset's stable output directory.
 
-The draft stops at ``processing_status: source_ready`` and carries no
-``godot_artifact``. A selected image becomes worker-consumable only once a native
-compiler produces its Godot resource and the L0-L4 runner verifies it; neither
-exists yet, so declaring anything further here would be a false readiness claim.
+The default draft stops at ``processing_status: source_ready`` and carries no
+``godot_artifact``. The dedicated static FX mode binds the selected image to its
+native ``Texture2D`` import and writes a compiled entry; the FX Skill owns the
+L0-L4 validation loop and promotes it to ready before worker handoff.
 """
 from __future__ import annotations
 
@@ -33,6 +33,15 @@ from asset_stable_entry import (
     check_output_path,
     validate_entry,
 )
+from asset_animated_bundle_contract_check import (
+    AnimatedBundleContractError,
+    check_bundle_request,
+)
+
+SHARED_ROOT = Path(__file__).resolve().parents[1] / "skills" / "assets" / "_shared"
+if str(SHARED_ROOT) not in sys.path:
+    sys.path.insert(0, str(SHARED_ROOT))
+from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
 
 DRAFT_STATUS = "source_ready"
 
@@ -196,12 +205,102 @@ def write_curation_entry_draft(
     }
 
 
+def _load_fx_static_request(path: Path) -> dict[str, Any]:
+    request = _load_object(path, "request")
+    try:
+        check_bundle_request(request)
+    except AnimatedBundleContractError as exc:
+        raise CurationEntryDraftError(str(exc)) from exc
+    if request["asset_type"] != "fx-bundle" or request["spec"]["mode"] != "static":
+        raise CurationEntryDraftError("--request must describe a static fx-bundle")
+    return request
+
+
+def build_fx_static_entry_draft(
+    report_path: Path,
+    *,
+    candidate: str,
+    request_path: Path,
+    asset_id: str,
+    tag: str,
+    project_root: Path,
+) -> dict[str, Any]:
+    """Build the selected static FX image as a compiled Texture2D stable entry."""
+    request = _load_fx_static_request(request_path)
+    if request["asset_id"] != asset_id:
+        raise CurationEntryDraftError("--asset-id must match request.asset_id")
+    source_ready = build_curation_entry_draft(
+        report_path,
+        candidate=candidate,
+        asset_id=asset_id,
+        tag=tag,
+        production_family="fx-bundle",
+        project_root=project_root,
+        source_layout="single",
+    )
+    source_path = source_ready["source_layout"]["path"]
+    expected = f"res://assets/generated/fx-bundle/{asset_id}/{asset_id}.png"
+    if source_path != expected:
+        raise CurationEntryDraftError("static FX selected path must match its stable PNG path")
+    entry = {
+        **source_ready,
+        "godot_artifact": {"type": "Texture2D", "path": source_path},
+        "processing_status": "compiled",
+    }
+    try:
+        validate_entry(entry, project_root=Path(project_root), check_files=True)
+        build_default_registry().compile(
+            CompileRequest(
+                "fx-bundle",
+                asset_id,
+                "single",
+                source_path,
+                "Texture2D",
+                source_path,
+                Path(project_root),
+            )
+        )
+    except (CompilerError, StableEntryError) as exc:
+        raise CurationEntryDraftError(str(exc)) from exc
+    return entry
+
+
+def write_fx_static_entry_draft(
+    report_path: Path,
+    *,
+    candidate: str,
+    request_path: Path,
+    asset_id: str,
+    tag: str,
+    project_root: Path,
+    out: Path,
+) -> dict[str, Any]:
+    entry = build_fx_static_entry_draft(
+        report_path,
+        candidate=candidate,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=tag,
+        project_root=project_root,
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(entry, indent=2) + "\n", encoding="utf-8")
+    return {
+        "ok": True,
+        "draft": str(out),
+        "asset_id": asset_id,
+        "tag": tag,
+        "path": entry["godot_artifact"]["path"],
+    }
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(
         description="Build a v1 stable-entry draft from a selected curation candidate"
     )
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--candidate", required=True)
+    parser.add_argument("--request", type=Path)
     parser.add_argument("--asset-id", required=True)
     parser.add_argument("--tag", required=True)
     parser.add_argument("--production-family", required=True)
@@ -211,16 +310,31 @@ def _main() -> int:
     args = parser.parse_args()
 
     try:
-        result = write_curation_entry_draft(
-            args.report,
-            candidate=args.candidate,
-            asset_id=args.asset_id,
-            tag=args.tag,
-            production_family=args.production_family,
-            project_root=args.project_root,
-            source_layout=args.source_layout,
-            out=args.out,
-        )
+        if args.request:
+            if args.production_family != "fx-bundle":
+                raise CurationEntryDraftError(
+                    "--request static mode supports fx-bundle only"
+                )
+            result = write_fx_static_entry_draft(
+                args.report,
+                candidate=args.candidate,
+                request_path=args.request,
+                asset_id=args.asset_id,
+                tag=args.tag,
+                project_root=args.project_root,
+                out=args.out,
+            )
+        else:
+            result = write_curation_entry_draft(
+                args.report,
+                candidate=args.candidate,
+                asset_id=args.asset_id,
+                tag=args.tag,
+                production_family=args.production_family,
+                project_root=args.project_root,
+                source_layout=args.source_layout,
+                out=args.out,
+            )
     except CurationEntryDraftError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1

@@ -9,6 +9,7 @@
     "actions": [
       {
         "name": "impact",
+        "grid": { "columns": 3, "rows": 1 },
         "frame_names": ["impact_01", "impact_02", "impact_03"],
         "fps": 14,
         "loop": false,

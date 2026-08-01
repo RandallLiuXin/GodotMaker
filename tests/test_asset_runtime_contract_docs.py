@@ -126,13 +126,6 @@ def test_production_unit_docs_are_first_entry_points():
     planner = _read("skills/core/gm-asset/references/asset-planner.md")
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
-    units = ["fx-bundle"]
-    for unit in units:
-        path = f"skills/core/gm-asset/references/production-units/{unit}.md"
-        assert (REPO_ROOT / path).exists(), f"missing production unit: {unit}"
-        assert f"references/production-units/{unit}.md" in skill
-        assert f"`{unit}`" in planner
-
     compact = _read("skills/assets/compact-prop-pack/SKILL.md")
     assert not (
         REPO_ROOT / "skills/core/gm-asset/references/production-units/compact-prop-pack.md"
@@ -140,6 +133,8 @@ def test_production_unit_docs_are_first_entry_points():
     assert "First-class `compact-prop-pack` Asset Skill" in skill
     assert "First-class `compact-prop-pack` Asset Skill" in planner
     assert "one provider source sheet" in compact
+    assert "| `fx-bundle` | First-class `fx-bundle` Asset Skill |" in planner
+    assert "references/production-units/fx-bundle.md" not in planner
 
     assert "## Production Families" in runtime
     assert "## Source Layouts" in runtime

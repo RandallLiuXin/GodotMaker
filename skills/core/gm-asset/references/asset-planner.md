@@ -84,7 +84,7 @@ user explicitly requested generated image assets.
 | --- | --- |
 | `screen-reference` | First-class `screen-reference` Asset Skill |
 | `character-bundle` | First-class `character-bundle` Asset Skill |
-| `fx-bundle` | `references/production-units/fx-bundle.md` |
+| `fx-bundle` | First-class `fx-bundle` Asset Skill |
 | `ui-kit` | First-class `ui-kit` Asset Skill |
 | `card-kit` | First-class `card-kit` Asset Skill |
 | `compact-prop-pack` | First-class `compact-prop-pack` Asset Skill |

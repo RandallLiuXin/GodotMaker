@@ -7,6 +7,7 @@ This script never scans Codex image directories or guesses the newest file.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import sys
@@ -85,6 +86,14 @@ def _write_atomic_json(path: Path, data: dict[str, Any]) -> None:
             tmp_path.unlink()
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def claim_codex_image(generated_path: str, output: Path, *, asset_id: str | None = None) -> dict[str, object]:
     source_path = _path_from_arg(generated_path)
     output = Path(output)
@@ -106,6 +115,12 @@ def claim_codex_image(generated_path: str, output: Path, *, asset_id: str | None
     _copy_atomic(source_path, output)
     if not output.exists() or not output.is_file():
         raise CodexImageClaimError(f"Claimed image was not written: {output}")
+    generated_sha256 = _sha256(source_path)
+    claimed_sha256 = _sha256(output)
+    if claimed_sha256 != generated_sha256:
+        raise CodexImageClaimError(
+            f"Claimed image content does not match generated image: {output}"
+        )
 
     result: dict[str, object] = {
         "ok": True,
@@ -117,6 +132,8 @@ def claim_codex_image(generated_path: str, output: Path, *, asset_id: str | None
         "height": height,
         "format": fmt or output.suffix.lstrip(".").upper() or "PNG",
         "mode": mode,
+        "generated_sha256": generated_sha256,
+        "claimed_sha256": claimed_sha256,
     }
     if asset_id:
         result["asset_id"] = asset_id

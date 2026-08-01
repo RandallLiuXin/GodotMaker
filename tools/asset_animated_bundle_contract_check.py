@@ -230,7 +230,12 @@ def _fx_spec(spec: Any, issues: list[str]) -> None:
         return
 
     required = _required_actions(spec.get("required_actions"), label="request.spec.required_actions", issues=issues)
-    actions = _actions(spec.get("actions"), label="request.spec.actions", issues=issues)
+    actions = _actions(
+        spec.get("actions"),
+        label="request.spec.actions",
+        issues=issues,
+        require_grid=True,
+    )
     if len(required) != 1:
         issues.append("request.spec.required_actions must contain exactly one animated FX action")
     if len(actions) != 1:
