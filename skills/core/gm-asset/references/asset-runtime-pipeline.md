@@ -145,8 +145,11 @@ Rules:
 4. Only a native compiler writes `godot_artifact`. Never point it at the source
    image to make an asset look finished — a `grid_sheet` is not a `SpriteFrames`
    just because its sheet exists, and a worker that loads it gets a static image
-   where an animation was promised. No compiler exists yet, so entries stay at
-   `source_ready` with no `godot_artifact`.
+   where an animation was promised. There is no generic compiler that makes
+   every source layout runtime-ready: a family without its own compiler and
+   validation path stays at `source_ready` with no `godot_artifact`. A family
+   with both paths, such as `scene-prop-set`, follows its explicit contract
+   instead.
 5. A `reference` layout carries no `godot_artifact` and keeps its `references/`
    location.
 6. Detailed runtime metadata (region rects, frame lists) is a support file beside

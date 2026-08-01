@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 """Run and persist the scene-prop-set L0-L4 validation result.
 
-The scene-prop-set Skill produces a shared generic result document.  Its
-family validator owns the actual compile/load/structure checks, but exposing it
-only as a Python function made it too easy for an agent to report a successful
-``validation`` object without retaining the validator's real result.  This
-small command is the controlled boundary: it invokes the family validator and
-atomically writes the exact returned result both to the handoff file and to a
-trace report.
+The scene-prop-set Skill produces a shared generic result document. Its family
+validator owns the actual compile/load/structure checks. This command is the
+production boundary: it invokes that validator and atomically writes the exact
+returned result to both the handoff file and the production diagnostic report.
+It is deliberately independent of any private Eval environment variables.
 """
 from __future__ import annotations
 
 import argparse
 import importlib.util
 import json
-import os
 import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Callable
+
+from agent_runtime import read_godot_path
 
 
 class ScenePropSetValidationError(Exception):
@@ -103,15 +102,16 @@ def _main() -> int:
     parser.add_argument("--result", required=True, help="Generic result JSON path to update")
     parser.add_argument("--report", required=True, help="Validator report JSON path")
     parser.add_argument("--project-root", default=".", help="Godot project root")
-    parser.add_argument("--godot-path", default=None, help="Pinned Godot binary path")
+    parser.add_argument("--godot-path", default=None, help="Explicit production Godot binary override")
     args = parser.parse_args()
-    godot_path = args.godot_path or os.environ.get("GM_EVAL_GODOT_PATH") or os.environ.get("GODOT_BIN")
+    project_root = Path(args.project_root).resolve()
+    godot_path = args.godot_path or read_godot_path(project_root)
     try:
         actual = validate_scene_prop_set(
             Path(args.request),
             Path(args.result),
             Path(args.report),
-            project_root=Path(args.project_root),
+            project_root=project_root,
             godot_path=godot_path or "",
         )
     except (OSError, ScenePropSetValidationError, ImportError) as exc:

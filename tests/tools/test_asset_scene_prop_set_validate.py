@@ -76,3 +76,39 @@ def test_validation_command_rejects_a_non_scene_prop_handoff(
             project_root=tmp_path,
             godot_path="fake",
         )
+
+
+def test_validation_command_resolves_the_project_godot_path_not_private_eval_environment(
+    monkeypatch, tmp_path
+):
+    request_path = tmp_path / "ASSET_REQUEST.json"
+    result_path = tmp_path / "result.json"
+    report_path = tmp_path / "report.json"
+    request_path.write_text(json.dumps({"asset_type": "scene-prop-set"}), encoding="utf-8")
+    result_path.write_text(json.dumps({"asset_type": "scene-prop-set"}), encoding="utf-8")
+    calls = []
+
+    def fake_validate(request, result, report, *, project_root, godot_path):
+        calls.append((request, result, report, project_root, godot_path))
+        return {"validation": {"passed": True}}
+
+    monkeypatch.setattr(validator, "validate_scene_prop_set", fake_validate)
+    monkeypatch.setattr(validator, "read_godot_path", lambda root: "project-configured-godot")
+    monkeypatch.setenv("GM_EVAL_GODOT_PATH", "private-eval-godot")
+    monkeypatch.setenv("GODOT_BIN", "legacy-environment-godot")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "asset_scene_prop_set_validate.py",
+            "--request", str(request_path),
+            "--result", str(result_path),
+            "--report", str(report_path),
+            "--project-root", str(tmp_path),
+        ],
+    )
+
+    assert validator._main() == 0
+    assert calls == [
+        (request_path, result_path, report_path, tmp_path.resolve(), "project-configured-godot")
+    ]

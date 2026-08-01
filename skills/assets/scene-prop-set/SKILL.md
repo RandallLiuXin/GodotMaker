@@ -98,7 +98,7 @@ sidecar evidence, never extra keys in the generic result.
    `generated_path`, `references`, and `provider_trace` containing provider,
    coding model, reasoning, image call identity, image-model identity, and the
    exact `referenced_image_paths` supplied to the call. Then run
-   `.godotmaker/asset-runtime/tools/codex_image_claim.py --plan ... --report ...
+   `python .godotmaker/asset-runtime/tools/codex_image_claim.py --plan ... --report ...
    --project-root . --out-report .godotmaker/asset-generation/reports/<asset_id>_source.json`.
    The resulting claim must retain those fields, including empty reference lists
    for a no-reference request. Never hand-write provider provenance or set
@@ -141,24 +141,22 @@ sidecar evidence, never extra keys in the generic result.
    `.tres` filename must equal its logical prop id.
 9. Run the controlled validation command below for applicable L0-L4. It owns
    the family `standalone_validation.py` binding, writes the returned generic
-   result back to `<asset_id>-result.json`, and writes the identical evidence
-   to the required validation report. It must use exactly `GM_EVAL_GODOT_PATH`
-   or `GODOT_BIN` when configured:
+   result back to `<asset_id>-result.json`, and records production diagnostics
+   beside it. By default it resolves this project's configured `godot_path`;
+   `--godot-path` is an explicit production-run override:
 
    ```powershell
-   $godotPath = if ($env:GM_EVAL_GODOT_PATH) { $env:GM_EVAL_GODOT_PATH } else { $env:GODOT_BIN }
-   & $godotPath --headless --path . --import
-   python tools/asset_scene_prop_set_validate.py --request ASSET_REQUEST.json --result .godotmaker/asset-generation/<asset_id>-result.json --report .godotmaker/asset-generation/reports/<asset_id>_validation.json --project-root . --godot-path $godotPath
+   python tools/asset_scene_prop_set_validate.py --request ASSET_REQUEST.json --result .godotmaker/asset-generation/<asset_id>-result.json --report .godotmaker/asset-generation/reports/<asset_id>_validation.json --project-root .
    ```
 
-   The visible import records the pinned engine in the trace; L3 then independently loads every
-   AtlasTexture through the same pinned Godot binary. L0 binds the
-   request/result, L1 verifies atlas and metadata delivery, L2 compiles, L3
-   loads through headless Godot, and L4 verifies every AtlasTexture's shared
-   atlas path, exact region, and zero margin. Read diagnostics, repair source,
-   parameters, metadata, or artifacts, then repeat from the affected step.
-   Return ready only after all applicable layers pass; the first check failure
-   is never the final result unless it is a real STOP condition.
+   L3 loads every AtlasTexture headlessly through that configured engine. L0
+   binds the request/result, L1 verifies atlas and metadata delivery, L2
+   compiles, and L4 verifies every AtlasTexture's shared atlas path, exact
+   region, and zero margin. Read diagnostics, repair source, parameters,
+   metadata, or artifacts, then repeat from the affected step. Return ready
+   only after all applicable layers pass; the first check failure is never the
+   final result unless it is a real STOP condition. This production loop does
+   not perform private Eval L5/L6 grading.
 
 The project-owned deterministic tools above are the preferred processing path.
 Diagnostic repair may also use Pillow, System.Drawing, ImageMagick, SVG,

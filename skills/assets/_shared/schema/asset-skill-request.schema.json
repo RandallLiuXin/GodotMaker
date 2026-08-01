@@ -6,6 +6,20 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["asset_type", "asset_id", "brief"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {"asset_type": {"const": "scene-prop-set"}},
+        "required": ["asset_type"]
+      },
+      "then": {
+        "required": ["spec"],
+        "properties": {
+          "spec": {"$ref": "#/$defs/scenePropSetSpec"}
+        }
+      }
+    }
+  ],
   "properties": {
     "asset_type": {
       "type": "string",
@@ -54,6 +68,55 @@
     },
     "spec": {
       "type": "object"
+    }
+  },
+  "$defs": {
+    "scenePropSetSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "atlas", "slots"],
+      "properties": {
+        "version": {"const": 1},
+        "atlas": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": {"type": "integer", "minimum": 1},
+            "height": {"type": "integer", "minimum": 1}
+          }
+        },
+        "slots": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "rect", "source"],
+            "properties": {
+              "name": {"type": "string", "pattern": "\\S"},
+              "rect": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "prefixItems": [
+                  {"type": "integer", "minimum": 0},
+                  {"type": "integer", "minimum": 0},
+                  {"type": "integer", "minimum": 1},
+                  {"type": "integer", "minimum": 1}
+                ]
+              },
+              "source": {"type": "string", "pattern": "\\S"},
+              "pivot": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {"type": "number", "minimum": 0, "maximum": 1}
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

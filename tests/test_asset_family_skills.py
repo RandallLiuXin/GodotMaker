@@ -143,9 +143,10 @@ def test_scene_prop_set_uses_one_real_source_sheet_and_trace_first_repair():
         "Reject pixel-art requests",
         "asset_scene_prop_set_entry_draft.py",
         "standalone_validation.py",
-        "GM_EVAL_GODOT_PATH",
+        "configured `godot_path`",
     ):
         assert required in skill
+    assert "GM_EVAL_GODOT_PATH" not in skill
     assert "one provider image per slot" not in skill
 
 
