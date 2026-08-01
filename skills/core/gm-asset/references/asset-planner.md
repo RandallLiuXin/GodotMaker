@@ -90,7 +90,7 @@ user explicitly requested generated image assets.
 | `compact-prop-pack` | `references/production-units/compact-prop-pack.md` |
 | `background-map` | First-class `background-map` Asset Skill |
 | `platform-strip` | First-class `platform-strip` Asset Skill |
-| `scene-prop-set` | `references/production-units/scene-prop-set.md` |
+| `scene-prop-set` | First-class `scene-prop-set` Asset Skill |
 
 ## ASSETS Family Routing
 

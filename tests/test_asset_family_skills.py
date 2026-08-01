@@ -25,6 +25,12 @@ FAMILIES = {
         "source_layout": "region_atlas",
         "path_prefix": "res://assets/generated/platform-strip/",
     },
+    "scene-prop-set": {
+        "role": "runtime",
+        "godot_type": "AtlasTexture",
+        "source_layout": "region_atlas",
+        "path_prefix": "res://assets/generated/scene-prop-set/",
+    },
     "screen-reference": {
         "role": "reference",
         "godot_type": None,
@@ -119,6 +125,30 @@ def test_background_map_restores_real_provider_finalize_and_non_pixel_contracts(
     assert "putting a path in text" in codex
 
 
+def test_scene_prop_set_uses_one_real_source_sheet_and_trace_first_repair():
+    skill = (ASSETS_DIR / "scene-prop-set" / "SKILL.md").read_text(encoding="utf-8")
+
+    for required in (
+        "`references` is optional",
+        "referenced_image_paths",
+        "Do not pass `--grid` to autoslice",
+        "one image-generation attempt for the complete set",
+        "asset_sheet_process.py",
+        "asset_curation_select.py",
+        "asset_image_finalize.py",
+        "asset_atlas_assemble.py",
+        "preserve aspect ratio",
+        "Pillow, System.Drawing, ImageMagick",
+        "needs_regeneration",
+        "Reject pixel-art requests",
+        "asset_scene_prop_set_entry_draft.py",
+        "standalone_validation.py",
+        "GM_EVAL_GODOT_PATH",
+    ):
+        assert required in skill
+    assert "one provider image per slot" not in skill
+
+
 def test_shared_asset_contract_examples_do_not_require_pixel_art():
     shared_contract = (ASSETS_DIR / "_shared" / "asset-skill-contract.md").read_text(
         encoding="utf-8"
@@ -172,6 +202,8 @@ def test_gm_asset_dispatches_extracted_families_through_named_skills():
     assert "does not register a generic result directly." in manager
     assert "invoke it with the supplied generic request" in producer
     assert "adapt its sources,\n   outputs, and validation evidence" in producer
+    assert "asset_scene_prop_set_entry_draft.py" in manager
+    assert "one provider source sheet" in producer
 
 
 def test_character_bundle_restores_canonical_actions_and_first_class_routing():

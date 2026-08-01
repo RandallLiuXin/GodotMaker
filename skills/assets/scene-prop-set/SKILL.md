@@ -1,98 +1,169 @@
 ---
 name: scene-prop-set
-description: Produce standalone fixed-slot AtlasTexture resources for scene-derived foreground props.
+description: Generate non-pixel-art scene prop sets from one real source sheet and deliver fixed-slot AtlasTexture resources.
 ---
 
-# Scene Prop Set
+# Scene Prop Set Asset
 
-Produce a standalone atlas-backed set of foreground props derived from a
-scene, map, or stage reference. Use it when the source reference determines
-the object list and visual invariants. Do not use it for generic compact packs,
-backgrounds, UI, characters, effects, terrain, or scene placement.
+Use this Skill for a set of standalone foreground props derived from a scene,
+map, stage reference, or an explicit scene brief. It produces usable prop
+resources only. It does not perform scene placement, PackedScene creation, TileMap editing,
+collision, navigation, scripts, and gameplay behavior are outside this Skill.
+Do not use it for pixel art, characters, UI, backgrounds, terrain, or generic
+compact pickup packs.
 
 ## Contract
 
-Accept the shared asset request contract from
-`.godotmaker/asset-runtime/asset-skill-contract.md` with
-`asset_type: "scene-prop-set"`. The family-specific `spec` is the exact JSON
-declaration passed to `tools/asset_atlas_assemble.py --declaration`; no
-conversion or inferred fields are allowed:
+Accept the shared Asset Skill request schema at
+`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json` with
+`asset_type: "scene-prop-set"`. Use the shared result schema and checker. This
+Skill can be invoked directly or by an orchestrator with the same contract. Do
+not read or write `ASSETS.md`, tags, stage state, or generated manifests.
+Read `.godotmaker/asset-runtime/asset-skill-contract.md` before producing a
+result; this family adds the source-sheet and atlas rules below.
+
+`references` is optional. Without references, derive the visual direction and
+complete object list from the written brief. With references, every path must be
+a readable image, every declared role must be preserved, and the actual images
+must be supplied to the pinned provider. A path mentioned only in prompt text is
+not reference use. If the selected provider cannot attach a required image,
+return STOP. Never silently change `native`, `codex`, `gemini`, or `openai` to
+another provider. For Codex, call image generation with
+`referenced_image_paths` containing every readable local reference image.
+
+Reject pixel-art requests. Request painted, illustrated, or rendered
+non-pixel-art source art. Do not use nearest-neighbor scaling or describe a
+normal image as pixel art after processing.
+
+The family-specific `spec` is the exact fixed-slot declaration passed to
+`tools/asset_atlas_assemble.py --declaration` after source processing:
 
 ```json
 {
   "version": 1,
-  "atlas": {
-    "width": 256,
-    "height": 128
-  },
+  "atlas": {"width": 512, "height": 256},
   "slots": [
-    { "name": "market_stall", "rect": [0, 0, 96, 96], "source": "sources/market_stall.png" },
-    { "name": "signpost", "rect": [112, 0, 32, 64], "source": "sources/signpost.png", "pivot": [0.5, 1.0] }
+    {"name": "market_stall", "rect": [0, 0, 144, 128], "source": ".godotmaker/asset-generation/normalized/market-stall/market_stall.png", "pivot": [0.5, 1.0]},
+    {"name": "lantern_post", "rect": [160, 0, 64, 160], "source": ".godotmaker/asset-generation/normalized/market-stall/lantern_post.png", "pivot": [0.5, 1.0]}
   ]
 }
 ```
 
-Every slot name is a logical scene-prop id. Rectangles are explicit,
-positive, non-overlapping pixel rectangles in `[x, y, width, height]` form.
-The Skill never auto-packs, trims, detects, or discovers a region.
-`source` is a project-root-relative PNG path. `pivot` is optional and defaults
-to `[0.5, 0.5]` through the assembler; when supplied it must be a two-value
-coordinate from 0 to 1. The `version`, `atlas`, and top-level `slots` keys are
-required exactly as shown.
+Slot rectangles are explicit, positive, and non-overlapping `[x, y, width,
+height]` values. Their positions are never inferred or auto-packed. Autoslice
+is allowed only to discover separated source candidates before assembly; it
+must not invent semantic regions, merge touching props, or alter the declared
+atlas slots. No automatic packing is permitted. `asset_atlas_assemble.py` writes canonical lexicographic metadata
+region order; use it when compiling and reporting the resources. `source` names
+the already-normalized image that will fill the declared slot. `pivot` is
+optional and defaults to `[0.5, 0.5]`.
 
-The physical atlas and its metadata use these stable paths:
+The shared physical atlas and metadata use stable paths:
 
 ```text
 res://assets/generated/scene-prop-set/<asset_id>/<asset_id>.png
 res://assets/generated/scene-prop-set/<asset_id>/<asset_id>.json
 ```
 
-Every logical scene prop receives a separate stable runtime resource:
+Every declared logical prop receives one independent runtime resource:
 
 ```text
 res://assets/generated/scene-prop-set/<asset_id>/<logical_prop_id>.tres
 ```
 
-Return the shared asset-result object with one `runtime` output per slot,
-`godot_type: "AtlasTexture"`, and one shared `region_atlas` PNG source. Output
-names exactly equal the corresponding metadata region names. The result is
-standalone: it contains no tags, manifests, stages, scene placement, gameplay
-objects, or worker-dispatch details.
+Return one shared generic result with one `region_atlas` source and one
+`runtime` `AtlasTexture` output per declared slot. Output names exactly equal
+metadata region names. Internal processing reports and provenance remain
+sidecar evidence, never extra keys in the generic result.
 
-## Processing
+## Produce
 
-1. Make the supplied scene or map reference visible when the selected provider
-   supports it, and derive only the requested object list and visual invariants.
-2. Generate or claim a transparent RGBA PNG for each declared object. Preserve
-   its exact declared slot dimensions and alpha; do not retain a solid
-   chroma-key background, labels, UI, or annotations.
-3. Use `tools/asset_atlas_assemble.py` to build the one physical PNG and its
-   adjacent metadata from explicit fixed slots. The written metadata is the
-   only source for runtime regions.
-4. Use `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py` once per region
-   to compile an independent `AtlasTexture`. Pass its `metadata_path` and the
-   exact logical region name; the `.tres` filename must match that name.
-5. Run `standalone_validation.compile_and_validate()` for L0-L4 per output. It binds the
-   declared slot set, assembles the physical atlas, compiles every AtlasTexture,
-   and performs real headless Godot L3/L4 without trusting a result validation
-   claim. L4 must prove the loaded resource
-   refers to the shared atlas, retains its exact declared region, and has a
-   zero margin.
-6. Return every requested logical output only when it validates. Fail closed
-   if a region is absent or invalid; never return the entire atlas as one prop.
+1. Validate the request, provider, slot declaration, object names, and optional
+   references before generation. A PackedScene request, unreadable required
+   reference, unsupported provider attachment, contradictory request, or an
+   invalid slot declaration is a real STOP. Do not ask the execution prompt to
+   decide this outcome.
+2. Generate one real provider source sheet for this `asset_id`, containing all
+   requested props as visibly separated objects on a solid `#FF00FF`
+   background. This is one image-generation attempt for the complete set,
+   rather than separate per-slot provider calls. Require no text, labels, UI, actors, floor
+   plane, grid lines, annotations, or watermarks. Keep the provider pixels
+   unchanged at `.godotmaker/asset-generation/sources/<asset_id>_source.png`.
+3. Record provenance through the pinned provider's controlled report or claim
+   tool. The record must name provider, coding model, reasoning, image model
+   identity when exposed, prompt, raw source path, input reference paths and
+   roles, and actual attachment paths. For Codex, use
+   `.godotmaker/asset-runtime/tools/codex_image_claim.py --plan ... --report ...
+   --project-root . --out-report .godotmaker/asset-generation/reports/<asset_id>_source.json`.
+   Never hand-write provider provenance.
+4. Use the raw source sheet directly with the owned deterministic processor:
 
-Common schema processing, compiler routing, and validation are reused only
- from `.godotmaker/asset-runtime/`; no family-local copy of a schema, compiler,
-validator, packing, or trimming routine is permitted.
+   ```powershell
+   python tools/asset_sheet_process.py --source .godotmaker/asset-generation/sources/<asset_id>_source.png --out-dir .godotmaker/asset-generation/candidates/<asset_id> --names <declared-slot-names-in-reading-order> --asset-id <asset_id> --background magenta --snap-mode autoslice --report .godotmaker/asset-generation/reports/<asset_id>_autoslice.json
+   ```
 
-## Prompt Requirements
+   Do not pass `--grid` to autoslice. The supplied names count must exactly
+   equal the detected disconnected regions. `needs_regeneration`, touching
+   props, split props, opaque magenta, an absent requested object, or an
+   unreadable source is diagnostic evidence: repair the source layout, prompt,
+   or processing parameters and re-run. Do not silently discard, merge, or
+   publish partial candidates.
+5. Run `tools/asset_curation_select.py` for every selected candidate, first
+   writing its selected copy under
+   `.godotmaker/asset-generation/selected/<asset_id>/<logical_prop_id>.png`.
+   Preserve the shared autoslice/curation report, selected state, and source
+   lineage. A selection failure is a repair diagnostic, not permission to
+   substitute a different prop.
+6. Run `tools/asset_image_finalize.py` separately for every selected prop with
+   its declared slot size. For a slot named `<logical_prop_id>`, use the
+   selected copy as `--source`, the declaration's `source` as `--out`,
+   `--resize <slot-width>x<slot-height>`, `--label <logical_prop_id>`,
+   `--no-origin`, and write
+   `.godotmaker/asset-generation/reports/<asset_id>_<logical_prop_id>_finalize.json`.
+   preserve aspect ratio and center the prop with transparent padding. Never
+   resize the whole sheet before autoslice and never stretch a tall or wide prop
+   to fill a slot.
+7. Assemble only the normalized per-prop PNGs through
+   `tools/asset_atlas_assemble.py`. It writes the stable atlas PNG and metadata
+   at the paths above. The metadata is the only runtime authority for named
+   regions and pivots.
+8. Compile every metadata region with
+   `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py`, using the
+   stable atlas, metadata path, and that exact logical region name. The output
+   `.tres` filename must equal its logical prop id.
+9. Run this family's `standalone_validation.py` wrapper and its
+   `compile_and_validate()` function for applicable L0-L4, using exactly
+   `GM_EVAL_GODOT_PATH` or `GODOT_BIN` when configured. The wrapper owns the
+   scene-prop-set binding to the shared validator. L0 binds the request/result,
+   L1 verifies atlas and metadata delivery, L2 compiles, L3 loads through
+   headless Godot, and L4 verifies every AtlasTexture's shared atlas path,
+   exact region, and zero margin. Read diagnostics, repair source, parameters,
+   metadata, or artifacts, then repeat from the affected step. Return ready
+   only after all applicable layers pass; the first check failure is never the
+   final result unless it is a real STOP condition.
 
-State the source-reference role, requested object names, reference-derived
-visual invariants, visible style language, transparent background, and that no
-text, UI, labels, or annotations may be generated.
+The project-owned deterministic tools above are the preferred processing path.
+Diagnostic repair may also use Pillow, System.Drawing, ImageMagick, SVG,
+canvas, Godot drawing, or a temporary script when necessary. Trace the reason,
+command or code, inputs, outputs, modified files, diagnostics, and repair
+result. Never fabricate provider calls, reference attachments, or validation
+evidence. Repeated ad-hoc repairs are a follow-up improvement signal, not a
+reason to stop this production run.
 
-## Example Result
+## Result And Handoff
 
-See `samples/result/market-scene.json`, where three scene-derived logical
-objects share a physical atlas while exposing independent runtime resources.
-Their fixed metadata regions are in `samples/atlas/market-scene.json`.
+Return exactly one shared generic result JSON object and no prose. A failed
+result has `outputs: []`, `validation.passed: false`, and explanatory notes; it
+must not expose partial runtime output.
+
+For `/gm-asset`, persist the successful generic result at
+`.godotmaker/asset-generation/<asset_id>-result.json`. The producer adapter
+validates it, then runs `tools/asset_scene_prop_set_entry_draft.py` with the
+first declared slot as the deterministic v1 primary artifact. The entry keeps
+the shared `source_layout: region_atlas`, one real `godot_artifact:
+AtlasTexture`, and `processing_status: ready`; the stable metadata and all
+other independent AtlasTexture files remain the authoritative set inventory.
+The Skill itself does not register entries or update stage documents.
+
+See `samples/result/market-scene.json` and
+`samples/atlas/market-scene.json` for the stable multi-output shape.

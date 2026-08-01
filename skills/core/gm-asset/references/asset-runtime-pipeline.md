@@ -97,11 +97,12 @@ It is not a Godot artifact.
 Reference-only entries never enter this ladder: they may use only `pending`,
 `source_ready`, or `failed`, and only `source_ready` is their completion state.
 
-**Current pipeline state.** The native compilers and the L0-L4 runner are not
-implemented. `/gm-asset` therefore registers `source_ready` entries and nothing
-further. Do not write `compiled` or `ready`, and do not invent a `godot_artifact`
-to reach them: a generated asset is not worker-consumable yet, and claiming
-otherwise hands `/gm-build` an asset that was never compiled or verified.
+**Current pipeline state.** Read the selected family's public contract before
+choosing a completion state. `scene-prop-set` has an owned atlas compiler and
+L0-L4 validation path, so it may register a real `ready` AtlasTexture entry
+only after that path passes. A family without its own compiler and validation
+path remains `source_ready`; never invent a `godot_artifact` or `ready` status
+to bypass an unavailable family-specific runtime gate.
 
 ## Stable Entry Contract
 
@@ -228,7 +229,7 @@ It also writes the action support metadata to
 `assets/generated/<production_family>/<asset_id>/<asset_id>.json`.
 
 Selected curation candidate (`ui-kit`, `card-kit`, `compact-prop-pack`,
-`scene-prop-set`, `platform-strip`):
+`platform-strip`):
 
 ```bash
 python tools/asset_curation_entry_draft.py \
@@ -237,6 +238,21 @@ python tools/asset_curation_entry_draft.py \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
+
+Compiled scene prop atlas (`scene-prop-set`):
+
+```bash
+python tools/asset_scene_prop_set_entry_draft.py \
+  --result .godotmaker/asset-generation/<asset_id>-result.json \
+  --declaration <fixed-slot-declaration.json> \
+  --asset-id <asset_id> --tag <tag> --primary-output <first-slot-name> \
+  --project-root . --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+The builder validates the one stable `region_atlas` source, every declared
+independent `AtlasTexture`, its metadata, and passed L0-L4 result before it
+writes a `ready` v1 draft. The entry's primary artifact is only the v1 anchor
+for the set; the metadata beside it remains the inventory for all regions.
 
 One finalized image (`screen-reference`, `background-map`, and single card or
 portrait frames):
@@ -277,8 +293,8 @@ python tools/asset_generation_index.py --project-root . --check-entries --check-
 `--check-entries` alone is a schema-only pass. `--check-files` additionally proves
 every registered `source_layout.path` and `godot_artifact.path` is still on disk,
 so it catches an asset deleted after registration. That pair is the registration
-gate; it is not a readiness gate and does not check support files or compiled
-output, because neither the compilers nor the L0-L4 runner exist yet.
+gate; it is not a family readiness gate and does not replace support-file,
+compiler, or L0-L4 checks required by a family that can reach `ready`.
 
 Producer reports list stable entry drafts. The manager writes each entry, upserts
 its pointer, and runs the root-index gate before updating ASSETS.md.
@@ -295,8 +311,8 @@ non-reference entry. A `screen-reference` row may become `generated` at
 `source_ready` with a finalized reference file, canonical stable
 entry, and root-index pointer. It schema-validates index pointers and validates
 the selected reference file. Do not create a `godot_artifact`, worker handoff,
-or hand-edited ASSETS.md status for a reference. Keep all other `source_ready`
-entries `MISSING`.
+or hand-edited ASSETS.md status for a reference. Keep runtime entries that are
+not independently validated as `ready` `MISSING`.
 
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.
@@ -325,12 +341,12 @@ of:
    artifact.
 4. The L0-L4 runner verified the asset.
 
-Steps 2 and 4 are not implemented. **No generated asset can reach `ready` today**,
-so `/gm-build` and worker dispatch currently receive no generated runtime assets.
-Registration, stable paths, and the pointer index are what this stage delivers;
-compilation and verification arrive with the compiler work.
+Steps 2 and 4 are family-specific. `scene-prop-set` implements both through its
+fixed atlas compiler and standalone L0-L4 validator; it may enter worker
+handoff only after all four conditions pass. Families that do not implement
+both steps cannot reach `ready` and remain outside worker runtime handoff.
 
-Compiler target compatibility by source layout, for when that work lands:
+Compiler target compatibility by source layout:
 
 1. `single`: `Texture2D`, no support file; or `StyleBoxTexture`.
 2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.

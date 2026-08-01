@@ -129,7 +129,6 @@ def test_production_unit_docs_are_first_entry_points():
     units = [
         "fx-bundle",
         "compact-prop-pack",
-        "scene-prop-set",
     ]
     for unit in units:
         path = f"skills/core/gm-asset/references/production-units/{unit}.md"
@@ -141,13 +140,15 @@ def test_production_unit_docs_are_first_entry_points():
     assert "## Source Layouts" in runtime
     assert "## Processing Status" in runtime
     assert "## Curation" in runtime
+    assert not (REPO_ROOT / "skills/core/gm-asset/references/production-units/scene-prop-set.md").exists()
+    assert "First-class `scene-prop-set` Asset Skill" in skill
+    assert "First-class `scene-prop-set` Asset Skill" in planner
 
 
 def test_production_unit_autoslice_examples_do_not_pass_grid():
     units = [
         "compact-prop-pack",
         "fx-bundle",
-        "scene-prop-set",
     ]
     for unit in units:
         doc = _read(f"skills/core/gm-asset/references/production-units/{unit}.md")
@@ -192,11 +193,10 @@ def test_card_kit_is_separate_from_generic_ui_components():
 def test_foreground_production_units_do_not_finalize_source_images():
     fx = _read("skills/core/gm-asset/references/production-units/fx-bundle.md")
     props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
-    scene_props = _read("skills/core/gm-asset/references/production-units/scene-prop-set.md")
+    scene_props = _read("skills/assets/scene-prop-set/SKILL.md")
     character = _read("skills/assets/character-bundle/SKILL.md")
 
-    foreground_docs = [fx, props, scene_props]
-    for doc in foreground_docs:
+    for doc in [fx, props]:
         assert "--background magenta" in doc
         assert "--snap-mode autoslice" in doc
         assert "Do not use a source" in doc
@@ -205,6 +205,9 @@ def test_foreground_production_units_do_not_finalize_source_images():
     assert "tools/asset_curation_select.py" in fx
     assert "tools/asset_curation_select.py" in props
     assert "tools/asset_curation_select.py" in scene_props
+    assert "asset_image_finalize.py" in scene_props
+    assert "one image-generation attempt for the complete set" in scene_props
+    assert "Do not pass `--grid` to autoslice" in scene_props
     assert "tools/asset_curation_entry_draft.py" in fx
     assert "tools/asset_action_entry_draft.py" in fx
     assert "tools/asset_action_process.py" in character
