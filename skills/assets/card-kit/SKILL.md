@@ -1,79 +1,123 @@
 ---
 name: card-kit
-description: Produce standalone native resources for card frames, portrait windows, card controls, and scalable card UI borders.
+description: Produce reusable card art sources and native Godot card UI resources.
 ---
 
 # Card Kit Asset
 
-Use this skill for card-game-specific UI: card frames, portrait frames, rarity
-frames, card slots, deck slots, resource badges, card-state overlays, card
-panels, and card buttons. Do not use it for generic HUD controls, character
-portraits, a finished card illustration unless explicitly requested, a full
-composite screen, readable text, or scene layout.
+Use this Skill for reusable non-pixel-art, card-game-specific UI: card frames, portrait frames,
+rarity frames, card/deck slots, resource badges, state overlays, card panels,
+and card buttons. It produces art sources and native Godot resources, not card
+rules, deck logic, a `Control` or `Container` layout, a `PackedScene`, readable text, or a full
+composite screen. A request for pixel art is unsupported and must STOP.
 
-## Invocation
+## Invocation and Boundaries
 
-Accept one asset request matching the shared Asset Skill request schema in
-`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`. Require
-`asset_type` to be `card-kit`. Validate the returned document against the
-shared result schema and checker, then validate its closed family contract with
-`tools/asset_ui_card_contract_check.py`. `spec` declares the Theme recipe and
-variation, every requested card frame/state pair with an explicit StyleBox
-recipe, and every requested AtlasTexture region.
+Accept one request matching the shared Asset Skill request schema in
+`.godotmaker/asset-runtime/schema/asset-skill-request.schema.json` with
+`asset_type: "card-kit"`. First run
+`python tools/asset_ui_card_contract_check.py <request.json> --kind request`.
+The family contract owns the Theme recipe/variation, requested frame/state
+pairs, and named atlas regions. The request decides which card resources are
+needed; do not add a default front/back, portrait, rarity, or state bundle.
+This card-game-specific UI Skill can be invoked directly or by an orchestrator
+through `gm-asset`, but it never registers stable entries, edits `ASSETS.md`, tags, or
+stage state, or writes generated
+manifests. The producer adapter owns that later registration handoff.
 
-This skill can be invoked directly or by an orchestrator with the same
-contract. Do not read or write `ASSETS.md`, tags, stage state, generated
-manifests, stable entries, or worker dispatch state.
+`references` is optional. When it is non-empty, each path is binding input:
 
-## Produce
+1. Verify that it is a readable image before generation.
+2. Preserve its `canonical`, `style`, or `screen` role in the prompt and trace.
+3. Attach its real image bytes through the declared provider path.
+4. STOP if that provider cannot attach every required reference.
 
-1. Use the brief plus visible card or UI references to set the frame geometry,
-   rarity language, panel treatment, badge/icon language, and state treatment.
-   The LLM fills this visual recipe; deterministic tools do not invent a card
-   design.
-2. Keep card-art and portrait windows empty unless the request explicitly asks
-   for finished portrait art. A frame must remain a reusable frame rather than
-   a flattened example card.
-3. When card controls need shared colors, typography, constants, or state
-   binding, write a closed `theme_recipe` and compile a standalone `Theme`
-   with a declared type variation at
-   `res://assets/generated/card-kit/<asset_id>/<asset_id>_theme.tres`.
-4. Compile every card frame, portrait frame, scalable slot, panel, or button
-   state from an explicit `StyleBoxTexture` recipe. Declare its PNG region,
-   four borders, expand margins, and stretch axes, then use nine-slice scaling
-   to preserve corners and frame geometry.
-5. Assemble badges, resource icons, and fixed overlays into declared atlas
-   slots where appropriate. Compile each named region into a distinct
-   zero-margin `AtlasTexture`; no automatic packing, trimming, or inferred
-   region is allowed.
-6. Declare all requested card states (`normal`, `hover`, `pressed`,
-   `disabled`, `selected`, or `locked`) as named resources. Never infer a
-   missing state from another frame.
-7. Run `standalone_validation.compile_and_validate()` before returning the
-   result. It performs L0 family binding, L1 source/recipe/metadata checks, L2
-   fresh-registry compilation for every output, L3 headless Godot type checks,
-   and L4 structure validation for every output. The deterministic tools enforce
-   legal serialization, complete declared resource types, Godot loading, and
-   type-specific structure checks.
-   Theme L4 requires the exact requested `spec.theme.variation`, not merely an
-   arbitrary variation declared by the recipe.
+A prompt-only filename, silent omission, or provider substitution is not
+reference use. Use only the requested provider (`native`, `codex`, `gemini`,
+or `openai`). For Codex, call `image_gen` with the real
+`referenced_image_paths` when any are present. Record provider, model identity
+when exposed, coding model, reasoning, attachment paths/roles, and provider
+call identity. For `openai` and `gemini`, use `tools/asset_source_generate.py`
+with `reference_inputs`; it records hashes and attachment provenance.
 
-The worker owns `Control` and `Container` layout and card placement. A
-reference shows visual direction only and is not pixel-perfect.
-Workers bind the returned Theme and use the separate StyleBoxTexture and
-AtlasTexture outputs for the card controls they construct.
+## Production Loop
 
-## Result
+### 1. Plan and generate the visual source
 
-Return the shared generic result. A successful result exposes each native
-resource independently: an optional card `Theme`, one `StyleBoxTexture` for
-each scalable frame or state, and one `AtlasTexture` for each declared icon or
-overlay region. `sources` records each `theme_recipe`, `single`, or
-`region_atlas` input used by the resources. See
-`fixtures/` for a request/result pair with a valid standalone contract. The
-runner, not a self-reported boolean, writes the final L0-L4 result.
+Turn the brief into one concrete source plan: frame geometry/orientation,
+empty portrait or card-art safe zones unless finished art is requested, rarity
+language, state treatment, and only the requested component list. A reusable
+card frame is not a flattened example card. Keep card-art and portrait windows empty
+unless the request declares finished art. Keep generated images free of readable
+text, numbers, watermarks, and unrelated composite screens.
 
-If a requested frame/state is absent, a portrait window is incorrectly filled,
-a nine-slice declaration is invalid, an atlas region is missing, or any L0-L4
-check fails, return `outputs: []` with `validation.passed: false` and notes.
-Do not expose a card PNG as a replacement for its native runtime resource.
+Write the prompt and source plan under `.godotmaker/asset-generation/`, then
+generate real provider art into its declared raw-source path. Preserve the raw
+image and provider report; never replace failed generation with procedural or
+placeholder art.
+
+### 2. Process and curate
+
+Prefer the repository's deterministic tools, selecting only those the source
+needs:
+
+- `asset_image_finalize.py` for a single card or portrait frame, including
+  transparency, alpha bounds, aspect checks, and finalization report;
+- `asset_sheet_process.py` for component sheets, with `autoslice` for separated
+  pieces and `grid` only for intentional equal cells;
+- `asset_curation_select.py` to choose final components with a curation record;
+- `asset_atlas_assemble.py` to build a transparent atlas and region metadata.
+
+Temporary scripts or other image tools are allowed when diagnosis needs them.
+The trace must state the reason, command or code, inputs, outputs, changed
+files, diagnostic, and repair result. Never claim a provider call, attachment,
+or verification that did not happen.
+
+### 3. Compile native resources
+
+Keep final sources under `assets/generated/card-kit/<asset_id>/`. Compile one
+`StyleBoxTexture` for every declared frame/state
+pair using an explicit source/region, borders, expand margins, and stretch
+axes. This preserves card corners through nine-slice scaling. Compile those
+StyleBoxes first, then build the optional Theme at `<asset_id>_theme.tres` when
+the request declares one. A Theme recipe may bind a generated
+`StyleBoxTexture` when the caller requests that composition. Compile every
+named fixed component into a distinct `AtlasTexture`. Front/back images,
+portrait frames, rarity badges, and overlays are separate only when the request
+declares them; never infer a missing requested resource from another region.
+
+### 4. Diagnose, repair, and recheck
+
+Run `standalone_validation.compile_and_validate()` after a candidate set exists.
+L0 binds the family request/result, L1 checks final sources and metadata, L2
+compiles a fresh registry, L3 loads the artifacts in headless Godot, and L4
+checks type-specific resource structure. These are production diagnostics, not
+a one-shot failure gate: inspect the failed diagnostic, repair the source,
+processing parameters, metadata, recipe, or Godot resource, and re-run the
+affected checks followed by the final full check.
+
+Only STOP for a missing/corrupt required input, unsupported pixel-art request,
+contradictory request, unavailable declared provider or required reference
+attachment, or unrecoverable environment/permission failure. A final result is
+ready only after every applicable L0-L4 check passes.
+
+## Result and Handoff
+
+Return the shared generic result with independently usable native runtime
+resources (`Theme`, `StyleBoxTexture`, and `AtlasTexture`), its `theme_recipe`,
+`single`, or `region_atlas` sources, previews when produced, and final L0-L4
+evidence. Check it with the shared result schema and checker plus this family
+contract. Before responding, persist that exact generic result JSON at
+`.godotmaker/asset-generation/<asset_id>-result.json`, then return the same
+JSON directly in the final response. The runner, not a self-reported boolean,
+records validation.
+
+The output is reusable card UI, not pixel-perfect `Control` or `Container`
+composition. Consumers choose their own layout and may apply only the declared
+Theme, StyleBoxTexture, or AtlasTexture resources.
+
+For `gm-asset`, the producer adapter translates a successful generic result
+into stable `source_layout + godot_artifact` entries and performs the normal
+ready handoff. Private Eval independently assesses consumer use, visual quality,
+reference consistency, and whether an improvised repair should become a shared
+tool improvement.

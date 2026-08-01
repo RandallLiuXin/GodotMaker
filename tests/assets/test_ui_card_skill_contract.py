@@ -71,17 +71,22 @@ def _request(family: str) -> dict:
 def _result(request: dict) -> dict:
     root = f"res://assets/generated/{request['asset_type']}/{request['asset_id']}"
     box = request["spec"]["styleboxes"][0]
+    outputs = [
+        {"role": "runtime", "name": box["output_name"], "path": f"{root}/{box['output_name']}.tres", "godot_type": "StyleBoxTexture"},
+        {"role": "runtime", "name": "icon", "path": f"{root}/icon.tres", "godot_type": "AtlasTexture"},
+    ]
+    sources = [{"path": box["source_path"], "layout": "region_atlas"}]
+    theme = request["spec"].get("theme")
+    if theme is not None:
+        outputs.insert(0, {
+            "role": "runtime", "name": theme["output_name"],
+            "path": f"{root}/{request['asset_id']}_theme.tres", "godot_type": "Theme",
+        })
+        sources.insert(0, {"path": theme["recipe_path"], "layout": "theme_recipe"})
     return {
         "asset_type": request["asset_type"],
-        "outputs": [
-            {"role": "runtime", "name": "theme", "path": f"{root}/{request['asset_id']}_theme.tres", "godot_type": "Theme"},
-            {"role": "runtime", "name": box["output_name"], "path": f"{root}/{box['output_name']}.tres", "godot_type": "StyleBoxTexture"},
-            {"role": "runtime", "name": "icon", "path": f"{root}/icon.tres", "godot_type": "AtlasTexture"},
-        ],
-        "sources": [
-            {"path": request["spec"]["theme"]["recipe_path"], "layout": "theme_recipe"},
-            {"path": box["source_path"], "layout": "region_atlas"},
-        ],
+        "outputs": outputs,
+        "sources": sources,
         "previews": [],
         "validation": {"passed": False},
     }
@@ -98,18 +103,21 @@ def _source_adapter(family: str):
 
 def _write_sources(root: Path, request: dict, *, recipe_variation: str | None = None) -> None:
     spec = request["spec"]
-    recipe = {
-        "version": 1,
-        "colors": [{"type": "Button", "name": "font_color", "value": "#FFFFFFFF"}],
-        "font_sizes": [], "constants": [], "fonts": [], "icons": [],
-        "styleboxes": {}, "styles": [],
-        "variations": [{"name": recipe_variation or spec["theme"]["variation"], "base_type": "Button"}],
-    }
-    recipe_file = root / spec["theme"]["recipe_path"].removeprefix("res://")
-    recipe_file.parent.mkdir(parents=True, exist_ok=True)
-    recipe_file.write_text(json.dumps(recipe), encoding="utf-8")
+    theme = spec.get("theme")
+    if theme is not None:
+        recipe = {
+            "version": 1,
+            "colors": [{"type": "Button", "name": "font_color", "value": "#FFFFFFFF"}],
+            "font_sizes": [], "constants": [], "fonts": [], "icons": [],
+            "styleboxes": {}, "styles": [],
+            "variations": [{"name": recipe_variation or theme["variation"], "base_type": "Button"}],
+        }
+        recipe_file = root / theme["recipe_path"].removeprefix("res://")
+        recipe_file.parent.mkdir(parents=True, exist_ok=True)
+        recipe_file.write_text(json.dumps(recipe), encoding="utf-8")
     box = spec["styleboxes"][0]
     image_file = root / box["source_path"].removeprefix("res://")
+    image_file.parent.mkdir(parents=True, exist_ok=True)
     image_file.write_bytes(_png(32, 32))
     region = spec["atlas_regions"][0]
     metadata = {
@@ -123,7 +131,8 @@ def _write_sources(root: Path, request: dict, *, recipe_variation: str | None = 
 def _good_probe(request: dict, result: dict, *, theme_variation: str | None = None):
     box = request["spec"]["styleboxes"][0]
     atlas = request["spec"]["atlas_regions"][0]
-    variation = theme_variation or request["spec"]["theme"]["variation"]
+    theme = request["spec"].get("theme")
+    variation = theme_variation or (theme["variation"] if theme is not None else None)
 
     def fake_probe(self, project_root, requests):
         resources = []
@@ -184,6 +193,37 @@ def test_card_contract_rejects_a_missing_requested_frame_and_region():
 
     with pytest.raises(UICardContractError, match="required_frame"):
         check_ui_card_request(request)
+
+
+def test_card_contract_rejects_pixel_art_requests():
+    request = _request("card-kit")
+    request["brief"] = "A pixel-art card frame."
+
+    with pytest.raises(UICardContractError, match="does not support pixel-art"):
+        check_ui_card_request(request)
+
+
+@pytest.mark.parametrize("brief", ["A non-pixel-art card frame.", "A card frame, not pixel art."])
+def test_card_contract_allows_explicit_non_pixel_art_requests(brief):
+    request = _request("card-kit")
+    request["brief"] = brief
+
+    assert check_ui_card_request(request)["ok"] is True
+
+
+@pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
+def test_family_contract_allows_a_declared_resource_bundle_without_theme(tmp_path, monkeypatch, family):
+    request = _request(family)
+    request["spec"].pop("theme")
+    result = _result(request)
+    _write_sources(tmp_path, request)
+    monkeypatch.setattr(GodotProbe, "probe", _good_probe(request, result))
+
+    validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+
+    assert validated["validation"]["levels"] == {
+        "L0": True, "L1": True, "L2": True, "L3": True, "L4": True,
+    }
 
 
 @pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
@@ -273,6 +313,51 @@ def test_standalone_runner_maps_missing_declared_atlas_region_to_l2(tmp_path):
 
     assert validated["validation"]["levels"] == {"L0": True, "L1": True, "L2": False, "L3": False, "L4": False}
     assert "declares no region" in validated["validation"]["notes"]
+
+
+def test_standalone_runner_rejects_theme_binding_to_an_undeclared_stylebox(tmp_path):
+    request = _request("card-kit")
+    result = _result(request)
+    _write_sources(tmp_path, request)
+    root = f"res://assets/generated/card-kit/{request['asset_id']}"
+    undeclared_path = f"{root}/leftover.tres"
+    (tmp_path / undeclared_path.removeprefix("res://")).write_text(
+        '[gd_resource type="StyleBoxTexture" format=3]\n', encoding="utf-8"
+    )
+    recipe_path = tmp_path / request["spec"]["theme"]["recipe_path"].removeprefix("res://")
+    recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+    recipe["styleboxes"] = {
+        "leftover": {"type": "StyleBoxTexture", "properties": {"path": undeclared_path}},
+    }
+    recipe["styles"] = [{"type": "CardButton", "name": "normal", "stylebox": "leftover"}]
+    recipe_path.write_text(json.dumps(recipe), encoding="utf-8")
+
+    validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+
+    assert validated["validation"]["levels"] == {
+        "L0": True, "L1": True, "L2": False, "L3": False, "L4": False,
+    }
+    assert "declared StyleBoxTexture runtime output" in validated["validation"]["notes"]
+
+
+def test_standalone_runner_loads_a_theme_bound_to_its_declared_stylebox_texture(godot_project, godot_bin):
+    request = _request("card-kit")
+    result = _result(request)
+    _write_sources(godot_project, request)
+    stylebox = next(item for item in result["outputs"] if item["godot_type"] == "StyleBoxTexture")
+    recipe_path = godot_project / request["spec"]["theme"]["recipe_path"].removeprefix("res://")
+    recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+    recipe["styleboxes"] = {
+        "rare_normal": {"type": "StyleBoxTexture", "properties": {"path": stylebox["path"]}},
+    }
+    recipe["styles"] = [{"type": "CardButton", "name": "normal", "stylebox": "rare_normal"}]
+    recipe_path.write_text(json.dumps(recipe), encoding="utf-8")
+
+    validated = compile_and_validate(request, result, project_root=godot_project, godot_path=godot_bin)
+
+    assert validated["validation"]["levels"] == {
+        "L0": True, "L1": True, "L2": True, "L3": True, "L4": True,
+    }
 
 
 def test_standalone_runner_maps_godot_type_failure_to_l3(tmp_path, monkeypatch):

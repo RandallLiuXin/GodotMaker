@@ -47,7 +47,10 @@ def _artifact_request(
             production_family=request["asset_type"], asset_id=request["asset_id"],
             source_layout_type="theme_recipe", source_path=declaration["recipe_path"],
             artifact_type="Theme", artifact_path=output["path"], project_root=root,
-            spec={"variation": declaration["variation"]},
+            spec={
+                "variation": declaration["variation"],
+                "allowed_external_stylebox_paths": declaration["allowed_external_stylebox_paths"],
+            },
         )
     if kind == "stylebox":
         return CompileRequest(
@@ -65,7 +68,10 @@ def _artifact_request(
 
 
 def _l1_paths(spec: Mapping[str, Any]) -> list[str]:
-    paths = [spec["theme"]["recipe_path"]]
+    paths: list[str] = []
+    theme_declaration = spec["theme"]
+    if theme_declaration is not None:
+        paths.append(theme_declaration["recipe_path"])
     for box in spec["styleboxes"]:
         paths.append(box["source_path"])
     for region in spec["atlas_regions"]:
@@ -114,10 +120,20 @@ def compile_and_validate(
 
     passed.append("L1")
     runtime = {output["name"]: output for output in result["outputs"] if output["role"] == "runtime"}
-    declarations: list[tuple[str, Mapping[str, Any], Mapping[str, Any]]] = [
-        ("theme", spec["theme"], runtime[spec["theme"]["output_name"]])
-    ]
+    declarations: list[tuple[str, Mapping[str, Any], Mapping[str, Any]]] = []
     declarations.extend(("stylebox", box, runtime[box["output_name"]]) for box in spec["styleboxes"])
+    theme_declaration = spec["theme"]
+    if theme_declaration is not None:
+        declarations.append((
+            "theme",
+            {
+                **theme_declaration,
+                "allowed_external_stylebox_paths": [
+                    runtime[box["output_name"]]["path"] for box in spec["styleboxes"]
+                ],
+            },
+            runtime[theme_declaration["output_name"]],
+        ))
     declarations.extend(("atlas", region, runtime[region["output_name"]]) for region in spec["atlas_regions"])
     compiled_requests: dict[str, CompileRequest] = {}
     try:

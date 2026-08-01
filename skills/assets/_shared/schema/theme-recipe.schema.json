@@ -15,7 +15,7 @@
     "icons": {"$ref": "#/$defs/theme_items"},
     "styles": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["type", "name", "stylebox"], "properties": {"type": {"type": "string"}, "name": {"type": "string"}, "stylebox": {"type": "string"}}}},
     "variations": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["name", "base_type"], "properties": {"name": {"type": "string"}, "base_type": {"type": "string"}}}},
-    "styleboxes": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": false, "required": ["type", "properties"], "properties": {"type": {"enum": ["StyleBoxFlat", "StyleBoxEmpty"]}, "properties": {"type": "object"}}}}
+    "styleboxes": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": false, "required": ["type", "properties"], "properties": {"type": {"enum": ["StyleBoxFlat", "StyleBoxEmpty", "StyleBoxTexture"]}, "properties": {"type": "object"}}}}
   },
   "$defs": {
     "theme_items": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["type", "name", "value"], "properties": {"type": {"type": "string"}, "name": {"type": "string"}, "value": {}}}}
