@@ -50,8 +50,10 @@ def _request(project: Path, *, layout: str = "single", **overrides) -> CompileRe
         "spec": {
             "texture_region": [2, 1, 12, 10],
             "border": [3, 2, 3, 2],
+            "content_margin": [4, 3.5, 4, 3],
             "expand_margin": [1, 1.5, 2, 0],
             "axis_stretch": {"horizontal": "tile_fit", "vertical": "stretch"},
+            "modulate_color": "#336699CC",
         },
     }
     values.update(overrides)
@@ -67,26 +69,32 @@ def test_compiles_each_legal_layout_from_the_explicit_recipe(project, layout):
         "texture_path": "res://assets/generated/ui-kit/panel/panel.png",
         "texture_region": [2, 1, 12, 10],
         "border": [3, 2, 3, 2],
+        "content_margin": [4.0, 3.5, 4.0, 3.0],
         "expand_margin": [1.0, 1.5, 2.0, 0.0],
         "axis_stretch": {"horizontal": "tile_fit", "vertical": "stretch"},
+        "modulate_color": "#336699CC",
     }
     tres = (project / "assets/generated/ui-kit/panel/panel.tres").read_text(encoding="utf-8")
     assert 'texture = ExtResource("1_texture")' in tres
     assert "region_rect = Rect2(2, 1, 12, 10)" in tres
     assert "texture_margin_left = 3" in tres
+    assert "content_margin_top = 3.5" in tres
     assert "expand_margin_top = 1.5" in tres
     assert "axis_stretch_horizontal = 2" in tres
     assert "axis_stretch_vertical = 0" in tres
+    assert "modulate_color = Color(0.2, 0.4, 0.6, 0.8)" in tres
 
 
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
         (lambda spec: spec.__setitem__("texture_region", [12, 0, 5, 4]), "outside source PNG bounds"),
-        (lambda spec: spec.__setitem__("border", [7, 2, 7, 2]), "exceeds texture_region"),
+        (lambda spec: spec.__setitem__("border", [6, 2, 6, 2]), "no stretchable center"),
+        (lambda spec: spec.__setitem__("content_margin", [0, -1, 0, 0]), "finite non-negative"),
         (lambda spec: spec.__setitem__("expand_margin", [0, -1, 0, 0]), "finite non-negative"),
         (lambda spec: spec.__setitem__("axis_stretch", {"horizontal": "repeat", "vertical": "stretch"}), "must be one of"),
-        (lambda spec: spec.__setitem__("unexpected", True), "contain exactly"),
+        (lambda spec: spec.__setitem__("modulate_color", "orange"), "#RRGGBB"),
+        (lambda spec: spec.__setitem__("unexpected", True), "required fields and only"),
     ],
 )
 def test_invalid_recipe_fails_closed_without_an_artifact(project, mutate, message):
@@ -123,8 +131,10 @@ def test_l4_rejects_a_loaded_stylebox_with_tampered_recipe_facts(project):
                     "texture_path": request.source_path,
                     "texture_region": [2, 1, 12, 10],
                     "border": [3, 2, 3, 2],
+                    "content_margin": [4, 3.5, 4, 3],
                     "expand_margin": [1, 1.5, 2, 0],
                     "axis_stretch": [1, 0],
+                    "modulate_color": [0.2, 0.4, 0.6, 0.8],
                 }
             },
         ),

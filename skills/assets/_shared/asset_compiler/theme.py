@@ -28,14 +28,15 @@ _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _COLOR = re.compile(r"^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$")
 _THEME_TYPES = frozenset(
     {
-        "Button", "CheckBox", "CheckButton", "Label", "LineEdit",
-        "OptionButton", "Panel", "PanelContainer", "ProgressBar",
-        "RichTextLabel", "TabBar", "TabContainer", "TextEdit", "TooltipLabel",
+        "Button", "CheckBox", "CheckButton", "HScrollBar", "HSlider",
+        "Label", "LineEdit", "OptionButton", "Panel", "PanelContainer",
+        "PopupMenu", "ProgressBar", "RichTextLabel", "TabBar", "TabContainer",
+        "TextEdit", "TooltipLabel", "VScrollBar", "VSlider",
     }
 )
 _PROPERTY_NAMES = {
     "colors": frozenset({
-        "font_color", "font_hover_color", "font_pressed_color", "font_disabled_color",
+        "font_color", "font_hover_color", "font_pressed_color", "font_disabled_color", "font_focus_color",
         "font_outline_color", "font_shadow_color", "icon_normal_color",
         "icon_hover_color", "icon_pressed_color", "icon_focus_color",
         "icon_hover_pressed_color", "caret_color", "selection_color",
@@ -47,10 +48,20 @@ _PROPERTY_NAMES = {
         "h_separation", "v_separation", "icon_max_width", "line_spacing",
     }),
     "fonts": frozenset({"font", "bold_font", "italics_font", "bold_italics_font"}),
-    "icons": frozenset({"icon", "checked", "unchecked", "arrow", "increment", "decrement"}),
+    "icons": frozenset({
+        "icon", "checked", "unchecked", "arrow", "increment", "decrement",
+        "checked_disabled", "unchecked_disabled", "radio_checked",
+        "radio_checked_disabled", "radio_unchecked", "radio_unchecked_disabled",
+        "submenu", "submenu_mirrored", "grabber", "grabber_highlight",
+        "grabber_disabled", "tick",
+    }),
     "styles": frozenset({
         "normal", "hover", "pressed", "disabled", "focus", "read_only",
         "panel", "background", "fill", "tab_selected", "tab_unselected",
+        "tab_hovered", "tab_focus",
+        "slider", "grabber_area", "grabber_area_highlight", "scroll",
+        "scroll_focus", "grabber", "grabber_highlight", "grabber_pressed",
+        "separator", "panel_disabled",
     }),
 }
 _BUTTON_TYPES = frozenset({"Button", "CheckBox", "CheckButton", "OptionButton"})
@@ -71,7 +82,19 @@ def _property_allowed(section: str, theme_type: str, name: str, variation_bases:
     if section in {"font_sizes", "fonts"}:
         return base_type in _TEXT_TYPES
     if section == "icons":
-        return base_type in _BUTTON_TYPES or (base_type == "TabBar" and name in {"increment", "decrement"})
+        if base_type in _BUTTON_TYPES:
+            return name in {"icon", "checked", "unchecked", "arrow"}
+        if base_type == "TabBar":
+            return name in {"increment", "decrement"}
+        if base_type == "PopupMenu":
+            return name in {
+                "checked", "unchecked", "checked_disabled", "unchecked_disabled",
+                "radio_checked", "radio_checked_disabled", "radio_unchecked",
+                "radio_unchecked_disabled", "submenu", "submenu_mirrored",
+            }
+        if base_type in {"HSlider", "VSlider"}:
+            return name in {"grabber", "grabber_highlight", "grabber_disabled", "tick"}
+        return False
     if section == "constants":
         if name in {"icon_max_width", "h_separation"}:
             return base_type in _BUTTON_TYPES
@@ -79,15 +102,25 @@ def _property_allowed(section: str, theme_type: str, name: str, variation_bases:
             return base_type in {"Label", "RichTextLabel", "TextEdit"}
         return base_type in _TEXT_TYPES
     if section == "styles":
-        if name in {"normal", "hover", "pressed", "disabled", "focus"}:
+        if name in {"normal", "pressed", "disabled", "focus"}:
             return base_type in _BUTTON_TYPES or base_type in {"LineEdit", "TextEdit"}
+        if name == "hover":
+            return base_type in _BUTTON_TYPES or base_type in {"LineEdit", "TextEdit", "PopupMenu"}
         if name == "read_only":
             return base_type in {"LineEdit", "TextEdit"}
         if name == "panel":
-            return base_type in {"Panel", "PanelContainer"}
+            return base_type in {"Panel", "PanelContainer", "PopupMenu", "TabContainer"}
+        if name == "panel_disabled":
+            return base_type == "PopupMenu"
         if name in {"background", "fill"}:
             return base_type == "ProgressBar"
-        return base_type in {"TabBar", "TabContainer"}
+        if name in {"tab_selected", "tab_unselected", "tab_hovered", "tab_focus"}:
+            return base_type in {"TabBar", "TabContainer"}
+        if name in {"slider", "grabber_area", "grabber_area_highlight"}:
+            return base_type in {"HSlider", "VSlider"}
+        if name in {"scroll", "scroll_focus", "grabber", "grabber_highlight", "grabber_pressed"}:
+            return base_type in {"HScrollBar", "VScrollBar"}
+        return base_type == "PopupMenu" and name == "separator"
     return False
 _RESOURCE_EXTENSIONS = {
     # Every accepted format below has a bounded content validation path. Do not
@@ -95,6 +128,8 @@ _RESOURCE_EXTENSIONS = {
     # compiler must prove the resource is usable before it writes a Theme.
     "FontFile": frozenset({".ttf", ".otf"}),
     "Texture2D": frozenset({".png", ".webp", ".jpg", ".jpeg"}),
+    "AtlasTexture": frozenset({".tres"}),
+    "StyleBoxTexture": frozenset({".tres"}),
 }
 _STYLEBOX_PROPERTIES = {
     "StyleBoxFlat": frozenset({
@@ -276,24 +311,49 @@ def _validate_resource_content(file_path: Path, expected_type: str, suffix: str,
     valid = (
         _valid_font(file_path, payload) if expected_type == "FontFile"
         else _valid_texture(file_path, suffix) if expected_type == "Texture2D"
+        else _valid_atlas_texture(file_path) if expected_type == "AtlasTexture"
+        else _valid_stylebox_texture(file_path) if expected_type == "StyleBoxTexture"
         else False
     )
     if not valid:
         _fail(f"{label}.path is not valid {expected_type} content: {file_path.name}")
 
 
+def _valid_stylebox_texture(file_path: Path) -> bool:
+    """Reject arbitrary .tres files before binding one as a Theme StyleBox."""
+    try:
+        return file_path.read_text(encoding="utf-8").startswith(
+            '[gd_resource type="StyleBoxTexture"'
+        )
+    except OSError:
+        return False
+
+
+def _valid_atlas_texture(file_path: Path) -> bool:
+    """Reject arbitrary .tres files before binding an AtlasTexture as a Theme icon."""
+    try:
+        return file_path.read_text(encoding="utf-8").startswith(
+            '[gd_resource type="AtlasTexture"'
+        )
+    except OSError:
+        return False
+
+
 def _resource(
     value: Any,
     label: str,
     *,
-    expected_type: str,
+    expected_type: str | tuple[str, ...],
     root: Path,
     production_family: str,
     asset_id: str,
 ) -> tuple[str, str]:
     item = _mapping(value, label)
-    if set(item) != {"type", "path"} or item.get("type") != expected_type:
-        _fail(f"{label} must have exactly type {expected_type!r} and path")
+    expected_types = (expected_type,) if isinstance(expected_type, str) else expected_type
+    actual_type = item.get("type")
+    if set(item) != {"type", "path"} or actual_type not in expected_types:
+        allowed = expected_types[0] if len(expected_types) == 1 else " or ".join(repr(name) for name in expected_types)
+        _fail(f"{label} must have exactly type {allowed} and path")
     path = item.get("path")
     if not isinstance(path, str):
         _fail(f"{label}.path must be a safe res:// path")
@@ -302,8 +362,8 @@ def _resource(
     except StableEntryError as exc:
         _fail(f"{label}.path must be a safe res:// path: {exc}")
     suffix = Path(path).suffix.lower()
-    if suffix not in _RESOURCE_EXTENSIONS[expected_type]:
-        _fail(f"{label}.path is not a supported {expected_type} resource")
+    if suffix not in _RESOURCE_EXTENSIONS[actual_type]:
+        _fail(f"{label}.path is not a supported {actual_type} resource")
     try:
         file_path = assert_within_output_dir(
             root,
@@ -316,8 +376,8 @@ def _resource(
         _fail(f"{label}.path must be a safe res:// path: {exc}")
     if not file_path.is_file():
         _fail(f"{label}.path does not exist: {path}")
-    _validate_resource_content(file_path, expected_type, suffix, label)
-    return path, expected_type
+    _validate_resource_content(file_path, actual_type, suffix, label)
+    return path, actual_type
 
 
 def _item_rows(
@@ -349,7 +409,7 @@ def _item_rows(
             path, _ = _resource(value, f"{section}[{index}].value", expected_type="FontFile", root=root, production_family=production_family, asset_id=asset_id)
             encoded = f'ExtResource("Font_{index}")'
         elif section == "icons":
-            path, _ = _resource(value, f"{section}[{index}].value", expected_type="Texture2D", root=root, production_family=production_family, asset_id=asset_id)
+            path, _ = _resource(value, f"{section}[{index}].value", expected_type=("Texture2D", "AtlasTexture"), root=root, production_family=production_family, asset_id=asset_id)
             encoded = f'ExtResource("Icon_{index}")'
         else:
             encoded = _identifier(value, f"{section}[{index}].value")
@@ -534,9 +594,9 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
         _fail("recipe must declare at least one variation and one Theme item")
 
     external: list[tuple[str, str, str]] = []
-    for section, resource_type, prefix in (("fonts", "FontFile", "Font"), ("icons", "Texture2D", "Icon")):
+    for section, resource_type, prefix in (("fonts", "FontFile", "Font"), ("icons", ("Texture2D", "AtlasTexture"), "Icon")):
         for index, raw in enumerate(_list(recipe[section], section)):
-            path, _ = _resource(
+            path, actual_type = _resource(
                 _mapping(raw, f"{section}[{index}]")["value"],
                 f"{section}[{index}].value",
                 expected_type=resource_type,
@@ -544,7 +604,7 @@ def compile_theme(request: CompileRequest) -> dict[str, Any]:
                 production_family=request.production_family,
                 asset_id=request.asset_id,
             )
-            external.append((f"{prefix}_{index}", resource_type, path))
+            external.append((f"{prefix}_{index}", actual_type, path))
     external.extend((f"StyleBox_{box_id}", "StyleBoxTexture", path) for box_id, path in sorted(external_boxes.items()))
     lines = ["[gd_resource type=\"Theme\" load_steps=" + str(1 + len(external) + len(boxes)) + " format=3]", ""]
     for resource_id, resource_type, path in external:

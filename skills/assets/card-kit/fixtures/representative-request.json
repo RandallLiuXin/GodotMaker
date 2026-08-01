@@ -18,6 +18,7 @@
       "layout": "region_atlas",
       "texture_region": [0, 0, 32, 48],
       "border": [6, 6, 6, 6],
+      "content_margin": [8, 8, 8, 8],
       "expand_margin": [0, 0, 0, 0],
       "axis_stretch": {"horizontal": "stretch", "vertical": "stretch"}
     }],

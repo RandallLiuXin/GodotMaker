@@ -120,7 +120,8 @@
             "L1": { "type": "boolean" },
             "L2": { "type": "boolean" },
             "L3": { "type": "boolean" },
-            "L4": { "type": "boolean" }
+            "L4": { "type": "boolean" },
+            "L5": { "type": "boolean" }
           }
         },
         "notes": {
@@ -141,7 +142,8 @@
                   "L1": { "const": true },
                   "L2": { "const": true },
                   "L3": { "const": true },
-                  "L4": { "const": true }
+                  "L4": { "const": true },
+                  "L5": { "const": true }
                 }
               }
             }

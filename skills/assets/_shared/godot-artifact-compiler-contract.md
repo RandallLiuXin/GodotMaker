@@ -148,10 +148,12 @@ remain worker decisions.
 `asset_compiler/atlas_texture.py`. Its `spec` has exactly two fields:
 `metadata_path` (the fixed-slot metadata JSON beside the physical atlas PNG)
 and `logical_asset_id` (the declared region name). The logical id must be a safe
-single path segment and match the output `.tres` filename. The compiler requires the
+single path segment. The output filename is independently owned by
+`artifact_path`, so multiple stable runtime names may reuse one declared region.
+The compiler requires the
 metadata's `atlas_path` to exactly match `source_path`, finds exactly that
 declared region, rejects malformed, duplicate, missing, or out-of-bounds
-regions, and writes an independent `.tres` for every requested logical asset.
+regions, and writes an independent `.tres` for every requested runtime output.
 
 It serializes the declared `Rect2` unchanged and always sets
 `AtlasTexture.margin` to `Rect2(0, 0, 0, 0)`. It does not pack, trim, discover
@@ -168,22 +170,26 @@ the declared physical atlas path, alongside its exact region and zero margin.
 {
   "texture_region": [x, y, width, height],
   "border": [left, top, right, bottom],
+  "content_margin": [left, top, right, bottom],
   "expand_margin": [left, top, right, bottom],
-  "axis_stretch": {"horizontal": "tile", "vertical": "stretch"}
+  "axis_stretch": {"horizontal": "tile", "vertical": "stretch"},
+  "modulate_color": "#RRGGBBAA"
 }
 ```
 
 `texture_region` and `border` are non-negative integer pixel values; the region
-must lie inside the source PNG and the opposing borders may not exceed its
-width or height. `expand_margin` contains finite non-negative numbers. Each
+must lie inside the source PNG and the opposing borders must leave a non-empty
+center. `content_margin` and `expand_margin` contain finite non-negative numbers. Each
 stretch axis is explicitly one of `tile`, `tile_fit`, or `stretch`.
+`modulate_color` is optional, defaults to opaque white, and accepts
+`#RRGGBB` or `#RRGGBBAA`.
 
 The compiler assigns the source texture directly and writes exactly the
 declared `StyleBoxTexture.region_rect`. It does not infer a region from pixels
 or fixed-slot metadata, choose borders, alter margins, or generate Theme or
 Control layout. L4 reloads the resource through headless Godot and requires its
-source path, texture region, border, expand margins, and both stretch modes to
-match the recipe exactly.
+source path, texture region, border, content and expand margins, both stretch
+modes, and modulation color to match the recipe exactly.
 
 ## Boundary
 

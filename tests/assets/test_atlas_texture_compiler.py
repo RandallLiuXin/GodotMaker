@@ -93,6 +93,22 @@ def test_one_fixed_atlas_compiles_multiple_independent_tres(atlas_project):
     assert button_tres != icon_tres
 
 
+def test_alias_output_can_reuse_a_declared_fixed_region(atlas_project):
+    root = "res://assets/generated/ui-kit/main_atlas"
+    request = _request(
+        atlas_project,
+        "icon",
+        artifact_path=f"{root}/form_submenu_arrow.tres",
+    )
+
+    result = build_default_registry().compile(request)
+
+    assert result.receipt.details["logical_asset_id"] == "icon"
+    assert result.godot_artifact.path == f"{root}/form_submenu_arrow.tres"
+    alias = (atlas_project / "assets/generated/ui-kit/main_atlas/form_submenu_arrow.tres").read_text()
+    assert "region = Rect2(6, 2, 2, 3)" in alias
+
+
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
@@ -125,10 +141,9 @@ def test_atlas_texture_rejects_another_output_type(atlas_project):
         ({"metadata_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.json", "logical_asset_id": "../button"}, "safe path segment"),
         ({"metadata_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.json", "logical_asset_id": "AUX"}, "reserved device name"),
         ({"metadata_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.json", "logical_asset_id": "button\u001f"}, "safe path segment"),
-        ({"metadata_path": "res://assets/generated/ui-kit/main_atlas/main_atlas.json", "logical_asset_id": "icon"}, "filename must match"),
     ],
 )
-def test_atlas_texture_binds_the_logical_id_to_a_safe_output_name(
+def test_atlas_texture_requires_a_safe_logical_region_id(
     atlas_project, spec, message
 ):
     with pytest.raises(CompilerError, match=message):
