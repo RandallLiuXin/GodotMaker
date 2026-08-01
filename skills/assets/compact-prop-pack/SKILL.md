@@ -85,7 +85,11 @@ record has `role`, `path`, `sha256`, and `attached: true`; `provider_trace`
 records the actual coding provider/model/reasoning, `image_provider`, visible
 `image_model_identity` (or `not_exposed_by_subscription_runtime` when that is
 the runtime's truthful limit), provider tool-call id, and its real
-image-attachment field (for Codex, `referenced_image_paths`).
+image-attachment field (for Codex, `referenced_image_paths`). Use these exact
+keys: `coding_provider`, `coding_model`, `reasoning`, `image_provider`,
+`image_model_identity`, `tool_call_id`, and `referenced_image_paths`. The call
+id must be the id emitted by the actual image-generation tool, not an invented
+label; each attached path must be the same real image passed to that call.
 With no references, retain an empty `reference_inputs` array. Include the
 actual prompt, payload claim, readable-file checks, and attachment provenance.
 Never fabricate any of those records.
@@ -160,8 +164,11 @@ creates one ready entry per logical prop; do not hand-write entry drafts.
 Keep the raw source, transparent processed sheet, candidate/AABB report,
 curation report, every finalized PNG/report, declaration, atlas, metadata,
 compiled `.tres` files, source/provider report, command trace, and L0-L4
-diagnostics. Return the shared result only after all declared logical outputs
-pass. A real STOP has no fake output or ready entry and states the actual
-blocking condition.
+diagnostics. Before returning, serialize the exact shared result to
+`.godotmaker/asset-generation/work/<bundle_id>/result.json` and validate it
+with `tools/asset_skill_contract_check.py --kind result`. Return that checked
+JSON byte-for-byte: `outputs` must be the complete array of one named
+`AtlasTexture` per logical prop, never a prose count or summary. A real STOP
+has no fake output or ready entry and states the actual blocking condition.
 
 See `samples/result/market-props.json` for the shared atlas/result shape.
