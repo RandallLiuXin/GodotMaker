@@ -238,10 +238,36 @@ def test_process_sheet_autoslice_extracts_independent_regions_without_grid(tmp_p
         icon_image.close()
 
 
+def test_autoslice_writes_cleaned_rgba_sheet_only_after_successful_binding(tmp_path):
+    source = tmp_path / "magenta_source.png"
+    make_magenta_sheet(source)
+    processed = tmp_path / "processed" / "sheet-transparent.png"
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        names="red,green,blue",
+        asset_id="props",
+        background="magenta",
+        snap_mode="autoslice",
+        processed_out=processed,
+    )
+
+    assert result["processed_path"] == str(processed)
+    with Image.open(processed) as image:
+        assert image.mode == "RGBA"
+        assert image.getchannel("A").getextrema()[0] == 0
+        assert all(
+            pixel[:3] != (255, 0, 255) or pixel[3] == 0
+            for pixel in image.get_flattened_data()
+        )
+
+
 def test_process_sheet_autoslice_reports_name_count_mismatch_without_outputs(tmp_path):
     source = tmp_path / "autoslice_sheet.png"
     make_autoslice_sheet(source)
     report = tmp_path / "report.json"
+    processed = tmp_path / "processed" / "sheet-transparent.png"
 
     result = process_sheet(
         source,
@@ -249,6 +275,7 @@ def test_process_sheet_autoslice_reports_name_count_mismatch_without_outputs(tmp
         names="wide_button",
         asset_id="ui_kit_source",
         snap_mode="autoslice",
+        processed_out=processed,
         report=report,
     )
 
@@ -264,6 +291,8 @@ def test_process_sheet_autoslice_reports_name_count_mismatch_without_outputs(tmp
         "detected_count": 2,
     }]
     assert not list((tmp_path / "out").glob("*.png"))
+    assert result["processed_path"] is None
+    assert not processed.exists()
     assert json.loads(report.read_text(encoding="utf-8"))["detected_region_count"] == 2
 
 
@@ -284,6 +313,38 @@ def test_process_sheet_removes_edge_connected_magenta_fringe(tmp_path):
     assert result["cleanup"]["removed_pixels"] > 0
     assert result["cleanup"]["edge_removed_pixels"] > 0
     assert result["accepted"][0]["crop_bbox"] == [2, 2, 8, 8]
+
+
+def test_process_sheet_soft_matte_removes_blended_magenta_spill(tmp_path):
+    source = tmp_path / "magenta_soft_matte.png"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (12, 12), (255, 0, 255, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((3, 3, 8, 8), fill=(80, 120, 70, 255))
+    # This is a foreground/background blend, not an exact key colour.
+    draw.rectangle((2, 2, 9, 9), outline=(185, 25, 190, 255))
+    image.save(source)
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        snap_mode="grid",
+        names="mossy_prop",
+        background="magenta",
+        magenta_soft_matte=True,
+    )
+
+    assert result["cleanup"]["magenta_soft_matte"] is True
+    assert result["cleanup"]["soft_matte_pixels"] > 0
+    candidate = Image.open(tmp_path / "out" / "mossy_prop.png").convert("RGBA")
+    try:
+        assert not any(
+            alpha > 0 and red > green and blue > green
+            for red, green, blue, alpha in candidate.getdata()
+        )
+    finally:
+        candidate.close()
 
 
 def test_process_sheet_rejects_magenta_edge_touch_when_requested(tmp_path):

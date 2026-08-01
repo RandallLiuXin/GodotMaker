@@ -69,6 +69,11 @@ Regeneration overwrites the same directory in place. A timestamped, `v2`, or
 `final` drift path is rejected. Reference-only assets keep their `references/`
 location and never write into this tree.
 
+`compact-prop-pack` is the one bundle exception: its logical stable entries
+have distinct `asset_id` values but share `bundle_id` and the physical directory
+`assets/generated/compact-prop-pack/<bundle_id>/`. Each entry still exposes one
+independent `AtlasTexture` artifact under that directory.
+
 ## Source Layouts
 
 `source_layout.type` describes how pixels are organized in the generated source.
@@ -97,11 +102,12 @@ It is not a Godot artifact.
 Reference-only entries never enter this ladder: they may use only `pending`,
 `source_ready`, or `failed`, and only `source_ready` is their completion state.
 
-**Current pipeline state.** The native compilers and the L0-L4 runner are not
-implemented. `/gm-asset` therefore registers `source_ready` entries and nothing
-further. Do not write `compiled` or `ready`, and do not invent a `godot_artifact`
-to reach them: a generated asset is not worker-consumable yet, and claiming
-otherwise hands `/gm-build` an asset that was never compiled or verified.
+Only a family that has run its declared native compiler and applicable L0-L4
+checks may write `compiled` or `ready`. Do not invent a `godot_artifact` to
+reach them. First-class standalone skills with an implemented compiler and
+validation runner, including `compact-prop-pack`, may publish a `ready` entry
+after those checks pass; legacy production units remain `source_ready` until
+their own compiler contract exists.
 
 ## Stable Entry Contract
 
@@ -140,18 +146,19 @@ Rules:
 
 3. Both paths are `res://` paths under the asset's stable output directory. A
    path under `.godotmaker/` is rejected, so finalize into the stable directory
-   before drafting the entry.
+   before drafting the entry. A compact-prop-pack entry may instead use its
+   validated `bundle_id` directory; no other family may do so.
 4. Only a native compiler writes `godot_artifact`. Never point it at the source
    image to make an asset look finished — a `grid_sheet` is not a `SpriteFrames`
    just because its sheet exists, and a worker that loads it gets a static image
-   where an animation was promised. No compiler exists yet, so entries stay at
-   `source_ready` with no `godot_artifact`.
+   where an animation was promised.
 5. A `reference` layout carries no `godot_artifact` and keeps its `references/`
    location.
 6. Detailed runtime metadata (region rects, frame lists) is a support file beside
    the artifact, never an entry field.
-7. No other field is allowed. Regenerate through `/gm-asset` instead of adding
-   one.
+7. `bundle_id` is allowed only for `compact-prop-pack` logical entries and is
+   the shared physical atlas directory. No other extra runtime field is
+   allowed. Regenerate through `/gm-asset` instead of adding one.
 
 ## Root Index
 
@@ -227,8 +234,8 @@ python tools/asset_action_entry_draft.py \
 It also writes the action support metadata to
 `assets/generated/<production_family>/<asset_id>/<asset_id>.json`.
 
-Selected curation candidate (`ui-kit`, `card-kit`, `compact-prop-pack`,
-`scene-prop-set`, `platform-strip`):
+Selected curation candidate (`ui-kit`, `card-kit`, `scene-prop-set`,
+`platform-strip`):
 
 ```bash
 python tools/asset_curation_entry_draft.py \
@@ -254,6 +261,19 @@ requires that run to have succeeded with `--require-aspect` inside tolerance and
 `--label <asset_id>`. It derives the layout from the family — `reference` pinned
 to `references/` for `screen-reference`, `single` pinned to the stable output
 directory for every other family.
+
+Ready compact prop atlas bundle:
+
+```bash
+python tools/asset_compact_prop_pack_entry_draft.py \
+  --request <request.json> --result <result.json> --tag <tag> \
+  --project-root . \
+  --out-dir .godotmaker/asset-generation/work/entries
+```
+
+This adapter requires an exact declared atlas/result match, existing physical
+atlas and `.tres` files, and an all-true L0-L4 result. It emits one draft per
+logical prop, each with the shared `bundle_id`.
 
 Write one validated entry to its canonical path:
 
@@ -325,10 +345,10 @@ of:
    artifact.
 4. The L0-L4 runner verified the asset.
 
-Steps 2 and 4 are not implemented. **No generated asset can reach `ready` today**,
-so `/gm-build` and worker dispatch currently receive no generated runtime assets.
-Registration, stable paths, and the pointer index are what this stage delivers;
-compilation and verification arrive with the compiler work.
+The relevant first-class production contract owns whether its compiler and
+L0-L4 validation runner are implemented. Do not downgrade a successfully
+validated ready entry back to `source_ready`, and do not promote an unvalidated
+legacy source just because its files exist.
 
 Compiler target compatibility by source layout, for when that work lands:
 
@@ -344,9 +364,9 @@ Support files are named after the asset and live beside the artifact:
 assets/generated/<production_family>/<asset_id>/<asset_id>.json
 ```
 
-That fixed name is the only support-metadata path a consumer needs, which is why
-the entry does not carry it. Keep detailed runtime metadata there, never in the
-entry and never in ASSETS.md.
+For a compact prop bundle, the metadata is named after `bundle_id` and shared by
+all its logical entries. Keep detailed runtime metadata there, never in
+ASSETS.md.
 
 Atlas metadata shape (`assets/generated/ui-kit/main_atlas/main_atlas.json`):
 

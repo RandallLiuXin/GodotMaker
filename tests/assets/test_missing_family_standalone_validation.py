@@ -686,6 +686,11 @@ def test_prop_slot_errors_fail_closed_at_l0(tmp_path, source):
             "outside the declared atlas bounds",
             id="outside-atlas-bounds",
         ),
+        pytest.param(
+            [{"name": "CON", "rect": [0, 0, 4, 4], "source": "con.png"}],
+            "Windows reserved device name",
+            id="unsafe-logical-name",
+        ),
     ],
 )
 def test_prop_fixed_slot_geometry_fails_closed_at_l0(tmp_path, family, slots, message):
@@ -974,9 +979,11 @@ def _write_prop_delivery(
     output = root / "assets" / "generated" / family / asset_id
     output.mkdir(parents=True)
     atlas = request["spec"]["atlas"]
-    Image.new("RGBA", (atlas["width"], atlas["height"]), (1, 2, 3, 255)).save(
-        output / f"{asset_id}.png"
-    )
+    atlas_image = Image.new("RGBA", (atlas["width"], atlas["height"]), (0, 0, 0, 0))
+    for slot in request["spec"]["slots"]:
+        x, y, width, height = slot["rect"]
+        atlas_image.putpixel((x + width // 2, y + height // 2), (1, 2, 3, 255))
+    atlas_image.save(output / f"{asset_id}.png")
     regions = [
         {
             "name": slot["name"],
@@ -1072,6 +1079,26 @@ def test_prop_delivery_must_exactly_bind_declared_geometry(tmp_path, mutation):
         metadata.write_text(json.dumps(delivered), encoding="utf-8")
     elif mutation == "dimensions":
         Image.new("RGBA", (64, 64), (1, 2, 3, 255)).save(output / "market.png")
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"] == {
+        "L0": True,
+        "L1": False,
+        "L2": False,
+        "L3": False,
+        "L4": False,
+    }
+
+
+@pytest.mark.parametrize("pixel", [(255, 0, 255, 255), (1, 2, 3, 255)])
+def test_compact_prop_delivery_rejects_opaque_magenta_or_missing_padding(tmp_path, pixel):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(tmp_path, request)
+    atlas = tmp_path / "assets/generated/compact-prop-pack/market/market.png"
+    Image.new("RGBA", (32, 16), pixel).save(atlas)
 
     actual = compile_and_validate(
         request, result, project_root=tmp_path, godot_path="fake"

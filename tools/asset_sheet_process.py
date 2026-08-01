@@ -136,6 +136,87 @@ def _remove_magenta_background(
     return converted, {"removed_pixels": removed, "edge_removed_pixels": edge_removed}
 
 
+def _smoothstep(value: float) -> float:
+    value = max(0.0, min(1.0, value))
+    return value * value * (3.0 - 2.0 * value)
+
+
+def _magenta_soft_alpha(rgb: tuple[int, int, int]) -> int:
+    """Estimate alpha for an #FF00FF-composited source pixel.
+
+    A generated sheet often contains antialiased foreground pixels blended with
+    the requested magenta background. Euclidean key removal leaves those
+    purple fringes opaque; this matte uses both red/blue key-channel dominance
+    and a soft distance ramp to retain the real foreground edge.
+    """
+    red, green, blue = rgb
+    distance = max(abs(red - 255), green, abs(blue - 255))
+    dominance = min(red, blue) - green
+    key_like = distance <= 32 or dominance >= 16
+    if not key_like:
+        return 255
+
+    if distance <= 32:
+        distance_alpha = 0
+    elif distance >= 180:
+        distance_alpha = 255
+    else:
+        ratio = (distance - 32) / (180 - 32)
+        distance_alpha = round(255 * _smoothstep(ratio))
+
+    if dominance <= 0:
+        dominance_alpha = 255
+    else:
+        denominator = max(1, 255 - green)
+        dominance_alpha = round(255 * (1 - min(1, dominance / denominator)))
+    return min(distance_alpha, dominance_alpha)
+
+
+def _remove_magenta_soft_matte(image) -> tuple[object, dict[str, int]]:
+    """Remove magenta and its blended spill while preserving antialiased edges."""
+    try:
+        from PIL import ImageFilter
+    except ImportError as exc:
+        raise SheetProcessError("Pillow is required to process asset sheets") from exc
+
+    converted = image.convert("RGBA")
+    pixels = converted.load()
+    matte_pixels = 0
+    partial_pixels = 0
+    width, height = converted.size
+    for x in range(width):
+        for y in range(height):
+            red, green, blue, alpha = pixels[x, y]
+            matte_alpha = _magenta_soft_alpha((red, green, blue))
+            output_alpha = round(matte_alpha * (alpha / 255))
+            if output_alpha != alpha:
+                matte_pixels += 1
+            if output_alpha == 0:
+                pixels[x, y] = (0, 0, 0, 0)
+                continue
+            if output_alpha < 252:
+                # Once alpha is lowered, cap both key channels at the green
+                # channel so the translucent edge cannot retain purple spill.
+                cap = max(0, green - 1)
+                red = min(red, cap)
+                blue = min(blue, cap)
+                partial_pixels += 1
+            pixels[x, y] = (red, green, blue, output_alpha)
+
+    # Contract one alpha pixel to avoid an opaque keyed fringe surviving at a
+    # source boundary. This mirrors the fixed deterministic cleanup used by
+    # the compact prop production path.
+    alpha = converted.getchannel("A").filter(ImageFilter.MinFilter(3))
+    converted.putalpha(alpha)
+    return converted, {
+        "removed_pixels": matte_pixels - partial_pixels,
+        "edge_removed_pixels": 0,
+        "soft_matte_pixels": matte_pixels,
+        "soft_matte_partial_pixels": partial_pixels,
+        "soft_matte_edge_contract": 1,
+    }
+
+
 def _trim_border(image, *, pixels: int):
     if pixels <= 0:
         return image
@@ -378,6 +459,23 @@ def _atomic_write_json(path: Path, data: dict[str, object]) -> None:
             tmp_path.unlink()
 
 
+def _atomic_save_png(image, path: Path) -> None:
+    """Save a processed RGBA sheet without leaving a partial evidence file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        dir=str(path.parent),
+        suffix=".png",
+    ) as handle:
+        tmp_path = Path(handle.name)
+    try:
+        image.save(tmp_path, format="PNG")
+        tmp_path.replace(path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
 def process_sheet(
     source: Path,
     output_dir: Path,
@@ -392,6 +490,7 @@ def process_sheet(
     background: str = "transparent",
     magenta_threshold: int = 100,
     magenta_edge_threshold: int = 150,
+    magenta_soft_matte: bool = False,
     component_mode: str = "all",
     component_padding: int | None = None,
     min_component_area: int = 1,
@@ -399,6 +498,7 @@ def process_sheet(
     edge_clean_depth: int = 0,
     edge_touch_margin: int = 0,
     preserve_cell_bounds: bool = False,
+    processed_out: Path | None = None,
     report: Path | None = None,
 ) -> dict[str, object]:
     """Extract fixed grid cells or independent autoslice regions."""
@@ -418,6 +518,8 @@ def process_sheet(
 
     if background not in {"transparent", "magenta"}:
         raise SheetProcessError("--background must be transparent or magenta")
+    if magenta_soft_matte and background != "magenta":
+        raise SheetProcessError("--magenta-soft-matte requires --background magenta")
     if snap_mode not in SNAP_MODES:
         raise SheetProcessError("--snap-mode must be grid or autoslice")
     if snap_mode == "grid" and grid is None:
@@ -454,15 +556,19 @@ def process_sheet(
             "background": background,
             "magenta_threshold": magenta_threshold if background == "magenta" else None,
             "magenta_edge_threshold": magenta_edge_threshold if background == "magenta" else None,
+            "magenta_soft_matte": magenta_soft_matte,
             "removed_pixels": 0,
             "edge_removed_pixels": 0,
         }
         if background == "magenta":
-            image, cleanup_counts = _remove_magenta_background(
-                image,
-                threshold=magenta_threshold,
-                edge_threshold=magenta_edge_threshold,
-            )
+            if magenta_soft_matte:
+                image, cleanup_counts = _remove_magenta_soft_matte(image)
+            else:
+                image, cleanup_counts = _remove_magenta_background(
+                    image,
+                    threshold=magenta_threshold,
+                    edge_threshold=magenta_edge_threshold,
+                )
             cleanup.update(cleanup_counts)
         width, height = image.size
         if not _has_transparent_pixels(image):
@@ -633,6 +739,15 @@ def process_sheet(
                     "width": cropped.size[0],
                     "height": cropped.size[1],
                 })
+
+        # A name-count mismatch means the candidate set cannot be bound to the
+        # caller's logical props. Preserve only the report, not a sheet that
+        # could be mistaken for a valid transparent source artifact.
+        processed_path: str | None = None
+        if processed_out is not None and not name_count_mismatch:
+            processed_target = Path(processed_out)
+            _atomic_save_png(image, processed_target)
+            processed_path = str(processed_target)
     finally:
         image.close()
 
@@ -697,6 +812,7 @@ def process_sheet(
         "edge_touch_candidates": [
             item["candidate_id"] for item in accepted if bool(item.get("edge_touch"))
         ],
+        "processed_path": processed_path,
     }
     if report is not None:
         _atomic_write_json(Path(report), result)
@@ -735,6 +851,11 @@ def _main() -> int:
         type=int,
         default=150,
         help="Euclidean RGB distance for edge-connected #FF00FF fringe cleanup",
+    )
+    parser.add_argument(
+        "--magenta-soft-matte",
+        action="store_true",
+        help="Use a fixed soft matte and spill cleanup for #FF00FF-composited source edges",
     )
     parser.add_argument(
         "--snap-mode",
@@ -784,6 +905,11 @@ def _main() -> int:
         help="Keep each accepted grid output at its full fixed cell dimensions",
     )
     parser.add_argument("--report", default=None, help="Optional JSON report path")
+    parser.add_argument(
+        "--processed-out",
+        default=None,
+        help="Optional transparent RGBA sheet path written after successful processing",
+    )
     args = parser.parse_args()
 
     try:
@@ -799,6 +925,7 @@ def _main() -> int:
             background=args.background,
             magenta_threshold=args.magenta_threshold,
             magenta_edge_threshold=args.magenta_edge_threshold,
+            magenta_soft_matte=args.magenta_soft_matte,
             snap_mode=args.snap_mode,
             component_mode=args.component_mode,
             component_padding=args.component_padding,
@@ -807,6 +934,7 @@ def _main() -> int:
             edge_clean_depth=args.edge_clean_depth,
             edge_touch_margin=args.edge_touch_margin,
             preserve_cell_bounds=args.preserve_cell_bounds,
+            processed_out=Path(args.processed_out) if args.processed_out else None,
             report=Path(args.report) if args.report else None,
         )
     except SheetProcessError as exc:

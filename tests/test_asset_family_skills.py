@@ -31,6 +31,12 @@ FAMILIES = {
         "source_layout": None,
         "path_prefix": "references/",
     },
+    "compact-prop-pack": {
+        "role": "runtime",
+        "godot_type": "AtlasTexture",
+        "source_layout": "region_atlas",
+        "path_prefix": "res://assets/generated/compact-prop-pack/",
+    },
 }
 
 
