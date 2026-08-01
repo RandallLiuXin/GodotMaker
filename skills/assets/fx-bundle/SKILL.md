@@ -115,6 +115,18 @@ STOP condition occurs. Never mark the first failed check as the final result.
    result, and run the request/result handoff checker. L5/L6 visual judgment
    belongs to the private Eval, not this production Skill.
 
+### Godot executable for L3/L4
+
+L3 is a real Godot import/load probe, not a PATH-presence check. When
+`GM_EVAL_GODOT_PATH` is set, it is the pinned executable for this run: pass
+that exact value to `compile_and_validate(..., godot_path=...)` (or leave its
+historical `"godot"` placeholder for the shared validator to resolve). Do not
+replace it with a bare `godot`, discover another installation, or mark L3 as
+passed without invoking it. Outside an Eval, resolve the configured executable
+with `python tools/agent_runtime.py godot_path`; if it is genuinely absent or
+unrunnable, record the diagnostic and STOP only after the production repair
+options are exhausted.
+
 ### Static path
 
 Use `tools/asset_sheet_process.py --snap-mode autoslice` only when every

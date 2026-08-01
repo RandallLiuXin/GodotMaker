@@ -602,6 +602,44 @@ def test_background_executes_l2_to_l4_with_a_real_png_and_probe(monkeypatch, tmp
     }
 
 
+def test_standalone_validation_prefers_the_pinned_eval_godot(monkeypatch, tmp_path):
+    source = tmp_path / "assets/generated/background-map/sky/sky.png"
+    source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(source)
+    seen_paths: list[str] = []
+
+    class Probe:
+        def __init__(self, path):
+            seen_paths.append(path)
+
+        def probe(self, _root, requests):
+            return ProbeReport(
+                "pinned-eval-godot",
+                (
+                    ProbeResult(
+                        requests[0].res_path,
+                        "Texture2D",
+                        True,
+                        "CompressedTexture2D",
+                        True,
+                        structure={"texture2d": {"width": 2, "height": 3}},
+                    ),
+                ),
+            )
+
+    monkeypatch.setenv("GM_EVAL_GODOT_PATH", "pinned-eval-godot")
+    monkeypatch.setattr(runner, "GodotProbe", Probe)
+    actual = compile_and_validate(
+        {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+        _background_result(),
+        project_root=tmp_path,
+        godot_path="godot",
+    )
+
+    assert seen_paths == ["pinned-eval-godot"]
+    assert actual["validation"]["passed"] is True
+
+
 @pytest.mark.parametrize("source", [None, 5], ids=["missing", "wrong-type"])
 def test_prop_slot_errors_fail_closed_at_l0(tmp_path, source):
     slot = {"name": "coin", "rect": [0, 0, 1, 1]}
