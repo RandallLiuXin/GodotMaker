@@ -1,3 +1,4 @@
+import hashlib
 import json
 import subprocess
 import sys
@@ -35,6 +36,9 @@ def test_claim_codex_image_copies_explicit_generated_path(tmp_path):
     assert result["generated_path"] == str(source)
     assert result["claimed_path"] == str(output)
     assert result["exists"] is True
+    expected_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
+    assert result["generated_sha256"] == expected_sha256
+    assert result["claimed_sha256"] == expected_sha256
     assert result["width"] == 12
     assert result["height"] == 8
     assert output.read_bytes() == source.read_bytes()
