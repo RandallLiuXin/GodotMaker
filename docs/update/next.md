@@ -52,7 +52,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.
 - An ASSETS.md runtime row reaches `generated` only from a `ready` non-reference stable entry, while a finalized registered screen reference completes its reference row at `source_ready` without becoming a worker runtime artifact.
 - `asset_generation_index.py --check-files` verifies that every registered source and artifact still exists, catching an asset deleted after registration.
-- Generated runtime assets now stop at `source_ready`: the native compilers are not implemented and `/gm-asset` does not yet run the L0-L4 ladder, so it registers stable entries but produces no worker-consumable runtime asset and leaves generated runtime ASSETS.md rows `MISSING`.
+- Asset families without a native compiler and L0-L4 validation path stop at `source_ready`, while a fully validated scene-prop set may register its generated AtlasTexture runtime resources as `ready`.
 - `godot_artifact` is written only by a native compiler, so a `grid_sheet` can no longer be published as a `Texture2D` standing in for its unbuilt `SpriteFrames`.
 - The stable-entry schema now validates each `source_layout.type` against its closed compatible Godot artifact-type set, including `StyleBoxTexture` for `single` and `region_atlas`, so mismatches are rejected before reaching a worker.
 

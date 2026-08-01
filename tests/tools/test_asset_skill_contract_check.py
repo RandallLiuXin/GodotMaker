@@ -54,6 +54,27 @@ def valid_result():
     }
 
 
+def valid_scene_prop_set_request():
+    return {
+        "asset_type": "scene-prop-set",
+        "asset_id": "market-props",
+        "brief": "A painted market prop set.",
+        "provider": "codex",
+        "spec": {
+            "version": 1,
+            "atlas": {"width": 256, "height": 128},
+            "slots": [
+                {
+                    "name": "stall",
+                    "rect": [0, 0, 128, 96],
+                    "source": ".godotmaker/asset-generation/normalized/market-props/stall.png",
+                    "pivot": [0.5, 1.0],
+                }
+            ],
+        },
+    }
+
+
 # ---------------------------------------------------------------------------
 # On-disk sample files are all valid.
 
@@ -90,6 +111,30 @@ def test_samples_exist():
 def test_kind_is_inferred_from_shape():
     assert check_document(valid_result())["kind"] == "result"
     assert check_document(valid_request())["kind"] == "request"
+
+
+def test_scene_prop_set_request_requires_the_declared_fixed_slot_schema():
+    assert check_request(valid_scene_prop_set_request())["ok"] is True
+
+    missing_spec = valid_scene_prop_set_request()
+    del missing_spec["spec"]
+    with pytest.raises(AssetContractError, match="request.spec is required"):
+        check_request(missing_spec)
+
+    invalid_rect = valid_scene_prop_set_request()
+    invalid_rect["spec"]["slots"][0]["rect"] = [0, 0, 0, 96]
+    with pytest.raises(AssetContractError, match=r"request.spec.slots\[0\].rect"):
+        check_request(invalid_rect)
+
+    unexpected_slot_key = valid_scene_prop_set_request()
+    unexpected_slot_key["spec"]["slots"][0]["pack"] = True
+    with pytest.raises(AssetContractError, match=r"request.spec.slots\[0\] has unknown field"):
+        check_request(unexpected_slot_key)
+
+    unsafe_name = valid_scene_prop_set_request()
+    unsafe_name["spec"]["slots"][0]["name"] = "../outside"
+    with pytest.raises(AssetContractError, match="single safe path segment"):
+        check_request(unsafe_name)
 
 
 def test_multiple_runtime_outputs_are_counted():

@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from asset_stable_entry import StableEntryError, safe_identifier
+
 ASSET_TYPES = {
     "background-map",
     "character-bundle",
@@ -112,6 +114,80 @@ def _check_asset_type(value: Any, *, location: str, issues: list[str]) -> None:
         issues.append(f"{location} is not an allowed production family: {value}")
 
 
+def _check_scene_prop_set_spec(value: Any, *, issues: list[str]) -> None:
+    """Mirror the declared scene-prop-set request schema at generic L0."""
+    if not isinstance(value, dict):
+        issues.append("request.spec must be a scene-prop-set fixed-slot object")
+        return
+    _check_extra_keys(
+        value,
+        {"version", "atlas", "slots"},
+        location="request.spec",
+        forbidden=set(),
+        issues=issues,
+    )
+    if type(value.get("version")) is not int or value.get("version") != 1:
+        issues.append("request.spec.version must be integer 1")
+
+    atlas = value.get("atlas")
+    if not isinstance(atlas, dict):
+        issues.append("request.spec.atlas must be an object")
+    else:
+        _check_extra_keys(
+            atlas,
+            {"width", "height"},
+            location="request.spec.atlas",
+            forbidden=set(),
+            issues=issues,
+        )
+        for axis in ("width", "height"):
+            if type(atlas.get(axis)) is not int or atlas.get(axis) <= 0:
+                issues.append(f"request.spec.atlas.{axis} must be a positive integer")
+
+    slots = value.get("slots")
+    if not isinstance(slots, list) or not slots:
+        issues.append("request.spec.slots must be a non-empty list")
+        return
+    for index, slot in enumerate(slots):
+        location = f"request.spec.slots[{index}]"
+        if not isinstance(slot, dict):
+            issues.append(f"{location} must be an object")
+            continue
+        _check_extra_keys(
+            slot,
+            {"name", "rect", "source", "pivot"},
+            location=location,
+            forbidden=set(),
+            issues=issues,
+        )
+        name = slot.get("name")
+        if not _non_empty_string(name):
+            issues.append(f"{location}.name must be a non-empty string")
+        else:
+            try:
+                safe_identifier(name, f"{location}.name")
+            except StableEntryError as exc:
+                issues.append(str(exc))
+        if not _non_empty_string(slot.get("source")):
+            issues.append(f"{location}.source must be a non-empty string")
+        rect = slot.get("rect")
+        if (
+            not isinstance(rect, list)
+            or len(rect) != 4
+            or any(type(component) is not int for component in rect)
+            or (isinstance(rect, list) and len(rect) == 4 and (rect[0] < 0 or rect[1] < 0 or rect[2] <= 0 or rect[3] <= 0))
+        ):
+            issues.append(f"{location}.rect must be [x, y, width, height] with non-negative origin and positive size")
+        if "pivot" in slot:
+            pivot = slot["pivot"]
+            if (
+                not isinstance(pivot, list)
+                or len(pivot) != 2
+                or any(type(component) not in {int, float} or not 0 <= component <= 1 for component in pivot)
+            ):
+                issues.append(f"{location}.pivot must contain two numbers from 0 to 1")
+
+
 def check_request(data: Any) -> dict[str, Any]:
     """Validate an asset-skill request. Raise AssetContractError if invalid."""
     issues: list[str] = []
@@ -162,6 +238,11 @@ def check_request(data: Any) -> dict[str, Any]:
 
     if "spec" in data and not isinstance(data["spec"], dict):
         issues.append("request.spec must be an object")
+    if data.get("asset_type") == "scene-prop-set":
+        if "spec" not in data:
+            issues.append("request.spec is required for scene-prop-set")
+        else:
+            _check_scene_prop_set_spec(data["spec"], issues=issues)
 
     if issues:
         raise AssetContractError("; ".join(issues))

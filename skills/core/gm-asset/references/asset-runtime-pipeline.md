@@ -105,9 +105,9 @@ Reference-only entries never enter this ladder: they may use only `pending`,
 Only a family that has run its declared native compiler and applicable L0-L4
 checks may write `compiled` or `ready`. Do not invent a `godot_artifact` to
 reach them. First-class standalone skills with an implemented compiler and
-validation runner, including `compact-prop-pack`, may publish a `ready` entry
-after those checks pass; legacy production units remain `source_ready` until
-their own compiler contract exists.
+validation runner, including `compact-prop-pack` and `scene-prop-set`, may
+publish a `ready` entry after those checks pass; legacy production units remain
+`source_ready` until their own compiler contract exists.
 
 ## Stable Entry Contract
 
@@ -151,7 +151,11 @@ Rules:
 4. Only a native compiler writes `godot_artifact`. Never point it at the source
    image to make an asset look finished — a `grid_sheet` is not a `SpriteFrames`
    just because its sheet exists, and a worker that loads it gets a static image
-   where an animation was promised.
+   where an animation was promised. There is no generic compiler that makes
+   every source layout runtime-ready: a family without its own compiler and
+   validation path stays at `source_ready` with no `godot_artifact`. A family
+   with both paths, such as `compact-prop-pack` or `scene-prop-set`, follows
+   its explicit contract instead.
 5. A `reference` layout carries no `godot_artifact` and keeps its `references/`
    location.
 6. Detailed runtime metadata (region rects, frame lists) is a support file beside
@@ -234,7 +238,7 @@ python tools/asset_action_entry_draft.py \
 It also writes the action support metadata to
 `assets/generated/<production_family>/<asset_id>/<asset_id>.json`.
 
-Selected curation candidate (`ui-kit`, `card-kit`, `scene-prop-set`,
+Selected curation candidate (`ui-kit`, `card-kit`, `compact-prop-pack`,
 `platform-strip`):
 
 ```bash
@@ -244,6 +248,22 @@ python tools/asset_curation_entry_draft.py \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
+
+Compiled scene prop atlas (`scene-prop-set`):
+
+```bash
+python tools/asset_scene_prop_set_entry_draft.py \
+  --request ASSET_REQUEST.json \
+  --result .godotmaker/asset-generation/<asset_id>-result.json \
+  --tag <tag> --primary-output <first-slot-name> \
+  --project-root . --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+The builder validates the request/result binding, one stable `region_atlas`
+source, every declared independent `AtlasTexture`, exact metadata rectangles
+and pivots, and passed L0-L4 result before it writes a `ready` v1 draft. The
+entry's primary artifact is only the v1 anchor for the set; the metadata beside
+it remains the inventory for all regions.
 
 One finalized image (`screen-reference`, `background-map`, and single card or
 portrait frames):
@@ -297,8 +317,8 @@ python tools/asset_generation_index.py --project-root . --check-entries --check-
 `--check-entries` alone is a schema-only pass. `--check-files` additionally proves
 every registered `source_layout.path` and `godot_artifact.path` is still on disk,
 so it catches an asset deleted after registration. That pair is the registration
-gate; it is not a readiness gate and does not check support files or compiled
-output, because neither the compilers nor the L0-L4 runner exist yet.
+gate; it is not a family readiness gate and does not replace support-file,
+compiler, or L0-L4 checks required by a family that can reach `ready`.
 
 Producer reports list stable entry drafts. The manager writes each entry, upserts
 its pointer, and runs the root-index gate before updating ASSETS.md.
@@ -315,8 +335,8 @@ non-reference entry. A `screen-reference` row may become `generated` at
 `source_ready` with a finalized reference file, canonical stable
 entry, and root-index pointer. It schema-validates index pointers and validates
 the selected reference file. Do not create a `godot_artifact`, worker handoff,
-or hand-edited ASSETS.md status for a reference. Keep all other `source_ready`
-entries `MISSING`.
+or hand-edited ASSETS.md status for a reference. Keep runtime entries that are
+not independently validated as `ready` `MISSING`.
 
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.
@@ -350,7 +370,7 @@ L0-L4 validation runner are implemented. Do not downgrade a successfully
 validated ready entry back to `source_ready`, and do not promote an unvalidated
 legacy source just because its files exist.
 
-Compiler target compatibility by source layout, for when that work lands:
+Compiler target compatibility by source layout:
 
 1. `single`: `Texture2D`, no support file; or `StyleBoxTexture`.
 2. `grid_sheet`: `SpriteFrames`, with action metadata beside the artifact.

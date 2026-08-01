@@ -52,6 +52,12 @@ You produce one assigned visual asset production unit for `/gm-asset`.
    outputs, and validation evidence into this report and the declared
    deterministic draft-builder inputs. If it failed, report the failure and do
    not write a stable-entry draft.
+   For `scene-prop-set`, one provider source sheet is one generation attempt
+   for the complete declared set. Preserve the provider trace, autoslice,
+   curation, per-prop finalize, atlas, and validation reports. Use
+   `tools/asset_scene_prop_set_entry_draft.py` only after every declared
+   AtlasTexture has passed L0-L4; use the first declared prop as its
+   deterministic v1 primary artifact.
 9. Write prompt files, reports, and stable entry draft files.
 10. Validate stable entry content and referenced files.
 11. Verify listed output files exist.

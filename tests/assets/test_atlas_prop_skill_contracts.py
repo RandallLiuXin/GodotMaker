@@ -53,7 +53,15 @@ def test_atlas_prop_skills_are_standalone_and_use_shared_runtime_contracts():
         assert "L0-L4" in skill
         assert "packing" in skill
         assert "scene placement" in skill
-        assert "/gm-asset" not in skill
+        if family == "scene-prop-set":
+            assert "asset_scene_prop_set_entry_draft.py" in skill
+            assert "asset_scene_prop_set_validate.py" in skill
+            assert "require_provider_trace: true" in skill
+            assert "--background magenta" in skill
+            assert "configured `godot_path`" in skill
+            assert "GM_EVAL_GODOT_PATH" not in skill
+        else:
+            assert "/gm-asset" not in skill
 
 
 def test_atlas_prop_specs_are_direct_assembler_declarations_with_default_pivots():
