@@ -361,6 +361,9 @@ def validate_stylebox_texture(request: StructureRequest) -> dict[str, Any]:
         )
     _exact_numbers(structure.get("texture_region"), list(expected.texture_region), "texture_region")
     _exact_numbers(structure.get("border"), list(expected.border), "border")
+    _float32_numbers(
+        structure.get("content_margin"), list(expected.content_margin), "content_margin"
+    )
     _float32_numbers(structure.get("expand_margin"), list(expected.expand_margin), "expand_margin")
     _exact_numbers(
         structure.get("axis_stretch"),
@@ -370,12 +373,19 @@ def validate_stylebox_texture(request: StructureRequest) -> dict[str, Any]:
         ],
         "axis_stretch",
     )
+    color_source = expected.modulate_color.removeprefix("#")
+    expected_modulate = [
+        int(color_source[index:index + 2], 16) / 255 for index in range(0, 8, 2)
+    ]
+    _float32_numbers(structure.get("modulate_color"), expected_modulate, "modulate_color")
     return {
         "texture_path": expected.texture_path,
         "texture_region": list(expected.texture_region),
         "border": list(expected.border),
+        "content_margin": list(expected.content_margin),
         "expand_margin": list(expected.expand_margin),
         "axis_stretch": {"horizontal": expected.axis_stretch[0], "vertical": expected.axis_stretch[1]},
+        "modulate_color": expected.modulate_color,
     }
 
 

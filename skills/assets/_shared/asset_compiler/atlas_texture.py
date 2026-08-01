@@ -19,7 +19,7 @@ from .contract import CompileRequest, CompilerError, require_text
 from .registry import CompilerRegistry, CompilerRoute
 
 COMPILER_ID = "atlas_texture_fixed_slot"
-COMPILER_VERSION = 1
+COMPILER_VERSION = 2
 METADATA_VERSION = 1
 
 _SPEC_KEYS = {"metadata_path", "logical_asset_id"}
@@ -110,14 +110,6 @@ def read_atlas_texture_input(request: Any) -> AtlasTextureInput:
         raise CompilerError(str(exc)) from exc
     if not metadata_path.endswith(".json"):
         raise CompilerError("AtlasTexture spec.metadata_path must end in .json")
-    artifact_stem = Path(request.artifact_path).stem
-    if artifact_stem != logical_asset_id and not artifact_stem.startswith(
-        logical_asset_id + ".staging-"
-    ):
-        raise CompilerError(
-            "AtlasTexture artifact_path filename must match spec.logical_asset_id"
-        )
-
     try:
         metadata_file = resolve_res_path(request.project_root, metadata_path, label="AtlasTexture spec.metadata_path")
     except Exception as exc:  # stable-entry error vocabulary belongs behind CompilerError

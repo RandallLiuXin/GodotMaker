@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
+import json
 from pathlib import Path
 import subprocess
 from typing import Any
@@ -10,9 +11,11 @@ from typing import Any
 from asset_compiler import CompileRequest, CompilerError, build_default_registry, theme
 from asset_compiler._stable_entry import StableEntryError, assert_within_output_dir, resolve_res_path
 from asset_validation import GodotProbe, ProbeRequest, ValidationError, build_default_structures
+from asset_validation._bridge import prefer_console_godot_path
 from asset_validation.structure import StructureRequest
 from asset_skill_contract_check import AssetContractError, check_result
 from asset_ui_card_contract_check import UICardContractError, check_ui_card_handoff, validate_ui_reference_inputs
+from asset_ui_stylebox_plan import UIStyleBoxPlanError, validate_stylebox_plan
 
 
 class UICardSkillError(Exception):
@@ -73,6 +76,8 @@ def _l1_paths(spec: Mapping[str, Any]) -> list[str]:
     theme_declaration = spec["theme"]
     if theme_declaration is not None:
         paths.append(theme_declaration["recipe_path"])
+    if isinstance(spec.get("stylebox_plan_path"), str):
+        paths.append(spec["stylebox_plan_path"])
     for box in spec["styleboxes"]:
         paths.append(box["source_path"])
     for region in spec["atlas_regions"]:
@@ -80,27 +85,45 @@ def _l1_paths(spec: Mapping[str, Any]) -> list[str]:
     return paths
 
 
-def _run_consumer_smoke(root: Path, godot_path: str, theme_path: str) -> None:
+def _run_consumer_smoke(
+    root: Path,
+    godot_path: str,
+    theme_path: str,
+    styleboxes: list[Mapping[str, Any]],
+) -> None:
     """Bind the generated Theme to representative Controls without creating art."""
     script = root / ".godotmaker" / "ui-card-consumer-smoke.gd"
     script.parent.mkdir(parents=True, exist_ok=True)
+    for box in styleboxes:
+        margins = box["compiler_spec"].get("content_margin", [])
+        for width, height in box.get("preview_sizes", []):
+            if margins[0] + margins[2] > width or margins[1] + margins[3] > height:
+                raise ValidationError(
+                    f"StyleBox content margins exceed preview size for {box['output_name']!r}"
+                )
     script.write_text(
         "extends SceneTree\n"
-        "func _init():\n"
+        "func _initialize():\n"
         f"    var theme = load(\"{theme_path}\") as Theme\n"
         "    if theme == null:\n"
         "        push_error(\"UI consumer could not load Theme\")\n"
         "        quit(1)\n"
         "        return\n"
-        "    for control in [Button.new(), Panel.new(), PanelContainer.new(), LineEdit.new(), TextEdit.new(), ProgressBar.new(), TabBar.new(), TabContainer.new(), CheckBox.new(), CheckButton.new(), HSlider.new(), VSlider.new(), HScrollBar.new(), VScrollBar.new(), OptionButton.new(), PopupMenu.new()]:\n"
+        "    var controls = [Button.new(), Panel.new(), PanelContainer.new(), LineEdit.new(), TextEdit.new(), ProgressBar.new(), TabBar.new(), TabContainer.new(), CheckBox.new(), CheckButton.new(), HSlider.new(), VSlider.new(), HScrollBar.new(), VScrollBar.new(), OptionButton.new()]\n"
+        "    for control in controls:\n"
         "        control.theme = theme\n"
         "        root.add_child(control)\n"
+        "        for target_size in [Vector2(240, 72), Vector2(520, 240)]:\n"
+        "            control.custom_minimum_size = target_size\n"
+        "            control.size = target_size\n"
+        "        root.remove_child(control)\n"
+        "        control.free()\n"
         "    print(\"UI_CARD_CONSUMER_SMOKE_OK\")\n"
         "    quit()\n",
         encoding="utf-8",
     )
     completed = subprocess.run(
-        [godot_path, "--headless", "--path", str(root), "--script", str(script)],
+        [prefer_console_godot_path(godot_path), "--headless", "--path", str(root), "--script", str(script)],
         capture_output=True, text=True, timeout=60, check=False,
     )
     if completed.returncode != 0 or "UI_CARD_CONSUMER_SMOKE_OK" not in completed.stdout:
@@ -145,13 +168,28 @@ def compile_and_validate(
             )
             if not file_path.is_file() or file_path.stat().st_size <= 0:
                 raise ValidationError(f"declared standalone source is not a non-empty file: {path}")
-    except (OSError, StableEntryError, ValidationError, UICardContractError) as exc:
+        if request["asset_type"] == "ui-kit":
+            plan_path = resolve_res_path(root, spec["stylebox_plan_path"], label="stylebox plan")
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            checked_plan = validate_stylebox_plan(
+                plan, request["spec"]["styleboxes"], asset_id=request["asset_id"]
+            )
+            declared_sources = {
+                source["path"] for source in result["sources"] if source.get("layout") == "region_atlas"
+            }
+            for atlas in checked_plan["inspected_atlases"]:
+                if atlas["path"] not in declared_sources:
+                    raise ValidationError(
+                        f"inspected atlas is not a declared region_atlas source: {atlas['path']}"
+                    )
+    except (OSError, ValueError, StableEntryError, ValidationError, UICardContractError, UIStyleBoxPlanError) as exc:
         return _failure(result, passed, "L1", exc)
 
     passed.append("L1")
     runtime = {output["name"]: output for output in result["outputs"] if output["role"] == "runtime"}
     declarations: list[tuple[str, Mapping[str, Any], Mapping[str, Any]]] = []
     declarations.extend(("stylebox", box, runtime[box["output_name"]]) for box in spec["styleboxes"])
+    declarations.extend(("atlas", region, runtime[region["output_name"]]) for region in spec["atlas_regions"])
     theme_declaration = spec["theme"]
     if theme_declaration is not None:
         declarations.append((
@@ -164,7 +202,6 @@ def compile_and_validate(
             },
             runtime[theme_declaration["output_name"]],
         ))
-    declarations.extend(("atlas", region, runtime[region["output_name"]]) for region in spec["atlas_regions"])
     compiled_requests: dict[str, CompileRequest] = {}
     try:
         registry = build_default_registry()
@@ -223,6 +260,7 @@ def compile_and_validate(
             root,
             godot_path,
             runtime[theme_declaration["output_name"]]["path"],
+            spec["styleboxes"],
         )
     except (OSError, subprocess.SubprocessError, ValidationError) as exc:
         return _failure(result, passed, "L5", exc)

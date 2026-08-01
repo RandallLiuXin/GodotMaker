@@ -15,6 +15,7 @@ from asset_skill_contract_check import (
     check_request,
     check_result,
 )
+from asset_ui_theme_recipe import UI_ICONS, UI_STYLEBOXES
 
 
 class UICardContractError(Exception):
@@ -29,11 +30,10 @@ _FAMILIES = {
 }
 _UI_PROVIDERS = {"native", "codex", "gemini", "openai"}
 _UI_REQUIRED_STATES = {"normal", "hover", "pressed", "disabled", "focus"}
-_UI_MINIMUM_STYLEBOXES = 27
-_UI_MINIMUM_ICONS = 16
 
 _PIXEL_ART_REQUEST = re.compile(r"\bpixel(?:[-\s]?art)\b", re.IGNORECASE)
 _PIXEL_ART_NEGATION = re.compile(r"\b(?:not|non)(?:[-\s]+[a-z]+){0,2}[-\s]*$", re.IGNORECASE)
+_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$")
 
 def _text(value: Any, label: str, issues: list[str]) -> str | None:
     if not isinstance(value, str) or not value.strip():
@@ -104,10 +104,12 @@ def _stylebox(value: Any, family: str, index: int, issues: list[str]) -> dict[st
     label = f"request.spec.styleboxes[{index}]"
     keys = {
         "output_name", "state", "source_path", "layout", "texture_region", "border",
-        "expand_margin", "axis_stretch",
+        "content_margin", "expand_margin", "axis_stretch",
     }
     if family == "card-kit":
         keys.add("frame")
+    else:
+        keys.update({"source_component", "geometry_profile", "safe_center", "modulate_color", "preview_sizes"})
     item = _exact_keys(value, keys, label, issues)
     if item is None:
         return None
@@ -120,6 +122,39 @@ def _stylebox(value: Any, family: str, index: int, issues: list[str]) -> dict[st
     frame = None
     if family == "card-kit":
         frame = _text(item.get("frame"), f"{label}.frame", issues)
+    preview_sizes: list[list[int]] = []
+    source_component = None
+    geometry_profile = None
+    safe_center: list[int] = []
+    modulate_color = None
+    if family == "ui-kit":
+        source_component = _text(item.get("source_component"), f"{label}.source_component", issues)
+        geometry_profile = _text(item.get("geometry_profile"), f"{label}.geometry_profile", issues)
+        raw_safe_center = item.get("safe_center")
+        if (
+            not isinstance(raw_safe_center, list)
+            or len(raw_safe_center) != 4
+            or any(type(part) is not int or part < 0 for part in raw_safe_center)
+        ):
+            issues.append(f"{label}.safe_center must be four non-negative integers")
+        else:
+            safe_center = list(raw_safe_center)
+        modulate_color = _text(item.get("modulate_color"), f"{label}.modulate_color", issues)
+        if modulate_color is not None and not _COLOR.fullmatch(modulate_color):
+            issues.append(f"{label}.modulate_color must be #RRGGBB or #RRGGBBAA")
+        raw_sizes = item.get("preview_sizes")
+        if not isinstance(raw_sizes, list) or len(raw_sizes) < 2:
+            issues.append(f"{label}.preview_sizes must contain at least two [width, height] entries")
+        else:
+            for size_index, raw_size in enumerate(raw_sizes):
+                if (
+                    not isinstance(raw_size, list)
+                    or len(raw_size) != 2
+                    or any(type(part) is not int or part <= 0 for part in raw_size)
+                ):
+                    issues.append(f"{label}.preview_sizes[{size_index}] must be positive [width, height]")
+                else:
+                    preview_sizes.append(list(raw_size))
     if output_name is None or state is None or source_path is None or layout not in {"single", "region_atlas"}:
         return None
     result = {
@@ -130,16 +165,26 @@ def _stylebox(value: Any, family: str, index: int, issues: list[str]) -> dict[st
         "compiler_spec": {
             "texture_region": item.get("texture_region"),
             "border": item.get("border"),
+            "content_margin": item.get("content_margin"),
             "expand_margin": item.get("expand_margin"),
             "axis_stretch": item.get("axis_stretch"),
         },
     }
+    if family == "ui-kit":
+        result.update({
+            "source_component": source_component,
+            "geometry_profile": geometry_profile,
+            "safe_center": safe_center,
+            "modulate_color": modulate_color,
+            "preview_sizes": preview_sizes,
+        })
+        result["compiler_spec"]["modulate_color"] = modulate_color
     if frame is not None:
         result["frame"] = frame
     return result
 
 
-def _atlas_region(value: Any, index: int, issues: list[str]) -> dict[str, str] | None:
+def _atlas_region(value: Any, family: str, index: int, issues: list[str]) -> dict[str, str] | None:
     label = f"request.spec.atlas_regions[{index}]"
     item = _exact_keys(
         value, {"output_name", "source_path", "metadata_path", "logical_asset_id"}, label, issues
@@ -154,7 +199,7 @@ def _atlas_region(value: Any, index: int, issues: list[str]) -> dict[str, str] |
         return None
     if not metadata_path.endswith(".json"):
         issues.append(f"{label}.metadata_path must end in .json")
-    if output_name != logical_asset_id:
+    if family == "card-kit" and output_name != logical_asset_id:
         issues.append(f"{label}.output_name must match logical_asset_id")
     return {
         "output_name": output_name,
@@ -169,21 +214,34 @@ def _spec(request: Mapping[str, Any], issues: list[str]) -> dict[str, Any] | Non
     keys = {"required_states", "styleboxes", "required_regions", "atlas_regions"}
     if family == "card-kit":
         keys.add("required_frames")
+    else:
+        keys.update({"theme", "stylebox_plan_path"})
     spec = request.get("spec")
     if not isinstance(spec, Mapping):
         issues.append("request.spec must be an object")
         return None
     actual = set(spec)
-    if actual not in (keys, keys | {"theme"}):
+    allowed_shapes = (keys, keys | {"theme"}) if family == "card-kit" else (keys,)
+    allowed_keys = keys | ({"theme"} if family == "card-kit" else set())
+    if actual not in allowed_shapes:
         missing = sorted(keys - actual)
-        extra = sorted(actual - (keys | {"theme"}))
-        message = "request.spec must contain required family fields and may contain theme"
+        extra = sorted(actual - allowed_keys)
+        message = "request.spec must contain the required family fields"
+        if family == "card-kit":
+            message += " and may contain theme"
         if missing:
             message += "; missing " + ", ".join(missing)
         if extra:
             message += "; unexpected " + ", ".join(extra)
         issues.append(message)
     theme = _theme(spec["theme"], issues) if "theme" in spec else None
+    stylebox_plan_path = None
+    if family == "ui-kit":
+        stylebox_plan_path = _res_path(
+            spec.get("stylebox_plan_path"), "request.spec.stylebox_plan_path", issues
+        )
+        if stylebox_plan_path is not None and not stylebox_plan_path.endswith(".json"):
+            issues.append("request.spec.stylebox_plan_path must end in .json")
     states = _names(spec.get("required_states"), "request.spec.required_states", issues)
     allowed_states = _FAMILIES[family]["states"]
     unknown_states = sorted(set(states) - allowed_states)
@@ -201,7 +259,11 @@ def _spec(request: Mapping[str, Any], issues: list[str]) -> dict[str, Any] | Non
         issues.append("request.spec.atlas_regions must be a non-empty list")
         atlas_regions: list[dict[str, str]] = []
     else:
-        atlas_regions = [item for index, raw in enumerate(raw_regions) if (item := _atlas_region(raw, index, issues)) is not None]
+        atlas_regions = [
+            item
+            for index, raw in enumerate(raw_regions)
+            if (item := _atlas_region(raw, family, index, issues)) is not None
+        ]
     frames: list[str] = []
     if family == "card-kit":
         frames = _names(spec.get("required_frames"), "request.spec.required_frames", issues)
@@ -214,8 +276,9 @@ def _spec(request: Mapping[str, Any], issues: list[str]) -> dict[str, Any] | Non
 
     actual_states = [item["state"] for item in boxes]
     if family == "ui-kit":
-        if not set(states).issubset(actual_states):
-            issues.append("ui-kit styleboxes must declare every required_state")
+        image_states = set(states) - {"focus"}
+        if not image_states.issubset(actual_states):
+            issues.append("ui-kit texture styleboxes must declare every non-focus required_state")
     else:
         actual_frames = [item.get("frame") for item in boxes]
         pairs = [(item.get("frame"), item["state"]) for item in boxes]
@@ -230,13 +293,19 @@ def _spec(request: Mapping[str, Any], issues: list[str]) -> dict[str, Any] | Non
     if family == "ui-kit":
         if set(states) != _UI_REQUIRED_STATES or len(states) != len(_UI_REQUIRED_STATES):
             issues.append("ui-kit required_states must declare normal, hover, pressed, disabled, and focus")
-        if len(boxes) < _UI_MINIMUM_STYLEBOXES:
-            issues.append(f"ui-kit must declare at least {_UI_MINIMUM_STYLEBOXES} textured component/state StyleBoxes")
-        if len(atlas_regions) < _UI_MINIMUM_ICONS:
-            issues.append(f"ui-kit must declare at least {_UI_MINIMUM_ICONS} AtlasTexture utility icons")
+        actual_styleboxes = [item["output_name"] for item in boxes]
+        if set(actual_styleboxes) != set(UI_STYLEBOXES) or len(actual_styleboxes) != len(UI_STYLEBOXES):
+            issues.append("ui-kit styleboxes must declare the complete named Theme baseline exactly once")
+        if set(actual_regions) != set(UI_ICONS) or len(actual_regions) != len(UI_ICONS):
+            issues.append("ui-kit atlas_regions must declare the complete named icon baseline exactly once")
         if not {item["source_path"] for item in boxes} or not {item["source_path"] for item in atlas_regions}:
             issues.append("ui-kit must retain separate component and icon source sheets")
-    return {"theme": theme, "styleboxes": boxes, "atlas_regions": atlas_regions}
+    return {
+        "theme": theme,
+        "stylebox_plan_path": stylebox_plan_path,
+        "styleboxes": boxes,
+        "atlas_regions": atlas_regions,
+    }
 
 
 def _ui_input_gate(request: Mapping[str, Any], issues: list[str]) -> None:
@@ -341,6 +410,8 @@ def check_ui_card_handoff(request: Any, result: Any) -> dict[str, Any]:
             raise UICardContractError("theme.output_name must bind to one Theme runtime output")
         if (theme["recipe_path"], "theme_recipe") not in sources:
             raise UICardContractError("theme.recipe_path must be a theme_recipe result source")
+    if request["asset_type"] == "ui-kit" and (spec["stylebox_plan_path"], None) not in sources:
+        raise UICardContractError("stylebox_plan_path must be a result source")
 
     for box in spec["styleboxes"]:
         expected_names.add(box["output_name"])

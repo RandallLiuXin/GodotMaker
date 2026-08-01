@@ -1,49 +1,91 @@
 # Complete UI Theme Baseline
 
-Every successful `ui-kit` run builds and binds this complete Theme baseline.
-A request brief selects the visual language; it does not remove
-baseline components.
+Every successful `ui-kit` run builds this complete baseline. The request and
+reference choose its visual language; they do not remove baseline controls.
 
-## Theme tokens
+## Deterministic Theme tokens
 
-- Declare base scale, readable default font/font size when a valid supplied
-  font is available, text colors, disabled/placeholder/selection colors,
-  outline or shadow constants, and spacing constants.
-- Derive semantic surface, raised surface, primary, secondary, danger, focus,
-  disabled, success/progress, and text tokens from the binding reference.
+- Color: text, muted text, text outline, base/raised/input surfaces, primary,
+  secondary, danger, success, border, focus, selection, and shadow.
+- Geometry: ordered small/medium/large radii, border width, content margin,
+  shadow size/offset, and font size.
+- Hover, pressed, and disabled variants are derived deterministically from
+  semantic colors. A provider is not asked to recreate identical colored
+  surfaces for each semantic button family.
 
-## Components and states
+## Provider surface patches
 
-- `Button`: base plus `PrimaryButton`, `SecondaryButton`, and `DangerButton`
-  variations; each has `normal`, `hover`, `pressed`, `disabled`, and `focus`.
-- `Panel` and `PanelContainer`: base and raised panels.
-- `LineEdit` and `TextEdit`: normal, focus, disabled/read-only surfaces.
+The surface atlas contains exactly eight isolated 96x96 square patches:
+
+- Button: normal, hover, pressed, disabled.
+- Panel: base and raised.
+- Tab: selected and unselected; selected also supplies hovered treatment.
+
+Each patch follows its fixed geometry profile. All contour, outline, shadow,
+highlight, and ornament stays in the outer border band. The exact safe center
+is continuous and undecorated so deterministic nine-slice stretching remains
+valid. Runtime reuse expands these eight regions into 23 named
+`StyleBoxTexture` resources:
+
+- Base, Primary, Secondary, and Danger buttons each expose normal, hover,
+  pressed, and disabled through deterministic modulation of the four source
+  states.
+- Base/raised panel each use their declared source patch.
+- Popup panel reuses base panel; tooltip reuses the base patch with the raised
+  surface tint.
+- Selected/hovered tab reuse selected art; unselected uses its own patch.
+
+Focus is a native `StyleBoxFlat` outline rather than another provider image.
+
+## Native flat and empty styles
+
+Use `StyleBoxFlat` or `StyleBoxEmpty` for structures Godot can render reliably:
+
+- `LineEdit` and `TextEdit`: normal, focus, disabled/read-only.
 - `ProgressBar`: background and fill.
-- `TabBar`/`TabContainer`: selected and unselected tabs.
-- `CheckBox` and `CheckButton`: normal, hover, pressed, disabled, focus,
-  checked, and unchecked treatment through styles and icons.
-- `HSlider`/`VSlider`: track, grabber area, and highlighted grabber area.
-- `HScrollBar`/`VScrollBar`: scroll, focus, grabber, highlighted grabber.
-- `OptionButton`: normal, hover, pressed, disabled, focus, and arrow treatment.
-- `PopupMenu`: panel, disabled panel, hover, separator, checked/unchecked,
-  radio, and submenu-icon treatment using the native PopupMenu property names.
-- `TooltipSurface` variation over `Panel`: a tooltip panel treatment.
+- `HSlider`/`VSlider`: track, filled area, highlighted fill.
+- `HScrollBar`/`VScrollBar`: track, normal, highlighted, pressed grabbers.
+- `OptionButton`: normal, hover, pressed, disabled, focus.
+- `PopupMenu`: disabled panel, hover, separator.
+- `CheckBox` and `CheckButton`: undrawn backgrounds plus focus outline.
 
-## Source and runtime requirements
+This division keeps complete native Theme coverage while avoiding generated
+nine-slice art where a stable Godot primitive is sufficient.
 
-- Produce at least three coherent source sheets: frame/state, control/nav, and
-  utility-icon. Use a real provider image for each; every source report must
-  link it to the same reference attachment set.
-- Produce at least 16 distinct utility icons in one or more physical atlases:
-  navigation, close/back, confirm, warning, information, settings, add,
-  remove, lock, checkbox/radio, arrow/submenu, and progress/status affordances.
-- Use explicit named rectangles for every atlas item. Each runtime icon is an
-  `AtlasTexture` with that exact rectangle and a zero margin.
-- Bind checkbox, check-button, slider, scrollbar, option-button, and submenu
-  source items to their native Theme style or icon properties.
-- Publish utility icons without native Theme properties as independent named
-  `AtlasTexture` resources.
-- Bind the compiled `StyleBoxTexture` resources directly into the final Theme;
-  do not replace them with `StyleBoxFlat` or code-only colors. State resources
-  that communicate different interaction semantics must use distinct source
-  rectangles.
+## Controls and Theme bindings
+
+- `Button`, `PrimaryButton`, `SecondaryButton`, and `DangerButton`: normal,
+  hover, pressed, disabled, focus.
+- `Panel` and `PanelContainer`: base and raised.
+- `LineEdit`, `TextEdit`, `ProgressBar`, `TabBar`, `TabContainer`, `CheckBox`,
+  `CheckButton`, sliders, scrollbars, `OptionButton`, and `PopupMenu`: the
+  native style states described above.
+- `TooltipSurface`: a real variation over `Panel` with tooltip panel art.
+- Common text types include font color, outline, size, interactive state
+  colors where applicable, and spacing constants.
+
+## Icon source and runtime contract
+
+The icon provider sheet contains exactly 24 unique source items: navigation
+arrows, back, close, confirm, warning, information, settings, add, remove,
+lock/unlock, checkbox, radio, status, check-button states, and slider grabber
+states. Deterministic processing keeps reusable action/status art at 128x128
+and normalizes Theme-bound arrows to 32x32, checks and toggles to 40x40, and
+slider grabbers to 48x48. Explicit source-to-runtime mappings publish 31
+stable `AtlasTexture` resources; aliases intentionally share the same source
+rect.
+
+Only Godot-defined semantic icon properties are bound inside `Theme`, including
+checkbox, check-button, slider, option-button, tab arrow, popup check/radio,
+and submenu slots. Other utility icons remain independent named
+`AtlasTexture` runtime outputs for workers to reuse. Godot Theme does not offer
+an arbitrary icon dictionary, so do not fabricate one.
+
+For ordinary `Button` consumers, set `expand_icon` when the layout should size
+the icon and use a local `icon_max_width` only when that screen needs a cap.
+Keep final Control and Container sizing in the consuming UI rather than baking
+screen-specific dimensions into the Theme.
+
+Keep native horizontal and vertical slider tracks and filled areas at a
+non-zero deterministic thickness. Use contrasting `input` and `primary`
+colors so the rail remains visible behind the 48x48 grabber icons.

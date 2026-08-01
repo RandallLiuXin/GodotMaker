@@ -182,8 +182,10 @@ func _structure(resource: Resource, checks: Array) -> Dictionary:
 						"texture_path": texture_path,
 						"texture_region": [region.position.x, region.position.y, region.size.x, region.size.y],
 						"border": [style_box.texture_margin_left, style_box.texture_margin_top, style_box.texture_margin_right, style_box.texture_margin_bottom],
+						"content_margin": [style_box.content_margin_left, style_box.content_margin_top, style_box.content_margin_right, style_box.content_margin_bottom],
 						"expand_margin": [style_box.expand_margin_left, style_box.expand_margin_top, style_box.expand_margin_right, style_box.expand_margin_bottom],
 						"axis_stretch": [style_box.axis_stretch_horizontal, style_box.axis_stretch_vertical],
+						"modulate_color": _color_json(style_box.modulate_color),
 					}
 				else:
 					structure[check] = {"error": "resource is a %s, not StyleBoxTexture" % resource.get_class()}

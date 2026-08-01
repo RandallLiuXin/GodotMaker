@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import re
 import struct
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -13,11 +14,15 @@ from .contract import CompileRequest, CompilerError
 from .registry import CompilerRegistry, CompilerRoute
 
 COMPILER_ID = "stylebox_texture_nine_slice"
-COMPILER_VERSION = 1
+COMPILER_VERSION = 3
 
-_SPEC_KEYS = {"border", "expand_margin", "axis_stretch", "texture_region"}
+_REQUIRED_SPEC_KEYS = {
+    "border", "content_margin", "expand_margin", "axis_stretch", "texture_region",
+}
+_OPTIONAL_SPEC_KEYS = {"modulate_color"}
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 _AXIS_STRETCH = {"stretch": 0, "tile": 1, "tile_fit": 2}
+_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$")
 
 
 @dataclass(frozen=True)
@@ -27,8 +32,10 @@ class StyleBoxTextureInput:
     texture_path: str
     texture_region: tuple[int, int, int, int]
     border: tuple[int, int, int, int]
+    content_margin: tuple[float, float, float, float]
     expand_margin: tuple[float, float, float, float]
     axis_stretch: tuple[str, str]
+    modulate_color: str
 
 
 def _object(value: Any, label: str) -> Mapping[str, Any]:
@@ -61,18 +68,20 @@ def _border(value: Any) -> tuple[int, int, int, int]:
     return tuple(value)
 
 
-def _expand_margin(value: Any) -> tuple[float, float, float, float]:
+def _margin_numbers(value: Any, label: str) -> tuple[float, float, float, float]:
     if not isinstance(value, list) or len(value) != 4:
-        raise CompilerError(
-            "StyleBoxTexture spec.expand_margin must be [left, top, right, bottom]"
-        )
+        raise CompilerError(f"StyleBoxTexture spec.{label} must be [left, top, right, bottom]")
     normalized: list[float] = []
     for component in value:
         if type(component) not in (int, float) or isinstance(component, bool):
-            raise CompilerError("StyleBoxTexture spec.expand_margin values must be finite non-negative numbers")
+            raise CompilerError(
+                f"StyleBoxTexture spec.{label} values must be finite non-negative numbers"
+            )
         number = float(component)
         if not math.isfinite(number) or number < 0:
-            raise CompilerError("StyleBoxTexture spec.expand_margin values must be finite non-negative numbers")
+            raise CompilerError(
+                f"StyleBoxTexture spec.{label} values must be finite non-negative numbers"
+            )
         normalized.append(number)
     return tuple(normalized)
 
@@ -88,6 +97,17 @@ def _axis_stretch(value: Any) -> tuple[str, str]:
             + allowed
         )
     return horizontal, vertical
+
+
+def _color(value: Any) -> str:
+    if not isinstance(value, str) or not _COLOR.fullmatch(value):
+        raise CompilerError("StyleBoxTexture spec.modulate_color must be #RRGGBB or #RRGGBBAA")
+    return value.upper() if len(value) == 9 else value.upper() + "FF"
+
+
+def _godot_color(value: str) -> str:
+    channels = [int(value[index:index + 2], 16) / 255 for index in range(1, 9, 2)]
+    return "Color(" + ", ".join(f"{channel:.6g}" for channel in channels) + ")"
 
 
 def _png_size(path: Path) -> tuple[int, int]:
@@ -115,11 +135,16 @@ def read_stylebox_texture_input(request: Any) -> StyleBoxTextureInput:
         raise CompilerError("StyleBoxTexture artifact_path must end in .tres")
 
     spec = _object(request.spec, "StyleBoxTexture spec")
-    _exact_keys(spec, _SPEC_KEYS, "StyleBoxTexture spec")
+    actual_keys = set(spec)
+    if not _REQUIRED_SPEC_KEYS.issubset(actual_keys) or actual_keys - _REQUIRED_SPEC_KEYS - _OPTIONAL_SPEC_KEYS:
+        allowed = sorted(_REQUIRED_SPEC_KEYS | _OPTIONAL_SPEC_KEYS)
+        raise CompilerError(f"StyleBoxTexture spec must contain required fields and only: {', '.join(allowed)}")
     texture_region = _integer_rect(spec.get("texture_region"), "StyleBoxTexture spec.texture_region")
     border = _border(spec.get("border"))
-    expand_margin = _expand_margin(spec.get("expand_margin"))
+    content_margin = _margin_numbers(spec.get("content_margin"), "content_margin")
+    expand_margin = _margin_numbers(spec.get("expand_margin"), "expand_margin")
     axis_stretch = _axis_stretch(spec.get("axis_stretch"))
+    modulate_color = _color(spec.get("modulate_color", "#FFFFFFFF"))
 
     try:
         source_file = resolve_res_path(request.project_root, request.source_path, label="source_path")
@@ -135,14 +160,16 @@ def read_stylebox_texture_input(request: Any) -> StyleBoxTextureInput:
             f"{image_width}x{image_height}"
         )
     left, top, right, bottom = border
-    if left + right > width or top + bottom > height:
-        raise CompilerError("StyleBoxTexture spec.border exceeds texture_region")
+    if left + right >= width or top + bottom >= height:
+        raise CompilerError("StyleBoxTexture spec.border leaves no stretchable center in texture_region")
     return StyleBoxTextureInput(
         texture_path=request.source_path,
         texture_region=texture_region,
         border=border,
+        content_margin=content_margin,
         expand_margin=expand_margin,
         axis_stretch=axis_stretch,
+        modulate_color=modulate_color,
     )
 
 
@@ -153,6 +180,7 @@ def _escape(path: str) -> str:
 def _tres(recipe: StyleBoxTextureInput) -> str:
     x, y, width, height = recipe.texture_region
     left, top, right, bottom = recipe.border
+    content_left, content_top, content_right, content_bottom = recipe.content_margin
     expand_left, expand_top, expand_right, expand_bottom = recipe.expand_margin
     horizontal, vertical = recipe.axis_stretch
     return (
@@ -160,11 +188,16 @@ def _tres(recipe: StyleBoxTextureInput) -> str:
         f'[ext_resource type="Texture2D" path="{_escape(recipe.texture_path)}" id="1_texture"]\n\n'
         "[resource]\n"
         'texture = ExtResource("1_texture")\n'
+        f"modulate_color = {_godot_color(recipe.modulate_color)}\n"
         f"region_rect = Rect2({x}, {y}, {width}, {height})\n"
         f"texture_margin_left = {left}\n"
         f"texture_margin_top = {top}\n"
         f"texture_margin_right = {right}\n"
         f"texture_margin_bottom = {bottom}\n"
+        f"content_margin_left = {content_left!r}\n"
+        f"content_margin_top = {content_top!r}\n"
+        f"content_margin_right = {content_right!r}\n"
+        f"content_margin_bottom = {content_bottom!r}\n"
         f"expand_margin_left = {expand_left!r}\n"
         f"expand_margin_top = {expand_top!r}\n"
         f"expand_margin_right = {expand_right!r}\n"
@@ -189,8 +222,10 @@ def compile_stylebox_texture(request: CompileRequest) -> dict[str, Any]:
         "texture_path": recipe.texture_path,
         "texture_region": list(recipe.texture_region),
         "border": list(recipe.border),
+        "content_margin": list(recipe.content_margin),
         "expand_margin": list(recipe.expand_margin),
         "axis_stretch": {"horizontal": recipe.axis_stretch[0], "vertical": recipe.axis_stretch[1]},
+        "modulate_color": recipe.modulate_color,
     }
 
 

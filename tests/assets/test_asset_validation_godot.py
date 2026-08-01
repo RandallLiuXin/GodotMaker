@@ -445,6 +445,7 @@ def test_stylebox_texture_region_atlas_reaches_ready_with_float32_expand_margins
         spec={
             "texture_region": [2, 1, 12, 10],
             "border": [3, 2, 3, 2],
+            "content_margin": [4, 3.5, 4, 3],
             "expand_margin": [0.3, 0.7, 1.1, 2.2],
             "axis_stretch": {"horizontal": "tile_fit", "vertical": "stretch"},
         },

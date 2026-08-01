@@ -46,10 +46,20 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
-- UI kit generation now produces color-keyed source sheets, reusable textured Theme states, and AtlasTexture-backed native icon bindings from a required visual reference.
-- UI kit Theme recipes now bind every form/navigation source through native StyleBoxTexture or AtlasTexture properties while retaining general utility icons as independent AtlasTexture resources.
-
+- Reworked `ui-kit` around a flat-first Godot Theme: one fixed eight-patch
+  surface atlas expands into reusable button, panel, popup, tooltip, and tab
+  StyleBoxTextures, while native StyleBoxFlat/StyleBoxEmpty resources own form,
+  progress, slider, scrollbar, focus, and separator treatment. A second sheet
+  provides 24 unique icons mapped to 31 stable AtlasTexture runtime names.
+- Normalized UI kit nine-slice patches and Theme-bound semantic icons to
+  compact runtime sizes while retaining high-resolution reusable action icons.
+- Added deterministic StyleBoxTexture modulation and L4 verification so shared
+  button-state source patches can produce base, Primary, Secondary, and Danger
+  Theme resources without duplicate provider art.
 - Added deterministic fixed-slot `AtlasTexture` compilation from atlas metadata, with exact region and zero-margin validation through headless Godot.
+- Fixed fixed-slot `AtlasTexture` compilation so multiple stable runtime output
+  names can reuse one declared atlas region, and standalone UI validation now
+  compiles icon resources before the Theme that binds them.
 
 - `/gm-asset` now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body `runtime_artifact` manifest.
 - Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.

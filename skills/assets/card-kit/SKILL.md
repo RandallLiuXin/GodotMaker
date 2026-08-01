@@ -78,7 +78,8 @@ or verification that did not happen.
 Keep final sources under `assets/generated/card-kit/<asset_id>/`. Compile one
 `StyleBoxTexture` for every declared frame/state
 pair using an explicit source/region, borders, expand margins, and stretch
-axes. This preserves card corners through nine-slice scaling. Compile those
+axes, plus explicit content margins. This preserves card corners through
+nine-slice scaling. Compile those
 StyleBoxes first, then build the optional Theme at `<asset_id>_theme.tres` when
 the request declares one. A Theme recipe may bind a generated
 `StyleBoxTexture` when the caller requests that composition. Compile every

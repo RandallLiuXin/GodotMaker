@@ -58,6 +58,7 @@ _PROPERTY_NAMES = {
     "styles": frozenset({
         "normal", "hover", "pressed", "disabled", "focus", "read_only",
         "panel", "background", "fill", "tab_selected", "tab_unselected",
+        "tab_hovered", "tab_focus",
         "slider", "grabber_area", "grabber_area_highlight", "scroll",
         "scroll_focus", "grabber", "grabber_highlight", "grabber_pressed",
         "separator", "panel_disabled",
@@ -108,12 +109,12 @@ def _property_allowed(section: str, theme_type: str, name: str, variation_bases:
         if name == "read_only":
             return base_type in {"LineEdit", "TextEdit"}
         if name == "panel":
-            return base_type in {"Panel", "PanelContainer", "PopupMenu"}
+            return base_type in {"Panel", "PanelContainer", "PopupMenu", "TabContainer"}
         if name == "panel_disabled":
             return base_type == "PopupMenu"
         if name in {"background", "fill"}:
             return base_type == "ProgressBar"
-        if name in {"tab_selected", "tab_unselected"}:
+        if name in {"tab_selected", "tab_unselected", "tab_hovered", "tab_focus"}:
             return base_type in {"TabBar", "TabContainer"}
         if name in {"slider", "grabber_area", "grabber_area_highlight"}:
             return base_type in {"HSlider", "VSlider"}

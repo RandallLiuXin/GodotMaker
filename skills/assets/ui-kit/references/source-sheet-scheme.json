@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 5,
   "background": {
     "color": "#FF00FF",
     "flat": true,
@@ -14,100 +14,169 @@
     "forbid_scene_or_screen_mockup": true,
     "forbid_text_and_logos": true
   },
+  "geometry_profiles": {
+    "rounded_surface": {
+      "patch_size": [96, 96],
+      "border": [10, 10, 10, 10],
+      "content_margin": [16, 10, 16, 10],
+      "expand_margin": [0, 0, 0, 0],
+      "axis_stretch": {"horizontal": "stretch", "vertical": "stretch"},
+      "safe_center": [10, 10, 76, 76],
+      "preview_sizes": [[160, 48], [360, 64]]
+    },
+    "panel_surface": {
+      "patch_size": [96, 96],
+      "border": [16, 16, 16, 16],
+      "content_margin": [24, 24, 24, 24],
+      "expand_margin": [0, 0, 0, 0],
+      "axis_stretch": {"horizontal": "stretch", "vertical": "stretch"},
+      "safe_center": [16, 16, 64, 64],
+      "preview_sizes": [[240, 160], [640, 400]]
+    },
+    "tab_surface": {
+      "patch_size": [96, 96],
+      "border": [8, 8, 8, 8],
+      "content_margin": [16, 8, 16, 8],
+      "expand_margin": [0, 0, 0, 0],
+      "axis_stretch": {"horizontal": "stretch", "vertical": "stretch"},
+      "safe_center": [8, 8, 80, 80],
+      "preview_sizes": [[120, 40], [280, 56]]
+    }
+  },
   "sheets": [
     {
-      "id": "state_frames",
-      "source_name": "state_frames_source.png",
-      "atlas": {"columns": 6, "rows": 6, "cell_size": [384, 192], "gutter": 8},
+      "id": "surface_patches",
+      "source_name": "surface_patches_source.png",
+      "provider_grid": {"columns": 4, "rows": 2},
+      "atlas": {"max_width": 464, "gutter": 16},
       "components": [
-        {"name": "button_normal", "label": "button normal"},
-        {"name": "button_hover", "label": "button hover"},
-        {"name": "button_pressed", "label": "button pressed"},
-        {"name": "button_disabled", "label": "button disabled"},
-        {"name": "button_focus", "label": "button focus"},
-        {"name": "primary_normal", "label": "primary button normal"},
-        {"name": "primary_hover", "label": "primary button hover"},
-        {"name": "primary_pressed", "label": "primary button pressed"},
-        {"name": "primary_disabled", "label": "primary button disabled"},
-        {"name": "primary_focus", "label": "primary button focus"},
-        {"name": "secondary_normal", "label": "secondary button normal"},
-        {"name": "secondary_hover", "label": "secondary button hover"},
-        {"name": "secondary_pressed", "label": "secondary button pressed"},
-        {"name": "secondary_disabled", "label": "secondary button disabled"},
-        {"name": "secondary_focus", "label": "secondary button focus"},
-        {"name": "danger_normal", "label": "danger button normal"},
-        {"name": "danger_hover", "label": "danger button hover"},
-        {"name": "danger_pressed", "label": "danger button pressed"},
-        {"name": "danger_disabled", "label": "danger button disabled"},
-        {"name": "danger_focus", "label": "danger button focus"},
-        {"name": "panel_base", "label": "panel base"},
-        {"name": "panel_raised", "label": "panel raised"},
-        {"name": "line_normal", "label": "line edit normal"},
-        {"name": "line_focus", "label": "line edit focus"},
-        {"name": "line_disabled", "label": "line edit disabled"},
-        {"name": "text_normal", "label": "text edit normal"},
-        {"name": "text_focus", "label": "text edit focus"},
-        {"name": "text_disabled", "label": "text edit disabled"},
-        {"name": "progress_background", "label": "progress background"},
-        {"name": "progress_fill", "label": "progress fill"},
-        {"name": "tab_selected", "label": "tab selected"},
-        {"name": "tab_unselected", "label": "tab unselected"},
-        {"name": "tooltip_panel", "label": "tooltip panel"}
+        {
+          "name": "button_normal",
+          "label": "square tintable button surface in its normal state",
+          "target_size": [96, 96],
+          "kind": "surface",
+          "geometry_profile": "rounded_surface",
+          "runtime_styleboxes": [
+            {"output_name": "button_normal", "state": "normal", "tint": "surface_raised"},
+            {"output_name": "primary_normal", "state": "normal", "tint": "primary"},
+            {"output_name": "secondary_normal", "state": "normal", "tint": "secondary"},
+            {"output_name": "danger_normal", "state": "normal", "tint": "danger"}
+          ]
+        },
+        {
+          "name": "button_hover",
+          "label": "square tintable button surface in its highlighted hover state",
+          "target_size": [96, 96],
+          "kind": "surface",
+          "geometry_profile": "rounded_surface",
+          "runtime_styleboxes": [
+            {"output_name": "button_hover", "state": "hover", "tint": "surface_raised"},
+            {"output_name": "primary_hover", "state": "hover", "tint": "primary"},
+            {"output_name": "secondary_hover", "state": "hover", "tint": "secondary"},
+            {"output_name": "danger_hover", "state": "hover", "tint": "danger"}
+          ]
+        },
+        {
+          "name": "button_pressed",
+          "label": "square tintable button surface in its depressed pressed state",
+          "target_size": [96, 96],
+          "kind": "surface",
+          "geometry_profile": "rounded_surface",
+          "runtime_styleboxes": [
+            {"output_name": "button_pressed", "state": "pressed", "tint": "surface_raised"},
+            {"output_name": "primary_pressed", "state": "pressed", "tint": "primary"},
+            {"output_name": "secondary_pressed", "state": "pressed", "tint": "secondary"},
+            {"output_name": "danger_pressed", "state": "pressed", "tint": "danger"}
+          ]
+        },
+        {
+          "name": "button_disabled",
+          "label": "square tintable button surface in its muted disabled state",
+          "target_size": [96, 96],
+          "kind": "surface",
+          "geometry_profile": "rounded_surface",
+          "runtime_styleboxes": [
+            {"output_name": "button_disabled", "state": "disabled", "tint": "surface_raised"},
+            {"output_name": "primary_disabled", "state": "disabled", "tint": "primary"},
+            {"output_name": "secondary_disabled", "state": "disabled", "tint": "secondary"},
+            {"output_name": "danger_disabled", "state": "disabled", "tint": "danger"}
+          ]
+        },
+        {
+          "name": "panel_base",
+          "label": "square reusable base panel frame with a continuous undecorated center",
+          "target_size": [96, 96],
+          "kind": "surface",
+          "geometry_profile": "panel_surface",
+          "runtime_styleboxes": [
+            {"output_name": "panel_base", "state": "normal", "tint": "surface"},
+            {"output_name": "popup_menu_panel", "state": "normal", "tint": "surface"},
+            {"output_name": "tooltip_panel", "state": "normal", "tint": "surface_raised"}
+          ]
+        },
+        {
+          "name": "panel_raised",
+          "label": "square reusable raised panel frame with a continuous undecorated center",
+          "target_size": [96, 96],
+          "kind": "surface",
+          "geometry_profile": "panel_surface",
+          "runtime_styleboxes": [
+            {"output_name": "panel_raised", "state": "normal", "tint": "surface_raised"}
+          ]
+        },
+        {
+          "name": "tab_selected",
+          "label": "square tintable selected tab surface with an undecorated stretchable center",
+          "target_size": [96, 96],
+          "kind": "surface",
+          "geometry_profile": "tab_surface",
+          "runtime_styleboxes": [
+            {"output_name": "tab_selected", "state": "pressed", "tint": "primary"},
+            {"output_name": "tab_hovered", "state": "hover", "tint": "primary"}
+          ]
+        },
+        {
+          "name": "tab_unselected",
+          "label": "square tintable unselected tab surface with an undecorated stretchable center",
+          "target_size": [96, 96],
+          "kind": "surface",
+          "geometry_profile": "tab_surface",
+          "runtime_styleboxes": [
+            {"output_name": "tab_unselected", "state": "normal", "tint": "surface"}
+          ]
+        }
       ]
     },
     {
-      "id": "form_navigation",
-      "source_name": "form_navigation_source.png",
-      "atlas": {"columns": 6, "rows": 4, "cell_size": [192, 192], "gutter": 8},
+      "id": "icons",
+      "source_name": "icons_source.png",
+      "provider_grid": {"columns": 6, "rows": 4},
+      "atlas": {"max_width": 880, "gutter": 16},
       "components": [
-        {"name": "checkbox_unchecked", "label": "checkbox unchecked"},
-        {"name": "checkbox_checked", "label": "checkbox checked"},
-        {"name": "check_button_unchecked", "label": "check button unchecked"},
-        {"name": "check_button_checked", "label": "check button checked"},
-        {"name": "hslider_track", "label": "horizontal slider track"},
-        {"name": "hslider_grabber", "label": "horizontal slider grabber"},
-        {"name": "hslider_grabber_highlight", "label": "horizontal slider highlighted grabber"},
-        {"name": "vslider_track", "label": "vertical slider track"},
-        {"name": "vslider_grabber", "label": "vertical slider grabber"},
-        {"name": "vslider_grabber_highlight", "label": "vertical slider highlighted grabber"},
-        {"name": "hscrollbar_track", "label": "horizontal scrollbar track"},
-        {"name": "hscrollbar_grabber", "label": "horizontal scrollbar grabber"},
-        {"name": "vscrollbar_track", "label": "vertical scrollbar track"},
-        {"name": "vscrollbar_grabber", "label": "vertical scrollbar grabber"},
-        {"name": "option_button_normal", "label": "option button normal"},
-        {"name": "option_button_hover", "label": "option button hover"},
-        {"name": "popup_menu_panel", "label": "popup menu panel"},
-        {"name": "popup_menu_hover", "label": "popup menu hover"},
-        {"name": "popup_menu_disabled", "label": "popup menu disabled"},
-        {"name": "popup_menu_separator", "label": "popup menu separator"},
-        {"name": "form_submenu_arrow", "label": "submenu arrow"}
-      ]
-    },
-    {
-      "id": "utility_icons",
-      "source_name": "utility_icons_source.png",
-      "atlas": {"columns": 5, "rows": 4, "cell_size": [128, 128], "gutter": 8},
-      "components": [
-        {"name": "icon_left_arrow", "label": "left arrow"},
-        {"name": "icon_right_arrow", "label": "right arrow"},
-        {"name": "icon_up_arrow", "label": "up arrow"},
-        {"name": "icon_down_arrow", "label": "down arrow"},
-        {"name": "icon_back", "label": "back"},
-        {"name": "icon_close", "label": "close"},
-        {"name": "icon_confirm", "label": "confirm"},
-        {"name": "icon_warning", "label": "warning"},
-        {"name": "icon_information", "label": "information"},
-        {"name": "icon_settings", "label": "settings"},
-        {"name": "icon_add", "label": "add"},
-        {"name": "icon_remove", "label": "remove"},
-        {"name": "icon_lock", "label": "lock"},
-        {"name": "icon_unlock", "label": "unlock"},
-        {"name": "icon_checkbox_checked", "label": "checkbox checked"},
-        {"name": "icon_checkbox_unchecked", "label": "checkbox unchecked"},
-        {"name": "icon_radio_selected", "label": "radio selected"},
-        {"name": "icon_radio_unselected", "label": "radio unselected"},
-        {"name": "icon_submenu", "label": "submenu"},
-        {"name": "icon_status", "label": "status"}
+        {"name": "arrow_left", "label": "left arrow", "target_size": [32, 32], "kind": "icon", "runtime_names": ["icon_left_arrow"]},
+        {"name": "arrow_right", "label": "right arrow", "target_size": [32, 32], "kind": "icon", "runtime_names": ["icon_right_arrow", "icon_submenu", "form_submenu_arrow"]},
+        {"name": "arrow_up", "label": "up arrow", "target_size": [32, 32], "kind": "icon", "runtime_names": ["icon_up_arrow"]},
+        {"name": "arrow_down", "label": "down arrow", "target_size": [32, 32], "kind": "icon", "runtime_names": ["icon_down_arrow"]},
+        {"name": "back", "label": "back action", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_back"]},
+        {"name": "close", "label": "close action", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_close"]},
+        {"name": "confirm", "label": "confirm action", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_confirm"]},
+        {"name": "warning", "label": "warning status", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_warning"]},
+        {"name": "information", "label": "information status", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_information"]},
+        {"name": "settings", "label": "settings action", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_settings"]},
+        {"name": "add", "label": "add action", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_add"]},
+        {"name": "remove", "label": "remove action", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_remove"]},
+        {"name": "lock", "label": "locked state", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_lock"]},
+        {"name": "unlock", "label": "unlocked state", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_unlock"]},
+        {"name": "checkbox_checked", "label": "checked checkbox", "target_size": [40, 40], "kind": "icon", "runtime_names": ["icon_checkbox_checked", "checkbox_checked"]},
+        {"name": "checkbox_unchecked", "label": "unchecked checkbox", "target_size": [40, 40], "kind": "icon", "runtime_names": ["icon_checkbox_unchecked", "checkbox_unchecked"]},
+        {"name": "radio_selected", "label": "selected radio control", "target_size": [40, 40], "kind": "icon", "runtime_names": ["icon_radio_selected"]},
+        {"name": "radio_unselected", "label": "unselected radio control", "target_size": [40, 40], "kind": "icon", "runtime_names": ["icon_radio_unselected"]},
+        {"name": "status", "label": "general status indicator", "target_size": [128, 128], "kind": "icon", "runtime_names": ["icon_status"]},
+        {"name": "check_button_checked", "label": "checked toggle control", "target_size": [40, 40], "kind": "icon", "runtime_names": ["check_button_checked"]},
+        {"name": "check_button_unchecked", "label": "unchecked toggle control", "target_size": [40, 40], "kind": "icon", "runtime_names": ["check_button_unchecked"]},
+        {"name": "slider_grabber", "label": "slider grabber", "target_size": [48, 48], "kind": "icon", "runtime_names": ["hslider_grabber", "vslider_grabber"]},
+        {"name": "slider_grabber_highlight", "label": "highlighted slider grabber", "target_size": [48, 48], "kind": "icon", "runtime_names": ["hslider_grabber_highlight", "vslider_grabber_highlight"]},
+        {"name": "slider_grabber_disabled", "label": "disabled slider grabber", "target_size": [48, 48], "kind": "icon", "runtime_names": ["hslider_grabber_disabled", "vslider_grabber_disabled"]}
       ]
     }
   ]
