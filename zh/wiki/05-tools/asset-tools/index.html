@@ -2960,6 +2960,7 @@
 <li><code>asset_assets_md_update.py</code></li>
 <li><code>asset_atlas_assemble.py</code></li>
 <li><code>asset_runtime_resolver.py</code></li>
+<li><code>asset_compact_prop_pack_entry_draft.py</code></li>
 </ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> 会根据 JSON spec 生成 API 后端 source 图片，支持 Gemini、OpenAI 和 xAI Grok selector。运行时原生的 <code>native</code> 和 <code>codex</code> 图片生成由 <code>/gm-asset</code> 选择，不由这个脚本调用。</p>
@@ -2998,6 +2999,9 @@
 </code></pre></div>
 <p>只在 <code>--snap-mode grid</code> 中传入 <code>--grid &lt;COLSxROWS&gt;</code>。Autoslice 按从上到下、
 从左到右输出独立区域；<code>--names</code> 数量与检测区域数量不一致时会拒绝语义映射。</p>
+<p>使用 <code>--processed-out &lt;transparent-sheet.png&gt;</code> 可保留清理后的 RGBA source sheet
+供审计。Autoslice 报告名称数量不匹配时不会写出该文件，避免未绑定的 sheet 被
+误认为有效的生产产物。</p>
 <h2 id="asset_action_processpy">asset_action_process.py<a class="headerlink" href="#asset_action_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_process.py</code> 用于处理角色、敌人、NPC、召唤物和动画道具的动作 source。它会写出规范化 frame PNG、<code>sheet-transparent.png</code>、<code>animation.gif</code>、<code>pipeline-meta.json</code> 和中间 curation report。</p>
 <p>必须决定：</p>

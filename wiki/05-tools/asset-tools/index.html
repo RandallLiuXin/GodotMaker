@@ -2962,6 +2962,7 @@ debugging one source, one action sheet, or one curation decision.</p>
 <li><code>asset_assets_md_update.py</code></li>
 <li><code>asset_atlas_assemble.py</code></li>
 <li><code>asset_runtime_resolver.py</code></li>
+<li><code>asset_compact_prop_pack_entry_draft.py</code></li>
 </ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> generates API-backed source images from a JSON spec.
@@ -3014,6 +3015,10 @@ non-character source sheets.</p>
 <p>Pass <code>--grid &lt;COLSxROWS&gt;</code> only with <code>--snap-mode grid</code>. Autoslice orders
 independent regions from top to bottom and left to right, and rejects a
 <code>--names</code> count that does not match the detected region count.</p>
+<p>Use <code>--processed-out &lt;transparent-sheet.png&gt;</code> to retain the cleaned RGBA source
+sheet for audit. It is intentionally not written when autoslice reports a
+name-count mismatch, so an unbound sheet cannot look like a valid production
+artifact.</p>
 <h2 id="asset_action_processpy">asset_action_process.py<a class="headerlink" href="#asset_action_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_process.py</code> processes character, enemy, NPC, summon, and animated
 prop action sources. It writes normalized frame PNGs, <code>sheet-transparent.png</code>,
