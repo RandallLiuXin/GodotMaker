@@ -84,6 +84,7 @@ AGENT_HOOK_CONFIGS = {
 # discovered or invoked as a standalone skill.
 ASSET_RUNTIME_SOURCE = Path("skills") / "assets" / "_shared"
 ASSET_RUNTIME_TARGET = Path(".godotmaker") / "asset-runtime"
+ASSET_PROVIDER_REFERENCES_SOURCE = Path("skills") / "core" / "gm-asset" / "references" / "providers"
 
 @dataclass(frozen=True)
 class AgentPublishAdapter:
@@ -434,6 +435,12 @@ def publish_asset_runtime(repo_root: Path, target: Path) -> int:
         return 0
     dst = target / ASSET_RUNTIME_TARGET
     copy_tree(src, dst)
+    provider_references = repo_root / ASSET_PROVIDER_REFERENCES_SOURCE
+    if not provider_references.exists():
+        raise FileNotFoundError(
+            f"asset provider references are missing: {provider_references}"
+        )
+    copy_tree(provider_references, dst / "references" / "providers")
     # The Codex generated-path claim is part of the portable asset runtime:
     # published Skills must not rely on the framework checkout's top-level
     # tools directory being present in a consumer project.
