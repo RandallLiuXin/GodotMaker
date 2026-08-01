@@ -182,16 +182,23 @@ def test_screen_reference_cannot_be_misrepresented_as_a_runtime_asset():
 
 
 def test_gm_asset_keeps_no_second_authoritative_copy_of_extracted_families():
-    old_units = REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "production-units"
-    for family in FAMILIES:
-        assert not (old_units / f"{family}.md").exists()
+    """Every planned family, not just the flat ones, lost its duplicate doc.
 
+    `character-bundle` and `fx-bundle` were the last two to keep a
+    production-unit document. While one survived under a directory a runtime
+    agent reads, a producer could still treat it as the family's execution
+    contract and drift from the real Skill.
+    """
+    old_units = REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "production-units"
+    assert not old_units.exists()
+
+    planned = sorted({*FAMILIES, "character-bundle", "fx-bundle", "ui-kit", "card-kit"})
     for path in (
         REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md",
         REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "asset-planner.md",
     ):
         text = path.read_text(encoding="utf-8")
-        for family in FAMILIES:
+        for family in planned:
             assert f"references/production-units/{family}.md" not in text
             assert f"First-class `{family}` Asset Skill" in text
 
@@ -211,6 +218,38 @@ def test_gm_asset_dispatches_extracted_families_through_named_skills():
     assert "adapt its sources,\n   outputs, and validation evidence" in producer
     assert "asset_scene_prop_set_entry_draft.py" in manager
     assert "one provider source sheet" in producer
+
+
+def test_gm_asset_adapts_a_first_class_result_without_inventing_a_second_entry():
+    """The manager's role in a first-class call is adapter, never author.
+
+    A Skill call may deliver several logical outputs. Only one of them is the
+    runtime asset; the rest are provenance. Without this rule the manager could
+    draft a second entry for a generated canonical, and a worker resolving the
+    row would find two competing artifacts for one asset.
+    """
+    manager = (REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    producer = (REPO_ROOT / "agents" / "asset-producer.md").read_text(encoding="utf-8")
+    flat = " ".join(manager.split())
+
+    assert "One Skill call may return several logical outputs." in flat
+    assert "Exactly one runtime output per logical asset becomes a stable entry" in flat
+    assert "Never draft a second entry or a `godot_artifact` for a reference." in flat
+
+    # character-bundle hands back the resolved request, one report per action,
+    # and the validated result — that triple is what the builder binds together.
+    assert "archived resolved request" in flat
+    assert "one action processing report per required action" in flat
+    assert "registers exactly one worker-consumable `SpriteFrames` entry" in flat
+    assert "reaches `ready` only from a result whose L0-L4 levels all passed" in flat
+    assert "a user-supplied canonical is not republished at all" in flat
+    assert "archived resolved request" in " ".join(producer.split())
+
+    # No family may fall back to a production-unit document any more.
+    assert "production-unit document to read" in flat
+    assert "no fallback contract for a family" in flat
 
 
 def test_character_bundle_restores_canonical_actions_and_first_class_routing():

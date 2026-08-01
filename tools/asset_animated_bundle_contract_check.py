@@ -304,8 +304,22 @@ def check_bundle_result(data: Any) -> dict[str, Any]:
     issues: list[str] = []
     asset_type = data["asset_type"]
     runtime = _runtime_outputs(data)
+    if asset_type not in {"character-bundle", "fx-bundle"}:
+        raise AnimatedBundleContractError(
+            f"asset_type is not an animated bundle family: {asset_type}"
+        )
+    if data["validation"].get("passed") is False:
+        # A failed bundle returns no runtime output by contract, so the
+        # runtime-shape rules below have nothing to judge. Reporting them anyway
+        # would bury the real diagnostic — the failure itself — under a shape
+        # complaint about a result that is already correctly shaped.
+        return {"ok": True, "kind": "result", "asset_type": asset_type, "shared": shared}
     if asset_type == "character-bundle":
-        if sum(output.get("godot_type") == "SpriteFrames" for output in runtime) != 1:
+        # Exactly one runtime output, and it is the aggregated SpriteFrames. A
+        # generated canonical, portrait, or delivery sheet may ship as an extra
+        # ``reference`` output, but counting only SpriteFrames would let a second
+        # runtime output ride along and reach a worker as a rival game asset.
+        if len(runtime) != 1 or runtime[0].get("godot_type") != "SpriteFrames":
             issues.append("character-bundle result must contain exactly one SpriteFrames runtime output")
         elif "grid_sheet" not in _source_layouts(data):
             issues.append("character-bundle SpriteFrames result needs a grid_sheet source")
@@ -318,8 +332,6 @@ def check_bundle_result(data: Any) -> dict[str, Any]:
             expected_layout = "single" if runtime[0]["godot_type"] == "Texture2D" else "grid_sheet"
             if expected_layout not in _source_layouts(data):
                 issues.append(f"fx-bundle {runtime[0]['godot_type']} result needs a {expected_layout} source")
-    else:
-        issues.append(f"asset_type is not an animated bundle family: {asset_type}")
     if issues:
         raise AnimatedBundleContractError("; ".join(issues))
     return {"ok": True, "kind": "result", "asset_type": asset_type, "shared": shared}

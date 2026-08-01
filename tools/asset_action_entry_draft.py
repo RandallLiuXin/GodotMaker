@@ -16,9 +16,15 @@ directory.
 
 Single-action drafts stop at ``processing_status: source_ready`` and carry no
 ``godot_artifact``. Character-bundle mode receives every required action, while
-animated FX mode receives its one explicit action. The latter constructs one
-shared ``SpriteFrames`` resource with the native compiler and writes a compiled
-entry; the FX Skill promotes it to ready only after L0-L4 pass.
+animated FX mode receives its one explicit action. Both construct one shared
+``SpriteFrames`` resource with the native compiler and write a ``compiled``
+entry, because the artifact has to exist before L0-L4 can validate it.
+
+Character-bundle mode promotes that same entry to ``ready`` only when it is
+re-run with the Skill's ``--result``, whose passing L0-L4 evidence, single
+``SpriteFrames`` runtime output, and per-action ``grid_sheet`` sources are bound
+back to the entry mechanically. Extra outputs stay ``reference``: a generated
+canonical may be registered as provenance, never as a second runtime artifact.
 """
 from __future__ import annotations
 
@@ -41,6 +47,7 @@ from asset_stable_entry import (
 from asset_animated_bundle_contract_check import (
     AnimatedBundleContractError,
     build_spriteframes_spec,
+    check_bundle_handoff,
     check_bundle_request,
 )
 
@@ -307,6 +314,85 @@ def _load_bundle_request(path: Path, asset_type: str) -> dict[str, Any]:
     return request
 
 
+def _bundle_reference_outputs(
+    result: dict[str, Any], *, asset_id: str, production_family: str
+) -> list[str]:
+    """Return the non-runtime outputs a bundle result is allowed to publish.
+
+    A generated canonical is real provenance the user should receive, so it may
+    ride along as a ``reference`` output. It may not carry a ``godot_type``: that
+    is the field a worker binds, and a canonical PNG announced as a runtime type
+    would reach the game as a rival sprite for the same asset. Reference outputs
+    are also pinned to the asset's stable directory, so registering one can never
+    smuggle in a path belonging to another asset.
+    """
+    references: list[str] = []
+    for index, output in enumerate(result["outputs"]):
+        if output.get("role") == "runtime":
+            continue
+        label = f"result.outputs[{index}]"
+        if "godot_type" in output:
+            raise ActionEntryDraftError(
+                f"{label} is a reference output and must not declare a godot_type"
+            )
+        path = output.get("path")
+        if not isinstance(path, str) or not path.startswith("res://"):
+            raise ActionEntryDraftError(f"{label}.path must be a res:// path")
+        try:
+            references.append(
+                check_output_path(
+                    path,
+                    production_family=production_family,
+                    asset_id=asset_id,
+                    label=f"{label}.path",
+                )
+            )
+        except StableEntryError as exc:
+            raise ActionEntryDraftError(str(exc)) from exc
+    return references
+
+
+def _check_bundle_result(
+    result_path: Path,
+    request: dict[str, Any],
+    *,
+    asset_id: str,
+    production_family: str,
+    artifact_path: str,
+    action_sheet_paths: list[str],
+) -> list[str]:
+    """Bind a passing Skill result to the entry this builder just compiled.
+
+    ``check_bundle_handoff`` proves L0-L4 passed and that the family delivered
+    exactly one ``SpriteFrames``. That alone would still accept a result about a
+    different build, so the runtime output path and the ordered per-action
+    ``grid_sheet`` sources are matched against what was actually compiled here.
+    """
+    result = _load_object(result_path, "result")
+    try:
+        check_bundle_handoff(request, result)
+    except AnimatedBundleContractError as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
+
+    runtime = [output for output in result["outputs"] if output.get("role") == "runtime"]
+    if runtime[0].get("path") != artifact_path:
+        raise ActionEntryDraftError(
+            "result runtime output must be the compiled SpriteFrames stable path"
+        )
+    sheets = [
+        source.get("path")
+        for source in result["sources"]
+        if source.get("layout") == "grid_sheet"
+    ]
+    if sheets != action_sheet_paths:
+        raise ActionEntryDraftError(
+            "result grid_sheet sources must be the stable per-action sheets in action order"
+        )
+    return _bundle_reference_outputs(
+        result, asset_id=asset_id, production_family=production_family
+    )
+
+
 def build_character_bundle_entry_draft(
     metadata_paths: list[Path],
     *,
@@ -314,8 +400,14 @@ def build_character_bundle_entry_draft(
     asset_id: str,
     tag: str,
     project_root: Path,
+    result_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Build one ready SpriteFrames stable entry from every required action."""
+    """Build the SpriteFrames stable entry from every required action.
+
+    Without ``result_path`` the entry stops at ``compiled``: the artifact exists
+    but nothing has validated it yet. Supplying the Skill's passing result is
+    what promotes the same entry to ``ready``.
+    """
     request = _load_bundle_request(request_path, "character-bundle")
     if request["asset_id"] != asset_id:
         raise ActionEntryDraftError("--asset-id must match request.asset_id")
@@ -458,6 +550,24 @@ def build_character_bundle_entry_draft(
         f"{stable_output_dir('character-bundle', asset_id)}/{asset_id}.tres"
     )
     source_path = built_by_action[baseline_action]["support"]["sheet_path"]
+
+    reference_outputs: list[str] = []
+    if result_path is None:
+        processing_status = "compiled"
+    else:
+        reference_outputs = _check_bundle_result(
+            result_path,
+            request,
+            asset_id=asset_id,
+            production_family="character-bundle",
+            artifact_path=artifact_path,
+            action_sheet_paths=[
+                built_by_action[action_name]["support"]["sheet_path"]
+                for action_name in required_actions
+            ],
+        )
+        processing_status = "ready"
+
     entry = {
         "version": SCHEMA_VERSION,
         "asset_id": asset_id,
@@ -465,7 +575,7 @@ def build_character_bundle_entry_draft(
         "production_family": "character-bundle",
         "source_layout": {"type": SOURCE_LAYOUT_TYPE, "path": source_path},
         "godot_artifact": {"type": "SpriteFrames", "path": artifact_path},
-        "processing_status": "ready",
+        "processing_status": processing_status,
     }
     try:
         validate_entry(entry, project_root=Path(project_root))
@@ -489,6 +599,7 @@ def build_character_bundle_entry_draft(
         "canonical_action": baseline_action,
         "frame_canvas_px": frame_canvas_px,
         "actions": [built_by_action[action_name]["support"] for action_name in required_actions],
+        "reference_outputs": reference_outputs,
     }
     return {"entry": entry, "support": support, "support_path": (
         f"{stable_output_dir('character-bundle', asset_id)}/{asset_id}.json"
@@ -603,6 +714,7 @@ def write_character_bundle_entry_draft(
     tag: str,
     project_root: Path,
     out: Path,
+    result_path: Path | None = None,
 ) -> dict[str, Any]:
     built = build_character_bundle_entry_draft(
         metadata_paths,
@@ -610,13 +722,21 @@ def write_character_bundle_entry_draft(
         asset_id=asset_id,
         tag=tag,
         project_root=project_root,
+        result_path=result_path,
     )
     support_path = Path(project_root) / built["support_path"]
     support_path.parent.mkdir(parents=True, exist_ok=True)
     support_path.write_text(json.dumps(built["support"], indent=2) + "\n", encoding="utf-8")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(built["entry"], indent=2) + "\n", encoding="utf-8")
-    return {"ok": True, "draft": str(out), "support": built["support_path"], "asset_id": asset_id, "tag": tag}
+    return {
+        "ok": True,
+        "draft": str(out),
+        "support": built["support_path"],
+        "asset_id": asset_id,
+        "tag": tag,
+        "processing_status": built["entry"]["processing_status"],
+    }
 
 
 def write_fx_bundle_entry_draft(
@@ -650,6 +770,14 @@ def _main() -> int:
     )
     parser.add_argument("--metadata", required=True, type=Path, action="append")
     parser.add_argument("--request", type=Path)
+    parser.add_argument(
+        "--result",
+        type=Path,
+        help=(
+            "Passing character-bundle Skill result; promotes the same entry from "
+            "compiled to ready after L0-L4"
+        ),
+    )
     parser.add_argument("--asset-id", required=True)
     parser.add_argument("--tag", required=True)
     parser.add_argument("--production-family", required=True)
@@ -658,6 +786,12 @@ def _main() -> int:
     args = parser.parse_args()
 
     try:
+        if args.result and (
+            args.production_family != "character-bundle" or not args.request
+        ):
+            raise ActionEntryDraftError(
+                "--result promotion needs character-bundle bundle mode with --request"
+            )
         if args.request:
             if args.production_family == "character-bundle":
                 result = write_character_bundle_entry_draft(
@@ -667,6 +801,7 @@ def _main() -> int:
                     tag=args.tag,
                     project_root=args.project_root,
                     out=args.out,
+                    result_path=args.result,
                 )
             elif args.production_family == "fx-bundle":
                 if len(args.metadata) != 1:

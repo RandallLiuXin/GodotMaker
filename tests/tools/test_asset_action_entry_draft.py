@@ -412,7 +412,39 @@ def _character_bundle_inputs(tmp_path):
     return asset_id, root, request_path, metadata_paths
 
 
+def _character_bundle_result(asset_id, root, **overrides):
+    result = {
+        "asset_type": "character-bundle",
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": asset_id,
+                "path": f"res://{root}/{asset_id}.tres",
+                "godot_type": "SpriteFrames",
+            }
+        ],
+        "sources": [
+            {"path": f"res://{root}/{asset_id}_idle_sheet.png", "layout": "grid_sheet"},
+            {"path": f"res://{root}/{asset_id}_walk_sheet.png", "layout": "grid_sheet"},
+        ],
+        "previews": [],
+        "validation": {
+            "passed": True,
+            "levels": {"L0": True, "L1": True, "L2": True, "L3": True, "L4": True},
+        },
+    }
+    result.update(overrides)
+    return result
+
+
+def _write_result(tmp_path, result) -> Path:
+    path = tmp_path / "ASSET_RESULT.json"
+    path.write_text(json.dumps(result), encoding="utf-8")
+    return path
+
+
 def test_character_bundle_entry_compiles_every_required_action(tmp_path):
+    """Before L0-L4 the artifact exists but the entry may only be `compiled`."""
     asset_id, root, request_path, metadata_paths = _character_bundle_inputs(tmp_path)
 
     built = build_character_bundle_entry_draft(
@@ -424,7 +456,7 @@ def test_character_bundle_entry_compiles_every_required_action(tmp_path):
     )
 
     artifact = tmp_path / f"{root}/{asset_id}.tres"
-    assert built["entry"]["processing_status"] == "ready"
+    assert built["entry"]["processing_status"] == "compiled"
     assert built["entry"]["godot_artifact"] == {
         "type": "SpriteFrames", "path": f"res://{root}/{asset_id}.tres"
     }
@@ -434,6 +466,173 @@ def test_character_bundle_entry_compiles_every_required_action(tmp_path):
     assert [action["action_name"] for action in built["support"]["actions"]] == ["idle", "walk"]
     assert built["support"]["actions"][0]["frame_labels"] == ["idle_01", "idle_02"]
     assert built["support"]["frame_canvas_px"] == 256
+    assert built["support"]["reference_outputs"] == []
+
+
+def test_character_bundle_entry_reaches_ready_only_with_a_passing_result(tmp_path):
+    asset_id, root, request_path, metadata_paths = _character_bundle_inputs(tmp_path)
+    result_path = _write_result(tmp_path, _character_bundle_result(asset_id, root))
+
+    built = build_character_bundle_entry_draft(
+        metadata_paths,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=tmp_path,
+        result_path=result_path,
+    )
+
+    assert built["entry"]["processing_status"] == "ready"
+    assert built["support"]["reference_outputs"] == []
+
+
+def test_character_bundle_registers_a_generated_canonical_as_a_reference(tmp_path):
+    """One call may deliver several logical outputs; only one is runtime."""
+    asset_id, root, request_path, metadata_paths = _character_bundle_inputs(tmp_path)
+    canonical = f"res://{root}/{asset_id}_canonical.png"
+    result = _character_bundle_result(asset_id, root)
+    result["outputs"].append({"role": "reference", "name": "canonical", "path": canonical})
+    result_path = _write_result(tmp_path, result)
+
+    built = build_character_bundle_entry_draft(
+        metadata_paths,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=tmp_path,
+        result_path=result_path,
+    )
+
+    assert built["entry"]["processing_status"] == "ready"
+    assert built["entry"]["godot_artifact"]["path"] == f"res://{root}/{asset_id}.tres"
+    assert built["support"]["reference_outputs"] == [canonical]
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        pytest.param(
+            lambda result, asset_id, root: result["validation"].update(
+                passed=False, levels={"L0": True, "L1": True, "L2": True, "L3": False, "L4": False}
+            ),
+            "validation.passed to be true",
+            id="skill-failure",
+        ),
+        pytest.param(
+            lambda result, asset_id, root: result["validation"]["levels"].update(L3=False),
+            "these levels failed: L3",
+            id="l3-failure",
+        ),
+        pytest.param(
+            lambda result, asset_id, root: result["validation"]["levels"].pop("L4"),
+            "passing validation levels: L4",
+            id="l4-missing",
+        ),
+        pytest.param(
+            lambda result, asset_id, root: result["outputs"].append(
+                {
+                    "role": "runtime",
+                    "name": "canonical",
+                    "path": f"res://{root}/{asset_id}_canonical.png",
+                    "godot_type": "Texture2D",
+                }
+            ),
+            "exactly one SpriteFrames runtime output",
+            id="second-runtime-artifact",
+        ),
+        pytest.param(
+            lambda result, asset_id, root: result["outputs"].append(
+                {
+                    "role": "reference",
+                    "name": "canonical",
+                    "path": f"res://{root}/{asset_id}_canonical.png",
+                    "godot_type": "Texture2D",
+                }
+            ),
+            "must not declare a godot_type",
+            id="reference-masquerading-as-runtime",
+        ),
+        pytest.param(
+            lambda result, asset_id, root: result["outputs"].append(
+                {
+                    "role": "reference",
+                    "name": "canonical",
+                    "path": "res://assets/generated/character-bundle/other/other_canonical.png",
+                }
+            ),
+            "must be a file under",
+            id="reference-outside-the-stable-directory",
+        ),
+        pytest.param(
+            lambda result, asset_id, root: result["outputs"][0].update(
+                path=f"res://{root}/{asset_id}_idle.tres"
+            ),
+            "must be the compiled SpriteFrames stable path",
+            id="unrelated-runtime-path",
+        ),
+        pytest.param(
+            lambda result, asset_id, root: result["sources"].reverse(),
+            "stable per-action sheets in action order",
+            id="sources-out-of-action-order",
+        ),
+    ],
+)
+def test_character_bundle_result_must_prove_the_entry_it_promotes(
+    tmp_path, mutate, message
+):
+    asset_id, root, request_path, metadata_paths = _character_bundle_inputs(tmp_path)
+    result = _character_bundle_result(asset_id, root)
+    mutate(result, asset_id, root)
+    result_path = _write_result(tmp_path, result)
+
+    with pytest.raises(ActionEntryDraftError, match=message):
+        build_character_bundle_entry_draft(
+            metadata_paths,
+            request_path=request_path,
+            asset_id=asset_id,
+            tag=TAG,
+            project_root=tmp_path,
+            result_path=result_path,
+        )
+
+
+def test_character_bundle_needs_one_action_report_per_required_action(tmp_path):
+    asset_id, _, request_path, metadata_paths = _character_bundle_inputs(tmp_path)
+
+    with pytest.raises(ActionEntryDraftError, match="one report per required action"):
+        build_character_bundle_entry_draft(
+            metadata_paths[:1],
+            request_path=request_path,
+            asset_id=asset_id,
+            tag=TAG,
+            project_root=tmp_path,
+        )
+
+
+def test_character_bundle_cli_rejects_a_result_outside_bundle_mode(tmp_path):
+    asset_id, root, _, metadata_paths = _character_bundle_inputs(tmp_path)
+    result_path = _write_result(tmp_path, _character_bundle_result(asset_id, root))
+    out = tmp_path / ".godotmaker/asset-generation/work/entries/hero.json"
+
+    completed = subprocess.run(
+        [
+            sys.executable, str(DRAFT_TOOL),
+            "--metadata", str(metadata_paths[0]),
+            "--result", str(result_path),
+            "--asset-id", asset_id,
+            "--tag", TAG,
+            "--production-family", FAMILY,
+            "--project-root", str(tmp_path),
+            "--out", str(out),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 1
+    assert "bundle mode with --request" in json.loads(completed.stdout)["error"]
+    assert not out.exists()
 
 
 @pytest.mark.parametrize(

@@ -164,8 +164,8 @@ Agent({
 Read `references/asset-curation.md` when the selected production unit produces
 source sheets, candidates, extracted frames, or selected final assets.
 
-For the extracted first-class families, put the named Asset Skill in the brief;
-never substitute a deleted production-unit document:
+Every family is a first-class Asset Skill. Put the named Skill in the brief;
+there is no production-unit document left to substitute for one:
 
 | Family | Production contract in the brief |
 | --- | --- |
@@ -188,22 +188,28 @@ Brief shape:
 {one concrete generated visual production unit}
 
 ### Production Contract
-- Legacy unit: First Entry Document: {references/production-units/<unit>.md}
-- First-class unit: First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | screen-reference | ui-kit | card-kit | compact-prop-pack}
-  | scene-prop-set}
-- For a first-class unit, invoke that named Skill with one shared generic asset
-  request. Do not read a production-unit path for that family.
+- First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | screen-reference | ui-kit | card-kit | compact-prop-pack | scene-prop-set}
+- Invoke that named Skill with one shared generic asset request. Every
+  production unit is a first-class Skill; there is no production-unit document
+  to read and no fallback contract for a family.
 
 ### First-Class Result Adapter
-- For a first-class unit only, validate the generic result with
-  `tools/asset_skill_contract_check.py`.
+- Validate the generic result with `tools/asset_skill_contract_check.py`.
 - When `validation.passed` is false, report the failure and do not create a
   stable-entry draft.
 - When it passes, map its `sources`, `outputs`, and validation evidence into
   the existing Asset Producer Report and the inputs of the appropriate
   deterministic entry-draft builder.
-- For `character-bundle`, pass the request and every action processing report
-  to `tools/asset_action_entry_draft.py` bundle mode before writing its draft.
+- One Skill call may return several logical outputs. Exactly one runtime output
+  per logical asset becomes a stable entry; every other output is reported as a
+  reference. Never draft a second entry or a `godot_artifact` for a reference.
+- For `character-bundle`, pass the Skill's archived resolved request, one
+  action processing report per required action, and its validated result to
+  `tools/asset_action_entry_draft.py` bundle mode. It registers exactly one
+  worker-consumable `SpriteFrames` entry, and reaches `ready` only from a result
+  whose L0-L4 levels all passed. A provider-generated canonical is reported as a
+  reference output beside that one entry; a user-supplied canonical is not
+  republished at all.
 - For `compact-prop-pack`, pass the request and fully validated result to
   `tools/asset_compact_prop_pack_entry_draft.py`. It writes one ready logical
   entry draft per AtlasTexture while retaining the shared physical bundle path.

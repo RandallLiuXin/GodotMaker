@@ -1,8 +1,8 @@
 # Asset Curation Reference
 
 Use this file for shared candidate-selection states and ASSETS.md handoff
-rules. Use the assigned production-unit doc for extraction and post-processing
-commands.
+rules. Use the assigned first-class Asset Skill for extraction and
+post-processing commands.
 
 ## Scope
 
