@@ -167,20 +167,30 @@ def write_json(project_root: Path, relative: str, payload: dict) -> Path:
 
 
 def draft(project_root: Path, metadata_paths, *, result=None, asset_id=ASSET_ID) -> Path:
-    """Run the manager's adapter step and return the written draft path."""
+    """Run the manager's adapter step and return the written draft path.
+
+    Promotion always stands on a `compiled` build, so a result-bearing call runs
+    the compile step first — the same order the Skill and the manager follow.
+    """
     request_path = write_json(
         project_root,
         f".godotmaker/asset-generation/plans/{asset_id}_resolved_request.json",
         resolved_request(asset_id),
     )
-    result_path = (
-        None
-        if result is None
-        else write_json(
-            project_root, f".godotmaker/asset-generation/{asset_id}-result.json", result
-        )
-    )
     out = project_root / f".godotmaker/asset-generation/work/entries/{asset_id}.json"
+    write_character_bundle_entry_draft(
+        metadata_paths,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=project_root,
+        out=out,
+    )
+    if result is None:
+        return out
+    result_path = write_json(
+        project_root, f".godotmaker/asset-generation/{asset_id}-result.json", result
+    )
     write_character_bundle_entry_draft(
         metadata_paths,
         request_path=request_path,
@@ -306,7 +316,10 @@ def test_a_failed_skill_result_never_produces_a_draft_to_register(tmp_path):
     with pytest.raises(ActionEntryDraftError, match="validation.passed to be true"):
         draft(tmp_path, metadata_paths, result=failed)
 
-    assert not (tmp_path / ".godotmaker/asset-generation/work/entries").exists()
+    # The compile step ran, so a `compiled` draft exists — but a failed Skill
+    # never moves it past that, and nothing is registered.
+    draft_path = tmp_path / f".godotmaker/asset-generation/work/entries/{ASSET_ID}.json"
+    assert json.loads(draft_path.read_text(encoding="utf-8"))["processing_status"] == "compiled"
     assert not (tmp_path / INDEX_RELATIVE).exists()
 
 
@@ -418,6 +431,87 @@ def test_the_documented_command_chain_runs_end_to_end(tmp_path):
     promoted_row = run("asset_assets_md_update.py", "--entry-file", entry_relative)
     assert promoted_row.returncode == 0, promoted_row.stdout + promoted_row.stderr
     assert "| generated |" in (tmp_path / "ASSETS.md").read_text(encoding="utf-8")
+
+
+def test_a_stale_passing_result_cannot_register_a_later_build_as_ready(tmp_path):
+    """Regeneration reuses the same stable paths, so paths cannot be the gate.
+
+    Sequence: build v1, validate it, replace the action frames at those exact
+    paths, then promote with the v1 result. The old result still names every
+    correct path, so a path-only check would pass and register a bundle no
+    L0-L4 run has ever seen as worker-consumable.
+    """
+    metadata_paths = produce_actions(tmp_path)
+    request_path = write_json(
+        tmp_path,
+        f".godotmaker/asset-generation/plans/{ASSET_ID}_resolved_request.json",
+        resolved_request(),
+    )
+    out = tmp_path / f".godotmaker/asset-generation/work/entries/{ASSET_ID}.json"
+    write_character_bundle_entry_draft(
+        metadata_paths,
+        request_path=request_path,
+        asset_id=ASSET_ID,
+        tag=TAG,
+        project_root=tmp_path,
+        out=out,
+    )
+    validated_result = write_json(
+        tmp_path, f".godotmaker/asset-generation/{ASSET_ID}-result.json", skill_result()
+    )
+    validated_artifact = (tmp_path / stable_dir() / f"{ASSET_ID}.tres").read_bytes()
+
+    # A later generation lands new art on the same identity-derived paths.
+    for frame in ("idle_01", "idle_02"):
+        Image.new("RGBA", (4, 4), (3, 5, 7, 255)).save(
+            tmp_path / f"{stable_dir()}/{ASSET_ID}_idle_{frame}.png"
+        )
+
+    with pytest.raises(ActionEntryDraftError, match="changed since the compiled build"):
+        write_character_bundle_entry_draft(
+            metadata_paths,
+            request_path=request_path,
+            asset_id=ASSET_ID,
+            tag=TAG,
+            project_root=tmp_path,
+            out=out,
+            result_path=validated_result,
+        )
+
+    assert json.loads(out.read_text(encoding="utf-8"))["processing_status"] == "compiled"
+    assert (tmp_path / stable_dir() / f"{ASSET_ID}.tres").read_bytes() == validated_artifact
+    assert not (tmp_path / entry_relative_path(TAG, ASSET_ID)).exists()
+    assert not (tmp_path / INDEX_RELATIVE).exists()
+
+    # The gate is a refusal, not a dead end: rebuilding the compiled entry
+    # re-anchors the fingerprint on the new art, and the result of revalidating
+    # *that* build promotes it. Rebuilding is what re-opens promotion, so the
+    # Skill's step order — rebuild, then rerun L0-L4 — is what keeps the result
+    # honest; the revalidated result has the same shape because the paths are
+    # stable, so this stands in for it.
+    write_character_bundle_entry_draft(
+        metadata_paths,
+        request_path=request_path,
+        asset_id=ASSET_ID,
+        tag=TAG,
+        project_root=tmp_path,
+        out=out,
+    )
+    revalidated_result = write_json(
+        tmp_path,
+        f".godotmaker/asset-generation/{ASSET_ID}-revalidated-result.json",
+        skill_result(),
+    )
+    write_character_bundle_entry_draft(
+        metadata_paths,
+        request_path=request_path,
+        asset_id=ASSET_ID,
+        tag=TAG,
+        project_root=tmp_path,
+        out=out,
+        result_path=revalidated_result,
+    )
+    assert json.loads(out.read_text(encoding="utf-8"))["processing_status"] == "ready"
 
 
 def test_regeneration_overwrites_the_same_paths_and_leaves_others_alone(tmp_path):

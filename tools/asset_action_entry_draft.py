@@ -21,14 +21,23 @@ animated FX mode receives its one explicit action. Both construct one shared
 entry, because the artifact has to exist before L0-L4 can validate it.
 
 Character-bundle mode promotes that same entry to ``ready`` only when it is
-re-run with the Skill's ``--result``, whose passing L0-L4 evidence, single
-``SpriteFrames`` runtime output, and per-action ``grid_sheet`` sources are bound
-back to the entry mechanically. Extra outputs stay ``reference``: a generated
-canonical may be registered as provenance, never as a second runtime artifact.
+re-run with the Skill's ``--result``. Extra outputs stay ``reference``: a
+generated canonical may be registered as provenance, never as a second runtime
+artifact.
+
+Promotion binds to content, not to paths. Stable paths are derived from
+``asset_id``, so regeneration overwrites them in place and a path comparison
+alone would let a passing result from an earlier build promote whatever happens
+to sit at those paths now. The ``compiled`` run therefore records a build
+fingerprint — the resolved request, every action report, every stable sheet and
+frame in action order, and the compiled artifact — and the promotion run
+recomputes it from disk and requires an exact match. Promotion never recompiles:
+the artifact it registers is the same bytes L0-L4 examined, or it fails closed.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from math import isfinite
 import sys
@@ -314,6 +323,92 @@ def _load_bundle_request(path: Path, asset_type: str) -> dict[str, Any]:
     return request
 
 
+BUILD_RECORD_VERSION = 1
+
+
+def _digest(path: Path, label: str) -> str:
+    """Return the sha256 of one build input or output."""
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError as exc:
+        raise ActionEntryDraftError(f"{label} is missing or unreadable: {path}") from exc
+
+
+def _resolve_res(project_root: Path, res_path: str) -> Path:
+    return Path(project_root) / res_path[len("res://"):]
+
+
+def _build_record(
+    *,
+    project_root: Path,
+    request_path: Path,
+    artifact_path: str,
+    required_actions: list[str],
+    metadata_path_by_action: dict[str, Path],
+    built_by_action: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Fingerprint everything L0-L4 will examine for this bundle.
+
+    Stable paths are identity-derived, so they are constant across regenerations
+    and prove nothing about *which* build sits there. These digests are what let
+    a later promotion tell "the build that passed validation" apart from "a build
+    that happens to occupy the same paths".
+    """
+    root = Path(project_root)
+    actions = []
+    for action_name in required_actions:
+        support = built_by_action[action_name]["support"]
+        actions.append(
+            {
+                "name": action_name,
+                "metadata": _digest(
+                    metadata_path_by_action[action_name],
+                    f"character action {action_name} processing report",
+                ),
+                "sheet": _digest(
+                    _resolve_res(root, support["sheet_path"]),
+                    f"character action {action_name} stable sheet",
+                ),
+                "frames": [
+                    _digest(
+                        _resolve_res(root, frame),
+                        f"character action {action_name} stable frame",
+                    )
+                    for frame in support["frame_paths"]
+                ],
+            }
+        )
+    return {
+        "version": BUILD_RECORD_VERSION,
+        "resolved_request": _digest(request_path, "resolved request"),
+        "artifact": _digest(_resolve_res(root, artifact_path), "compiled artifact"),
+        "actions": actions,
+    }
+
+
+def _recorded_build(project_root: Path, asset_id: str) -> dict[str, Any]:
+    """Load the build fingerprint written by this asset's `compiled` draft run."""
+    support_path = (
+        Path(project_root)
+        / f"{stable_output_dir('character-bundle', asset_id)}/{asset_id}.json"
+    )
+    if not support_path.is_file():
+        raise ActionEntryDraftError(
+            "no compiled build to promote: run this builder without --result first, "
+            f"then validate it (missing {support_path})"
+        )
+    recorded = _load_object(support_path, "support metadata").get("build")
+    if (
+        not isinstance(recorded, dict)
+        or recorded.get("version") != BUILD_RECORD_VERSION
+    ):
+        raise ActionEntryDraftError(
+            "support metadata carries no v1 build fingerprint; rebuild the compiled "
+            "entry and revalidate it before promoting"
+        )
+    return recorded
+
+
 def _bundle_reference_outputs(
     result: dict[str, Any], *, asset_id: str, production_family: str
 ) -> list[str]:
@@ -551,10 +646,60 @@ def build_character_bundle_entry_draft(
     )
     source_path = built_by_action[baseline_action]["support"]["sheet_path"]
 
+    entry = {
+        "version": SCHEMA_VERSION,
+        "asset_id": asset_id,
+        "tag": tag,
+        "production_family": "character-bundle",
+        "source_layout": {"type": SOURCE_LAYOUT_TYPE, "path": source_path},
+        "godot_artifact": {"type": "SpriteFrames", "path": artifact_path},
+        "processing_status": "compiled" if result_path is None else "ready",
+    }
+
     reference_outputs: list[str] = []
     if result_path is None:
-        processing_status = "compiled"
+        try:
+            validate_entry(entry, project_root=Path(project_root))
+            build_default_registry().compile(
+                CompileRequest(
+                    "character-bundle",
+                    asset_id,
+                    "grid_sheet",
+                    source_path,
+                    "SpriteFrames",
+                    artifact_path,
+                    Path(project_root),
+                    compiler_spec,
+                )
+            )
+        except (CompilerError, StableEntryError) as exc:
+            raise ActionEntryDraftError(str(exc)) from exc
     else:
+        # Promotion must not rebuild. Recompiling here would replace the artifact
+        # L0-L4 examined with one derived from whatever inputs are on disk now,
+        # and the result — which names only identity-derived stable paths — could
+        # not tell the difference. Prove the build is the validated one instead.
+        recorded = _recorded_build(project_root, asset_id)
+        try:
+            validate_entry(entry, project_root=Path(project_root), check_files=True)
+        except StableEntryError as exc:
+            raise ActionEntryDraftError(str(exc)) from exc
+
+    build_record = _build_record(
+        project_root=project_root,
+        request_path=request_path,
+        artifact_path=artifact_path,
+        required_actions=required_actions,
+        metadata_path_by_action=metadata_path_by_action,
+        built_by_action=built_by_action,
+    )
+    if result_path is not None:
+        if build_record != recorded:
+            raise ActionEntryDraftError(
+                "the resolved request, action reports, stable frames, or compiled "
+                "artifact changed since the compiled build that was validated; "
+                "rebuild the compiled entry and rerun L0-L4 before promoting"
+            )
         reference_outputs = _check_bundle_result(
             result_path,
             request,
@@ -566,33 +711,6 @@ def build_character_bundle_entry_draft(
                 for action_name in required_actions
             ],
         )
-        processing_status = "ready"
-
-    entry = {
-        "version": SCHEMA_VERSION,
-        "asset_id": asset_id,
-        "tag": tag,
-        "production_family": "character-bundle",
-        "source_layout": {"type": SOURCE_LAYOUT_TYPE, "path": source_path},
-        "godot_artifact": {"type": "SpriteFrames", "path": artifact_path},
-        "processing_status": processing_status,
-    }
-    try:
-        validate_entry(entry, project_root=Path(project_root))
-        build_default_registry().compile(
-            CompileRequest(
-                "character-bundle",
-                asset_id,
-                "grid_sheet",
-                source_path,
-                "SpriteFrames",
-                artifact_path,
-                Path(project_root),
-                compiler_spec,
-            )
-        )
-    except (CompilerError, StableEntryError) as exc:
-        raise ActionEntryDraftError(str(exc)) from exc
 
     support = {
         "version": SCHEMA_VERSION,
@@ -600,6 +718,7 @@ def build_character_bundle_entry_draft(
         "frame_canvas_px": frame_canvas_px,
         "actions": [built_by_action[action_name]["support"] for action_name in required_actions],
         "reference_outputs": reference_outputs,
+        "build": build_record,
     }
     return {"entry": entry, "support": support, "support_path": (
         f"{stable_output_dir('character-bundle', asset_id)}/{asset_id}.json"

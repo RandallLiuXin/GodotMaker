@@ -207,9 +207,10 @@ Brief shape:
   action processing report per required action, and its validated result to
   `tools/asset_action_entry_draft.py` bundle mode. It registers exactly one
   worker-consumable `SpriteFrames` entry, and reaches `ready` only from a result
-  whose L0-L4 levels all passed. A provider-generated canonical is reported as a
-  reference output beside that one entry; a user-supplied canonical is not
-  republished at all.
+  whose L0-L4 levels all passed and whose build still matches the fingerprint
+  recorded when that artifact was compiled. A provider-generated canonical is
+  reported as a reference output beside that one entry; a user-supplied
+  canonical is not republished at all.
 - For `compact-prop-pack`, pass the request and fully validated result to
   `tools/asset_compact_prop_pack_entry_draft.py`. It writes one ready logical
   entry draft per AtlasTexture while retaining the shared physical bundle path.

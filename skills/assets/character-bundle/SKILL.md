@@ -61,7 +61,7 @@ python tools/asset_action_entry_draft.py \
   --out <entry.json>
 ```
 
-   The builder is the promotion gate: it re-verifies the L0-L4 evidence, the single `SpriteFrames` runtime output, and the ordered per-action `grid_sheet` sources against what it compiled. Do not hand-edit `processing_status`.
+   The builder is the promotion gate. It re-verifies the L0-L4 evidence, the single `SpriteFrames` runtime output, and the ordered per-action `grid_sheet` sources; it does not recompile, so the artifact it registers is the exact one L0-L4 examined. It also compares the resolved request, every action report, every stable sheet and frame, and the artifact against the fingerprint recorded by step 6. Stable paths are identity-derived and a regeneration overwrites them in place, so a result alone cannot say which build it validated — if anything changed since step 6, promotion is refused. Rerun step 6 and then step 7 before promoting again. Do not hand-edit `processing_status`.
 9. When `eval/consumer_smoke.gd` exists, run it after L0-L4 with every resolved `<action>:<loop>` pair. Preserve its command, executable, output, and JSON report as L5 evidence. Do not use compiler success as a smoke substitute.
 
 ## Result

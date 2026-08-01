@@ -77,6 +77,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Card-kit Asset Skills now compile only the Theme, scalable frames, and fixed AtlasTexture regions requested by each asset request, preserving reusable Godot resources without requiring a fixed card layout.
 
 - Character-bundle stable entries now reach `ready` only after their L0-L4 evidence is handed back to the same deterministic builder, instead of being published straight from the compiler.
+- Character-bundle promotion now binds to a build fingerprint of the resolved request, action reports, stable frames, and compiled artifact, so a passing result can no longer promote a later regeneration that reused the same stable paths.
 - A character-bundle result now registers exactly one worker-consumable SpriteFrames entry, so a generated canonical is recorded as reference provenance and can no longer ship as a second runtime artifact.
 - Character-bundle assets now resolve animation cadence internally, preserve optional canonical references and 256px runtime frames, and regenerate retryable source-image failures before stopping.
 - Character-bundle assembly now binds resolved intent, canvas, frame order, timing, loop state, and scale references through SpriteFrames compilation and GIF previews.

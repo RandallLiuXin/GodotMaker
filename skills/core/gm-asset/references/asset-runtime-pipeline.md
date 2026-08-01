@@ -243,13 +243,23 @@ It also writes the action support metadata to
 
 Adding `--request <resolved-request.json>` switches the same builder to bundle
 mode: it compiles one shared `SpriteFrames` from every `--metadata` action
-report and drafts a `compiled` entry. For `character-bundle`, adding
-`--result <result.json>` on a second run promotes that same entry to `ready`.
-The builder is the gate, so it re-checks the result's L0-L4 levels, its single
-`SpriteFrames` runtime output, and its ordered per-action `grid_sheet` sources
-against what it compiled. A reference output in that result — a generated
-canonical, for example — is recorded as provenance in the support metadata; it
-never becomes a second entry or a `godot_artifact`.
+report, drafts a `compiled` entry, and records a build fingerprint — the
+resolved request, every action report, every stable sheet and frame in action
+order, and the compiled artifact — in the support metadata.
+
+For `character-bundle`, adding `--result <result.json>` on a second run promotes
+that same entry to `ready`. That run does not recompile: it registers the exact
+artifact L0-L4 examined. It re-checks the result's L0-L4 levels, its single
+`SpriteFrames` runtime output, and its ordered per-action `grid_sheet` sources,
+and it recomputes the fingerprint from disk and requires an exact match. Stable
+paths are identity-derived, so a regeneration overwrites the very paths an older
+result names; the fingerprint is what tells the validated build apart from
+whatever now occupies those paths. Any drift fails closed — rebuild the
+`compiled` entry and rerun L0-L4 before promoting.
+
+A reference output in that result — a generated canonical, for example — is
+recorded as provenance in the support metadata; it never becomes a second entry
+or a `godot_artifact`.
 
 Selected curation candidate (`ui-kit`, `card-kit`, `compact-prop-pack`,
 `platform-strip`):
