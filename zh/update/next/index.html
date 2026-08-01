@@ -2777,7 +2777,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.</li>
 <li>An ASSETS.md runtime row reaches <code>generated</code> only from a <code>ready</code> non-reference stable entry, while a finalized registered screen reference completes its reference row at <code>source_ready</code> without becoming a worker runtime artifact.</li>
 <li><code>asset_generation_index.py --check-files</code> verifies that every registered source and artifact still exists, catching an asset deleted after registration.</li>
-<li>Generated runtime assets now stop at <code>source_ready</code>: the native compilers are not implemented and <code>/gm-asset</code> does not yet run the L0-L4 ladder, so it registers stable entries but produces no worker-consumable runtime asset and leaves generated runtime ASSETS.md rows <code>MISSING</code>.</li>
+<li>Asset families without a native compiler and L0-L4 validation path stop at <code>source_ready</code>, while a fully validated scene-prop set may register its generated AtlasTexture runtime resources as <code>ready</code>.</li>
 <li><code>godot_artifact</code> is written only by a native compiler, so a <code>grid_sheet</code> can no longer be published as a <code>Texture2D</code> standing in for its unbuilt <code>SpriteFrames</code>.</li>
 <li>The stable-entry schema now validates each <code>source_layout.type</code> against its closed compatible Godot artifact-type set, including <code>StyleBoxTexture</code> for <code>single</code> and <code>region_atlas</code>, so mismatches are rejected before reaching a worker.</li>
 </ul>
