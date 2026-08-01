@@ -11,6 +11,7 @@ sys.path.insert(0, str(TOOLS_DIR))
 
 import asset_atlas_assemble as atlas_assemble  # noqa: E402
 from asset_atlas_assemble import AtlasAssemblyError, assemble_atlas  # noqa: E402
+from asset_image_finalize import finalize_image_asset  # noqa: E402
 
 
 FAMILY = "ui-kit"
@@ -104,6 +105,46 @@ def test_assemble_atlas_places_multiple_explicit_slots_and_preserves_pixels(tmp_
     }
 
 
+def test_finalize_mixed_candidate_sizes_before_fixed_slot_assembly(tmp_path):
+    """Each prop is fit independently; the assembler only copies fixed slots."""
+    write_png(tmp_path / "candidates" / "wide.png", (8, 4), (240, 80, 40, 255))
+    write_png(tmp_path / "candidates" / "tall.png", (4, 8), (40, 160, 220, 255))
+    finalize_image_asset(
+        tmp_path / "candidates" / "wide.png",
+        tmp_path / "normalized" / "wide.png",
+        resize="10x10",
+    )
+    finalize_image_asset(
+        tmp_path / "candidates" / "tall.png",
+        tmp_path / "normalized" / "tall.png",
+        resize="10x10",
+    )
+    declaration = tmp_path / "slots.json"
+    write_declaration(
+        declaration,
+        [
+            {"name": "wide", "rect": [0, 0, 10, 10], "source": "normalized/wide.png"},
+            {"name": "tall", "rect": [12, 0, 10, 10], "source": "normalized/tall.png"},
+        ],
+        size=(22, 10),
+    )
+
+    result = assemble(tmp_path, declaration)
+
+    assert result["regions"] == [
+        {"name": "tall", "rect": [12, 0, 10, 10], "pivot": [0.5, 0.5], "nine_slice": None},
+        {"name": "wide", "rect": [0, 0, 10, 10], "pivot": [0.5, 0.5], "nine_slice": None},
+    ]
+    with Image.open(tmp_path / "normalized" / "wide.png") as wide, Image.open(
+        tmp_path / "normalized" / "tall.png"
+    ) as tall, Image.open(tmp_path / ATLAS_OUTPUT) as atlas:
+        assert wide.size == tall.size == (10, 10)
+        assert wide.getchannel("A").getbbox() == (0, 2, 10, 7)
+        assert tall.getchannel("A").getbbox() == (2, 0, 7, 10)
+        assert atlas.crop((0, 0, 10, 10)).tobytes() == wide.convert("RGBA").tobytes()
+        assert atlas.crop((12, 0, 22, 10)).tobytes() == tall.convert("RGBA").tobytes()
+
+
 def test_assemble_atlas_accepts_slots_flush_with_the_atlas_boundary(tmp_path):
     write_png(tmp_path / "edge.png", (4, 4), (30, 40, 50, 255))
     declaration = tmp_path / "slots.json"
@@ -156,6 +197,7 @@ def test_assemble_atlas_is_reproducible_and_metadata_order_is_stable(tmp_path):
             ],
             "duplicated",
         ),
+        ([{"name": "../outside", "rect": [0, 0, 4, 4], "source": "button.png"}], "safe path segment"),
         ([{"name": "one", "rect": [0, 0, 0, 4], "source": "button.png"}], "positive"),
     ],
 )

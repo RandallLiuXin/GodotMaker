@@ -20,6 +20,7 @@ Primary pipeline tools:
 12. `asset_assets_md_update.py`
 13. `asset_atlas_assemble.py`
 14. `asset_runtime_resolver.py`
+15. `asset_compact_prop_pack_entry_draft.py`
 
 ## asset_source_generate.py
 
@@ -91,6 +92,11 @@ python tools/asset_sheet_process.py \
 Pass `--grid <COLSxROWS>` only with `--snap-mode grid`. Autoslice orders
 independent regions from top to bottom and left to right, and rejects a
 `--names` count that does not match the detected region count.
+
+Use `--processed-out <transparent-sheet.png>` to retain the cleaned RGBA source
+sheet for audit. It is intentionally not written when autoslice reports a
+name-count mismatch, so an unbound sheet cannot look like a valid production
+artifact.
 
 ## asset_action_process.py
 

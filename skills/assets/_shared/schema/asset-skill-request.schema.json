@@ -94,7 +94,10 @@
             "additionalProperties": false,
             "required": ["name", "rect", "source"],
             "properties": {
-              "name": {"type": "string", "pattern": "\\S"},
+              "name": {
+                "type": "string",
+                "pattern": "^(?!.*[\\\\/:;<>\"|?*\\x00-\\x1F])(?!\\s)(?!.*\\s$)(?!.*\\.$).+$"
+              },
               "rect": {
                 "type": "array",
                 "minItems": 4,

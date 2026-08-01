@@ -245,8 +245,30 @@ def _request_parity_cases():
         "brief": "A knight.",
         "references": [{"role": "canonical", "path": "res://references/p.png"}],
     }
+    scene_props = {
+        "asset_type": "scene-prop-set",
+        "asset_id": "market-props",
+        "brief": "A painted market prop set.",
+        "spec": {
+            "version": 1,
+            "atlas": {"width": 128, "height": 128},
+            "slots": [
+                {
+                    "name": "market_stall",
+                    "rect": [0, 0, 128, 128],
+                    "source": ".godotmaker/asset-generation/normalized/market_stall.png",
+                }
+            ],
+        },
+    }
     return [
         ("valid-base", base, True),
+        ("valid-scene-prop-slot", scene_props, True),
+        (
+            "scene-prop-unsafe-slot-name",
+            _with(scene_props, lambda d: d["spec"]["slots"][0].update(name="bad/name")),
+            False,
+        ),
         ("whitespace-brief", _with(base, lambda d: d.update(brief="   ")), False),
         (
             "whitespace-reference-path",

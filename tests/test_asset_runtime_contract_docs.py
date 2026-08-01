@@ -126,15 +126,20 @@ def test_production_unit_docs_are_first_entry_points():
     planner = _read("skills/core/gm-asset/references/asset-planner.md")
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
-    units = [
-        "fx-bundle",
-        "compact-prop-pack",
-    ]
+    units = ["fx-bundle"]
     for unit in units:
         path = f"skills/core/gm-asset/references/production-units/{unit}.md"
         assert (REPO_ROOT / path).exists(), f"missing production unit: {unit}"
         assert f"references/production-units/{unit}.md" in skill
         assert f"`{unit}`" in planner
+
+    compact = _read("skills/assets/compact-prop-pack/SKILL.md")
+    assert not (
+        REPO_ROOT / "skills/core/gm-asset/references/production-units/compact-prop-pack.md"
+    ).exists()
+    assert "First-class `compact-prop-pack` Asset Skill" in skill
+    assert "First-class `compact-prop-pack` Asset Skill" in planner
+    assert "one provider source sheet" in compact
 
     assert "## Production Families" in runtime
     assert "## Source Layouts" in runtime
@@ -147,7 +152,6 @@ def test_production_unit_docs_are_first_entry_points():
 
 def test_production_unit_autoslice_examples_do_not_pass_grid():
     units = [
-        "compact-prop-pack",
         "fx-bundle",
     ]
     for unit in units:
@@ -162,13 +166,15 @@ def test_production_unit_autoslice_examples_do_not_pass_grid():
 
 
 def test_prop_units_default_to_autoslice_while_ui_and_card_use_native_resources():
-    props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
+    props = _read("skills/assets/compact-prop-pack/SKILL.md")
     curation = _read("skills/core/gm-asset/references/asset-curation.md")
     ui = _read("skills/assets/ui-kit/SKILL.md")
     card = _read("skills/assets/card-kit/SKILL.md")
 
     assert "--snap-mode autoslice" in props
-    assert "--snap-mode grid" in props
+    assert "--processed-out" in props
+    assert "asset_image_finalize.py --resize" in props
+    assert "asset_atlas_assemble.py" in props
     assert "StyleBoxTexture" in ui
     assert "AtlasTexture" in ui
     assert "StyleBoxTexture" in card
@@ -192,11 +198,11 @@ def test_card_kit_is_separate_from_generic_ui_components():
 
 def test_foreground_production_units_do_not_finalize_source_images():
     fx = _read("skills/core/gm-asset/references/production-units/fx-bundle.md")
-    props = _read("skills/core/gm-asset/references/production-units/compact-prop-pack.md")
+    props = _read("skills/assets/compact-prop-pack/SKILL.md")
     scene_props = _read("skills/assets/scene-prop-set/SKILL.md")
     character = _read("skills/assets/character-bundle/SKILL.md")
 
-    for doc in [fx, props]:
+    for doc in [fx]:
         assert "--background magenta" in doc
         assert "--snap-mode autoslice" in doc
         assert "Do not use a source" in doc
@@ -208,6 +214,8 @@ def test_foreground_production_units_do_not_finalize_source_images():
     assert "asset_image_finalize.py" in scene_props
     assert "one image-generation attempt for the complete set" in scene_props
     assert "Do not pass `--grid` to autoslice" in scene_props
+    assert "asset_image_finalize.py" in props
+    assert "asset_compact_prop_pack_entry_draft.py" in props
     assert "tools/asset_curation_entry_draft.py" in fx
     assert "tools/asset_action_entry_draft.py" in fx
     assert "tools/asset_action_process.py" in character

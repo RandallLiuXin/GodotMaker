@@ -318,6 +318,58 @@ def test_godot_artifact_path_must_be_under_stable_dir():
         validate_entry(entry)
 
 
+def test_compact_prop_logical_entry_can_share_its_bundle_output_directory(tmp_path):
+    entry = {
+        "version": 1,
+        "asset_id": "market--lantern",
+        "tag": "v0.1.0",
+        "production_family": "compact-prop-pack",
+        "bundle_id": "market",
+        "source_layout": {
+            "type": "region_atlas",
+            "path": "res://assets/generated/compact-prop-pack/market/market.png",
+        },
+        "godot_artifact": {
+            "type": "AtlasTexture",
+            "path": "res://assets/generated/compact-prop-pack/market/lantern.tres",
+        },
+        "processing_status": "ready",
+    }
+    directory = tmp_path / "assets/generated/compact-prop-pack/market"
+    directory.mkdir(parents=True)
+    (directory / "market.png").write_bytes(b"png")
+    (directory / "lantern.tres").write_text("[gd_resource type=\"AtlasTexture\"]")
+
+    validate_entry(entry, project_root=tmp_path, check_files=True)
+
+
+def test_bundle_id_is_rejected_outside_compact_prop_pack():
+    entry = valid_entry(bundle_id="player_bundle")
+    with pytest.raises(StableEntryError, match="only supported for compact-prop-pack"):
+        validate_entry(entry)
+
+
+def test_compact_bundle_id_must_bind_the_logical_asset_identity():
+    entry = {
+        "version": 1,
+        "asset_id": "unrelated--lantern",
+        "tag": "v0.1.0",
+        "production_family": "compact-prop-pack",
+        "bundle_id": "market",
+        "source_layout": {
+            "type": "region_atlas",
+            "path": "res://assets/generated/compact-prop-pack/market/market.png",
+        },
+        "godot_artifact": {
+            "type": "AtlasTexture",
+            "path": "res://assets/generated/compact-prop-pack/market/lantern.tres",
+        },
+        "processing_status": "ready",
+    }
+    with pytest.raises(StableEntryError, match="bundle_id>--<logical_prop_id"):
+        validate_entry(entry)
+
+
 @pytest.mark.parametrize(
     "path",
     [

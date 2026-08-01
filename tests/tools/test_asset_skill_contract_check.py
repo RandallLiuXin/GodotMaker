@@ -131,6 +131,11 @@ def test_scene_prop_set_request_requires_the_declared_fixed_slot_schema():
     with pytest.raises(AssetContractError, match=r"request.spec.slots\[0\] has unknown field"):
         check_request(unexpected_slot_key)
 
+    unsafe_name = valid_scene_prop_set_request()
+    unsafe_name["spec"]["slots"][0]["name"] = "../outside"
+    with pytest.raises(AssetContractError, match="single safe path segment"):
+        check_request(unsafe_name)
+
 
 def test_multiple_runtime_outputs_are_counted():
     data = valid_result()

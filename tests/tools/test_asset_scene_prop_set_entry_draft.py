@@ -24,7 +24,7 @@ TAG = "chapter-1"
 SAMPLE_ROOT = REPO_ROOT / "skills" / "assets" / "scene-prop-set" / "samples"
 
 
-def _prepare_delivery(tmp_path: Path) -> tuple[Path, Path, dict]:
+def _prepare_delivery(tmp_path: Path) -> tuple[Path, Path, dict, dict]:
     stable = tmp_path / "assets" / "generated" / "scene-prop-set" / ASSET_ID
     stable.mkdir(parents=True)
     (stable / f"{ASSET_ID}.png").write_bytes(
@@ -37,6 +37,13 @@ def _prepare_delivery(tmp_path: Path) -> tuple[Path, Path, dict]:
     declaration = json.loads(
         (SAMPLE_ROOT / "declaration" / "spec.json").read_text(encoding="utf-8")
     )
+    request = {
+        "asset_type": "scene-prop-set",
+        "asset_id": ASSET_ID,
+        "brief": "A painted market prop set.",
+        "provider": "codex",
+        "spec": declaration,
+    }
     result = json.loads(
         (SAMPLE_ROOT / "result" / f"{ASSET_ID}.json").read_text(encoding="utf-8")
     )
@@ -44,19 +51,18 @@ def _prepare_delivery(tmp_path: Path) -> tuple[Path, Path, dict]:
         (stable / f"{slot['name']}.tres").write_text(
             '[gd_resource type="AtlasTexture"]\n', encoding="utf-8"
         )
-    declaration_path = tmp_path / "declaration.json"
-    declaration_path.write_text(json.dumps(declaration), encoding="utf-8")
+    request_path = tmp_path / "request.json"
     result_path = tmp_path / "result.json"
+    request_path.write_text(json.dumps(request), encoding="utf-8")
     result_path.write_text(json.dumps(result), encoding="utf-8")
-    return result_path, declaration_path, result
+    return request_path, result_path, request, result
 
 
 def _build(tmp_path: Path, *, primary: str = "market_stall") -> dict:
-    result_path, declaration_path, _ = _prepare_delivery(tmp_path)
+    request_path, result_path, _, _ = _prepare_delivery(tmp_path)
     return build_scene_prop_set_entry_draft(
+        request_path,
         result_path,
-        declaration_path,
-        asset_id=ASSET_ID,
         tag=TAG,
         primary_output=primary,
         project_root=tmp_path,
@@ -89,20 +95,20 @@ def test_uses_an_explicit_declared_primary_output(tmp_path):
     assert entry["godot_artifact"]["path"].endswith("/water_well.tres")
 
 
-def test_accepts_reading_order_declaration_with_canonical_metadata_resources(tmp_path):
-    result_path, declaration_path, _ = _prepare_delivery(tmp_path)
-    declaration = json.loads(declaration_path.read_text(encoding="utf-8"))
-    declaration["slots"] = [
-        declaration["slots"][2],
-        declaration["slots"][0],
-        declaration["slots"][1],
+def test_accepts_reading_order_request_and_runtime_outputs(tmp_path):
+    request_path, result_path, request, result = _prepare_delivery(tmp_path)
+    request["spec"]["slots"] = [
+        request["spec"]["slots"][2],
+        request["spec"]["slots"][0],
+        request["spec"]["slots"][1],
     ]
-    declaration_path.write_text(json.dumps(declaration), encoding="utf-8")
+    result["outputs"].reverse()
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    result_path.write_text(json.dumps(result), encoding="utf-8")
 
     entry = build_scene_prop_set_entry_draft(
+        request_path,
         result_path,
-        declaration_path,
-        asset_id=ASSET_ID,
         tag=TAG,
         primary_output="water_well",
         project_root=tmp_path,
@@ -112,49 +118,59 @@ def test_accepts_reading_order_declaration_with_canonical_metadata_resources(tmp
 
 
 def test_rejects_missing_or_partial_runtime_delivery(tmp_path):
-    result_path, declaration_path, result = _prepare_delivery(tmp_path)
+    request_path, result_path, _, result = _prepare_delivery(tmp_path)
     broken = copy.deepcopy(result)
     broken["outputs"].pop()
     result_path.write_text(json.dumps(broken), encoding="utf-8")
 
     with pytest.raises(ScenePropSetEntryDraftError, match="exactly match"):
         build_scene_prop_set_entry_draft(
+            request_path,
             result_path,
-            declaration_path,
-            asset_id=ASSET_ID,
             tag=TAG,
             primary_output="market_stall",
             project_root=tmp_path,
         )
 
 
-def test_rejects_unvalidated_result_and_metadata_drift(tmp_path):
-    result_path, declaration_path, result = _prepare_delivery(tmp_path)
+def test_rejects_unvalidated_result_and_request_metadata_geometry_drift(tmp_path):
+    request_path, result_path, request, result = _prepare_delivery(tmp_path)
     broken = copy.deepcopy(result)
     broken["validation"]["levels"]["L4"] = False
     result_path.write_text(json.dumps(broken), encoding="utf-8")
 
-    with pytest.raises(ScenePropSetEntryDraftError, match="passed L0 through L4"):
+    with pytest.raises(ScenePropSetEntryDraftError, match="levels failed: L4"):
         build_scene_prop_set_entry_draft(
+            request_path,
             result_path,
-            declaration_path,
-            asset_id=ASSET_ID,
             tag=TAG,
             primary_output="market_stall",
             project_root=tmp_path,
         )
 
     result_path.write_text(json.dumps(result), encoding="utf-8")
-    metadata_path = tmp_path / "assets/generated/scene-prop-set/market-scene/market-scene.json"
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    metadata["regions"].reverse()
-    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    request["spec"]["slots"][1]["rect"] = [112, 0, 48, 64]
+    request_path.write_text(json.dumps(request), encoding="utf-8")
 
-    with pytest.raises(ScenePropSetEntryDraftError, match="slot order"):
+    with pytest.raises(ScenePropSetEntryDraftError, match="rectangles and pivots"):
         build_scene_prop_set_entry_draft(
+            request_path,
             result_path,
-            declaration_path,
-            asset_id=ASSET_ID,
+            tag=TAG,
+            primary_output="market_stall",
+            project_root=tmp_path,
+        )
+
+
+def test_rejects_unsafe_logical_slot_name_before_ready_handoff(tmp_path):
+    request_path, result_path, request, _ = _prepare_delivery(tmp_path)
+    request["spec"]["slots"][0]["name"] = "bad/name"
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+
+    with pytest.raises(ScenePropSetEntryDraftError, match="single safe path segment"):
+        build_scene_prop_set_entry_draft(
+            request_path,
+            result_path,
             tag=TAG,
             primary_output="market_stall",
             project_root=tmp_path,
@@ -162,13 +178,12 @@ def test_rejects_unvalidated_result_and_metadata_drift(tmp_path):
 
 
 def test_writes_draft_only_after_all_delivery_checks(tmp_path):
-    result_path, declaration_path, _ = _prepare_delivery(tmp_path)
+    request_path, result_path, _, _ = _prepare_delivery(tmp_path)
     out = tmp_path / "work" / "entry.json"
 
     receipt = write_scene_prop_set_entry_draft(
+        request_path,
         result_path,
-        declaration_path,
-        asset_id=ASSET_ID,
         tag=TAG,
         primary_output="market_stall",
         project_root=tmp_path,

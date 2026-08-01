@@ -19,6 +19,7 @@ from asset_compiler._stable_entry import (
     StableEntryError,
     assert_within_output_dir,
     resolve_res_path,
+    safe_identifier,
 )
 from asset_validation import (
     GodotProbe,
@@ -489,6 +490,10 @@ def _check_props(
             raise MissingFamilySkillError(
                 f"{family} slots[{index}] must be a valid fixed-slot declaration"
             )
+        try:
+            safe_identifier(name, f"{family} slots[{index}].name")
+        except StableEntryError as exc:
+            raise MissingFamilySkillError(str(exc)) from exc
         rectangles.append(tuple(rect))
         try:
             validate_fixed_slot_rectangles(rectangles, atlas["width"], atlas["height"])
@@ -663,6 +668,40 @@ def _verify_prop_delivery(
         raise ValidationError(
             "delivered atlas dimensions do not match the declared atlas"
         )
+    if family != "compact-prop-pack":
+        return
+
+    try:
+        from PIL import Image
+
+        with Image.open(atlas) as image:
+            if image.format != "PNG" or image.mode != "RGBA":
+                raise ValidationError("compact-prop-pack atlas must be an RGBA PNG")
+            image.load()
+            for slot in request["spec"]["slots"]:
+                x, y, width, height = slot["rect"]
+                crop = image.crop((x, y, x + width, y + height))
+                try:
+                    alpha = crop.getchannel("A").getextrema()
+                    if alpha[0] != 0 or alpha[1] == 0:
+                        raise ValidationError(
+                            "compact-prop-pack slot must contain transparent padding "
+                            f"and visible pixels: {slot['name']}"
+                        )
+                    if any(
+                        pixel[:3] == (255, 0, 255) and pixel[3] > 0
+                            for pixel in crop.get_flattened_data()
+                    ):
+                        raise ValidationError(
+                            "compact-prop-pack atlas retains opaque magenta: "
+                            f"{slot['name']}"
+                        )
+                finally:
+                    crop.close()
+    except ImportError as exc:
+        raise ValidationError(
+            "Pillow is required to validate compact-prop-pack transparency"
+        ) from exc
 
 
 def _verify_platform_png(

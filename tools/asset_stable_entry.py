@@ -203,6 +203,15 @@ def _safe_identifier(value: str, label: str) -> str:
     return value
 
 
+def safe_identifier(value: str, label: str) -> str:
+    """Validate one cross-platform stable-identity segment.
+
+    This public wrapper lets producer tools validate logical prop names with
+    exactly the same path and Windows-device rules as stable entries.
+    """
+    return _safe_identifier(value, label)
+
+
 def _reject_extra_keys(data: dict[str, Any], allowed: set[str], label: str) -> None:
     extra = set(data.keys()) - allowed
     if extra:
@@ -252,6 +261,34 @@ def stable_output_dir(production_family: str, asset_id: str) -> str:
         raise StableEntryError(f"production_family is not allowed: {production_family}")
     _safe_identifier(asset_id, "asset_id")
     return f"{GENERATED_ROOT}/{production_family}/{asset_id}"
+
+
+def _output_owner(
+    production_family: str, asset_id: str, bundle_id: Any | None
+) -> str:
+    """Return the stable physical-output owner for an entry.
+
+    A compact prop pack has one physical atlas but many independently usable
+    AtlasTexture entries. Those logical entries keep distinct ``asset_id``
+    values while their source and artifact files live in the shared bundle
+    directory. No other family can opt into this exception.
+    """
+    if bundle_id is None:
+        return asset_id
+    if production_family != "compact-prop-pack":
+        raise StableEntryError(
+            "bundle_id is only supported for compact-prop-pack stable entries"
+        )
+    if not isinstance(bundle_id, str) or not bundle_id.strip():
+        raise StableEntryError("bundle_id must be a non-empty string")
+    bundle_id = safe_identifier(bundle_id, "bundle_id")
+    prefix = f"{bundle_id}--"
+    if not asset_id.startswith(prefix) or asset_id == prefix:
+        raise StableEntryError(
+            "compact-prop-pack asset_id must be '<bundle_id>--<logical_prop_id>'"
+        )
+    safe_identifier(asset_id[len(prefix):], "compact-prop-pack logical_prop_id")
+    return bundle_id
 
 
 def stable_output_res_path(production_family: str, asset_id: str) -> str:
@@ -355,6 +392,7 @@ def _validate_source_layout(
     *,
     production_family: str,
     asset_id: str,
+    output_owner: str,
 ) -> tuple[str, str]:
     layout = data.get("source_layout")
     if not isinstance(layout, dict):
@@ -374,7 +412,7 @@ def _validate_source_layout(
         check_output_path(
             layout_path,
             production_family=production_family,
-            asset_id=asset_id,
+            asset_id=output_owner,
             label="source_layout.path",
         )
     return layout_type, layout_path
@@ -387,6 +425,7 @@ def _validate_godot_artifact(
     processing_status: str,
     production_family: str,
     asset_id: str,
+    output_owner: str,
 ) -> tuple[str, str] | None:
     artifact = data.get("godot_artifact")
     is_reference = layout_type in REFERENCE_LAYOUTS
@@ -424,7 +463,7 @@ def _validate_godot_artifact(
     check_output_path(
         artifact_path,
         production_family=production_family,
-        asset_id=asset_id,
+        asset_id=output_owner,
         label="godot_artifact.path",
     )
     return artifact_type, artifact_path
@@ -453,6 +492,8 @@ def validate_entry(
     if family not in PRODUCTION_FAMILIES:
         raise StableEntryError(f"production_family is not allowed: {family}")
 
+    output_owner = _output_owner(family, asset_id, data.get("bundle_id"))
+
     processing_status = _non_empty_string(
         data, "processing_status", "processing_status"
     )
@@ -462,7 +503,10 @@ def validate_entry(
         )
 
     layout_type, layout_path = _validate_source_layout(
-        data, production_family=family, asset_id=asset_id
+        data,
+        production_family=family,
+        asset_id=asset_id,
+        output_owner=output_owner,
     )
     # Bind reference layout and reference family so neither can be used to
     # bypass the other's contract.
@@ -490,6 +534,7 @@ def validate_entry(
         processing_status=processing_status,
         production_family=family,
         asset_id=asset_id,
+        output_owner=output_owner,
     )
 
     # Whenever a project root is supplied, resolve-and-contain the referenced

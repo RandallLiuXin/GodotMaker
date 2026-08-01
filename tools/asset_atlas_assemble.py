@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from asset_stable_entry import StableEntryError, assert_within_output_dir
+from asset_stable_entry import StableEntryError, assert_within_output_dir, safe_identifier
 
 
 SCHEMA_VERSION = 1
@@ -309,6 +309,10 @@ def assemble_atlas(
         name = slot.get("name")
         if not isinstance(name, str) or not name.strip():
             raise AtlasAssemblyError(f"{label}.name must be a non-empty string")
+        try:
+            safe_identifier(name, f"{label}.name")
+        except StableEntryError as exc:
+            raise AtlasAssemblyError(str(exc)) from exc
         if name in names:
             raise AtlasAssemblyError(f"Slot name is duplicated: {name}")
         names.add(name)

@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from asset_stable_entry import StableEntryError, safe_identifier
+
 ASSET_TYPES = {
     "background-map",
     "character-bundle",
@@ -158,8 +160,14 @@ def _check_scene_prop_set_spec(value: Any, *, issues: list[str]) -> None:
             forbidden=set(),
             issues=issues,
         )
-        if not _non_empty_string(slot.get("name")):
+        name = slot.get("name")
+        if not _non_empty_string(name):
             issues.append(f"{location}.name must be a non-empty string")
+        else:
+            try:
+                safe_identifier(name, f"{location}.name")
+            except StableEntryError as exc:
+                issues.append(str(exc))
         if not _non_empty_string(slot.get("source")):
             issues.append(f"{location}.source must be a non-empty string")
         rect = slot.get("rect")

@@ -91,7 +91,7 @@ Use `references/asset-planner.md` for production-unit selection.
 | `fx-bundle` | `references/production-units/fx-bundle.md` |
 | `ui-kit` | First-class `ui-kit` Asset Skill |
 | `card-kit` | First-class `card-kit` Asset Skill |
-| `compact-prop-pack` | `references/production-units/compact-prop-pack.md` |
+| `compact-prop-pack` | First-class `compact-prop-pack` Asset Skill |
 | `background-map` | First-class `background-map` Asset Skill |
 | `platform-strip` | First-class `platform-strip` Asset Skill |
 | `scene-prop-set` | First-class `scene-prop-set` Asset Skill |
@@ -176,6 +176,7 @@ never substitute a deleted production-unit document:
 | `ui-kit` | First-class Asset Skill: `ui-kit` |
 | `card-kit` | First-class Asset Skill: `card-kit` |
 | `scene-prop-set` | First-class Asset Skill: `scene-prop-set` |
+| `compact-prop-pack` | First-class Asset Skill: `compact-prop-pack` |
 
 Brief shape:
 
@@ -187,7 +188,7 @@ Brief shape:
 
 ### Production Contract
 - Legacy unit: First Entry Document: {references/production-units/<unit>.md}
-- First-class unit: First-class Asset Skill: {background-map | character-bundle | platform-strip | screen-reference | ui-kit | card-kit | scene-prop-set}
+- First-class unit: First-class Asset Skill: {background-map | character-bundle | platform-strip | screen-reference | ui-kit | card-kit | compact-prop-pack | scene-prop-set}
 - For a first-class unit, invoke that named Skill with one shared generic asset
   request. Do not read a production-unit path for that family.
 
@@ -201,9 +202,12 @@ Brief shape:
   deterministic entry-draft builder.
 - For `character-bundle`, pass the request and every action processing report
   to `tools/asset_action_entry_draft.py` bundle mode before writing its draft.
-- For `scene-prop-set`, pass the successful result, fixed-slot declaration,
-  and first declared logical prop to
-  `tools/asset_scene_prop_set_entry_draft.py` before writing its ready draft.
+- For `compact-prop-pack`, pass the request and fully validated result to
+  `tools/asset_compact_prop_pack_entry_draft.py`. It writes one ready logical
+  entry draft per AtlasTexture while retaining the shared physical bundle path.
+- For `scene-prop-set`, pass the original request, successful result, and first
+  declared logical prop to `tools/asset_scene_prop_set_entry_draft.py` before
+  writing its ready draft. The builder binds metadata geometry to the request.
 - The manager consumes only that adapted report and its drafts in Step 5; the
   first-class Skill never reads registration, manifest, tag, or stage state.
 
@@ -258,6 +262,8 @@ does not register a generic result directly.
    `tools/asset_action_entry_draft.py` for processed action output,
    `tools/asset_curation_entry_draft.py` for a selected curation candidate,
    `tools/asset_finalize_entry_draft.py` for a finalized screen reference, or
+   `tools/asset_compact_prop_pack_entry_draft.py` for a fully ready compact
+   prop atlas bundle.
    `tools/asset_scene_prop_set_entry_draft.py` for a compiled scene prop atlas.
    Every production path has one, so reject a hand-written draft: the builders
    are what enforce frame count, edge-touch rejection, scale reference, curation
