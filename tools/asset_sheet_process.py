@@ -378,6 +378,23 @@ def _atomic_write_json(path: Path, data: dict[str, object]) -> None:
             tmp_path.unlink()
 
 
+def _atomic_save_png(image, path: Path) -> None:
+    """Save a processed RGBA sheet without leaving a partial evidence file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        dir=str(path.parent),
+        suffix=".png",
+    ) as handle:
+        tmp_path = Path(handle.name)
+    try:
+        image.save(tmp_path, format="PNG")
+        tmp_path.replace(path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
 def process_sheet(
     source: Path,
     output_dir: Path,
@@ -399,6 +416,7 @@ def process_sheet(
     edge_clean_depth: int = 0,
     edge_touch_margin: int = 0,
     preserve_cell_bounds: bool = False,
+    processed_out: Path | None = None,
     report: Path | None = None,
 ) -> dict[str, object]:
     """Extract fixed grid cells or independent autoslice regions."""
@@ -633,6 +651,15 @@ def process_sheet(
                     "width": cropped.size[0],
                     "height": cropped.size[1],
                 })
+
+        # A name-count mismatch means the candidate set cannot be bound to the
+        # caller's logical props. Preserve only the report, not a sheet that
+        # could be mistaken for a valid transparent source artifact.
+        processed_path: str | None = None
+        if processed_out is not None and not name_count_mismatch:
+            processed_target = Path(processed_out)
+            _atomic_save_png(image, processed_target)
+            processed_path = str(processed_target)
     finally:
         image.close()
 
@@ -697,6 +724,7 @@ def process_sheet(
         "edge_touch_candidates": [
             item["candidate_id"] for item in accepted if bool(item.get("edge_touch"))
         ],
+        "processed_path": processed_path,
     }
     if report is not None:
         _atomic_write_json(Path(report), result)
@@ -784,6 +812,11 @@ def _main() -> int:
         help="Keep each accepted grid output at its full fixed cell dimensions",
     )
     parser.add_argument("--report", default=None, help="Optional JSON report path")
+    parser.add_argument(
+        "--processed-out",
+        default=None,
+        help="Optional transparent RGBA sheet path written after successful processing",
+    )
     args = parser.parse_args()
 
     try:
@@ -807,6 +840,7 @@ def _main() -> int:
             edge_clean_depth=args.edge_clean_depth,
             edge_touch_margin=args.edge_touch_margin,
             preserve_cell_bounds=args.preserve_cell_bounds,
+            processed_out=Path(args.processed_out) if args.processed_out else None,
             report=Path(args.report) if args.report else None,
         )
     except SheetProcessError as exc:

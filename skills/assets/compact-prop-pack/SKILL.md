@@ -1,101 +1,167 @@
 ---
 name: compact-prop-pack
-description: Produce standalone fixed-slot AtlasTexture resources for compact reusable props.
+description: Produce a reusable compact-prop atlas from one provider source sheet, with independently loadable AtlasTexture resources for every declared prop.
 ---
 
 # Compact Prop Pack
 
-Produce a standalone atlas-backed set of small, independently usable props:
-pickups, crates, stones, bushes, pots, debris, small signs, and lamps. Do not
-use this Skill for platforms, terrain, buildings, doors, gates, large trees,
-or other wide, tall, collision-bearing assets.
-It produces assets only: scene placement and gameplay objects are outside this
-Skill.
+Produce a standalone atlas-backed pack of small reusable props: pickups,
+crates, stones, bushes, pots, debris, small signs, lamps, and environmental
+dressing. Use one provider source sheet for the whole requested pack; do not
+make one provider image request per prop. Do not use this Skill for platforms,
+terrain, buildings, doors, gates, large trees, or other wide, tall,
+collision-bearing assets. It produces assets only, never scene placement or
+gameplay objects.
+
+This Skill can be invoked directly or by an orchestrator. It never reads or
+writes `ASSETS.md`, tags, stage state, or generated manifests.
 
 ## Contract
 
-Accept the shared asset request contract from
+Accept the shared Asset Skill request schema and shared result schema and checker from
 `.godotmaker/asset-runtime/asset-skill-contract.md` with
-`asset_type: "compact-prop-pack"`. The family-specific `spec` is the exact
-JSON declaration passed to `tools/asset_atlas_assemble.py --declaration`; no
-conversion or inferred fields are allowed:
+`asset_type: "compact-prop-pack"`. The `spec` is the exact fixed-slot
+declaration consumed by `tools/asset_atlas_assemble.py --declaration`:
 
 ```json
 {
   "version": 1,
-  "atlas": {
-    "width": 192,
-    "height": 64
-  },
+  "atlas": { "width": 192, "height": 64 },
   "slots": [
-    { "name": "coin", "rect": [0, 0, 32, 32], "source": "sources/coin.png" },
-    { "name": "crate", "rect": [48, 0, 48, 48], "source": "sources/crate.png", "pivot": [0.5, 1.0] }
+    { "name": "coin", "rect": [0, 0, 32, 32], "source": "assets/generated/compact-prop-pack/market/normalized/coin.png" },
+    { "name": "crate", "rect": [48, 0, 48, 48], "source": "assets/generated/compact-prop-pack/market/normalized/crate.png", "pivot": [0.5, 1.0] }
   ]
 }
 ```
 
-Every slot name is a logical prop id. Slot rectangles are explicit, positive,
-non-overlapping pixel rectangles in `[x, y, width, height]` form. Do not
-choose slots by packing, trimming, crop detection, or heuristic discovery.
-`source` is a project-root-relative PNG path. `pivot` is optional and defaults
-to `[0.5, 0.5]` through the assembler; when supplied it must be a two-value
-coordinate from 0 to 1. The `version`, `atlas`, and top-level `slots` keys are
-required exactly as shown.
+Slot names are logical prop ids. Rectangles are explicit, positive,
+non-overlapping `[x, y, width, height]` values. `source` is the final,
+normalized project-relative PNG for that slot; it must have exactly the
+rectangle's width and height. The assembler does not resize, perform packing,
+trim, or infer semantics. It only copies these finalized files into declared
+slots.
 
-The physical atlas and metadata have stable paths:
-
-```text
-res://assets/generated/compact-prop-pack/<asset_id>/<asset_id>.png
-res://assets/generated/compact-prop-pack/<asset_id>/<asset_id>.json
-```
-
-Each logical prop has its own stable runtime output, even though all outputs
-may share the one PNG:
+Use these stable paths:
 
 ```text
-res://assets/generated/compact-prop-pack/<asset_id>/<logical_prop_id>.tres
+res://assets/generated/compact-prop-pack/<bundle_id>/<bundle_id>.png
+res://assets/generated/compact-prop-pack/<bundle_id>/<bundle_id>.json
+res://assets/generated/compact-prop-pack/<bundle_id>/<logical_prop_id>.tres
 ```
 
-The result follows the shared result schema. It includes one `runtime` output
-per declared slot with `godot_type: "AtlasTexture"`, a single `region_atlas`
-source for the physical PNG, and no pipeline registration fields. Result output
-names exactly match the corresponding metadata region names.
+Return one `runtime` `AtlasTexture` output per declared slot, one
+`region_atlas` source for the physical PNG, and no registration fields. Each
+logical prop is later written as its own ready stable entry while all entries
+declare the same `bundle_id`, source atlas, and physical bundle directory.
 
-## Processing
+Pixel-art production is not supported by this family. Do not use pixel-art
+prompts, nearest-neighbor resampling, or a pixelated filter to disguise
+ordinary illustration.
 
-1. Use visible style or scene references when supplied. Otherwise use the
-   request brief as the visual direction.
-2. Generate or claim one transparent RGBA PNG for each declared prop. Keep
-   each source at its declared slot size; transparent pixels remain transparent
-   and no solid chroma-key background may survive into the atlas.
-3. Assemble the physical PNG and its metadata only through
-   `tools/asset_atlas_assemble.py`. Its declaration contains every slot's name,
-   rectangle, source, and pivot. It is the source of the exact regions.
-4. For every metadata region, compile one independent `AtlasTexture` through
-   `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py`, passing only
-   `metadata_path` and that region's `logical_asset_id` in the compiler spec.
-   The artifact filename must equal the logical id.
-5. Run `standalone_validation.compile_and_validate()` for L0-L4 on every runtime output.
-   It validates the declaration/result binding, assembles the atlas, compiles
-   each declared AtlasTexture, then runs real headless Godot L3/L4; it never
-   trusts result validation supplied by a caller. L4 must
-   confirm the exact declared region, the shared atlas path, and zero margin.
-6. Return the shared result object only after every requested logical output
-   passes. A failed or absent slot fails the invocation; do not substitute a
-   whole-atlas texture or silently omit an output.
+## Provider and Reference Preconditions
 
-Common schema validation, atlas assembly, compiler routing, and L0-L4
- validation live exclusively in `.godotmaker/asset-runtime/`. This Skill does not
-copy a schema, compiler, validator, or atlas-packing implementation.
+Honor the request's provider exactly. Never silently switch among `native`,
+`codex`, `gemini`, or `openai`.
 
-## Prompt Requirements
+- With no `references`, generate the one source sheet from the brief and
+  declared item list.
+- With references, validate every path is readable before generation, preserve
+  its `canonical`, `style`, or `screen` role in the trace, and pass each real
+  image as provider image input. Passing a path only in text is not attachment.
+- For `codex`, call the image provider with the actual reference files through
+  `referenced_image_paths`; omit that parameter only when there are no
+  references. For `gemini` and `openai`, use the reference-input path of
+  `tools/asset_source_generate.py`. If the pinned provider cannot accept a
+  required reference image, STOP before output rather than changing provider.
+- For `native`, use its declared native generation path. If that path cannot
+  receive the required reference attachment, STOP before output.
 
-State the prop list, shared environment style, lighting and perspective, clear
-spacing, transparent background, and that no text, labels, UI, or floor plane
-may be generated. Request only compact props appropriate to this family.
+Archive the raw provider sheet at
+`.godotmaker/asset-generation/sources/<bundle_id>_source.png` and write its
+source report at
+`.godotmaker/asset-generation/reports/<bundle_id>_source.json`. The report
+records `raw_source`, `reference_inputs`, and `provider_trace`. Each reference
+record has `role`, `path`, `sha256`, and `attached: true`; `provider_trace`
+records the actual coding provider/model/reasoning, `image_provider`, visible
+`image_model_identity` (or `not_exposed_by_subscription_runtime` when that is
+the runtime's truthful limit), provider tool-call id, and its real
+image-attachment field (for Codex, `referenced_image_paths`).
+With no references, retain an empty `reference_inputs` array. Include the
+actual prompt, payload claim, readable-file checks, and attachment provenance.
+Never fabricate any of those records.
 
-## Example Result
+## Production Loop
 
-See `samples/result/market-props.json`. It demonstrates three logical props
-that share one physical atlas and receive three independent `AtlasTexture`
-outputs. Their fixed metadata regions are in `samples/atlas/market-props.json`.
+1. Before any provider call, validate the request, declared slots, source
+   paths, and reference inputs. Each logical prop name must satisfy the shared
+   cross-platform safe-identifier rule (one non-reserved path segment; no
+   separator, device name, control character, or trailing dot). STOP only for
+   a missing or unreadable required input, an unsupported or contradictory
+   request, a provider/reference attachment that is objectively unavailable,
+   or an unrecoverable environment or permission error.
+2. Make one real provider image request for a separated source sheet containing
+   the whole ordered prop list. Specify shared style, lighting, perspective,
+   plentiful gaps between objects, a solid `#FF00FF` background, and no text,
+   labels, UI, floor plane, borders, or grid. Archive the raw provider PNG.
+3. Process that sheet with `asset_sheet_process.py --snap-mode autoslice` and
+   `--background magenta`; never pass `--grid` to autoslice. Write the cleaned
+   transparent sheet using `--processed-out`, candidates, AABB report, and
+   report JSON. Supply `--names` in source-sheet reading order. A count mismatch
+   returns `needs_regeneration` with no candidate or processed-sheet output:
+   inspect spacing, names, or source output and regenerate or repair instead
+   of treating it as a final failure.
+4. Curate the named candidates with `tools/asset_curation_select.py`. Preserve
+   the selection and rejection reasons. For every selected prop, call
+   `tools/asset_image_finalize.py --resize <slot_width>x<slot_height> --no-origin`
+   into its declared `normalized/` source. This preserves aspect ratio, centers
+   art, and adds transparent padding without writing a shared
+   `assets/origin/<name>.png`; do not resize the whole source sheet before
+   slicing.
+5. Assemble only the finalized sources with `asset_atlas_assemble.py`. Its
+   stable atlas and metadata must contain the exact declared regions. Compile
+   every region independently through
+   `.godotmaker/asset-runtime/asset_compiler/atlas_texture.py` with only
+   `metadata_path` and `logical_asset_id` as compiler spec.
+6. Run `standalone_validation.compile_and_validate()` for L0-L4. It verifies
+   the exact declaration/result binding, decodable transparent RGBA atlas,
+   per-slot visible content and transparent padding, no opaque magenta, native
+   compilation, headless Godot loading, shared atlas path, exact regions, and
+   zero margins. Read any diagnostic, repair the source, processing parameters,
+   metadata, or artifact, then re-run the applicable checks. Mark ready only
+   when every L0-L4 check passes.
+
+Use the existing deterministic tools first. You may use a temporary image
+tool, drawing command, SVG/canvas, script, or Godot drawing to diagnose or
+repair a run when needed. Record its reason, command or code, inputs, outputs,
+modified files, diagnostics, and post-repair results in the trace. Tool names
+are not a STOP condition; invented provider calls, reference attachments, or
+validation evidence are.
+
+## Manager Adapter
+
+The standalone result remains free of tag and registration state. After it has
+passed L0-L4, the asset producer creates deterministic logical drafts with:
+
+```bash
+python tools/asset_compact_prop_pack_entry_draft.py \
+  --request <request.json> \
+  --result <result.json> \
+  --tag <tag> \
+  --project-root . \
+  --out-dir .godotmaker/asset-generation/work/entries
+```
+
+The adapter rejects incomplete L0-L4 evidence, altered slot geometry, missing
+physical files, and any result that does not expose every declared prop. It
+creates one ready entry per logical prop; do not hand-write entry drafts.
+
+## Evidence and Result
+
+Keep the raw source, transparent processed sheet, candidate/AABB report,
+curation report, every finalized PNG/report, declaration, atlas, metadata,
+compiled `.tres` files, source/provider report, command trace, and L0-L4
+diagnostics. Return the shared result only after all declared logical outputs
+pass. A real STOP has no fake output or ready entry and states the actual
+blocking condition.
+
+See `samples/result/market-props.json` for the shared atlas/result shape.

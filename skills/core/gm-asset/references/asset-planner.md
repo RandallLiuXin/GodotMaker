@@ -87,7 +87,7 @@ user explicitly requested generated image assets.
 | `fx-bundle` | `references/production-units/fx-bundle.md` |
 | `ui-kit` | First-class `ui-kit` Asset Skill |
 | `card-kit` | First-class `card-kit` Asset Skill |
-| `compact-prop-pack` | `references/production-units/compact-prop-pack.md` |
+| `compact-prop-pack` | First-class `compact-prop-pack` Asset Skill |
 | `background-map` | First-class `background-map` Asset Skill |
 | `platform-strip` | First-class `platform-strip` Asset Skill |
 | `scene-prop-set` | `references/production-units/scene-prop-set.md` |

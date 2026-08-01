@@ -238,10 +238,36 @@ def test_process_sheet_autoslice_extracts_independent_regions_without_grid(tmp_p
         icon_image.close()
 
 
+def test_autoslice_writes_cleaned_rgba_sheet_only_after_successful_binding(tmp_path):
+    source = tmp_path / "magenta_source.png"
+    make_magenta_sheet(source)
+    processed = tmp_path / "processed" / "sheet-transparent.png"
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        names="red,green,blue",
+        asset_id="props",
+        background="magenta",
+        snap_mode="autoslice",
+        processed_out=processed,
+    )
+
+    assert result["processed_path"] == str(processed)
+    with Image.open(processed) as image:
+        assert image.mode == "RGBA"
+        assert image.getchannel("A").getextrema()[0] == 0
+        assert all(
+            pixel[:3] != (255, 0, 255) or pixel[3] == 0
+            for pixel in image.get_flattened_data()
+        )
+
+
 def test_process_sheet_autoslice_reports_name_count_mismatch_without_outputs(tmp_path):
     source = tmp_path / "autoslice_sheet.png"
     make_autoslice_sheet(source)
     report = tmp_path / "report.json"
+    processed = tmp_path / "processed" / "sheet-transparent.png"
 
     result = process_sheet(
         source,
@@ -249,6 +275,7 @@ def test_process_sheet_autoslice_reports_name_count_mismatch_without_outputs(tmp
         names="wide_button",
         asset_id="ui_kit_source",
         snap_mode="autoslice",
+        processed_out=processed,
         report=report,
     )
 
@@ -264,6 +291,8 @@ def test_process_sheet_autoslice_reports_name_count_mismatch_without_outputs(tmp
         "detected_count": 2,
     }]
     assert not list((tmp_path / "out").glob("*.png"))
+    assert result["processed_path"] is None
+    assert not processed.exists()
     assert json.loads(report.read_text(encoding="utf-8"))["detected_region_count"] == 2
 
 
