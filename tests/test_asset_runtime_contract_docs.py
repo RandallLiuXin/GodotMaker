@@ -462,6 +462,79 @@ def test_reference_only_assets_never_become_worker_runtime_assets():
     )
 
 
+def test_no_deliverables_restriction_cancels_the_integration_repair_exception():
+    """The autonomy grant is worthless if a nearby MUST NOT overrides it.
+
+    File ownership and runtime asset repair live in the same prompt, so stating
+    the exception once is not enough — an agent that reads only the generic
+    "MUST NOT modify files outside Deliverables" stops and reports instead of
+    repairing. Every place that states the restriction must carry the carve-out,
+    which is a structural property no single text-presence assertion catches.
+    """
+    restriction = re.compile(r"modify (?:files|a file) (?:outside|not in) [^\n]*", re.IGNORECASE)
+    sources = {
+        "agents/worker.md": _read("agents/worker.md"),
+        "skills/core/_shared/worker-dispatch.md": _read(
+            "skills/core/_shared/worker-dispatch.md"
+        ),
+    }
+
+    uncarved = []
+    for name, text in sources.items():
+        statements = [
+            (index, line)
+            for index, line in enumerate(text.splitlines(), start=1)
+            if restriction.search(line)
+        ]
+        assert statements, f"{name} lost its file-ownership restriction entirely"
+        for index, line in statements:
+            if "exception" not in line.lower():
+                uncarved.append(f"{name}:{index}: {line.strip()}")
+
+    assert not uncarved, (
+        "these Deliverables restrictions cancel the runtime asset integration "
+        "repair exception: " + "; ".join(uncarved)
+    )
+
+
+def test_integration_repair_exception_is_explicit_narrow_and_wins():
+    """The exception must beat the general rule, and stop right after it."""
+    worker = _read("agents/worker.md")
+    flat_worker = _flat(worker)
+    flat_dispatch = _flat(_read("skills/core/_shared/worker-dispatch.md"))
+
+    assert "### Exception: runtime asset integration repair" in worker
+    # Precedence is stated, not left to the reader to infer from ordering.
+    assert "One exception overrides the rule above, and nothing else does." in flat_worker
+    assert "this exception is the narrower rule and it wins" in flat_worker
+    assert "That exception overrides this line for those files only" in flat_dispatch
+    # A brief must not be able to re-close the door the agent definition opened.
+    assert (
+        "Never write a `Scope Boundaries` or `Prohibited Actions` line that cancels this"
+        in flat_dispatch
+    )
+
+    # Narrow: exactly the artifact plus the scene/script that binds it.
+    assert "the `.tres` / `.res` artifact you were told to bind" in flat_worker
+    assert "the project-local scene or script that binds it" in flat_worker
+
+    # And bounded — an unbounded exception is just a repeal of file ownership.
+    for excluded in (
+        "images, or any art you would have to produce yourself",
+        "`.godotmaker/asset-generation/` entries, the root index, or `sources/`",
+        "unrelated files, refactors, or improvements",
+    ):
+        assert excluded in flat_worker, f"the exception lost a boundary: {excluded}"
+    for protected in ("PLAN.md", "STRUCTURE.md", "SCENES.md", "GAP.md", "ASSETS.md", "e2e/"):
+        assert protected in flat_worker.split("It never covers:", 1)[1].split("List every file", 1)[0], (
+            f"{protected} dropped out of the exception's exclusion list"
+        )
+
+    # The only obligation stays a report line.
+    assert "List every file you touched under this exception in your report's Notes." in flat_worker
+    assert "no repair record, no revalidation pass, no new skill" in flat_worker
+
+
 def test_worker_repairs_integration_without_absorbing_art_production():
     """Two boundaries in one place, because they fail in opposite directions.
 

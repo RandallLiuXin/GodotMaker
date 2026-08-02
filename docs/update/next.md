@@ -62,6 +62,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
   compiles icon resources before the Theme that binds them.
 
 - `/gm-build` and `/gm-fixgap` now hand workers a resolver-produced minimal `godot_artifact` snapshot instead of hand-copied stable-entry fields, and workers bind the compiled Godot resource rather than rebuilding it from the source layout.
+- A worker may now edit or replace the bound runtime artifact and the project-local scene or script that binds it to fix a concrete integration failure, as a narrow file-ownership exception that outranks the generic "no files outside Deliverables" restriction.
 - `/gm-asset` now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body `runtime_artifact` manifest.
 - Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.
 - An ASSETS.md runtime row reaches `generated` only from a `ready` non-reference stable entry, while a finalized registered screen reference completes its reference row at `source_ready` without becoming a worker runtime artifact.

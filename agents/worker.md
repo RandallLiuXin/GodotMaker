@@ -102,7 +102,34 @@ Your brief lists the files you own. You may:
 - **WRITE** only files listed in your Deliverables
 - **CREATE** new files only if listed in your Deliverables
 
-If you need to modify a file not in your deliverables, report this in your Notes — do NOT modify it.
+If you need to modify a file not in your deliverables, report this in your Notes — do NOT modify it. The one exception is runtime asset integration repair, below.
+
+### Exception: runtime asset integration repair
+
+One exception overrides the rule above, and nothing else does. When a runtime
+artifact from `Asset Runtime Snapshot` will not integrate — it fails to load,
+its type does not fit the node that must bind it, or the scene or script
+binding it breaks on it — you MAY edit or replace the project-local Godot file
+needed to make that binding work, even though it is not in your Deliverables.
+This holds even when your brief's `Scope Boundaries` or `Prohibited Actions`
+repeat the generic "MUST NOT modify files outside Deliverables": this exception
+is the narrower rule and it wins.
+
+It covers exactly two things:
+- the `.tres` / `.res` artifact you were told to bind;
+- the project-local scene or script that binds it.
+
+It never covers:
+- images, or any art you would have to produce yourself — see **Art production
+  is never yours** below;
+- `.godotmaker/asset-generation/` entries, the root index, or `sources/`; the
+  source-generation truth is not yours to rewrite;
+- `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `GAP.md`, `ASSETS.md`, or `e2e/`;
+- unrelated files, refactors, or improvements you noticed on the way.
+
+List every file you touched under this exception in your report's Notes. That
+report line is the entire obligation — no repair record, no revalidation pass,
+no new skill.
 
 ## Runtime Asset Rules
 
@@ -132,10 +159,12 @@ If you need to modify a file not in your deliverables, report this in your Notes
   tool to fill a gap. That responsibility stays with `/gm-asset`.
 - **Integration repair is yours.** When a listed artifact genuinely does not fit
   the project, you may edit or replace a project-local Godot resource, scene, or
-  script — including a generated `.tres` — to make the integration work. Say what
-  you changed in Notes. No repair record, revalidation pass, or new skill is
-  required of you. Be aware that explicitly regenerating that asset through
-  `/gm-asset` may overwrite an edit made at its generated artifact path.
+  script — including a generated `.tres` — to make the integration work, under
+  the File Ownership exception above, which overrides the Deliverables
+  restriction for exactly those files. Say what you changed in Notes. No repair
+  record, revalidation pass, or new skill is required of you. Be aware that
+  explicitly regenerating that asset through `/gm-asset` may overwrite an edit
+  made at its generated artifact path.
 - Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
   prompt files, or scene references as runtime assets.
 - Do not replace listed final assets with placeholders, procedural shapes, or

@@ -54,7 +54,7 @@ Agent({
 
 ### Scope Boundaries                                     [REQUIRED]
 - MUST: {explicit requirements}
-- MUST NOT: {explicit prohibitions — always include "MUST NOT modify files outside Deliverables"}
+- MUST NOT: {explicit prohibitions — always include "MUST NOT modify files outside Deliverables, except the runtime asset integration repair exception in the worker agent's File Ownership section"}
 
 ### Gotchas                                              [REQUIRED for ECS tasks]
 - MUST include: "Read .claude/skills/gecs/gotchas.md before writing any code"
@@ -63,7 +63,7 @@ Agent({
 ### Prohibited Actions                                   [REQUIRED]
 - DO NOT ask for approval, wait for user input, or pause for confirmation. Execute the task directly. If required information or external state is missing, report `PARTIAL` or `FAILED` with the blocker.
 - DO NOT fabricate resource paths — only use paths listed in ASSETS.md or verified to exist in the project. If you need an asset that doesn't exist, report it in your summary; do NOT invent a path.
-- DO NOT modify files outside your Deliverables list — read-only access to all other files.
+- DO NOT modify files outside your Deliverables list — read-only access to all other files. The single exception is runtime asset integration repair (worker agent, File Ownership): the artifact you were told to bind, plus the project-local scene or script that binds it, may be edited or replaced to fix a concrete integration failure. That exception overrides this line for those files only; report every one of them in Notes.
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
 - DO NOT introduce E2E-only gameplay changes.
 - DO NOT write files outside the project tree (system temp dirs, home directory, etc.). If you genuinely need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p the directory if missing) and delete it before reporting DONE. Claude Code's own scratchpad system is gated behind a feature flag we cannot rely on, so this rule is what guarantees clean tear-down.
@@ -170,7 +170,10 @@ disappears or clears.
 project-local Godot resource, scene, or script — including a generated
 artifact — to fix an integration problem it hits. Do not demand a repair
 record, a revalidation pass, or a worker-authored skill for that; a note in the
-report is enough. What stays off-limits is producing the art itself.
+report is enough. What stays off-limits is producing the art itself. Never
+write a `Scope Boundaries` or `Prohibited Actions` line that cancels this: the
+File Ownership exception is narrower than the generic Deliverables restriction
+and must survive into the brief you send.
 25. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
 
 ## Worker Utility Convention
