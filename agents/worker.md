@@ -106,65 +106,55 @@ If you need to modify a file not in your deliverables, report this in your Notes
 
 ### Exception: runtime asset integration repair
 
-One exception overrides the rule above, and nothing else does. When a runtime
-artifact from `Asset Runtime Snapshot` will not integrate — it fails to load,
-its type does not fit the node that must bind it, or the scene or script
-binding it breaks on it — you MAY edit or replace the project-local Godot file
-needed to make that binding work, even though it is not in your Deliverables.
-This holds even when your brief's `Scope Boundaries` or `Prohibited Actions`
-repeat the generic "MUST NOT modify files outside Deliverables": this exception
-is the narrower rule and it wins.
+This exception overrides the rule above, and nothing else does. It also
+overrides your brief's `Scope Boundaries` and `Prohibited Actions` lines.
+
+When an `Asset Runtime Snapshot` artifact fails to load, does not fit the node
+that must bind it, or breaks the scene or script binding it, edit or replace
+the project-local Godot file needed to make that binding work, even when it is
+not in your Deliverables.
 
 It covers exactly two things:
 - the `.tres` / `.res` artifact you were told to bind;
 - the project-local scene or script that binds it.
 
 It never covers:
-- images, or any art you would have to produce yourself — see **Art production
-  is never yours** below;
-- `.godotmaker/asset-generation/` entries, the root index, or `sources/`; the
-  source-generation truth is not yours to rewrite;
+- images, or any art you would have to produce yourself (see **Art production
+  is never yours** below);
+- `.godotmaker/asset-generation/` entries, the root index, or `sources/`;
 - `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `GAP.md`, `ASSETS.md`, or `e2e/`;
 - unrelated files, refactors, or improvements you noticed on the way.
 
-List every file you touched under this exception in your report's Notes. That
-report line is the entire obligation — no repair record, no revalidation pass,
-no new skill.
+List every file you touched under this exception in your report's Notes. Do not
+write a repair record, run a revalidation pass, or author a new skill.
 
 ## Runtime Asset Rules
 
-- `Asset Runtime Snapshot` is the whole generated-asset contract. Each block
-  gives you `godot_artifact.type` and `godot_artifact.path`: load that path and
-  bind it as that type.
+- Take every generated runtime asset from `Asset Runtime Snapshot`. For each
+  block, load `godot_artifact.path` and bind it as `godot_artifact.type`.
 - **Bind the artifact, do not rebuild it.** Never reconstruct a `SpriteFrames`,
-  `AtlasTexture`, `StyleBoxTexture`, `Theme`, or `TileSet` out of
+  `AtlasTexture`, `StyleBoxTexture`, `Theme`, or `TileSet` from
   `source_layout.path`, and never re-slice, re-grid, or re-region that image.
-  `source_layout` is provenance so you know what the artifact came from; it is
-  not an input to your code.
+  Read `source_layout` as provenance only; do not pass it to your code.
 - `SpriteFrames` → `AnimatedSprite2D.sprite_frames` (or an equivalent
-  `SpriteFrames`-driven player). Frame order, timing, and loop state already
-  live in the resource. Play the actions the brief's mechanic needs; do not
-  reduce a multi-frame actor or FX to one static frame.
-- `AtlasTexture` → the texture of the single node that shows that element. It is
-  already exactly one region — never substitute the physical atlas image behind
-  it.
+  `SpriteFrames`-driven player). Play the actions the brief's mechanic needs; do
+  not reduce a multi-frame actor or FX to one static frame. Do not re-declare
+  frame order, timing, or loop state.
+- `AtlasTexture` → the texture of the single node that shows that element. Never
+  substitute the physical atlas image behind it.
 - `Texture2D` → the node's texture. `StyleBoxTexture` → the Theme or StyleBox
   slot it belongs to. `Theme` → `Control.theme`. `TileSet` →
-  `TileMapLayer.tile_set`; map layout, layers, and gameplay structure stay
-  yours to author.
+  `TileMapLayer.tile_set`. Author map layout, layers, and gameplay structure
+  yourself.
 - For temporary projectile, impact, pickup, slash, aura, or feedback FX, wire
   the effect lifecycle so it disappears or clears after playback.
 - **Art production is never yours.** Do not draw, generate, synthesize, or
   procedurally substitute images, and do not run an asset-generation skill or
-  tool to fill a gap. That responsibility stays with `/gm-asset`.
-- **Integration repair is yours.** When a listed artifact genuinely does not fit
-  the project, you may edit or replace a project-local Godot resource, scene, or
-  script — including a generated `.tres` — to make the integration work, under
-  the File Ownership exception above, which overrides the Deliverables
-  restriction for exactly those files. Say what you changed in Notes. No repair
-  record, revalidation pass, or new skill is required of you. Be aware that
-  explicitly regenerating that asset through `/gm-asset` may overwrite an edit
-  made at its generated artifact path.
+  tool to fill a gap.
+- **Integration repair is yours.** When a listed artifact does not fit the
+  project, edit or replace the project-local Godot resource, scene, or script —
+  including a generated `.tres` — to make the integration work, under the File
+  Ownership exception above. Report what you changed in Notes.
 - Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
   prompt files, or scene references as runtime assets.
 - Do not replace listed final assets with placeholders, procedural shapes, or

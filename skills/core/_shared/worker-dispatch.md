@@ -63,7 +63,7 @@ Agent({
 ### Prohibited Actions                                   [REQUIRED]
 - DO NOT ask for approval, wait for user input, or pause for confirmation. Execute the task directly. If required information or external state is missing, report `PARTIAL` or `FAILED` with the blocker.
 - DO NOT fabricate resource paths — only use paths listed in ASSETS.md or verified to exist in the project. If you need an asset that doesn't exist, report it in your summary; do NOT invent a path.
-- DO NOT modify files outside your Deliverables list — read-only access to all other files. The single exception is runtime asset integration repair (worker agent, File Ownership): the artifact you were told to bind, plus the project-local scene or script that binds it, may be edited or replaced to fix a concrete integration failure. That exception overrides this line for those files only; report every one of them in Notes.
+- DO NOT modify files outside your Deliverables list — read-only access to all other files. Exception: runtime asset integration repair (worker agent, File Ownership) overrides this line for the bound artifact and the project-local scene or script that binds it; report every such file in Notes.
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
 - DO NOT introduce E2E-only gameplay changes.
 - DO NOT write files outside the project tree (system temp dirs, home directory, etc.). If you genuinely need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p the directory if missing) and delete it before reporting DONE. Claude Code's own scratchpad system is gated behind a feature flag we cannot rely on, so this rule is what guarantees clean tear-down.
@@ -78,20 +78,16 @@ python tools/asset_runtime_resolver.py --project-root . --assets-md ASSETS.md \
   --tag <tag> --asset-id <asset_id>
 ```
 
-The resolver output IS this section. Do not copy fields out of a stable entry,
-the root index, or an ASSETS.md row by hand, and do not enrich the snapshot with
-target size, frame_count, fps, loop, frame paths, region names, region rects, or
-support metadata paths — the compiled `godot_artifact` already carries them, and
-a hand-added field is what makes a worker rebuild the resource instead of
-binding it.
+Paste the resolver output as this section. Do not copy fields out of a stable
+entry, the root index, or an ASSETS.md row by hand. Do not add target size,
+frame_count, fps, loop, frame paths, region names, region rects, or support
+metadata paths.
 Name the runtime state or FX lifecycle a `SpriteFrames` artifact should play in
 `Game Mechanic Function`, not by pasting frame data here.
-The resolver fails closed: an unregistered pointer, a non-`ready` entry, a
-missing source or artifact file, and a reference-only asset all exit non-zero
-with an `error`. On failure, state the resolver's `error` and do not dispatch a
-visual task against an invented path — a reference-only asset never becomes a
-runtime asset, and a missing artifact means the asset must go back through
-`/gm-asset` first.
+The resolver exits non-zero with an `error` on an unregistered pointer, a
+non-`ready` entry, a missing source or artifact file, and a reference-only
+asset. On failure, state the resolver's `error` and do not dispatch the visual
+task. Never fill this section with an artifact path the resolver did not emit.
 Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
 prompt files, or scene references as runtime assets.}
 
@@ -107,8 +103,7 @@ prompt files, or scene references as runtime assets.}
  or ASSETS.md rows whose type is `reference` as runtime assets.
  Do not replace an available final asset with placeholder art, procedural
  shapes, or freshly drawn stand-ins.
- Image production belongs to `/gm-asset`: never ask a worker to generate,
- draw, or synthesize art as part of runtime integration.}
+ Never ask a worker to generate, draw, or synthesize art.}
 
 ### Visual Self-Check                                    [REQUIRED for fixgap visual tasks]
 - Source: {evaluation.json.visual_checks scene and blocking finding}
@@ -150,15 +145,13 @@ PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
 18. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 19. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
 `Visual Asset Contract` for visual tasks.
-20. **The resolver owns the snapshot.** `tools/asset_runtime_resolver.py` output
-is the only legal `Asset Runtime Snapshot` content. Never hand-copy entry
-fields, and never widen the four-field contract — the manager's job is to run
-the resolver and paste it, not to interpret a stable entry.
+20. **The resolver owns the snapshot.** Use `tools/asset_runtime_resolver.py`
+output as the only `Asset Runtime Snapshot` content. Never hand-copy entry
+fields and never widen the four-field contract.
 21. **Bind the artifact, do not rebuild it.** The brief must ask the worker to
 load `godot_artifact.path` as `godot_artifact.type`. Never ask a worker to
 reconstruct a `SpriteFrames`, `AtlasTexture`, `StyleBoxTexture`, `Theme`, or
-`TileSet` from `source_layout` — that resource is already compiled and
-L0-L4-validated.
+`TileSet` from `source_layout`.
 22. **Animated artifacts are runtime behavior.** If the snapshot lists a
 `SpriteFrames` artifact, the worker brief must require animated runtime playback
 of the actions the mechanic needs. Do not collapse the task into "readable
@@ -166,14 +159,12 @@ presentation" or static feedback.
 23. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
 slash, aura, or feedback effects must state how the effect starts and how it
 disappears or clears.
-24. **Workers keep integration autonomy.** A worker may edit or replace a
+24. **Workers keep integration autonomy.** Let a worker edit or replace a
 project-local Godot resource, scene, or script — including a generated
 artifact — to fix an integration problem it hits. Do not demand a repair
-record, a revalidation pass, or a worker-authored skill for that; a note in the
-report is enough. What stays off-limits is producing the art itself. Never
-write a `Scope Boundaries` or `Prohibited Actions` line that cancels this: the
-File Ownership exception is narrower than the generic Deliverables restriction
-and must survive into the brief you send.
+record, a revalidation pass, or a worker-authored skill; accept a note in the
+report. Do not let a worker produce art. Never write a `Scope Boundaries` or
+`Prohibited Actions` line that cancels this exception.
 25. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
 
 ## Worker Utility Convention
