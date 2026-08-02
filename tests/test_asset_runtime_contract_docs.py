@@ -373,7 +373,12 @@ def test_manager_never_copies_stable_entry_fields_into_a_brief():
     assert prohibition in worker_dispatch
     assert "**The resolver owns the snapshot.**" in worker_dispatch
     assert "never widen the four-field contract" in worker_dispatch
-    assert "they do not copy entry fields by hand" in runtime
+    # The pipeline reference states the same contract as a neutral fact about
+    # the snapshot, without assigning the work to a consuming skill.
+    assert (
+        "carrying no hand-copied entry field and no added target size, support "
+        "metadata path, or frame data" in runtime
+    )
 
     # The retired enrichment instructions must not come back. Scan with the
     # prohibition itself removed — it necessarily names the fields it forbids.
@@ -586,29 +591,35 @@ def test_worker_repairs_integration_without_absorbing_art_production():
     assert "Never ask a worker to generate, draw, or synthesize art." in flat_dispatch
 
 
-def test_worker_prompts_state_boundaries_without_naming_another_skills_owner():
-    """A prohibition here must stop at the prohibition.
+def test_runtime_handoff_docs_never_assign_work_to_another_skill():
+    """Each document states its own role's boundary and stops.
 
-    Appending "— that's `/gm-asset`'s job" to a worker rule pins another skill's
-    ownership into a prompt that does not own it, so the reference has to be
-    chased and updated whenever that responsibility moves. The worker only needs
-    its own boundary.
+    Attribution cuts both ways: a worker rule ending "— that's `/gm-asset`'s
+    job", and a `gm-asset` reference declaring what `/gm-build` does, both pin a
+    responsibility into a document that does not own it, so every future move of
+    that responsibility has to chase the copies. The owning SKILL is the one
+    place it belongs.
     """
-    owned_by_this_role = {
-        "agents/worker.md": _read("agents/worker.md"),
-        "skills/core/_shared/worker-dispatch.md": _read(
-            "skills/core/_shared/worker-dispatch.md"
+    # Each doc is checked against the skills it must not speak for.
+    foreign_owners = {
+        "agents/worker.md": ("gm-asset",),
+        "skills/core/_shared/worker-dispatch.md": ("gm-asset",),
+        "skills/core/gm-asset/references/asset-runtime-pipeline.md": (
+            "gm-build",
+            "gm-fixgap",
         ),
     }
 
     offenders = []
-    for name, text in owned_by_this_role.items():
-        for index, line in enumerate(text.splitlines(), start=1):
-            if "gm-asset" in line:
-                offenders.append(f"{name}:{index}: {line.strip()}")
+    for name, skills in foreign_owners.items():
+        for index, line in enumerate(_read(name).splitlines(), start=1):
+            for skill in skills:
+                if skill in line:
+                    offenders.append(f"{name}:{index}: {line.strip()}")
+                    break
 
     assert not offenders, (
-        "worker-side prompts must not attribute work to another skill: "
+        "these lines assign work to a skill that does not own this document: "
         + "; ".join(offenders)
     )
 

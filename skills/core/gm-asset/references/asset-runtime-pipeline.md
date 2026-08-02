@@ -190,11 +190,10 @@ straight from the root index.
 
 ## Runtime Snapshot Resolution
 
-The resolver is the deterministic reader for one registered runtime asset, and
-its output *is* the worker-dispatch `Asset Runtime Snapshot`. `/gm-build` and
-`/gm-fixgap` paste one resolver block per asset into the worker brief; they do
-not copy entry fields by hand or enrich the four-field contract with target
-size, support metadata, or frame data.
+The resolver is the deterministic reader for one registered runtime asset. Its
+output is the complete worker runtime snapshot: one resolver block per asset,
+carrying no hand-copied entry field and no added target size, support metadata
+path, or frame data.
 
 Resolve the current-tag ASSETS.md row:
 
