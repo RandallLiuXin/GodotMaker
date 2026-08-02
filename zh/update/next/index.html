@@ -2806,8 +2806,11 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <p>Card-kit Asset Skills now compile only the Theme, scalable frames, and fixed AtlasTexture regions requested by each asset request, preserving reusable Godot resources without requiring a fixed card layout.</p>
 </li>
 <li>
-<p>Character-bundle assets now resolve animation cadence internally, preserve optional canonical references and 256px runtime frames, and regenerate retryable source-image failures before stopping.</p>
+<p>Character-bundle stable entries now reach <code>ready</code> only after their L0-L4 evidence is handed back to the same deterministic builder, instead of being published straight from the compiler.</p>
 </li>
+<li>Character-bundle promotion now binds to a build fingerprint of the resolved request, action reports, stable frames, and compiled artifact, so a passing result can no longer promote a later regeneration that reused the same stable paths.</li>
+<li>A character-bundle result now registers exactly one worker-consumable SpriteFrames entry, so a generated canonical is recorded as reference provenance and can no longer ship as a second runtime artifact.</li>
+<li>Character-bundle assets now resolve animation cadence internally, preserve optional canonical references and 256px runtime frames, and regenerate retryable source-image failures before stopping.</li>
 <li>Character-bundle assembly now binds resolved intent, canvas, frame order, timing, loop state, and scale references through SpriteFrames compilation and GIF previews.</li>
 <li>Fixed blob-47 TileSet masks, edge signatures, and isolated-terrain semantics to match Godot's eight peering points.</li>
 <li>Fixed TileSet profile validation to diagnose terrain-corner seam mismatches against the deterministic matching template before compilation.</li>
@@ -2838,6 +2841,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Removed the last two <code>gm-asset</code> production-unit documents, so every asset family now has exactly one authoritative execution contract in its first-class Asset Skill.</li>
 <li>Retired the old <code>runtime_artifact</code> generated-asset manifest update, check, and entry-builder tools with no migration, dual-write, or compatibility read.</li>
 </ul>
 
