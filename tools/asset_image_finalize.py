@@ -162,7 +162,8 @@ def finalize_image_asset(
     label: str | None = None,
     archive_original: bool = True,
     background: str = "none",
-    magenta_edge_threshold: int = 120,
+    magenta_threshold: int = 40,
+    magenta_edge_threshold: int = 220,
 ) -> dict[str, object]:
     """Copy or transform a generated source image into its final path."""
     source = Path(source)
@@ -218,7 +219,7 @@ def finalize_image_asset(
             try:
                 image, background_cleanup = _remove_magenta_background(
                     image,
-                    threshold=100,
+                    threshold=magenta_threshold,
                     edge_threshold=magenta_edge_threshold,
                 )
             except SheetProcessError as exc:
@@ -302,10 +303,16 @@ def _main() -> int:
         help="Optional source background cleanup mode",
     )
     parser.add_argument(
+        "--magenta-threshold",
+        type=int,
+        default=40,
+        help="Global RGB distance for exact and enclosed #FF00FF background cleanup",
+    )
+    parser.add_argument(
         "--magenta-edge-threshold",
         type=int,
-        default=120,
-        help="RGB distance threshold for edge-connected magenta cleanup",
+        default=220,
+        help="Maximum RGB distance for locally validated magenta spill cleanup",
     )
     parser.add_argument(
         "--no-origin",
@@ -326,6 +333,7 @@ def _main() -> int:
             label=args.label,
             archive_original=args.archive_original,
             background=args.background,
+            magenta_threshold=args.magenta_threshold,
             magenta_edge_threshold=args.magenta_edge_threshold,
         )
     except ImageFinalizeError as exc:

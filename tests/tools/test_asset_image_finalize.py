@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
@@ -169,7 +169,11 @@ def test_finalize_removes_magenta_background_when_requested(tmp_path):
     result = finalize_image_asset(source, output, background="magenta", resize="8x8")
 
     assert result["background"] == "magenta"
-    assert result["background_cleanup"]["removed_pixels"] == 48
+    assert (
+        result["background_cleanup"]["removed_pixels"]
+        + result["background_cleanup"]["edge_removed_pixels"]
+        == 48
+    )
     with Image.open(output) as image:
         rgba = image.convert("RGBA")
         assert rgba.getpixel((0, 0))[3] == 0
@@ -184,13 +188,39 @@ def test_finalize_removes_literal_internal_magenta_key_without_spreading(tmp_pat
 
     result = finalize_image_asset(source, output, background="magenta")
 
-    assert result["background_cleanup"]["removed_pixels"] == 68
+    assert (
+        result["background_cleanup"]["removed_pixels"]
+        + result["background_cleanup"]["edge_removed_pixels"]
+        == 68
+    )
     with Image.open(output) as image:
         rgba = image.convert("RGBA")
         assert rgba.getpixel((0, 0))[3] == 0
         assert rgba.getpixel((0, 5))[3] == 0
         assert rgba.getpixel((4, 4))[3] == 0
         assert rgba.getpixel((3, 3)) == (20, 60, 120, 255)
+
+
+def test_finalize_can_limit_enclosed_cleanup_to_exact_key_pixels(tmp_path):
+    source = tmp_path / "generated" / "accent.png"
+    output = tmp_path / "assets" / "sprites" / "accent.png"
+    source.parent.mkdir()
+    image = Image.new("RGBA", (10, 10), (255, 0, 255, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((2, 2, 7, 7), fill=(20, 60, 120, 255))
+    draw.rectangle((4, 4, 5, 5), fill=(230, 20, 240, 255))
+    image.save(source)
+
+    finalize_image_asset(
+        source,
+        output,
+        background="magenta",
+        magenta_threshold=0,
+        magenta_edge_threshold=0,
+    )
+
+    with Image.open(output) as image:
+        assert image.convert("RGBA").getpixel((4, 4)) == (230, 20, 240, 255)
 
 
 def test_finalize_accepts_required_source_aspect_before_resize(tmp_path):

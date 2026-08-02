@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 from asset_sheet_process import (
-    MAGENTA_RGB,
     SheetProcessError,
     _autoslice_rects,
     _remove_magenta_background,
@@ -547,8 +546,8 @@ def _write_recovered_action_source(
         if background == "magenta":
             scan_image, cleanup = _remove_magenta_background(
                 image,
-                threshold=100,
-                edge_threshold=120,
+                threshold=40,
+                edge_threshold=220,
             )
         elif background == "transparent":
             scan_image = image.copy()
@@ -591,8 +590,7 @@ def _write_recovered_action_source(
         cell_w = max(original_cell_w, max_crop_w + padding * 2)
         cell_h = max(original_cell_h, max_crop_h + padding * 2)
 
-        canvas_color = MAGENTA_RGB + (255,) if background == "magenta" else (0, 0, 0, 0)
-        recovered = Image.new("RGBA", (cell_w * cols, cell_h * rows), canvas_color)
+        recovered = Image.new("RGBA", (cell_w * cols, cell_h * rows), (0, 0, 0, 0))
         placements: list[dict[str, object]] = []
         for index, (name, rect, assignment) in enumerate(
             zip(frame_names, rects, assignment_diagnostics)
@@ -605,7 +603,11 @@ def _write_recovered_action_source(
                 y = row * cell_h + cell_h - crop.height - padding
             else:
                 y = row * cell_h + (cell_h - crop.height) // 2
-            recovered.paste(crop, (x, y), crop)
+            # The destination is transparent and components do not overlap.
+            # Copy RGBA directly so a semitransparent antialiased source edge
+            # keeps its original colour and alpha instead of being composited
+            # against the old magenta recovery canvas.
+            recovered.paste(crop, (x, y))
             placements.append(
                 {
                     "name": name,
@@ -716,6 +718,7 @@ def process_action_sheet(
     curation_report = output_dir / "curation-report.json"
     initial_curation_report = output_dir / "curation-report.initial-grid.json"
     source_recovery: dict[str, object] | None = None
+    recovered_background = background
 
     try:
         curation = process_sheet(
@@ -755,6 +758,9 @@ def process_action_sheet(
                 align=align,
                 timestamp=recovery_timestamp,
             )
+            # Recovery writes an already-clean transparent source.  Running
+            # magenta cleanup again would double-matte semitransparent edges.
+            recovered_background = "transparent"
         except ActionRegenerationRequired as exc:
             diagnostic = {
                 **exc.result,
@@ -775,7 +781,7 @@ def process_action_sheet(
                 names=names,
                 asset_id=asset_id,
                 tag=tag,
-                background=background,
+                background=recovered_background,
                 snap_mode="grid",
                 component_mode=component_mode,
                 component_padding=component_padding,
