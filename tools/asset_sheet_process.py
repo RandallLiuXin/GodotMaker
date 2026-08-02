@@ -21,7 +21,9 @@ MAGENTA_RGB = (255, 0, 255)
 COMPONENT_MODES = {"all", "largest"}
 SNAP_MODES = {"grid", "autoslice"}
 MAGENTA_MATTE_MAX_PASSES = 8
-MAGENTA_COMPOSITE_RESIDUAL = 6
+MAGENTA_MATTE_SEARCH_RADIUS = 3
+MAGENTA_COMPOSITE_RESIDUAL = 12
+MAGENTA_COMPOSITE_RATIO_SPREAD = 0.16
 
 
 def _parse_grid(value: str) -> tuple[int, int]:
@@ -139,10 +141,7 @@ def _remove_magenta_background(
             red, green, blue, alpha = original[index]
             if alpha == 0:
                 continue
-            if _color_distance((red, green, blue)) <= threshold:
-                removed += 1
-            else:
-                edge_removed += 1
+            edge_removed += 1
             pixels[x, y] = (0, 0, 0, 0)
 
     # Enclosed strict-key holes are intentionally removed, but never become
@@ -188,8 +187,8 @@ def _remove_magenta_background(
                 continue
             neighbours = [
                 pixels[x + dx, y + dy]
-                for dx in (-1, 0, 1)
-                for dy in (-1, 0, 1)
+                for dx in range(-MAGENTA_MATTE_SEARCH_RADIUS, MAGENTA_MATTE_SEARCH_RADIUS + 1)
+                for dy in range(-MAGENTA_MATTE_SEARCH_RADIUS, MAGENTA_MATTE_SEARCH_RADIUS + 1)
                 if (dx or dy) and 0 <= x + dx < width and 0 <= y + dy < height
             ]
             if not any(item[3] < current_alpha for item in neighbours):
@@ -250,7 +249,7 @@ def _magenta_composite_alpha(
     coverage = sum(ratios) / len(ratios)
     if not 0.05 <= coverage <= 0.95:
         return None
-    if len(ratios) > 1 and max(ratios) - min(ratios) > 0.08:
+    if len(ratios) > 1 and max(ratios) - min(ratios) > MAGENTA_COMPOSITE_RATIO_SPREAD:
         return None
     return coverage
 

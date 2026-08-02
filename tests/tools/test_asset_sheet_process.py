@@ -375,7 +375,7 @@ def test_process_sheet_removes_smooth_near_key_background_without_touching_foreg
             pixel[3] < 255 or _color_distance(pixel[:3]) > 60
             for pixel in rgba.get_flattened_data()
         )
-    assert result["cleanup"]["removed_pixels"] > 0
+    assert result["cleanup"]["removed_pixels"] + result["cleanup"]["edge_removed_pixels"] > 0
 
 
 def test_process_sheet_preserves_a_soft_edged_near_key_violet_foreground(tmp_path):
