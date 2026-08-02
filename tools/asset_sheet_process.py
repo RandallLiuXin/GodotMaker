@@ -20,6 +20,9 @@ SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 MAGENTA_RGB = (255, 0, 255)
 COMPONENT_MODES = {"all", "largest"}
 SNAP_MODES = {"grid", "autoslice"}
+MAGENTA_BACKGROUND_STEP = 48
+MAGENTA_MATTE_MAX_PASSES = 8
+MAGENTA_COMPOSITE_RESIDUAL = 6
 
 
 def _parse_grid(value: str) -> tuple[int, int]:
@@ -96,61 +99,87 @@ def _remove_magenta_background(
     removed = 0
     edge_removed = 0
     width, height = converted.size
+    original = list(converted.get_flattened_data())
 
-    visited: set[tuple[int, int]] = set()
-    queue: deque[tuple[int, int]] = deque()
-    for x in range(width):
-        queue.append((x, 0))
-        queue.append((x, height - 1))
+    # Strict matching is allowed globally so callers can deliberately remove
+    # enclosed key-colour holes.  The broader edge threshold is different: it
+    # can travel only through a locally smooth colour path that began at a
+    # strict-key or transparent pixel.  That removes generated backdrop
+    # gradients without treating a hard-edged purple foreground shape as a
+    # background merely because it is near the key in RGB space.
+    background = bytearray(width * height)
+    queue: deque[tuple[int, int, tuple[int, int, int] | None]] = deque()
     for y in range(height):
-        queue.append((0, y))
-        queue.append((width - 1, y))
+        for x in range(width):
+            red, green, blue, alpha = original[y * width + x]
+            if alpha == 0 or _color_distance((red, green, blue)) <= threshold:
+                queue.append((x, y, None))
 
     while queue:
-        x, y = queue.popleft()
-        if (x, y) in visited or x < 0 or x >= width or y < 0 or y >= height:
+        x, y, parent = queue.popleft()
+        if x < 0 or x >= width or y < 0 or y >= height:
             continue
-        visited.add((x, y))
-        red, green, blue, alpha = pixels[x, y]
-        distance = _color_distance((red, green, blue))
-        # The flood fill is edge-seeded and uses the strict key threshold.
-        # ``edge_threshold`` is intentionally not a deletion threshold: it
-        # only bounds the later, locally validated spill-matte candidates.
-        should_expand = alpha == 0
-        if alpha > 0 and distance <= threshold:
-            pixels[x, y] = (0, 0, 0, 0)
-            edge_removed += 1
-            should_expand = True
-        if should_expand:
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    if dx == 0 and dy == 0:
-                        continue
-                    next_pixel = (x + dx, y + dy)
-                    if next_pixel not in visited:
-                        queue.append(next_pixel)
+        index = y * width + x
+        if background[index]:
+            continue
+        red, green, blue, alpha = original[index]
+        rgb = (red, green, blue)
+        strict_key = alpha > 0 and _color_distance(rgb) <= threshold
+        is_background = alpha == 0 or strict_key
+        if not is_background and parent is not None:
+            is_background = (
+                _color_distance(rgb) <= edge_threshold
+                and _color_distance(rgb, parent) <= MAGENTA_BACKGROUND_STEP
+            )
+        if not is_background:
+            continue
+        background[index] = 1
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx or dy:
+                    queue.append((x + dx, y + dy, rgb))
 
-    # Only after the edge-connected backdrop is removed do we clear any
-    # remaining strict-key holes.  Keeping this as a separate pass makes the
-    # report distinguish ordinary backdrop cleanup from enclosed holes.
-    for x in range(width):
-        for y in range(height):
-            red, green, blue, alpha = pixels[x, y]
-            if alpha > 0 and _color_distance((red, green, blue)) <= threshold:
-                pixels[x, y] = (0, 0, 0, 0)
+    for y in range(height):
+        for x in range(width):
+            index = y * width + x
+            if not background[index]:
+                continue
+            red, green, blue, alpha = original[index]
+            if alpha == 0:
+                continue
+            if _color_distance((red, green, blue)) <= threshold:
                 removed += 1
+            else:
+                edge_removed += 1
+            pixels[x, y] = (0, 0, 0, 0)
 
-    # A candidate spill pixel must be explainable as a compositing result of
-    # the key colour and an adjacent, more foreground-like pixel.  This is the
-    # deterministic boundary missing from a simple RGB-distance or
-    # channel-dominance test: a real purple line beside transparency has only
-    # same-colour neighbours and therefore estimates alpha ~= 1, so it stays.
-    edge_spill: list[tuple[int, int, tuple[int, int, int], float]] = []
-    for x in range(width):
-        for y in range(height):
-            red, green, blue, alpha = pixels[x, y]
+    # Decontaminate soft edges from the outside in.  Every pass observes the
+    # previous pass's reduced alpha, allowing a two- or three-pixel composite
+    # ramp to expose the real foreground colour before the outer layer is
+    # revisited.  Fits always use the original input pixel, so alpha is not
+    # compounded between passes.
+    edge_spill_pixels: set[tuple[int, int]] = set()
+    frontier: set[tuple[int, int]] = set()
+    for y in range(height):
+        for x in range(width):
+            if pixels[x, y][3] == 0:
+                continue
+            if any(
+                pixels[x + dx, y + dy][3] < pixels[x, y][3]
+                for dx in (-1, 0, 1)
+                for dy in (-1, 0, 1)
+                if (dx or dy) and 0 <= x + dx < width and 0 <= y + dy < height
+            ):
+                frontier.add((x, y))
+
+    for _ in range(MAGENTA_MATTE_MAX_PASSES):
+        updates: list[tuple[int, int, tuple[int, int, int], int]] = []
+        for x, y in frontier:
+            index = y * width + x
+            red, green, blue, original_alpha = original[index]
+            current_alpha = pixels[x, y][3]
             distance = _color_distance((red, green, blue))
-            if alpha == 0 or distance > edge_threshold:
+            if original_alpha == 0 or current_alpha == 0 or distance > edge_threshold:
                 continue
             neighbours = [
                 pixels[x + dx, y + dy]
@@ -158,9 +187,9 @@ def _remove_magenta_background(
                 for dy in (-1, 0, 1)
                 if (dx or dy) and 0 <= x + dx < width and 0 <= y + dy < height
             ]
-            if not any(item[3] == 0 for item in neighbours):
+            if not any(item[3] < current_alpha for item in neighbours):
                 continue
-            best: tuple[tuple[int, int, int], float, float] | None = None
+            best: tuple[tuple[int, int, int], int, float] | None = None
             for neighbour_red, neighbour_green, neighbour_blue, neighbour_alpha in neighbours:
                 foreground = (neighbour_red, neighbour_green, neighbour_blue)
                 if neighbour_alpha == 0 or _color_distance(foreground) <= distance + 8:
@@ -171,19 +200,34 @@ def _remove_magenta_background(
                 residual = _magenta_composite_residual(
                     (red, green, blue), foreground, matte_alpha
                 )
-                if best is None or residual < best[2]:
-                    best = (foreground, matte_alpha, residual)
+                if residual > MAGENTA_COMPOSITE_RESIDUAL:
+                    continue
+                output_alpha = round(original_alpha * matte_alpha)
+                if output_alpha >= current_alpha:
+                    continue
+                if best is None or output_alpha < best[1] or (
+                    output_alpha == best[1] and residual < best[2]
+                ):
+                    best = (foreground, output_alpha, residual)
             if best is not None:
-                foreground, matte_alpha, _ = best
-                edge_spill.append((x, y, foreground, matte_alpha))
-    for x, y, foreground, matte_alpha in edge_spill:
-        red, green, blue, alpha = pixels[x, y]
-        pixels[x, y] = (*foreground, round(alpha * matte_alpha))
+                foreground, output_alpha, _ = best
+                updates.append((x, y, foreground, output_alpha))
+        if not updates:
+            break
+        frontier = set()
+        for x, y, foreground, output_alpha in updates:
+            pixels[x, y] = (*foreground, output_alpha)
+            edge_spill_pixels.add((x, y))
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    next_x, next_y = x + dx, y + dy
+                    if 0 <= next_x < width and 0 <= next_y < height:
+                        frontier.add((next_x, next_y))
 
     return converted, {
         "removed_pixels": removed,
         "edge_removed_pixels": edge_removed,
-        "edge_spill_pixels": len(edge_spill),
+        "edge_spill_pixels": len(edge_spill_pixels),
     }
 
 
@@ -196,10 +240,12 @@ def _magenta_composite_alpha(
         denominator = foreground_value - key_value
         if abs(denominator) >= 8:
             ratios.append((value - key_value) / denominator)
-    if len(ratios) < 2:
+    if not ratios:
         return None
     coverage = sum(ratios) / len(ratios)
-    if not 0.05 <= coverage <= 0.95 or max(ratios) - min(ratios) > 0.08:
+    if not 0.05 <= coverage <= 0.95:
+        return None
+    if len(ratios) > 1 and max(ratios) - min(ratios) > 0.08:
         return None
     return coverage
 
@@ -484,7 +530,7 @@ def process_sheet(
     padding: int = 0,
     reject_edge_touch: bool = False,
     background: str = "transparent",
-    magenta_threshold: int = 40,
+    magenta_threshold: int = 60,
     magenta_edge_threshold: int = 220,
     component_mode: str = "all",
     component_padding: int | None = None,
@@ -833,8 +879,8 @@ def _main() -> int:
     parser.add_argument(
         "--magenta-threshold",
         type=int,
-        default=40,
-        help="Global RGB distance for exact and enclosed #FF00FF background cleanup",
+        default=60,
+        help="Global RGB distance for strict and enclosed #FF00FF background cleanup",
     )
     parser.add_argument(
         "--magenta-edge-threshold",

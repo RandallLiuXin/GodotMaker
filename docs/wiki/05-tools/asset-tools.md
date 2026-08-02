@@ -98,13 +98,14 @@ sheet for audit. It is intentionally not written when autoslice reports a
 name-count mismatch, so an unbound sheet cannot look like a valid production
 artifact.
 
-For `--background magenta`, `--magenta-threshold` (default `40`) is the only
+For `--background magenta`, `--magenta-threshold` (default `60`) is the strict
 global cleanup radius and can be set to `0` to limit enclosed cleanup to exact
-`#FF00FF`. `--magenta-edge-threshold` (default `220`) does not delete pixels by
-distance: it only bounds edge pixels whose RGB values are a consistent composite
-of the key colour and an adjacent foreground pixel. This preserves independent
-purple and blue-purple sprites and fine lines while converting verified spill
-to a correctly coloured semitransparent edge.
+`#FF00FF`. `--magenta-edge-threshold` (default `220`) extends only through
+locally smooth backdrop pixels originating at a strict key; it does not delete pixels
+by raw distance. A separate iterative pass only mattes edge pixels whose RGB
+values are a consistent composite of the key colour and an adjacent foreground
+pixel. This preserves independent purple and blue-purple sprites and fine lines
+while converting verified spill to a correctly coloured semitransparent edge.
 
 ## asset_action_process.py
 

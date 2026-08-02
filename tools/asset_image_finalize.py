@@ -162,7 +162,7 @@ def finalize_image_asset(
     label: str | None = None,
     archive_original: bool = True,
     background: str = "none",
-    magenta_threshold: int = 40,
+    magenta_threshold: int = 60,
     magenta_edge_threshold: int = 220,
 ) -> dict[str, object]:
     """Copy or transform a generated source image into its final path."""
@@ -305,8 +305,8 @@ def _main() -> int:
     parser.add_argument(
         "--magenta-threshold",
         type=int,
-        default=40,
-        help="Global RGB distance for exact and enclosed #FF00FF background cleanup",
+        default=60,
+        help="Global RGB distance for strict and enclosed #FF00FF background cleanup",
     )
     parser.add_argument(
         "--magenta-edge-threshold",

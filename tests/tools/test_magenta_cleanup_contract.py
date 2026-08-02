@@ -9,12 +9,19 @@ sys.path.insert(0, str(TOOLS_DIR))
 
 from asset_action_process import process_action_sheet  # noqa: E402
 from asset_image_finalize import finalize_image_asset  # noqa: E402
-from asset_sheet_process import process_sheet  # noqa: E402
+from asset_sheet_process import _color_distance, process_sheet  # noqa: E402
 
 
 def _fixture(path: Path) -> None:
-    image = Image.new("RGBA", (24, 24), (245, 2, 243, 255))
+    image = Image.new("RGBA", (24, 24), (255, 0, 255, 255))
     draw = ImageDraw.Draw(image)
+    # A locally smooth backdrop reaches well beyond the strict-key radius.
+    # Every entry point must remove it through the shared cleanup contract.
+    for left, colour in zip(
+        range(0, 24, 4),
+        [(255, 0, 255), (245, 4, 245), (235, 8, 235), (225, 12, 225), (205, 20, 205), (195, 24, 195)],
+    ):
+        draw.rectangle((left, 0, left + 3, 23), fill=colour)
     draw.rectangle((7, 6, 15, 14), fill=(100, 200, 100, 255))
     # The outline is a real 50% composite of the green foreground and key.
     draw.rectangle((6, 5, 16, 15), outline=(178, 100, 178, 255))
@@ -59,6 +66,10 @@ def test_sheet_finalize_and_action_share_the_magenta_cleanup_contract(tmp_path):
 
     with Image.open(tmp_path / "sheet.png") as sheet, Image.open(tmp_path / "final.png") as final:
         assert list(sheet.convert("RGBA").get_flattened_data()) == list(final.convert("RGBA").get_flattened_data())
+        assert all(
+            pixel[3] < 255 or _color_distance(pixel[:3]) > 120
+            for pixel in sheet.convert("RGBA").get_flattened_data()
+        )
         expected = _visible_counter(sheet)
     with Image.open(tmp_path / "action" / "candidates" / "fixture.png") as candidate:
         assert _visible_counter(candidate) == expected

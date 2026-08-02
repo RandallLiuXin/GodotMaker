@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from asset_sheet_process import SheetProcessError, process_sheet  # noqa: E402
+from asset_sheet_process import MAGENTA_RGB, SheetProcessError, _color_distance, process_sheet  # noqa: E402
 
 
 def make_sheet(path: Path):
@@ -340,6 +340,92 @@ def test_process_sheet_mattes_only_a_verified_magenta_composite_edge(tmp_path):
         assert rgba.getpixel((2, 5)) == (100, 200, 100, 127)
         assert rgba.getpixel((3, 5)) == (100, 200, 100, 255)
     assert result["cleanup"]["edge_spill_pixels"] > 0
+
+
+def test_process_sheet_removes_smooth_near_key_background_without_touching_foreground(tmp_path):
+    source = tmp_path / "soft-magenta-backdrop.png"
+    image = Image.new("RGBA", (30, 20), MAGENTA_RGB + (255,))
+    draw = ImageDraw.Draw(image)
+    # This is a locally smooth generated backdrop, not an alpha composite. Its
+    # final band is outside the strict 60-pixel radius but must remain part of
+    # the connected background rather than becoming an opaque magenta island.
+    for left, colour in zip(
+        range(0, 30, 5),
+        [(255, 0, 255), (245, 4, 245), (235, 8, 235), (225, 12, 225), (205, 20, 205), (195, 24, 195)],
+    ):
+        draw.rectangle((left, 0, left + 4, 19), fill=colour)
+    draw.rectangle((11, 6, 18, 13), fill=(100, 200, 100, 255))
+    image.save(source)
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        snap_mode="grid",
+        names="prop",
+        background="magenta",
+        preserve_cell_bounds=True,
+        processed_out=tmp_path / "processed.png",
+    )
+
+    with Image.open(tmp_path / "processed.png") as processed:
+        rgba = processed.convert("RGBA")
+        assert rgba.getpixel((14, 9)) == (100, 200, 100, 255)
+        assert all(
+            pixel[3] < 255 or _color_distance(pixel[:3]) > 120
+            for pixel in rgba.get_flattened_data()
+        )
+    assert result["cleanup"]["edge_removed_pixels"] > 0
+
+
+def test_process_sheet_iteratively_recovers_a_two_pixel_composite_ramp(tmp_path):
+    source = tmp_path / "two-pixel-matte.png"
+    foreground = (100, 200, 100)
+    image = Image.new("RGBA", (16, 16), (245, 2, 243, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((4, 4, 11, 11), fill=foreground)
+    draw.rectangle((3, 3, 12, 12), outline=(153, 132, 153, 255))
+    draw.rectangle((2, 2, 13, 13), outline=(204, 66, 204, 255))
+    image.save(source)
+
+    process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        snap_mode="grid",
+        names="prop",
+        background="magenta",
+        preserve_cell_bounds=True,
+        processed_out=tmp_path / "processed.png",
+    )
+
+    with Image.open(tmp_path / "processed.png") as processed:
+        rgba = processed.convert("RGBA")
+        assert rgba.getpixel((2, 8)) == (100, 200, 100, 84)
+        assert rgba.getpixel((3, 8)) == (100, 200, 100, 168)
+
+
+def test_process_sheet_mattes_saturated_red_with_a_single_informative_channel(tmp_path):
+    source = tmp_path / "red-matte.png"
+    image = Image.new("RGBA", (12, 12), (245, 2, 243, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((4, 4, 7, 7), fill=(255, 0, 0, 255))
+    draw.rectangle((3, 3, 8, 8), outline=(255, 0, 128, 255))
+    image.save(source)
+
+    process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        snap_mode="grid",
+        names="prop",
+        background="magenta",
+        preserve_cell_bounds=True,
+        processed_out=tmp_path / "processed.png",
+    )
+
+    with Image.open(tmp_path / "processed.png") as processed:
+        assert processed.convert("RGBA").getpixel((3, 6)) == (255, 0, 0, 127)
 
 
 def test_magenta_cleanup_preserves_non_key_foreground_colours_and_alpha(tmp_path):
