@@ -422,12 +422,27 @@ It appends one `MISSING` row per declared output, named
 `logical_output` so every row traces back to the production that will fill it.
 Registration then promotes those rows normally. Re-running changes nothing.
 
+Rows are written only inside the `## Asset Table` section. ASSETS.md holds
+several equally wide tables — the Visual Asset Contract and Budget Tracking
+among them — so a document with no Asset Table heading is an error rather than a
+guess.
+
 `--supersede` names the planned request row that asked for the work — the
 `ui_component_sheet`, `card_component_sheet`, or `compact_prop_pack` row. That
 row is a request, not one of the delivered resources, so it closes as `N/A` with
 a `superseded_by=<bundle_id>` pointer instead of staying `MISSING` forever and
-blocking the asset stage. A named row that does not exist in the current tag is
-an error, not a silent skip.
+blocking the asset stage. It is refused unless both hold:
+
+1. The row is still `MISSING`. ASSETS.md statuses are forward-only, so a
+   `generated`, `provided`, `deferred`, or already-superseded row is never
+   retired — a real but wrong row name cannot quietly drop a delivered asset.
+   Re-running the same bundle over a row it already superseded is a no-op.
+2. The row's `family=` is one this production unit serves, per the ASSETS Family
+   Routing table in `references/asset-planner.md`. A row with no `family=`, or
+   one routed elsewhere, is refused.
+
+A named row that does not exist in the current tag is an error, not a silent
+skip.
 
 A non-bundle family has nothing to declare here, and this tool refuses it: its
 planned row is the row registration updates, so a missing one is a planning

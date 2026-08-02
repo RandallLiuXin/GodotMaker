@@ -32,6 +32,10 @@ from asset_assets_md_update import (  # noqa: E402
     split_assets_md_row,
     update_assets_md,
 )
+from asset_assets_md_update import (  # noqa: E402
+    ASSETS_MD_ASSET_ID_COLUMN,
+    asset_table_bounds,
+)
 from asset_bundle_rows import BundleRowError, declare_bundle_rows  # noqa: E402
 from asset_curation_entry_draft import (  # noqa: E402
     CurationEntryDraftError,
@@ -284,15 +288,34 @@ def _planned_assets_md(project_root: Path, extra_rows: list[str] | None = None) 
     template = (ROOT / "templates" / "ASSETS.md").read_text(encoding="utf-8")
     lines = template.splitlines(keepends=True)
     if extra_rows:
+        # Into the Asset Table, not "the last wide table in the file" — the
+        # Visual Asset Contract and Budget Tracking tables are just as wide.
+        bounds = asset_table_bounds(lines)
         last = max(
             index
-            for index, line in enumerate(lines)
-            if split_assets_md_row(line) is not None
+            for index in range(*bounds)
+            if split_assets_md_row(lines[index]) is not None
         )
         lines[last + 1 : last + 1] = [row + "\n" for row in extra_rows]
     path = project_root / "ASSETS.md"
     path.write_text("".join(lines), encoding="utf-8")
     return path
+
+
+def _sections(text: str) -> dict[str, str]:
+    """Split an ASSETS.md document into `## heading -> body` for byte compare."""
+    sections: dict[str, str] = {}
+    heading = ""
+    body: list[str] = []
+    for line in text.splitlines(keepends=True):
+        if line.startswith("## "):
+            sections[heading] = "".join(body)
+            heading = line.strip()
+            body = []
+        else:
+            body.append(line)
+    sections[heading] = "".join(body)
+    return sections
 
 
 CARD_REQUEST_ROW = (
@@ -428,6 +451,116 @@ def test_a_compact_prop_bundle_declares_and_fills_its_logical_rows(tmp_path):
     assert _row(assets_md, "market--lantern")[3] == "AtlasTexture"
     assert "bundle=market" in _row(assets_md, "market--crate")[5]
     assert _row(assets_md, "market_props")[7] == "N/A"
+
+
+def test_declared_rows_land_in_the_asset_table_and_touch_nothing_else(tmp_path):
+    # ASSETS.md holds several equally wide tables. Appending by column count
+    # alone put logical rows in Budget Tracking, which still parsed and still
+    # resolved — the manifest was simply not the manifest any more.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    before = _sections(assets_md.read_text(encoding="utf-8"))
+
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
+
+    text = assets_md.read_text(encoding="utf-8")
+    after = _sections(text)
+    assert set(after) == set(before)
+    for heading, body in after.items():
+        if heading != "## Asset Table":
+            assert body == before[heading], f"{heading} was rewritten"
+
+    table = text.index("## Asset Table")
+    contract = text.index("## Visual Asset Contract")
+    for asset_id in ("arcane_deck--card_theme", "arcane_deck--mana_badge"):
+        assert table < text.index(asset_id) < contract
+
+
+def test_declared_rows_never_reach_the_visual_asset_contract_columns(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    bounds = asset_table_bounds(lines)
+    inside = {
+        cells[ASSETS_MD_ASSET_ID_COLUMN]
+        for index in range(*bounds)
+        if (cells := split_assets_md_row(lines[index])) is not None
+    }
+    assert "arcane_deck--card_theme" in inside
+    outside = "".join(lines[bounds[1] :])
+    assert "arcane_deck--" not in outside
+
+
+def test_declaring_into_a_document_without_an_asset_table_fails_closed(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "# Assets\n\n## Budget Tracking\n\n"
+        "| Asset | Tag | Tool | Cost | Notes | A | B | C |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        "| x | v0.1.0 | y | 0 | - | - | - | - |\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(BundleRowError, match="Asset Table"):
+        declare_bundle_rows(assets_md, request_path, tag=TAG)
+
+
+@pytest.mark.parametrize("status", ["generated", "provided", "N/A", "deferred"])
+def test_supersede_refuses_a_row_that_is_no_longer_missing(tmp_path, status):
+    # ASSETS.md statuses are forward-only. A real but wrong row name must not
+    # retire an asset the project already has.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    delivered = CARD_REQUEST_ROW.replace("| MISSING |", f"| {status} |")
+    assets_md = _planned_assets_md(tmp_path, [delivered])
+    before = assets_md.read_text(encoding="utf-8")
+
+    with pytest.raises(BundleRowError, match="only a MISSING row may be superseded"):
+        declare_bundle_rows(
+            assets_md, request_path, tag=TAG, supersede=["card_frame"]
+        )
+    assert assets_md.read_text(encoding="utf-8") == before
+
+
+def test_supersede_refuses_a_request_family_the_bundle_does_not_serve(tmp_path):
+    # `background_sky` is a real current-tag MISSING row in the template, but a
+    # card kit has no standing to close a background out.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    before = assets_md.read_text(encoding="utf-8")
+
+    with pytest.raises(BundleRowError, match="does not serve"):
+        declare_bundle_rows(
+            assets_md, request_path, tag=TAG, supersede=["background_sky"]
+        )
+    assert assets_md.read_text(encoding="utf-8") == before
+
+
+def test_a_second_bundle_cannot_steal_an_already_superseded_row(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
+    other = json.loads(request_path.read_text(encoding="utf-8"))
+    other["asset_id"] = "other_deck"
+    other_path = _write_json(tmp_path / "other-request.json", other)
+
+    with pytest.raises(BundleRowError, match="only a MISSING row may be superseded"):
+        declare_bundle_rows(assets_md, other_path, tag=TAG, supersede=["card_frame"])
+
+
+def test_supersede_refuses_a_row_with_no_declared_family(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    anonymous = CARD_REQUEST_ROW.replace(
+        "family=card_component_sheet; component=rare_card", "—"
+    )
+    assets_md = _planned_assets_md(tmp_path, [anonymous])
+
+    with pytest.raises(BundleRowError, match="declares no family="):
+        declare_bundle_rows(
+            assets_md, request_path, tag=TAG, supersede=["card_frame"]
+        )
 
 
 def test_a_non_bundle_family_has_no_rows_to_declare(tmp_path):

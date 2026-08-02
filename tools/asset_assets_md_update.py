@@ -36,6 +36,8 @@ REFERENCE_PROMOTABLE_STATUSES = {"source_ready"}
 ROOT_INDEX_RELATIVE = ".godotmaker/asset-generation/manifest.json"
 GENERATED_ROW_STATUS = "generated"
 ASSETS_MD_MIN_CELLS = 8
+ASSET_TABLE_HEADING = "## Asset Table"
+_SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")
 ASSETS_MD_TAG_COLUMN = 1
 ASSETS_MD_ASSET_ID_COLUMN = 2
 ASSETS_MD_PARAMS_COLUMN = 5
@@ -155,7 +157,46 @@ def split_assets_md_row(line: str) -> list[str] | None:
     cells = [cell.strip() for cell in stripped.strip("|").split("|")]
     if len(cells) < ASSETS_MD_MIN_CELLS:
         return None
+    if all(_SEPARATOR_CELL.match(cell) for cell in cells):
+        return None
     return cells
+
+
+def asset_table_bounds(lines: list[str]) -> tuple[int, int] | None:
+    """Return the ``[start, end)`` line span of the ``## Asset Table`` section.
+
+    ASSETS.md holds several Markdown tables and the Asset Table is not the only
+    one wide enough to look like an asset row — the Visual Asset Contract and
+    Budget Tracking tables also parse as eight-plus cells. Selecting rows by
+    column count therefore reads and writes whichever table happens to sit last
+    in the file. Returns ``None`` when the heading is absent, so a caller can
+    decide between falling back to the whole document and failing closed.
+    """
+    start: int | None = None
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if start is None:
+            if stripped.lower() == ASSET_TABLE_HEADING.lower():
+                start = index + 1
+            continue
+        if stripped.startswith("## "):
+            return start, index
+    return (start, len(lines)) if start is not None else None
+
+
+def iter_asset_rows(lines: list[str]):
+    """Yield ``(index, cells)`` for every Asset Table row.
+
+    Scoped to the ``## Asset Table`` section when the heading exists. A document
+    without it — a minimal fixture, or a table pasted on its own — keeps the
+    whole-file behaviour rather than silently matching nothing.
+    """
+    bounds = asset_table_bounds(lines)
+    span = range(*bounds) if bounds is not None else range(len(lines))
+    for index in span:
+        cells = split_assets_md_row(lines[index])
+        if cells is not None:
+            yield index, cells
 
 
 def format_assets_md_row(cells: list[str]) -> str:
@@ -203,28 +244,24 @@ def update_assets_md(
     }
     remaining = set(entries_by_key.keys())
 
-    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
-    output: list[str] = []
+    output = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
     updated: list[str] = []
-    row_re = re.compile(r"^\s*\|")
 
-    for line in lines:
-        cells = split_assets_md_row(line) if row_re.match(line) else None
-        if cells is None:
-            output.append(line)
-            continue
+    # Only the Asset Table is the asset manifest. The Visual Asset Contract and
+    # Budget Tracking tables are just as wide, so matching by column count alone
+    # would let an entry rewrite a row in a table that never described it.
+    for index, cells in iter_asset_rows(output):
         tag = cells[ASSETS_MD_TAG_COLUMN]
         asset_id = cells[ASSETS_MD_ASSET_ID_COLUMN]
         key = (tag, asset_id)
         if key not in entries_by_key:
-            output.append(line)
             continue
 
         cells[ASSETS_MD_PARAMS_COLUMN] = merge_generation_params(
             cells[ASSETS_MD_PARAMS_COLUMN], _entry_params(entries_by_key[key])
         )
         cells[ASSETS_MD_STATUS_COLUMN] = status
-        output.append(format_assets_md_row(cells))
+        output[index] = format_assets_md_row(cells)
         updated.append(asset_id)
         remaining.discard(key)
 

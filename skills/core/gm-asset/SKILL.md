@@ -313,8 +313,10 @@ python tools/asset_bundle_rows.py --assets-md ASSETS.md \
 
    One bundle production delivers many separately bindable resources, so
    ASSETS.md has no row for them until this runs and step 8 would fail closed.
-   The planned request row is not one of those resources; `--supersede` closes
-   it as `N/A` against the bundle that serves it. Do not hand-write these rows.
+   Rows are written only inside `## Asset Table`. The planned request row is not
+   one of those resources; `--supersede` closes it as `N/A` against the bundle
+   that serves it, and is refused unless that row is still `MISSING` and its
+   `family=` is one this unit serves. Do not hand-write these rows.
 
 5. Write each draft to its canonical stable-entry path:
 

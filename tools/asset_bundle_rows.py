@@ -28,10 +28,12 @@ from pathlib import Path
 from typing import Any
 
 from asset_assets_md_update import (
+    ASSET_TABLE_HEADING,
     ASSETS_MD_ASSET_ID_COLUMN,
     ASSETS_MD_PARAMS_COLUMN,
     ASSETS_MD_STATUS_COLUMN,
     ASSETS_MD_TAG_COLUMN,
+    asset_table_bounds,
     format_assets_md_row,
     merge_generation_params,
     split_assets_md_row,
@@ -39,13 +41,31 @@ from asset_assets_md_update import (
 from asset_stable_entry import BUNDLE_FAMILIES, StableEntryError, safe_identifier
 
 ASSETS_MD_NUMBER_COLUMN = 0
-ASSETS_MD_TYPE_COLUMN = 3
-ASSETS_MD_SIZE_COLUMN = 4
-ASSETS_MD_PATH_COLUMN = 6
 
 DECLARED_STATUS = "MISSING"
 SUPERSEDED_STATUS = "N/A"
 EMPTY_CELL = "—"
+
+# Only a row still waiting on production may be superseded. ASSETS.md statuses
+# are forward-only, so rewriting a delivered or deferred row would walk one
+# backwards and silently retire an asset the project already has.
+SUPERSEDABLE_STATUS = "MISSING"
+
+# Which planner request families each bundle production unit may close out.
+# This mirrors the ASSETS Family Routing table in
+# `skills/core/gm-asset/references/asset-planner.md`, which is the authority for
+# what a family routes to; `tests/test_asset_bundle_row_routing.py` fails if the
+# two ever disagree. Without this, `--supersede` would accept any row name and
+# retire an unrelated asset that merely happened to be spelled correctly.
+SERVED_REQUEST_FAMILIES = {
+    "ui-kit": {"ui_component_sheet", "icon_pack", "panel_source"},
+    "card-kit": {
+        "card_component_sheet",
+        "card_frame_source",
+        "portrait_frame_source",
+    },
+    "compact-prop-pack": {"compact_prop_pack", "runtime_sprite"},
+}
 
 
 class BundleRowError(Exception):
@@ -109,6 +129,58 @@ def _asset_ids(request: dict[str, Any]) -> list[tuple[str, str, str]]:
     return rows
 
 
+def _row_family(params: str) -> str | None:
+    for part in params.split(";"):
+        key, _, value = part.partition("=")
+        if key.strip() == "family":
+            return value.strip()
+    return None
+
+
+def _superseded_by(params: str) -> str | None:
+    for part in params.split(";"):
+        key, _, value = part.partition("=")
+        if key.strip() == "superseded_by":
+            return value.strip()
+    return None
+
+
+def _needs_supersede(
+    cells: list[str], *, name: str, production_family: str, bundle_id: str
+) -> bool:
+    """Return whether this row still has to be retired, or fail closed.
+
+    ``--supersede`` rewrites a status, so a name that is real but wrong would
+    quietly retire a delivered or unrelated asset. Two things must hold: the row
+    is still waiting on production, and it is a request this production family
+    actually serves. A row this same bundle already retired is a no-op, because
+    `/gm-asset` is re-runnable per tag.
+    """
+    status = cells[ASSETS_MD_STATUS_COLUMN]
+    params = cells[ASSETS_MD_PARAMS_COLUMN]
+    if status == SUPERSEDED_STATUS and _superseded_by(params) == bundle_id:
+        return False
+    if status != SUPERSEDABLE_STATUS:
+        raise BundleRowError(
+            f"ASSETS.md row {name!r} is {status!r}; only a "
+            f"{SUPERSEDABLE_STATUS} row may be superseded, and ASSETS.md "
+            "statuses are forward-only"
+        )
+    served = SERVED_REQUEST_FAMILIES[production_family]
+    family = _row_family(params)
+    if family is None:
+        raise BundleRowError(
+            f"ASSETS.md row {name!r} declares no family=, so it cannot be shown "
+            f"to be a request {production_family} serves"
+        )
+    if family not in served:
+        raise BundleRowError(
+            f"ASSETS.md row {name!r} has family={family}, which {production_family} "
+            f"does not serve; expected one of: {', '.join(sorted(served))}"
+        )
+    return True
+
+
 def _write_atomic(path: Path, lines: list[str]) -> None:
     with tempfile.NamedTemporaryFile(
         delete=False, dir=str(path.parent), suffix=".md", mode="w", encoding="utf-8"
@@ -141,13 +213,23 @@ def declare_bundle_rows(
     declared = _asset_ids(request)
 
     lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    # ASSETS.md holds several equally wide Markdown tables. Writing by column
+    # count alone appends into whichever one sits last in the file, so the
+    # section heading is the only safe anchor and its absence is fatal here.
+    bounds = asset_table_bounds(lines)
+    if bounds is None:
+        raise BundleRowError(
+            f"{assets_md} has no '{ASSET_TABLE_HEADING}' section to extend"
+        )
     existing: set[tuple[str, str]] = set()
     highest = 0
     last_row_index = -1
-    for index, line in enumerate(lines):
-        cells = split_assets_md_row(line)
+    rows: list[tuple[int, list[str]]] = []
+    for index in range(*bounds):
+        cells = split_assets_md_row(lines[index])
         if cells is None:
             continue
+        rows.append((index, cells))
         last_row_index = index
         existing.add((cells[ASSETS_MD_TAG_COLUMN], cells[ASSETS_MD_ASSET_ID_COLUMN]))
         number = cells[ASSETS_MD_NUMBER_COLUMN]
@@ -159,14 +241,15 @@ def declare_bundle_rows(
     pending = [item for item in declared if (tag, item[0]) not in existing]
     remaining = list(supersede or [])
     superseded: list[str] = []
-    for index, line in enumerate(lines):
-        cells = split_assets_md_row(line)
-        if cells is None:
-            continue
+    for index, cells in rows:
         name = cells[ASSETS_MD_ASSET_ID_COLUMN]
         if cells[ASSETS_MD_TAG_COLUMN] != tag or name not in remaining:
             continue
         remaining.remove(name)
+        if not _needs_supersede(
+            cells, name=name, production_family=family, bundle_id=bundle_id
+        ):
+            continue
         cells[ASSETS_MD_PARAMS_COLUMN] = merge_generation_params(
             cells[ASSETS_MD_PARAMS_COLUMN], {"superseded_by": bundle_id}
         )

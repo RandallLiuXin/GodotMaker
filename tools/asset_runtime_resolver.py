@@ -20,7 +20,7 @@ from asset_assets_md_update import (
     ASSETS_MD_STATUS_COLUMN,
     ASSETS_MD_TAG_COLUMN,
     GENERATED_ROW_STATUS,
-    split_assets_md_row,
+    iter_asset_rows,
 )
 from asset_generation_index import GenerationIndexError, check_index
 from asset_stable_entry import (
@@ -73,10 +73,11 @@ def manifest_entry_from_assets_row(
     """Return the registered pointer from one generated ASSETS.md row."""
     assets_md = Path(assets_md)
     matches: list[list[str]] = []
-    for line in _read_assets_md(assets_md).splitlines():
-        cells = split_assets_md_row(line)
-        if cells is None:
-            continue
+    # Scoped to the Asset Table: the Visual Asset Contract and Budget Tracking
+    # tables parse just as wide, and a worker snapshot must never be resolved
+    # from a row in a table that does not describe assets.
+    lines = _read_assets_md(assets_md).splitlines(keepends=True)
+    for _, cells in iter_asset_rows(lines):
         if (
             cells[ASSETS_MD_TAG_COLUMN] == tag
             and cells[ASSETS_MD_ASSET_ID_COLUMN] == asset_id
