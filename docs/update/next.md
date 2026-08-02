@@ -61,6 +61,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
   names can reuse one declared atlas region, and standalone UI validation now
   compiles icon resources before the Theme that binds them.
 
+- `/gm-build` and `/gm-fixgap` now hand workers a resolver-produced minimal `godot_artifact` snapshot instead of hand-copied stable-entry fields, and workers bind the compiled Godot resource rather than rebuilding it from the source layout.
 - `/gm-asset` now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body `runtime_artifact` manifest.
 - Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.
 - An ASSETS.md runtime row reaches `generated` only from a `ready` non-reference stable entry, while a finalized registered screen reference completes its reference row at `source_ready` without becoming a worker runtime artifact.
