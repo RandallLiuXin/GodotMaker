@@ -315,7 +315,7 @@ def test_process_sheet_removes_edge_connected_magenta_fringe(tmp_path):
     assert result["accepted"][0]["crop_bbox"] == [2, 2, 8, 8]
 
 
-def test_process_sheet_soft_matte_removes_blended_magenta_spill(tmp_path):
+def test_process_sheet_soft_matte_uses_safe_edge_connected_cleanup(tmp_path):
     source = tmp_path / "magenta_soft_matte.png"
     source.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("RGBA", (12, 12), (255, 0, 255, 255))
@@ -336,15 +336,52 @@ def test_process_sheet_soft_matte_removes_blended_magenta_spill(tmp_path):
     )
 
     assert result["cleanup"]["magenta_soft_matte"] is True
-    assert result["cleanup"]["soft_matte_pixels"] > 0
+    assert result["cleanup"]["removed_pixels"] > 0
     candidate = Image.open(tmp_path / "out" / "mossy_prop.png").convert("RGBA")
     try:
-        assert not any(
-            alpha > 0 and red > green and blue > green
+        assert all(
+            alpha == 0 or (red, green, blue) != (185, 25, 190)
             for red, green, blue, alpha in candidate.getdata()
         )
     finally:
         candidate.close()
+
+
+def test_magenta_cleanup_preserves_non_key_foreground_colours_and_alpha(tmp_path):
+    source = tmp_path / "provider-regression.png"
+    image = Image.new("RGBA", (16, 16), (245, 2, 243, 255))
+    draw = ImageDraw.Draw(image)
+    # These colours represent real red/purple/blue-purple painted details;
+    # none is sufficiently key-like to be a background spill.
+    draw.rectangle((3, 3, 5, 12), fill=(190, 30, 45, 255))
+    draw.rectangle((6, 3, 8, 12), fill=(130, 20, 185, 255))
+    draw.rectangle((9, 3, 11, 12), fill=(90, 30, 175, 255))
+    draw.line((3, 2, 11, 2), fill=(205, 45, 60, 96), width=1)
+    image.save(source)
+
+    result = process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        snap_mode="grid",
+        names="prop",
+        background="magenta",
+        preserve_cell_bounds=True,
+        processed_out=tmp_path / "processed.png",
+    )
+
+    with Image.open(tmp_path / "processed.png") as processed:
+        rgba = processed.convert("RGBA")
+        assert rgba.getpixel((0, 0))[3] == 0
+        assert rgba.getpixel((4, 8)) == (190, 30, 45, 255)
+        assert rgba.getpixel((7, 8)) == (130, 20, 185, 255)
+        assert rgba.getpixel((10, 8)) == (90, 30, 175, 255)
+        assert rgba.getpixel((7, 2)) == (205, 45, 60, 96)
+        assert not any(
+            pixel[:3] == (255, 0, 255) and pixel[3] > 0
+            for pixel in rgba.get_flattened_data()
+        )
+    assert result["cleanup"]["removed_pixels"] > 0
 
 
 def test_process_sheet_rejects_magenta_edge_touch_when_requested(tmp_path):

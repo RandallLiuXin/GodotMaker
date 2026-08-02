@@ -177,19 +177,19 @@ def test_finalize_removes_magenta_background_when_requested(tmp_path):
         assert rgba.getpixel((3, 3)) == (20, 60, 120, 255)
 
 
-def test_finalize_keeps_internal_magenta_details(tmp_path):
+def test_finalize_removes_literal_internal_magenta_key_without_spreading(tmp_path):
     source = tmp_path / "generated" / "boss.png"
     output = tmp_path / "assets" / "sprites" / "boss.png"
     make_magenta_with_internal_detail_png(source)
 
     result = finalize_image_asset(source, output, background="magenta")
 
-    assert result["background_cleanup"]["removed_pixels"] == 64
+    assert result["background_cleanup"]["removed_pixels"] == 68
     with Image.open(output) as image:
         rgba = image.convert("RGBA")
         assert rgba.getpixel((0, 0))[3] == 0
         assert rgba.getpixel((0, 5))[3] == 0
-        assert rgba.getpixel((4, 4)) == (255, 0, 255, 255)
+        assert rgba.getpixel((4, 4))[3] == 0
         assert rgba.getpixel((3, 3)) == (20, 60, 120, 255)
 
 

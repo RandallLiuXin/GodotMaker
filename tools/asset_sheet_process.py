@@ -97,10 +97,14 @@ def _remove_magenta_background(
     edge_removed = 0
     width, height = converted.size
 
+    # Pixels inside the strict key-distance threshold are deterministic
+    # backdrop, including enclosed gaps such as the opening in a signboard.
+    # This is deliberately a colour-distance test only: it does not use the
+    # previous red/blue-channel dominance rule that erased real purple art.
     for x in range(width):
         for y in range(height):
             red, green, blue, alpha = pixels[x, y]
-            if alpha > 0 and _color_distance((red, green, blue)) < threshold:
+            if alpha > 0 and _color_distance((red, green, blue)) <= threshold:
                 pixels[x, y] = (0, 0, 0, 0)
                 removed += 1
 
@@ -119,10 +123,19 @@ def _remove_magenta_background(
             continue
         visited.add((x, y))
         red, green, blue, alpha = pixels[x, y]
+        distance = _color_distance((red, green, blue))
+        # Transparency present in the original input and key-coloured pixels
+        # on the canvas perimeter are both safe routes through the background.
+        # Crucially, the flood fill is edge-seeded, so a red or blue-purple
+        # foreground detail is preserved unless it is actually part of the
+        # contiguous magenta backdrop.
         should_expand = alpha == 0
-        if alpha > 0 and _color_distance((red, green, blue)) < edge_threshold:
+        if alpha > 0 and distance <= edge_threshold:
             pixels[x, y] = (0, 0, 0, 0)
-            edge_removed += 1
+            if distance < threshold:
+                removed += 1
+            else:
+                edge_removed += 1
             should_expand = True
         if should_expand:
             for dx in (-1, 0, 1):
@@ -133,87 +146,37 @@ def _remove_magenta_background(
                     if next_pixel not in visited:
                         queue.append(next_pixel)
 
-    return converted, {"removed_pixels": removed, "edge_removed_pixels": edge_removed}
-
-
-def _smoothstep(value: float) -> float:
-    value = max(0.0, min(1.0, value))
-    return value * value * (3.0 - 2.0 * value)
-
-
-def _magenta_soft_alpha(rgb: tuple[int, int, int]) -> int:
-    """Estimate alpha for an #FF00FF-composited source pixel.
-
-    A generated sheet often contains antialiased foreground pixels blended with
-    the requested magenta background. Euclidean key removal leaves those
-    purple fringes opaque; this matte uses both red/blue key-channel dominance
-    and a soft distance ramp to retain the real foreground edge.
-    """
-    red, green, blue = rgb
-    distance = max(abs(red - 255), green, abs(blue - 255))
-    dominance = min(red, blue) - green
-    key_like = distance <= 32 or dominance >= 16
-    if not key_like:
-        return 255
-
-    if distance <= 32:
-        distance_alpha = 0
-    elif distance >= 180:
-        distance_alpha = 255
-    else:
-        ratio = (distance - 32) / (180 - 32)
-        distance_alpha = round(255 * _smoothstep(ratio))
-
-    if dominance <= 0:
-        dominance_alpha = 255
-    else:
-        denominator = max(1, 255 - green)
-        dominance_alpha = round(255 * (1 - min(1, dominance / denominator)))
-    return min(distance_alpha, dominance_alpha)
-
-
-def _remove_magenta_soft_matte(image) -> tuple[object, dict[str, int]]:
-    """Remove magenta and its blended spill while preserving antialiased edges."""
-    try:
-        from PIL import ImageFilter
-    except ImportError as exc:
-        raise SheetProcessError("Pillow is required to process asset sheets") from exc
-
-    converted = image.convert("RGBA")
-    pixels = converted.load()
-    matte_pixels = 0
-    partial_pixels = 0
-    width, height = converted.size
+    # A single exterior shell catches the visibly purple one-pixel halo that
+    # image generators often leave just beyond an otherwise opaque contour.
+    # Limit it to pixels already touching transparent background and apply it
+    # simultaneously, so it cannot eat into a real purple foreground region.
+    edge_spill: list[tuple[int, int]] = []
     for x in range(width):
         for y in range(height):
             red, green, blue, alpha = pixels[x, y]
-            matte_alpha = _magenta_soft_alpha((red, green, blue))
-            output_alpha = round(matte_alpha * (alpha / 255))
-            if output_alpha != alpha:
-                matte_pixels += 1
-            if output_alpha == 0:
-                pixels[x, y] = (0, 0, 0, 0)
+            if (
+                alpha == 0
+                or green > 40
+                or min(red, blue) < 90
+                or abs(red - blue) > 100
+            ):
                 continue
-            if output_alpha < 252:
-                # Once alpha is lowered, cap both key channels at the green
-                # channel so the translucent edge cannot retain purple spill.
-                cap = max(0, green - 1)
-                red = min(red, cap)
-                blue = min(blue, cap)
-                partial_pixels += 1
-            pixels[x, y] = (red, green, blue, output_alpha)
+            if any(
+                0 <= x + dx < width
+                and 0 <= y + dy < height
+                and pixels[x + dx, y + dy][3] == 0
+                for dx in (-1, 0, 1)
+                for dy in (-1, 0, 1)
+                if dx or dy
+            ):
+                edge_spill.append((x, y))
+    for x, y in edge_spill:
+        pixels[x, y] = (0, 0, 0, 0)
 
-    # Contract one alpha pixel to avoid an opaque keyed fringe surviving at a
-    # source boundary. This mirrors the fixed deterministic cleanup used by
-    # the compact prop production path.
-    alpha = converted.getchannel("A").filter(ImageFilter.MinFilter(3))
-    converted.putalpha(alpha)
     return converted, {
-        "removed_pixels": matte_pixels - partial_pixels,
-        "edge_removed_pixels": 0,
-        "soft_matte_pixels": matte_pixels,
-        "soft_matte_partial_pixels": partial_pixels,
-        "soft_matte_edge_contract": 1,
+        "removed_pixels": removed,
+        "edge_removed_pixels": edge_removed,
+        "edge_spill_pixels": len(edge_spill),
     }
 
 
@@ -489,7 +452,7 @@ def process_sheet(
     reject_edge_touch: bool = False,
     background: str = "transparent",
     magenta_threshold: int = 100,
-    magenta_edge_threshold: int = 150,
+    magenta_edge_threshold: int = 120,
     magenta_soft_matte: bool = False,
     component_mode: str = "all",
     component_padding: int | None = None,
@@ -561,14 +524,15 @@ def process_sheet(
             "edge_removed_pixels": 0,
         }
         if background == "magenta":
-            if magenta_soft_matte:
-                image, cleanup_counts = _remove_magenta_soft_matte(image)
-            else:
-                image, cleanup_counts = _remove_magenta_background(
-                    image,
-                    threshold=magenta_threshold,
-                    edge_threshold=magenta_edge_threshold,
-                )
+            # ``--magenta-soft-matte`` remains accepted for compatibility,
+            # but deliberately uses the same topology-aware contract.  The
+            # previous full-image channel-dominance matte deleted legitimate
+            # red and purple foreground pixels.
+            image, cleanup_counts = _remove_magenta_background(
+                image,
+                threshold=magenta_threshold,
+                edge_threshold=magenta_edge_threshold,
+            )
             cleanup.update(cleanup_counts)
         width, height = image.size
         if not _has_transparent_pixels(image):
@@ -849,7 +813,7 @@ def _main() -> int:
     parser.add_argument(
         "--magenta-edge-threshold",
         type=int,
-        default=150,
+        default=120,
         help="Euclidean RGB distance for edge-connected #FF00FF fringe cleanup",
     )
     parser.add_argument(

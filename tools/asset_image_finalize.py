@@ -11,15 +11,13 @@ import json
 import shutil
 import sys
 import tempfile
-from collections import deque
 from pathlib import Path
+
+from asset_sheet_process import SheetProcessError, _remove_magenta_background
 
 
 class ImageFinalizeError(Exception):
     """Raised when an image cannot be finalized."""
-
-
-MAGENTA_RGB = (255, 0, 255)
 
 
 def _parse_size(value: str | None) -> tuple[int, int] | None:
@@ -76,60 +74,6 @@ def _load_image(path: Path):
         return image
     except Exception as exc:
         raise ImageFinalizeError(f"Source is not a readable image: {path}") from exc
-
-
-def _color_distance(rgb: tuple[int, int, int], target: tuple[int, int, int] = MAGENTA_RGB) -> float:
-    red, green, blue = rgb
-    target_red, target_green, target_blue = target
-    return (
-        (red - target_red) ** 2
-        + (green - target_green) ** 2
-        + (blue - target_blue) ** 2
-    ) ** 0.5
-
-
-def _remove_magenta_background(
-    image,
-    *,
-    edge_threshold: int,
-) -> tuple[object, dict[str, int]]:
-    if edge_threshold < 0:
-        raise ImageFinalizeError("--magenta-edge-threshold must be zero or positive")
-    converted = image.convert("RGBA")
-    pixels = converted.load()
-    removed = 0
-    width, height = converted.size
-
-    visited: set[tuple[int, int]] = set()
-    queue: deque[tuple[int, int]] = deque()
-    for x in range(width):
-        queue.append((x, 0))
-        queue.append((x, height - 1))
-    for y in range(height):
-        queue.append((0, y))
-        queue.append((width - 1, y))
-
-    while queue:
-        x, y = queue.popleft()
-        if (x, y) in visited or x < 0 or x >= width or y < 0 or y >= height:
-            continue
-        visited.add((x, y))
-        red, green, blue, alpha = pixels[x, y]
-        should_expand = alpha == 0
-        if alpha > 0 and _color_distance((red, green, blue)) < edge_threshold:
-            pixels[x, y] = (0, 0, 0, 0)
-            removed += 1
-            should_expand = True
-        if should_expand:
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    if dx == 0 and dy == 0:
-                        continue
-                    next_pixel = (x + dx, y + dy)
-                    if next_pixel not in visited:
-                        queue.append(next_pixel)
-
-    return converted, {"removed_pixels": removed}
 
 
 def _atomic_save(image, output: Path, image_format: str) -> None:
@@ -218,7 +162,7 @@ def finalize_image_asset(
     label: str | None = None,
     archive_original: bool = True,
     background: str = "none",
-    magenta_edge_threshold: int = 150,
+    magenta_edge_threshold: int = 120,
 ) -> dict[str, object]:
     """Copy or transform a generated source image into its final path."""
     source = Path(source)
@@ -271,10 +215,14 @@ def finalize_image_asset(
             _atomic_save(origin_image, origin_path, "png")
             origin_saved = str(origin_path)
         if background == "magenta":
-            image, background_cleanup = _remove_magenta_background(
-                image,
-                edge_threshold=magenta_edge_threshold,
-            )
+            try:
+                image, background_cleanup = _remove_magenta_background(
+                    image,
+                    threshold=100,
+                    edge_threshold=magenta_edge_threshold,
+                )
+            except SheetProcessError as exc:
+                raise ImageFinalizeError(str(exc)) from exc
         if requested_size is not None:
             image = _fit_with_padding(image, requested_size)
         if image_format.lower() == "png" and image.mode not in {"RGB", "RGBA"}:
@@ -356,7 +304,7 @@ def _main() -> int:
     parser.add_argument(
         "--magenta-edge-threshold",
         type=int,
-        default=150,
+        default=120,
         help="RGB distance threshold for edge-connected magenta cleanup",
     )
     parser.add_argument(

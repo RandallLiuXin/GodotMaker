@@ -548,7 +548,7 @@ def _write_recovered_action_source(
             scan_image, cleanup = _remove_magenta_background(
                 image,
                 threshold=100,
-                edge_threshold=150,
+                edge_threshold=120,
             )
         elif background == "transparent":
             scan_image = image.copy()

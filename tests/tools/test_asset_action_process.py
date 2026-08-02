@@ -138,6 +138,37 @@ def test_process_action_sheet_outputs_runtime_bundle(tmp_path):
     assert meta["final_sheet_path"] == result["final_sheet_path"]
 
 
+def test_action_processing_uses_the_shared_magenta_cleanup_contract(tmp_path):
+    source = tmp_path / "provider-action.png"
+    image = Image.new("RGBA", (16, 16), (245, 2, 243, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((4, 3, 11, 12), fill=(130, 20, 185, 255))
+    draw.line((4, 2, 11, 2), fill=(205, 45, 60, 96), width=1)
+    image.save(source)
+
+    result = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="1x1",
+        names="prop",
+        asset_id="prop",
+        action_name="idle",
+        fps=8,
+        loop=False,
+        frame_durations=[1],
+    )
+
+    with Image.open(tmp_path / "processed" / "candidates" / "prop.png") as candidate:
+        rgba = candidate.convert("RGBA")
+        assert rgba.getpixel((7, 8)) == (130, 20, 185, 255)
+        assert rgba.getpixel((7, 2)) == (205, 45, 60, 96)
+        assert not any(
+            pixel[:3] == (255, 0, 255) and pixel[3] > 0
+            for pixel in rgba.get_flattened_data()
+        )
+    assert result["frame_count"] == 1
+
+
 def test_process_action_sheet_rejects_missing_required_frame(tmp_path):
     source = tmp_path / "player_idle_source.png"
     make_action_sheet(source, missing_last=True)

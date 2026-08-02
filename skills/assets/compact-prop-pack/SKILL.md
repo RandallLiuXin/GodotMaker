@@ -108,10 +108,11 @@ Never fabricate any of those records.
    plentiful gaps between objects, a solid `#FF00FF` background, and no text,
    labels, UI, floor plane, borders, or grid. Archive the raw provider PNG.
 3. Process that sheet with `asset_sheet_process.py --snap-mode autoslice`,
-   `--background magenta`, `--magenta-soft-matte`, `--padding 2`, and
-   `--min-component-area 100`; never pass `--grid` to autoslice. The soft matte
-   removes #FF00FF-composited antialiasing and purple spill before candidates
-   are tightly finalized. Write the cleaned transparent sheet using
+   `--background magenta`, `--padding 2`, and `--min-component-area 100`; never
+   pass `--grid` to autoslice. The shared cleanup removes the strict #FF00FF
+   backdrop (including enclosed background holes) and only edge-connected
+   spill, preserving real red, purple, and blue-purple foreground details.
+   Write the cleaned transparent sheet using
    `--processed-out`, candidates, AABB report, and report JSON. Supply `--names`
    in source-sheet reading order. A count mismatch returns `needs_regeneration`
    with no candidate or processed-sheet output: inspect spacing, names, or
