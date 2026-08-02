@@ -2768,11 +2768,16 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Reworked <code>ui-kit</code> around a flat-first Godot Theme: one fixed eight-patch
+<li>
+<p>Workers now own TileMap layout, layers, cell and gameplay object placement, triggers, camera limits, and scene structure, binding a ready <code>TileSet</code> as a tile library and repairing what running the map actually shows.</p>
+</li>
+<li>
+<p>Reworked <code>ui-kit</code> around a flat-first Godot Theme: one fixed eight-patch
   surface atlas expands into reusable button, panel, popup, tooltip, and tab
   StyleBoxTextures, while native StyleBoxFlat/StyleBoxEmpty resources own form,
   progress, slider, scrollbar, focus, and separator treatment. A second sheet
-  provides 24 unique icons mapped to 31 stable AtlasTexture runtime names.</li>
+  provides 24 unique icons mapped to 31 stable AtlasTexture runtime names.</p>
+</li>
 <li>Normalized UI kit nine-slice patches and Theme-bound semantic icons to
   compact runtime sizes while retaining high-resolution reusable action icons.</li>
 <li>Added deterministic StyleBoxTexture modulation and L4 verification so shared
