@@ -40,9 +40,9 @@ Agent({
 - [ ] {file path}: {what it should contain}
 - [ ] {unit test file path}: {test scenarios — minimum 2 unit tests per changed system}
 - [ ] e2e-testable interface: public methods / signals / simulate_* helpers for affected systems/scenes/UI, with unit tests covering each one
-- [ ] If runtime assets include multi-frame `grid_sheet` entries: wire animation playback from metadata, not a static sheet or first frame
+- [ ] Load every `Asset Runtime Snapshot` `godot_artifact.path` and bind it as its declared `godot_artifact.type`; do not rebuild it from `source_layout`
+- [ ] If runtime assets include a `SpriteFrames` artifact: wire animation playback from that resource, not one static frame
 - [ ] If runtime assets include temporary animated FX: implement end-of-life behavior (animation finished, timer, tween completion, or equivalent state clear)
-- [ ] If runtime assets include `region_atlas` entries: bind each single-element node to its named region via AtlasTexture/region, not the whole atlas image
 - [ ] Run headless-build and confirm compilation
 - [ ] Run unit tests and include pass/fail output
 - [ ] If `Visual Self-Check` is present: capture screenshot(s), run visual-qa, include output
@@ -54,7 +54,7 @@ Agent({
 
 ### Scope Boundaries                                     [REQUIRED]
 - MUST: {explicit requirements}
-- MUST NOT: {explicit prohibitions — always include "MUST NOT modify files outside Deliverables"}
+- MUST NOT: {explicit prohibitions — always include "MUST NOT modify files outside Deliverables, except the runtime asset integration repair exception in the worker agent's File Ownership section"}
 
 ### Gotchas                                              [REQUIRED for ECS tasks]
 - MUST include: "Read .claude/skills/gecs/gotchas.md before writing any code"
@@ -63,33 +63,33 @@ Agent({
 ### Prohibited Actions                                   [REQUIRED]
 - DO NOT ask for approval, wait for user input, or pause for confirmation. Execute the task directly. If required information or external state is missing, report `PARTIAL` or `FAILED` with the blocker.
 - DO NOT fabricate resource paths — only use paths listed in ASSETS.md or verified to exist in the project. If you need an asset that doesn't exist, report it in your summary; do NOT invent a path.
-- DO NOT modify files outside your Deliverables list — read-only access to all other files.
+- DO NOT modify files outside your Deliverables list — read-only access to all other files. Exception: runtime asset integration repair (worker agent, File Ownership) overrides this line for the bound artifact and the project-local scene or script that binds it; report every such file in Notes.
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
 - DO NOT introduce E2E-only gameplay changes.
 - DO NOT write files outside the project tree (system temp dirs, home directory, etc.). If you genuinely need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p the directory if missing) and delete it before reporting DONE. Claude Code's own scratchpad system is gated behind a feature flag we cannot rely on, so this rule is what guarantees clean tear-down.
 
 ### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
-{Resolve each `entry_path` in .godotmaker/asset-generation/manifest.json and copy
-the matching `ready` stable entries plus their ASSETS.md rows.
-Include: asset_id, production_family, source_layout.type, godot_artifact.type,
-godot_artifact.path, target size, frame_count, and the support metadata path for
-`grid_sheet` or `region_atlas`. Support metadata is always
-assets/generated/<production_family>/<asset_id>/<asset_id>.json.
-Use cwd-relative artifact paths and metadata paths.
-Use `ready` stable entries only; skip any other processing_status.
-The native compilers and the L0-L4 runner are not implemented, so generated
-entries currently stop at `source_ready` and this section is empty for them. Say
-so instead of listing a `source_ready` asset or inventing an artifact path.
+{List the assets the task binds from the current tag's `.godotmaker/asset-generation/manifest.json`
+pointer index, then resolve each one and paste the tool's JSON verbatim, one
+block per asset:
+
+```bash
+python tools/asset_runtime_resolver.py --project-root . --assets-md ASSETS.md \
+  --tag <tag> --asset-id <asset_id>
+```
+
+Paste the resolver output as this section. Do not copy fields out of a stable
+entry, the root index, or an ASSETS.md row by hand. Do not add target size,
+frame_count, fps, loop, frame paths, region names, region rects, or support
+metadata paths.
+Name the runtime state or FX lifecycle a `SpriteFrames` artifact should play in
+`Game Mechanic Function`, not by pasting frame data here.
+The resolver exits non-zero with an `error` on an unregistered pointer, a
+non-`ready` entry, a missing source or artifact file, and a reference-only
+asset. On failure, state the resolver's `error` and do not dispatch the visual
+task. Never fill this section with an artifact path the resolver did not emit.
 Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
-prompt files, or scene references as runtime assets.
-For `grid_sheet` with frame_count > 1, include the action metadata path,
-frame_paths, fps/loop when present, and the expected runtime state or FX
-lifecycle that should play it.
-For `region_atlas`, include the atlas metadata path and let the worker resolve
-the region and its rect from that metadata by name. Name the target region only
-when the element-to-region match is not obvious from the binding.
-If a required final asset or metadata file is missing, report PARTIAL or
-FAILED with the missing path.}
+prompt files, or scene references as runtime assets.}
 
 ### Visual Asset Contract                                [REQUIRED for visual tasks]
 {Copy the relevant PLAN.md Runtime Asset Assignments, SCENES.md Asset
@@ -97,12 +97,13 @@ FAILED with the missing path.}
  Include: asset row/path, runtime size, visual role, readability requirement,
  animation/lifecycle requirement when present, anchor/derivative source, and
  final runtime asset path.
- Use existing final paths from ASSETS.md or from the stable entries the
- .godotmaker/asset-generation/manifest.json index points at.
+ Take every generated runtime path from the resolved `Asset Runtime Snapshot`
+ above; only user-provided asset paths come from ASSETS.md directly.
  Do not use source sheets, curation candidates, prompt files, scene references,
  or ASSETS.md rows whose type is `reference` as runtime assets.
  Do not replace an available final asset with placeholder art, procedural
- shapes, or freshly drawn stand-ins.}
+ shapes, or freshly drawn stand-ins.
+ Never ask a worker to generate, draw, or synthesize art.}
 
 ### Visual Self-Check                                    [REQUIRED for fixgap visual tasks]
 - Source: {evaluation.json.visual_checks scene and blocking finding}
@@ -140,23 +141,31 @@ PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
 14. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
 15. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
 16. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
-17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`).
+17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
 18. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 19. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
 `Visual Asset Contract` for visual tasks.
-20. **Multi-frame assets are runtime behavior.** If the snapshot lists a
-`grid_sheet` with frame_count > 1, the worker brief must require animated
-runtime playback from metadata. Do not collapse the task into "readable
+20. **The resolver owns the snapshot.** Use `tools/asset_runtime_resolver.py`
+output as the only `Asset Runtime Snapshot` content. Never hand-copy entry
+fields and never widen the four-field contract.
+21. **Bind the artifact, do not rebuild it.** The brief must ask the worker to
+load `godot_artifact.path` as `godot_artifact.type`. Never ask a worker to
+reconstruct a `SpriteFrames`, `AtlasTexture`, `StyleBoxTexture`, `Theme`, or
+`TileSet` from `source_layout`.
+22. **Animated artifacts are runtime behavior.** If the snapshot lists a
+`SpriteFrames` artifact, the worker brief must require animated runtime playback
+of the actions the mechanic needs. Do not collapse the task into "readable
 presentation" or static feedback.
-21. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
+23. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
 slash, aura, or feedback effects must state how the effect starts and how it
 disappears or clears.
-22. **Region atlases are single regions.** If the snapshot lists a
-`region_atlas`, require selecting the element's named region from the atlas
-metadata via AtlasTexture/region. Name the target region only when the match is
-not obvious from the binding. Never assign the whole atlas image as one texture
-where a single element is required.
-23. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
+24. **Workers keep integration autonomy.** Let a worker edit or replace a
+project-local Godot resource, scene, or script — including a generated
+artifact — to fix an integration problem it hits. Do not demand a repair
+record, a revalidation pass, or a worker-authored skill; accept a note in the
+report. Do not let a worker produce art. Never write a `Scope Boundaries` or
+`Prohibited Actions` line that cancels this exception.
+25. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
 
 ## Worker Utility Convention
 

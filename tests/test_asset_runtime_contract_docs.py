@@ -313,6 +313,11 @@ def test_asset_stage_runs_stable_entry_gate_before_assets_update():
 
 
 def test_build_and_fixgap_handoff_runtime_assets_to_workers():
+    """Normal handoff: the resolver output travels from manager to worker.
+
+    The manager's only job is to run `asset_runtime_resolver.py` per asset and
+    paste the result; the worker's only job is to load the artifact it names.
+    """
     build = _read("skills/core/gm-build/SKILL.md")
     fixgap = _read("skills/core/gm-fixgap/SKILL.md")
     worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
@@ -321,24 +326,302 @@ def test_build_and_fixgap_handoff_runtime_assets_to_workers():
     for doc in (build, fixgap):
         assert "`ASSETS.md` and `.godotmaker/asset-generation/manifest.json`" in doc
         assert "Asset Runtime Snapshot" in doc
+        assert "tools/asset_runtime_resolver.py" in doc
+        assert "pasted verbatim" in _flat(doc)
 
     assert "### Asset Runtime Snapshot" in worker_dispatch
-    assert "Use `ready` stable entries only" in worker_dispatch
-    assert "`grid_sheet` or `region_atlas`" in worker_dispatch
+    assert "tools/asset_runtime_resolver.py --project-root . --assets-md ASSETS.md" in worker_dispatch
+    assert "Paste the resolver output as this section." in worker_dispatch
     assert "Do not use `.godotmaker/asset-generation/sources/`" in worker_dispatch
     # Generated-asset runtime handoff reads the generated manifest, never the
     # analyst's user-provided-asset classification manifest.
     assert ".godotmaker/asset-generation/manifest.json" in worker_dispatch
     assert ".godotmaker/asset-generation/manifest.json" in worker
     assert "## Runtime Asset Rules" in worker
-    assert "For `grid_sheet`, read the listed action metadata JSON" in worker
-    assert "For `region_atlas`, read the listed atlas metadata JSON" in worker
-    assert "wire animation playback from metadata" in worker_dispatch
-    assert "frame_count > 1" in worker_dispatch
+    assert "tools/asset_runtime_resolver.py" in worker
+
+    # The worker binds the compiled resource; animation and FX lifecycle stay
+    # runtime behavior, they just come out of `SpriteFrames` now.
+    assert "bind it as `godot_artifact.type`" in _flat(worker)
+    assert "wire animation playback from that resource" in worker_dispatch
+    assert "`SpriteFrames` artifact" in worker_dispatch
     assert "temporary animated FX" in worker_dispatch
-    assert "do not use the sheet as a static" in worker
-    assert "do not use only the first frame" in worker
+    assert "`AnimatedSprite2D.sprite_frames`" in worker
+    assert "do not reduce a multi-frame actor or FX to one static frame" in _flat(worker)
     assert "effect lifecycle" in worker
+
+
+def test_manager_never_copies_stable_entry_fields_into_a_brief():
+    """A hand-copied field is how a rebuild instruction gets back into a brief.
+
+    The v1 snapshot is exactly asset_id / production_family / source_layout /
+    godot_artifact. The moment a manager re-adds frame counts, region rects, or
+    support-metadata paths, the worker has everything it needs to reconstruct
+    the resource — and will, instead of loading the compiled one.
+    """
+    worker_dispatch = _flat(_read("skills/core/_shared/worker-dispatch.md"))
+    runtime = _flat(_read("skills/core/gm-asset/references/asset-runtime-pipeline.md"))
+
+    prohibition = (
+        "Do not add target size, frame_count, fps, loop, frame paths, region "
+        "names, region rects, or support metadata paths."
+    )
+    assert (
+        "Do not copy fields out of a stable entry, the root index, or an ASSETS.md row by hand."
+        in worker_dispatch
+    )
+    assert prohibition in worker_dispatch
+    assert "**The resolver owns the snapshot.**" in worker_dispatch
+    assert "never widen the four-field contract" in worker_dispatch
+    # The pipeline reference states the same contract as a neutral fact about
+    # the snapshot, without assigning the work to a consuming skill.
+    assert (
+        "carrying no hand-copied entry field and no added target size, support "
+        "metadata path, or frame data" in runtime
+    )
+
+    # The retired enrichment instructions must not come back. Scan with the
+    # prohibition itself removed — it necessarily names the fields it forbids.
+    remainder = worker_dispatch.replace(prohibition, "")
+    for token in (
+        "Support metadata is always",
+        "atlas metadata path",
+        "action metadata path",
+        "frame_paths",
+        "frame_count",
+    ):
+        assert token not in remainder, (
+            f"worker-dispatch.md re-introduced hand-copied snapshot data: {token}"
+        )
+
+
+def test_worker_binds_the_compiled_artifact_instead_of_rebuilding_it():
+    """`source_layout` is provenance. Rebuilding from it discards L0-L4.
+
+    Every compiled type is named explicitly: a rule that only forbids rebuilding
+    `SpriteFrames` still lets a worker hand-assemble a `Theme` or re-slice an
+    atlas.
+    """
+    worker = _read("agents/worker.md")
+    worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
+
+    assert "**Bind the artifact, do not rebuild it.**" in worker
+    assert "**Bind the artifact, do not rebuild it.**" in worker_dispatch
+    for doc in (worker, worker_dispatch):
+        flat = _flat(doc)
+        for artifact_type in (
+            "SpriteFrames",
+            "AtlasTexture",
+            "StyleBoxTexture",
+            "Theme",
+            "TileSet",
+        ):
+            assert f"`{artifact_type}`" in flat, (
+                f"{artifact_type} has no stated binding contract"
+            )
+        assert "reconstruct a" in flat and "source_layout" in flat
+
+    assert "do not pass it to your code" in _flat(worker)
+    assert "re-slice, re-grid, or re-region" in worker
+    # The compiled AtlasTexture is the region, so the sheet is never the texture.
+    assert "Never substitute the physical atlas image behind it." in _flat(worker)
+    assert "`TileMapLayer.tile_set`" in worker
+
+
+def test_a_missing_artifact_fails_closed_instead_of_reaching_a_worker():
+    """No artifact means no visual dispatch — not an invented path.
+
+    The resolver already refuses; these docs are what stops a manager from
+    routing around the refusal and a worker from silently substituting art.
+    """
+    worker_dispatch = _flat(_read("skills/core/_shared/worker-dispatch.md"))
+    worker = _read("agents/worker.md")
+    build = _flat(_read("skills/core/gm-build/SKILL.md"))
+    fixgap = _flat(_read("skills/core/gm-fixgap/SKILL.md"))
+
+    assert "The resolver exits non-zero with an `error`" in worker_dispatch
+    assert "a missing source or artifact file" in worker_dispatch
+    assert "do not dispatch the visual task" in worker_dispatch
+    assert (
+        "Never fill this section with an artifact path the resolver did not emit."
+        in worker_dispatch
+    )
+    for doc in (build, fixgap):
+        assert "report its `error` instead of dispatching the task against an invented path" in doc
+
+    assert "report `PARTIAL` or `FAILED` with the missing path. Do not invent one." in _flat(worker)
+
+
+def test_reference_only_assets_never_become_worker_runtime_assets():
+    reference_docs = {
+        "worker-dispatch.md": _flat(_read("skills/core/_shared/worker-dispatch.md")),
+        "asset-runtime-pipeline.md": _flat(
+            _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+        ),
+    }
+
+    assert "and a reference-only asset." in reference_docs["worker-dispatch.md"]
+    assert (
+        "Reference-only entries are valid manifest records but never produce a worker runtime snapshot."
+        in reference_docs["asset-runtime-pipeline.md"]
+    )
+    # ASSETS.md `reference` rows stay out of the visual contract too.
+    assert (
+        "or ASSETS.md rows whose type is `reference` as runtime assets"
+        in reference_docs["worker-dispatch.md"]
+    )
+
+
+def test_no_deliverables_restriction_cancels_the_integration_repair_exception():
+    """The autonomy grant is worthless if a nearby MUST NOT overrides it.
+
+    File ownership and runtime asset repair live in the same prompt, so stating
+    the exception once is not enough — an agent that reads only the generic
+    "MUST NOT modify files outside Deliverables" stops and reports instead of
+    repairing. Every place that states the restriction must carry the carve-out,
+    which is a structural property no single text-presence assertion catches.
+    """
+    restriction = re.compile(r"modify (?:files|a file) (?:outside|not in) [^\n]*", re.IGNORECASE)
+    sources = {
+        "agents/worker.md": _read("agents/worker.md"),
+        "skills/core/_shared/worker-dispatch.md": _read(
+            "skills/core/_shared/worker-dispatch.md"
+        ),
+    }
+
+    uncarved = []
+    for name, text in sources.items():
+        statements = [
+            (index, line)
+            for index, line in enumerate(text.splitlines(), start=1)
+            if restriction.search(line)
+        ]
+        assert statements, f"{name} lost its file-ownership restriction entirely"
+        for index, line in statements:
+            if "exception" not in line.lower():
+                uncarved.append(f"{name}:{index}: {line.strip()}")
+
+    assert not uncarved, (
+        "these Deliverables restrictions cancel the runtime asset integration "
+        "repair exception: " + "; ".join(uncarved)
+    )
+
+
+def test_integration_repair_exception_is_explicit_narrow_and_wins():
+    """The exception must beat the general rule, and stop right after it."""
+    worker = _read("agents/worker.md")
+    flat_worker = _flat(worker)
+    flat_dispatch = _flat(_read("skills/core/_shared/worker-dispatch.md"))
+
+    assert "### Exception: runtime asset integration repair" in worker
+    # Precedence is stated, not left to the reader to infer from ordering.
+    assert "This exception overrides the rule above, and nothing else does." in flat_worker
+    assert (
+        "It also overrides your brief's `Scope Boundaries` and `Prohibited Actions` lines."
+        in flat_worker
+    )
+    assert (
+        "overrides this line for the bound artifact and the project-local scene "
+        "or script that binds it" in flat_dispatch
+    )
+    # A brief must not be able to re-close the door the agent definition opened.
+    assert (
+        "Never write a `Scope Boundaries` or `Prohibited Actions` line that cancels this"
+        in flat_dispatch
+    )
+
+    # Narrow: exactly the artifact plus the scene/script that binds it.
+    assert "the `.tres` / `.res` artifact you were told to bind" in flat_worker
+    assert "the project-local scene or script that binds it" in flat_worker
+
+    # And bounded — an unbounded exception is just a repeal of file ownership.
+    for excluded in (
+        "images, or any art you would have to produce yourself",
+        "`.godotmaker/asset-generation/` entries, the root index, or `sources/`",
+        "unrelated files, refactors, or improvements",
+    ):
+        assert excluded in flat_worker, f"the exception lost a boundary: {excluded}"
+    for protected in ("PLAN.md", "STRUCTURE.md", "SCENES.md", "GAP.md", "ASSETS.md", "e2e/"):
+        assert protected in flat_worker.split("It never covers:", 1)[1].split("List every file", 1)[0], (
+            f"{protected} dropped out of the exception's exclusion list"
+        )
+
+    # The only obligation stays a report line.
+    assert "List every file you touched under this exception in your report's Notes." in flat_worker
+    assert (
+        "Do not write a repair record, run a revalidation pass, or author a new skill."
+        in flat_worker
+    )
+
+
+def test_worker_repairs_integration_without_absorbing_art_production():
+    """Two boundaries in one place, because they fail in opposite directions.
+
+    Too tight and a worker stalls on a project-integration problem it could fix;
+    too loose and it starts drawing replacement art, which silently moves image
+    production out of `/gm-asset` and out of L0-L4.
+    """
+    worker = _read("agents/worker.md")
+    worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
+    flat_worker = _flat(worker)
+    flat_dispatch = _flat(worker_dispatch)
+
+    # Autonomy: the worker owns project-local Godot resources, scenes, scripts.
+    assert "**Integration repair is yours.**" in worker
+    assert "edit or replace the project-local Godot resource, scene, or script" in flat_worker
+    assert "including a generated `.tres`" in flat_worker
+    assert "**Workers keep integration autonomy.**" in worker_dispatch
+    assert (
+        "Let a worker edit or replace a project-local Godot resource, scene, or script"
+        in flat_dispatch
+    )
+
+    # No repair bureaucracy: no record, no revalidation pass, no worker-authored skill.
+    assert (
+        "Do not write a repair record, run a revalidation pass, or author a new skill."
+        in flat_worker
+    )
+    assert "Do not demand a repair record, a revalidation pass, or a worker-authored skill" in flat_dispatch
+
+    # Art production is refused outright, with no owner named on either side.
+    assert "**Art production is never yours.**" in worker
+    assert "Do not draw, generate, synthesize, or procedurally substitute images" in flat_worker
+    assert "do not run an asset-generation skill or tool to fill a gap" in flat_worker
+    assert "Do not let a worker produce art." in flat_dispatch
+    assert "Never ask a worker to generate, draw, or synthesize art." in flat_dispatch
+
+
+def test_runtime_handoff_docs_never_assign_work_to_another_skill():
+    """Each document states its own role's boundary and stops.
+
+    Attribution cuts both ways: a worker rule ending "— that's `/gm-asset`'s
+    job", and a `gm-asset` reference declaring what `/gm-build` does, both pin a
+    responsibility into a document that does not own it, so every future move of
+    that responsibility has to chase the copies. The owning SKILL is the one
+    place it belongs.
+    """
+    # Each doc is checked against the skills it must not speak for.
+    foreign_owners = {
+        "agents/worker.md": ("gm-asset",),
+        "skills/core/_shared/worker-dispatch.md": ("gm-asset",),
+        "skills/core/gm-asset/references/asset-runtime-pipeline.md": (
+            "gm-build",
+            "gm-fixgap",
+        ),
+    }
+
+    offenders = []
+    for name, skills in foreign_owners.items():
+        for index, line in enumerate(_read(name).splitlines(), start=1):
+            for skill in skills:
+                if skill in line:
+                    offenders.append(f"{name}:{index}: {line.strip()}")
+                    break
+
+    assert not offenders, (
+        "these lines assign work to a skill that does not own this document: "
+        + "; ".join(offenders)
+    )
 
 
 def test_reviewer_checks_runtime_asset_usage_and_evaluate_uses_scene_contract():
@@ -599,25 +882,20 @@ def test_runtime_resolver_is_documented_as_a_registered_assets_reader():
 
 
 def test_region_atlas_single_region_contract():
+    """Whole-atlas misuse stays a finding after the artifact handoff change.
+
+    The worker no longer looks a region up by name — its `AtlasTexture` already
+    is the region (see the artifact-binding test). What must survive is the
+    review side: substituting the physical atlas for a single element is still
+    caught.
+    """
     worker = _read("agents/worker.md")
-    worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
     reviewer_dispatch = _read("skills/core/_shared/reviewer-dispatch.md")
     reviewer = _read("agents/reviewer.md")
     evaluate = _read("skills/core/gm-evaluate/SKILL.md")
 
-    # Worker resolves the region by name from metadata, not the whole atlas image.
-    assert "matching region by name from it" in worker
-    assert "Use the region named in the brief when given" in worker
-    assert "must reference its named region via `AtlasTexture`" in worker
-    assert "Do not use a whole `region_atlas` or `grid_sheet` image as one visible sprite" in worker
-
-    # Dispatch passes only the metadata path; region names come from metadata,
-    # and the target region is named only when the match is not obvious.
-    assert "bind each single-element node to its named region via AtlasTexture/region" in worker_dispatch
-    assert "Region atlases are single regions." in worker_dispatch
-    assert "the region and its rect from that metadata by name" in worker_dispatch
-    assert "the element-to-region match is not obvious" in worker_dispatch
-    assert "region names/count" not in worker_dispatch
+    # The worker binds the compiled region and never falls back to the sheet.
+    assert "Never substitute the physical atlas image behind it." in _flat(worker)
     assert "the element-to-region match is not obvious" in reviewer_dispatch
 
     # Reviewer flags whole-atlas misuse as an issue.

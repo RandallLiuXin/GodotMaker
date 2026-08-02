@@ -44,7 +44,7 @@ Apply the resume gates in this order:
 Then read context:
 - `PLAN.md` → current tag's `**Tag:**` header + Tag Mechanics + Inherited Mechanics + Playable Unit + pending/in_progress/completed tasks (anything not `verified`)
 - `STRUCTURE.md` → architecture and build order (current tag scope: previous tags' systems already exist on disk and may be touched only when PLAN.md explicitly lists a refactor task for them)
-- `ASSETS.md` and `.godotmaker/asset-generation/manifest.json` → the pointer index to generated assets; resolve each `entry_path` to a stable entry for `godot_artifact`, `source_layout`, and support metadata paths for visual tasks
+- `ASSETS.md` and `.godotmaker/asset-generation/manifest.json` → the pointer index to generated assets; for a visual task, resolve each asset with `tools/asset_runtime_resolver.py` instead of reading stable-entry fields yourself
 - `MEMORY.md` index + sub-files (cross-tag accumulating notebook) → avoid repeating known mistakes
 - `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring
 
@@ -118,7 +118,10 @@ Do NOT delete project code as a "fix" for a tool crash.
 - Use `subagent_type: "worker"`. Each worker implements ONE game mechanic function + its tests.
 - Include the relevant Playable Unit fields in each worker brief.
 - For visual tasks, fill the `Asset Runtime Snapshot` and
-  `Visual Asset Contract` sections from `references/worker-dispatch.md`.
+  `Visual Asset Contract` sections from `references/worker-dispatch.md`. The
+  snapshot is `tools/asset_runtime_resolver.py` output pasted verbatim — never
+  hand-copied entry fields. If the resolver fails for an asset, report its
+  `error` instead of dispatching the task against an invented path.
 - Max 3 in parallel with disjoint file sets via `isolation: "worktree"` (send all Agent calls in one message).
 - After each worker reports DONE, mark its task in PLAN.md as `completed`.
 - **`main_scene` retarget is your job.** Scaffold leaves `run/main_scene="res://scenes/main.tscn"` (placeholder). After the worker that creates this tag's entry scene (per SCENES.md) completes and the `.tscn` is on disk, `Edit` `project.godot`'s `[application] run/main_scene` to `res://<path>`.

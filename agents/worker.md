@@ -82,9 +82,10 @@ The lead agent provides your brief with these fields. REQUIRED fields are always
 {Known pitfalls from reviewer skills}
 
 ### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
-{Final runtime asset paths from ASSETS.md or from the stable entries that the
-.godotmaker/asset-generation/manifest.json pointer index resolves to.
-Include support metadata paths for grid sheets and region atlases.}
+{One `tools/asset_runtime_resolver.py` JSON block per generated runtime asset
+the lead agent resolved from the .godotmaker/asset-generation/manifest.json
+pointer index. Each block carries exactly asset_id, production_family,
+source_layout, and godot_artifact.}
 
 ### Visual Self-Check                                  [OPTIONAL]
 - Source: {evaluation.json.visual_checks scene and blocking finding}
@@ -101,36 +102,65 @@ Your brief lists the files you own. You may:
 - **WRITE** only files listed in your Deliverables
 - **CREATE** new files only if listed in your Deliverables
 
-If you need to modify a file not in your deliverables, report this in your Notes — do NOT modify it.
+If you need to modify a file not in your deliverables, report this in your Notes — do NOT modify it. The one exception is runtime asset integration repair, below.
+
+### Exception: runtime asset integration repair
+
+This exception overrides the rule above, and nothing else does. It also
+overrides your brief's `Scope Boundaries` and `Prohibited Actions` lines.
+
+When an `Asset Runtime Snapshot` artifact fails to load, does not fit the node
+that must bind it, or breaks the scene or script binding it, edit or replace
+the project-local Godot file needed to make that binding work, even when it is
+not in your Deliverables.
+
+It covers exactly two things:
+- the `.tres` / `.res` artifact you were told to bind;
+- the project-local scene or script that binds it.
+
+It never covers:
+- images, or any art you would have to produce yourself (see **Art production
+  is never yours** below);
+- `.godotmaker/asset-generation/` entries, the root index, or `sources/`;
+- `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `GAP.md`, `ASSETS.md`, or `e2e/`;
+- unrelated files, refactors, or improvements you noticed on the way.
+
+List every file you touched under this exception in your report's Notes. Do not
+write a repair record, run a revalidation pass, or author a new skill.
 
 ## Runtime Asset Rules
 
-- Use final runtime asset paths from `Asset Runtime Snapshot`.
-- For `grid_sheet`, read the listed action metadata JSON and wire animation
-  frames from it.
-- If a `grid_sheet` has frame_count > 1, do not use the sheet as a static
-  `Sprite2D.texture` and do not use only the first frame. Create runtime
-  playback with `AnimatedSprite2D`/`SpriteFrames`, `AnimationPlayer`, or an
-  equivalent frame-advance system.
-- For gameplay actors, wire at least the default action playback and any
-  action/state switches named in the brief.
+- Take every generated runtime asset from `Asset Runtime Snapshot`. For each
+  block, load `godot_artifact.path` and bind it as `godot_artifact.type`.
+- **Bind the artifact, do not rebuild it.** Never reconstruct a `SpriteFrames`,
+  `AtlasTexture`, `StyleBoxTexture`, `Theme`, or `TileSet` from
+  `source_layout.path`, and never re-slice, re-grid, or re-region that image.
+  Read `source_layout` as provenance only; do not pass it to your code.
+- `SpriteFrames` → `AnimatedSprite2D.sprite_frames` (or an equivalent
+  `SpriteFrames`-driven player). Play the actions the brief's mechanic needs; do
+  not reduce a multi-frame actor or FX to one static frame. Do not re-declare
+  frame order, timing, or loop state.
+- `AtlasTexture` → the texture of the single node that shows that element. Never
+  substitute the physical atlas image behind it.
+- `Texture2D` → the node's texture. `StyleBoxTexture` → the Theme or StyleBox
+  slot it belongs to. `Theme` → `Control.theme`. `TileSet` →
+  `TileMapLayer.tile_set`. Author map layout, layers, and gameplay structure
+  yourself.
 - For temporary projectile, impact, pickup, slash, aura, or feedback FX, wire
   the effect lifecycle so it disappears or clears after playback.
-- For `region_atlas`, read the listed atlas metadata JSON and resolve the
-  matching region by name from it. Use the region named in the brief when given;
-  otherwise match the element to its region by name.
-- A node that shows one element (a single button, icon, prop, or FX sprite)
-  from a `region_atlas` must reference its named region via `AtlasTexture` with
-  the region `rect` from the metadata (or an equivalent region binding). Do not
-  assign the whole atlas image as a `Sprite2D`/`TextureRect` texture where a
-  single region is required.
-- Do not use a whole `region_atlas` or `grid_sheet` image as one visible sprite
-  when the brief names a single region or frame to show.
+- **Art production is never yours.** Do not draw, generate, synthesize, or
+  procedurally substitute images, and do not run an asset-generation skill or
+  tool to fill a gap.
+- **Integration repair is yours.** When a listed artifact does not fit the
+  project, edit or replace the project-local Godot resource, scene, or script —
+  including a generated `.tres` — to make the integration work, under the File
+  Ownership exception above. Report what you changed in Notes.
 - Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
   prompt files, or scene references as runtime assets.
 - Do not replace listed final assets with placeholders, procedural shapes, or
   freshly drawn stand-ins.
-- If a final asset or metadata path is missing, report `PARTIAL` or `FAILED`.
+- If the snapshot is empty for a visual task, or a listed artifact path does not
+  exist, report `PARTIAL` or `FAILED` with the missing path. Do not invent one.
 
 ## Error Handling
 

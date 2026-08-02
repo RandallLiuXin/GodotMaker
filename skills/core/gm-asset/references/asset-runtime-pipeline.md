@@ -190,11 +190,10 @@ straight from the root index.
 
 ## Runtime Snapshot Resolution
 
-The resolver is the deterministic reader for one registered runtime asset. It
-does not by itself change the published worker-dispatch brief format; that
-integration remains a follow-up for WOR-233 because this v1 entry exposes only
-the four-field runtime contract, while the existing brief also requires target
-size, support metadata, frame data, and cwd-relative paths.
+The resolver is the deterministic reader for one registered runtime asset. Its
+output is the complete worker runtime snapshot: one resolver block per asset,
+carrying no hand-copied entry field and no added target size, support metadata
+path, or frame data.
 
 Resolve the current-tag ASSETS.md row:
 
