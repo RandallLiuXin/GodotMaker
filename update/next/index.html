@@ -2785,8 +2785,10 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
   compiles icon resources before the Theme that binds them.</p>
 </li>
 <li>
-<p><code>/gm-asset</code> now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body <code>runtime_artifact</code> manifest.</p>
+<p><code>/gm-build</code> and <code>/gm-fixgap</code> now hand workers a resolver-produced minimal <code>godot_artifact</code> snapshot instead of hand-copied stable-entry fields, and workers bind the compiled Godot resource rather than rebuilding it from the source layout.</p>
 </li>
+<li>A worker may now edit or replace the bound runtime artifact and the project-local scene or script that binds it to fix a concrete integration failure, as a narrow file-ownership exception that outranks the generic "no files outside Deliverables" restriction.</li>
+<li><code>/gm-asset</code> now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body <code>runtime_artifact</code> manifest.</li>
 <li>Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.</li>
 <li>An ASSETS.md runtime row reaches <code>generated</code> only from a <code>ready</code> non-reference stable entry, while a finalized registered screen reference completes its reference row at <code>source_ready</code> without becoming a worker runtime artifact.</li>
 <li><code>asset_generation_index.py --check-files</code> verifies that every registered source and artifact still exists, catching an asset deleted after registration.</li>
