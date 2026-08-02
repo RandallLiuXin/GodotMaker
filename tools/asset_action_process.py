@@ -524,6 +524,8 @@ def _write_recovered_action_source(
     grid: str,
     frame_names: list[str],
     background: str,
+    magenta_threshold: int = 60,
+    magenta_edge_threshold: int = 220,
     align: str,
     timestamp: str | None,
 ) -> dict[str, object]:
@@ -546,8 +548,8 @@ def _write_recovered_action_source(
         if background == "magenta":
             scan_image, cleanup = _remove_magenta_background(
                 image,
-                threshold=60,
-                edge_threshold=220,
+                threshold=magenta_threshold,
+                edge_threshold=magenta_edge_threshold,
             )
         elif background == "transparent":
             scan_image = image.copy()
@@ -666,6 +668,8 @@ def process_action_sheet(
     asset_id: str | None = None,
     tag: str | None = None,
     background: str = "magenta",
+    magenta_threshold: int = 60,
+    magenta_edge_threshold: int = 220,
     component_mode: str = "largest",
     component_padding: int = 8,
     min_component_area: int = 100,
@@ -729,6 +733,8 @@ def process_action_sheet(
             asset_id=asset_id,
             tag=tag,
             background=background,
+            magenta_threshold=magenta_threshold,
+            magenta_edge_threshold=magenta_edge_threshold,
             snap_mode="grid",
             component_mode=component_mode,
             component_padding=component_padding,
@@ -755,6 +761,8 @@ def process_action_sheet(
                 grid=grid,
                 frame_names=frame_names,
                 background=background,
+                magenta_threshold=magenta_threshold,
+                magenta_edge_threshold=magenta_edge_threshold,
                 align=align,
                 timestamp=recovery_timestamp,
             )
@@ -782,6 +790,8 @@ def process_action_sheet(
                 asset_id=asset_id,
                 tag=tag,
                 background=recovered_background,
+                magenta_threshold=magenta_threshold,
+                magenta_edge_threshold=magenta_edge_threshold,
                 snap_mode="grid",
                 component_mode=component_mode,
                 component_padding=component_padding,
@@ -922,6 +932,8 @@ def _main() -> int:
     parser.add_argument("--asset-id")
     parser.add_argument("--tag")
     parser.add_argument("--background", choices=["transparent", "magenta"], default="magenta")
+    parser.add_argument("--magenta-threshold", type=int, default=60)
+    parser.add_argument("--magenta-edge-threshold", type=int, default=220)
     parser.add_argument(
         "--cell-size",
         type=int,
@@ -958,6 +970,8 @@ def _main() -> int:
             asset_id=args.asset_id,
             tag=args.tag,
             background=args.background,
+            magenta_threshold=args.magenta_threshold,
+            magenta_edge_threshold=args.magenta_edge_threshold,
             cell_size=args.cell_size,
             component_mode=component_mode,
             align=align,

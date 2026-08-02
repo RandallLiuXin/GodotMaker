@@ -351,7 +351,7 @@ def test_process_sheet_removes_smooth_near_key_background_without_touching_foreg
     # enter a similarly blurred foreground.
     for left, colour in zip(
         range(0, 30, 5),
-        [(255, 0, 255), (245, 4, 245), (235, 8, 235), (225, 12, 225), (220, 15, 220), (218, 18, 218)],
+        [(255, 0, 255), (245, 4, 245), (235, 8, 235), (225, 12, 225), (205, 20, 205), (195, 24, 195)],
     ):
         draw.rectangle((left, 0, left + 4, 19), fill=colour)
     draw.rectangle((11, 6, 18, 13), fill=(100, 200, 100, 255))
@@ -364,6 +364,7 @@ def test_process_sheet_removes_smooth_near_key_background_without_touching_foreg
         snap_mode="grid",
         names="prop",
         background="magenta",
+        magenta_threshold=120,
         preserve_cell_bounds=True,
         processed_out=tmp_path / "processed.png",
     )
@@ -372,10 +373,64 @@ def test_process_sheet_removes_smooth_near_key_background_without_touching_foreg
         rgba = processed.convert("RGBA")
         assert rgba.getpixel((14, 9)) == (100, 200, 100, 255)
         assert all(
-            pixel[3] < 255 or _color_distance(pixel[:3]) > 60
+            pixel[3] < 255 or _color_distance(pixel[:3]) > 120
             for pixel in rgba.get_flattened_data()
         )
     assert result["cleanup"]["removed_pixels"] + result["cleanup"]["edge_removed_pixels"] > 0
+
+
+def test_process_sheet_mattes_deterministically_noisy_magenta_edges(tmp_path):
+    """Keep the noisy provider-edge tolerance and deeper reference search pinned."""
+    source = tmp_path / "noisy-magenta-edge.png"
+    foreground = (100, 200, 100)
+    image = Image.new("RGBA", (80, 64), (245, 2, 243, 255))
+    draw = ImageDraw.Draw(image)
+
+    # This fixed RGB offset from a 30% key composite has residual 11 and
+    # channel-ratio spread ~0.11, unlike an ideal zero-residual composite.
+    draw.rectangle((9, 25, 17, 33), fill=foreground + (255,))
+    draw.rectangle((8, 24, 18, 34), outline=(222, 64, 205, 255))
+
+    # A deterministic nine-step ramp pins the radius-three platform search.
+    draw.rectangle((49, 25, 60, 36), fill=foreground + (255,))
+    for inset, coverage in enumerate((0.30, 0.37, 0.44, 0.51, 0.58, 0.65, 0.72, 0.79, 0.86)):
+        composite = tuple(
+            round(coverage * channel + (1 - coverage) * key)
+            for channel, key in zip(foreground, MAGENTA_RGB)
+        )
+        draw.rectangle((40 + inset, 16 + inset, 69 - inset, 45 - inset), outline=composite + (255,))
+    image.save(source)
+    source_core_count = sum(pixel == foreground + (255,) for pixel in image.get_flattened_data())
+
+    process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        snap_mode="grid",
+        names="prop",
+        background="magenta",
+        preserve_cell_bounds=True,
+        processed_out=tmp_path / "processed.png",
+    )
+
+    with Image.open(tmp_path / "processed.png") as processed:
+        rgba = processed.convert("RGBA")
+        data = rgba.get_flattened_data()
+        assert sum(pixel == foreground + (255,) for pixel in data) == source_core_count
+        assert not any(pixel[3] == 255 and _color_distance(pixel[:3]) <= 60 for pixel in data)
+        assert not any(
+            rgba.getpixel((x, y))[3] == 255
+            and _color_distance(rgba.getpixel((x, y))[:3]) <= 120
+            and any(
+                rgba.getpixel((x + dx, y + dy))[3] < 255
+                for dx in (-1, 0, 1)
+                for dy in (-1, 0, 1)
+                if (dx or dy) and 0 <= x + dx < rgba.width and 0 <= y + dy < rgba.height
+            )
+            for y in range(rgba.height)
+            for x in range(rgba.width)
+        )
+        assert rgba.getpixel((40, 30))[3] <= 100
 
 
 def test_process_sheet_preserves_a_soft_edged_near_key_violet_foreground(tmp_path):
