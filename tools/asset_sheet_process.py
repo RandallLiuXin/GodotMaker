@@ -20,7 +20,6 @@ SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 MAGENTA_RGB = (255, 0, 255)
 COMPONENT_MODES = {"all", "largest"}
 SNAP_MODES = {"grid", "autoslice"}
-MAGENTA_BACKGROUND_STEP = 48
 MAGENTA_MATTE_MAX_PASSES = 8
 MAGENTA_COMPOSITE_RESIDUAL = 6
 
@@ -101,22 +100,22 @@ def _remove_magenta_background(
     width, height = converted.size
     original = list(converted.get_flattened_data())
 
-    # Strict matching is allowed globally so callers can deliberately remove
-    # enclosed key-colour holes.  The broader edge threshold is different: it
-    # can travel only through a locally smooth colour path that began at a
-    # strict-key or transparent pixel.  That removes generated backdrop
-    # gradients without treating a hard-edged purple foreground shape as a
-    # background merely because it is near the key in RGB space.
+    # A colour-distance test can safely clear only the strict key radius.  Do
+    # not extend an exterior fill through a locally smooth path: a blurred
+    # violet foreground creates the same path and would be erased wholesale.
+    # The broader edge threshold is reserved exclusively for the compositing
+    # validation below, where an actual foreground colour is available.
     background = bytearray(width * height)
-    queue: deque[tuple[int, int, tuple[int, int, int] | None]] = deque()
+    queue: deque[tuple[int, int]] = deque()
+    for x in range(width):
+        queue.append((x, 0))
+        queue.append((x, height - 1))
     for y in range(height):
-        for x in range(width):
-            red, green, blue, alpha = original[y * width + x]
-            if alpha == 0 or _color_distance((red, green, blue)) <= threshold:
-                queue.append((x, y, None))
+        queue.append((0, y))
+        queue.append((width - 1, y))
 
     while queue:
-        x, y, parent = queue.popleft()
+        x, y = queue.popleft()
         if x < 0 or x >= width or y < 0 or y >= height:
             continue
         index = y * width + x
@@ -124,20 +123,13 @@ def _remove_magenta_background(
             continue
         red, green, blue, alpha = original[index]
         rgb = (red, green, blue)
-        strict_key = alpha > 0 and _color_distance(rgb) <= threshold
-        is_background = alpha == 0 or strict_key
-        if not is_background and parent is not None:
-            is_background = (
-                _color_distance(rgb) <= edge_threshold
-                and _color_distance(rgb, parent) <= MAGENTA_BACKGROUND_STEP
-            )
-        if not is_background:
+        if alpha > 0 and _color_distance(rgb) > threshold:
             continue
         background[index] = 1
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
                 if dx or dy:
-                    queue.append((x + dx, y + dy, rgb))
+                    queue.append((x + dx, y + dy))
 
     for y in range(height):
         for x in range(width):
@@ -152,6 +144,19 @@ def _remove_magenta_background(
             else:
                 edge_removed += 1
             pixels[x, y] = (0, 0, 0, 0)
+
+    # Enclosed strict-key holes are intentionally removed, but never become
+    # flood-fill seeds.  This keeps a magenta window transparent without
+    # letting its neighbourhood consume a soft-edged foreground.
+    for y in range(height):
+        for x in range(width):
+            index = y * width + x
+            if background[index]:
+                continue
+            red, green, blue, alpha = original[index]
+            if alpha > 0 and _color_distance((red, green, blue)) <= threshold:
+                pixels[x, y] = (0, 0, 0, 0)
+                removed += 1
 
     # Decontaminate soft edges from the outside in.  Every pass observes the
     # previous pass's reduced alpha, allowing a two- or three-pixel composite

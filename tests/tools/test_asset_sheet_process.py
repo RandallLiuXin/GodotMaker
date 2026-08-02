@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
@@ -346,12 +346,12 @@ def test_process_sheet_removes_smooth_near_key_background_without_touching_foreg
     source = tmp_path / "soft-magenta-backdrop.png"
     image = Image.new("RGBA", (30, 20), MAGENTA_RGB + (255,))
     draw = ImageDraw.Draw(image)
-    # This is a locally smooth generated backdrop, not an alpha composite. Its
-    # final band is outside the strict 60-pixel radius but must remain part of
-    # the connected background rather than becoming an opaque magenta island.
+    # This generated backdrop contains non-exact key colours inside the strict
+    # radius. It must clear without using a smooth-path heuristic that could
+    # enter a similarly blurred foreground.
     for left, colour in zip(
         range(0, 30, 5),
-        [(255, 0, 255), (245, 4, 245), (235, 8, 235), (225, 12, 225), (205, 20, 205), (195, 24, 195)],
+        [(255, 0, 255), (245, 4, 245), (235, 8, 235), (225, 12, 225), (220, 15, 220), (218, 18, 218)],
     ):
         draw.rectangle((left, 0, left + 4, 19), fill=colour)
     draw.rectangle((11, 6, 18, 13), fill=(100, 200, 100, 255))
@@ -372,10 +372,36 @@ def test_process_sheet_removes_smooth_near_key_background_without_touching_foreg
         rgba = processed.convert("RGBA")
         assert rgba.getpixel((14, 9)) == (100, 200, 100, 255)
         assert all(
-            pixel[3] < 255 or _color_distance(pixel[:3]) > 120
+            pixel[3] < 255 or _color_distance(pixel[:3]) > 60
             for pixel in rgba.get_flattened_data()
         )
-    assert result["cleanup"]["edge_removed_pixels"] > 0
+    assert result["cleanup"]["removed_pixels"] > 0
+
+
+def test_process_sheet_preserves_a_soft_edged_near_key_violet_foreground(tmp_path):
+    source = tmp_path / "soft-violet.png"
+    violet = (150, 10, 200)
+    image = Image.new("RGBA", (48, 48), MAGENTA_RGB + (255,))
+    ImageDraw.Draw(image).rectangle((12, 12, 35, 35), fill=violet + (255,))
+    image = image.filter(ImageFilter.GaussianBlur(radius=2))
+    image.save(source)
+    source_core_count = sum(pixel == violet + (255,) for pixel in image.get_flattened_data())
+    assert source_core_count > 0
+
+    process_sheet(
+        source,
+        tmp_path / "out",
+        grid="1x1",
+        snap_mode="grid",
+        names="violet",
+        background="magenta",
+        preserve_cell_bounds=True,
+        processed_out=tmp_path / "processed.png",
+    )
+
+    with Image.open(tmp_path / "processed.png") as processed:
+        rgba = processed.convert("RGBA")
+        assert sum(pixel == violet + (255,) for pixel in rgba.get_flattened_data()) == source_core_count
 
 
 def test_process_sheet_iteratively_recovers_a_two_pixel_composite_ramp(tmp_path):
