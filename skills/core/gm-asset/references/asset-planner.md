@@ -74,6 +74,7 @@ Choose the first matching unit.
 | `background-map` | Runtime background, map base, parallax plate, fixed battle background, title/splash illustration, or fixed-viewport scenic asset. | Scene references, extracted props, character actors, UI kits, or collision-bearing strips. |
 | `platform-strip` | Floors, bridges, platforms, rails, pipes, long hazards, terrain chunks, and collision-aligned horizontal pieces. | Compact props, characters, FX, UI pieces, or full backgrounds. |
 | `scene-prop-set` | Final runtime foreground objects derived from a scene, map, or stage reference. | Generic prop packs without a scene reference, backgrounds, UI, characters, FX, or uncut single-image foreground sprites. |
+| `tileset` | Reusable tiled terrain: ground, floors, walls, roads, cave or shoreline boundaries that repeat across a map and need autotiling. | One-off scenery, collision-bearing platform strips, props, backgrounds, UI, or a map layout — a `TileSet` is a tile library and the map itself stays a worker decision. |
 
 Default font, logo, and wordmark rows to `provided` or `deferred` unless the
 user explicitly requested generated image assets.
@@ -91,6 +92,7 @@ user explicitly requested generated image assets.
 | `background-map` | First-class `background-map` Asset Skill |
 | `platform-strip` | First-class `platform-strip` Asset Skill |
 | `scene-prop-set` | First-class `scene-prop-set` Asset Skill |
+| `tileset` | First-class `tileset` Asset Skill |
 
 ## ASSETS Family Routing
 
@@ -114,6 +116,8 @@ user explicitly requested generated image assets.
 | `background` | `background-map` |
 | `platform_strip` | `platform-strip` |
 | `scene_prop_set` | `scene-prop-set` |
+| `tileset` | `tileset` |
+| `terrain_atlas` | `tileset` |
 | `runtime_sprite` | `compact-prop-pack` |
 | `texture` | `background-map` |
 | `audio` | no generated production unit |

@@ -95,6 +95,7 @@ Use `references/asset-planner.md` for production-unit selection.
 | `background-map` | First-class `background-map` Asset Skill |
 | `platform-strip` | First-class `platform-strip` Asset Skill |
 | `scene-prop-set` | First-class `scene-prop-set` Asset Skill |
+| `tileset` | First-class `tileset` Asset Skill |
 
 ## Process
 
@@ -178,6 +179,7 @@ there is no production-unit document left to substitute for one:
 | `card-kit` | First-class Asset Skill: `card-kit` |
 | `scene-prop-set` | First-class Asset Skill: `scene-prop-set` |
 | `compact-prop-pack` | First-class Asset Skill: `compact-prop-pack` |
+| `tileset` | First-class Asset Skill: `tileset` |
 
 Brief shape:
 
@@ -188,7 +190,7 @@ Brief shape:
 {one concrete generated visual production unit}
 
 ### Production Contract
-- First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | screen-reference | ui-kit | card-kit | compact-prop-pack | scene-prop-set}
+- First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | screen-reference | ui-kit | card-kit | compact-prop-pack | scene-prop-set | tileset}
 - Invoke that named Skill with one shared generic asset request. Every
   production unit is a first-class Skill; there is no production-unit document
   to read and no fallback contract for a family.
@@ -217,11 +219,23 @@ Brief shape:
 - For `fx-bundle`, use `tools/asset_curation_entry_draft.py` request mode for a
    static `single -> Texture2D` result, or `tools/asset_action_entry_draft.py`
    request mode for its one animated `grid_sheet -> SpriteFrames` result. Both
-   start compiled; pass a ready entry onward only after the Skill's L0-L4
-   production loop succeeds.
+   start compiled. Re-run the same builder with `--result` once the Skill's
+   L0-L4 production loop succeeds; that run promotes the same entry to `ready`
+   against the build fingerprint recorded when the artifact was published, and
+   is the only way an FX entry becomes worker-consumable.
 - For `scene-prop-set`, pass the original request, successful result, and first
   declared logical prop to `tools/asset_scene_prop_set_entry_draft.py` before
   writing its ready draft. The builder binds metadata geometry to the request.
+- For `ui-kit` and `card-kit`, pass the request and the validator-owned result
+  to `tools/asset_ui_card_entry_draft.py`. One kit production compiles many
+  separately bindable resources, so it writes one ready draft per runtime
+  output — the `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` — each
+  carrying the kit's `bundle_id`. A worker binds one of these per node, so none
+  of them may be collapsed into a single primary artifact.
+- For `tileset`, pass the request and passing result to
+  `tools/asset_tileset_entry_draft.py`. It writes one ready `tile_atlas ->
+  TileSet` entry. Do not ask the Skill for a map: the entry is a tile library,
+  and layout stays a worker decision.
 - The manager consumes only that adapted report and its drafts in Step 5; the
   first-class Skill never reads registration, manifest, tag, or stage state.
 
@@ -275,13 +289,16 @@ does not register a generic result directly.
 3. Confirm every entry draft came from a deterministic builder —
    `tools/asset_action_entry_draft.py` for processed action output,
    `tools/asset_curation_entry_draft.py` for a selected curation candidate,
-   `tools/asset_finalize_entry_draft.py` for a finalized screen reference, or
+   `tools/asset_finalize_entry_draft.py` for a finalized screen reference,
    `tools/asset_compact_prop_pack_entry_draft.py` for a fully ready compact
-   prop atlas bundle.
-   `tools/asset_scene_prop_set_entry_draft.py` for a compiled scene prop atlas.
+   prop atlas bundle,
+   `tools/asset_scene_prop_set_entry_draft.py` for a compiled scene prop atlas,
+   `tools/asset_ui_card_entry_draft.py` for a validated ui-kit or card-kit
+   delivery, or `tools/asset_tileset_entry_draft.py` for a compiled tileset.
    Every production path has one, so reject a hand-written draft: the builders
    are what enforce frame count, edge-touch rejection, scale reference, curation
-   selection, aspect validation, and stable-path containment.
+   selection, aspect validation, promotion fingerprints, and stable-path
+   containment.
 4. Write each draft to its canonical stable-entry path:
 
 ```bash
