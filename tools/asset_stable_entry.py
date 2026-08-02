@@ -53,6 +53,12 @@ SOURCE_LAYOUT_TYPES = {
 # Reference-only sources are never handed to workers as runtime game assets.
 REFERENCE_LAYOUTS = {"reference"}
 
+# Families whose one production delivers several independently worker-consumable
+# runtime resources out of a single shared output directory. Their logical
+# entries carry ``bundle_id`` plus a ``<bundle_id>--<logical_output_id>``
+# ``asset_id``; every other family owns its directory alone.
+BUNDLE_FAMILIES = {"compact-prop-pack", "ui-kit", "card-kit"}
+
 # Families whose assets are reference-only. A ``reference`` layout is legal only
 # for these, and these families must use a ``reference`` layout. Binding the two
 # closes the fail-open where a runtime family (e.g. ``character-bundle``) could
@@ -268,16 +274,21 @@ def _output_owner(
 ) -> str:
     """Return the stable physical-output owner for an entry.
 
-    A compact prop pack has one physical atlas but many independently usable
-    AtlasTexture entries. Those logical entries keep distinct ``asset_id``
-    values while their source and artifact files live in the shared bundle
-    directory. No other family can opt into this exception.
+    One Skill invocation may deliver many independently usable runtime
+    resources out of one physical production: a compact prop pack cuts several
+    AtlasTextures from one atlas, and a UI or card kit compiles a Theme plus its
+    StyleBoxTextures and icon AtlasTextures into one kit directory. Each of
+    those outputs is separately worker-consumable, so each gets its own stable
+    entry with a distinct ``asset_id``, while their files stay in the shared
+    bundle directory. Families outside ``BUNDLE_FAMILIES`` deliver one runtime
+    output per asset and cannot opt into this.
     """
     if bundle_id is None:
         return asset_id
-    if production_family != "compact-prop-pack":
+    if production_family not in BUNDLE_FAMILIES:
         raise StableEntryError(
-            "bundle_id is only supported for compact-prop-pack stable entries"
+            "bundle_id is only supported for "
+            f"{', '.join(sorted(BUNDLE_FAMILIES))} stable entries"
         )
     if not isinstance(bundle_id, str) or not bundle_id.strip():
         raise StableEntryError("bundle_id must be a non-empty string")
@@ -285,9 +296,9 @@ def _output_owner(
     prefix = f"{bundle_id}--"
     if not asset_id.startswith(prefix) or asset_id == prefix:
         raise StableEntryError(
-            "compact-prop-pack asset_id must be '<bundle_id>--<logical_prop_id>'"
+            f"{production_family} asset_id must be '<bundle_id>--<logical_output_id>'"
         )
-    safe_identifier(asset_id[len(prefix):], "compact-prop-pack logical_prop_id")
+    safe_identifier(asset_id[len(prefix):], f"{production_family} logical_output_id")
     return bundle_id
 
 
