@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 from asset_sheet_process import (
-    MAGENTA_RGB,
     SheetProcessError,
     _autoslice_rects,
     _remove_magenta_background,
@@ -525,6 +524,8 @@ def _write_recovered_action_source(
     grid: str,
     frame_names: list[str],
     background: str,
+    magenta_threshold: int = 60,
+    magenta_edge_threshold: int = 220,
     align: str,
     timestamp: str | None,
 ) -> dict[str, object]:
@@ -547,8 +548,8 @@ def _write_recovered_action_source(
         if background == "magenta":
             scan_image, cleanup = _remove_magenta_background(
                 image,
-                threshold=100,
-                edge_threshold=150,
+                threshold=magenta_threshold,
+                edge_threshold=magenta_edge_threshold,
             )
         elif background == "transparent":
             scan_image = image.copy()
@@ -591,8 +592,7 @@ def _write_recovered_action_source(
         cell_w = max(original_cell_w, max_crop_w + padding * 2)
         cell_h = max(original_cell_h, max_crop_h + padding * 2)
 
-        canvas_color = MAGENTA_RGB + (255,) if background == "magenta" else (0, 0, 0, 0)
-        recovered = Image.new("RGBA", (cell_w * cols, cell_h * rows), canvas_color)
+        recovered = Image.new("RGBA", (cell_w * cols, cell_h * rows), (0, 0, 0, 0))
         placements: list[dict[str, object]] = []
         for index, (name, rect, assignment) in enumerate(
             zip(frame_names, rects, assignment_diagnostics)
@@ -605,7 +605,11 @@ def _write_recovered_action_source(
                 y = row * cell_h + cell_h - crop.height - padding
             else:
                 y = row * cell_h + (cell_h - crop.height) // 2
-            recovered.paste(crop, (x, y), crop)
+            # The destination is transparent and components do not overlap.
+            # Copy RGBA directly so a semitransparent antialiased source edge
+            # keeps its original colour and alpha instead of being composited
+            # against the old magenta recovery canvas.
+            recovered.paste(crop, (x, y))
             placements.append(
                 {
                     "name": name,
@@ -664,6 +668,8 @@ def process_action_sheet(
     asset_id: str | None = None,
     tag: str | None = None,
     background: str = "magenta",
+    magenta_threshold: int = 60,
+    magenta_edge_threshold: int = 220,
     component_mode: str = "largest",
     component_padding: int = 8,
     min_component_area: int = 100,
@@ -716,6 +722,7 @@ def process_action_sheet(
     curation_report = output_dir / "curation-report.json"
     initial_curation_report = output_dir / "curation-report.initial-grid.json"
     source_recovery: dict[str, object] | None = None
+    recovered_background = background
 
     try:
         curation = process_sheet(
@@ -726,6 +733,8 @@ def process_action_sheet(
             asset_id=asset_id,
             tag=tag,
             background=background,
+            magenta_threshold=magenta_threshold,
+            magenta_edge_threshold=magenta_edge_threshold,
             snap_mode="grid",
             component_mode=component_mode,
             component_padding=component_padding,
@@ -752,9 +761,14 @@ def process_action_sheet(
                 grid=grid,
                 frame_names=frame_names,
                 background=background,
+                magenta_threshold=magenta_threshold,
+                magenta_edge_threshold=magenta_edge_threshold,
                 align=align,
                 timestamp=recovery_timestamp,
             )
+            # Recovery writes an already-clean transparent source.  Running
+            # magenta cleanup again would double-matte semitransparent edges.
+            recovered_background = "transparent"
         except ActionRegenerationRequired as exc:
             diagnostic = {
                 **exc.result,
@@ -775,7 +789,9 @@ def process_action_sheet(
                 names=names,
                 asset_id=asset_id,
                 tag=tag,
-                background=background,
+                background=recovered_background,
+                magenta_threshold=magenta_threshold,
+                magenta_edge_threshold=magenta_edge_threshold,
                 snap_mode="grid",
                 component_mode=component_mode,
                 component_padding=component_padding,
@@ -916,6 +932,8 @@ def _main() -> int:
     parser.add_argument("--asset-id")
     parser.add_argument("--tag")
     parser.add_argument("--background", choices=["transparent", "magenta"], default="magenta")
+    parser.add_argument("--magenta-threshold", type=int, default=60)
+    parser.add_argument("--magenta-edge-threshold", type=int, default=220)
     parser.add_argument(
         "--cell-size",
         type=int,
@@ -952,6 +970,8 @@ def _main() -> int:
             asset_id=args.asset_id,
             tag=args.tag,
             background=args.background,
+            magenta_threshold=args.magenta_threshold,
+            magenta_edge_threshold=args.magenta_edge_threshold,
             cell_size=args.cell_size,
             component_mode=component_mode,
             align=align,
