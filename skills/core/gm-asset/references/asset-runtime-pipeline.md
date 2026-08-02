@@ -152,8 +152,8 @@ Rules:
 
 3. Both paths are `res://` paths under the asset's stable output directory. A
    path under `.godotmaker/` is rejected, so finalize into the stable directory
-   before drafting the entry. A compact-prop-pack entry may instead use its
-   validated `bundle_id` directory; no other family may do so.
+   before drafting the entry. A bundle-family entry may instead use its
+   validated `bundle_id` directory; see rule 7 for which families those are.
 4. Only a native compiler writes `godot_artifact`. Never point it at the source
    image to make an asset look finished — a `grid_sheet` is not a `SpriteFrames`
    just because its sheet exists, and a worker that loads it gets a static image
@@ -400,6 +400,38 @@ every registered `source_layout.path` and `godot_artifact.path` is still on disk
 so it catches an asset deleted after registration. That pair is the registration
 gate; it is not a family readiness gate and does not replace support-file,
 compiler, or L0-L4 checks required by a family that can reach `ready`.
+
+## Bundle Rows
+
+Most families deliver one runtime asset per planned ASSETS.md row, so the row
+the planner wrote is the row registration updates. A bundle family does not: one
+`ui-kit`, `card-kit`, or `compact-prop-pack` production delivers many separately
+bindable resources, and `asset_assets_md_update.py` matches an entry to an
+existing `(Tag, Name)` row and fails closed when there is none.
+
+Declare those rows from the request, during planning, before the Skill runs:
+
+```bash
+python tools/asset_bundle_rows.py --assets-md ASSETS.md \
+  --request <request.json> --tag <tag> \
+  --supersede <planned_request_row>
+```
+
+It appends one `MISSING` row per declared output, named
+`<bundle_id>--<output_name>` and carrying `family`, `bundle`, and
+`logical_output` so every row traces back to the production that will fill it.
+Registration then promotes those rows normally. Re-running changes nothing.
+
+`--supersede` names the planned request row that asked for the work — the
+`ui_component_sheet`, `card_component_sheet`, or `compact_prop_pack` row. That
+row is a request, not one of the delivered resources, so it closes as `N/A` with
+a `superseded_by=<bundle_id>` pointer instead of staying `MISSING` forever and
+blocking the asset stage. A named row that does not exist in the current tag is
+an error, not a silent skip.
+
+A non-bundle family has nothing to declare here, and this tool refuses it: its
+planned row is the row registration updates, so a missing one is a planning
+mistake that must keep failing loudly.
 
 Producer reports list stable entry drafts. The manager writes each entry, upserts
 its pointer, and runs the root-index gate before updating ASSETS.md.

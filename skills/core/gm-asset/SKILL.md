@@ -205,6 +205,9 @@ Brief shape:
 - One Skill call may return several logical outputs. Exactly one runtime output
   per logical asset becomes a stable entry; every other output is reported as a
   reference. Never draft a second entry or a `godot_artifact` for a reference.
+  A bundle family delivers many logical assets from one production, so it draws
+  one entry per runtime output and declares a matching ASSETS.md row for each;
+  that is the same rule, not an exception to it.
 - For `character-bundle`, pass the Skill's archived resolved request, one
   action processing report per required action, and its validated result to
   `tools/asset_action_entry_draft.py` bundle mode. It registers exactly one
@@ -299,26 +302,40 @@ does not register a generic result directly.
    are what enforce frame count, edge-touch rejection, scale reference, curation
    selection, aspect validation, promotion fingerprints, and stable-path
    containment.
-4. Write each draft to its canonical stable-entry path:
+4. For a bundle family — `ui-kit`, `card-kit`, `compact-prop-pack` — declare the
+   rows its outputs will fill before writing any entry, naming the planned
+   request row it serves:
+
+```bash
+python tools/asset_bundle_rows.py --assets-md ASSETS.md \
+  --request <request.json> --tag <tag> --supersede <planned_request_row>
+```
+
+   One bundle production delivers many separately bindable resources, so
+   ASSETS.md has no row for them until this runs and step 8 would fail closed.
+   The planned request row is not one of those resources; `--supersede` closes
+   it as `N/A` against the bundle that serves it. Do not hand-write these rows.
+
+5. Write each draft to its canonical stable-entry path:
 
 ```bash
 python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write --check-files
 ```
 
-5. Upsert the written entry into the pointer-only root index:
+6. Upsert the written entry into the pointer-only root index:
 
 ```bash
 python tools/asset_generation_index.py --project-root . \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
-6. Before marking any runtime entry `generated`, run the full root-index gate:
+7. Before marking any runtime entry `generated`, run the full root-index gate:
 
 ```bash
 python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
 
-7. Update the matching ASSETS.md rows only after the root-index gate passes:
+8. Update the matching ASSETS.md rows only after the root-index gate passes:
 
    - Mark a `ready` non-reference entry `generated` after the full root-index
      gate passes.
@@ -334,7 +351,7 @@ python tools/asset_assets_md_update.py \
 Keep runtime entries below `ready` as `MISSING`. Do not hand-edit an ASSETS.md
 status, the root index, or a stable entry.
 
-8. Redispatch failed or incomplete production units once when the failure is
+9. Redispatch failed or incomplete production units once when the failure is
    actionable from the report.
 
 Each command fails closed. Do not hand-edit

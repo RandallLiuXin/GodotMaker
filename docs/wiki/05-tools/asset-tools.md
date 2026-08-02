@@ -24,6 +24,7 @@ Primary pipeline tools:
 16. `asset_scene_prop_set_entry_draft.py`
 17. `asset_ui_card_entry_draft.py`
 18. `asset_tileset_entry_draft.py`
+19. `asset_bundle_rows.py`
 
 ## asset_source_generate.py
 

@@ -21,6 +21,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Added `tools/asset_ui_card_entry_draft.py` and `tools/asset_tileset_entry_draft.py`, the deterministic registration adapters for validated ui-kit/card-kit and tileset deliveries.
 
+- Added `tools/asset_bundle_rows.py`, which declares the ASSETS.md row each bundle output will fill and closes the planned request row it serves as `N/A`.
+
 - Added deterministic marching-squares-15 and blob-47 TileSet profile templates with fixed atlas guides, strict image validation, and native resource compilation.
 
 - Added fail-closed standalone L0-L4 execution for the remaining first-class Asset Skills, with published runners and native Godot resource verification.

@@ -27,7 +27,12 @@ from asset_action_entry_draft import (  # noqa: E402
     build_fx_bundle_entry_draft,
     write_fx_bundle_entry_draft,
 )
-from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
+from asset_assets_md_update import (  # noqa: E402
+    AssetsMdUpdateError,
+    split_assets_md_row,
+    update_assets_md,
+)
+from asset_bundle_rows import BundleRowError, declare_bundle_rows  # noqa: E402
 from asset_curation_entry_draft import (  # noqa: E402
     CurationEntryDraftError,
     write_fx_static_entry_draft,
@@ -269,15 +274,182 @@ def test_every_kit_runtime_output_becomes_its_own_ready_entry(tmp_path, family):
     assert theme["source_layout"]["type"] == "theme_recipe"
 
 
+def _planned_assets_md(project_root: Path, extra_rows: list[str] | None = None) -> Path:
+    """Start from the shipped ASSETS.md template, as /gm-gdd would leave it.
+
+    Only planner-shaped *request* rows exist here. The logical rows a bundle
+    delivers must be produced by `asset_bundle_rows.py`, never by this helper —
+    fabricating them is exactly what hid the missing-row failure.
+    """
+    template = (ROOT / "templates" / "ASSETS.md").read_text(encoding="utf-8")
+    lines = template.splitlines(keepends=True)
+    if extra_rows:
+        last = max(
+            index
+            for index, line in enumerate(lines)
+            if split_assets_md_row(line) is not None
+        )
+        lines[last + 1 : last + 1] = [row + "\n" for row in extra_rows]
+    path = project_root / "ASSETS.md"
+    path.write_text("".join(lines), encoding="utf-8")
+    return path
+
+
+CARD_REQUEST_ROW = (
+    "| 7 | v0.1.0 | card_frame | ui | 128x192 px | family=card_component_sheet; "
+    "component=rare_card | assets/generated/card-kit/card_frame/card_frame.png | MISSING |"
+)
+
+KIT_REQUEST_ROW = {"ui-kit": "action_button", "card-kit": "card_frame"}
+
+
+def _row(assets_md: Path, name: str) -> list[str] | None:
+    for line in assets_md.read_text(encoding="utf-8").splitlines():
+        cells = split_assets_md_row(line)
+        if cells is not None and cells[2] == name and cells[1] == TAG:
+            return cells
+    return None
+
+
+@pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
+def test_a_planned_kit_row_declares_and_fills_every_delivered_row(tmp_path, family):
+    # The chain the manager really walks: a planner-shaped request row, the
+    # bundle's declared rows, registration, then the ASSETS.md update that used
+    # to fail closed with "missing rows for entries".
+    request_path, result_path = _kit_delivery(tmp_path, family)
+    assets_md = _planned_assets_md(
+        tmp_path, [CARD_REQUEST_ROW] if family == "card-kit" else None
+    )
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    bundle_id = request["asset_id"]
+    entries = build_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path
+    )
+    assert _row(assets_md, entries[0]["asset_id"]) is None
+
+    declared = declare_bundle_rows(
+        assets_md,
+        request_path,
+        tag=TAG,
+        supersede=[KIT_REQUEST_ROW[family]],
+    )
+
+    assert declared["created"] == [entry["asset_id"] for entry in entries]
+    served = _row(assets_md, KIT_REQUEST_ROW[family])
+    assert served[7] == "N/A"
+    assert f"superseded_by={bundle_id}" in served[5]
+
+    _register(tmp_path, entries)
+    update_assets_md(
+        assets_md,
+        [tmp_path / entry_relative_path(TAG, entry["asset_id"]) for entry in entries],
+    )
+
+    for entry in entries:
+        snapshot = _snapshot(tmp_path, entry["asset_id"])
+        assert snapshot["godot_artifact"] == entry["godot_artifact"]
+
+
+def test_undeclared_kit_rows_still_fail_the_assets_update(tmp_path):
+    # The regression the declaration step exists for: registering ready entries
+    # against a planner-shaped ASSETS.md that never declared them.
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    entries = build_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path
+    )
+    _register(tmp_path, entries)
+
+    with pytest.raises(AssetsMdUpdateError, match="missing rows for entries"):
+        update_assets_md(
+            assets_md,
+            [
+                tmp_path / entry_relative_path(TAG, entry["asset_id"])
+                for entry in entries
+            ],
+        )
+
+
+def test_declaring_bundle_rows_twice_changes_nothing(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
+    once = assets_md.read_text(encoding="utf-8")
+
+    again = declare_bundle_rows(
+        assets_md, request_path, tag=TAG, supersede=["card_frame"]
+    )
+
+    assert again["created"] == []
+    assert assets_md.read_text(encoding="utf-8") == once
+
+
+def test_superseding_an_absent_request_row_fails_closed(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path)
+
+    with pytest.raises(BundleRowError, match="no current-tag rows to supersede"):
+        declare_bundle_rows(
+            assets_md, request_path, tag=TAG, supersede=["card_frame"]
+        )
+
+
+PROP_REQUEST_ROW = (
+    "| 7 | v0.1.0 | market_props | ui | 64x64 px | family=compact_prop_pack; "
+    "component=props | assets/generated/compact-prop-pack/market/market.png | MISSING |"
+)
+
+
+def test_a_compact_prop_bundle_declares_and_fills_its_logical_rows(tmp_path):
+    # compact-prop-pack has produced <bundle>--<prop> entries since before this
+    # change and was never driven through the ASSETS.md update, so it carried
+    # the same missing-row failure.
+    request = {
+        "asset_type": "compact-prop-pack",
+        "asset_id": "market",
+        "brief": "A market prop pack.",
+        "spec": {
+            "version": 1,
+            "atlas": {"width": 64, "height": 32},
+            "slots": [
+                {"name": "lantern", "rect": [0, 0, 32, 32], "source": "lantern.png"},
+                {"name": "crate", "rect": [32, 0, 32, 32], "source": "crate.png"},
+            ],
+        },
+    }
+    request_path = _write_json(tmp_path / "props-request.json", request)
+    assets_md = _planned_assets_md(tmp_path, [PROP_REQUEST_ROW])
+
+    declared = declare_bundle_rows(
+        assets_md, request_path, tag=TAG, supersede=["market_props"]
+    )
+
+    assert declared["created"] == ["market--lantern", "market--crate"]
+    assert _row(assets_md, "market--lantern")[3] == "AtlasTexture"
+    assert "bundle=market" in _row(assets_md, "market--crate")[5]
+    assert _row(assets_md, "market_props")[7] == "N/A"
+
+
+def test_a_non_bundle_family_has_no_rows_to_declare(tmp_path):
+    # A family that delivers one asset per planned row must keep failing loudly
+    # when that row is missing; auto-appending would hide a planning mistake.
+    request_path, _ = _tileset_delivery(tmp_path)
+    assets_md = _planned_assets_md(tmp_path)
+
+    with pytest.raises(BundleRowError, match="not a bundle family"):
+        declare_bundle_rows(assets_md, request_path, tag=TAG)
+
+
 @pytest.mark.parametrize(
     "artifact_type", ["Theme", "StyleBoxTexture", "AtlasTexture"]
 )
 def test_each_kit_artifact_type_resolves_to_a_worker_snapshot(tmp_path, artifact_type):
     request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
     entries = build_ui_card_entry_drafts(
         request_path, result_path, tag=TAG, project_root=tmp_path
     )
-    assets_md = _assets_md(tmp_path, [entry["asset_id"] for entry in entries])
     _register(tmp_path, entries)
     update_assets_md(
         assets_md,
@@ -332,7 +504,8 @@ def test_a_kit_row_below_ready_stays_missing_for_the_worker(tmp_path):
     )
     entry = entries[0]
     entry["processing_status"] = "compiled"
-    assets_md = _assets_md(tmp_path, [entry["asset_id"]])
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
     _register(tmp_path, [entry])
 
     with pytest.raises(AssetsMdUpdateError, match="only a ready runtime entry"):
@@ -734,6 +907,29 @@ def test_tileset_cli_writes_the_ready_draft(tmp_path):
     entry = json.loads(out.read_text(encoding="utf-8"))
     assert entry["godot_artifact"]["type"] == "TileSet"
     assert entry["processing_status"] == "ready"
+
+
+def test_bundle_rows_cli_declares_and_supersedes(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+
+    completed = _run(
+        "asset_bundle_rows.py",
+        "--assets-md", str(assets_md),
+        "--request", str(request_path),
+        "--tag", TAG,
+        "--supersede", "card_frame",
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["created"] == [
+        "arcane_deck--card_theme",
+        "arcane_deck--rare_card_normal",
+        "arcane_deck--mana_badge",
+    ]
+    assert payload["superseded"] == ["card_frame"]
+    assert _row(assets_md, "card_frame")[7] == "N/A"
 
 
 def test_kit_cli_writes_one_draft_per_runtime_output(tmp_path):

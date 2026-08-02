@@ -99,6 +99,21 @@ def _require_slot_names(request: dict[str, Any]) -> list[str]:
     return names
 
 
+def logical_outputs(request: dict[str, Any]) -> list[tuple[str, str]]:
+    """Return every declared prop as ``(output_name, godot_type)``.
+
+    The slot names come from the request, so the manager can declare the
+    ASSETS.md rows this bundle will fill before its Skill runs.
+    """
+    try:
+        check_request(request)
+    except AssetContractError as exc:
+        raise CompactPropPackEntryDraftError(str(exc)) from exc
+    if request.get("asset_type") != FAMILY:
+        raise CompactPropPackEntryDraftError("request must be compact-prop-pack")
+    return [(name, "AtlasTexture") for name in _require_slot_names(request)]
+
+
 def _validate_bundle_metadata(
     request: dict[str, Any], *, project_root: Path, bundle_id: str
 ) -> None:

@@ -33,7 +33,11 @@ from asset_stable_entry import (
     stable_output_dir,
     validate_entry,
 )
-from asset_ui_card_contract_check import UICardContractError, check_ui_card_handoff
+from asset_ui_card_contract_check import (
+    UICardContractError,
+    check_ui_card_handoff,
+    check_ui_card_request,
+)
 
 FAMILIES = ("ui-kit", "card-kit")
 LEVELS = ("L0", "L1", "L2", "L3", "L4")
@@ -100,6 +104,29 @@ def _source_layout_by_output(request: dict[str, Any]) -> dict[str, tuple[str, st
             region["source_path"],
         )
     return layouts
+
+
+def logical_outputs(request: dict[str, Any]) -> list[tuple[str, str]]:
+    """Return every declared runtime output as ``(output_name, godot_type)``.
+
+    The names come from the request, not from a finished result, so the manager
+    can declare the ASSETS.md rows a kit will fill before its Skill runs. Order
+    is declaration order: Theme, then styleboxes, then atlas regions.
+    """
+    try:
+        check_ui_card_request(request)
+    except UICardContractError as exc:
+        raise UICardEntryDraftError(str(exc)) from exc
+    spec = request["spec"]
+    outputs: list[tuple[str, str]] = []
+    theme = spec.get("theme")
+    if theme is not None:
+        outputs.append((theme["output_name"], "Theme"))
+    outputs.extend((box["output_name"], "StyleBoxTexture") for box in spec["styleboxes"])
+    outputs.extend(
+        (region["output_name"], "AtlasTexture") for region in spec["atlas_regions"]
+    )
+    return outputs
 
 
 def _assert_file(project_root: Path, res_path: str, label: str) -> None:

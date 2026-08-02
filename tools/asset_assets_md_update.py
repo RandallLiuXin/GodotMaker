@@ -158,11 +158,11 @@ def split_assets_md_row(line: str) -> list[str] | None:
     return cells
 
 
-def _format_markdown_row(cells: list[str]) -> str:
+def format_assets_md_row(cells: list[str]) -> str:
     return "| " + " | ".join(cells) + " |\n"
 
 
-def _merge_generation_params(current: str, additions: dict[str, str]) -> str:
+def merge_generation_params(current: str, additions: dict[str, str]) -> str:
     current = current.strip()
     if current in {"", "-", "—"}:
         parts: list[str] = []
@@ -220,11 +220,11 @@ def update_assets_md(
             output.append(line)
             continue
 
-        cells[ASSETS_MD_PARAMS_COLUMN] = _merge_generation_params(
+        cells[ASSETS_MD_PARAMS_COLUMN] = merge_generation_params(
             cells[ASSETS_MD_PARAMS_COLUMN], _entry_params(entries_by_key[key])
         )
         cells[ASSETS_MD_STATUS_COLUMN] = status
-        output.append(_format_markdown_row(cells))
+        output.append(format_assets_md_row(cells))
         updated.append(asset_id)
         remaining.discard(key)
 
