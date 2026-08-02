@@ -428,6 +428,176 @@ def test_worker_binds_the_compiled_artifact_instead_of_rebuilding_it():
     assert "`TileMapLayer.tile_set`" in worker
 
 
+def test_worker_owns_tilemap_layout_and_gameplay_structure():
+    """A `TileSet` is art plus declared tile semantics. The map is neither.
+
+    Which cell goes where, how many layers there are, where the player spawns
+    and exits, what triggers, and how far the camera may travel all follow from
+    the concrete game requirement — nothing upstream of the worker knows it. A
+    decision this prompt does not claim reads as somebody else's, and the worker
+    paints a decorative map with no gameplay structure in it.
+    """
+    worker = _read("agents/worker.md")
+    dispatch = _read("skills/core/_shared/worker-dispatch.md")
+    flat_worker = _flat(worker)
+    flat_dispatch = _flat(dispatch)
+
+    assert "## TileMap Authoring" in worker
+    assert "A `TileSet` is a tile library, not a map." in flat_worker
+    assert "**A `TileSet` artifact carries no map.**" in flat_dispatch
+
+    # Both sides enumerate the owned decisions. Naming only "layout" leaves a
+    # brief free to keep triggers or camera bounds and hand down a dressed map.
+    for decision in (
+        "Layer count and order",
+        "cell placement",
+        "gameplay object placement",
+        "triggers and zones",
+        "camera limits",
+        "the scene tree that holds them",
+    ):
+        assert decision in flat_worker, f"worker.md stopped claiming {decision}"
+    # On the dispatch side the enumeration has to be in both places: the rule is
+    # what the manager reads, the Deliverables checkbox is what actually reaches
+    # the worker. Matching the file as a whole would let either one drop it.
+    rule = flat_dispatch.split("**A `TileSet` artifact carries no map.**", 1)[1]
+    rule = rule.split("27. **", 1)[0]
+    deliverable = next(
+        (
+            line
+            for line in dispatch.splitlines()
+            if line.startswith("- [ ] If runtime assets include a `TileSet` artifact:")
+        ),
+        "",
+    )
+    assert deliverable, "the brief template lost its `TileSet` deliverable"
+    for decision in (
+        "layer count",
+        "cell placement",
+        "gameplay object placement",
+        "triggers",
+        "camera limits",
+        "scene structure",
+    ):
+        assert decision in rule, (
+            f"the dispatch rule stopped leaving {decision} to the worker"
+        )
+        assert decision in deliverable, (
+            f"the `TileSet` deliverable stopped naming {decision}"
+        )
+
+    # The layout comes from the game requirement, never from the atlas.
+    assert "**Design from the game requirement, not from the tiles.**" in flat_worker
+    assert "never what the level is" in flat_worker
+    assert "the layout depends on the concrete game requirement" in flat_dispatch
+
+    # Art and gameplay structure stay separated, or the gameplay objects end up
+    # painted into cells the runtime then has to guess back out.
+    assert "**Separate art from gameplay structure.**" in flat_worker
+    assert (
+        "author them as nodes or entities, not as cells the game has to "
+        "reverse-engineer" in flat_worker
+    )
+
+    # A pasted grid is how a manager takes the decision back without saying so.
+    assert "Do not paste a cell grid or a layer list" in flat_dispatch
+
+
+def test_worker_paints_with_the_tileset_semantics_it_was_given():
+    """Terrain sets, physics, navigation, and custom data ship compiled in.
+
+    A worker that hand-edits the `.tres` to add the semantic it wants has
+    rebuilt the artifact with none of its L0-L4 evidence; a worker that quietly
+    paints around a missing one hides the gap from whoever owns the art. Both
+    end with a map that looks right and behaves wrong.
+    """
+    flat_worker = _flat(_read("agents/worker.md"))
+
+    assert "**Use the ready `TileSet` as it is.**" in flat_worker
+    assert (
+        "Paint with the terrain sets, physics layers, navigation, and custom "
+        "data it already declares" in flat_worker
+    )
+    assert (
+        "Do not add sources, re-slice the atlas, or hand-edit the `.tres` to "
+        "invent semantics it does not have." in flat_worker
+    )
+    assert "say so in Notes instead of painting around it" in flat_worker
+    # The known-pitfall reference, so terrain order and nav staleness are not
+    # rediscovered one review cycle at a time.
+    assert ".claude/skills/tilemap/gotchas.md" in flat_worker
+
+
+def test_tilemap_work_is_verified_by_running_the_map():
+    """A compiled `TileMapLayer` proves nothing about whether the map plays.
+
+    A wall that does not block, an exit nothing can reach, a stale navigation
+    mesh, and a camera that slides off the map all survive a green headless
+    build. The prompt has to demand the run and then tie the fix to what the run
+    showed, or the worker reports DONE on a map it never played.
+    """
+    flat_worker = _flat(_read("agents/worker.md"))
+    flat_dispatch = _flat(_read("skills/core/_shared/worker-dispatch.md"))
+
+    assert "**Run the map, do not just build it.**" in flat_worker
+    assert "A tilemap that compiles is not a tilemap that plays." in flat_worker
+    assert "do not report DONE on a map you never ran" in flat_worker
+
+    # The repair follows the observed failure instead of a redesign on a hunch.
+    assert "**Fix the concrete failure the run showed.**" in flat_worker
+    assert "Do not redesign the layout on a hunch" in flat_worker
+
+    assert "**A TileMap task is not done until it ran.**" in flat_dispatch
+    assert "blocked cells block, walkable cells are walkable" in flat_dispatch
+    assert "fix the concrete failures the run exposed" in flat_dispatch
+    assert "A green headless build is not evidence that the map plays." in flat_dispatch
+
+
+def test_map_authoring_never_flows_back_into_an_asset_skill():
+    """Asset production stops at the tile library.
+
+    An asset skill that starts placing cells is guessing the level from the art
+    it just made — the one thing the pixels cannot tell it — and the guess
+    arrives as a compiled resource with L0-L4 evidence attached, which reads
+    downstream as a decision somebody verified. Stating the boundary in prose is
+    not enough; the scan is what catches a later edit crossing it.
+    """
+    flat_tileset = _flat(_read("skills/assets/tileset/SKILL.md"))
+    assert "never for designing a TileMap" in flat_tileset
+    assert (
+        "A TileSet is a reusable tile library; creating or painting a `TileMap` "
+        "is outside this skill." in flat_tileset
+    )
+
+    # A map-authoring API inside a production document is the concrete symptom.
+    authoring_api = re.compile(
+        r"TileMapLayer|set_cells?_terrain|\bset_cell\b|\berase_cell\b", re.IGNORECASE
+    )
+    offenders = []
+    scanned = 0
+    for root in ("skills/assets", "skills/core/gm-asset"):
+        directory = REPO_ROOT / root
+        assert directory.is_dir(), f"scan root disappeared: {root}"
+        for path in sorted(directory.glob("**/*.md")):
+            scanned += 1
+            lines = path.read_text(encoding="utf-8").splitlines()
+            for index, line in enumerate(lines, start=1):
+                if authoring_api.search(line):
+                    relative = str(path.relative_to(REPO_ROOT)).replace("\\", "/")
+                    offenders.append(f"{relative}:{index}: {line.strip()}")
+    assert scanned, "the asset production docs disappeared"
+    assert not offenders, (
+        "these asset production docs author a TileMap instead of a tile library: "
+        + "; ".join(offenders)
+    )
+
+    # And both worker-side prompts say out loud that nobody upstream will do it.
+    assert "no asset skill guesses them for you" in _flat(_read("agents/worker.md"))
+    assert "never ask an asset skill to design the map" in _flat(
+        _read("skills/core/_shared/worker-dispatch.md")
+    )
+
+
 def test_a_missing_artifact_fails_closed_instead_of_reaching_a_worker():
     """No artifact means no visual dispatch — not an invented path.
 

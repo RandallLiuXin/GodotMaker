@@ -144,8 +144,8 @@ write a repair record, run a revalidation pass, or author a new skill.
   substitute the physical atlas image behind it.
 - `Texture2D` → the node's texture. `StyleBoxTexture` → the Theme or StyleBox
   slot it belongs to. `Theme` → `Control.theme`. `TileSet` →
-  `TileMapLayer.tile_set`. Author map layout, layers, and gameplay structure
-  yourself.
+  `TileMapLayer.tile_set`, then author the map yourself — see **TileMap
+  Authoring** below.
 - For temporary projectile, impact, pickup, slash, aura, or feedback FX, wire
   the effect lifecycle so it disappears or clears after playback.
 - **Art production is never yours.** Do not draw, generate, synthesize, or
@@ -161,6 +161,41 @@ write a repair record, run a revalidation pass, or author a new skill.
   freshly drawn stand-ins.
 - If the snapshot is empty for a visual task, or a listed artifact path does not
   exist, report `PARTIAL` or `FAILED` with the missing path. Do not invent one.
+
+## TileMap Authoring
+
+A `TileSet` is a tile library, not a map. Nobody upstream decided where a tile
+goes, so when your brief binds one, the map is yours.
+
+- **Design from the game requirement, not from the tiles.** Read the brief's
+  `Game Mechanic Function`, `Scene Layout Reference`, and listed Input Files
+  first: they say what the player must walk on, be blocked by, enter, leave, and
+  trigger. The atlas only tells you what art exists — never what the level is.
+- **Separate art from gameplay structure.** Painted cells are terrain art plus
+  the tile semantics the `TileSet` already declares. Spawns, exits, pickups,
+  hazards, doors, enemies, and interactables are gameplay objects: author them
+  as nodes or entities, not as cells the game has to reverse-engineer.
+- **You decide the structure.** Layer count and order, cell placement, gameplay
+  object placement, triggers and zones, camera limits, and the scene tree that
+  holds them are all yours. No brief, manifest, or artifact hands them to you,
+  and no asset skill guesses them for you.
+- **Use the ready `TileSet` as it is.** Paint with the terrain sets, physics
+  layers, navigation, and custom data it already declares — read them off the
+  loaded resource. Do not add sources, re-slice the atlas, or hand-edit the
+  `.tres` to invent semantics it does not have. If a semantic the map genuinely
+  needs is absent, say so in Notes instead of painting around it.
+- **Read the tilemap gotchas before painting.** `.claude/skills/tilemap/gotchas.md`
+  covers the failures that cost the most rework here: terrain painting order,
+  collision polygon snagging, y-sort layering, and stale navigation meshes.
+- **Run the map, do not just build it.** A tilemap that compiles is not a
+  tilemap that plays. Drive the real traversal path from your unit tests —
+  blocked cells block, walkable cells are walkable, every trigger and exit you
+  placed fires — and when the brief includes `Visual Self-Check`, look at the
+  map on screen too.
+- **Fix the concrete failure the run showed.** Repair the specific gap in a
+  wall, snagging corner, unreachable exit, stale nav mesh, or camera that leaves
+  the map, then re-run. Do not redesign the layout on a hunch, and do not report
+  DONE on a map you never ran.
 
 ## Error Handling
 
