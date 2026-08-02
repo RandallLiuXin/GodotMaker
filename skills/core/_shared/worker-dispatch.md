@@ -43,6 +43,7 @@ Agent({
 - [ ] Load every `Asset Runtime Snapshot` `godot_artifact.path` and bind it as its declared `godot_artifact.type`; do not rebuild it from `source_layout`
 - [ ] If runtime assets include a `SpriteFrames` artifact: wire animation playback from that resource, not one static frame
 - [ ] If runtime assets include temporary animated FX: implement end-of-life behavior (animation finished, timer, tween completion, or equivalent state clear)
+- [ ] If runtime assets include a `TileSet` artifact: decide the layer count, cell placement, gameplay object placement, triggers, camera limits, and scene structure yourself, then run the map and fix the concrete failures the run shows
 - [ ] Run headless-build and confirm compilation
 - [ ] Run unit tests and include pass/fail output
 - [ ] If `Visual Self-Check` is present: capture screenshot(s), run visual-qa, include output
@@ -166,6 +167,20 @@ record, a revalidation pass, or a worker-authored skill; accept a note in the
 report. Do not let a worker produce art. Never write a `Scope Boundaries` or
 `Prohibited Actions` line that cancels this exception.
 25. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
+26. **A `TileSet` artifact carries no map.** When the snapshot lists one, state
+the map's gameplay requirement in `Game Mechanic Function` — what blocks the
+player, what is walkable, where they enter and leave, what must trigger — and
+leave layer count, cell placement, gameplay object placement, triggers, camera
+limits, and scene structure to the worker. Do not paste a cell grid or a layer
+list, and never ask an asset skill to design the map: a tile library is art plus
+declared tile semantics, and the layout depends on the concrete game
+requirement.
+27. **A TileMap task is not done until it ran.** Require unit tests that drive
+the real traversal path — blocked cells block, walkable cells are walkable, each
+placed trigger and exit fires — and fill `Visual Self-Check` when the map's
+appearance is part of the finding. Then require the worker to fix the concrete
+failures the run exposed. A green headless build is not evidence that the map
+plays.
 
 ## Worker Utility Convention
 

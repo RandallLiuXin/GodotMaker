@@ -46,6 +46,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Workers now own TileMap layout, layers, cell and gameplay object placement, triggers, camera limits, and scene structure, binding a ready `TileSet` as a tile library and repairing what running the map actually shows.
+
 - Reworked `ui-kit` around a flat-first Godot Theme: one fixed eight-patch
   surface atlas expands into reusable button, panel, popup, tooltip, and tab
   StyleBoxTextures, while native StyleBoxFlat/StyleBoxEmpty resources own form,
