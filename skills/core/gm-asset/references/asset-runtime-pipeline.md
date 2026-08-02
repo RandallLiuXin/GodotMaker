@@ -1,8 +1,8 @@
 # Asset Runtime Pipeline Reference
 
 Use this file for common paths, manager-to-producer handoff, and stable-entry
-registration. Use production-unit docs for prompts, finalization, extraction,
-processing, and curation commands.
+registration. Use the unit's first-class Asset Skill for prompts, finalization,
+extraction, processing, and curation commands.
 
 ## Fixed Paths
 
@@ -104,10 +104,13 @@ Reference-only entries never enter this ladder: they may use only `pending`,
 
 Only a family that has run its declared native compiler and applicable L0-L4
 checks may write `compiled` or `ready`. Do not invent a `godot_artifact` to
-reach them. First-class standalone skills with an implemented compiler and
-validation runner, including `compact-prop-pack` and `scene-prop-set`, may
-publish a `ready` entry after those checks pass; legacy production units remain
-`source_ready` until their own compiler contract exists.
+reach them. A first-class Skill whose compiler runs before validation —
+`character-bundle` and `fx-bundle` — drafts `compiled` and promotes the same
+entry to `ready` only after its own L0-L4 loop passes; `character-bundle` does
+that promotion by handing the evidence back to the same deterministic builder.
+A first-class Skill that already holds a passing result
+when it drafts, such as `compact-prop-pack` and `scene-prop-set`, writes `ready`
+directly. Nothing else may write `ready`.
 
 ## Stable Entry Contract
 
@@ -237,6 +240,26 @@ python tools/asset_action_entry_draft.py \
 
 It also writes the action support metadata to
 `assets/generated/<production_family>/<asset_id>/<asset_id>.json`.
+
+Adding `--request <resolved-request.json>` switches the same builder to bundle
+mode: it compiles one shared `SpriteFrames` from every `--metadata` action
+report, drafts a `compiled` entry, and records a build fingerprint — the
+resolved request, every action report, every stable sheet and frame in action
+order, and the compiled artifact — in the support metadata.
+
+For `character-bundle`, adding `--result <result.json>` on a second run promotes
+that same entry to `ready`. That run does not recompile: it registers the exact
+artifact L0-L4 examined. It re-checks the result's L0-L4 levels, its single
+`SpriteFrames` runtime output, and its ordered per-action `grid_sheet` sources,
+and it recomputes the fingerprint from disk and requires an exact match. Stable
+paths are identity-derived, so a regeneration overwrites the very paths an older
+result names; the fingerprint is what tells the validated build apart from
+whatever now occupies those paths. Any drift fails closed — rebuild the
+`compiled` entry and rerun L0-L4 before promoting.
+
+A reference output in that result — a generated canonical, for example — is
+recorded as provenance in the support metadata; it never becomes a second entry
+or a `godot_artifact`.
 
 Selected curation candidate (`ui-kit`, `card-kit`, `compact-prop-pack`,
 `platform-strip`):
@@ -464,7 +487,7 @@ Use this shape for manager-to-producer handoff:
 ```json
 {
   "unit_id": "<unit_id>",
-  "unit_doc": "references/production-units/<unit>.md",
+  "unit_skill": "<first-class Asset Skill name>",
   "provider_doc": "references/providers/<provider>.md",
   "provider": "<asset_image_model>",
   "dependencies": [],

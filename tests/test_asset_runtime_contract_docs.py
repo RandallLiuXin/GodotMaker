@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -19,8 +20,28 @@ RETIRED_TOOLS = (
 )
 
 
+# The nine production units `/gm-asset` can plan. `tileset` ships as a
+# first-class Skill but has no manager routing yet.
+MANAGER_FAMILIES = (
+    "screen-reference",
+    "character-bundle",
+    "fx-bundle",
+    "ui-kit",
+    "card-kit",
+    "compact-prop-pack",
+    "background-map",
+    "platform-strip",
+    "scene-prop-set",
+)
+
+
 def _read(relative: str) -> str:
     return (REPO_ROOT / relative).read_text(encoding="utf-8")
+
+
+def _flat(text: str) -> str:
+    """Collapse wrapped prose so a contract sentence matches across line breaks."""
+    return " ".join(text.split())
 
 
 def _collect(roots) -> list[Path]:
@@ -121,42 +142,53 @@ def test_gm_asset_manager_dispatches_asset_producer_units():
     assert "leave affected stable entry drafts unwritten" in producer
 
 
-def test_production_unit_docs_are_first_entry_points():
+def test_first_class_asset_skills_are_the_only_entry_points():
+    """No production unit keeps a second authoritative execution document.
+
+    The `production-units/` tree is gone, not merely unreferenced: while a file
+    sits under a directory a runtime agent can read, a producer can still land on
+    it as a fallback contract and diverge from the family's real Skill.
+    """
     skill = _read("skills/core/gm-asset/SKILL.md")
     planner = _read("skills/core/gm-asset/references/asset-planner.md")
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
+    unit_dir = REPO_ROOT / "skills/core/gm-asset/references/production-units"
+    assert not unit_dir.exists(), "the retired production-unit tree came back"
+
     compact = _read("skills/assets/compact-prop-pack/SKILL.md")
-    assert not (
-        REPO_ROOT / "skills/core/gm-asset/references/production-units/compact-prop-pack.md"
-    ).exists()
-    assert "First-class `compact-prop-pack` Asset Skill" in skill
-    assert "First-class `compact-prop-pack` Asset Skill" in planner
     assert "one provider source sheet" in compact
-    assert "| `fx-bundle` | First-class `fx-bundle` Asset Skill |" in planner
-    assert "references/production-units/fx-bundle.md" not in planner
+    for family in MANAGER_FAMILIES:
+        assert (REPO_ROOT / f"skills/assets/{family}/SKILL.md").is_file()
+        assert f"First-class `{family}` Asset Skill" in skill
+        assert f"| `{family}` | First-class `{family}` Asset Skill |" in planner
+        for doc in (skill, planner, runtime):
+            assert f"references/production-units/{family}.md" not in doc
 
     assert "## Production Families" in runtime
     assert "## Source Layouts" in runtime
     assert "## Processing Status" in runtime
     assert "## Curation" in runtime
-    assert not (REPO_ROOT / "skills/core/gm-asset/references/production-units/scene-prop-set.md").exists()
-    assert "First-class `scene-prop-set` Asset Skill" in skill
-    assert "First-class `scene-prop-set` Asset Skill" in planner
 
 
-def test_production_unit_autoslice_examples_do_not_pass_grid():
-    units = [
-        "fx-bundle",
-    ]
-    for unit in units:
-        doc = _read(f"skills/core/gm-asset/references/production-units/{unit}.md")
-        for block in doc.split("```"):
-            if "python tools/asset_sheet_process.py" not in block:
+def test_autoslice_contracts_never_pair_with_an_explicit_grid():
+    """Autoslice discovers regions; a grid would bucket them back together."""
+    forbids_grid = re.compile(r"(?:[Dd]o not (?:supply|pass)|never pass) `--grid` to autoslice")
+    for family in ("fx-bundle", "scene-prop-set", "compact-prop-pack"):
+        doc = _read(f"skills/assets/{family}/SKILL.md")
+        assert "--snap-mode autoslice" in doc
+        assert forbids_grid.search(_flat(doc)), (
+            f"{family}/SKILL.md does not forbid --grid with autoslice"
+        )
+        # Fenced blocks alternate with prose, so only the odd chunks are code.
+        # Prose legitimately names `--grid` while forbidding it.
+        for block in doc.split("```")[1::2]:
+            if "tools/asset_sheet_process.py" not in block:
                 continue
-            assert "--snap-mode autoslice" in block
+            if "--snap-mode autoslice" not in block:
+                continue
             assert "--grid" not in block, (
-                f"{unit}.md autoslice example still passes --grid"
+                f"{family}/SKILL.md autoslice example still passes --grid"
             )
 
 
@@ -174,7 +206,7 @@ def test_prop_units_default_to_autoslice_while_ui_and_card_use_native_resources(
     assert "AtlasTexture" in ui
     assert "StyleBoxTexture" in card
     assert "AtlasTexture" in card
-    assert "Use the assigned production-unit doc for extraction" in curation
+    assert "Use the assigned first-class Asset Skill for extraction" in curation
 
 
 def test_card_kit_is_separate_from_generic_ui_components():
@@ -191,17 +223,19 @@ def test_card_kit_is_separate_from_generic_ui_components():
     assert "Keep card-art and portrait windows empty" in card
 
 
-def test_foreground_production_units_do_not_finalize_source_images():
-    fx = _read("skills/core/gm-asset/references/production-units/fx-bundle.md")
+def test_foreground_families_extract_before_they_publish_a_final_asset():
+    """A foreground family must cut its source, never publish the sheet itself."""
+    fx = _read("skills/assets/fx-bundle/SKILL.md")
     props = _read("skills/assets/compact-prop-pack/SKILL.md")
     scene_props = _read("skills/assets/scene-prop-set/SKILL.md")
     character = _read("skills/assets/character-bundle/SKILL.md")
 
-    for doc in [fx]:
-        assert "--background magenta" in doc
-        assert "--snap-mode autoslice" in doc
-        assert "Do not use a source" in doc
-        assert "asset_image_finalize.py" not in doc
+    # FX keeps the magenta source contract, the autoslice-then-curate static
+    # route, and the explicit-grid animated route as two separate paths.
+    assert "#FF00FF" in fx
+    assert "--snap-mode autoslice" in fx
+    assert "Animation never uses autoslice" in _flat(fx)
+    assert "do not let autoslice split one effect into unrelated runtime assets" in _flat(fx)
 
     assert "tools/asset_curation_select.py" in fx
     assert "tools/asset_curation_select.py" in props
@@ -465,20 +499,25 @@ def test_no_doc_fakes_a_compiled_artifact_or_ready_state():
     )
 
 
-def test_production_units_stop_at_source_ready():
-    """Every production path must draft `source_ready`, never `ready`."""
-    unit_dir = REPO_ROOT / "skills/core/gm-asset/references/production-units"
-    units = [
-        path for path in sorted(unit_dir.glob("*.md"))
-        if not path.read_text(encoding="utf-8").startswith("# Historical ")
-    ]
-    assert units, "production-unit docs disappeared"
+def test_only_a_passing_l0_l4_result_reaches_a_ready_entry():
+    """`ready` is the worker-consumable state, so nothing may shortcut into it.
 
-    for path in units:
-        text = path.read_text(encoding="utf-8")
-        name = path.name
-        assert '"processing_status": "ready"' not in text, f"{name} drafts a ready entry"
-        assert "processing_status: ready" not in text, f"{name} drafts a ready entry"
+    The two animated-bundle families compile before they can be validated, so
+    their builder drafts `compiled` and the same builder promotes it once the
+    L0-L4 evidence comes back. A family that already holds a passing result when
+    it drafts writes `ready` outright. No doc may offer a third route.
+    """
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+    character = _read("skills/assets/character-bundle/SKILL.md")
+    fx = _read("skills/assets/fx-bundle/SKILL.md")
+
+    assert "Nothing else may write `ready`." in runtime
+    assert "drafts `compiled` and promotes the same" in _flat(runtime)
+    for doc in (character, fx):
+        assert "processing_status: compiled" in doc
+        assert "L0-L4" in doc
+    assert "--result <result.json>" in character
+    assert "Do not hand-edit `processing_status`." in character
 
 
 def test_entry_drafts_come_from_deterministic_builders():
@@ -503,27 +542,30 @@ def test_entry_drafts_come_from_deterministic_builders():
     assert "do not hand-write a draft or its support metadata" in runtime
 
 
-def test_every_production_unit_routes_through_a_draft_builder():
-    """No production unit may be left without an executable draft path."""
-    unit_dir = REPO_ROOT / "skills/core/gm-asset/references/production-units"
-    builders = (
+def test_every_planned_family_routes_through_a_draft_builder():
+    """No planned family may be left without an executable registration path.
+
+    Step 5 rejects a hand-written draft, so a family the manager can plan but
+    whose registration reference names no builder would have no legal way to
+    register at all. With the production-unit tree gone, the pipeline reference
+    is where that mapping lives.
+    """
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+    section = _flat(runtime.split("## Registration Commands", 1)[1].split("\n## ", 1)[0])
+    assert section, "the registration command reference disappeared"
+
+    for builder in (
         "asset_action_entry_draft.py",
         "asset_curation_entry_draft.py",
         "asset_finalize_entry_draft.py",
-    )
-    units = [
-        path for path in sorted(unit_dir.glob("*.md"))
-        if not path.read_text(encoding="utf-8").startswith("# Historical ")
-    ]
-    assert units, "production-unit docs disappeared"
+        "asset_compact_prop_pack_entry_draft.py",
+        "asset_scene_prop_set_entry_draft.py",
+    ):
+        assert builder in section, f"{builder} lost its documented registration path"
 
-    missing = [
-        path.name
-        for path in units
-        if not any(builder in path.read_text(encoding="utf-8") for builder in builders)
-    ]
+    missing = [family for family in MANAGER_FAMILIES if f"`{family}`" not in section]
     assert not missing, (
-        "these production units have no deterministic draft builder: "
+        "these planned families have no deterministic draft builder: "
         + ", ".join(missing)
     )
 

@@ -113,4 +113,6 @@ def test_gm_asset_dispatches_ui_and_card_kits_to_their_named_skills():
         assert f"| `{family}` | First-class `{family}` Asset Skill |" in planner
         assert f"references/production-units/{family}.md" not in manager
         assert f"references/production-units/{family}.md" not in planner
-        assert family in manager.split("First-class unit:")[1]
+        # The brief's Production Contract must offer this family as a choice, so
+        # a producer can never be handed a unit with no named Skill to invoke.
+        assert family in manager.split("First-class Asset Skill: {")[1]

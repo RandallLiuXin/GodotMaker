@@ -25,7 +25,7 @@ Do not read image binaries in the manager context.
 4. Identify current-tag visual anchors.
 5. Apply the Visual Anchor Gate.
 6. Group generated visual work into production units.
-7. Choose one production-unit doc for each unit.
+7. Choose one first-class Asset Skill for each unit.
 8. Choose one provider doc for each unit.
 9. Reserve source, stable output, prompt, report, and entry-draft paths.
 10. Record dependencies between units.
@@ -123,7 +123,7 @@ user explicitly requested generated image assets.
 Record these fields for each generated visual production unit:
 
 1. `unit_id`
-2. `unit_doc`
+2. `unit_skill`
 3. `provider`
 4. `input_rows`
 5. `dependencies`
