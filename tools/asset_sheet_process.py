@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import math
 import re
@@ -20,10 +22,10 @@ SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 MAGENTA_RGB = (255, 0, 255)
 COMPONENT_MODES = {"all", "largest"}
 SNAP_MODES = {"grid", "autoslice"}
-MAGENTA_MATTE_MAX_PASSES = 8
-MAGENTA_MATTE_SEARCH_RADIUS = 3
-MAGENTA_COMPOSITE_RESIDUAL = 12
-MAGENTA_COMPOSITE_RATIO_SPREAD = 0.16
+MAGENTA_KNOWN_BACKGROUND_DISTANCE = 60
+MAGENTA_UNKNOWN_BAND_WIDTH = 3
+MAGENTA_MATTE_MAX_ITERATIONS = 2000
+MAGENTA_MATTE_RELATIVE_TOLERANCE = 1e-7
 
 
 def _parse_grid(value: str) -> tuple[int, int]:
@@ -87,180 +89,72 @@ def _color_distance(rgb: tuple[int, int, int], target: tuple[int, int, int] = MA
 
 def _remove_magenta_background(
     image,
-    *,
-    threshold: int,
-    edge_threshold: int,
-) -> tuple[object, dict[str, int]]:
-    if threshold < 0:
-        raise SheetProcessError("--magenta-threshold must be zero or positive")
-    if edge_threshold < 0:
-        raise SheetProcessError("--magenta-edge-threshold must be zero or positive")
+) -> tuple[object, dict[str, object]]:
+    """Remove a controlled magenta background with a constrained PyMatting trimap.
+
+    This is the same fixed trimap used by the validated PyMatting probe:
+    known key background, a three-pixel foreground-side unknown band, and the
+    remaining pixels as known foreground.
+    """
+    try:
+        from PIL import Image
+        import numpy as np
+        from pymatting import estimate_alpha_cf, estimate_foreground_ml
+        from scipy.ndimage import distance_transform_edt
+    except ImportError as exc:
+        raise SheetProcessError(
+            "PyMatting is required for --background magenta. "
+            "Run: python -m pip install -r tools/requirements.txt"
+        ) from exc
+
     converted = image.convert("RGBA")
-    pixels = converted.load()
-    removed = 0
-    edge_removed = 0
-    width, height = converted.size
-    original = list(converted.get_flattened_data())
+    source_bytes = np.asarray(converted, dtype=np.uint8)
+    source = source_bytes.astype(np.float64) / 255.0
+    rgb = source[:, :, :3]
+    source_alpha = source[:, :, 3]
+    key = np.asarray(MAGENTA_RGB, dtype=np.float64) / 255.0
+    distance = np.linalg.norm(rgb - key, axis=2) * 255.0
+    background = (source_alpha == 0.0) | (distance <= MAGENTA_KNOWN_BACKGROUND_DISTANCE)
+    distance_to_background = distance_transform_edt(~background)
+    unknown = (~background) & (distance_to_background <= MAGENTA_UNKNOWN_BAND_WIDTH)
+    foreground = (~background) & (~unknown)
 
-    # A colour-distance test can safely clear only the strict key radius.  Do
-    # not extend an exterior fill through a locally smooth path: a blurred
-    # violet foreground creates the same path and would be erased wholesale.
-    # The broader edge threshold is reserved exclusively for the compositing
-    # validation below, where an actual foreground colour is available.
-    background = bytearray(width * height)
-    queue: deque[tuple[int, int]] = deque()
-    for x in range(width):
-        queue.append((x, 0))
-        queue.append((x, height - 1))
-    for y in range(height):
-        queue.append((0, y))
-        queue.append((width - 1, y))
+    result = source.copy()
+    result[background] = 0.0
+    # PyMatting requires at least one known sample for each class. A candidate
+    # can be passed through this shared entry point a second time after its
+    # transparent padding has been cropped away; in that case there is no
+    # background seed and no matte can be solved.
+    if bool(background.any()) and bool(unknown.any()) and bool(foreground.any()):
+        trimap = np.zeros(background.shape, dtype=np.float64)
+        trimap[foreground] = 1.0
+        trimap[unknown] = 0.5
+        with contextlib.redirect_stdout(io.StringIO()):
+            alpha = estimate_alpha_cf(
+                rgb,
+                trimap,
+                laplacian_kwargs={"epsilon": 1e-7, "radius": 1},
+                cg_kwargs={
+                    "maxiter": MAGENTA_MATTE_MAX_ITERATIONS,
+                    "rtol": MAGENTA_MATTE_RELATIVE_TOLERANCE,
+                },
+            )
+            alpha[background] = 0.0
+            alpha[foreground] = 1.0
+            estimated_foreground = estimate_foreground_ml(rgb, alpha)
+        result[unknown, :3] = estimated_foreground[unknown]
+        result[unknown, 3] = alpha[unknown] * source_alpha[unknown]
 
-    while queue:
-        x, y = queue.popleft()
-        if x < 0 or x >= width or y < 0 or y >= height:
-            continue
-        index = y * width + x
-        if background[index]:
-            continue
-        red, green, blue, alpha = original[index]
-        rgb = (red, green, blue)
-        if alpha > 0 and _color_distance(rgb) > threshold:
-            continue
-        background[index] = 1
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                if dx or dy:
-                    queue.append((x + dx, y + dy))
-
-    for y in range(height):
-        for x in range(width):
-            index = y * width + x
-            if not background[index]:
-                continue
-            red, green, blue, alpha = original[index]
-            if alpha == 0:
-                continue
-            edge_removed += 1
-            pixels[x, y] = (0, 0, 0, 0)
-
-    # Enclosed strict-key holes are intentionally removed, but never become
-    # flood-fill seeds.  This keeps a magenta window transparent without
-    # letting its neighbourhood consume a soft-edged foreground.
-    for y in range(height):
-        for x in range(width):
-            index = y * width + x
-            if background[index]:
-                continue
-            red, green, blue, alpha = original[index]
-            if alpha > 0 and _color_distance((red, green, blue)) <= threshold:
-                pixels[x, y] = (0, 0, 0, 0)
-                removed += 1
-
-    # Decontaminate soft edges from the outside in.  Every pass observes the
-    # previous pass's reduced alpha, allowing a two- or three-pixel composite
-    # ramp to expose the real foreground colour before the outer layer is
-    # revisited.  Fits always use the original input pixel, so alpha is not
-    # compounded between passes.
-    edge_spill_pixels: set[tuple[int, int]] = set()
-    frontier: set[tuple[int, int]] = set()
-    for y in range(height):
-        for x in range(width):
-            if pixels[x, y][3] == 0:
-                continue
-            if any(
-                pixels[x + dx, y + dy][3] < pixels[x, y][3]
-                for dx in (-1, 0, 1)
-                for dy in (-1, 0, 1)
-                if (dx or dy) and 0 <= x + dx < width and 0 <= y + dy < height
-            ):
-                frontier.add((x, y))
-
-    for _ in range(MAGENTA_MATTE_MAX_PASSES):
-        updates: list[tuple[int, int, tuple[int, int, int], int]] = []
-        for x, y in frontier:
-            index = y * width + x
-            red, green, blue, original_alpha = original[index]
-            current_alpha = pixels[x, y][3]
-            distance = _color_distance((red, green, blue))
-            if original_alpha == 0 or current_alpha == 0 or distance > edge_threshold:
-                continue
-            neighbours = [
-                pixels[x + dx, y + dy]
-                for dx in range(-MAGENTA_MATTE_SEARCH_RADIUS, MAGENTA_MATTE_SEARCH_RADIUS + 1)
-                for dy in range(-MAGENTA_MATTE_SEARCH_RADIUS, MAGENTA_MATTE_SEARCH_RADIUS + 1)
-                if (dx or dy) and 0 <= x + dx < width and 0 <= y + dy < height
-            ]
-            if not any(item[3] < current_alpha for item in neighbours):
-                continue
-            best: tuple[tuple[int, int, int], int, float] | None = None
-            for neighbour_red, neighbour_green, neighbour_blue, neighbour_alpha in neighbours:
-                foreground = (neighbour_red, neighbour_green, neighbour_blue)
-                if neighbour_alpha == 0 or _color_distance(foreground) <= distance + 8:
-                    continue
-                matte_alpha = _magenta_composite_alpha((red, green, blue), foreground)
-                if matte_alpha is None:
-                    continue
-                residual = _magenta_composite_residual(
-                    (red, green, blue), foreground, matte_alpha
-                )
-                if residual > MAGENTA_COMPOSITE_RESIDUAL:
-                    continue
-                output_alpha = round(original_alpha * matte_alpha)
-                if output_alpha >= current_alpha:
-                    continue
-                if best is None or output_alpha < best[1] or (
-                    output_alpha == best[1] and residual < best[2]
-                ):
-                    best = (foreground, output_alpha, residual)
-            if best is not None:
-                foreground, output_alpha, _ = best
-                updates.append((x, y, foreground, output_alpha))
-        if not updates:
-            break
-        frontier = set()
-        for x, y, foreground, output_alpha in updates:
-            pixels[x, y] = (*foreground, output_alpha)
-            edge_spill_pixels.add((x, y))
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    next_x, next_y = x + dx, y + dy
-                    if 0 <= next_x < width and 0 <= next_y < height:
-                        frontier.add((next_x, next_y))
-
-    return converted, {
-        "removed_pixels": removed,
-        "edge_removed_pixels": edge_removed,
-        "edge_spill_pixels": len(edge_spill_pixels),
+    result = np.clip(np.rint(result * 255.0), 0, 255).astype(np.uint8)
+    output = Image.fromarray(result, "RGBA")
+    changed = np.any(result != source_bytes, axis=2)
+    return output, {
+        "algorithm": "pymatting_closed_form",
+        "strict_background_pixels": int((background & (source_alpha > 0.0)).sum()),
+        "unknown_band_pixels": int(unknown.sum()),
+        "matted_pixels": int((unknown & changed).sum()),
+        "transparent_pixels": int((result[:, :, 3] == 0).sum()),
     }
-
-
-def _magenta_composite_alpha(
-    pixel: tuple[int, int, int], foreground: tuple[int, int, int]
-) -> float | None:
-    """Return a consistent foreground coverage for ``pixel`` over magenta."""
-    ratios: list[float] = []
-    for value, foreground_value, key_value in zip(pixel, foreground, MAGENTA_RGB):
-        denominator = foreground_value - key_value
-        if abs(denominator) >= 8:
-            ratios.append((value - key_value) / denominator)
-    if not ratios:
-        return None
-    coverage = sum(ratios) / len(ratios)
-    if not 0.05 <= coverage <= 0.95:
-        return None
-    if len(ratios) > 1 and max(ratios) - min(ratios) > MAGENTA_COMPOSITE_RATIO_SPREAD:
-        return None
-    return coverage
-
-
-def _magenta_composite_residual(
-    pixel: tuple[int, int, int], foreground: tuple[int, int, int], coverage: float
-) -> float:
-    return max(
-        abs(value - round(key_value + coverage * (foreground_value - key_value)))
-        for value, foreground_value, key_value in zip(pixel, foreground, MAGENTA_RGB)
-    )
 
 
 def _trim_border(image, *, pixels: int):
@@ -534,8 +428,6 @@ def process_sheet(
     padding: int = 0,
     reject_edge_touch: bool = False,
     background: str = "transparent",
-    magenta_threshold: int = 60,
-    magenta_edge_threshold: int = 220,
     component_mode: str = "all",
     component_padding: int | None = None,
     min_component_area: int = 1,
@@ -597,19 +489,19 @@ def process_sheet(
     try:
         cleanup: dict[str, object] = {
             "background": background,
-            "magenta_threshold": magenta_threshold if background == "magenta" else None,
-            "magenta_edge_threshold": magenta_edge_threshold if background == "magenta" else None,
-            "removed_pixels": 0,
-            "edge_removed_pixels": 0,
-            "edge_spill_pixels": 0,
+            "algorithm": "pymatting_closed_form" if background == "magenta" else None,
+            "strict_background_pixels": 0,
+            "unknown_band_pixels": 0,
+            "matted_pixels": 0,
+            "transparent_pixels": 0,
         }
         if background == "magenta":
-            image, cleanup_counts = _remove_magenta_background(
-                image,
-                threshold=magenta_threshold,
-                edge_threshold=magenta_edge_threshold,
-            )
+            image, cleanup_counts = _remove_magenta_background(image)
             cleanup.update(cleanup_counts)
+        else:
+            cleanup["transparent_pixels"] = sum(
+                value == 0 for value in image.getchannel("A").get_flattened_data()
+            )
         width, height = image.size
         if not _has_transparent_pixels(image):
             raise SheetProcessError("Source sheet must have transparency after background cleanup")
@@ -881,18 +773,6 @@ def _main() -> int:
         help="Source background mode",
     )
     parser.add_argument(
-        "--magenta-threshold",
-        type=int,
-        default=60,
-        help="Global RGB distance for strict and enclosed #FF00FF background cleanup",
-    )
-    parser.add_argument(
-        "--magenta-edge-threshold",
-        type=int,
-        default=220,
-        help="Maximum RGB distance for locally validated magenta spill cleanup",
-    )
-    parser.add_argument(
         "--snap-mode",
         choices=sorted(SNAP_MODES),
         required=True,
@@ -958,8 +838,6 @@ def _main() -> int:
             padding=args.padding,
             reject_edge_touch=args.reject_edge_touch,
             background=args.background,
-            magenta_threshold=args.magenta_threshold,
-            magenta_edge_threshold=args.magenta_edge_threshold,
             snap_mode=args.snap_mode,
             component_mode=args.component_mode,
             component_padding=args.component_padding,

@@ -81,7 +81,7 @@ python tools/asset_sheet_process.py \
 供审计。Autoslice 报告名称数量不匹配时不会写出该文件，避免未绑定的 sheet 被
 误认为有效的生产产物。
 
-使用 `--background magenta` 时，`--magenta-threshold`（默认 `60`）是严格的全图清理半径；传入 `0` 可将封闭区域清理限制为精确的 `#FF00FF`。`--magenta-edge-threshold`（默认 `220`）不是删除半径，只用于限制后续能由键色和相邻前景像素一致解释的边缘混色反解。这样会保留独立的紫色、蓝紫色精灵与细线，并将已验证的 spill 转为正确颜色的半透明边缘。
+使用 `--background magenta` 时，清理使用已通过 provider 样例验证的固定 PyMatting trimap：与 `#FF00FF` 色距不超过 `60` 的像素是确定背景，前景侧固定 `3px` 边带是未知区域，其余像素是确定前景。该边带的 alpha 和前景 RGB 只由 PyMatting 求解。公共命令不再暴露颜色距离或边缘 matting 调参。
 
 ## asset_action_process.py
 

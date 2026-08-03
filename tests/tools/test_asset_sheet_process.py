@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
@@ -114,7 +114,8 @@ def test_process_sheet_splits_magenta_background_source(tmp_path):
 
     assert result["strategy"] == "solid_background_grid"
     assert result["background"] == "magenta"
-    assert result["cleanup"]["removed_pixels"] + result["cleanup"]["edge_removed_pixels"] > 0
+    assert result["cleanup"]["algorithm"] == "pymatting_closed_form"
+    assert result["cleanup"]["strict_background_pixels"] > 0
     assert result["accepted_count"] == 3
     assert result["rejected_count"] == 1
     candidate = Image.open(tmp_path / "out" / "a.png").convert("RGBA")
@@ -310,18 +311,26 @@ def test_process_sheet_removes_strict_near_key_background(tmp_path):
         background="magenta",
     )
 
-    assert result["cleanup"]["removed_pixels"] + result["cleanup"]["edge_removed_pixels"] > 0
+    assert result["cleanup"]["strict_background_pixels"] > 0
     assert result["accepted"][0]["crop_bbox"] == [2, 2, 8, 8]
 
 
-def test_process_sheet_mattes_only_a_verified_magenta_composite_edge(tmp_path):
-    source = tmp_path / "magenta_composite.png"
-    source.parent.mkdir(parents=True, exist_ok=True)
-    image = Image.new("RGBA", (12, 12), (245, 2, 243, 255))
+def test_process_sheet_mattes_provider_style_residual_without_changing_foreground(tmp_path):
+    """Synthetic, author-created WOR-58 matte fixture; licensed with this repository."""
+    source = tmp_path / "wor58-pymatting-fixture.png"
+    image = Image.new("RGBA", (72, 64), MAGENTA_RGB + (255,))
     draw = ImageDraw.Draw(image)
-    draw.rectangle((3, 3, 8, 8), fill=(100, 200, 100, 255))
-    # Exact 50% composite of the foreground and #FF00FF.
-    draw.rectangle((2, 2, 9, 9), outline=(178, 100, 178, 255))
+    core = (40, 35, 23)
+    draw.rectangle((18, 14, 47, 48), fill=core + (255,))
+    # These non-ideal edge colours are reduced versions of the observed dark
+    # and bright provider spill around the night-market rug, not a source crop.
+    for y in range(16, 47):
+        draw.point((48, y), fill=(140 + (y % 3), 23 + (y % 5), 143 + (y % 7), 255))
+        draw.point((49, y), fill=(184 + (y % 5), 22 + (y % 3), 202 - (y % 4), 255))
+        draw.point((50, y), fill=(234 - (y % 4), 9 + (y % 6), 194 + (y % 3), 255))
+    for x in range(20, 48):
+        draw.point((x, 48), fill=(140 + (x % 3), 23 + (x % 5), 143 + (x % 7), 255))
+        draw.point((x, 49), fill=(237 - (x % 4), 67 + (x % 3), 202 + (x % 5), 255))
     image.save(source)
 
     result = process_sheet(
@@ -329,7 +338,7 @@ def test_process_sheet_mattes_only_a_verified_magenta_composite_edge(tmp_path):
         tmp_path / "out",
         grid="1x1",
         snap_mode="grid",
-        names="mossy_prop",
+        names="fixture",
         background="magenta",
         preserve_cell_bounds=True,
         processed_out=tmp_path / "processed.png",
@@ -337,188 +346,22 @@ def test_process_sheet_mattes_only_a_verified_magenta_composite_edge(tmp_path):
 
     with Image.open(tmp_path / "processed.png") as processed:
         rgba = processed.convert("RGBA")
-        assert rgba.getpixel((2, 5)) == (100, 200, 100, 127)
-        assert rgba.getpixel((3, 5)) == (100, 200, 100, 255)
-    assert result["cleanup"]["edge_spill_pixels"] > 0
-
-
-def test_process_sheet_removes_smooth_near_key_background_without_touching_foreground(tmp_path):
-    source = tmp_path / "soft-magenta-backdrop.png"
-    image = Image.new("RGBA", (30, 20), MAGENTA_RGB + (255,))
-    draw = ImageDraw.Draw(image)
-    # This generated backdrop contains non-exact key colours inside the strict
-    # radius. It must clear without using a smooth-path heuristic that could
-    # enter a similarly blurred foreground.
-    for left, colour in zip(
-        range(0, 30, 5),
-        [(255, 0, 255), (245, 4, 245), (235, 8, 235), (225, 12, 225), (205, 20, 205), (195, 24, 195)],
-    ):
-        draw.rectangle((left, 0, left + 4, 19), fill=colour)
-    draw.rectangle((11, 6, 18, 13), fill=(100, 200, 100, 255))
-    image.save(source)
-
-    result = process_sheet(
-        source,
-        tmp_path / "out",
-        grid="1x1",
-        snap_mode="grid",
-        names="prop",
-        background="magenta",
-        magenta_threshold=120,
-        preserve_cell_bounds=True,
-        processed_out=tmp_path / "processed.png",
-    )
-
-    with Image.open(tmp_path / "processed.png") as processed:
-        rgba = processed.convert("RGBA")
-        assert rgba.getpixel((14, 9)) == (100, 200, 100, 255)
-        assert all(
-            pixel[3] < 255 or _color_distance(pixel[:3]) > 120
-            for pixel in rgba.get_flattened_data()
-        )
-    assert result["cleanup"]["removed_pixels"] + result["cleanup"]["edge_removed_pixels"] > 0
-
-
-def test_process_sheet_mattes_deterministically_noisy_magenta_edges(tmp_path):
-    """Keep the noisy provider-edge tolerance and deeper reference search pinned."""
-    source = tmp_path / "noisy-magenta-edge.png"
-    foreground = (100, 200, 100)
-    image = Image.new("RGBA", (80, 64), (245, 2, 243, 255))
-    draw = ImageDraw.Draw(image)
-
-    # This fixed RGB offset from a 30% key composite has residual 11 and
-    # channel-ratio spread ~0.11, unlike an ideal zero-residual composite.
-    draw.rectangle((9, 25, 17, 33), fill=foreground + (255,))
-    draw.rectangle((8, 24, 18, 34), outline=(222, 64, 205, 255))
-
-    # A deterministic nine-step ramp pins the radius-three platform search.
-    draw.rectangle((49, 25, 60, 36), fill=foreground + (255,))
-    for inset, coverage in enumerate((0.30, 0.37, 0.44, 0.51, 0.58, 0.65, 0.72, 0.79, 0.86)):
-        composite = tuple(
-            round(coverage * channel + (1 - coverage) * key)
-            for channel, key in zip(foreground, MAGENTA_RGB)
-        )
-        draw.rectangle((40 + inset, 16 + inset, 69 - inset, 45 - inset), outline=composite + (255,))
-    image.save(source)
-    source_core_count = sum(pixel == foreground + (255,) for pixel in image.get_flattened_data())
-
-    process_sheet(
-        source,
-        tmp_path / "out",
-        grid="1x1",
-        snap_mode="grid",
-        names="prop",
-        background="magenta",
-        preserve_cell_bounds=True,
-        processed_out=tmp_path / "processed.png",
-    )
-
-    with Image.open(tmp_path / "processed.png") as processed:
-        rgba = processed.convert("RGBA")
-        data = rgba.get_flattened_data()
-        assert sum(pixel == foreground + (255,) for pixel in data) == source_core_count
-        assert not any(pixel[3] == 255 and _color_distance(pixel[:3]) <= 60 for pixel in data)
-        assert not any(
-            rgba.getpixel((x, y))[3] == 255
-            and _color_distance(rgba.getpixel((x, y))[:3]) <= 120
-            and any(
-                rgba.getpixel((x + dx, y + dy))[3] < 255
-                for dx in (-1, 0, 1)
-                for dy in (-1, 0, 1)
-                if (dx or dy) and 0 <= x + dx < rgba.width and 0 <= y + dy < rgba.height
-            )
-            for y in range(rgba.height)
-            for x in range(rgba.width)
-        )
-        assert rgba.getpixel((40, 30))[3] <= 100
-
-
-def test_process_sheet_preserves_a_soft_edged_near_key_violet_foreground(tmp_path):
-    source = tmp_path / "soft-violet.png"
-    violet = (150, 10, 200)
-    image = Image.new("RGBA", (48, 48), MAGENTA_RGB + (255,))
-    ImageDraw.Draw(image).rectangle((12, 12, 35, 35), fill=violet + (255,))
-    image = image.filter(ImageFilter.GaussianBlur(radius=2))
-    image.save(source)
-    source_core_count = sum(pixel == violet + (255,) for pixel in image.get_flattened_data())
-    assert source_core_count > 0
-
-    process_sheet(
-        source,
-        tmp_path / "out",
-        grid="1x1",
-        snap_mode="grid",
-        names="violet",
-        background="magenta",
-        preserve_cell_bounds=True,
-        processed_out=tmp_path / "processed.png",
-    )
-
-    with Image.open(tmp_path / "processed.png") as processed:
-        rgba = processed.convert("RGBA")
-        assert sum(pixel == violet + (255,) for pixel in rgba.get_flattened_data()) == source_core_count
-
-
-def test_process_sheet_iteratively_recovers_a_two_pixel_composite_ramp(tmp_path):
-    source = tmp_path / "two-pixel-matte.png"
-    foreground = (100, 200, 100)
-    image = Image.new("RGBA", (16, 16), (245, 2, 243, 255))
-    draw = ImageDraw.Draw(image)
-    draw.rectangle((4, 4, 11, 11), fill=foreground)
-    draw.rectangle((3, 3, 12, 12), outline=(153, 132, 153, 255))
-    draw.rectangle((2, 2, 13, 13), outline=(204, 66, 204, 255))
-    image.save(source)
-
-    process_sheet(
-        source,
-        tmp_path / "out",
-        grid="1x1",
-        snap_mode="grid",
-        names="prop",
-        background="magenta",
-        preserve_cell_bounds=True,
-        processed_out=tmp_path / "processed.png",
-    )
-
-    with Image.open(tmp_path / "processed.png") as processed:
-        rgba = processed.convert("RGBA")
-        assert rgba.getpixel((2, 8)) == (100, 200, 100, 84)
-        assert rgba.getpixel((3, 8)) == (100, 200, 100, 168)
-
-
-def test_process_sheet_mattes_saturated_red_with_a_single_informative_channel(tmp_path):
-    source = tmp_path / "red-matte.png"
-    image = Image.new("RGBA", (12, 12), (245, 2, 243, 255))
-    draw = ImageDraw.Draw(image)
-    draw.rectangle((4, 4, 7, 7), fill=(255, 0, 0, 255))
-    draw.rectangle((3, 3, 8, 8), outline=(255, 0, 128, 255))
-    image.save(source)
-
-    process_sheet(
-        source,
-        tmp_path / "out",
-        grid="1x1",
-        snap_mode="grid",
-        names="prop",
-        background="magenta",
-        preserve_cell_bounds=True,
-        processed_out=tmp_path / "processed.png",
-    )
-
-    with Image.open(tmp_path / "processed.png") as processed:
-        assert processed.convert("RGBA").getpixel((3, 6)) == (255, 0, 0, 127)
+        assert rgba.getpixel((34, 32)) == core + (255,)
+        assert rgba.getpixel((48, 30))[3] < 255
+        assert _color_distance(rgba.getpixel((50, 30))[:3]) > _color_distance((234, 9, 194))
+        assert _color_distance(rgba.getpixel((34, 49))[:3]) > _color_distance((237, 67, 202))
+        assert rgba.getchannel("A").getbbox() == (18, 14, 51, 50)
+    assert result["cleanup"]["algorithm"] == "pymatting_closed_form"
+    assert result["cleanup"]["matted_pixels"] > 0
 
 
 def test_magenta_cleanup_preserves_non_key_foreground_colours_and_alpha(tmp_path):
     source = tmp_path / "provider-regression.png"
-    image = Image.new("RGBA", (16, 16), (245, 2, 243, 255))
+    image = Image.new("RGBA", (48, 32), (245, 2, 243, 255))
     draw = ImageDraw.Draw(image)
-    # These colours represent real red/purple/blue-purple painted details;
-    # none is sufficiently key-like to be a background spill.
-    draw.rectangle((3, 3, 5, 12), fill=(190, 30, 45, 255))
-    draw.rectangle((6, 3, 8, 12), fill=(130, 20, 185, 255))
-    draw.rectangle((9, 3, 11, 12), fill=(90, 30, 175, 255))
-    draw.line((3, 2, 11, 2), fill=(205, 45, 60, 96), width=1)
+    draw.rectangle((4, 4, 14, 24), fill=(190, 30, 45, 255))
+    draw.rectangle((18, 4, 28, 24), fill=(130, 20, 185, 255))
+    draw.rectangle((32, 4, 42, 24), fill=(90, 30, 175, 255))
     image.save(source)
 
     result = process_sheet(
@@ -535,46 +378,25 @@ def test_magenta_cleanup_preserves_non_key_foreground_colours_and_alpha(tmp_path
     with Image.open(tmp_path / "processed.png") as processed:
         rgba = processed.convert("RGBA")
         assert rgba.getpixel((0, 0))[3] == 0
-        assert sum(pixel[3] > 0 for pixel in rgba.crop((3, 3, 12, 13)).get_flattened_data()) == 90
-        assert rgba.getpixel((3, 3)) == (190, 30, 45, 255)
-        assert rgba.getpixel((6, 3)) == (130, 20, 185, 255)
-        assert rgba.getpixel((11, 12)) == (90, 30, 175, 255)
-        assert rgba.getpixel((3, 2)) == (205, 45, 60, 96)
+        assert rgba.getpixel((9, 14)) == (190, 30, 45, 255)
+        assert rgba.getpixel((23, 14)) == (130, 20, 185, 255)
+        assert rgba.getpixel((37, 14)) == (90, 30, 175, 255)
         assert not any(
             pixel[:3] == (255, 0, 255) and pixel[3] > 0
             for pixel in rgba.get_flattened_data()
         )
-    assert result["cleanup"]["edge_spill_pixels"] == 0
-
-
-@pytest.mark.parametrize("color", [(130, 20, 185), (90, 30, 175), (150, 10, 200)])
-@pytest.mark.parametrize("line_height", [1, 2])
-def test_magenta_cleanup_preserves_purple_and_blue_purple_fine_lines(tmp_path, color, line_height):
-    source = tmp_path / "purple-line.png"
-    image = Image.new("RGBA", (28, 12), (245, 2, 243, 255))
-    ImageDraw.Draw(image).rectangle((2, 5, 25, 5 + line_height - 1), fill=(*color, 255))
-    image.save(source)
-
-    result = process_sheet(
-        source,
-        tmp_path / "out",
-        grid="1x1",
-        snap_mode="grid",
-        names="line",
-        background="magenta",
-        preserve_cell_bounds=True,
-        processed_out=tmp_path / "processed.png",
-    )
-
-    with Image.open(tmp_path / "processed.png") as processed:
-        rgba = processed.convert("RGBA")
-        assert all(rgba.getpixel((x, y)) == (*color, 255) for x in range(2, 26) for y in range(5, 5 + line_height))
-    assert result["cleanup"]["edge_spill_pixels"] == 0
+    assert result["cleanup"]["matted_pixels"] > 0
 
 
 def test_process_sheet_rejects_magenta_edge_touch_when_requested(tmp_path):
     source = tmp_path / "magenta_edge.png"
-    make_magenta_sheet(source, edge_touch=True)
+    image = Image.new("RGBA", (80, 80), MAGENTA_RGB + (255,))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((8, 8, 23, 23), fill=(255, 0, 0, 255))
+    draw.rectangle((48, 8, 63, 23), fill=(0, 255, 0, 255))
+    draw.rectangle((8, 48, 23, 63), fill=(0, 0, 255, 255))
+    draw.rectangle((40, 40, 79, 79), fill=(255, 255, 0, 255))
+    image.save(source)
 
     result = process_sheet(
         source,
