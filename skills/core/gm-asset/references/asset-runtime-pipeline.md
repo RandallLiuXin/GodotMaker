@@ -411,6 +411,7 @@ satisfied by the production unit:
 
 ```bash
 python tools/asset_bundle_manifest.py --project-root . \
+  --request <validated-request.json> --result <validated-result.json> \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
   --asset-id <existing_assets_row_id>
@@ -420,7 +421,10 @@ The output is
 `.godotmaker/asset-generation/bundles/<tag>/<bundle_id>.json`. It contains only
 bundle identity, the original planning-row IDs, and canonical child-entry
 pointers. It does not duplicate runtime fields and does not introduce logical
-ASSETS.md rows.
+ASSETS.md rows. The writer rebuilds the authoritative child set from the same
+validated request/result and requires the provided stable-entry set to match it
+exactly, so omitting one declared runtime output cannot publish a partial
+bundle.
 
 Update matching ASSETS.md rows with:
 

@@ -288,6 +288,8 @@ def test_kit_bundle_resolves_all_outputs_without_adding_assets_rows(tmp_path):
     result = write_bundle_manifest(
         [tmp_path / entry_relative_path(TAG, entry["asset_id"]) for entry in entries],
         asset_ids=["hud_cards", "inventory_cards"],
+        request_path=request_path,
+        result_path=result_path,
         project_root=tmp_path,
     )
     update_assets_md_from_bundle(assets_md, tmp_path / result["path"])
@@ -369,7 +371,11 @@ def test_kit_bundle_failure_leaves_assets_md_untouched(tmp_path):
 
     with pytest.raises(AssetBundleManifestError, match="every child must be ready"):
         write_bundle_manifest(
-            paths, asset_ids=["hud_cards"], project_root=tmp_path
+            paths,
+            asset_ids=["hud_cards"],
+            request_path=request_path,
+            result_path=result_path,
+            project_root=tmp_path,
         )
 
     assert assets_md.read_bytes() == before
@@ -387,6 +393,8 @@ def test_bundle_assets_update_is_atomic_when_a_planning_row_is_missing(tmp_path)
     result = write_bundle_manifest(
         paths,
         asset_ids=["hud_cards", "inventory_cards"],
+        request_path=request_path,
+        result_path=result_path,
         project_root=tmp_path,
     )
 
@@ -405,7 +413,11 @@ def test_bundle_assets_update_is_idempotent_and_preserves_crlf(tmp_path):
     assets_md.write_bytes(assets_md.read_text(encoding="utf-8").replace("\n", "\r\n").encode())
     paths = _register(tmp_path, entries)
     result = write_bundle_manifest(
-        paths, asset_ids=["hud_cards"], project_root=tmp_path
+        paths,
+        asset_ids=["hud_cards"],
+        request_path=request_path,
+        result_path=result_path,
+        project_root=tmp_path,
     )
 
     update_assets_md_from_bundle(assets_md, tmp_path / result["path"])
@@ -415,6 +427,31 @@ def test_bundle_assets_update_is_idempotent_and_preserves_crlf(tmp_path):
     assert assets_md.read_bytes() == once
     assert b"\r\n" in once
     assert b"\n" not in once.replace(b"\r\n", b"")
+
+
+def test_bundle_manifest_rejects_an_omitted_declared_child(tmp_path):
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    entries = build_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path
+    )
+    assets_md = _assets_md(tmp_path, ["hud_cards"])
+    before = assets_md.read_bytes()
+    paths = _register(tmp_path, entries)
+
+    with pytest.raises(
+        AssetBundleManifestError,
+        match="must exactly match the validated request/result child set",
+    ):
+        write_bundle_manifest(
+            paths[:1],
+            asset_ids=["hud_cards"],
+            request_path=request_path,
+            result_path=result_path,
+            project_root=tmp_path,
+        )
+
+    assert assets_md.read_bytes() == before
+    assert not (tmp_path / ".godotmaker/asset-generation/bundles").exists()
 
 
 # --------------------------------------------------------------------------

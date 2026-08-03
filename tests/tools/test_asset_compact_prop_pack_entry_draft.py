@@ -14,6 +14,12 @@ from asset_compact_prop_pack_entry_draft import (  # noqa: E402
     build_compact_prop_pack_entry_drafts,
     write_compact_prop_pack_entry_drafts,
 )
+from asset_bundle_manifest import (  # noqa: E402
+    AssetBundleManifestError,
+    write_bundle_manifest,
+)
+from asset_generation_index import update_index  # noqa: E402
+from asset_stable_entry import entry_relative_path, write_entry  # noqa: E402
 
 
 def _documents(tmp_path: Path) -> tuple[Path, Path]:
@@ -127,3 +133,31 @@ def test_entry_drafts_reject_tampered_metadata_and_unsafe_logical_names(tmp_path
         build_compact_prop_pack_entry_drafts(
             request_path, result_path, tag="v0.1.0", project_root=tmp_path
         )
+
+
+def test_bundle_manifest_requires_every_declared_compact_prop(tmp_path):
+    request_path, result_path = _documents(tmp_path)
+    entries = build_compact_prop_pack_entry_drafts(
+        request_path, result_path, tag="v0.1.0", project_root=tmp_path
+    )
+    paths: list[Path] = []
+    index_path = tmp_path / ".godotmaker/asset-generation/manifest.json"
+    for entry in entries:
+        write_entry(entry, project_root=tmp_path, check_files=True)
+        path = tmp_path / entry_relative_path(entry["tag"], entry["asset_id"])
+        paths.append(path)
+        update_index(index_path, [path], project_root=tmp_path)
+
+    with pytest.raises(
+        AssetBundleManifestError,
+        match="must exactly match the validated request/result child set",
+    ):
+        write_bundle_manifest(
+            paths[:1],
+            asset_ids=["market_props"],
+            request_path=request_path,
+            result_path=result_path,
+            project_root=tmp_path,
+        )
+
+    assert not (tmp_path / ".godotmaker/asset-generation/bundles").exists()

@@ -196,10 +196,63 @@ def validate_bundle_manifest(
     }
 
 
+def _expected_bundle_entries(
+    request_path: Path,
+    result_path: Path,
+    *,
+    tag: str,
+    project_root: Path,
+) -> list[dict[str, Any]]:
+    """Rebuild the authoritative child set from the validated family handoff."""
+    request = _load_object(request_path, "bundle request")
+    family = request.get("asset_type")
+    if family in {"ui-kit", "card-kit"}:
+        from asset_ui_card_entry_draft import (
+            UICardEntryDraftError,
+            build_ui_card_entry_drafts,
+        )
+
+        try:
+            return build_ui_card_entry_drafts(
+                request_path,
+                result_path,
+                tag=tag,
+                project_root=project_root,
+                check_files=True,
+            )
+        except UICardEntryDraftError as exc:
+            raise AssetBundleManifestError(
+                f"bundle request/result handoff is invalid: {exc}"
+            ) from exc
+    if family == "compact-prop-pack":
+        from asset_compact_prop_pack_entry_draft import (
+            CompactPropPackEntryDraftError,
+            build_compact_prop_pack_entry_drafts,
+        )
+
+        try:
+            return build_compact_prop_pack_entry_drafts(
+                request_path,
+                result_path,
+                tag=tag,
+                project_root=project_root,
+                check_files=True,
+            )
+        except CompactPropPackEntryDraftError as exc:
+            raise AssetBundleManifestError(
+                f"bundle request/result handoff is invalid: {exc}"
+            ) from exc
+    raise AssetBundleManifestError(
+        "bundle request asset_type must be ui-kit, card-kit, or compact-prop-pack"
+    )
+
+
 def build_bundle_manifest(
     entry_paths: list[Path],
     *,
     asset_ids: list[str],
+    request_path: Path,
+    result_path: Path,
     project_root: Path,
 ) -> dict[str, Any]:
     if not entry_paths:
@@ -222,13 +275,46 @@ def build_bundle_manifest(
     bundle_id = first.get("bundle_id")
     if not isinstance(bundle_id, str):
         raise AssetBundleManifestError("stable entries do not declare a bundle_id")
+    if any(entry["processing_status"] != "ready" for entry in entries):
+        raise AssetBundleManifestError("every child must be ready")
+    expected_entries = _expected_bundle_entries(
+        request_path,
+        result_path,
+        tag=first["tag"],
+        project_root=Path(project_root),
+    )
+    expected_by_pointer = {
+        entry_relative_path(entry["tag"], entry["asset_id"]): entry
+        for entry in expected_entries
+    }
+    actual_by_pointer = dict(zip(pointers, entries, strict=True))
+    if len(actual_by_pointer) != len(entries):
+        raise AssetBundleManifestError("stable entry paths must not be repeated")
+    missing = set(expected_by_pointer) - set(actual_by_pointer)
+    unexpected = set(actual_by_pointer) - set(expected_by_pointer)
+    if missing or unexpected:
+        details: list[str] = []
+        if missing:
+            details.append(f"missing: {', '.join(sorted(missing))}")
+        if unexpected:
+            details.append(f"unexpected: {', '.join(sorted(unexpected))}")
+        raise AssetBundleManifestError(
+            "stable entries must exactly match the validated request/result child set ("
+            + "; ".join(details)
+            + ")"
+        )
+    for pointer, expected in expected_by_pointer.items():
+        if actual_by_pointer[pointer] != expected:
+            raise AssetBundleManifestError(
+                f"stable entry does not match the validated request/result: {pointer}"
+            )
     candidate = {
         "version": SCHEMA_VERSION,
         "tag": first["tag"],
         "bundle_id": bundle_id,
         "production_family": first["production_family"],
         "asset_ids": asset_ids,
-        "entries": pointers,
+        "entries": list(expected_by_pointer),
     }
     return validate_bundle_manifest(candidate, project_root=project_root)
 
@@ -237,11 +323,23 @@ def write_bundle_manifest(
     entry_paths: list[Path],
     *,
     asset_ids: list[str],
+    request_path: Path,
+    result_path: Path,
     project_root: Path,
 ) -> dict[str, Any]:
     root = Path(project_root).resolve()
+    request_path = Path(request_path)
+    result_path = Path(result_path)
+    if not request_path.is_absolute():
+        request_path = root / request_path
+    if not result_path.is_absolute():
+        result_path = root / result_path
     manifest = build_bundle_manifest(
-        entry_paths, asset_ids=asset_ids, project_root=root
+        entry_paths,
+        asset_ids=asset_ids,
+        request_path=request_path,
+        result_path=result_path,
+        project_root=root,
     )
     relative = bundle_manifest_relative_path(manifest["tag"], manifest["bundle_id"])
     target = root / relative
@@ -268,6 +366,18 @@ def _main() -> int:
         description="Write one pointer-only manifest for a ready asset bundle"
     )
     parser.add_argument("--project-root", default=".", type=Path)
+    parser.add_argument(
+        "--request",
+        required=True,
+        type=Path,
+        help="Validated production request that declares the complete child set",
+    )
+    parser.add_argument(
+        "--result",
+        required=True,
+        type=Path,
+        help="Validated production result bound to the complete child set",
+    )
     parser.add_argument("--entry-file", action="append", required=True, type=Path)
     parser.add_argument(
         "--asset-id",
@@ -280,6 +390,8 @@ def _main() -> int:
         result = write_bundle_manifest(
             args.entry_file,
             asset_ids=args.asset_id,
+            request_path=args.request,
+            result_path=args.result,
             project_root=args.project_root,
         )
     except AssetBundleManifestError as exc:

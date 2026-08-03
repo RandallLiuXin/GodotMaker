@@ -325,6 +325,7 @@ python tools/asset_generation_index.py --project-root . --check-entries --check-
 
 ```bash
 python tools/asset_bundle_manifest.py --project-root . \
+  --request <validated-request.json> --result <validated-result.json> \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
   --asset-id <existing_assets_row_id>
