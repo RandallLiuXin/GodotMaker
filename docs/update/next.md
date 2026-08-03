@@ -93,7 +93,9 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - `--supersede` resolves the row to retire by current tag first and falls back across tags only when exactly one candidate exists; a same-named row in another tag is no longer silently retired in place of the real one.
 
-- The `## Asset Table` anchor is matched only at its own heading level, must be unique, and ignores fenced examples, so a nested or quoted example table cannot shadow the manifest; a table with rows but no `|---|` separator is now an error rather than reporting its header as an asset.
+- The `## Asset Table` anchor is matched only at its own heading level, must be unique, and ends at the next same-or-shallower heading, so neither a nested `### Asset Table` example nor a `### Legend` written inside the section can shadow or truncate the manifest; a table with rows but no `|---|` separator is now an error rather than reporting its header as an asset.
+
+- Fenced code blocks are excluded from ASSETS.md row scanning as well as heading lookup, so an example table quoted inside the Asset Table is neither read as an asset nor used as the insertion anchor; a closing fence must match the opening character and length, and a document ending inside a fence says so.
 
 - ASSETS.md reads and writes are scoped to the `## Asset Table` section instead of matching any table at least eight columns wide, and its header row is no longer treated as data; rows could otherwise land in the Visual Asset Contract or Budget Tracking tables, or above the `|---|` separator of an empty table.
 

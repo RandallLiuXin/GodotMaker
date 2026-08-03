@@ -14,6 +14,7 @@ actually deploys, and then executes the tools as documented.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -24,7 +25,6 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
-import asset_runtime_path  # noqa: E402
 import publish  # noqa: E402
 
 TAG = "v0.1.0"
@@ -69,20 +69,42 @@ def _run(published: Path, tool: str, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_a_source_checkout_prefers_its_own_runtime_over_a_published_copy():
+def test_a_source_checkout_prefers_its_own_runtime_over_a_published_copy(tmp_path):
     """A stale publish inside the repo must not shadow the source runtime.
 
     Publishing the repository onto itself leaves `.godotmaker/asset-runtime/`
     beside `tools/`. Preferring that frozen copy would make the builders import
     compilers that no longer match `skills/assets/_shared/`, while tests that
     import `_shared` directly stayed green.
-    """
-    candidates = asset_runtime_path.runtime_candidates()
-    source = ROOT / "skills" / "assets" / "_shared"
 
-    assert source.is_dir(), "this test only means anything in a source checkout"
-    assert candidates[0] == source
-    assert asset_runtime_path.asset_runtime_root() == source
+    The repository has no `.godotmaker/`, so asserting against it proves nothing
+    — the old published-first order passed that too. Build a source layout that
+    really has both.
+    """
+    checkout = tmp_path / "checkout"
+    tools = checkout / "tools"
+    tools.mkdir(parents=True)
+    shutil.copy(ROOT / "tools" / "asset_runtime_path.py", tools)
+    source = checkout / "skills" / "assets" / "_shared"
+    published = checkout / ".godotmaker" / "asset-runtime"
+    source.mkdir(parents=True)
+    published.mkdir(parents=True)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, 'tools');"
+            " import asset_runtime_path as m; print(m.asset_runtime_root())",
+        ],
+        cwd=checkout,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert Path(completed.stdout.strip()) == source
 
 
 def test_a_published_project_resolves_the_deployed_runtime(published: Path):

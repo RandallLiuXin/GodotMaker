@@ -181,24 +181,44 @@ def _heading_level(line: str) -> int | None:
     return hashes
 
 
-def _outside_code_fences(lines: list[str]):
-    """Yield ``(index, line)`` for lines that are not inside a fenced block.
+def _fence_marker(stripped: str) -> tuple[str, int] | None:
+    """Return the ``(character, run length)`` of a fence line, or ``None``."""
+    for character in ("`", "~"):
+        if stripped.startswith(character * 3):
+            return character, len(stripped) - len(stripped.lstrip(character))
+    return None
 
-    A document may quote its own structure in an example block. Those lines are
-    prose, not the manifest, and must not be able to anchor or terminate a
-    section.
+
+def outside_code_fences(lines: list[str]) -> list[int]:
+    """Return the indices of lines that are not inside a fenced block.
+
+    ASSETS.md is a model-maintained document, so quoting its own structure in an
+    example block is natural. Those lines are prose: they must not anchor a
+    section, terminate one, or be read as assets.
+
+    A closing fence must use the same character and be at least as long as the
+    opening one, so a ```` ```` ```` block is not closed by an inner ``` line.
+    A document that ends inside a fence is reported as such rather than as a
+    missing Asset Table, which is what the swallowed remainder looks like.
     """
-    fence: str | None = None
+    outside: list[int] = []
+    fence: tuple[str, int] | None = None
     for index, line in enumerate(lines):
-        stripped = line.strip()
-        if fence is not None:
-            if stripped.startswith(fence):
-                fence = None
+        marker = _fence_marker(line.strip())
+        if fence is None:
+            if marker is None:
+                outside.append(index)
+            else:
+                fence = marker
             continue
-        if stripped.startswith("```") or stripped.startswith("~~~"):
-            fence = stripped[:3]
-            continue
-        yield index, line
+        if marker is not None and marker[0] == fence[0] and marker[1] >= fence[1]:
+            fence = None
+    if fence is not None:
+        raise AssetsMdUpdateError(
+            f"ASSETS.md ends inside an unclosed {fence[0] * fence[1]} fence; "
+            "everything after it cannot be read"
+        )
+    return outside
 
 
 def asset_table_bounds(lines: list[str]) -> tuple[int, int] | None:
@@ -213,14 +233,21 @@ def asset_table_bounds(lines: list[str]) -> tuple[int, int] | None:
     The heading must be exactly ``## Asset Table``, at the template's own level,
     and must be unique: accepting any depth let a nested ``### Asset Table``
     example earlier in the document hijack the whole manifest, which is the very
-    failure this anchor exists to prevent. Fenced blocks are skipped so a quoted
-    example cannot anchor it either. Returns ``None`` when the heading is absent.
+    failure this anchor exists to prevent.
+
+    The section ends at the next heading of the same or shallower depth, so a
+    trailing ``# Appendix`` closes it just as a sibling ``## `` does, while a
+    ``### Legend`` written inside the section does not cut the table off from
+    its own heading. Fenced blocks are skipped so a quoted example can neither
+    anchor the section nor terminate it. Returns ``None`` when the heading is
+    absent.
     """
+    outside = outside_code_fences(lines)
     starts = [
         index
-        for index, line in _outside_code_fences(lines)
-        if _heading_level(line) == ASSET_TABLE_LEVEL
-        and line.strip()[ASSET_TABLE_LEVEL:].strip().lower()
+        for index in outside
+        if _heading_level(lines[index]) == ASSET_TABLE_LEVEL
+        and lines[index].strip()[ASSET_TABLE_LEVEL:].strip().lower()
         == ASSET_TABLE_TITLE.lower()
     ]
     if not starts:
@@ -231,20 +258,22 @@ def asset_table_bounds(lines: list[str]) -> tuple[int, int] | None:
             "asset manifest must be unambiguous"
         )
     start = starts[0] + 1
-    for index, line in _outside_code_fences(lines):
-        if index >= start and _heading_level(line) is not None:
+    for index in outside:
+        if index < start:
+            continue
+        level = _heading_level(lines[index])
+        if level is not None and level <= ASSET_TABLE_LEVEL:
             return start, index
     return start, len(lines)
 
 
-def iter_asset_rows(lines: list[str]):
-    """Yield ``(index, cells)`` for every Asset Table *data* row.
+def asset_table_line_indices(lines: list[str]) -> list[int]:
+    """Return the Asset Table section's line indices, fenced blocks excluded.
 
-    The header row is as wide as the data it labels, so a table that has not
-    been filled in yet — the state of a project's first tag — would otherwise
-    report its own header as an asset and let a writer insert between the header
-    and its ``|---|`` separator, destroying the table. A row immediately
-    followed by a separator is the header, which is exactly the Markdown rule.
+    Skipping fences when locating the heading but not when scanning rows left an
+    example table inside the section readable as assets — and, being the last
+    "row" in the section, it also became the insertion anchor, so new rows were
+    written into the code block.
     """
     bounds = asset_table_bounds(lines)
     if bounds is None:
@@ -256,10 +285,33 @@ def iter_asset_rows(lines: list[str]):
             f"ASSETS.md has no '{ASSET_TABLE_HEADING}' section; the asset "
             "manifest cannot be located"
         )
+    start, end = bounds
+    return [index for index in outside_code_fences(lines) if start <= index < end]
+
+
+def asset_table_separator_index(lines: list[str]) -> int:
+    """Return the index of the Asset Table's ``|---|`` separator, or ``-1``."""
+    for index in asset_table_line_indices(lines):
+        if is_separator_row(lines[index]):
+            return index
+    return -1
+
+
+def iter_asset_rows(lines: list[str]):
+    """Yield ``(index, cells)`` for every Asset Table *data* row.
+
+    The header row is as wide as the data it labels, so a table that has not
+    been filled in yet — the state of a project's first tag — would otherwise
+    report its own header as an asset and let a writer insert between the header
+    and its ``|---|`` separator, destroying the table. A row immediately
+    followed by a separator is the header, which is exactly the Markdown rule.
+    """
+    section = asset_table_line_indices(lines)
+    inside = set(section)
     table = [
-        index for index in range(*bounds) if split_assets_md_row(lines[index]) is not None
+        index for index in section if split_assets_md_row(lines[index]) is not None
     ]
-    if table and not any(is_separator_row(lines[index]) for index in range(*bounds)):
+    if table and not any(is_separator_row(lines[index]) for index in section):
         # Header detection is "the row followed by the |---| separator". Without
         # a separator there is no header to recognise, and the column labels
         # would be returned as an asset row.
@@ -268,7 +320,7 @@ def iter_asset_rows(lines: list[str]):
             "its header cannot be told from its data"
         )
     for index in table:
-        following = lines[index + 1] if index + 1 < bounds[1] else ""
+        following = lines[index + 1] if index + 1 in inside else ""
         if is_separator_row(following):
             continue
         yield index, split_assets_md_row(lines[index])

@@ -819,6 +819,149 @@ def test_an_asset_table_quoted_inside_a_code_fence_is_not_the_manifest(tmp_path)
     assert names == ["real_asset"]
 
 
+def _table_document(body: str) -> str:
+    return (
+        "# Assets\n\n## Asset Table\n\n"
+        + body
+        + "\n## Visual Asset Contract\n\nnothing\n"
+    )
+
+
+TABLE_ROWS = (
+    "| # | Tag | Name | T | S | P | F | Status |\n"
+    "|---|---|---|---|---|---|---|---|\n"
+    f"| 1 | {TAG} | real | - | - | - | - | MISSING |\n"
+)
+
+
+def test_a_subheading_inside_the_section_does_not_cut_the_table_off(tmp_path):
+    # The section ends at the next same-or-shallower heading. Ending at *any*
+    # heading let a `### Legend` written above the table truncate the manifest
+    # to zero rows, and the downstream errors then pointed at the wrong cause.
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        _table_document("### Legend\n\nsome prose\n\n" + TABLE_ROWS), encoding="utf-8"
+    )
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    names = [cells[ASSETS_MD_ASSET_ID_COLUMN] for _, cells in iter_asset_rows(lines)]
+
+    assert names == ["real"]
+
+
+def test_a_sibling_or_shallower_heading_still_ends_the_section(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "# Assets\n\n## Asset Table\n\n"
+        + TABLE_ROWS
+        + "\n# Appendix\n\n"
+        "| # | Tag | Name | T | S | P | F | Status |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        f"| 9 | {TAG} | after | - | - | - | - | MISSING |\n",
+        encoding="utf-8",
+    )
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    names = [cells[ASSETS_MD_ASSET_ID_COLUMN] for _, cells in iter_asset_rows(lines)]
+
+    assert names == ["real"]
+
+
+def test_a_fenced_example_inside_the_section_is_not_an_asset_row(tmp_path):
+    # Skipping fences when locating the heading but not when scanning rows left
+    # the example readable as an asset — and as the section's last "row" it
+    # became the insertion anchor, so new rows were written into the block.
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        _table_document(
+            TABLE_ROWS
+            + "\n```markdown\n"
+            "| # | Tag | Name | T | S | P | F | Status |\n"
+            "|---|---|---|---|---|---|---|---|\n"
+            f"| 9 | {TAG} | EXAMPLE | - | - | - | - | generated |\n"
+            "```\n"
+        ),
+        encoding="utf-8",
+    )
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    names = [cells[ASSETS_MD_ASSET_ID_COLUMN] for _, cells in iter_asset_rows(lines)]
+
+    assert names == ["real"]
+
+
+def test_declared_rows_are_not_written_into_a_fenced_example(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        _table_document(
+            TABLE_ROWS
+            + "\n```markdown\n"
+            f"| 9 | {TAG} | EXAMPLE | - | - | - | - | generated |\n"
+            "```\n"
+        ),
+        encoding="utf-8",
+    )
+
+    declare_bundle_rows(assets_md, request_path, tag=TAG)
+
+    text = assets_md.read_text(encoding="utf-8")
+    fence_start = text.index("```markdown")
+    assert text.index("arcane_deck--card_theme") < fence_start
+
+
+def test_a_long_fence_is_not_closed_by_a_shorter_inner_one(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        _table_document(
+            TABLE_ROWS
+            + "\n````markdown\n"
+            "```\n"
+            f"| 9 | {TAG} | EXAMPLE | - | - | - | - | generated |\n"
+            "````\n"
+        ),
+        encoding="utf-8",
+    )
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    names = [cells[ASSETS_MD_ASSET_ID_COLUMN] for _, cells in iter_asset_rows(lines)]
+
+    assert names == ["real"]
+
+
+def test_an_unclosed_fence_is_reported_as_itself(tmp_path):
+    # An unclosed fence swallows the rest of the document; saying so beats
+    # reporting a missing Asset Table, which is only the symptom.
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "# Assets\n\n```markdown\nstill open\n\n## Asset Table\n\n" + TABLE_ROWS,
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match="unclosed"):
+        list(iter_asset_rows(assets_md.read_text(encoding="utf-8").splitlines(True)))
+
+
+def test_bundle_rows_cli_reports_a_malformed_document_as_json(tmp_path):
+    # The shared parser raises its own error type; this tool still owes the
+    # caller machine-readable JSON rather than a traceback.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = tmp_path / "ASSETS.md"
+    body = "## Asset Table\n\n" + TABLE_ROWS + "\n"
+    assets_md.write_text("# Assets\n\n" + body + body, encoding="utf-8")
+
+    completed = _run(
+        "asset_bundle_rows.py",
+        "--assets-md", str(assets_md),
+        "--request", str(request_path),
+        "--tag", TAG,
+    )
+
+    assert completed.returncode == 1
+    assert json.loads(completed.stdout)["ok"] is False
+    assert "sections" in json.loads(completed.stdout)["error"]
+
+
 def test_two_asset_table_sections_are_an_error(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
     body = (

@@ -29,14 +29,15 @@ from typing import Any
 
 from asset_assets_md_update import (
     ASSET_TABLE_HEADING,
+    AssetsMdUpdateError,
     ASSETS_MD_ASSET_ID_COLUMN,
     ASSETS_MD_PARAMS_COLUMN,
     ASSETS_MD_STATUS_COLUMN,
     ASSETS_MD_TAG_COLUMN,
     asset_table_bounds,
+    asset_table_separator_index,
     document_newline,
     format_assets_md_row,
-    is_separator_row,
     iter_asset_rows,
     merge_generation_params,
 )
@@ -223,14 +224,6 @@ def _supersede_target(
     return matches[0]
 
 
-def _separator_index(lines: list[str], bounds: tuple[int, int]) -> int:
-    """Return the index of the Asset Table's ``|---|`` separator, or ``-1``."""
-    for index in range(*bounds):
-        if is_separator_row(lines[index]):
-            return index
-    return -1
-
-
 def _write_atomic(path: Path, lines: list[str]) -> None:
     with tempfile.NamedTemporaryFile(
         delete=False,
@@ -275,8 +268,7 @@ def declare_bundle_rows(
     # ASSETS.md holds several equally wide Markdown tables. Writing by column
     # count alone appends into whichever one sits last in the file, so the
     # section heading is the only safe anchor and its absence is fatal here.
-    bounds = asset_table_bounds(lines)
-    if bounds is None:
+    if asset_table_bounds(lines) is None:
         raise BundleRowError(
             f"{assets_md} has no '{ASSET_TABLE_HEADING}' section to extend"
         )
@@ -292,7 +284,7 @@ def declare_bundle_rows(
     # holds only its header — the state of a project's first tag. Anchoring on
     # the header instead would insert above the separator and destroy the table.
     last_row_index = max(
-        (index for index, _ in rows), default=_separator_index(lines, bounds)
+        (index for index, _ in rows), default=asset_table_separator_index(lines)
     )
     if last_row_index < 0:
         raise BundleRowError(
@@ -392,7 +384,9 @@ def _main() -> int:
             tag=args.tag,
             supersede=args.supersede,
         )
-    except BundleRowError as exc:
+    except (BundleRowError, AssetsMdUpdateError) as exc:
+        # The shared ASSETS.md parser reports malformed documents with its own
+        # error type; this tool still owes the caller machine-readable JSON.
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
     print(json.dumps(result))
