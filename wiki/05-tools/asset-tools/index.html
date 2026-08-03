@@ -2963,6 +2963,10 @@ debugging one source, one action sheet, or one curation decision.</p>
 <li><code>asset_atlas_assemble.py</code></li>
 <li><code>asset_runtime_resolver.py</code></li>
 <li><code>asset_compact_prop_pack_entry_draft.py</code></li>
+<li><code>asset_scene_prop_set_entry_draft.py</code></li>
+<li><code>asset_ui_card_entry_draft.py</code></li>
+<li><code>asset_tileset_entry_draft.py</code></li>
+<li><code>asset_bundle_manifest.py</code></li>
 </ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> generates API-backed source images from a JSON spec.
@@ -3086,6 +3090,13 @@ every runtime path inside the asset's stable output directory.</p>
 <p>The draft stops at <code>processing_status: source_ready</code> and carries no
 <code>godot_artifact</code>. A <code>grid_sheet</code> becomes worker-consumable only once a native
 compiler produces its <code>SpriteFrames</code> and the L0-L4 runner verifies it.</p>
+<p>Adding <code>--request</code> switches to bundle mode for <code>character-bundle</code> or an animated
+<code>fx-bundle</code>: it compiles one shared <code>SpriteFrames</code>, writes a <code>compiled</code> entry,
+and records a build fingerprint in the support metadata. Re-running with
+<code>--result &lt;result.json&gt;</code> promotes that same entry to <code>ready</code>. Promotion never
+recompiles — it recomputes the fingerprint from disk and requires an exact
+match, so a result that passed L0-L4 for an earlier build cannot promote
+whatever now sits at the same identity-derived paths.</p>
 <h2 id="asset_curation_entry_draftpy">asset_curation_entry_draft.py<a class="headerlink" href="#asset_curation_entry_draftpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_curation_entry_draft.py</code> turns one selected curation candidate into a v1
 stable-entry draft. It requires the named candidate to exist, be unambiguous and
@@ -3102,6 +3113,10 @@ the finalized path to sit inside the asset's stable output directory.</p>
 <a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span>--out<span class="w"> </span>.godotmaker/asset-generation/work/entries/&lt;final_asset_id&gt;.json
 </code></pre></div>
+<p>Adding <code>--request</code> switches to static <code>fx-bundle</code> mode: it binds the selected
+image to its native <code>Texture2D</code> import, writes a <code>compiled</code> entry, and records a
+build fingerprint. Re-running with <code>--result &lt;result.json&gt;</code> promotes that entry
+to <code>ready</code> against the same fingerprint.</p>
 <h2 id="asset_finalize_entry_draftpy">asset_finalize_entry_draft.py<a class="headerlink" href="#asset_finalize_entry_draftpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_finalize_entry_draft.py</code> turns one <code>asset_image_finalize.py</code> report into a
 v1 stable-entry draft. Every path that ends in a single finalized image uses it:

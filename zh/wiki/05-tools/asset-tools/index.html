@@ -2961,6 +2961,10 @@
 <li><code>asset_atlas_assemble.py</code></li>
 <li><code>asset_runtime_resolver.py</code></li>
 <li><code>asset_compact_prop_pack_entry_draft.py</code></li>
+<li><code>asset_scene_prop_set_entry_draft.py</code></li>
+<li><code>asset_ui_card_entry_draft.py</code></li>
+<li><code>asset_tileset_entry_draft.py</code></li>
+<li><code>asset_bundle_manifest.py</code></li>
 </ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> 会根据 JSON spec 生成 API 后端 source 图片，支持 Gemini、OpenAI 和 xAI Grok selector。运行时原生的 <code>native</code> 和 <code>codex</code> 图片生成由 <code>/gm-asset</code> 选择，不由这个脚本调用。</p>
@@ -3052,6 +3056,7 @@
 <a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span>--out<span class="w"> </span>.godotmaker/asset-generation/work/entries/&lt;asset_id&gt;.json
 </code></pre></div>
 <p>draft 停在 <code>processing_status: source_ready</code>，不带 <code>godot_artifact</code>。<code>grid_sheet</code> 只有在原生 compiler 产出 <code>SpriteFrames</code> 且 L0-L4 runner 校验通过后，才可以被 worker 消费。</p>
+<p>加上 <code>--request</code> 会切换到 <code>character-bundle</code> 或动画 <code>fx-bundle</code> 的 bundle 模式：编译出一个共享的 <code>SpriteFrames</code>，写入 <code>compiled</code> entry，并把 build fingerprint 记录到 support metadata。之后带 <code>--result &lt;result.json&gt;</code> 再跑一次，会把同一个 entry 提升为 <code>ready</code>。提升过程不会重新编译——它从磁盘重算 fingerprint 并要求完全一致，因此一个针对旧构建通过 L0-L4 的 result，无法提升现在占据同一批身份派生路径的产物。</p>
 <h2 id="asset_curation_entry_draftpy">asset_curation_entry_draft.py<a class="headerlink" href="#asset_curation_entry_draftpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_curation_entry_draft.py</code> 会把一个已选中的 curation candidate 转换成 v1 stable-entry draft。它要求指定的 candidate 存在、不歧义、且状态确实是 <code>selected</code>，report 的 selected/rejected 计数自洽，finalize 后的路径落在该素材的稳定输出目录内。</p>
 <p>手动入口：</p>
@@ -3065,6 +3070,7 @@
 <a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span>--out<span class="w"> </span>.godotmaker/asset-generation/work/entries/&lt;final_asset_id&gt;.json
 </code></pre></div>
+<p>加上 <code>--request</code> 会切换到静态 <code>fx-bundle</code> 模式：把选中的图片绑定到它的原生 <code>Texture2D</code> 导入，写入 <code>compiled</code> entry，并记录 build fingerprint。之后带 <code>--result &lt;result.json&gt;</code> 再跑一次，会依据同一份 fingerprint 把 entry 提升为 <code>ready</code>。</p>
 <h2 id="asset_finalize_entry_draftpy">asset_finalize_entry_draft.py<a class="headerlink" href="#asset_finalize_entry_draftpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_finalize_entry_draft.py</code> 会把一次 <code>asset_image_finalize.py</code> 的报告转换成 v1 stable-entry draft。所有以单张 finalize 图片收尾的路径都用它：screen reference、背景与视差层，以及单张卡框或立绘框。它要求 finalize 运行成功、<code>--require-aspect</code> 在容差内、且带 <code>--label &lt;asset_id&gt;</code>；layout 由 family 推导——<code>screen-reference</code> 得到固定在 <code>references/</code> 的 <code>reference</code>，其余 family 得到固定在稳定输出目录的 <code>single</code>。</p>
 <p>手动入口：</p>
