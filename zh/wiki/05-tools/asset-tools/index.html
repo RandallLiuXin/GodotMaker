@@ -3002,7 +3002,7 @@
 <p>使用 <code>--processed-out &lt;transparent-sheet.png&gt;</code> 可保留清理后的 RGBA source sheet
 供审计。Autoslice 报告名称数量不匹配时不会写出该文件，避免未绑定的 sheet 被
 误认为有效的生产产物。</p>
-<p>使用 <code>--background magenta</code> 时，<code>--magenta-threshold</code>（默认 <code>60</code>）是严格的全图清理半径；传入 <code>0</code> 可将封闭区域清理限制为精确的 <code>#FF00FF</code>。<code>--magenta-edge-threshold</code>（默认 <code>220</code>）不是删除半径，只用于限制后续能由键色和相邻前景像素一致解释的边缘混色反解。这样会保留独立的紫色、蓝紫色精灵与细线，并将已验证的 spill 转为正确颜色的半透明边缘。</p>
+<p>使用 <code>--background magenta</code> 时，清理使用已通过 provider 样例验证的固定 PyMatting trimap：与 <code>#FF00FF</code> 色距不超过 <code>60</code> 的像素是确定背景，前景侧固定 <code>3px</code> 边带是未知区域，其余像素是确定前景。该边带的 alpha 和前景 RGB 只由 PyMatting 求解。公共命令不再暴露颜色距离或边缘 matting 调参。</p>
 <h2 id="asset_action_processpy">asset_action_process.py<a class="headerlink" href="#asset_action_processpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_action_process.py</code> 用于处理角色、敌人、NPC、召唤物和动画道具的动作 source。它会写出规范化 frame PNG、<code>sheet-transparent.png</code>、<code>animation.gif</code>、<code>pipeline-meta.json</code> 和中间 curation report。</p>
 <p>必须决定：</p>
