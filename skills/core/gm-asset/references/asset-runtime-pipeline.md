@@ -404,12 +404,44 @@ compiler, or L0-L4 checks required by a family that can reach `ready`.
 Producer reports list stable entry drafts. The manager writes each entry, upserts
 its pointer, and runs the root-index gate before updating ASSETS.md.
 
+For `ui-kit`, `card-kit`, and `compact-prop-pack`, the independent child entries
+are one production bundle. After every child is ready and registered, write a
+pointer-only bundle manifest that names the existing ASSETS.md planning rows
+satisfied by the production unit:
+
+```bash
+python tools/asset_bundle_manifest.py --project-root . \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
+  --asset-id <existing_assets_row_id>
+```
+
+The output is
+`.godotmaker/asset-generation/bundles/<tag>/<bundle_id>.json`. It contains only
+bundle identity, the original planning-row IDs, and canonical child-entry
+pointers. It does not duplicate runtime fields and does not introduce logical
+ASSETS.md rows.
+
 Update matching ASSETS.md rows with:
 
 ```bash
 python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
+
+For those multi-output families, update the existing planning rows atomically:
+
+```bash
+python tools/asset_assets_md_update.py \
+  --bundle-manifest .godotmaker/asset-generation/bundles/<tag>/<bundle_id>.json
+```
+
+Several original rows may point at the same bundle manifest. The resolver then
+expands that pointer into the independently validated child snapshots. If any
+child is missing, unregistered, below `ready`, or outside its stable path, the
+manifest write and ASSETS.md update fail before any planning row changes. A
+rerun therefore resumes from the original `MISSING` production request rather
+than from synthetic logical outputs.
 
 The updater promotes a runtime row to `generated` only for a `ready`
 non-reference entry. A `screen-reference` row may become `generated` at

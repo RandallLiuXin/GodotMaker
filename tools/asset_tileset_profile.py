@@ -791,10 +791,10 @@ def _main() -> int:
     request_spec: dict[str, Any] | None = None
     if arguments.request:
         try:
-            request_root = Path(__file__).resolve().parents[1] / "skills" / "assets" / "tileset"
-            if str(request_root) not in sys.path:
-                sys.path.append(str(request_root))
-            from request_contract import TileSetRequestError, check_tileset_request  # pylint: disable=import-outside-toplevel
+            from asset_tileset_contract_check import (  # pylint: disable=import-outside-toplevel
+                TileSetRequestError,
+                check_tileset_request,
+            )
             request = check_tileset_request(json.loads(arguments.request.read_text(encoding="utf-8")))
             request_spec = request["spec"]
         except (OSError, json.JSONDecodeError, TileSetRequestError) as exc:

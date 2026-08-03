@@ -27,7 +27,15 @@ from asset_action_entry_draft import (  # noqa: E402
     build_fx_bundle_entry_draft,
     write_fx_bundle_entry_draft,
 )
-from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
+from asset_assets_md_update import (  # noqa: E402
+    AssetsMdUpdateError,
+    update_assets_md,
+    update_assets_md_from_bundle,
+)
+from asset_bundle_manifest import (  # noqa: E402
+    AssetBundleManifestError,
+    write_bundle_manifest,
+)
 from asset_curation_entry_draft import (  # noqa: E402
     CurationEntryDraftError,
     write_fx_static_entry_draft,
@@ -269,34 +277,40 @@ def test_every_kit_runtime_output_becomes_its_own_ready_entry(tmp_path, family):
     assert theme["source_layout"]["type"] == "theme_recipe"
 
 
-@pytest.mark.parametrize(
-    "artifact_type", ["Theme", "StyleBoxTexture", "AtlasTexture"]
-)
-def test_each_kit_artifact_type_resolves_to_a_worker_snapshot(tmp_path, artifact_type):
+def test_kit_bundle_resolves_all_outputs_without_adding_assets_rows(tmp_path):
     request_path, result_path = _kit_delivery(tmp_path, "card-kit")
     entries = build_ui_card_entry_drafts(
         request_path, result_path, tag=TAG, project_root=tmp_path
     )
-    assets_md = _assets_md(tmp_path, [entry["asset_id"] for entry in entries])
+    assets_md = _assets_md(tmp_path, ["hud_cards", "inventory_cards"])
+    original_row_count = len(assets_md.read_text(encoding="utf-8").splitlines())
     _register(tmp_path, entries)
-    update_assets_md(
-        assets_md,
+    result = write_bundle_manifest(
         [tmp_path / entry_relative_path(TAG, entry["asset_id"]) for entry in entries],
+        asset_ids=["hud_cards", "inventory_cards"],
+        project_root=tmp_path,
     )
+    update_assets_md_from_bundle(assets_md, tmp_path / result["path"])
 
-    entry = next(
-        item for item in entries if item["godot_artifact"]["type"] == artifact_type
+    snapshots = _snapshot(tmp_path, "hud_cards")
+    second = _snapshot(tmp_path, "inventory_cards")
+
+    assert second == snapshots
+    assert len(assets_md.read_text(encoding="utf-8").splitlines()) == original_row_count
+    assert {item["godot_artifact"]["type"] for item in snapshots} == {
+        "Theme",
+        "StyleBoxTexture",
+        "AtlasTexture",
+    }
+    assert all(
+        list(item)
+        == ["asset_id", "production_family", "source_layout", "godot_artifact"]
+        for item in snapshots
     )
-    snapshot = _snapshot(tmp_path, entry["asset_id"])
-
-    assert snapshot["godot_artifact"] == entry["godot_artifact"]
-    assert snapshot["source_layout"] == entry["source_layout"]
-    assert list(snapshot) == [
-        "asset_id",
-        "production_family",
-        "source_layout",
-        "godot_artifact",
-    ]
+    pointer = result["path"]
+    assert assets_md.read_text(encoding="utf-8").count(
+        f"manifest_entry={pointer}"
+    ) == 2
 
 
 def test_kit_entries_are_refused_before_the_ladder_passes(tmp_path):
@@ -341,6 +355,66 @@ def test_a_kit_row_below_ready_stays_missing_for_the_worker(tmp_path):
         )
     with pytest.raises(AssetRuntimeResolverError):
         _snapshot(tmp_path, entry["asset_id"])
+
+
+def test_kit_bundle_failure_leaves_assets_md_untouched(tmp_path):
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    entries = build_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path
+    )
+    entries[-1]["processing_status"] = "compiled"
+    assets_md = _assets_md(tmp_path, ["hud_cards"])
+    before = assets_md.read_bytes()
+    paths = _register(tmp_path, entries)
+
+    with pytest.raises(AssetBundleManifestError, match="every child must be ready"):
+        write_bundle_manifest(
+            paths, asset_ids=["hud_cards"], project_root=tmp_path
+        )
+
+    assert assets_md.read_bytes() == before
+    assert not (tmp_path / ".godotmaker/asset-generation/bundles").exists()
+
+
+def test_bundle_assets_update_is_atomic_when_a_planning_row_is_missing(tmp_path):
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    entries = build_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path
+    )
+    assets_md = _assets_md(tmp_path, ["hud_cards"])
+    before = assets_md.read_bytes()
+    paths = _register(tmp_path, entries)
+    result = write_bundle_manifest(
+        paths,
+        asset_ids=["hud_cards", "inventory_cards"],
+        project_root=tmp_path,
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match="missing bundle planning rows"):
+        update_assets_md_from_bundle(assets_md, tmp_path / result["path"])
+
+    assert assets_md.read_bytes() == before
+
+
+def test_bundle_assets_update_is_idempotent_and_preserves_crlf(tmp_path):
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    entries = build_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path
+    )
+    assets_md = _assets_md(tmp_path, ["hud_cards"])
+    assets_md.write_bytes(assets_md.read_text(encoding="utf-8").replace("\n", "\r\n").encode())
+    paths = _register(tmp_path, entries)
+    result = write_bundle_manifest(
+        paths, asset_ids=["hud_cards"], project_root=tmp_path
+    )
+
+    update_assets_md_from_bundle(assets_md, tmp_path / result["path"])
+    once = assets_md.read_bytes()
+    update_assets_md_from_bundle(assets_md, tmp_path / result["path"])
+
+    assert assets_md.read_bytes() == once
+    assert b"\r\n" in once
+    assert b"\n" not in once.replace(b"\r\n", b"")
 
 
 # --------------------------------------------------------------------------

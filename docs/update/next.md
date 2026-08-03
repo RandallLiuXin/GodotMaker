@@ -51,6 +51,9 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Changed
 
 - A ui-kit or card-kit now registers one ready stable entry per runtime output, so its `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` are separately resolvable instead of unregisterable; `bundle_id` covers these two families alongside `compact-prop-pack`.
+- Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep
+  independent stable entries behind one pointer-only bundle manifest. Existing
+  ASSETS.md planning rows share that pointer; no logical output rows are added.
 
 - An fx-bundle entry now reaches `ready` by re-running its own entry builder with the passing Skill result, under the same build-fingerprint rule character-bundle uses; static and animated FX previously had no promotion path at all and stopped at `compiled`.
 

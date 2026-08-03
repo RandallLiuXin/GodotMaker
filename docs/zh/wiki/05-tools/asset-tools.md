@@ -22,6 +22,7 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 16. `asset_scene_prop_set_entry_draft.py`
 17. `asset_ui_card_entry_draft.py`
 18. `asset_tileset_entry_draft.py`
+19. `asset_bundle_manifest.py`
 
 ## asset_source_generate.py
 

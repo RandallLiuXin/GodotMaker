@@ -30,8 +30,10 @@ alone would let a passing result from an earlier build promote whatever happens
 to sit at those paths now. The ``compiled`` run therefore records a build
 fingerprint — the resolved request, every action report, every stable sheet and
 frame in action order, and the compiled artifact — and the promotion run
-recomputes it from disk and requires an exact match. Promotion never recompiles:
-the artifact it registers is the same bytes L0-L4 examined, or it fails closed.
+recomputes it from disk and requires an exact match. Promotion never recompiles.
+This detects drift between the compiled build and the promotion; it does not
+prove the build was validated, because a result carries no build identity — see
+``asset_build_record`` for that boundary.
 """
 from __future__ import annotations
 
@@ -42,6 +44,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from asset_runtime_path import ensure_asset_runtime_on_path
 from asset_stable_entry import (
     PRODUCTION_FAMILIES,
     REFERENCE_FAMILIES,
@@ -66,9 +69,9 @@ from asset_animated_bundle_contract_check import (
     check_bundle_request,
 )
 
-SHARED_ROOT = Path(__file__).resolve().parents[1] / "skills" / "assets" / "_shared"
-if str(SHARED_ROOT) not in sys.path:
-    sys.path.insert(0, str(SHARED_ROOT))
+# Published projects keep this runtime at .godotmaker/asset-runtime, not under
+# skills/assets/. Resolving it by hand here broke every published run.
+SHARED_ROOT = ensure_asset_runtime_on_path()
 from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
 
 SOURCE_LAYOUT_TYPE = "grid_sheet"

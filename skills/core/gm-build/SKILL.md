@@ -120,7 +120,8 @@ Do NOT delete project code as a "fix" for a tool crash.
 - For visual tasks, fill the `Asset Runtime Snapshot` and
   `Visual Asset Contract` sections from `references/worker-dispatch.md`. The
   snapshot is `tools/asset_runtime_resolver.py` output pasted verbatim — never
-  hand-copied entry fields. If the resolver fails for an asset, report its
+  hand-copied entry fields. For a bundle result, paste each list item as one
+  snapshot block. If the resolver fails for an asset, report its
   `error` instead of dispatching the task against an invented path.
 - Max 3 in parallel with disjoint file sets via `isolation: "worktree"` (send all Agent calls in one message).
 - After each worker reports DONE, mark its task in PLAN.md as `completed`.

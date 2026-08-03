@@ -318,7 +318,19 @@ python tools/asset_generation_index.py --project-root . \
 python tools/asset_generation_index.py --project-root . --check-entries --check-files
 ```
 
-7. Update the matching ASSETS.md rows only after the root-index gate passes:
+7. For `ui-kit`, `card-kit`, or `compact-prop-pack`, write one pointer-only
+   bundle manifest after every child entry is `ready`, registered, and covered
+   by the root-index gate. Pass every existing ASSETS.md planning-row ID that
+   this production unit satisfies. Do not add a row per runtime output.
+
+```bash
+python tools/asset_bundle_manifest.py --project-root . \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
+  --asset-id <existing_assets_row_id>
+```
+
+8. Update the matching ASSETS.md rows only after the root-index gate passes:
 
    - Mark a `ready` non-reference entry `generated` after the full root-index
      gate passes.
@@ -331,10 +343,23 @@ python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
 
+For a multi-output bundle, update all existing planning rows atomically through
+the bundle manifest instead:
+
+```bash
+python tools/asset_assets_md_update.py \
+  --bundle-manifest .godotmaker/asset-generation/bundles/<tag>/<bundle_id>.json
+```
+
+Each matching row keeps its original asset ID and points at the same bundle
+manifest. Never create logical-output rows, mark original rows superseded, or
+copy child entry fields into ASSETS.md. If any child is below `ready`, do not
+write the bundle manifest and leave every planning row `MISSING`.
+
 Keep runtime entries below `ready` as `MISSING`. Do not hand-edit an ASSETS.md
 status, the root index, or a stable entry.
 
-8. Redispatch failed or incomplete production units once when the failure is
+9. Redispatch failed or incomplete production units once when the failure is
    actionable from the report.
 
 Each command fails closed. Do not hand-edit
@@ -352,7 +377,8 @@ For current-tag rows only:
 4. Keep runtime rows without a registered `ready` entry as `MISSING`. Mark a
    registered, validated `screen-reference` at `source_ready` as
    `generated`.
-5. Confirm `Generation Params` include the stable entry pointer only.
+5. Confirm `Generation Params` include only the canonical stable-entry pointer,
+   or the shared canonical bundle-manifest pointer for a multi-output bundle.
 6. Update the Visual Asset Contract for gameplay-visible generated assets.
 
 Report registered reference-only entries as non-runtime assets. Do not mark a
