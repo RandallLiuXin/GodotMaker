@@ -75,6 +75,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Replaced legacy magenta edge cleanup with PyMatting using a fixed validated trimap.
+
 - Compact prop packs now generate one provider-authored source sheet, normalize each curated prop into its declared atlas slot, and publish independently addressable AtlasTexture resources with repaired L0-L4 validation.
 
 - FX bundle production now separates static autoslice and animated grid paths, preserves provider reference claims, and promotes runtime entries only after L0-L4 validation.

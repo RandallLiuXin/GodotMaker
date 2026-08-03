@@ -162,8 +162,6 @@ def finalize_image_asset(
     label: str | None = None,
     archive_original: bool = True,
     background: str = "none",
-    magenta_threshold: int = 60,
-    magenta_edge_threshold: int = 220,
 ) -> dict[str, object]:
     """Copy or transform a generated source image into its final path."""
     source = Path(source)
@@ -181,7 +179,7 @@ def finalize_image_asset(
         raise ImageFinalizeError("--aspect-tolerance must be non-negative")
     image = _load_image(source)
     origin_saved: str | None = None
-    background_cleanup: dict[str, int] | None = None
+    background_cleanup: dict[str, object] | None = None
     try:
         original_width, original_height = image.size
         aspect_delta: float | None = None
@@ -217,11 +215,7 @@ def finalize_image_asset(
             origin_saved = str(origin_path)
         if background == "magenta":
             try:
-                image, background_cleanup = _remove_magenta_background(
-                    image,
-                    threshold=magenta_threshold,
-                    edge_threshold=magenta_edge_threshold,
-                )
+                image, background_cleanup = _remove_magenta_background(image)
             except SheetProcessError as exc:
                 raise ImageFinalizeError(str(exc)) from exc
         if requested_size is not None:
@@ -303,18 +297,6 @@ def _main() -> int:
         help="Optional source background cleanup mode",
     )
     parser.add_argument(
-        "--magenta-threshold",
-        type=int,
-        default=60,
-        help="Global RGB distance for strict and enclosed #FF00FF background cleanup",
-    )
-    parser.add_argument(
-        "--magenta-edge-threshold",
-        type=int,
-        default=220,
-        help="Maximum RGB distance for locally validated magenta spill cleanup",
-    )
-    parser.add_argument(
         "--no-origin",
         dest="archive_original",
         action="store_false",
@@ -333,8 +315,6 @@ def _main() -> int:
             label=args.label,
             archive_original=args.archive_original,
             background=args.background,
-            magenta_threshold=args.magenta_threshold,
-            magenta_edge_threshold=args.magenta_edge_threshold,
         )
     except ImageFinalizeError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
