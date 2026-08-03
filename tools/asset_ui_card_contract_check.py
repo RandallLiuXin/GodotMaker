@@ -15,6 +15,7 @@ from asset_skill_contract_check import (
     check_request,
     check_result,
 )
+from asset_stable_entry import stable_output_dir
 from asset_ui_theme_recipe import UI_ICONS, UI_STYLEBOXES
 
 
@@ -383,6 +384,43 @@ def _runtime_by_name(result: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
     return {output["name"]: output for output in runtime}
 
 
+def expected_runtime_path(
+    asset_type: str, asset_id: str, output_name: str, godot_type: str
+) -> str:
+    """Return the one stable path a declared kit output may be published at.
+
+    One production delivers many separately bindable resources into one
+    directory, so "somewhere under the kit directory" is not a binding: two
+    outputs could land on the same file and a worker would load a
+    StyleBoxTexture as an AtlasTexture. Deriving the filename from the output
+    name removes that freedom. The Theme keeps its kit-derived name, which this
+    family has always pinned.
+
+    The derivation is not injective on its own: a stylebox literally named
+    ``<asset_id>_theme`` derives the Theme's path, and each output still matches
+    its own expected value here. The cross-output uniqueness assertion in
+    ``asset_ui_card_entry_draft`` is what closes that, so the two checks are a
+    pair — do not drop either one.
+    """
+    stem = f"{asset_id}_theme" if godot_type == "Theme" else output_name
+    return f"res://{stable_output_dir(asset_type, asset_id)}/{stem}.tres"
+
+
+def _assert_runtime_path(
+    output: Mapping[str, Any], request: Mapping[str, Any], *, label: str
+) -> None:
+    expected = expected_runtime_path(
+        request["asset_type"],
+        request["asset_id"],
+        output["name"],
+        output["godot_type"],
+    )
+    if output.get("path") != expected:
+        raise UICardContractError(
+            f"{label} must be published at {expected}, not {output.get('path')!r}"
+        )
+
+
 def check_ui_card_handoff(request: Any, result: Any) -> dict[str, Any]:
     """Bind every declared family item to a source and one native output."""
     request_check = check_ui_card_request(request)
@@ -398,9 +436,8 @@ def check_ui_card_handoff(request: Any, result: Any) -> dict[str, Any]:
     if theme is not None:
         expected_names.add(theme["output_name"])
         theme_output = runtime.get(theme["output_name"])
-        expected_theme_path = (
-            f"res://assets/generated/{request['asset_type']}/{request['asset_id']}/"
-            f"{request['asset_id']}_theme.tres"
+        expected_theme_path = expected_runtime_path(
+            request["asset_type"], request["asset_id"], theme["output_name"], "Theme"
         )
         if (
             theme_output is None
@@ -418,6 +455,9 @@ def check_ui_card_handoff(request: Any, result: Any) -> dict[str, Any]:
         output = runtime.get(box["output_name"])
         if output is None or output.get("godot_type") != "StyleBoxTexture":
             raise UICardContractError(f"stylebox {box['output_name']!r} must bind to StyleBoxTexture")
+        _assert_runtime_path(
+            output, request, label=f"stylebox {box['output_name']!r}"
+        )
         if (box["source_path"], box["layout"]) not in sources:
             raise UICardContractError(f"stylebox {box['output_name']!r} source is missing from result")
 
@@ -426,6 +466,9 @@ def check_ui_card_handoff(request: Any, result: Any) -> dict[str, Any]:
         output = runtime.get(region["output_name"])
         if output is None or output.get("godot_type") != "AtlasTexture":
             raise UICardContractError(f"atlas region {region['output_name']!r} must bind to AtlasTexture")
+        _assert_runtime_path(
+            output, request, label=f"atlas region {region['output_name']!r}"
+        )
         if (region["source_path"], "region_atlas") not in sources:
             raise UICardContractError(f"atlas region {region['output_name']!r} source is missing from result")
     if set(runtime) != expected_names:

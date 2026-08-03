@@ -175,7 +175,8 @@ Worker-dispatch tasks only — Step 1b classified main-agent-direct and escalate
 - For visual tasks, fill `Asset Runtime Snapshot` from
   `references/worker-dispatch.md`. The snapshot is
   `tools/asset_runtime_resolver.py` output pasted verbatim — never hand-copied
-  entry fields. If the resolver fails for an asset, report its `error` instead
+  entry fields; for a bundle result, paste each list item as one snapshot
+  block. If the resolver fails for an asset, report its `error` instead
   of dispatching the task against an invented path.
 - For blocking evaluation-source visual tasks, fill `Visual Asset Contract` and
   `Visual Self-Check` from `references/worker-dispatch.md`.

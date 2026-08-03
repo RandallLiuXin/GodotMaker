@@ -69,10 +69,12 @@ Regeneration overwrites the same directory in place. A timestamped, `v2`, or
 `final` drift path is rejected. Reference-only assets keep their `references/`
 location and never write into this tree.
 
-`compact-prop-pack` is the one bundle exception: its logical stable entries
-have distinct `asset_id` values but share `bundle_id` and the physical directory
-`assets/generated/compact-prop-pack/<bundle_id>/`. Each entry still exposes one
-independent `AtlasTexture` artifact under that directory.
+`compact-prop-pack`, `ui-kit`, and `card-kit` are the bundle families: one
+production delivers several separately bindable resources, so their logical
+stable entries have distinct `asset_id` values but share `bundle_id` and the
+physical directory `assets/generated/<production_family>/<bundle_id>/`. Each
+entry still exposes exactly one independent artifact under that directory — an
+`AtlasTexture` prop, or a kit's `Theme`, `StyleBoxTexture`, or `AtlasTexture`.
 
 ## Source Layouts
 
@@ -106,11 +108,12 @@ Only a family that has run its declared native compiler and applicable L0-L4
 checks may write `compiled` or `ready`. Do not invent a `godot_artifact` to
 reach them. A first-class Skill whose compiler runs before validation —
 `character-bundle` and `fx-bundle` — drafts `compiled` and promotes the same
-entry to `ready` only after its own L0-L4 loop passes; `character-bundle` does
-that promotion by handing the evidence back to the same deterministic builder.
+entry to `ready` only after its own L0-L4 loop passes. Both do that promotion by
+handing the evidence back to the same deterministic builder, which binds the
+promotion to the recorded build fingerprint instead of to the stable path.
 A first-class Skill that already holds a passing result
-when it drafts, such as `compact-prop-pack` and `scene-prop-set`, writes `ready`
-directly. Nothing else may write `ready`.
+when it drafts — `compact-prop-pack`, `scene-prop-set`, `ui-kit`, `card-kit`,
+and `tileset` — writes `ready` directly. Nothing else may write `ready`.
 
 ## Stable Entry Contract
 
@@ -157,15 +160,20 @@ Rules:
    where an animation was promised. There is no generic compiler that makes
    every source layout runtime-ready: a family without its own compiler and
    validation path stays at `source_ready` with no `godot_artifact`. A family
-   with both paths, such as `compact-prop-pack` or `scene-prop-set`, follows
-   its explicit contract instead.
+   with both paths — `character-bundle`, `fx-bundle`, `compact-prop-pack`,
+   `scene-prop-set`, `ui-kit`, `card-kit`, and `tileset` — follows its explicit
+   contract instead, and every one of them has a deterministic builder that
+   registers what it compiled.
 5. A `reference` layout carries no `godot_artifact` and keeps its `references/`
    location.
 6. Detailed runtime metadata (region rects, frame lists) is a support file beside
    the artifact, never an entry field.
-7. `bundle_id` is allowed only for `compact-prop-pack` logical entries and is
-   the shared physical atlas directory. No other extra runtime field is
-   allowed. Regenerate through `/gm-asset` instead of adding one.
+7. `bundle_id` is allowed only for a family whose one production delivers
+   several separately bindable runtime resources out of one directory —
+   `compact-prop-pack`, `ui-kit`, and `card-kit` — and it names that shared
+   directory. Those entries use `<bundle_id>--<logical_output_id>` as their
+   `asset_id`. No other extra runtime field is allowed. Regenerate through
+   `/gm-asset` instead of adding one.
 
 ## Root Index
 
@@ -317,6 +325,57 @@ This adapter requires an exact declared atlas/result match, existing physical
 atlas and `.tres` files, and an all-true L0-L4 result. It emits one draft per
 logical prop, each with the shared `bundle_id`.
 
+Validated UI or card kit (`ui-kit`, `card-kit`):
+
+```bash
+python tools/asset_ui_card_entry_draft.py \
+  --request <request.json> --result <result.json> --tag <tag> \
+  --project-root . \
+  --out-dir .godotmaker/asset-generation/work/entries
+```
+
+The builder runs the family's request-to-result handoff check, requires a
+passing L0-L4 ladder, and emits one ready draft per runtime output: the `Theme`
+bound to its `theme_recipe`, each `StyleBoxTexture` bound to its declared
+stylebox source, and each `AtlasTexture` bound to its icon atlas. Every draft
+carries the kit's `bundle_id`. A worker binds these one node at a time, so they
+are registered separately rather than behind one primary artifact.
+
+Compiled tileset (`tileset`):
+
+```bash
+python tools/asset_tileset_entry_draft.py \
+  --request <request.json> --result <result.json> --tag <tag> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+It re-binds the result to its typed request, requires exactly one stable
+`tile_atlas` source and exactly one `TileSet` runtime output at the family's
+stable paths, and requires an all-true L0-L4 result before writing the ready
+draft. The entry is a tile library only; the map that uses it is authored by a
+worker.
+
+Promote a compiled FX entry to ready after its L0-L4 loop passes:
+
+```bash
+python tools/asset_action_entry_draft.py --request <resolved-request.json> \
+  --metadata <processed_dir>/pipeline-meta.json --result <result.json> \
+  --asset-id <asset_id> --tag <tag> --production-family fx-bundle \
+  --project-root . --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+
+python tools/asset_curation_entry_draft.py --report <curation_report.json> \
+  --candidate <candidate> --request <request.json> --result <result.json> \
+  --asset-id <asset_id> --tag <tag> --production-family fx-bundle \
+  --project-root . --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+Use the animated form for a `grid_sheet -> SpriteFrames` FX and the static form
+for a `single -> Texture2D` FX. Neither run recompiles or republishes: each
+loads the build fingerprint its `compiled` run recorded, recomputes it from
+disk, and requires an exact match, so the artifact it registers is the one
+L0-L4 examined. Promotion without a preceding compiled build is refused.
+
 Write one validated entry to its canonical path:
 
 ```bash
@@ -345,12 +404,48 @@ compiler, or L0-L4 checks required by a family that can reach `ready`.
 Producer reports list stable entry drafts. The manager writes each entry, upserts
 its pointer, and runs the root-index gate before updating ASSETS.md.
 
+For `ui-kit`, `card-kit`, and `compact-prop-pack`, the independent child entries
+are one production bundle. After every child is ready and registered, write a
+pointer-only bundle manifest that names the existing ASSETS.md planning rows
+satisfied by the production unit:
+
+```bash
+python tools/asset_bundle_manifest.py --project-root . \
+  --request <validated-request.json> --result <validated-result.json> \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
+  --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
+  --asset-id <existing_assets_row_id>
+```
+
+The output is
+`.godotmaker/asset-generation/bundles/<tag>/<bundle_id>.json`. It contains only
+bundle identity, the original planning-row IDs, and canonical child-entry
+pointers. It does not duplicate runtime fields and does not introduce logical
+ASSETS.md rows. The writer rebuilds the authoritative child set from the same
+validated request/result and requires the provided stable-entry set to match it
+exactly, so omitting one declared runtime output cannot publish a partial
+bundle.
+
 Update matching ASSETS.md rows with:
 
 ```bash
 python tools/asset_assets_md_update.py \
   --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
+
+For those multi-output families, update the existing planning rows atomically:
+
+```bash
+python tools/asset_assets_md_update.py \
+  --bundle-manifest .godotmaker/asset-generation/bundles/<tag>/<bundle_id>.json
+```
+
+Several original rows may point at the same bundle manifest. The resolver then
+expands that pointer into the independently validated child snapshots. If any
+child is missing, unregistered, below `ready`, or outside its stable path, the
+manifest write and ASSETS.md update fail before any planning row changes. A
+rerun therefore resumes from the original `MISSING` production request rather
+than from synthetic logical outputs.
 
 The updater promotes a runtime row to `generated` only for a `ready`
 non-reference entry. A `screen-reference` row may become `generated` at

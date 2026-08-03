@@ -17,6 +17,10 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- `/gm-asset` can now plan, dispatch, and register the `tileset` production unit, so a validated `TileSet` reaches a worker as a tile library instead of stopping at the Skill.
+
+- Added `tools/asset_ui_card_entry_draft.py` and `tools/asset_tileset_entry_draft.py`, the deterministic registration adapters for validated ui-kit/card-kit and tileset deliveries.
+
 - Added deterministic marching-squares-15 and blob-47 TileSet profile templates with fixed atlas guides, strict image validation, and native resource compilation.
 
 - Added fail-closed standalone L0-L4 execution for the remaining first-class Asset Skills, with published runners and native Godot resource verification.
@@ -45,6 +49,13 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added a Phantom Camera supporting skill for optional Godot camera addon guidance.
 
 ## Changed
+
+- A ui-kit or card-kit now registers one ready stable entry per runtime output, so its `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` are separately resolvable instead of unregisterable; `bundle_id` covers these two families alongside `compact-prop-pack`.
+- Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep
+  independent stable entries behind one pointer-only bundle manifest. Existing
+  ASSETS.md planning rows share that pointer; no logical output rows are added.
+
+- An fx-bundle entry now reaches `ready` by re-running its own entry builder with the passing Skill result, under the same build-fingerprint rule character-bundle uses; static and animated FX previously had no promotion path at all and stopped at `compiled`.
 
 - Workers now own TileMap layout, layers, cell and gameplay object placement, triggers, camera limits, and scene structure, binding a ready `TileSet` as a tile library and repairing what running the map actually shows.
 

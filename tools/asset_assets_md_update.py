@@ -22,6 +22,11 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from asset_bundle_manifest import (
+    AssetBundleManifestError,
+    bundle_manifest_relative_path,
+    validate_bundle_manifest,
+)
 from asset_stable_entry import (
     REFERENCE_LAYOUTS,
     StableEntryError,
@@ -158,8 +163,27 @@ def split_assets_md_row(line: str) -> list[str] | None:
     return cells
 
 
-def _format_markdown_row(cells: list[str]) -> str:
-    return "| " + " | ".join(cells) + " |\n"
+def _format_markdown_row(cells: list[str], newline: str = "\n") -> str:
+    return "| " + " | ".join(cells) + f" |{newline}"
+
+
+def _line_ending(line: str, default: str) -> str:
+    if line.endswith("\r\n"):
+        return "\r\n"
+    if line.endswith("\n"):
+        return "\n"
+    return default
+
+
+def _manifest_pointers(value: str) -> list[str]:
+    pointers: list[str] = []
+    for item in value.split(";"):
+        key, separator, candidate = item.strip().partition("=")
+        if key == "manifest_entry" and separator:
+            candidate = candidate.strip()
+            if candidate:
+                pointers.append(candidate)
+    return pointers
 
 
 def _merge_generation_params(current: str, additions: dict[str, str]) -> str:
@@ -203,7 +227,9 @@ def update_assets_md(
     }
     remaining = set(entries_by_key.keys())
 
-    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    with assets_md.open("r", encoding="utf-8", newline="") as handle:
+        lines = handle.read().splitlines(keepends=True)
+    default_newline = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"
     output: list[str] = []
     updated: list[str] = []
     row_re = re.compile(r"^\s*\|")
@@ -224,7 +250,7 @@ def update_assets_md(
             cells[ASSETS_MD_PARAMS_COLUMN], _entry_params(entries_by_key[key])
         )
         cells[ASSETS_MD_STATUS_COLUMN] = status
-        output.append(_format_markdown_row(cells))
+        output.append(_format_markdown_row(cells, _line_ending(line, default_newline)))
         updated.append(asset_id)
         remaining.discard(key)
 
@@ -238,6 +264,7 @@ def update_assets_md(
         suffix=".md",
         mode="w",
         encoding="utf-8",
+        newline="",
     ) as handle:
         tmp_path = Path(handle.name)
         handle.writelines(output)
@@ -255,26 +282,149 @@ def update_assets_md(
     }
 
 
+def _load_bundle_manifest(
+    bundle_manifest_path: Path, *, project_root: Path
+) -> tuple[str, dict[str, Any]]:
+    path = Path(bundle_manifest_path)
+    if not path.is_absolute():
+        path = project_root / path
+    data = _load_json(path)
+    try:
+        manifest = validate_bundle_manifest(data, project_root=project_root)
+    except AssetBundleManifestError as exc:
+        raise AssetsMdUpdateError(f"{path}: {exc}") from exc
+    canonical = bundle_manifest_relative_path(
+        manifest["tag"], manifest["bundle_id"]
+    )
+    if path.resolve() != (project_root / canonical).resolve():
+        raise AssetsMdUpdateError(
+            f"{path} must be the canonical bundle manifest path {canonical}"
+        )
+    return canonical, manifest
+
+
+def update_assets_md_from_bundle(
+    assets_md: Path,
+    bundle_manifest_path: Path,
+    *,
+    status: str = GENERATED_ROW_STATUS,
+) -> dict[str, object]:
+    """Point existing planning rows at one validated multi-output bundle.
+
+    All target rows are validated before the atomic rewrite. This updater never
+    creates logical output rows and never partially promotes a bundle.
+    """
+    assets_md = Path(assets_md)
+    if not assets_md.exists():
+        raise AssetsMdUpdateError(f"ASSETS.md not found: {assets_md}")
+    project_root = assets_md.parent.resolve()
+    pointer, manifest = _load_bundle_manifest(
+        bundle_manifest_path, project_root=project_root
+    )
+    targets = {(manifest["tag"], asset_id) for asset_id in manifest["asset_ids"]}
+
+    with assets_md.open("r", encoding="utf-8", newline="") as handle:
+        lines = handle.read().splitlines(keepends=True)
+    default_newline = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"
+    matches: dict[tuple[str, str], tuple[int, list[str]]] = {}
+    for index, line in enumerate(lines):
+        cells = split_assets_md_row(line)
+        if cells is None:
+            continue
+        key = (cells[ASSETS_MD_TAG_COLUMN], cells[ASSETS_MD_ASSET_ID_COLUMN])
+        if key not in targets:
+            continue
+        if key in matches:
+            raise AssetsMdUpdateError(
+                f"ASSETS.md has multiple rows for {key[0]}/{key[1]}"
+            )
+        matches[key] = (index, cells)
+
+    missing = targets - set(matches)
+    if missing:
+        names = ", ".join(f"{tag}/{asset_id}" for tag, asset_id in sorted(missing))
+        raise AssetsMdUpdateError(f"ASSETS.md missing bundle planning rows: {names}")
+
+    for key, (_, cells) in matches.items():
+        row_status = cells[ASSETS_MD_STATUS_COLUMN]
+        pointers = _manifest_pointers(cells[ASSETS_MD_PARAMS_COLUMN])
+        idempotent = row_status == status and pointers == [pointer]
+        if not idempotent and row_status != "MISSING":
+            raise AssetsMdUpdateError(
+                f"ASSETS.md row for {key[0]}/{key[1]} has status {row_status!r}; "
+                "only MISSING rows may be promoted by a bundle"
+            )
+        if pointers and pointers != [pointer]:
+            raise AssetsMdUpdateError(
+                f"ASSETS.md row for {key[0]}/{key[1]} already points at another manifest"
+            )
+
+    output = list(lines)
+    updated: list[str] = []
+    for key, (index, cells) in matches.items():
+        cells[ASSETS_MD_PARAMS_COLUMN] = _merge_generation_params(
+            cells[ASSETS_MD_PARAMS_COLUMN], _entry_params(pointer)
+        )
+        cells[ASSETS_MD_STATUS_COLUMN] = status
+        output[index] = _format_markdown_row(
+            cells, _line_ending(lines[index], default_newline)
+        )
+        updated.append(key[1])
+
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        dir=str(assets_md.parent),
+        suffix=".md",
+        mode="w",
+        encoding="utf-8",
+        newline="",
+    ) as handle:
+        tmp_path = Path(handle.name)
+        handle.writelines(output)
+    try:
+        tmp_path.replace(assets_md)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    return {
+        "ok": True,
+        "path": str(assets_md),
+        "updated": sorted(updated),
+        "status": status,
+        "manifest_entry": pointer,
+    }
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(
         description="Update ASSETS.md rows from v1 generated-asset stable entries"
     )
     parser.add_argument("--assets-md", default="ASSETS.md", help="ASSETS.md path")
-    parser.add_argument(
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument(
         "--entry-file",
         action="append",
-        required=True,
         help="Canonical stable entry JSON used to update one ASSETS.md row",
+    )
+    inputs.add_argument(
+        "--bundle-manifest",
+        type=Path,
+        help="Canonical bundle manifest used to update existing planning rows",
     )
     parser.add_argument("--status", default="generated", help="Status to write")
     args = parser.parse_args()
 
     try:
-        result = update_assets_md(
-            Path(args.assets_md),
-            [Path(path) for path in args.entry_file],
-            status=args.status,
-        )
+        if args.bundle_manifest is not None:
+            result = update_assets_md_from_bundle(
+                Path(args.assets_md), args.bundle_manifest, status=args.status
+            )
+        else:
+            result = update_assets_md(
+                Path(args.assets_md),
+                [Path(path) for path in args.entry_file],
+                status=args.status,
+            )
     except AssetsMdUpdateError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1

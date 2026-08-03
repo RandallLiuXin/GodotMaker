@@ -21,6 +21,10 @@ Primary pipeline tools:
 13. `asset_atlas_assemble.py`
 14. `asset_runtime_resolver.py`
 15. `asset_compact_prop_pack_entry_draft.py`
+16. `asset_scene_prop_set_entry_draft.py`
+17. `asset_ui_card_entry_draft.py`
+18. `asset_tileset_entry_draft.py`
+19. `asset_bundle_manifest.py`
 
 ## asset_source_generate.py
 
@@ -187,6 +191,14 @@ The draft stops at `processing_status: source_ready` and carries no
 `godot_artifact`. A `grid_sheet` becomes worker-consumable only once a native
 compiler produces its `SpriteFrames` and the L0-L4 runner verifies it.
 
+Adding `--request` switches to bundle mode for `character-bundle` or an animated
+`fx-bundle`: it compiles one shared `SpriteFrames`, writes a `compiled` entry,
+and records a build fingerprint in the support metadata. Re-running with
+`--result <result.json>` promotes that same entry to `ready`. Promotion never
+recompiles — it recomputes the fingerprint from disk and requires an exact
+match, so a result that passed L0-L4 for an earlier build cannot promote
+whatever now sits at the same identity-derived paths.
+
 ## asset_curation_entry_draft.py
 
 `asset_curation_entry_draft.py` turns one selected curation candidate into a v1
@@ -207,6 +219,11 @@ python tools/asset_curation_entry_draft.py \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
 ```
+
+Adding `--request` switches to static `fx-bundle` mode: it binds the selected
+image to its native `Texture2D` import, writes a `compiled` entry, and records a
+build fingerprint. Re-running with `--result <result.json>` promotes that entry
+to `ready` against the same fingerprint.
 
 ## asset_finalize_entry_draft.py
 

@@ -19,6 +19,10 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 13. `asset_atlas_assemble.py`
 14. `asset_runtime_resolver.py`
 15. `asset_compact_prop_pack_entry_draft.py`
+16. `asset_scene_prop_set_entry_draft.py`
+17. `asset_ui_card_entry_draft.py`
+18. `asset_tileset_entry_draft.py`
+19. `asset_bundle_manifest.py`
 
 ## asset_source_generate.py
 
@@ -153,6 +157,8 @@ python tools/asset_action_entry_draft.py \
 
 draft 停在 `processing_status: source_ready`，不带 `godot_artifact`。`grid_sheet` 只有在原生 compiler 产出 `SpriteFrames` 且 L0-L4 runner 校验通过后，才可以被 worker 消费。
 
+加上 `--request` 会切换到 `character-bundle` 或动画 `fx-bundle` 的 bundle 模式：编译出一个共享的 `SpriteFrames`，写入 `compiled` entry，并把 build fingerprint 记录到 support metadata。之后带 `--result <result.json>` 再跑一次，会把同一个 entry 提升为 `ready`。提升过程不会重新编译——它从磁盘重算 fingerprint 并要求完全一致，因此一个针对旧构建通过 L0-L4 的 result，无法提升现在占据同一批身份派生路径的产物。
+
 ## asset_curation_entry_draft.py
 
 `asset_curation_entry_draft.py` 会把一个已选中的 curation candidate 转换成 v1 stable-entry draft。它要求指定的 candidate 存在、不歧义、且状态确实是 `selected`，report 的 selected/rejected 计数自洽，finalize 后的路径落在该素材的稳定输出目录内。
@@ -170,6 +176,8 @@ python tools/asset_curation_entry_draft.py \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<final_asset_id>.json
 ```
+
+加上 `--request` 会切换到静态 `fx-bundle` 模式：把选中的图片绑定到它的原生 `Texture2D` 导入，写入 `compiled` entry，并记录 build fingerprint。之后带 `--result <result.json>` 再跑一次，会依据同一份 fingerprint 把 entry 提升为 `ready`。
 
 ## asset_finalize_entry_draft.py
 

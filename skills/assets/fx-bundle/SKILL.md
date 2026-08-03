@@ -121,9 +121,14 @@ STOP condition occurs. Never mark the first failed check as the final result.
    checks. Read the diagnostic, then repair source art, processing parameters,
    metadata, paths, or Godot artifact and rerun the checks.
 4. The entry builders below write `processing_status: compiled`. Only after all
-   applicable L0-L4 levels pass, promote that same stable entry to
-   `processing_status: ready`, set `validation.passed: true`, write the final
-   result, and run the request/result handoff checker. Then write that same
+   applicable L0-L4 levels pass, set `validation.passed: true`, write the final
+   result, run the request/result handoff checker, and re-run the same entry
+   builder with `--result <result.json>` to promote that same stable entry to
+   `processing_status: ready`. That run does not recompile: it recomputes the
+   build fingerprint the compiled run recorded and fails closed on any drift,
+   so never hand-edit a draft to `ready` instead. The fingerprint catches an
+   artifact that changed between compiling and promoting; it cannot tell that
+   the build was validated, so do not reuse an older result after regenerating. Then write that same
    generic result object to `ASSET_RESULT.json` in the project root and return
    only its JSON contents: no Markdown links, prose, or alternate result shape.
    L5/L6 visual judgment belongs to the private Eval, not this production Skill.

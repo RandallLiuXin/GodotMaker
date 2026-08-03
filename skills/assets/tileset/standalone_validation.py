@@ -78,7 +78,10 @@ from asset_skill_contract_check import (  # noqa: E402
     check_request,
     check_result,
 )
-from request_contract import TileSetRequestError, check_tileset_request  # noqa: E402
+from asset_tileset_contract_check import (  # noqa: E402
+    TileSetRequestError,
+    check_tileset_request,
+)
 
 
 class TileSetSkillError(Exception):

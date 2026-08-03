@@ -80,7 +80,9 @@ python tools/asset_runtime_resolver.py --project-root . --assets-md ASSETS.md \
 ```
 
 Paste the resolver output as this section. Do not copy fields out of a stable
-entry, the root index, or an ASSETS.md row by hand. Do not add target size,
+entry, the root index, or an ASSETS.md row by hand. When the resolver returns a
+bundle list, paste each list item as a separate block; do not copy fields out
+of its bundle manifest either. Do not add target size,
 frame_count, fps, loop, frame paths, region names, region rects, or support
 metadata paths.
 Name the runtime state or FX lifecycle a `SpriteFrames` artifact should play in

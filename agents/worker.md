@@ -84,8 +84,9 @@ The lead agent provides your brief with these fields. REQUIRED fields are always
 ### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
 {One `tools/asset_runtime_resolver.py` JSON block per generated runtime asset
 the lead agent resolved from the .godotmaker/asset-generation/manifest.json
-pointer index. Each block carries exactly asset_id, production_family,
-source_layout, and godot_artifact.}
+pointer index. A single-output row returns one block. A bundle row returns a
+JSON list; paste each list item as its own block. Every block carries exactly
+asset_id, production_family, source_layout, and godot_artifact.}
 
 ### Visual Self-Check                                  [OPTIONAL]
 - Source: {evaluation.json.visual_checks scene and blocking finding}

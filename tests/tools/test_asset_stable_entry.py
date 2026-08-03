@@ -343,10 +343,50 @@ def test_compact_prop_logical_entry_can_share_its_bundle_output_directory(tmp_pa
     validate_entry(entry, project_root=tmp_path, check_files=True)
 
 
-def test_bundle_id_is_rejected_outside_compact_prop_pack():
+def test_bundle_id_is_rejected_outside_the_bundle_families():
+    # character-bundle delivers one runtime output per asset, so it owns its
+    # stable directory alone and cannot borrow the shared-directory exception.
     entry = valid_entry(bundle_id="player_bundle")
-    with pytest.raises(StableEntryError, match="only supported for compact-prop-pack"):
+    with pytest.raises(StableEntryError, match="bundle_id is only supported for"):
         validate_entry(entry)
+
+
+@pytest.mark.parametrize(
+    "family,layout,artifact",
+    [
+        ("ui-kit", "theme_recipe", "Theme"),
+        ("ui-kit", "region_atlas", "StyleBoxTexture"),
+        ("card-kit", "region_atlas", "AtlasTexture"),
+    ],
+)
+def test_ui_and_card_kits_register_one_entry_per_runtime_output(
+    tmp_path, family, layout, artifact
+):
+    # One kit production compiles many independently bindable resources into one
+    # directory, so each gets its own entry under the kit's bundle_id.
+    source = "theme_recipe.json" if layout == "theme_recipe" else "components.png"
+    entry = {
+        "version": 1,
+        "asset_id": "hud--button_normal",
+        "tag": "v0.1.0",
+        "production_family": family,
+        "bundle_id": "hud",
+        "source_layout": {
+            "type": layout,
+            "path": f"res://assets/generated/{family}/hud/{source}",
+        },
+        "godot_artifact": {
+            "type": artifact,
+            "path": f"res://assets/generated/{family}/hud/button_normal.tres",
+        },
+        "processing_status": "ready",
+    }
+    directory = tmp_path / f"assets/generated/{family}/hud"
+    directory.mkdir(parents=True)
+    (directory / source).write_bytes(b"source")
+    (directory / "button_normal.tres").write_text(f'[gd_resource type="{artifact}"]')
+
+    validate_entry(entry, project_root=tmp_path, check_files=True)
 
 
 def test_compact_bundle_id_must_bind_the_logical_asset_identity():
@@ -366,7 +406,7 @@ def test_compact_bundle_id_must_bind_the_logical_asset_identity():
         },
         "processing_status": "ready",
     }
-    with pytest.raises(StableEntryError, match="bundle_id>--<logical_prop_id"):
+    with pytest.raises(StableEntryError, match="bundle_id>--<logical_output_id"):
         validate_entry(entry)
 
 

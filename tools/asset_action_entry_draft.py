@@ -20,10 +20,9 @@ animated FX mode receives its one explicit action. Both construct one shared
 ``SpriteFrames`` resource with the native compiler and write a ``compiled``
 entry, because the artifact has to exist before L0-L4 can validate it.
 
-Character-bundle mode promotes that same entry to ``ready`` only when it is
-re-run with the Skill's ``--result``. Extra outputs stay ``reference``: a
-generated canonical may be registered as provenance, never as a second runtime
-artifact.
+Both bundle modes promote that same entry to ``ready`` only when they are re-run
+with the Skill's ``--result``. Extra outputs stay ``reference``: a generated
+canonical may be registered as provenance, never as a second runtime artifact.
 
 Promotion binds to content, not to paths. Stable paths are derived from
 ``asset_id``, so regeneration overwrites them in place and a path comparison
@@ -31,19 +30,21 @@ alone would let a passing result from an earlier build promote whatever happens
 to sit at those paths now. The ``compiled`` run therefore records a build
 fingerprint — the resolved request, every action report, every stable sheet and
 frame in action order, and the compiled artifact — and the promotion run
-recomputes it from disk and requires an exact match. Promotion never recompiles:
-the artifact it registers is the same bytes L0-L4 examined, or it fails closed.
+recomputes it from disk and requires an exact match. Promotion never recompiles.
+This detects drift between the compiled build and the promotion; it does not
+prove the build was validated, because a result carries no build identity — see
+``asset_build_record`` for that boundary.
 """
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from math import isfinite
 import sys
 from pathlib import Path
 from typing import Any
 
+from asset_runtime_path import ensure_asset_runtime_on_path
 from asset_stable_entry import (
     PRODUCTION_FAMILIES,
     REFERENCE_FAMILIES,
@@ -53,6 +54,14 @@ from asset_stable_entry import (
     stable_output_dir,
     validate_entry,
 )
+from asset_build_record import (
+    BUILD_RECORD_VERSION,
+    BuildRecordError,
+    assert_same_build,
+    digest,
+    read_recorded_build,
+    resolve_res,
+)
 from asset_animated_bundle_contract_check import (
     AnimatedBundleContractError,
     build_spriteframes_spec,
@@ -60,9 +69,9 @@ from asset_animated_bundle_contract_check import (
     check_bundle_request,
 )
 
-SHARED_ROOT = Path(__file__).resolve().parents[1] / "skills" / "assets" / "_shared"
-if str(SHARED_ROOT) not in sys.path:
-    sys.path.insert(0, str(SHARED_ROOT))
+# Published projects keep this runtime at .godotmaker/asset-runtime, not under
+# skills/assets/. Resolving it by hand here broke every published run.
+SHARED_ROOT = ensure_asset_runtime_on_path()
 from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
 
 SOURCE_LAYOUT_TYPE = "grid_sheet"
@@ -323,19 +332,16 @@ def _load_bundle_request(path: Path, asset_type: str) -> dict[str, Any]:
     return request
 
 
-BUILD_RECORD_VERSION = 1
-
-
 def _digest(path: Path, label: str) -> str:
     """Return the sha256 of one build input or output."""
     try:
-        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-    except OSError as exc:
-        raise ActionEntryDraftError(f"{label} is missing or unreadable: {path}") from exc
+        return digest(path, label)
+    except BuildRecordError as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
 
 
 def _resolve_res(project_root: Path, res_path: str) -> Path:
-    return Path(project_root) / res_path[len("res://"):]
+    return resolve_res(project_root, res_path)
 
 
 def _build_record(
@@ -386,27 +392,23 @@ def _build_record(
     }
 
 
-def _recorded_build(project_root: Path, asset_id: str) -> dict[str, Any]:
+def _recorded_build(
+    project_root: Path, production_family: str, asset_id: str
+) -> dict[str, Any]:
     """Load the build fingerprint written by this asset's `compiled` draft run."""
-    support_path = (
-        Path(project_root)
-        / f"{stable_output_dir('character-bundle', asset_id)}/{asset_id}.json"
-    )
-    if not support_path.is_file():
-        raise ActionEntryDraftError(
-            "no compiled build to promote: run this builder without --result first, "
-            f"then validate it (missing {support_path})"
-        )
-    recorded = _load_object(support_path, "support metadata").get("build")
-    if (
-        not isinstance(recorded, dict)
-        or recorded.get("version") != BUILD_RECORD_VERSION
-    ):
-        raise ActionEntryDraftError(
-            "support metadata carries no v1 build fingerprint; rebuild the compiled "
-            "entry and revalidate it before promoting"
-        )
-    return recorded
+    try:
+        return read_recorded_build(project_root, production_family, asset_id)
+    except BuildRecordError as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
+
+
+def _assert_same_build(
+    recorded: dict[str, Any], recomputed: dict[str, Any], *, inputs: str
+) -> None:
+    try:
+        assert_same_build(recorded, recomputed, inputs=inputs)
+    except BuildRecordError as exc:
+        raise ActionEntryDraftError(str(exc)) from exc
 
 
 def _bundle_reference_outputs(
@@ -679,7 +681,7 @@ def build_character_bundle_entry_draft(
         # L0-L4 examined with one derived from whatever inputs are on disk now,
         # and the result — which names only identity-derived stable paths — could
         # not tell the difference. Prove the build is the validated one instead.
-        recorded = _recorded_build(project_root, asset_id)
+        recorded = _recorded_build(project_root, "character-bundle", asset_id)
         try:
             validate_entry(entry, project_root=Path(project_root), check_files=True)
         except StableEntryError as exc:
@@ -694,12 +696,14 @@ def build_character_bundle_entry_draft(
         built_by_action=built_by_action,
     )
     if result_path is not None:
-        if build_record != recorded:
-            raise ActionEntryDraftError(
+        _assert_same_build(
+            recorded,
+            build_record,
+            inputs=(
                 "the resolved request, action reports, stable frames, or compiled "
-                "artifact changed since the compiled build that was validated; "
-                "rebuild the compiled entry and rerun L0-L4 before promoting"
-            )
+                "artifact"
+            ),
+        )
         reference_outputs = _check_bundle_result(
             result_path,
             request,
@@ -732,8 +736,15 @@ def build_fx_bundle_entry_draft(
     asset_id: str,
     tag: str,
     project_root: Path,
+    result_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Build the compiled SpriteFrames entry for an animated FX request."""
+    """Build the animated FX SpriteFrames entry.
+
+    Without ``result_path`` the entry stops at ``compiled``. Supplying the FX
+    Skill's passing result promotes that same entry to ``ready`` under the same
+    fingerprint rule character-bundle uses: the promotion never recompiles, so
+    the artifact it registers is the one L0-L4 examined.
+    """
     request = _load_bundle_request(request_path, "fx-bundle")
     if request["spec"]["mode"] != "animated":
         raise ActionEntryDraftError("--request must describe an animated fx-bundle")
@@ -797,30 +808,70 @@ def build_fx_bundle_entry_draft(
         "production_family": "fx-bundle",
         "source_layout": {"type": SOURCE_LAYOUT_TYPE, "path": support["sheet_path"]},
         "godot_artifact": {"type": "SpriteFrames", "path": artifact_path},
-        "processing_status": "compiled",
+        "processing_status": "compiled" if result_path is None else "ready",
     }
-    try:
-        validate_entry(entry, project_root=Path(project_root))
-        build_default_registry().compile(
-            CompileRequest(
-                "fx-bundle",
-                asset_id,
-                "grid_sheet",
-                support["sheet_path"],
-                "SpriteFrames",
-                artifact_path,
-                Path(project_root),
-                compiler_spec,
-            )
-        )
-    except (CompilerError, StableEntryError) as exc:
-        raise ActionEntryDraftError(str(exc)) from exc
 
     support["frame_labels"] = list(action["frame_names"])
     support["grid"] = expected_grid
+    if result_path is None:
+        try:
+            validate_entry(entry, project_root=Path(project_root))
+            build_default_registry().compile(
+                CompileRequest(
+                    "fx-bundle",
+                    asset_id,
+                    "grid_sheet",
+                    support["sheet_path"],
+                    "SpriteFrames",
+                    artifact_path,
+                    Path(project_root),
+                    compiler_spec,
+                )
+            )
+        except (CompilerError, StableEntryError) as exc:
+            raise ActionEntryDraftError(str(exc)) from exc
+    else:
+        recorded = _recorded_build(project_root, "fx-bundle", asset_id)
+        try:
+            validate_entry(entry, project_root=Path(project_root), check_files=True)
+        except StableEntryError as exc:
+            raise ActionEntryDraftError(str(exc)) from exc
+
+    build_record = _build_record(
+        project_root=project_root,
+        request_path=request_path,
+        artifact_path=artifact_path,
+        required_actions=[action_name],
+        metadata_path_by_action={action_name: Path(metadata_path)},
+        built_by_action={action_name: {"support": support}},
+    )
+    reference_outputs: list[str] = []
+    if result_path is not None:
+        _assert_same_build(
+            recorded,
+            build_record,
+            inputs=(
+                "the resolved request, action report, stable frames, or compiled "
+                "artifact"
+            ),
+        )
+        reference_outputs = _check_bundle_result(
+            result_path,
+            request,
+            asset_id=asset_id,
+            production_family="fx-bundle",
+            artifact_path=artifact_path,
+            action_sheet_paths=[support["sheet_path"]],
+        )
+
     return {
         "entry": entry,
-        "support": {"version": SCHEMA_VERSION, "action": support},
+        "support": {
+            "version": SCHEMA_VERSION,
+            "action": support,
+            "reference_outputs": reference_outputs,
+            "build": build_record,
+        },
         "support_path": f"{stable_output_dir('fx-bundle', asset_id)}/{asset_id}.json",
     }
 
@@ -866,21 +917,30 @@ def write_fx_bundle_entry_draft(
     tag: str,
     project_root: Path,
     out: Path,
+    result_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Write the compiled animated FX entry and its action support metadata."""
+    """Write the animated FX entry and its action support metadata."""
     built = build_fx_bundle_entry_draft(
         metadata_path,
         request_path=request_path,
         asset_id=asset_id,
         tag=tag,
         project_root=project_root,
+        result_path=result_path,
     )
     support_path = Path(project_root) / built["support_path"]
     support_path.parent.mkdir(parents=True, exist_ok=True)
     support_path.write_text(json.dumps(built["support"], indent=2) + "\n", encoding="utf-8")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(built["entry"], indent=2) + "\n", encoding="utf-8")
-    return {"ok": True, "draft": str(out), "support": built["support_path"], "asset_id": asset_id, "tag": tag}
+    return {
+        "ok": True,
+        "draft": str(out),
+        "support": built["support_path"],
+        "asset_id": asset_id,
+        "tag": tag,
+        "processing_status": built["entry"]["processing_status"],
+    }
 
 
 def _main() -> int:
@@ -893,8 +953,8 @@ def _main() -> int:
         "--result",
         type=Path,
         help=(
-            "Passing character-bundle Skill result; promotes the same entry from "
-            "compiled to ready after L0-L4"
+            "Passing bundle Skill result; promotes the same entry from compiled "
+            "to ready after L0-L4"
         ),
     )
     parser.add_argument("--asset-id", required=True)
@@ -906,10 +966,12 @@ def _main() -> int:
 
     try:
         if args.result and (
-            args.production_family != "character-bundle" or not args.request
+            args.production_family not in {"character-bundle", "fx-bundle"}
+            or not args.request
         ):
             raise ActionEntryDraftError(
-                "--result promotion needs character-bundle bundle mode with --request"
+                "--result promotion needs character-bundle or fx-bundle bundle "
+                "mode with --request"
             )
         if args.request:
             if args.production_family == "character-bundle":
@@ -934,6 +996,7 @@ def _main() -> int:
                     tag=args.tag,
                     project_root=args.project_root,
                     out=args.out,
+                    result_path=args.result,
                 )
             else:
                 raise ActionEntryDraftError(

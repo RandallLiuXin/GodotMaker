@@ -22,6 +22,12 @@ from asset_assets_md_update import (
     GENERATED_ROW_STATUS,
     split_assets_md_row,
 )
+from asset_bundle_manifest import (
+    BUNDLES_ROOT,
+    AssetBundleManifestError,
+    bundle_manifest_relative_path,
+    validate_bundle_manifest,
+)
 from asset_generation_index import GenerationIndexError, check_index
 from asset_stable_entry import (
     ENTRIES_ROOT,
@@ -133,6 +139,33 @@ def _canonical_entry_path(project_root: Path, pointer: str) -> Path:
     return resolved
 
 
+def _canonical_bundle_path(project_root: Path, pointer: str) -> Path:
+    """Resolve only the exact v1 bundle-manifest path shape."""
+    if not isinstance(pointer, str) or not pointer.strip():
+        raise AssetRuntimeResolverError("manifest_entry must be a non-empty path")
+    if "\\" in pointer:
+        raise AssetRuntimeResolverError("manifest_entry must use forward slashes")
+    parts = pointer.split("/")
+    expected_prefix = BUNDLES_ROOT.split("/")
+    if (
+        any(part in {"", ".", ".."} for part in parts)
+        or len(parts) != len(expected_prefix) + 2
+        or parts[: len(expected_prefix)] != expected_prefix
+        or not parts[-1].endswith(".json")
+        or parts[-1] == ".json"
+    ):
+        raise AssetRuntimeResolverError(
+            "manifest_entry must be a canonical bundles/<tag>/<bundle_id>.json path"
+        )
+    root = Path(project_root).resolve()
+    resolved = (root / Path(pointer)).resolve()
+    if not resolved.is_relative_to(root):
+        raise AssetRuntimeResolverError("manifest_entry resolves outside the project root")
+    if not resolved.is_file():
+        raise AssetRuntimeResolverError(f"Bundle manifest not found: {pointer}")
+    return resolved
+
+
 def _assert_registered(
     *, project_root: Path, manifest_entry: str, tag: str, asset_id: str
 ) -> None:
@@ -168,15 +201,14 @@ def _assert_assets_root(assets_md: Path, project_root: Path) -> Path:
     return assets_path
 
 
-def resolve_manifest_entry(
+def _resolve_stable_entry(
     manifest_entry: str,
     *,
     project_root: Path,
-    assets_md: Path,
     expected_tag: str | None = None,
     expected_asset_id: str | None = None,
 ) -> dict[str, Any]:
-    """Return a registered, minimal runtime snapshot from one canonical pointer."""
+    """Return a registered runtime snapshot without consulting ASSETS.md."""
     root = Path(project_root).resolve()
     entry_path = _canonical_entry_path(root, manifest_entry)
     try:
@@ -206,12 +238,6 @@ def resolve_manifest_entry(
         tag=tag,
         asset_id=asset_id,
     )
-    assets_path = _assert_assets_root(assets_md, root)
-    row_pointer = manifest_entry_from_assets_row(assets_path, tag=tag, asset_id=asset_id)
-    if row_pointer != manifest_entry:
-        raise AssetRuntimeResolverError(
-            "ASSETS.md manifest_entry does not match the requested pointer"
-        )
     if entry["processing_status"] != "ready":
         raise AssetRuntimeResolverError(
             f"{manifest_entry} processing_status is {entry['processing_status']}; expected ready"
@@ -236,13 +262,112 @@ def resolve_manifest_entry(
     }
 
 
+def _assert_bundle_assets_rows(
+    manifest: dict[str, Any],
+    *,
+    pointer: str,
+    assets_md: Path,
+) -> None:
+    for asset_id in manifest["asset_ids"]:
+        row_pointer = manifest_entry_from_assets_row(
+            assets_md, tag=manifest["tag"], asset_id=asset_id
+        )
+        if row_pointer != pointer:
+            raise AssetRuntimeResolverError(
+                f"ASSETS.md row for {manifest['tag']}/{asset_id} does not point at "
+                "the requested bundle manifest"
+            )
+
+
+def _resolve_bundle_manifest(
+    manifest_entry: str,
+    *,
+    project_root: Path,
+    assets_md: Path,
+    expected_tag: str | None = None,
+    expected_asset_id: str | None = None,
+) -> list[dict[str, Any]]:
+    root = Path(project_root).resolve()
+    path = _canonical_bundle_path(root, manifest_entry)
+    try:
+        manifest = validate_bundle_manifest(
+            _load_json(path), project_root=root, check_files=True, check_registered=True
+        )
+    except (AssetBundleManifestError, StableEntryError) as exc:
+        raise AssetRuntimeResolverError(f"{manifest_entry}: {exc}") from exc
+    canonical = bundle_manifest_relative_path(
+        manifest["tag"], manifest["bundle_id"]
+    )
+    if manifest_entry != canonical:
+        raise AssetRuntimeResolverError(
+            f"manifest_entry must be the canonical bundle path {canonical}"
+        )
+    if expected_tag is not None and manifest["tag"] != expected_tag:
+        raise AssetRuntimeResolverError(
+            f"bundle tag {manifest['tag']!r} does not match ASSETS.md tag "
+            f"{expected_tag!r}"
+        )
+    if expected_asset_id is not None and expected_asset_id not in manifest["asset_ids"]:
+        raise AssetRuntimeResolverError(
+            f"bundle does not satisfy ASSETS.md asset_id {expected_asset_id!r}"
+        )
+    assets_path = _assert_assets_root(assets_md, root)
+    _assert_bundle_assets_rows(
+        manifest, pointer=manifest_entry, assets_md=assets_path
+    )
+    return [
+        _resolve_stable_entry(
+            pointer,
+            project_root=root,
+            expected_tag=manifest["tag"],
+        )
+        for pointer in manifest["entries"]
+    ]
+
+
+def resolve_manifest_entry(
+    manifest_entry: str,
+    *,
+    project_root: Path,
+    assets_md: Path,
+    expected_tag: str | None = None,
+    expected_asset_id: str | None = None,
+) -> dict[str, Any] | list[dict[str, Any]]:
+    """Resolve one stable-entry or bundle pointer through every handoff gate."""
+    root = Path(project_root).resolve()
+    assets_path = _assert_assets_root(assets_md, root)
+    if manifest_entry.startswith(f"{BUNDLES_ROOT}/"):
+        return _resolve_bundle_manifest(
+            manifest_entry,
+            project_root=root,
+            assets_md=assets_path,
+            expected_tag=expected_tag,
+            expected_asset_id=expected_asset_id,
+        )
+    snapshot = _resolve_stable_entry(
+        manifest_entry,
+        project_root=root,
+        expected_tag=expected_tag,
+        expected_asset_id=expected_asset_id,
+    )
+    entry_tag = expected_tag or manifest_entry.split("/")[-2]
+    row_pointer = manifest_entry_from_assets_row(
+        assets_path, tag=entry_tag, asset_id=snapshot["asset_id"]
+    )
+    if row_pointer != manifest_entry:
+        raise AssetRuntimeResolverError(
+            "ASSETS.md manifest_entry does not match the requested pointer"
+        )
+    return snapshot
+
+
 def resolve_assets_row(
     assets_md: Path,
     *,
     tag: str,
     asset_id: str,
     project_root: Path,
-) -> dict[str, Any]:
+) -> dict[str, Any] | list[dict[str, Any]]:
     """Resolve one current-tag ASSETS.md row through all handoff gates."""
     root = Path(project_root).resolve()
     assets_path = _assert_assets_root(assets_md, root)
@@ -258,7 +383,7 @@ def resolve_assets_row(
 
 def _main() -> int:
     parser = argparse.ArgumentParser(
-        description="Resolve one registered v1 manifest_entry into a worker runtime snapshot"
+        description="Resolve one registered v1 entry or bundle into worker runtime snapshots"
     )
     parser.add_argument("--project-root", default=".", type=Path)
     parser.add_argument(
