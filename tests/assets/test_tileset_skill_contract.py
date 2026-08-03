@@ -23,7 +23,10 @@ from asset_tileset_profile import (  # noqa: E402
     get_profile,
     profile_manifest,
 )
-from request_contract import TileSetRequestError, check_tileset_request  # noqa: E402
+from asset_tileset_contract_check import (  # noqa: E402
+    TileSetRequestError,
+    check_tileset_request,
+)
 from PIL import Image  # noqa: E402
 
 

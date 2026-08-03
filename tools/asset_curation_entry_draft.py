@@ -18,8 +18,9 @@ entry to ``ready`` on a second run that supplies the FX Skill's passing result.
 A static ``Texture2D`` is its own source image, so the stable path a result names
 is the one a regeneration overwrites. The compiled run therefore records a build
 fingerprint — the resolved request and the published image — beside the artifact,
-and the promotion run recomputes it from disk and requires an exact match, so the
-image it registers is the one L0-L4 examined.
+and the promotion run recomputes it from disk and requires an exact match. That
+detects drift between compile and promote; see ``asset_build_record`` for what it
+does not prove.
 """
 from __future__ import annotations
 
@@ -29,6 +30,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from asset_runtime_path import ensure_asset_runtime_on_path
 from asset_stable_entry import (
     PRODUCTION_FAMILIES,
     REFERENCE_FAMILIES,
@@ -54,9 +56,9 @@ from asset_build_record import (
     support_metadata_path,
 )
 
-SHARED_ROOT = Path(__file__).resolve().parents[1] / "skills" / "assets" / "_shared"
-if str(SHARED_ROOT) not in sys.path:
-    sys.path.insert(0, str(SHARED_ROOT))
+# Published projects keep this runtime at .godotmaker/asset-runtime, not under
+# skills/assets/. Resolving it by hand here broke every published run.
+SHARED_ROOT = ensure_asset_runtime_on_path()
 from asset_compiler import CompileRequest, CompilerError, build_default_registry  # noqa: E402
 
 DRAFT_STATUS = "source_ready"
@@ -248,9 +250,47 @@ def _static_build_record(
         raise CurationEntryDraftError(str(exc)) from exc
 
 
+def _static_reference_outputs(
+    result: dict[str, Any], *, asset_id: str
+) -> list[str]:
+    """Return the non-runtime outputs a static FX result may publish.
+
+    A reference output may not declare a ``godot_type``: that is the field a
+    worker binds, and a canonical PNG announced as a runtime type would reach
+    the game as a rival sprite for the same asset. References are also pinned to
+    this asset's stable directory, so one can never smuggle in another asset's
+    path. The animated path has always enforced this; the static path skipped
+    it, leaving the same risk covered on only half the family.
+    """
+    references: list[str] = []
+    for index, output in enumerate(result["outputs"]):
+        if output.get("role") == "runtime":
+            continue
+        label = f"result.outputs[{index}]"
+        if "godot_type" in output:
+            raise CurationEntryDraftError(
+                f"{label} is a reference output and must not declare a godot_type"
+            )
+        path = output.get("path")
+        if not isinstance(path, str) or not path.startswith("res://"):
+            raise CurationEntryDraftError(f"{label}.path must be a res:// path")
+        try:
+            references.append(
+                check_output_path(
+                    path,
+                    production_family="fx-bundle",
+                    asset_id=asset_id,
+                    label=f"{label}.path",
+                )
+            )
+        except StableEntryError as exc:
+            raise CurationEntryDraftError(str(exc)) from exc
+    return references
+
+
 def _check_static_result(
-    result_path: Path, request: dict[str, Any], *, artifact_path: str
-) -> None:
+    result_path: Path, request: dict[str, Any], *, asset_id: str, artifact_path: str
+) -> list[str]:
     """Bind a passing static FX result to the image this builder published."""
     result = _load_object(result_path, "result")
     try:
@@ -262,6 +302,19 @@ def _check_static_result(
         raise CurationEntryDraftError(
             "result runtime output must be the published Texture2D stable path"
         )
+    # check_bundle_handoff only proves some source carries the `single` layout,
+    # never which file it is, so a result describing another asset's image would
+    # otherwise promote this one.
+    singles = [
+        source.get("path")
+        for source in result["sources"]
+        if source.get("layout") == "single"
+    ]
+    if singles != [artifact_path]:
+        raise CurationEntryDraftError(
+            "result single source must be the published stable image"
+        )
+    return _static_reference_outputs(result, asset_id=asset_id)
 
 
 def build_fx_static_entry_draft(
@@ -334,7 +387,9 @@ def build_fx_static_entry_draft(
             )
         except BuildRecordError as exc:
             raise CurationEntryDraftError(str(exc)) from exc
-        _check_static_result(result_path, request, artifact_path=source_path)
+        _check_static_result(
+            result_path, request, asset_id=asset_id, artifact_path=source_path
+        )
 
     return entry
 

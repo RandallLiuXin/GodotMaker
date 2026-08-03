@@ -25,6 +25,7 @@ Primary pipeline tools:
 17. `asset_ui_card_entry_draft.py`
 18. `asset_tileset_entry_draft.py`
 19. `asset_bundle_rows.py`
+20. `asset_runtime_path.py`
 
 ## asset_source_generate.py
 
@@ -373,6 +374,85 @@ python tools/asset_runtime_resolver.py --project-root . \
 python tools/asset_runtime_resolver.py --project-root . \
   --manifest-entry .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
+
+## asset_ui_card_entry_draft.py
+
+`asset_ui_card_entry_draft.py` turns one validated `ui-kit` or `card-kit`
+delivery into ready v1 stable entries — **one per runtime output**, because a kit
+compiles many separately bindable resources and a worker binds one of them per
+node. It runs the family's request-to-result handoff check, requires a passing
+L0-L4 ladder, derives each artifact's stable path from its output name (the Theme
+from the kit id), and rejects two outputs claiming the same `.tres`. Every draft
+carries the kit's `bundle_id`.
+
+Manual entry point:
+
+```bash
+python tools/asset_ui_card_entry_draft.py \
+  --request <request.json> \
+  --result <result.json> \
+  --tag <tag> \
+  --project-root . \
+  --out-dir .godotmaker/asset-generation/work/entries
+```
+
+Drafts left behind for outputs the kit no longer declares are removed, so a
+re-plan cannot leave a stale `ready` draft for registration to pick up.
+
+## asset_tileset_entry_draft.py
+
+`asset_tileset_entry_draft.py` turns one passing `tileset` delivery into its
+single ready `tile_atlas -> TileSet` entry. It re-binds the result to its typed
+request, requires exactly one stable atlas source and one `TileSet` runtime
+output at the family's stable paths, and requires L0-L4 to have passed. The entry
+is a tile library only — the map that uses it is authored by a worker.
+
+Manual entry point:
+
+```bash
+python tools/asset_tileset_entry_draft.py \
+  --request <request.json> \
+  --result <result.json> \
+  --tag <tag> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+## asset_bundle_rows.py
+
+`asset_bundle_rows.py` is the one asset tool that edits `ASSETS.md` in place. A
+bundle family (`ui-kit`, `card-kit`, `compact-prop-pack`) delivers many
+separately bindable resources from one production, and `asset_assets_md_update.py`
+fails closed when an entry has no matching row. This declares those rows from the
+request — before the Skill runs — as `MISSING`, named
+`<bundle_id>--<output_name>` and carrying `produced_by`, `bundle`, and
+`logical_output` so each row traces back to the production that fills it.
+
+Manual entry point:
+
+```bash
+python tools/asset_bundle_rows.py \
+  --assets-md ASSETS.md \
+  --request <request.json> \
+  --tag <tag> \
+  --supersede <planned_request_row>
+```
+
+Rows are written only inside the `## Asset Table` section; a document without
+that heading is an error, not a guess. `--supersede` closes the planned request
+row that asked for the work as `N/A` with a `superseded_by` pointer, and is
+refused unless that row is still `MISSING` and its `family=` is one the
+production unit serves. Re-running changes nothing.
+
+## asset_runtime_path.py
+
+`asset_runtime_path.py` locates the shared asset runtime for the layout a tool is
+actually running in. In this repository it lives at `skills/assets/_shared/`;
+`publish.py` deploys it to `.godotmaker/asset-runtime/` and a published project
+has no `skills/assets/` tree at all. Tools import it through this helper so the
+same import works from a framework checkout and from a game project.
+
+It is a library, not a command.
 
 ## Calling these by hand
 

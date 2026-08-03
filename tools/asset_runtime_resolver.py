@@ -20,6 +20,7 @@ from asset_assets_md_update import (
     ASSETS_MD_STATUS_COLUMN,
     ASSETS_MD_TAG_COLUMN,
     GENERATED_ROW_STATUS,
+    AssetsMdUpdateError,
     iter_asset_rows,
 )
 from asset_generation_index import GenerationIndexError, check_index
@@ -77,7 +78,12 @@ def manifest_entry_from_assets_row(
     # tables parse just as wide, and a worker snapshot must never be resolved
     # from a row in a table that does not describe assets.
     lines = _read_assets_md(assets_md).splitlines(keepends=True)
-    for _, cells in iter_asset_rows(lines):
+    try:
+        rows = list(iter_asset_rows(lines))
+    except AssetsMdUpdateError as exc:
+        # Keep this tool's own error type at its boundary.
+        raise AssetRuntimeResolverError(str(exc)) from exc
+    for _, cells in rows:
         if (
             cells[ASSETS_MD_TAG_COLUMN] == tag
             and cells[ASSETS_MD_ASSET_ID_COLUMN] == asset_id

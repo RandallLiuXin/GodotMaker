@@ -93,6 +93,7 @@ def write_index(project_root: Path, entries: list[dict]) -> None:
 def write_assets_md(project_root: Path, rows: list[tuple[str, str, str, str, str]]) -> Path:
     path = project_root / "ASSETS.md"
     body = [
+        "## Asset Table\n\n"
         "| ID | Tag | Name | Type | Size | Generation Params | Path | Status |\n",
         "| --- | --- | --- | --- | --- | --- | --- | --- |\n",
     ]

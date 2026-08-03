@@ -217,6 +217,7 @@ def register(project_root: Path, draft_path: Path) -> Path:
 def write_assets_md(project_root: Path, asset_id=ASSET_ID) -> Path:
     assets_md = project_root / "ASSETS.md"
     assets_md.write_text(
+        "## Asset Table\n\n"
         "| ID | Tag | Name | Type | Size | Generation Params | Path | Status |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
         f"| 1 | {TAG} | {asset_id} | sprite | 256x256 | — | "

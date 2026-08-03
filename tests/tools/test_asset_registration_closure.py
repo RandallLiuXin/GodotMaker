@@ -1,5 +1,11 @@
 """End-to-end registration closure for every v1 runtime artifact type.
 
+Scope note: `scene-prop-set` has the same many-outputs-from-one-production shape
+as the bundle families but is deliberately not one of them here — it still
+registers a single entry whose artifact is the first declared prop, exactly as it
+did before this work. Widening it is a separate change with its own contract.
+
+
 Each test drives the real chain a `/gm-asset` run walks — deterministic entry
 draft, `asset_stable_entry.py --write`, root-index upsert and gate,
 `asset_assets_md_update.py`, then `asset_runtime_resolver.py` — and asserts the
@@ -35,6 +41,7 @@ from asset_assets_md_update import (  # noqa: E402
 from asset_assets_md_update import (  # noqa: E402
     ASSETS_MD_ASSET_ID_COLUMN,
     asset_table_bounds,
+    is_separator_row,
 )
 from asset_bundle_rows import BundleRowError, declare_bundle_rows  # noqa: E402
 from asset_curation_entry_draft import (  # noqa: E402
@@ -54,6 +61,7 @@ from asset_tileset_entry_draft import (  # noqa: E402
 from asset_ui_card_entry_draft import (  # noqa: E402
     UICardEntryDraftError,
     build_ui_card_entry_drafts,
+    write_ui_card_entry_drafts,
 )
 
 TAG = "v0.1.0"
@@ -563,6 +571,145 @@ def test_supersede_refuses_a_row_with_no_declared_family(tmp_path):
         )
 
 
+def test_declaring_into_an_empty_asset_table_keeps_the_table_valid(tmp_path):
+    # A project's first tag has a header and separator and no rows yet. The
+    # header is exactly as wide as the data it labels, so treating it as a row
+    # put new rows above the |---| separator and destroyed the table.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "# Assets\n\n## Asset Table\n\n"
+        "| # | Tag | Name | Type | Size | Generation Params | File Path | Status |\n"
+        "|---|-----|------|------|------|-------------------|-----------|--------|\n"
+        "\n## Visual Asset Contract\n\nnothing here\n",
+        encoding="utf-8",
+    )
+
+    declare_bundle_rows(assets_md, request_path, tag=TAG)
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines()
+    header = next(i for i, line in enumerate(lines) if line.startswith("| # | Tag |"))
+    separator = next(i for i, line in enumerate(lines) if is_separator_row(line))
+    first_row = next(
+        i for i, line in enumerate(lines) if "arcane_deck--card_theme" in line
+    )
+    assert header < separator < first_row
+    assert _row(assets_md, "arcane_deck--card_theme") is not None
+
+
+def _rewrite_endings(path: Path, newline: bytes) -> None:
+    body = path.read_bytes().replace(b"\r\n", b"\n")
+    path.write_bytes(body.replace(b"\n", newline))
+
+
+def _assert_uniform_endings(raw: bytes, newline: bytes) -> None:
+    assert raw.count(newline) > 0
+    if newline == b"\n":
+        assert raw.count(b"\r") == 0
+    else:
+        assert raw.count(b"\n") == raw.count(b"\r\n")
+
+
+def _untouched_lines(before: bytes, after: bytes) -> int:
+    """Count lines present in `before` that survived byte-identical in `after`."""
+    kept = set(after.splitlines(keepends=True))
+    return sum(1 for line in before.splitlines(keepends=True) if line in kept)
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"])
+def test_declaring_rows_preserves_the_document_line_endings(tmp_path, newline):
+    # A tool that appends three lines must not rewrite every line in the file:
+    # a whole-file diff buries the real change and flips back on the next
+    # normalizing checkout.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    _rewrite_endings(assets_md, newline)
+    before = assets_md.read_bytes()
+
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
+
+    after = assets_md.read_bytes()
+    _assert_uniform_endings(after, newline)
+    # Only the superseded row changed; every other original line is untouched.
+    assert _untouched_lines(before, after) == len(before.splitlines()) - 1
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"])
+def test_updating_rows_preserves_the_document_line_endings(tmp_path, newline):
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
+    _rewrite_endings(assets_md, newline)
+    before = assets_md.read_bytes()
+    entries = build_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path
+    )
+    _register(tmp_path, entries)
+
+    update_assets_md(
+        assets_md,
+        [tmp_path / entry_relative_path(TAG, entry["asset_id"]) for entry in entries],
+    )
+
+    after = assets_md.read_bytes()
+    _assert_uniform_endings(after, newline)
+    # Exactly the three promoted rows changed; nothing else was rewritten.
+    assert _untouched_lines(before, after) == len(before.splitlines()) - len(entries)
+
+
+def test_declared_rows_do_not_reuse_the_request_family_key(tmp_path):
+    # `family=` means "request family" in the planner routing table and in this
+    # tool's own supersede guard. A production unit is never one of those values,
+    # so a declared row must not claim that key.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
+
+    params = _row(assets_md, "arcane_deck--card_theme")[5]
+    assert "produced_by=card-kit" in params
+    assert "family=" not in params
+
+
+def test_a_request_row_from_an_earlier_tag_can_still_be_superseded(tmp_path):
+    # ASSETS.md accumulates across tags, so a row planned in v0.1.0 and produced
+    # in v0.2.0 is still the request this bundle serves.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+
+    declare_bundle_rows(
+        assets_md, request_path, tag="v0.2.0", supersede=["card_frame"]
+    )
+
+    row = next(
+        cells
+        for line in assets_md.read_text(encoding="utf-8").splitlines()
+        if (cells := split_assets_md_row(line)) is not None
+        and cells[ASSETS_MD_ASSET_ID_COLUMN] == "card_frame"
+    )
+    assert row[1] == TAG and row[7] == "N/A"
+
+
+def test_readers_fail_closed_without_an_asset_table(tmp_path):
+    # The PR makes "only the Asset Table is the asset manifest" an invariant, so
+    # the two readers that rewrite delivered state must not keep guessing.
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "# Assets\n\n## Visual Asset Contract\n\n"
+        "| Scene | Object | A | B | C | D | E | F |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        f"| menu | logo | - | - | - | - | - | {TAG} |\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match="no '## Asset Table' section"):
+        update_assets_md(assets_md, [])
+    with pytest.raises(AssetRuntimeResolverError, match="no '## Asset Table' section"):
+        resolve_assets_row(
+            assets_md, tag=TAG, asset_id="logo", project_root=tmp_path
+        )
+
+
 def test_a_non_bundle_family_has_no_rows_to_declare(tmp_path):
     # A family that delivers one asset per planned row must keep failing loudly
     # when that row is missing; auto-appending would hide a planning mistake.
@@ -614,6 +761,96 @@ def test_kit_entries_are_refused_before_the_ladder_passes(tmp_path):
         build_ui_card_entry_drafts(
             request_path, result_path, tag=TAG, project_root=tmp_path
         )
+
+
+def test_two_kit_outputs_may_not_claim_the_same_artifact(tmp_path):
+    # Only the Theme has an upstream path contract, so a compiler that derived a
+    # stylebox filename from its state rather than its output name would bind
+    # several entries to one .tres. The worker then loads a StyleBoxTexture as an
+    # AtlasTexture and fails at runtime, with nothing else in the chain to catch
+    # it.
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    stylebox = next(
+        item for item in result["outputs"] if item["godot_type"] == "StyleBoxTexture"
+    )
+    atlas = next(
+        item for item in result["outputs"] if item["godot_type"] == "AtlasTexture"
+    )
+    atlas["path"] = stylebox["path"]
+    _write_json(result_path, result)
+
+    with pytest.raises(UICardEntryDraftError, match="must be published at"):
+        build_ui_card_entry_drafts(
+            request_path, result_path, tag=TAG, project_root=tmp_path
+        )
+
+
+def test_a_kit_output_published_off_its_derived_path_is_refused(tmp_path):
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    atlas = next(
+        item for item in result["outputs"] if item["godot_type"] == "AtlasTexture"
+    )
+    atlas["path"] = "res://assets/generated/card-kit/arcane_deck/renamed.tres"
+    _touch(tmp_path, atlas["path"])
+    _write_json(result_path, result)
+
+    with pytest.raises(UICardEntryDraftError, match="must be published at"):
+        build_ui_card_entry_drafts(
+            request_path, result_path, tag=TAG, project_root=tmp_path
+        )
+
+
+def test_a_rejected_kit_delivery_writes_no_drafts_at_all(tmp_path):
+    # Every entry is built before anything is written, so a kit whose third
+    # output is bad must not leave the first two on disk for Step 5 to register.
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    result["outputs"][-1]["path"] = (
+        "res://assets/generated/card-kit/arcane_deck/wrong.tres"
+    )
+    _write_json(result_path, result)
+    out_dir = tmp_path / "work"
+
+    with pytest.raises(UICardEntryDraftError):
+        write_ui_card_entry_drafts(
+            request_path, result_path, tag=TAG, project_root=tmp_path, out_dir=out_dir
+        )
+
+    assert not out_dir.exists() or list(out_dir.glob("*.json")) == []
+
+
+def test_a_dropped_kit_output_does_not_leave_a_stale_ready_draft(tmp_path):
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    out_dir = tmp_path / "work"
+    write_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path, out_dir=out_dir
+    )
+    assert (out_dir / "arcane_deck--mana_badge.json").exists()
+
+    # Re-plan the kit with the region renamed: the old logical output is gone.
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    request["spec"]["required_regions"] = ["mana_pip"]
+    request["spec"]["atlas_regions"][0]["output_name"] = "mana_pip"
+    request["spec"]["atlas_regions"][0]["logical_asset_id"] = "mana_pip"
+    atlas = next(
+        item for item in result["outputs"] if item["godot_type"] == "AtlasTexture"
+    )
+    atlas["name"] = "mana_pip"
+    atlas["path"] = "res://assets/generated/card-kit/arcane_deck/mana_pip.tres"
+    _touch(tmp_path, atlas["path"])
+    _write_json(request_path, request)
+    _write_json(result_path, result)
+
+    payload = write_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path, out_dir=out_dir
+    )
+
+    assert payload["removed"] == ["arcane_deck--mana_badge.json"]
+    assert not (out_dir / "arcane_deck--mana_badge.json").exists()
+    assert (out_dir / "arcane_deck--mana_pip.json").exists()
 
 
 def test_kit_entry_fails_closed_on_a_missing_compiled_resource(tmp_path):
@@ -948,6 +1185,74 @@ def test_static_fx_promotion_needs_a_compiled_build_to_stand_on(tmp_path):
 
     with pytest.raises(CurationEntryDraftError, match="no compiled build to promote"):
         _publish_fx_static(tmp_path, report_path, request_path, result_path)
+
+
+def test_static_fx_promotion_rejects_a_result_sourced_from_another_asset(tmp_path):
+    # check_bundle_handoff only proves *some* source carries the `single` layout,
+    # never which file, so the static path needs the same source binding the
+    # animated path has always had.
+    report_path, request_path, relative = _fx_static_inputs(tmp_path)
+    _publish_fx_static(tmp_path, report_path, request_path)
+    result = _fx_static_result(relative)
+    result["sources"] = [
+        {"path": "res://assets/generated/fx-bundle/other/other.png", "layout": "single"}
+    ]
+    result_path = _write_json(tmp_path / "fx-result.json", result)
+
+    with pytest.raises(CurationEntryDraftError, match="single source must be"):
+        _publish_fx_static(tmp_path, report_path, request_path, result_path)
+
+
+def test_static_fx_promotion_rejects_a_reference_output_posing_as_runtime(tmp_path):
+    # A canonical PNG announced with a godot_type reaches the game as a rival
+    # sprite for the same asset. The animated path rejected this; static did not.
+    report_path, request_path, relative = _fx_static_inputs(tmp_path)
+    _publish_fx_static(tmp_path, report_path, request_path)
+    result = _fx_static_result(relative)
+    result["outputs"].append(
+        {
+            "role": "reference",
+            "path": f"res://assets/generated/fx-bundle/{FX_STATIC_ID}/canonical.png",
+            "godot_type": "Texture2D",
+        }
+    )
+    result_path = _write_json(tmp_path / "fx-result.json", result)
+
+    with pytest.raises(CurationEntryDraftError, match="must not declare a godot_type"):
+        _publish_fx_static(tmp_path, report_path, request_path, result_path)
+
+
+def test_static_fx_promotion_pins_reference_outputs_to_this_asset(tmp_path):
+    report_path, request_path, relative = _fx_static_inputs(tmp_path)
+    _publish_fx_static(tmp_path, report_path, request_path)
+    result = _fx_static_result(relative)
+    result["outputs"].append(
+        {
+            "role": "reference",
+            "path": "res://assets/generated/fx-bundle/other_asset/canonical.png",
+        }
+    )
+    result_path = _write_json(tmp_path / "fx-result.json", result)
+
+    with pytest.raises(CurationEntryDraftError, match="must be a file under"):
+        _publish_fx_static(tmp_path, report_path, request_path, result_path)
+
+
+def test_static_fx_promotion_accepts_a_well_formed_reference_output(tmp_path):
+    report_path, request_path, relative = _fx_static_inputs(tmp_path)
+    _publish_fx_static(tmp_path, report_path, request_path)
+    result = _fx_static_result(relative)
+    result["outputs"].append(
+        {
+            "role": "reference",
+            "path": f"res://assets/generated/fx-bundle/{FX_STATIC_ID}/canonical.png",
+        }
+    )
+    result_path = _write_json(tmp_path / "fx-result.json", result)
+
+    promoted = _publish_fx_static(tmp_path, report_path, request_path, result_path)
+
+    assert promoted["processing_status"] == "ready"
 
 
 def test_static_fx_promotion_rejects_a_result_about_another_image(tmp_path):

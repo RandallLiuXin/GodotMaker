@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -27,12 +26,7 @@ from asset_stable_entry import (
     validate_entry,
 )
 
-_REQUEST_CONTRACT_ROOT = (
-    Path(__file__).resolve().parents[1] / "skills" / "assets" / "tileset"
-)
-if str(_REQUEST_CONTRACT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REQUEST_CONTRACT_ROOT))
-from request_contract import (  # noqa: E402
+from asset_tileset_contract_check import (
     TileSetRequestError,
     check_tileset_request,
 )
@@ -102,22 +96,35 @@ def build_tileset_entry_draft(
         )
     # A tile library is one resource. A second output would reach a worker as a
     # rival tile source for the same map, so the family publishes exactly one.
-    expected_output = {
-        "role": "runtime",
-        "path": artifact_path,
-        "godot_type": ARTIFACT_TYPE,
-    }
-    if result["outputs"] != [expected_output]:
+    runtime = [item for item in result["outputs"] if item.get("role") == "runtime"]
+    if len(runtime) != 1 or len(result["outputs"]) != 1:
         raise TileSetEntryDraftError(
             "result must expose exactly one stable TileSet runtime output"
         )
-
-    validation = result["validation"]
-    if validation.get("passed") is not True or validation.get("levels") != {
-        level: True for level in LEVELS
-    }:
+    # `name` is an optional field of the shared result contract, so compare the
+    # fields this family actually pins rather than the whole object.
+    if (
+        runtime[0].get("path") != artifact_path
+        or runtime[0].get("godot_type") != ARTIFACT_TYPE
+    ):
         raise TileSetEntryDraftError(
-            "result must have passed L0-L4 before a ready entry is drafted"
+            "result runtime output must be the stable TileSet artifact"
+        )
+
+    # L5 is a legal level of the shared contract; require L0-L4 to have passed
+    # rather than demanding the level map contain nothing else.
+    validation = result["validation"]
+    levels = validation.get("levels")
+    if validation.get("passed") is not True or not isinstance(levels, dict):
+        raise TileSetEntryDraftError(
+            "result must have passed L0-L4 before a ready entry is drafted; "
+            "no explicit validation levels were reported"
+        )
+    unpassed = [level for level in LEVELS if levels.get(level) is not True]
+    if unpassed:
+        raise TileSetEntryDraftError(
+            "result must have passed L0-L4 before a ready entry is drafted; "
+            f"not passing: {', '.join(unpassed)}"
         )
 
     if check_files:

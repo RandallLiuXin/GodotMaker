@@ -34,9 +34,11 @@ from asset_assets_md_update import (
     ASSETS_MD_STATUS_COLUMN,
     ASSETS_MD_TAG_COLUMN,
     asset_table_bounds,
+    document_newline,
     format_assets_md_row,
+    is_separator_row,
+    iter_asset_rows,
     merge_generation_params,
-    split_assets_md_row,
 )
 from asset_stable_entry import BUNDLE_FAMILIES, StableEntryError, safe_identifier
 
@@ -97,13 +99,18 @@ def declared_outputs(request: dict[str, Any]) -> list[tuple[str, str]]:
         )
 
         errors: tuple[type[Exception], ...] = (CompactPropPackEntryDraftError,)
-    else:
+    elif family in {"ui-kit", "card-kit"}:
         from asset_ui_card_entry_draft import (  # noqa: PLC0415
             UICardEntryDraftError,
             logical_outputs,
         )
 
         errors = (UICardEntryDraftError,)
+    else:
+        # Reached only when BUNDLE_FAMILIES gains a member without an extractor.
+        raise BundleRowError(
+            f"{family} is a bundle family with no declared-output extractor"
+        )
     try:
         return logical_outputs(request)
     except errors as exc:
@@ -181,9 +188,22 @@ def _needs_supersede(
     return True
 
 
+def _separator_index(lines: list[str], bounds: tuple[int, int]) -> int:
+    """Return the index of the Asset Table's ``|---|`` separator, or ``-1``."""
+    for index in range(*bounds):
+        if is_separator_row(lines[index]):
+            return index
+    return -1
+
+
 def _write_atomic(path: Path, lines: list[str]) -> None:
     with tempfile.NamedTemporaryFile(
-        delete=False, dir=str(path.parent), suffix=".md", mode="w", encoding="utf-8"
+        delete=False,
+        dir=str(path.parent),
+        suffix=".md",
+        mode="w",
+        encoding="utf-8",
+        newline="",
     ) as handle:
         handle.writelines(lines)
         temporary = Path(handle.name)
@@ -208,11 +228,15 @@ def declare_bundle_rows(
     if not isinstance(tag, str) or not tag.strip():
         raise BundleRowError("--tag must be a non-empty string")
     request = _load_object(request_path, "request")
+    declared = _asset_ids(request)
     bundle_id = request["asset_id"]
     family = request["asset_type"]
-    declared = _asset_ids(request)
 
-    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    # newline="" on both ends keeps this a three-line append instead of a
+    # whole-file line-ending rewrite.
+    with assets_md.open(encoding="utf-8", newline="") as handle:
+        lines = handle.readlines()
+    newline = document_newline(lines)
     # ASSETS.md holds several equally wide Markdown tables. Writing by column
     # count alone appends into whichever one sits last in the file, so the
     # section heading is the only safe anchor and its absence is fatal here.
@@ -223,27 +247,32 @@ def declare_bundle_rows(
         )
     existing: set[tuple[str, str]] = set()
     highest = 0
-    last_row_index = -1
-    rows: list[tuple[int, list[str]]] = []
-    for index in range(*bounds):
-        cells = split_assets_md_row(lines[index])
-        if cells is None:
-            continue
-        rows.append((index, cells))
-        last_row_index = index
+    rows: list[tuple[int, list[str]]] = list(iter_asset_rows(lines))
+    for _, cells in rows:
         existing.add((cells[ASSETS_MD_TAG_COLUMN], cells[ASSETS_MD_ASSET_ID_COLUMN]))
         number = cells[ASSETS_MD_NUMBER_COLUMN]
         if number.isdigit():
             highest = max(highest, int(number))
+    # Append after the last data row, or after the |---| separator when the table
+    # holds only its header — the state of a project's first tag. Anchoring on
+    # the header instead would insert above the separator and destroy the table.
+    last_row_index = max(
+        (index for index, _ in rows), default=_separator_index(lines, bounds)
+    )
     if last_row_index < 0:
-        raise BundleRowError(f"{assets_md} has no Asset Table rows to extend")
+        raise BundleRowError(
+            f"{assets_md} Asset Table has no header row to extend"
+        )
 
     pending = [item for item in declared if (tag, item[0]) not in existing]
     remaining = list(supersede or [])
     superseded: list[str] = []
     for index, cells in rows:
         name = cells[ASSETS_MD_ASSET_ID_COLUMN]
-        if cells[ASSETS_MD_TAG_COLUMN] != tag or name not in remaining:
+        # ASSETS.md accumulates across tags, so a request row planned in an
+        # earlier tag is still the row this production serves. Match by name and
+        # let a duplicate name be the error, rather than silently missing it.
+        if name not in remaining:
             continue
         remaining.remove(name)
         if not _needs_supersede(
@@ -254,7 +283,7 @@ def declare_bundle_rows(
             cells[ASSETS_MD_PARAMS_COLUMN], {"superseded_by": bundle_id}
         )
         cells[ASSETS_MD_STATUS_COLUMN] = SUPERSEDED_STATUS
-        lines[index] = format_assets_md_row(cells)
+        lines[index] = format_assets_md_row(cells, newline)
         superseded.append(name)
     if remaining:
         raise BundleRowError(
@@ -276,14 +305,21 @@ def declare_bundle_rows(
                     merge_generation_params(
                         "",
                         {
-                            "family": family,
+                            # `family=` means "request family" in the planner's
+                            # routing table and in this tool's own supersede
+                            # guard, and a production unit is never one of those
+                            # values. A declared row records its producer under a
+                            # key of its own so planner routing and the guard
+                            # both keep a single vocabulary.
+                            "produced_by": family,
                             "bundle": bundle_id,
                             "logical_output": output_name,
                         },
                     ),
                     EMPTY_CELL,
                     DECLARED_STATUS,
-                ]
+                ],
+                newline,
             )
         )
         created.append(asset_id)

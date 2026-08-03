@@ -8,7 +8,22 @@ for one build could promote a later, never-validated build to ``ready``.
 
 A build record is the content fingerprint a ``compiled`` draft leaves in the
 asset's support metadata. The promotion run recomputes it from disk and requires
-an exact match, so the artifact it registers is the same bytes L0-L4 examined.
+an exact match.
+
+What that does and does not prove
+---------------------------------
+
+It proves the inputs and artifact on disk are byte-identical to the ones the
+last ``compiled`` run recorded, so a promotion cannot register an artifact that
+was edited, replaced, or partially regenerated behind the builder's back.
+
+It does **not** prove the build was the one L0-L4 examined. A Skill result
+carries no build identity, and the record is written by the same builder that
+compiles — so regenerating an asset and re-running the ``compiled`` builder
+refreshes the record, after which a stale result promotes a never-validated
+build. Closing that needs a build id in the record that the Skill result echoes
+back; until the result contract carries one, treat this as drift detection
+between compile and promote, not as proof of validation.
 """
 from __future__ import annotations
 

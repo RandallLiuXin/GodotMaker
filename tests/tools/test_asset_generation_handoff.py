@@ -200,6 +200,7 @@ def test_written_entry_is_consumed_by_the_index_checker(tmp_path):
 def write_assets_md(project_root: Path) -> Path:
     assets_md = project_root / "ASSETS.md"
     assets_md.write_text(
+        "## Asset Table\n\n"
         "| ID | Tag | Name | Type | Size | Generation Params | Path | Status |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
         f"| 1 | {TAG} | {ASSET_ID} | sprite | 128x128 | — | {artifact_relative()} | MISSING |\n",

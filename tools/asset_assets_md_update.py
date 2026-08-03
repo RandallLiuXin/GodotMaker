@@ -36,12 +36,21 @@ REFERENCE_PROMOTABLE_STATUSES = {"source_ready"}
 ROOT_INDEX_RELATIVE = ".godotmaker/asset-generation/manifest.json"
 GENERATED_ROW_STATUS = "generated"
 ASSETS_MD_MIN_CELLS = 8
-ASSET_TABLE_HEADING = "## Asset Table"
+ASSET_TABLE_TITLE = "Asset Table"
+ASSET_TABLE_HEADING = f"## {ASSET_TABLE_TITLE}"
 _SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")
 ASSETS_MD_TAG_COLUMN = 1
 ASSETS_MD_ASSET_ID_COLUMN = 2
 ASSETS_MD_PARAMS_COLUMN = 5
 ASSETS_MD_STATUS_COLUMN = 7
+
+
+def is_separator_row(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped.startswith("|") or not stripped.endswith("|"):
+        return False
+    cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+    return bool(cells) and all(_SEPARATOR_CELL.match(cell) for cell in cells)
 
 
 class AssetsMdUpdateError(Exception):
@@ -157,50 +166,96 @@ def split_assets_md_row(line: str) -> list[str] | None:
     cells = [cell.strip() for cell in stripped.strip("|").split("|")]
     if len(cells) < ASSETS_MD_MIN_CELLS:
         return None
-    if all(_SEPARATOR_CELL.match(cell) for cell in cells):
+    if is_separator_row(line):
         return None
     return cells
 
 
+def _heading_level(line: str) -> int | None:
+    """Return the ATX heading level of a line, or ``None`` if it is not one."""
+    stripped = line.strip()
+    hashes = len(stripped) - len(stripped.lstrip("#"))
+    if not hashes or not stripped[hashes:].startswith(" "):
+        return None
+    return hashes
+
+
 def asset_table_bounds(lines: list[str]) -> tuple[int, int] | None:
-    """Return the ``[start, end)`` line span of the ``## Asset Table`` section.
+    """Return the ``[start, end)`` line span of the Asset Table section.
 
     ASSETS.md holds several Markdown tables and the Asset Table is not the only
     one wide enough to look like an asset row — the Visual Asset Contract and
     Budget Tracking tables also parse as eight-plus cells. Selecting rows by
     column count therefore reads and writes whichever table happens to sit last
-    in the file. Returns ``None`` when the heading is absent, so a caller can
-    decide between falling back to the whole document and failing closed.
+    in the file.
+
+    The heading is matched by title at any depth, and the section ends at the
+    next heading of the same or shallower depth, so a trailing ``# Appendix``
+    closes it just as a sibling ``## `` does. Returns ``None`` when no Asset
+    Table heading exists.
     """
     start: int | None = None
+    level = 0
     for index, line in enumerate(lines):
-        stripped = line.strip()
+        heading = _heading_level(line)
         if start is None:
-            if stripped.lower() == ASSET_TABLE_HEADING.lower():
-                start = index + 1
+            if heading is not None and line.strip()[heading:].strip().lower() == (
+                ASSET_TABLE_TITLE.lower()
+            ):
+                start, level = index + 1, heading
             continue
-        if stripped.startswith("## "):
+        if heading is not None and heading <= level:
             return start, index
     return (start, len(lines)) if start is not None else None
 
 
 def iter_asset_rows(lines: list[str]):
-    """Yield ``(index, cells)`` for every Asset Table row.
+    """Yield ``(index, cells)`` for every Asset Table *data* row.
 
-    Scoped to the ``## Asset Table`` section when the heading exists. A document
-    without it — a minimal fixture, or a table pasted on its own — keeps the
-    whole-file behaviour rather than silently matching nothing.
+    The header row is as wide as the data it labels, so a table that has not
+    been filled in yet — the state of a project's first tag — would otherwise
+    report its own header as an asset and let a writer insert between the header
+    and its ``|---|`` separator, destroying the table. A row immediately
+    followed by a separator is the header, which is exactly the Markdown rule.
     """
     bounds = asset_table_bounds(lines)
-    span = range(*bounds) if bounds is not None else range(len(lines))
-    for index in span:
+    if bounds is None:
+        # Only the Asset Table is the asset manifest. Guessing a table by column
+        # count is what let rows be read from, and written into, the Visual Asset
+        # Contract; the readers that promote and resolve must not keep that
+        # branch open just because a document is malformed.
+        raise AssetsMdUpdateError(
+            f"ASSETS.md has no '{ASSET_TABLE_HEADING}' section; the asset "
+            "manifest cannot be located"
+        )
+    for index in range(*bounds):
         cells = split_assets_md_row(lines[index])
-        if cells is not None:
-            yield index, cells
+        if cells is None:
+            continue
+        following = lines[index + 1] if index + 1 < bounds[1] else ""
+        if is_separator_row(following):
+            continue
+        yield index, cells
 
 
-def format_assets_md_row(cells: list[str]) -> str:
-    return "| " + " | ".join(cells) + " |\n"
+def format_assets_md_row(cells: list[str], newline: str = "\n") -> str:
+    """Render one row, ending it the way the document it joins already ends."""
+    return "| " + " | ".join(cells) + " |" + newline
+
+
+def document_newline(lines: list[str], default: str = "\n") -> str:
+    """Return the line ending the document already uses.
+
+    Rows are rendered, not copied, so a hard-coded ``\\n`` would leave bare LF
+    lines inside a CRLF document — a partial rewrite that shows up as noise in
+    every later diff.
+    """
+    for line in lines:
+        if line.endswith("\r\n"):
+            return "\r\n"
+        if line.endswith("\n"):
+            return "\n"
+    return default
 
 
 def merge_generation_params(current: str, additions: dict[str, str]) -> str:
@@ -244,7 +299,12 @@ def update_assets_md(
     }
     remaining = set(entries_by_key.keys())
 
-    output = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    # newline="" on both ends: read_text() would translate CRLF to LF and the
+    # write would then rewrite every line in the file, burying a three-line
+    # change in a whole-file diff and flipping back on the next checkout.
+    with assets_md.open(encoding="utf-8", newline="") as handle:
+        output = handle.readlines()
+    newline = document_newline(output)
     updated: list[str] = []
 
     # Only the Asset Table is the asset manifest. The Visual Asset Contract and
@@ -261,7 +321,7 @@ def update_assets_md(
             cells[ASSETS_MD_PARAMS_COLUMN], _entry_params(entries_by_key[key])
         )
         cells[ASSETS_MD_STATUS_COLUMN] = status
-        output[index] = format_assets_md_row(cells)
+        output[index] = format_assets_md_row(cells, newline)
         updated.append(asset_id)
         remaining.discard(key)
 
@@ -275,6 +335,7 @@ def update_assets_md(
         suffix=".md",
         mode="w",
         encoding="utf-8",
+        newline="",
     ) as handle:
         tmp_path = Path(handle.name)
         handle.writelines(output)

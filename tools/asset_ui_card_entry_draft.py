@@ -129,6 +129,20 @@ def logical_outputs(request: dict[str, Any]) -> list[tuple[str, str]]:
     return outputs
 
 
+def _expected_artifact_path(
+    directory: str, bundle_id: str, output_name: str, godot_type: str
+) -> str:
+    """Return the one stable path a kit output may be published at.
+
+    The Theme is pinned upstream by `check_ui_card_handoff` to the kit's
+    `<asset_id>_theme.tres`; every other resource is named after the output it
+    serves. Deriving both here is what makes the mapping one-to-one instead of
+    "somewhere in the kit directory".
+    """
+    stem = f"{bundle_id}_theme" if godot_type == "Theme" else output_name
+    return f"res://{directory}/{stem}.tres"
+
+
 def _assert_file(project_root: Path, res_path: str, label: str) -> None:
     target = Path(project_root) / res_path[len("res://"):]
     if not target.is_file() or target.stat().st_size <= 0:
@@ -166,6 +180,7 @@ def build_ui_card_entry_drafts(
     layouts = _source_layout_by_output(request)
 
     entries: list[dict[str, Any]] = []
+    claimed: dict[str, str] = {}
     for output in result["outputs"]:
         if output.get("role") != "runtime":
             continue
@@ -180,10 +195,26 @@ def build_ui_card_entry_drafts(
             )
         layout_type, source_path = layouts[name]
         artifact_path = output["path"]
-        if not artifact_path.startswith(f"res://{directory}/"):
+        # Only the Theme has an upstream path contract, so a stylebox or icon
+        # whose compiler derived its filename from something other than the
+        # output name — a shared state, say — would bind several entries to one
+        # .tres. A worker then loads a StyleBoxTexture as an AtlasTexture and
+        # fails at runtime, with nothing in the registration chain to catch it.
+        expected = _expected_artifact_path(
+            directory, bundle_id, name, output["godot_type"]
+        )
+        if artifact_path != expected:
             raise UICardEntryDraftError(
-                f"runtime output {name!r} must be published under res://{directory}/"
+                f"runtime output {name!r} must be published at {expected}, "
+                f"not {artifact_path}"
             )
+        owner = claimed.get(artifact_path)
+        if owner is not None:
+            raise UICardEntryDraftError(
+                f"runtime outputs {owner!r} and {name!r} both claim {artifact_path}; "
+                "every worker-consumable output needs its own artifact"
+            )
+        claimed[artifact_path] = name
         if check_files:
             _assert_file(project_root, source_path, f"{name} source")
             _assert_file(project_root, artifact_path, f"{name} runtime artifact")
@@ -240,12 +271,29 @@ def write_ui_card_entry_drafts(
         project_root=project_root,
         check_files=check_files,
     )
+    out_dir = Path(out_dir)
+    written = {f"{entry['asset_id']}.json" for entry in entries}
+    # A kit that dropped an output would otherwise leave last round's ready
+    # draft behind, and registration cannot tell it is no longer declared.
+    bundle_id = entries[0]["bundle_id"]
+    stale = [
+        path
+        for path in sorted(out_dir.glob(f"{bundle_id}--*.json"))
+        if path.name not in written
+    ]
     drafts: list[str] = []
     for entry in entries:
-        path = Path(out_dir) / f"{entry['asset_id']}.json"
+        path = out_dir / f"{entry['asset_id']}.json"
         _atomic_write_json(path, entry)
         drafts.append(str(path))
-    return {"ok": True, "count": len(entries), "drafts": drafts}
+    for path in stale:
+        path.unlink()
+    return {
+        "ok": True,
+        "count": len(entries),
+        "drafts": drafts,
+        "removed": [path.name for path in stale],
+    }
 
 
 def _main() -> int:

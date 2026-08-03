@@ -23,6 +23,7 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 17. `asset_ui_card_entry_draft.py`
 18. `asset_tileset_entry_draft.py`
 19. `asset_bundle_rows.py`
+20. `asset_runtime_path.py`
 
 ## asset_source_generate.py
 
@@ -289,6 +290,60 @@ python tools/asset_runtime_resolver.py --project-root . \
 python tools/asset_runtime_resolver.py --project-root . \
   --manifest-entry .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
 ```
+
+## asset_ui_card_entry_draft.py
+
+`asset_ui_card_entry_draft.py` 会把一次通过校验的 `ui-kit` 或 `card-kit` 交付转换成 ready 的 v1 stable entry —— **每个 runtime output 各一条**，因为一个 kit 编译出多个可独立绑定的资源，而 worker 是逐个节点绑定它们的。它会跑该家族的 request/result 互绑检查、要求 L0-L4 全部通过、按 output name 推导每个 artifact 的稳定路径（Theme 用 kit id 推导），并拒绝两个 output 指向同一个 `.tres`。每条 draft 都带 kit 的 `bundle_id`。
+
+手动入口：
+
+```bash
+python tools/asset_ui_card_entry_draft.py \
+  --request <request.json> \
+  --result <result.json> \
+  --tag <tag> \
+  --project-root . \
+  --out-dir .godotmaker/asset-generation/work/entries
+```
+
+如果 kit 不再声明某个 output，上一轮遗留的 draft 会被删除，避免重新规划后留下一条陈旧的 `ready` draft 被注册环节当成有效 entry。
+
+## asset_tileset_entry_draft.py
+
+`asset_tileset_entry_draft.py` 会把一次通过的 `tileset` 交付转换成它唯一的 ready `tile_atlas -> TileSet` entry。它会把 result 与 typed request 重新互绑，要求恰好一个稳定 atlas source 和一个位于家族稳定路径上的 `TileSet` runtime output，并要求 L0-L4 已通过。该 entry 只是 tile library —— 使用它的地图由 worker 编排。
+
+手动入口：
+
+```bash
+python tools/asset_tileset_entry_draft.py \
+  --request <request.json> \
+  --result <result.json> \
+  --tag <tag> \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+## asset_bundle_rows.py
+
+`asset_bundle_rows.py` 是唯一会原地修改 `ASSETS.md` 的素材工具。bundle 家族（`ui-kit`、`card-kit`、`compact-prop-pack`）一次生产会交付多个可独立绑定的资源，而 `asset_assets_md_update.py` 在 entry 找不到对应行时会 fail closed。这个工具在 Skill 运行之前就从 request 推导出这些行，以 `MISSING` 状态写入，命名为 `<bundle_id>--<output_name>`，并携带 `produced_by`、`bundle`、`logical_output`，让每一行都能回溯到产它的那次生产。
+
+手动入口：
+
+```bash
+python tools/asset_bundle_rows.py \
+  --assets-md ASSETS.md \
+  --request <request.json> \
+  --tag <tag> \
+  --supersede <planned_request_row>
+```
+
+行只会写进 `## Asset Table` 段；没有该标题的文档会直接报错，而不是去猜。`--supersede` 会把提出这项需求的计划请求行以 `N/A` + `superseded_by` 指针收口，且仅当该行仍为 `MISSING`、其 `family=` 属于本生产单元服务的家族时才允许。重复执行不会产生任何改动。
+
+## asset_runtime_path.py
+
+`asset_runtime_path.py` 负责在工具实际运行的布局里定位共享 asset runtime。在本仓库它位于 `skills/assets/_shared/`；`publish.py` 会把它部署到 `.godotmaker/asset-runtime/`，而发布后的工程根本没有 `skills/assets/` 目录。各工具通过这个 helper 导入，因此同一份 import 在框架 checkout 和游戏工程里都能工作。
+
+它是库，不是命令。
 
 ## 手动调用这些脚本
 

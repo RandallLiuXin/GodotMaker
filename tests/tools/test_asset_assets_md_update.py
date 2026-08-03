@@ -69,6 +69,7 @@ def touch_asset_files(project_root: Path, asset_id: str, family: str = "characte
 def write_assets_md(path: Path):
     path.write_text(
         "# Assets\n\n"
+        "## Asset Table\n\n"
         "| ID | Tag | Name | Type | Size | Generation Params | Path | Status |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
         f"| 1 | {TAG} | player_idle | sprite | 128x128 | prompt=old.txt | "
@@ -197,6 +198,7 @@ def make_reference_entry(**overrides):
 
 def write_reference_assets_md(path: Path):
     path.write_text(
+        "## Asset Table\n\n"
         "| ID | Tag | Name | Type | Size | Generation Params | Path | Status |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
         f"| 1 | {TAG} | scene_main | reference | 1280x720 | — | references/scene_main.png | MISSING |\n",

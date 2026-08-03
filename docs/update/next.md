@@ -23,6 +23,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Added `tools/asset_bundle_rows.py`, which declares the ASSETS.md row each bundle output will fill and closes the planned request row it serves as `N/A`.
 
+- Added `tools/asset_runtime_path.py`, which resolves the shared asset runtime for both the source tree and a published project.
+
 - Added deterministic marching-squares-15 and blob-47 TileSet profile templates with fixed atlas guides, strict image validation, and native resource compilation.
 
 - Added fail-closed standalone L0-L4 execution for the remaining first-class Asset Skills, with published runners and native Godot resource verification.
@@ -84,6 +86,16 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - The stable-entry schema now validates each `source_layout.type` against its closed compatible Godot artifact-type set, including `StyleBoxTexture` for `single` and `region_atlas`, so mismatches are rejected before reaching a worker.
 
 ## Fixed
+
+- Asset entry-draft tools now import the shared asset runtime and the tileset request contract through locations that exist in a published game project; previously `asset_tileset_entry_draft.py`, `asset_action_entry_draft.py`, and `asset_curation_entry_draft.py` reached into `skills/assets/`, which `publish.py` never deploys, and failed with `ModuleNotFoundError` before reaching argparse.
+
+- A ui-kit or card-kit runtime output is now pinned to the stable path derived from its output name and checked for uniqueness, so two entries can no longer bind the same `.tres` and hand a worker a resource of the wrong Godot type.
+
+- ASSETS.md reads and writes are scoped to the `## Asset Table` section instead of matching any table at least eight columns wide, and its header row is no longer treated as data; rows could otherwise land in the Visual Asset Contract or Budget Tracking tables, or above the `|---|` separator of an empty table.
+
+- ASSETS.md writers preserve the document's existing line endings instead of rewriting every line.
+
+- Static FX promotion now binds the result's `single` source to the published image and applies the same reference-output rules as the animated path.
 
 - Compact prop packs now generate one provider-authored source sheet, normalize each curated prop into its declared atlas slot, and publish independently addressable AtlasTexture resources with repaired L0-L4 validation.
 

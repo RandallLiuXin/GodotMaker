@@ -58,6 +58,30 @@ def _extract_asset_paths(text: str) -> set[str]:
     return paths
 
 
+# The sections of ASSETS.md that actually list assets with a Status column.
+# Scanning the whole document also swept up the Visual Asset Contract and Budget
+# Tracking tables, whose last column is not a status at all.
+STATUS_TABLE_TITLES = ("asset table", "audio")
+
+
+def _status_bearing_rows(text: str):
+    """Yield the table rows of the asset-listing sections, in order."""
+    inside = False
+    level = 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        hashes = len(stripped) - len(stripped.lstrip("#"))
+        if hashes and stripped[hashes:].startswith(" "):
+            title = stripped[hashes:].strip().lower()
+            if title in STATUS_TABLE_TITLES:
+                inside, level = True, hashes
+            elif inside and hashes <= level:
+                inside = False
+            continue
+        if inside:
+            yield line
+
+
 def _assets_paths_by_status(assets_md: Path) -> tuple[set[str], dict[str, dict[str, str]]]:
     if not assets_md.exists():
         return set(), {}
@@ -65,7 +89,7 @@ def _assets_paths_by_status(assets_md: Path) -> tuple[set[str], dict[str, dict[s
     done_paths: set[str] = set()
     unfilled_paths: dict[str, dict[str, str]] = {}
     text = assets_md.read_text(encoding="utf-8-sig")
-    for line in text.splitlines():
+    for line in _status_bearing_rows(text):
         stripped = line.strip()
         if not stripped.startswith("|") or "---" in stripped:
             continue

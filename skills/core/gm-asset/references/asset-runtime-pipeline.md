@@ -373,8 +373,11 @@ python tools/asset_curation_entry_draft.py --report <curation_report.json> \
 Use the animated form for a `grid_sheet -> SpriteFrames` FX and the static form
 for a `single -> Texture2D` FX. Neither run recompiles or republishes: each
 loads the build fingerprint its `compiled` run recorded, recomputes it from
-disk, and requires an exact match, so the artifact it registers is the one
-L0-L4 examined. Promotion without a preceding compiled build is refused.
+disk, and requires an exact match. Promotion without a preceding compiled build
+is refused. The fingerprint proves the artifact has not drifted since it was
+compiled; it does not prove the build was the one L0-L4 examined, because a
+Skill result carries no build identity. Do not promote with a result from
+before a regeneration.
 
 Write one validated entry to its canonical path:
 
