@@ -166,6 +166,13 @@ Rules:
    registers what it compiled.
 5. A `reference` layout carries no `godot_artifact` and keeps its `references/`
    location.
+   Registration checks identity and paths, never resource types. Nothing between
+   a compiler and a worker opens a `.tres` to confirm it really is the
+   `godot_artifact.type` the entry claims — a bundle family pins each output to a
+   derived filename so two resources cannot share one file, but that is a
+   one-to-one mapping, not a type check. `ResourceLoader.load()` at L3 is the
+   only place a type mismatch is caught, so a family that skips or stubs L3 can
+   still register a wrongly typed artifact.
 6. Detailed runtime metadata (region rects, frame lists) is a support file beside
    the artifact, never an entry field.
 7. `bundle_id` is allowed only for a family whose one production delivers

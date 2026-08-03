@@ -37,7 +37,8 @@ ROOT_INDEX_RELATIVE = ".godotmaker/asset-generation/manifest.json"
 GENERATED_ROW_STATUS = "generated"
 ASSETS_MD_MIN_CELLS = 8
 ASSET_TABLE_TITLE = "Asset Table"
-ASSET_TABLE_HEADING = f"## {ASSET_TABLE_TITLE}"
+ASSET_TABLE_LEVEL = 2
+ASSET_TABLE_HEADING = f"{'#' * ASSET_TABLE_LEVEL} {ASSET_TABLE_TITLE}"
 _SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")
 ASSETS_MD_TAG_COLUMN = 1
 ASSETS_MD_ASSET_ID_COLUMN = 2
@@ -180,8 +181,28 @@ def _heading_level(line: str) -> int | None:
     return hashes
 
 
+def _outside_code_fences(lines: list[str]):
+    """Yield ``(index, line)`` for lines that are not inside a fenced block.
+
+    A document may quote its own structure in an example block. Those lines are
+    prose, not the manifest, and must not be able to anchor or terminate a
+    section.
+    """
+    fence: str | None = None
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if fence is not None:
+            if stripped.startswith(fence):
+                fence = None
+            continue
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            fence = stripped[:3]
+            continue
+        yield index, line
+
+
 def asset_table_bounds(lines: list[str]) -> tuple[int, int] | None:
-    """Return the ``[start, end)`` line span of the Asset Table section.
+    """Return the ``[start, end)`` line span of the ``## Asset Table`` section.
 
     ASSETS.md holds several Markdown tables and the Asset Table is not the only
     one wide enough to look like an asset row — the Visual Asset Contract and
@@ -189,24 +210,31 @@ def asset_table_bounds(lines: list[str]) -> tuple[int, int] | None:
     column count therefore reads and writes whichever table happens to sit last
     in the file.
 
-    The heading is matched by title at any depth, and the section ends at the
-    next heading of the same or shallower depth, so a trailing ``# Appendix``
-    closes it just as a sibling ``## `` does. Returns ``None`` when no Asset
-    Table heading exists.
+    The heading must be exactly ``## Asset Table``, at the template's own level,
+    and must be unique: accepting any depth let a nested ``### Asset Table``
+    example earlier in the document hijack the whole manifest, which is the very
+    failure this anchor exists to prevent. Fenced blocks are skipped so a quoted
+    example cannot anchor it either. Returns ``None`` when the heading is absent.
     """
-    start: int | None = None
-    level = 0
-    for index, line in enumerate(lines):
-        heading = _heading_level(line)
-        if start is None:
-            if heading is not None and line.strip()[heading:].strip().lower() == (
-                ASSET_TABLE_TITLE.lower()
-            ):
-                start, level = index + 1, heading
-            continue
-        if heading is not None and heading <= level:
+    starts = [
+        index
+        for index, line in _outside_code_fences(lines)
+        if _heading_level(line) == ASSET_TABLE_LEVEL
+        and line.strip()[ASSET_TABLE_LEVEL:].strip().lower()
+        == ASSET_TABLE_TITLE.lower()
+    ]
+    if not starts:
+        return None
+    if len(starts) > 1:
+        raise AssetsMdUpdateError(
+            f"ASSETS.md has {len(starts)} '{ASSET_TABLE_HEADING}' sections; the "
+            "asset manifest must be unambiguous"
+        )
+    start = starts[0] + 1
+    for index, line in _outside_code_fences(lines):
+        if index >= start and _heading_level(line) is not None:
             return start, index
-    return (start, len(lines)) if start is not None else None
+    return start, len(lines)
 
 
 def iter_asset_rows(lines: list[str]):
@@ -228,14 +256,22 @@ def iter_asset_rows(lines: list[str]):
             f"ASSETS.md has no '{ASSET_TABLE_HEADING}' section; the asset "
             "manifest cannot be located"
         )
-    for index in range(*bounds):
-        cells = split_assets_md_row(lines[index])
-        if cells is None:
-            continue
+    table = [
+        index for index in range(*bounds) if split_assets_md_row(lines[index]) is not None
+    ]
+    if table and not any(is_separator_row(lines[index]) for index in range(*bounds)):
+        # Header detection is "the row followed by the |---| separator". Without
+        # a separator there is no header to recognise, and the column labels
+        # would be returned as an asset row.
+        raise AssetsMdUpdateError(
+            f"ASSETS.md '{ASSET_TABLE_HEADING}' has rows but no |---| separator; "
+            "its header cannot be told from its data"
+        )
+    for index in table:
         following = lines[index + 1] if index + 1 < bounds[1] else ""
         if is_separator_row(following):
             continue
-        yield index, cells
+        yield index, split_assets_md_row(lines[index])
 
 
 def format_assets_md_row(cells: list[str], newline: str = "\n") -> str:

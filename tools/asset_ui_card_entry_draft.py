@@ -30,13 +30,13 @@ from asset_stable_entry import (
     SCHEMA_VERSION,
     StableEntryError,
     safe_identifier,
-    stable_output_dir,
     validate_entry,
 )
 from asset_ui_card_contract_check import (
     UICardContractError,
     check_ui_card_handoff,
     check_ui_card_request,
+    expected_runtime_path,
 )
 
 FAMILIES = ("ui-kit", "card-kit")
@@ -129,20 +129,6 @@ def logical_outputs(request: dict[str, Any]) -> list[tuple[str, str]]:
     return outputs
 
 
-def _expected_artifact_path(
-    directory: str, bundle_id: str, output_name: str, godot_type: str
-) -> str:
-    """Return the one stable path a kit output may be published at.
-
-    The Theme is pinned upstream by `check_ui_card_handoff` to the kit's
-    `<asset_id>_theme.tres`; every other resource is named after the output it
-    serves. Deriving both here is what makes the mapping one-to-one instead of
-    "somewhere in the kit directory".
-    """
-    stem = f"{bundle_id}_theme" if godot_type == "Theme" else output_name
-    return f"res://{directory}/{stem}.tres"
-
-
 def _assert_file(project_root: Path, res_path: str, label: str) -> None:
     target = Path(project_root) / res_path[len("res://"):]
     if not target.is_file() or target.stat().st_size <= 0:
@@ -176,7 +162,6 @@ def build_ui_card_entry_drafts(
 
     family = request["asset_type"]
     bundle_id = request["asset_id"]
-    directory = stable_output_dir(family, bundle_id)
     layouts = _source_layout_by_output(request)
 
     entries: list[dict[str, Any]] = []
@@ -195,13 +180,11 @@ def build_ui_card_entry_drafts(
             )
         layout_type, source_path = layouts[name]
         artifact_path = output["path"]
-        # Only the Theme has an upstream path contract, so a stylebox or icon
-        # whose compiler derived its filename from something other than the
-        # output name — a shared state, say — would bind several entries to one
-        # .tres. A worker then loads a StyleBoxTexture as an AtlasTexture and
-        # fails at runtime, with nothing in the registration chain to catch it.
-        expected = _expected_artifact_path(
-            directory, bundle_id, name, output["godot_type"]
+        # `check_ui_card_handoff` already pinned this path at L0, where the Skill
+        # can still repair it. Re-deriving from the same helper keeps this the
+        # last gate rather than a second, drifting rule.
+        expected = expected_runtime_path(
+            family, bundle_id, name, output["godot_type"]
         )
         if artifact_path != expected:
             raise UICardEntryDraftError(

@@ -89,7 +89,11 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - Asset entry-draft tools now import the shared asset runtime and the tileset request contract through locations that exist in a published game project; previously `asset_tileset_entry_draft.py`, `asset_action_entry_draft.py`, and `asset_curation_entry_draft.py` reached into `skills/assets/`, which `publish.py` never deploys, and failed with `ModuleNotFoundError` before reaching argparse.
 
-- A ui-kit or card-kit runtime output is now pinned to the stable path derived from its output name and checked for uniqueness, so two entries can no longer bind the same `.tres` and hand a worker a resource of the wrong Godot type.
+- A ui-kit or card-kit runtime output is now pinned to the stable path derived from its output name — the Theme at `<asset_id>_theme.tres`, everything else at `<output_name>.tres` — and checked for uniqueness, so two entries can no longer bind the same `.tres` and hand a worker a resource of the wrong Godot type. The rule is part of the family handoff contract, so it is enforced at L0 where the Skill can still repair it, and both kit SKILLs document it.
+
+- `--supersede` resolves the row to retire by current tag first and falls back across tags only when exactly one candidate exists; a same-named row in another tag is no longer silently retired in place of the real one.
+
+- The `## Asset Table` anchor is matched only at its own heading level, must be unique, and ignores fenced examples, so a nested or quoted example table cannot shadow the manifest; a table with rows but no `|---|` separator is now an error rather than reporting its header as an asset.
 
 - ASSETS.md reads and writes are scoped to the `## Asset Table` section instead of matching any table at least eight columns wide, and its header row is no longer treated as data; rows could otherwise land in the Visual Asset Contract or Budget Tracking tables, or above the `|---|` separator of an empty table.
 

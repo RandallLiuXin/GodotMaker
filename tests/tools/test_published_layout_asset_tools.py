@@ -24,6 +24,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
+import asset_runtime_path  # noqa: E402
 import publish  # noqa: E402
 
 TAG = "v0.1.0"
@@ -66,6 +67,40 @@ def _run(published: Path, tool: str, *args: str) -> subprocess.CompletedProcess:
         text=True,
         check=False,
     )
+
+
+def test_a_source_checkout_prefers_its_own_runtime_over_a_published_copy():
+    """A stale publish inside the repo must not shadow the source runtime.
+
+    Publishing the repository onto itself leaves `.godotmaker/asset-runtime/`
+    beside `tools/`. Preferring that frozen copy would make the builders import
+    compilers that no longer match `skills/assets/_shared/`, while tests that
+    import `_shared` directly stayed green.
+    """
+    candidates = asset_runtime_path.runtime_candidates()
+    source = ROOT / "skills" / "assets" / "_shared"
+
+    assert source.is_dir(), "this test only means anything in a source checkout"
+    assert candidates[0] == source
+    assert asset_runtime_path.asset_runtime_root() == source
+
+
+def test_a_published_project_resolves_the_deployed_runtime(published: Path):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, 'tools');"
+            " import asset_runtime_path as m; print(m.asset_runtime_root())",
+        ],
+        cwd=published,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    resolved = Path(completed.stdout.strip())
+    assert resolved == published / ".godotmaker" / "asset-runtime"
 
 
 def test_the_published_layout_really_has_no_skills_assets_tree(published: Path):

@@ -25,27 +25,26 @@ class AssetRuntimePathError(Exception):
     """Raised when the shared asset runtime cannot be located."""
 
 
-def runtime_candidates(project_root: Path | str | None = None) -> tuple[Path, ...]:
-    """Return the runtime locations to try, published layout first."""
+def runtime_candidates() -> tuple[Path, ...]:
+    """Return the runtime locations to try, in layout-correct order.
+
+    The order is decided by which layout this file is actually sitting in, not
+    by a fixed preference. In a framework checkout the source runtime is the
+    authority: a `.godotmaker/asset-runtime/` left behind by publishing the repo
+    onto itself is a frozen copy, and preferring it would silently import stale
+    compilers while edits to `skills/assets/_shared/` did nothing. A published
+    project has no source runtime at all, so the published one is the only
+    candidate that exists.
+    """
     tools_root = Path(__file__).resolve().parents[1]
-    candidates: list[Path] = []
-    if project_root is not None:
-        candidates.append(Path(project_root).resolve() / PUBLISHED_RUNTIME)
-    # A published project keeps tools/ at its root, so the runtime sits beside
-    # it even when the caller passed no project root.
-    candidates.append(tools_root / PUBLISHED_RUNTIME)
-    candidates.append(tools_root / SOURCE_RUNTIME)
-    seen: set[Path] = set()
-    return tuple(
-        candidate
-        for candidate in candidates
-        if not (candidate in seen or seen.add(candidate))
-    )
+    source = tools_root / SOURCE_RUNTIME
+    published = tools_root / PUBLISHED_RUNTIME
+    return (source, published) if source.is_dir() else (published, source)
 
 
-def asset_runtime_root(project_root: Path | str | None = None) -> Path:
+def asset_runtime_root() -> Path:
     """Return the shared asset runtime directory for this layout."""
-    candidates = runtime_candidates(project_root)
+    candidates = runtime_candidates()
     for candidate in candidates:
         if candidate.is_dir():
             return candidate
@@ -55,9 +54,9 @@ def asset_runtime_root(project_root: Path | str | None = None) -> Path:
     )
 
 
-def ensure_asset_runtime_on_path(project_root: Path | str | None = None) -> Path:
+def ensure_asset_runtime_on_path() -> Path:
     """Put the shared asset runtime on ``sys.path`` and return it."""
-    runtime = asset_runtime_root(project_root)
+    runtime = asset_runtime_root()
     entry = str(runtime)
     if entry not in sys.path:
         sys.path.insert(0, entry)

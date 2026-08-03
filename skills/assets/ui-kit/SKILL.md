@@ -158,6 +158,13 @@ manifests, stable entries, or worker dispatch state.
    Runtime outputs include the Theme, 23
    `StyleBoxTexture` resources, and 31 `AtlasTexture` resources.
 
+   Every runtime output has one required filename, derived from the name it
+   serves: the Theme at `<asset_id>_theme.tres`, and every `StyleBoxTexture`
+   and `AtlasTexture` at `<output_name>.tres`. One kit fills one directory, so
+   this is what keeps each output separately bindable — two resources sharing a
+   file would hand a worker the wrong Godot type. `check_ui_card_handoff`
+   enforces it at L0, so a drifting filename is a repair, not a late failure.
+
 7. Write the complete derived request to `ui_kit_request.json` and candidate
    result to `ui_kit_result.json`. Run the public validator after resources
    exist:

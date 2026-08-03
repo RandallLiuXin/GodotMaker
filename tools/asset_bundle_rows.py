@@ -188,6 +188,41 @@ def _needs_supersede(
     return True
 
 
+def _supersede_target(
+    rows: list[tuple[int, list[str]]], *, name: str, tag: str
+) -> tuple[int, list[str]]:
+    """Return the one row ``--supersede <name>`` may retire.
+
+    ASSETS.md accumulates across tags, so the same request name can legitimately
+    appear under several tags. The current tag wins, because that is the row this
+    production is closing. Falling back to another tag is only safe when exactly
+    one such row exists — picking the first match silently retired an older row
+    and left the real one blocking the stage.
+    """
+    matches = [
+        (index, cells)
+        for index, cells in rows
+        if cells[ASSETS_MD_ASSET_ID_COLUMN] == name
+    ]
+    if not matches:
+        raise BundleRowError(f"ASSETS.md has no row to supersede: {name}")
+    current = [item for item in matches if item[1][ASSETS_MD_TAG_COLUMN] == tag]
+    if len(current) > 1:
+        raise BundleRowError(
+            f"ASSETS.md has {len(current)} rows named {name!r} in {tag}; "
+            "the row to supersede is ambiguous"
+        )
+    if current:
+        return current[0]
+    if len(matches) > 1:
+        tags = ", ".join(sorted(cells[ASSETS_MD_TAG_COLUMN] for _, cells in matches))
+        raise BundleRowError(
+            f"ASSETS.md has no {name!r} row in {tag} and several in other tags "
+            f"({tags}); the row to supersede is ambiguous"
+        )
+    return matches[0]
+
+
 def _separator_index(lines: list[str], bounds: tuple[int, int]) -> int:
     """Return the index of the Asset Table's ``|---|`` separator, or ``-1``."""
     for index in range(*bounds):
@@ -265,16 +300,9 @@ def declare_bundle_rows(
         )
 
     pending = [item for item in declared if (tag, item[0]) not in existing]
-    remaining = list(supersede or [])
     superseded: list[str] = []
-    for index, cells in rows:
-        name = cells[ASSETS_MD_ASSET_ID_COLUMN]
-        # ASSETS.md accumulates across tags, so a request row planned in an
-        # earlier tag is still the row this production serves. Match by name and
-        # let a duplicate name be the error, rather than silently missing it.
-        if name not in remaining:
-            continue
-        remaining.remove(name)
+    for name in supersede or []:
+        index, cells = _supersede_target(rows, name=name, tag=tag)
         if not _needs_supersede(
             cells, name=name, production_family=family, bundle_id=bundle_id
         ):
@@ -285,10 +313,6 @@ def declare_bundle_rows(
         cells[ASSETS_MD_STATUS_COLUMN] = SUPERSEDED_STATUS
         lines[index] = format_assets_md_row(cells, newline)
         superseded.append(name)
-    if remaining:
-        raise BundleRowError(
-            "ASSETS.md has no current-tag rows to supersede: " + ", ".join(remaining)
-        )
 
     created: list[str] = []
     new_lines: list[str] = []
@@ -325,6 +349,11 @@ def declare_bundle_rows(
         created.append(asset_id)
 
     if new_lines or superseded:
+        # A document whose last line has no terminator would otherwise weld the
+        # first appended row onto it, producing one 16-cell line that still
+        # parses and reports ok.
+        if new_lines and not lines[last_row_index].endswith(("\n", "\r")):
+            lines[last_row_index] += newline
         lines[last_row_index + 1 : last_row_index + 1] = new_lines
         _write_atomic(assets_md, lines)
 

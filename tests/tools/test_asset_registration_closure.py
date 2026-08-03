@@ -42,6 +42,7 @@ from asset_assets_md_update import (  # noqa: E402
     ASSETS_MD_ASSET_ID_COLUMN,
     asset_table_bounds,
     is_separator_row,
+    iter_asset_rows,
 )
 from asset_bundle_rows import BundleRowError, declare_bundle_rows  # noqa: E402
 from asset_curation_entry_draft import (  # noqa: E402
@@ -57,6 +58,11 @@ from asset_stable_entry import entry_relative_path, write_entry  # noqa: E402
 from asset_tileset_entry_draft import (  # noqa: E402
     TileSetEntryDraftError,
     build_tileset_entry_draft,
+)
+from asset_ui_card_contract_check import (  # noqa: E402
+    UICardContractError,
+    check_ui_card_handoff,
+    expected_runtime_path,
 )
 from asset_ui_card_entry_draft import (  # noqa: E402
     UICardEntryDraftError,
@@ -419,7 +425,7 @@ def test_superseding_an_absent_request_row_fails_closed(tmp_path):
     request_path, _ = _kit_delivery(tmp_path, "card-kit")
     assets_md = _planned_assets_md(tmp_path)
 
-    with pytest.raises(BundleRowError, match="no current-tag rows to supersede"):
+    with pytest.raises(BundleRowError, match="no row to supersede"):
         declare_bundle_rows(
             assets_md, request_path, tag=TAG, supersede=["card_frame"]
         )
@@ -671,6 +677,86 @@ def test_declared_rows_do_not_reuse_the_request_family_key(tmp_path):
     assert "family=" not in params
 
 
+TAG_TWO = "v0.2.0"
+
+
+def _named_row(assets_md: Path, name: str, tag: str) -> list[str] | None:
+    for line in assets_md.read_text(encoding="utf-8").splitlines():
+        cells = split_assets_md_row(line)
+        if cells is not None and cells[2] == name and cells[1] == tag:
+            return cells
+    return None
+
+
+def test_supersede_prefers_the_current_tag_row_over_a_same_named_older_one(tmp_path):
+    # ASSETS.md accumulates across tags, so the same request name legitimately
+    # appears twice. Taking the first match retired the previous tag's row and
+    # left the one this production actually serves blocking the stage.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    older = CARD_REQUEST_ROW
+    newer = CARD_REQUEST_ROW.replace(f"| {TAG} |", f"| {TAG_TWO} |").replace(
+        "| 7 |", "| 8 |"
+    )
+    assets_md = _planned_assets_md(tmp_path, [older, newer])
+
+    declare_bundle_rows(
+        assets_md, request_path, tag=TAG_TWO, supersede=["card_frame"]
+    )
+
+    assert _named_row(assets_md, "card_frame", TAG)[7] == "MISSING"
+    assert _named_row(assets_md, "card_frame", TAG_TWO)[7] == "N/A"
+
+
+def test_supersede_refuses_an_ambiguous_cross_tag_name(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    older = CARD_REQUEST_ROW
+    other = CARD_REQUEST_ROW.replace(f"| {TAG} |", "| v0.0.9 |").replace(
+        "| 7 |", "| 8 |"
+    )
+    assets_md = _planned_assets_md(tmp_path, [older, other])
+    before = assets_md.read_bytes()
+
+    with pytest.raises(BundleRowError, match="ambiguous"):
+        declare_bundle_rows(
+            assets_md, request_path, tag=TAG_TWO, supersede=["card_frame"]
+        )
+    assert assets_md.read_bytes() == before
+
+
+def test_supersede_refuses_two_rows_with_the_same_name_in_one_tag(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    duplicate = CARD_REQUEST_ROW.replace("| 7 |", "| 8 |")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW, duplicate])
+
+    with pytest.raises(BundleRowError, match="ambiguous"):
+        declare_bundle_rows(
+            assets_md, request_path, tag=TAG, supersede=["card_frame"]
+        )
+
+
+def test_an_older_delivered_row_does_not_abort_the_whole_declaration(tmp_path):
+    # A previous tag's row that already shipped must not make the current tag's
+    # supersede raise and take every logical row down with it.
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    shipped = CARD_REQUEST_ROW.replace("| MISSING |", "| generated |")
+    newer = CARD_REQUEST_ROW.replace(f"| {TAG} |", f"| {TAG_TWO} |").replace(
+        "| 7 |", "| 8 |"
+    )
+    assets_md = _planned_assets_md(tmp_path, [shipped, newer])
+
+    payload = declare_bundle_rows(
+        assets_md, request_path, tag=TAG_TWO, supersede=["card_frame"]
+    )
+
+    assert payload["created"] == [
+        "arcane_deck--card_theme",
+        "arcane_deck--rare_card_normal",
+        "arcane_deck--mana_badge",
+    ]
+    assert _named_row(assets_md, "card_frame", TAG)[7] == "generated"
+    assert _named_row(assets_md, "card_frame", TAG_TWO)[7] == "N/A"
+
+
 def test_a_request_row_from_an_earlier_tag_can_still_be_superseded(tmp_path):
     # ASSETS.md accumulates across tags, so a row planned in v0.1.0 and produced
     # in v0.2.0 is still the request this bundle serves.
@@ -688,6 +774,92 @@ def test_a_request_row_from_an_earlier_tag_can_still_be_superseded(tmp_path):
         and cells[ASSETS_MD_ASSET_ID_COLUMN] == "card_frame"
     )
     assert row[1] == TAG and row[7] == "N/A"
+
+
+def test_a_nested_asset_table_example_cannot_hijack_the_manifest(tmp_path):
+    # Accepting the heading at any depth let an earlier `### Asset Table`
+    # example shadow the real section — exactly what this anchor exists to stop.
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "# Assets\n\n## Notes\n\n### Asset Table\n\n"
+        "| # | Tag | Name | T | S | P | F | Status |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        f"| 1 | {TAG} | DECOY | - | - | - | - | generated |\n"
+        "\n## Asset Table\n\n"
+        "| # | Tag | Name | T | S | P | F | Status |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        f"| 1 | {TAG} | real_asset | - | - | - | - | MISSING |\n",
+        encoding="utf-8",
+    )
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    names = [cells[ASSETS_MD_ASSET_ID_COLUMN] for _, cells in iter_asset_rows(lines)]
+
+    assert names == ["real_asset"]
+
+
+def test_an_asset_table_quoted_inside_a_code_fence_is_not_the_manifest(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "# Assets\n\n## How to read this\n\n"
+        "```markdown\n## Asset Table\n\n"
+        "| # | Tag | Name | T | S | P | F | Status |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        f"| 1 | {TAG} | EXAMPLE | - | - | - | - | generated |\n"
+        "```\n\n## Asset Table\n\n"
+        "| # | Tag | Name | T | S | P | F | Status |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        f"| 1 | {TAG} | real_asset | - | - | - | - | MISSING |\n",
+        encoding="utf-8",
+    )
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    names = [cells[ASSETS_MD_ASSET_ID_COLUMN] for _, cells in iter_asset_rows(lines)]
+
+    assert names == ["real_asset"]
+
+
+def test_two_asset_table_sections_are_an_error(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    body = (
+        "## Asset Table\n\n"
+        "| # | Tag | Name | T | S | P | F | Status |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        f"| 1 | {TAG} | a | - | - | - | - | MISSING |\n\n"
+    )
+    assets_md.write_text("# Assets\n\n" + body + body, encoding="utf-8")
+
+    with pytest.raises(AssetsMdUpdateError, match="sections"):
+        list(iter_asset_rows(assets_md.read_text(encoding="utf-8").splitlines(True)))
+
+
+def test_a_table_without_a_separator_cannot_be_read_as_data(tmp_path):
+    # Header detection is "the row followed by the separator". With no separator
+    # the column labels were returned as an asset row.
+    assets_md = tmp_path / "ASSETS.md"
+    assets_md.write_text(
+        "# Assets\n\n## Asset Table\n\n"
+        "| # | Tag | Name | T | S | P | F | Status |\n"
+        f"| 1 | {TAG} | player | - | - | - | - | MISSING |\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssetsMdUpdateError, match="no .* separator"):
+        list(iter_asset_rows(assets_md.read_text(encoding="utf-8").splitlines(True)))
+
+
+def test_declaring_after_an_unterminated_final_row_does_not_weld_lines(tmp_path):
+    request_path, _ = _kit_delivery(tmp_path, "card-kit")
+    assets_md = _planned_assets_md(tmp_path, [CARD_REQUEST_ROW])
+    assets_md.write_bytes(assets_md.read_bytes().rstrip(b"\r\n"))
+
+    declare_bundle_rows(assets_md, request_path, tag=TAG, supersede=["card_frame"])
+
+    lines = assets_md.read_text(encoding="utf-8").splitlines()
+    for line in lines:
+        cells = split_assets_md_row(line)
+        assert cells is None or len(cells) == 8, f"welded row: {line!r}"
+    assert _row(assets_md, "arcane_deck--card_theme") is not None
 
 
 def test_readers_fail_closed_without_an_asset_table(tmp_path):
@@ -784,6 +956,42 @@ def test_two_kit_outputs_may_not_claim_the_same_artifact(tmp_path):
         build_ui_card_entry_drafts(
             request_path, result_path, tag=TAG, project_root=tmp_path
         )
+
+
+@pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
+def test_a_kit_naming_outputs_by_the_contract_registers(tmp_path, family):
+    # The other half of the path rule: a Skill that follows the documented
+    # naming must succeed. Without this, the rule is only ever proven by what it
+    # rejects, and a producer that never heard of it looks correct until the
+    # last step.
+    request_path, result_path = _kit_delivery(tmp_path, family)
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+
+    for output in result["outputs"]:
+        assert output["path"] == expected_runtime_path(
+            family, request["asset_id"], output["name"], output["godot_type"]
+        )
+
+    entries = build_ui_card_entry_drafts(
+        request_path, result_path, tag=TAG, project_root=tmp_path
+    )
+    assert len(entries) == len(result["outputs"])
+
+
+def test_the_naming_rule_is_enforced_where_a_skill_can_still_repair_it(tmp_path):
+    # The rule lives in check_ui_card_handoff, which standalone L0 calls, so a
+    # drifting filename fails during production instead of at registration.
+    request_path, result_path = _kit_delivery(tmp_path, "card-kit")
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    atlas = next(
+        item for item in result["outputs"] if item["godot_type"] == "AtlasTexture"
+    )
+    atlas["path"] = "res://assets/generated/card-kit/arcane_deck/icons/mana_badge.tres"
+
+    with pytest.raises(UICardContractError, match="must be published at"):
+        check_ui_card_handoff(request, result)
 
 
 def test_a_kit_output_published_off_its_derived_path_is_refused(tmp_path):
