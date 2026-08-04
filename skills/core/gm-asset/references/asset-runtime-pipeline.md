@@ -335,6 +335,13 @@ route returned. Source and artifact are the same PNG — do not wrap it in a
 `.tres`. Without `--result` the entry stops at `source_ready` and no worker sees
 it.
 
+A result names paths, never bytes, and the stable path is derived from the asset
+id, so a retry's finalize run overwrites the exact PNG an older passing result
+names. The builder therefore also requires the validation record the family's
+standalone runner wrote for the image it examined, and recomputes it from disk.
+Regenerate after validating and registration fails closed: rerun the Skill's
+validation on the new image before registering it.
+
 Ready compact prop atlas bundle:
 
 ```bash

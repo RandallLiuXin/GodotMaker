@@ -32,9 +32,14 @@ PNG *is* the ``Texture2D`` Godot imports, so the finalized image and the
 artifact are the same file and no ``.tres`` wraps it. Supplying that Skill's
 passing result with ``--result`` binds it to the image this run finalized, runs
 the declared ``single -> Texture2D`` route, and writes the ``ready`` entry from
-the compiler's own artifact. The Skill holds a passing L0-L4 result by the time
-it drafts, so there is no ``compiled`` stage to promote from and no window in
-which the registered bytes could drift from the validated ones.
+the compiler's own artifact.
+
+A result names paths, never bytes, and the stable path is derived from
+``asset_id`` — so a regeneration lands on the exact PNG an older passing result
+names, and re-running the non-writing ``Texture2D`` route over whatever now sits
+there would happily register a build no ladder ever saw. Registration therefore
+recomputes the fingerprint the family's validation runner recorded for the PNG
+it examined and requires an exact match; see ``asset_build_record``.
 """
 from __future__ import annotations
 
@@ -44,6 +49,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from asset_build_record import (
+    BuildRecordError,
+    assert_validated_artifact,
+    read_validation_record,
+)
 from asset_runtime_path import ensure_asset_runtime_on_path
 from asset_skill_contract_check import AssetContractError, check_result
 from asset_stable_entry import (
@@ -229,6 +239,21 @@ def _compiled_artifact(
             f"before a ready entry: {source_path}"
         )
     _check_compiled_result(result_path, source_path=source_path)
+
+    # The result proved a PNG at this path passed L0-L4; only the record proves
+    # the PNG at this path is still that one. Without this, finalizing again
+    # after validation would silently register never-validated bytes, since the
+    # non-writing Texture2D route below only re-binds whatever is on disk now.
+    try:
+        assert_validated_artifact(
+            read_validation_record(
+                project_root, production_family=COMPILED_FAMILY, asset_id=asset_id
+            ),
+            project_root=project_root,
+            artifact_path=source_path,
+        )
+    except BuildRecordError as exc:
+        raise FinalizeEntryDraftError(str(exc)) from exc
 
     # The artifact is the compiler's, not this builder's: the registry is what
     # decides a PNG really is the Texture2D Godot imports for a `single` layout.

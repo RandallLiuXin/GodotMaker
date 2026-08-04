@@ -75,6 +75,11 @@ For every attempt, retain these project-local records under
    the runtime exposes it, real reference attachments with roles, source path,
    and provider trace or failure.
 4. `reports/<asset_id>_finalize.json`, the deterministic finalization report.
+5. `reports/<asset_id>_validation.json`, written by the validation runner itself
+   on a fully passing ladder. It fingerprints the PNG that ladder examined, so
+   registration can tell it apart from whatever a later retry leaves at the same
+   identity-derived path. Keep it beside the other records and do not edit it;
+   regenerating the image means running validation again.
 
 The visual source may only be a selected provider output or a user-provided
 source/reference. Never create art with Pillow, System.Drawing, ImageMagick,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import importlib.util
 import struct
@@ -600,6 +601,102 @@ def test_background_executes_l2_to_l4_with_a_real_png_and_probe(monkeypatch, tmp
     assert actual["validation"]["levels"] == {
         level: True for level in ("L0", "L1", "L2", "L3", "L4")
     }
+
+
+class _PassingTexture2DProbe:
+    def __init__(self, _path):
+        pass
+
+    def probe(self, _root, requests):
+        return ProbeReport(
+            "fake",
+            (
+                ProbeResult(
+                    requests[0].res_path,
+                    "Texture2D",
+                    True,
+                    "CompressedTexture2D",
+                    True,
+                    structure={"texture2d": {"width": 2, "height": 3}},
+                ),
+            ),
+        )
+
+
+def test_background_records_the_bytes_a_passing_ladder_examined(monkeypatch, tmp_path):
+    """Registration has no other way to tell the validated build from a retry's.
+
+    The stable path is derived from `asset_id`, so a regeneration overwrites the
+    exact PNG a passing result names. The record is what the entry builder
+    recomputes from disk before it writes `ready`.
+    """
+    source = tmp_path / "assets/generated/background-map/sky/sky.png"
+    source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(source)
+    monkeypatch.setattr(runner, "GodotProbe", _PassingTexture2DProbe)
+
+    actual = _source_adapter("background-map").compile_and_validate(
+        {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+        _background_result(),
+        project_root=tmp_path,
+        godot_path="fake",
+    )
+
+    assert actual["validation"]["passed"] is True
+    record = json.loads(
+        (
+            tmp_path / ".godotmaker/asset-generation/reports/sky_validation.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert record == {
+        "version": 1,
+        "production_family": "background-map",
+        "asset_id": "sky",
+        "artifact": {
+            "path": "res://assets/generated/background-map/sky/sky.png",
+            "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+        },
+    }
+
+
+def test_background_records_nothing_when_the_ladder_does_not_pass(monkeypatch, tmp_path):
+    """A failed run must not leave a record that would let the bytes register."""
+    source = tmp_path / "assets/generated/background-map/sky/sky.png"
+    source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(source)
+
+    class Probe:
+        def __init__(self, _path):
+            pass
+
+        def probe(self, _root, requests):
+            return ProbeReport(
+                "fake",
+                (
+                    ProbeResult(
+                        requests[0].res_path,
+                        "Texture2D",
+                        False,
+                        None,
+                        False,
+                        error="Godot could not import the image",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(runner, "GodotProbe", Probe)
+
+    actual = _source_adapter("background-map").compile_and_validate(
+        {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+        _background_result(),
+        project_root=tmp_path,
+        godot_path="fake",
+    )
+
+    assert actual["validation"]["passed"] is False
+    assert not (
+        tmp_path / ".godotmaker/asset-generation/reports/sky_validation.json"
+    ).exists()
 
 
 def test_standalone_validation_prefers_the_pinned_eval_godot(monkeypatch, tmp_path):

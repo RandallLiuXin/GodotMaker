@@ -13,6 +13,10 @@ from asset_finalize_entry_draft import (  # noqa: E402
     build_finalize_entry_draft,
     write_finalize_entry_draft,
 )
+from asset_build_record import (  # noqa: E402
+    validation_record_path,
+    write_validation_record,
+)
 from asset_stable_entry import stable_output_dir, validate_entry  # noqa: E402
 
 DRAFT_TOOL = TOOLS_DIR / "asset_finalize_entry_draft.py"
@@ -256,6 +260,17 @@ def write_runtime_result(project_root: Path, result) -> Path:
     return path
 
 
+def record_validation(project_root: Path, *, path: str = RUNTIME_PATH, **overrides):
+    """Leave the record the family's validation runner writes when L0-L4 pass."""
+    params = {
+        "production_family": RUNTIME_FAMILY,
+        "asset_id": RUNTIME_ASSET_ID,
+        "artifact_path": f"res://{path}",
+    }
+    params.update(overrides)
+    return write_validation_record(project_root, **params)
+
+
 def build_runtime(project_root: Path, result, *, report=None):
     report = report if report is not None else make_report(
         path=RUNTIME_PATH, label=RUNTIME_ASSET_ID, asset_id=RUNTIME_ASSET_ID
@@ -272,6 +287,7 @@ def build_runtime(project_root: Path, result, *, report=None):
 def test_a_validated_background_map_becomes_a_ready_texture2d_entry(tmp_path):
     """The PNG is the Texture2D Godot imports; no .tres wraps it."""
     touch(tmp_path, RUNTIME_PATH)
+    record_validation(tmp_path)
 
     entry = build_runtime(tmp_path, make_runtime_result())
 
@@ -385,6 +401,55 @@ def test_a_drifted_finalized_name_never_reaches_ready(tmp_path):
 
 def test_a_missing_finalized_image_never_reaches_ready(tmp_path):
     with pytest.raises(FinalizeEntryDraftError, match="finalized file not found"):
+        build_runtime(tmp_path, make_runtime_result())
+
+
+def test_regenerating_the_same_stable_png_after_validation_is_refused(tmp_path):
+    """The regression this guard exists for.
+
+    The stable path is derived from `asset_id`, so a retry's finalize run
+    overwrites the exact PNG the passing result names. Every path still matches
+    and the non-writing Texture2D route happily re-binds the new file, so only
+    the recorded bytes tell the validated build from whatever landed after it.
+    """
+    touch(tmp_path, RUNTIME_PATH)
+    record_validation(tmp_path)
+    (tmp_path / RUNTIME_PATH).write_bytes(b"regenerated png")
+
+    with pytest.raises(FinalizeEntryDraftError, match="changed since it passed L0-L4"):
+        build_runtime(tmp_path, make_runtime_result())
+
+
+def test_an_unvalidated_background_map_cannot_register(tmp_path):
+    """No record means no ladder ran on these bytes in this project."""
+    touch(tmp_path, RUNTIME_PATH)
+
+    with pytest.raises(FinalizeEntryDraftError, match="no validation record"):
+        build_runtime(tmp_path, make_runtime_result())
+
+
+def test_a_record_from_another_asset_cannot_register_this_one(tmp_path):
+    touch(tmp_path, RUNTIME_PATH)
+    record_validation(tmp_path)
+    record = json.loads(
+        validation_record_path(tmp_path, RUNTIME_ASSET_ID).read_text(encoding="utf-8")
+    )
+    record["asset_id"] = "dusk"
+    validation_record_path(tmp_path, RUNTIME_ASSET_ID).write_text(
+        json.dumps(record), encoding="utf-8"
+    )
+
+    with pytest.raises(FinalizeEntryDraftError, match="is not a v1 background-map"):
+        build_runtime(tmp_path, make_runtime_result())
+
+
+def test_a_record_for_another_artifact_cannot_register_this_one(tmp_path):
+    touch(tmp_path, RUNTIME_PATH)
+    other = f"{stable_output_dir(RUNTIME_FAMILY, RUNTIME_ASSET_ID)}/{RUNTIME_ASSET_ID}_alt.png"
+    touch(tmp_path, other)
+    record_validation(tmp_path, path=other)
+
+    with pytest.raises(FinalizeEntryDraftError, match="describes another artifact"):
         build_runtime(tmp_path, make_runtime_result())
 
 

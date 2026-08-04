@@ -197,6 +197,8 @@ python tools/asset_finalize_entry_draft.py \
 
 追加 `--result <result.json>` 会把同一个 builder 切换到 `background-map` 的 ready 模式：它把通过校验的 result 中唯一的 `Texture2D` runtime output 和唯一的 `single` source 绑定到 finalize 报告实际发布的那张 PNG，要求 L0-L4 全部通过，运行已注册的 `single -> Texture2D` 路由，并用该路由返回的 artifact 写出 `ready` entry。Godot 的默认导入本身就是那个 `Texture2D`，因此 `source_layout.path` 与 `godot_artifact.path` 是同一张 PNG，不会产生 `.tres`。不带 `--result` 时 entry 停在 `source_ready`。
 
+由于 result 只声明路径不声明字节，而稳定路径由 asset id 派生，该模式还要求 family 的 standalone 验证运行器为其检查过的图片写下的 validation record（`.godotmaker/asset-generation/reports/<asset_id>_validation.json`），并从磁盘重新计算比对。验证之后再覆盖这张 PNG（正常重试就是原位覆盖）会 fail closed，必须重新走一次 Skill 验证。
+
 ## asset_output_path.py
 
 `asset_output_path.py` 是稳定输出目录 `assets/generated/<production_family>/<asset_id>/` 的唯一权威。一个素材所有可被 worker 消费的文件都放在这里，因此重新生成会就地覆盖，不会漂移到带时间戳或 `v2` 的路径。

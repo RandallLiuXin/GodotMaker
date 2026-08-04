@@ -209,7 +209,9 @@ Brief shape:
   `tools/asset_finalize_entry_draft.py --result`. It writes one ready `single ->
   Texture2D` entry whose source and artifact are the same finalized PNG, because
   Godot's default import already produces that `Texture2D`. Do not wrap it in a
-  `.tres`. Without `--result` the entry stops at `source_ready` and never
+  `.tres`. It registers only the image the Skill's validation record
+  fingerprinted, so a regeneration after validation fails closed until the Skill
+  revalidates. Without `--result` the entry stops at `source_ready` and never
   reaches a worker.
 - For `character-bundle`, pass the Skill's archived resolved request, one
   action processing report per required action, and its validated result to

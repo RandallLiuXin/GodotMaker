@@ -256,6 +256,13 @@ already that `Texture2D`, so `source_layout.path` and `godot_artifact.path` are
 the same PNG and no `.tres` is produced. Without `--result` the entry stops at
 `source_ready`.
 
+Because a result names paths and not bytes, and the stable path is derived from
+the asset id, that mode also requires the validation record the family's
+standalone runner wrote for the image it examined
+(`.godotmaker/asset-generation/reports/<asset_id>_validation.json`) and
+recomputes it from disk. Overwriting the PNG after validation — which a normal
+retry does, in place — fails closed until the Skill revalidates.
+
 ## asset_output_path.py
 
 `asset_output_path.py` is the authority for the stable output directory

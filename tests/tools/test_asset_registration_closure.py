@@ -32,6 +32,7 @@ from asset_assets_md_update import (  # noqa: E402
     update_assets_md,
     update_assets_md_from_bundle,
 )
+from asset_build_record import write_validation_record  # noqa: E402
 from asset_bundle_manifest import (  # noqa: E402
     AssetBundleManifestError,
     write_bundle_manifest,
@@ -822,6 +823,16 @@ def _background_result(relative: str) -> dict:
     }
 
 
+def _validate_background(project_root: Path, relative: str) -> None:
+    """Stand in for the passing L0-L4 run: record the bytes it examined."""
+    write_validation_record(
+        project_root,
+        production_family="background-map",
+        asset_id=BACKGROUND_ID,
+        artifact_path=f"res://{relative}",
+    )
+
+
 def _draft_background(project_root: Path, report_path, result_path=None):
     return build_finalize_entry_draft(
         report_path,
@@ -835,6 +846,7 @@ def _draft_background(project_root: Path, report_path, result_path=None):
 
 def test_background_map_reaches_a_worker_snapshot_from_a_validated_delivery(tmp_path):
     report_path, relative = _background_inputs(tmp_path)
+    _validate_background(tmp_path, relative)
     result_path = _write_json(
         tmp_path / "background-result.json", _background_result(relative)
     )
@@ -893,6 +905,43 @@ def test_background_map_registration_fails_closed_on_a_deleted_image(tmp_path):
     (tmp_path / relative).unlink()
 
     with pytest.raises(FinalizeEntryDraftError, match="finalized file not found"):
+        _draft_background(tmp_path, report_path, result_path)
+
+
+def test_a_regenerated_background_map_cannot_register_against_the_old_result(tmp_path):
+    """Validate, regenerate onto the same stable PNG, then try to register.
+
+    Every declared path still matches and the `single -> Texture2D` route
+    re-binds whatever file is there, so path comparison alone would hand a
+    worker bytes no ladder ever loaded.
+    """
+    report_path, relative = _background_inputs(tmp_path)
+    _validate_background(tmp_path, relative)
+    result_path = _write_json(
+        tmp_path / "background-result.json", _background_result(relative)
+    )
+    validated = (tmp_path / relative).read_bytes()
+    assets_md = _assets_md(tmp_path, [BACKGROUND_ID])
+    # A retry's finalize run overwrites in place; the path is identity-derived.
+    Image.new("RGBA", (8, 8), (9, 9, 9, 255)).save(tmp_path / relative)
+    assert (tmp_path / relative).read_bytes() != validated
+
+    with pytest.raises(FinalizeEntryDraftError, match="changed since it passed L0-L4"):
+        _draft_background(tmp_path, report_path, result_path)
+
+    assert not (tmp_path / entry_relative_path(TAG, BACKGROUND_ID)).exists()
+    assert "MISSING" in assets_md.read_text(encoding="utf-8")
+    with pytest.raises(AssetRuntimeResolverError):
+        _snapshot(tmp_path, BACKGROUND_ID)
+
+
+def test_background_map_registration_needs_a_validation_record(tmp_path):
+    report_path, relative = _background_inputs(tmp_path)
+    result_path = _write_json(
+        tmp_path / "background-result.json", _background_result(relative)
+    )
+
+    with pytest.raises(FinalizeEntryDraftError, match="no validation record"):
         _draft_background(tmp_path, report_path, result_path)
 
 
@@ -1001,6 +1050,7 @@ def test_tileset_cli_writes_the_ready_draft(tmp_path):
 
 def test_background_map_cli_writes_the_ready_draft(tmp_path):
     report_path, relative = _background_inputs(tmp_path)
+    _validate_background(tmp_path, relative)
     result_path = _write_json(
         tmp_path / "background-result.json", _background_result(relative)
     )
