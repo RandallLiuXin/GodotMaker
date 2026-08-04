@@ -17,6 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- Added `tools/asset_family_registry.py` and platform-strip entry drafts so every public Asset Skill route reaches a worker through one authoritative registration map.
+
 - `/gm-asset` can now plan, dispatch, and register the `tileset` production unit, so a validated `TileSet` reaches a worker as a tile library instead of stopping at the Skill.
 
 - Added `tools/asset_ui_card_entry_draft.py` and `tools/asset_tileset_entry_draft.py`, the deterministic registration adapters for validated ui-kit/card-kit and tileset deliveries.
@@ -49,6 +51,12 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added a Phantom Camera supporting skill for optional Godot camera addon guidance.
 
 ## Changed
+
+- Every public asset route now proves its whole registration chain in ordinary CI, so an advertised route cannot enter main without an adapter that turns its validated delivery into a worker-consumable entry.
+
+- A Skill that accepts more than one request shape now declares one registration chain per shape, so a variant whose adapter is missing can no longer hide behind a sibling variant that works.
+
+- Both `platform-strip` strip kinds now have complete registration chains that turn validated segment deliveries into worker-consumable stable entries.
 
 - A ui-kit or card-kit now registers one ready stable entry per runtime output, so its `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` are separately resolvable instead of unregisterable; `bundle_id` covers these two families alongside `compact-prop-pack`.
 - Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep

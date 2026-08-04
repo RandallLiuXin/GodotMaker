@@ -22,23 +22,21 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from asset_family_registry import (
+    BUNDLE_FAMILY_NAMES,
+    FAMILY_NAMES,
+    REFERENCE_FAMILY_NAMES,
+)
+
 SCHEMA_VERSION = 1
 
 ENTRIES_ROOT = ".godotmaker/asset-generation/entries"
 
-# Production families map one-to-one to the first-class asset skills.
-PRODUCTION_FAMILIES = {
-    "background-map",
-    "character-bundle",
-    "fx-bundle",
-    "ui-kit",
-    "card-kit",
-    "compact-prop-pack",
-    "platform-strip",
-    "scene-prop-set",
-    "screen-reference",
-    "tileset",
-}
+# Production families map one-to-one to the first-class asset skills. The list
+# lives in ``asset_family_registry`` together with each family's layout,
+# artifact, adapter, and terminal-status semantics; re-declaring the names here
+# is what let an advertised family drift away from its registration chain.
+PRODUCTION_FAMILIES = set(FAMILY_NAMES)
 
 # ``source_layout.type`` describes pixel organization, not a Godot artifact.
 SOURCE_LAYOUT_TYPES = {
@@ -57,14 +55,14 @@ REFERENCE_LAYOUTS = {"reference"}
 # runtime resources out of a single shared output directory. Their logical
 # entries carry ``bundle_id`` plus a ``<bundle_id>--<logical_output_id>``
 # ``asset_id``; every other family owns its directory alone.
-BUNDLE_FAMILIES = {"compact-prop-pack", "ui-kit", "card-kit"}
+BUNDLE_FAMILIES = set(BUNDLE_FAMILY_NAMES)
 
 # Families whose assets are reference-only. A ``reference`` layout is legal only
 # for these, and these families must use a ``reference`` layout. Binding the two
 # closes the fail-open where a runtime family (e.g. ``character-bundle``) could
 # declare a ``reference`` layout to slip an arbitrary path past the stable-dir
 # constraint.
-REFERENCE_FAMILIES = {"screen-reference"}
+REFERENCE_FAMILIES = set(REFERENCE_FAMILY_NAMES)
 
 # Processing status maps to the L0-L4 readiness ladder.
 PROCESSING_STATUSES = {

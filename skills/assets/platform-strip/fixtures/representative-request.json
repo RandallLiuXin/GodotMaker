@@ -1,0 +1,15 @@
+{
+  "asset_type": "platform-strip",
+  "asset_id": "wood_bridge",
+  "brief": "A wooden bridge strip with matching caps and a repeating middle span.",
+  "provider": "native",
+  "spec": {
+    "kind": "atlas",
+    "grid": {"columns": 3, "rows": 1, "cell_width": 64, "cell_height": 32},
+    "segments": [
+      {"name": "bridge_left_cap", "role": "left_cap", "slot": [0, 0]},
+      {"name": "bridge_repeat_middle", "role": "repeat_middle", "slot": [1, 0]},
+      {"name": "bridge_right_cap", "role": "right_cap", "slot": [2, 0]}
+    ]
+  }
+}

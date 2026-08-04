@@ -25,6 +25,7 @@ Primary pipeline tools:
 17. `asset_ui_card_entry_draft.py`
 18. `asset_tileset_entry_draft.py`
 19. `asset_bundle_manifest.py`
+20. `asset_family_registry.py`
 
 ## asset_source_generate.py
 
@@ -262,6 +263,31 @@ standalone runner wrote for the image it examined
 (`.godotmaker/asset-generation/reports/<asset_id>_validation.json`) and
 recomputes it from disk. Overwriting the PNG after validation — which a normal
 retry does, in place — fails closed until the Skill revalidates.
+
+## asset_family_registry.py
+
+`asset_family_registry.py` is the authoritative map of the public first-class
+Asset Skill families. Its unit is the *route* — one family plus one request
+shape — because a Skill that accepts more than one shape has one registration
+chain per shape: `platform-strip` publishes per-segment `Texture2D` files for
+`kind: "single"` and cut `AtlasTexture` regions for `kind: "atlas"`. For each
+route it records the source layout and Godot artifact its stable entries bind,
+the deterministic entry-draft builder that adapts its result, how many entries
+one delivery produces, and the `processing_status` that completes it. Every
+public route has a complete registration chain.
+
+Manual entry point:
+
+```bash
+python tools/asset_family_registry.py --output json
+python tools/asset_family_registry.py --check
+```
+
+`--check` is the fail-closed structural gate used by `publish.py`. It rejects a
+mismatch between the declared family map and shipped public Skills, or a
+declared family missing its Skill, standalone validator, or entry-draft builder.
+Representative fixture presence and `compiled`-to-`ready` behavior are checked
+by the normal pytest route-closure suite.
 
 ## asset_output_path.py
 

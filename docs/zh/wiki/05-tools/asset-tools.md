@@ -23,6 +23,7 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 17. `asset_ui_card_entry_draft.py`
 18. `asset_tileset_entry_draft.py`
 19. `asset_bundle_manifest.py`
+20. `asset_family_registry.py`
 
 ## asset_source_generate.py
 
@@ -198,6 +199,19 @@ python tools/asset_finalize_entry_draft.py \
 追加 `--result <result.json>` 会把同一个 builder 切换到 `background-map` 的 ready 模式：它把通过校验的 result 中唯一的 `Texture2D` runtime output 和唯一的 `single` source 绑定到 finalize 报告实际发布的那张 PNG，要求 L0-L4 全部通过，运行已注册的 `single -> Texture2D` 路由，并用该路由返回的 artifact 写出 `ready` entry。Godot 的默认导入本身就是那个 `Texture2D`，因此 `source_layout.path` 与 `godot_artifact.path` 是同一张 PNG，不会产生 `.tres`。不带 `--result` 时 entry 停在 `source_ready`。
 
 由于 result 只声明路径不声明字节，而稳定路径由 asset id 派生，该模式还要求 family 的 standalone 验证运行器为其检查过的图片写下的 validation record（`.godotmaker/asset-generation/reports/<asset_id>_validation.json`），并从磁盘重新计算比对。验证之后再覆盖这张 PNG（正常重试就是原位覆盖）会 fail closed，必须重新走一次 Skill 验证。
+
+## asset_family_registry.py
+
+`asset_family_registry.py` 是公开 first-class Asset Skill family 的权威映射。它的基本单元是 **route**——一个 family 加一种 request 形态，因为接受多种请求形态的 Skill 每种形态各有一条登记链：`platform-strip` 在 `kind: "single"` 下逐段发布 `Texture2D`，在 `kind: "atlas"` 下发布切好的 `AtlasTexture` region。它为每条 route 记录 stable entry 绑定的 source layout 与 Godot artifact、适配其 result 的确定性 entry draft builder、一次交付会产生几条 entry，以及标志完成的 `processing_status`。每条公开 route 都具有完整的登记链。
+
+手动入口：
+
+```bash
+python tools/asset_family_registry.py --output json
+python tools/asset_family_registry.py --check
+```
+
+`--check` 是 fail-closed 结构性检查，`publish.py` 在复制任何文件之前运行它。已声明的 family 映射与已发布的公开 Skill 不一致，或 family 缺少其 Skill、standalone validator 或 entry-draft builder 时失败。代表性 fixture 的存在性和 `compiled` 到 `ready` 的行为由普通 pytest route-closure 测试检查。
 
 ## asset_output_path.py
 

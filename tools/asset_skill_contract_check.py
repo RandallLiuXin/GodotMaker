@@ -16,20 +16,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from asset_family_registry import FAMILY_NAMES
 from asset_stable_entry import StableEntryError, safe_identifier
 
-ASSET_TYPES = {
-    "background-map",
-    "character-bundle",
-    "fx-bundle",
-    "ui-kit",
-    "card-kit",
-    "compact-prop-pack",
-    "platform-strip",
-    "scene-prop-set",
-    "screen-reference",
-    "tileset",
-}
+# The public families a request or result may name are exactly the first-class
+# Asset Skills the family registry declares.
+ASSET_TYPES = set(FAMILY_NAMES)
 
 REFERENCE_ROLES = {"canonical", "style", "screen"}
 PROVIDERS = {"native", "codex", "gemini", "openai"}
