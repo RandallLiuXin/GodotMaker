@@ -201,7 +201,7 @@ metrics 与 `/gm-asset` 管理端通过同一个 parser 读取它，因此错乱
 | 字段 | 规则 |
 |---|---|
 | `gm_outcome_version` | `1` |
-| `report_type` | 已知角色（`asset-producer`） |
+| `report_type` | 必须等于该子代理被派发时的角色 |
 | `status` | `DONE`、`PARTIAL` 或 `FAILED` |
 | `unit_id` | 非空字符串 |
 | `outputs` | 路径数组对象，键只能是 `sources`、`runtime`、`prompts`、`reports`、`entry_drafts` |
@@ -211,6 +211,12 @@ metrics 与 `/gm-asset` 管理端通过同一个 parser 读取它，因此错乱
 `DONE` 还要求 `validation.passed` 为真；`PARTIAL` 与 `FAILED` 至少需要一条 blocker。
 字段缺失或非法会带着字段名被拒绝，该次 stop 记录为 `rejected_attempt`；若最终被
 force-allow 放行，则记录为 `unverified`。两者都不会写结果事件。
+
+**角色绑定：** 子代理被派发时的角色（payload 的 `agent_type`，回退到其
+`subagent_start` 事件）优先于报告对自身的任何声明；block 声明了不同的
+`report_type` 会 fail closed。报告无法自行升格或降格，因此记录里不可能出现一个角色
+的 `role` 配另一个角色的 outcome。`log_subagent.classify_stop` 会复核同一等式，覆盖
+hook 完全没有校验的路径（force-allow，或没有活跃的流水线角色）。
 
 **每角色必需章节：**
 

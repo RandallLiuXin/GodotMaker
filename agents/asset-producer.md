@@ -157,12 +157,15 @@ When a prompt depends on an existing image:
    manager all read the terminal status from it.
 3. Every listed field is required. `outputs` accepts only the five categories
    above, and `validation.levels` only `L0`-`L4`.
-4. `status` `DONE` requires `validation.passed` true and an empty `blockers`.
-5. `status` `PARTIAL` or `FAILED` requires at least one blocker, each naming
+4. `report_type` is always `asset-producer` — the role you are running as.
+   Declaring another role is rejected; you cannot hand back another role's
+   outcome.
+5. `status` `DONE` requires `validation.passed` true and an empty `blockers`.
+6. `status` `PARTIAL` or `FAILED` requires at least one blocker, each naming
    what stopped the unit concretely enough for the manager to act on it.
-6. The block fails closed. A missing or invalid field is rejected with the
+7. The block fails closed. A missing or invalid field is rejected with the
    field name, and the attempt does not count as a terminal result — fix the
    named field and re-emit the whole report.
-7. Being released after repeated rejections is not acceptance. Without a valid
+8. Being released after repeated rejections is not acceptance. Without a valid
    block the unit has no terminal status and its outputs are not registered, so
    say so plainly instead of presenting the run as finished.

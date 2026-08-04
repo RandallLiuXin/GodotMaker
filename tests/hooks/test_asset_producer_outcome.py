@@ -37,13 +37,28 @@ def producer_report(status="DONE", unit_id="ui_kit", drop_section=None, **kwargs
     return body + asset_producer_outcome(status=status, unit_id=unit_id, **kwargs)
 
 
-def stop(agent_id, message):
+def stop(agent_id, message, agent_type="asset-producer"):
     return run_hook(DISPATCHER, {
         "hook_event_name": "SubagentStop",
         "agent_id": agent_id,
-        "agent_type": "asset-producer",
+        "agent_type": agent_type,
         "last_assistant_message": message,
     })
+
+
+def worker_report(status="DONE", report_type="worker", unit_id="player_movement"):
+    """A complete worker report carrying an outcome block for `report_type`."""
+    return (
+        "## Report: PlayerMovement\n\n"
+        f"### Status: {status}\n\n"
+        "### Files Changed\n- player_system.gd: created\n\n"
+        "### Tests\n- test/test_player.gd: 3 tests, 3 passed\n"
+        "- Commands run: godot --headless\n\n"
+        "### Build\n- Status: PASS\n\n"
+        "### Memory Entry\nLearned about movement\n\n"
+        + asset_producer_outcome(status=status, unit_id=unit_id,
+                                 report_type=report_type)
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -327,6 +342,78 @@ class TestRejectedAttempt:
         assert record["outcome_kind"] == "rejected_attempt"
         assert "unit_id" in record["outcome_error"]
         assert read_metrics("asset_producer_failed") == []
+
+
+class TestRoleBinding:
+    """The dispatched role outranks whatever the report claims to be.
+
+    Without this, an asset-producer subagent could hand back a worker report
+    plus a schema-valid worker outcome block: the markdown gate would pass it as
+    a worker while the logger recorded an asset-producer result, leaving one
+    record that is neither role's handoff.
+    """
+
+    def test_worker_block_from_a_producer_agent_is_blocked(self):
+        _, _, parsed = stop("ap-cross", worker_report())
+        assert is_blocked(parsed)
+        assert "report_type 'worker'" in parsed["reason"]
+        assert "dispatched as asset-producer" in parsed["reason"]
+
+    def test_worker_block_from_a_producer_agent_writes_no_producer_result(self):
+        stop("ap-cross2", worker_report())
+        record = read_metrics("subagent_stop")[0]
+        assert record["role"] == "asset-producer"
+        assert record["outcome_kind"] != "terminal"
+        for event in ("asset_producer_done", "asset_producer_partial",
+                      "asset_producer_failed", "worker_done"):
+            assert read_metrics(event) == [], f"{event} written across roles"
+
+    def test_producer_block_from_a_worker_agent_is_blocked(self):
+        """The inverse binding holds too — a worker cannot claim a producer outcome."""
+        message = producer_report("DONE")
+        _, _, parsed = stop("w-cross", message, agent_type="worker")
+        assert is_blocked(parsed)
+        assert "report_type 'asset-producer'" in parsed["reason"]
+
+    def test_producer_block_from_a_worker_agent_writes_no_worker_result(self):
+        stop("w-cross2", producer_report("DONE"), agent_type="worker")
+        record = read_metrics("subagent_stop")[0]
+        assert record["outcome_kind"] != "terminal"
+        assert read_metrics("worker_done") == []
+        assert read_metrics("asset_producer_done") == []
+
+    def test_matching_role_still_passes(self):
+        _, _, parsed = stop("ap-match", producer_report("DONE"))
+        assert not is_blocked(parsed)
+        assert len(read_metrics("asset_producer_done")) == 1
+
+    def test_cross_role_block_survives_force_allow(self):
+        """classify_stop re-checks the equality, so the escape hatch cannot
+        launder a worker block into an asset-producer result."""
+        for _ in range(2):
+            _, _, parsed = stop("ap-cross3", worker_report())
+            assert is_blocked(parsed)
+
+        _, _, parsed = stop("ap-cross3", worker_report())
+        assert not is_blocked(parsed), "force-allow still releases the agent"
+
+        stops = read_metrics("subagent_stop")
+        assert stops[-1]["outcome_kind"] == "unverified"
+        assert not [s for s in stops if s["outcome_kind"] == "terminal"]
+        assert read_metrics("asset_producer_done") == []
+
+    def test_cross_role_block_is_not_a_result_without_an_active_role(self):
+        """No pipeline role means the hook validates nothing; the equality
+        re-check in classify_stop is the only thing standing here."""
+        cleanup_metrics()
+        _, code, parsed = stop("ap-cross4", worker_report())
+        assert code == 0
+        assert not is_blocked(parsed)
+
+        record = read_metrics("subagent_stop")[0]
+        assert record["role"] == "asset-producer"
+        assert record["outcome_kind"] == "unverified"
+        assert read_metrics("asset_producer_done") == []
 
 
 class TestForceAllowNeverTerminal:

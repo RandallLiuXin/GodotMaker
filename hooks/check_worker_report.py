@@ -32,10 +32,10 @@ from dataclasses import dataclass, field
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metrics import (
     record_event, read_current_events, EventType,
-    event_has_role, normalize_report,
+    event_has_role, normalize_report, outcome_matches_role,
     REPORT_REQUIRED_SECTIONS, REPORT_FORMAT_HINTS, REPORT_REQUIRED_LABELS,
     OUTCOME_REQUIRED_ROLES, OUTCOME_TEMPLATE,
-    KNOWN_ROLES, ROLE_UNKNOWN,
+    KNOWN_ROLES,
     get_current_role, state,
 )
 
@@ -249,6 +249,26 @@ def main_with_data(data: dict) -> None:
     apply_verdict(evaluate(data))
 
 
+def resolve_runtime_role(data: dict) -> str | None:
+    """The role this subagent was dispatched as, or None if not a known role.
+
+    The payload's `agent_type` is authoritative when it names a known role; the
+    recorded SubagentStart event is the fallback for generic dispatches. This is
+    the same resolution `log_subagent.handle_stop` uses, so the hook and the
+    metrics logger can never disagree about whose report this is.
+    """
+    agent_type = data.get("agent_type") or ""
+    if agent_type in KNOWN_ROLES:
+        return agent_type
+    agent_id = data.get("agent_id") or ""
+    if agent_id:
+        from log_subagent import lookup_role_from_events
+        role = lookup_role_from_events(agent_id)
+        if role in KNOWN_ROLES:
+            return role
+    return None
+
+
 def evaluate(data: dict) -> ReportVerdict:
     """Decide whether a report passes validation. No side effects.
 
@@ -263,19 +283,23 @@ def evaluate(data: dict) -> ReportVerdict:
         return ReportVerdict(ACTION_SKIP)
 
     agent_id = data.get("agent_id") or ""
-    agent_type = data.get("agent_type") or ""
     report = normalize_report(message)
 
-    # Anti-deadloop: per-agent block counter. Resolved before the counter check
-    # so the escape hatch can name the role it is releasing unvalidated.
+    # The role this subagent was dispatched as outranks anything the report
+    # claims about itself. A report cannot promote or demote its own role.
+    runtime_role = resolve_runtime_role(data)
+    declared = report.report_type if report.report_type in KNOWN_ROLES else None
+    report_type = runtime_role or declared
+
+    # Anti-deadloop: per-agent block counter. The role and block are resolved
+    # first so the escape hatch can name the role it releases unvalidated.
     state_key = f"worker_report_block:{agent_id}" if agent_id else "worker_report_block:main"
     block_count = state.get(state_key, 0)
     if block_count >= BLOCK_LIMIT:
-        released = agent_type if agent_type in KNOWN_ROLES else report.report_type
         return ReportVerdict(
             ACTION_FORCE_ALLOW, agent_id=agent_id, block_count=block_count,
-            report_type=released if released in KNOWN_ROLES else None,
-            outcome_verified=report.outcome is not None,
+            report_type=report_type,
+            outcome_verified=outcome_matches_role(report, report_type),
         )
 
     def block(reason: str, **extra) -> ReportVerdict:
@@ -286,29 +310,39 @@ def evaluate(data: dict) -> ReportVerdict:
     # Compute worktree directories once to avoid repeated glob calls in _resolve_file
     worktree_dirs = globmod.glob(os.path.join(".claude", "worktrees", "agent-*"))
 
-    report_type = report.report_type if report.report_type in KNOWN_ROLES else None
-
-    if report_type is None:
-        # Check if this agent was dispatched with a known role (worker/verifier/reviewer)
-        # If so, it MUST output a report in the required format — block and demand it.
-        from log_subagent import lookup_role_from_events
-        role = lookup_role_from_events(agent_id) if agent_id else ROLE_UNKNOWN
-
-        if role in REPORT_FORMAT_HINTS:
+    if declared is None:
+        # No recognizable report at all. If this agent was dispatched with a
+        # known role it MUST output one — block and demand the format.
+        if report_type in REPORT_FORMAT_HINTS:
             reason = (
-                f"You are a {role} but your output does not contain a properly formatted report. "
+                f"You are a {report_type} but your output does not contain a properly "
+                f"formatted report. "
                 f"You MUST end your response with a report in this format:\n\n"
-                f"{REPORT_FORMAT_HINTS[role]}\n\n"
+                f"{REPORT_FORMAT_HINTS[report_type]}\n\n"
             )
-            if role in OUTCOME_REQUIRED_ROLES:
+            if report_type in OUTCOME_REQUIRED_ROLES:
                 reason += f"followed by the machine outcome block:\n\n{OUTCOME_TEMPLATE}\n\n"
             if report.outcome_error:
                 reason += f"Your outcome block was also rejected: {report.outcome_error}\n\n"
             reason += "Re-output your report now."
-            return block(reason, role=role, outcome_error=report.outcome_error)
+            return block(reason, role=report_type, outcome_error=report.outcome_error)
 
         # Unknown role and no report format — not a worker/verifier/reviewer, allow
         return ReportVerdict(ACTION_SKIP)
+
+    # An outcome block is an explicit structured claim about which role produced
+    # this run. If it contradicts the dispatched role, fail closed: otherwise the
+    # record carries one role with another role's outcome, and the manager cannot
+    # tell whose handoff it is holding.
+    if report.outcome is not None and not outcome_matches_role(report, report_type):
+        reason = (
+            f"Your machine outcome block declares report_type "
+            f"'{report.outcome['report_type']}', but you were dispatched as "
+            f"{report_type}. The block must declare the role you are running as.\n"
+            f"Set \"report_type\": \"{report_type}\" and re-output your report."
+        )
+        return block(reason, declared_report_type=report.outcome["report_type"],
+                     runtime_role=report_type)
 
     # The machine outcome block is the status protocol for the roles that carry
     # one. Reject it before the markdown gate so the diagnostic names the field.

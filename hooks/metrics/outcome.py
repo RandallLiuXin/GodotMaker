@@ -309,6 +309,17 @@ def validate_outcome(payload: dict) -> dict:
     }
 
 
+def outcome_matches_role(report: NormalizedReport, role: str | None) -> bool:
+    """True when the report carries a valid outcome block for exactly `role`.
+
+    The block declares which role produced the run, but the role a subagent was
+    dispatched as is what the pipeline actually knows. Every consumer binds the
+    two through this one predicate, so a block can never verify a run it does
+    not belong to.
+    """
+    return report.outcome is not None and report.outcome["report_type"] == role
+
+
 def normalize_report(message: str) -> NormalizedReport:
     """The single parse/normalize entry point every consumer shares."""
     message = message or ""

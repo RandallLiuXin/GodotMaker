@@ -187,9 +187,10 @@ def test_gm_asset_manager_reads_the_machine_outcome():
 
     # The hook's anti-deadloop escape hatch can release a report with no valid
     # block, so the manager may not assume the hook filtered those out.
-    assert "Confirm the block is there and well-formed yourself." in skill
+    assert 'declares `"report_type": "asset-producer"`' in skill
     assert "anti-deadloop escape hatch releases a subagent after repeated failures" in skill
-    assert "Such a report has no terminal status" in skill
+    assert "A block for any other role is not a producer handoff." in skill
+    assert "the report has no terminal status" in skill
     assert "register nothing from it" in skill
     assert "Do not infer a status from the prose to fill the gap." in skill
 

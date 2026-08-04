@@ -24,7 +24,7 @@ from .schema import (
 )
 from .outcome import (
     NormalizedReport, OutcomeError, normalize_report, validate_outcome,
-    extract_markdown_status, find_outcome_payloads,
+    extract_markdown_status, find_outcome_payloads, outcome_matches_role,
     OUTCOME_REQUIRED_ROLES, OUTCOME_TEMPLATE, OUTCOME_VERSION,
     OUTPUT_CATEGORIES, STATUS_UNKNOWN, TERMINAL_STATUSES, VALIDATION_LEVELS,
 )
@@ -156,7 +156,7 @@ __all__ = [
     "ROLE_ASSET_PRODUCER", "ROLE_UNKNOWN",
     "KNOWN_ROLES",
     "NormalizedReport", "OutcomeError", "normalize_report", "validate_outcome",
-    "extract_markdown_status", "find_outcome_payloads",
+    "extract_markdown_status", "find_outcome_payloads", "outcome_matches_role",
     "OUTCOME_REQUIRED_ROLES", "OUTCOME_TEMPLATE", "OUTCOME_VERSION",
     "OUTPUT_CATEGORIES", "STATUS_UNKNOWN", "TERMINAL_STATUSES", "VALIDATION_LEVELS",
     "state",

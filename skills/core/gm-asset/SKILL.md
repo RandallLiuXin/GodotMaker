@@ -290,13 +290,14 @@ does not register a generic result directly.
    `PARTIAL`, or `FAILED`, and it is the only status you act on. Never read it
    from the markdown prose; the prose is a summary.
 
-   Confirm the block is there and well-formed yourself. The hook normally
-   rejects a report without one, but its anti-deadloop escape hatch releases a
-   subagent after repeated failures, so a report with no valid block can still
-   reach you. Such a report has no terminal status: treat the production unit
-   as unregistered, register nothing from it, and re-dispatch it once or
-   report the unit as blocked. Do not infer a status from the prose to fill
-   the gap.
+   Confirm the block is there, well-formed, and declares
+   `"report_type": "asset-producer"`. The hook normally rejects a report that
+   fails either check, but its anti-deadloop escape hatch releases a subagent
+   after repeated failures, so such a report can still reach you. A block for
+   any other role is not a producer handoff. Either way the report has no
+   terminal status: treat the production unit as unregistered, register nothing
+   from it, and re-dispatch it once or report the unit as blocked. Do not infer
+   a status from the prose to fill the gap.
 2. Confirm listed source, runtime output, prompt, report, and stable-entry draft
    files exist when claimed. `outputs` in the block lists the same paths by
    category and is what you check against.

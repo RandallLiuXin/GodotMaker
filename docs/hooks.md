@@ -250,7 +250,7 @@ mangled heading can no longer produce a `report_type: unknown` /
 | Field | Rule |
 |---|---|
 | `gm_outcome_version` | `1` |
-| `report_type` | A known role (`asset-producer`) |
+| `report_type` | Must equal the role the subagent was dispatched as |
 | `status` | `DONE`, `PARTIAL`, or `FAILED` |
 | `unit_id` | Non-empty string |
 | `outputs` | Object of path arrays, keyed only by `sources`, `runtime`, `prompts`, `reports`, `entry_drafts` |
@@ -261,6 +261,14 @@ mangled heading can no longer produce a `report_type: unknown` /
 require at least one blocker. A missing or invalid field is rejected with the
 field name, and that stop is logged as a `rejected_attempt` — or `unverified`
 if force-allow eventually released it. Neither writes an outcome event.
+
+**Role binding:** the role a subagent was dispatched as (payload `agent_type`,
+falling back to its `subagent_start` event) outranks anything the report claims
+about itself, and a block declaring a different `report_type` fails closed. A
+report cannot promote or demote its own role, so a record can never carry one
+role's `role` with another role's outcome. `log_subagent.classify_stop` re-checks
+the same equality, which covers the paths where the hook validated nothing
+(force-allow, or no active pipeline role).
 
 **Per-role required sections:**
 

@@ -16,7 +16,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metrics import (
-    record_event, EventType, normalize_report, OUTCOME_REQUIRED_ROLES,
+    record_event, EventType, normalize_report, outcome_matches_role,
+    OUTCOME_REQUIRED_ROLES,
     ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST,
     ROLE_ASSET_PRODUCER, ROLE_UNKNOWN,
     KNOWN_ROLES,
@@ -188,10 +189,17 @@ def classify_stop(verdict, report, effective_role: str) -> str:
     if verdict is not None and getattr(verdict, "rejected", False):
         return OUTCOME_REJECTED_ATTEMPT
 
+    # A block declaring a different role than the one this subagent was
+    # dispatched as verifies nothing here. The hook already fails closed on the
+    # mismatch; re-checking the equality closes the paths where it never ran
+    # (force-allow, or no active pipeline role), which would otherwise let a
+    # worker block write an asset_producer_* result.
+    if report.outcome is not None and not outcome_matches_role(report, effective_role):
+        return OUTCOME_UNVERIFIED
+
     # For a role that carries a machine outcome, that block IS the verification,
-    # so it alone decides — including on paths where the hook validated nothing
-    # (force-allow, or no active pipeline role). A valid block still counts; a
-    # missing or malformed one has no terminal status to claim.
+    # so it alone decides. A valid block still counts even when the hook was
+    # bypassed; a missing one has no terminal status to claim.
     if effective_role in OUTCOME_REQUIRED_ROLES:
         return OUTCOME_TERMINAL if report.outcome is not None else OUTCOME_UNVERIFIED
 

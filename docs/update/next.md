@@ -89,6 +89,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - An asset-producer run now reports its terminal status in a machine-readable outcome block that the report hook, metrics, and `/gm-asset` read through one parser, so a valid PARTIAL is no longer recorded as UNKNOWN.
 - A report the hook rejects on format is now recorded as a rejected attempt, so it neither reads as a production failure nor overwrites the retry's real terminal status.
 - Only a validated outcome can create a terminal record, so a report the anti-deadloop force-allow releases is recorded as unverified and produces no result event.
+- A subagent's dispatched role now outranks the role its report claims, so an outcome block declaring a different role is rejected instead of being recorded as that role's result.
 
 - Replaced legacy magenta edge cleanup with PyMatting using a fixed validated trimap.
 
