@@ -3068,7 +3068,7 @@ Claude Code / Codex support only or provide an explicit OpenCode fallback.</p>
 <td><code>on_subagent_stop.py</code></td>
 <td>SubagentStop</td>
 <td>Delegates</td>
-<td>Serial dispatcher: runs <code>log_subagent.handle_stop</code> then <code>check_worker_report.main_with_data</code> to avoid a metrics file race</td>
+<td>Serial dispatcher: runs <code>check_worker_report.evaluate</code>, then <code>log_subagent.handle_stop</code> with that verdict, then <code>check_worker_report.apply_verdict</code> — avoids a metrics file race and keeps a rejected report out of the terminal record</td>
 </tr>
 <tr>
 <td><code>check_completion.py</code></td>

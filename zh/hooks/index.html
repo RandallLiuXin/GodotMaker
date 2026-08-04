@@ -3137,7 +3137,36 @@ root stage session 上保留这个 gate。非图片文件（.json、.ogg）被�
    3. <code>worker:</code> → worker
    4. <code>verifier:</code> / <code>verify:</code> → verifier
    5. <code>reviewer:</code> / <code>review:</code> → reviewer</p>
-<p><strong>handle_stop：</strong> 由 <code>on_subagent_stop.py</code> 调用。从助手消息中提取报告类型、状态、变更文件。从匹配的启动事件中查找角色。记录 <code>SUBAGENT_STOP</code> 指标以及结果特定事件：<code>WORKER_DONE</code>、<code>VERIFIER_PASS</code> 等。</p>
+<p><strong>handle_stop：</strong> 由 <code>on_subagent_stop.py</code> 调用。通过 <code>metrics.outcome.normalize_report</code>
+读取报告类型与状态——与报告 Hook 完全相同的入口。从匹配的启动事件中查找角色。记录
+<code>SUBAGENT_STOP</code> 指标以及结果特定事件：<code>WORKER_DONE</code>、<code>VERIFIER_PASS</code>、
+<code>ASSET_PRODUCER_PARTIAL</code> 等。</p>
+<p>每条 <code>SUBAGENT_STOP</code> 都带 <code>outcome_kind</code>：</p>
+<table>
+<thead>
+<tr>
+<th><code>outcome_kind</code></th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>terminal</code></td>
+<td>报告通过校验，写入唯一的结果特定事件</td>
+</tr>
+<tr>
+<td><code>rejected_attempt</code></td>
+<td>报告 Hook 拦截了这次 stop，不写结果事件</td>
+</tr>
+<tr>
+<td><code>unverified</code></td>
+<td>未通过校验即被放行，不写结果事件</td>
+</tr>
+</tbody>
+</table>
+<p>只有 <code>terminal</code> 才写结果特定事件，因此未通过校验的报告既不会被读成结果，也不会
+抢先覆盖重试的真实终态。<code>unverified</code> 覆盖两种「放行但未接受报告」的情况：下文的
+防死锁 force-allow，以及必须携带 machine outcome 块的角色在没有合法块时走到这一步。</p>
 <h3 id="on_subagent_stoppy">on_subagent_stop.py<a class="headerlink" href="#on_subagent_stoppy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> SubagentStop
 <strong>是否阻止：</strong> 是（委托给 <code>check_worker_report</code>）</p>
@@ -3145,18 +3174,73 @@ root stage session 上保留这个 gate。非图片文件（.json、.ogg）被�
 子代理生命周期 hook。</p>
 <p><code>SubagentStop</code> 事件的单一分发器。读取一次 stdin 后串行运行：</p>
 <ol>
-<li><code>log_subagent.handle_stop(data)</code> — 记录指标，保存追踪（从不阻止）</li>
-<li><code>check_worker_report.main_with_data(data)</code> — 验证报告（可能阻止）</li>
+<li><code>check_worker_report.evaluate(data)</code> — 判定结论（无副作用）</li>
+<li><code>log_subagent.handle_stop(data, verdict=…)</code> — 按该结论标记并记录指标（从不阻止）</li>
+<li><code>check_worker_report.apply_verdict(verdict)</code> — 输出决定（可能阻止）</li>
 </ol>
+<p><strong>为什么先验证：</strong> 结论决定这次 stop 是终态记录还是被拒绝的尝试。先记录再验证会把被
+拒绝的尝试写成本次运行的结果，随后去重保护会丢弃重试的真实状态。</p>
 <p><strong>为什么使用分发器：</strong> Claude Code 默认并行运行多个 <code>SubagentStop</code> Hook。两个处理程序都会操作 <code>metrics_current.jsonl</code>——<code>log_subagent</code> 读取，<code>check_worker_report</code> 写入——这会导致间歇性的 <code>JSONDecodeError</code> 崩溃。在单个进程内串行执行消除了竞态条件。</p>
 <h3 id="check_worker_reportpy">check_worker_report.py<a class="headerlink" href="#check_worker_reportpy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> SubagentStop（通过 <code>on_subagent_stop.py</code> 调用）
 <strong>是否阻止：</strong> 是</p>
 <p>仅在 <code>/gm-*</code> 流水线角色活跃时验证子代理角色的报告格式和内容。没有 <code>.godotmaker/current_role</code> 时，普通子代理对话被允许，该 Hook 不阻止。</p>
 <p><strong>格式检测流程：</strong>
-1. 从消息内容检测 <code>report_type</code>（分层：精确标记 → 正则 → 回退）
-2. 若检测到 <code>report_type</code> → 检查该类型所需的章节
-3. 若 <code>report_type</code> 为 None 但从启动事件得知角色 → 阻止并要求提交格式化报告</p>
+1. 通过 <code>metrics.outcome.normalize_report</code> 解析 <code>report_type</code> 与 <code>status</code>——先读
+   machine outcome 块，再走 Markdown 分层（精确标记 → 正则 → 回退）
+2. 若该角色必须携带 machine outcome 块 → 校验该块，fail closed
+3. 若检测到 <code>report_type</code> → 检查该类型所需的章节
+4. 若 <code>report_type</code> 为 None 但从启动事件得知角色 → 阻止并要求提交格式化报告</p>
+<p><strong>Machine outcome 块：</strong> <code>asset-producer</code> 报告必须以恰好一个带 <code>gm_outcome_version</code>
+的 fenced JSON 对象结尾。它才是状态协议，Markdown 标题只是人类可读摘要。Hook、
+metrics 与 <code>/gm-asset</code> 管理端通过同一个 parser 读取它，因此错乱的标题不会再产生
+<code>report_type: unknown</code> / <code>status: UNKNOWN</code> 记录，同时管理端却读到了正确状态。</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>规则</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gm_outcome_version</code></td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>report_type</code></td>
+<td>必须等于该子代理被派发时的角色</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>DONE</code>、<code>PARTIAL</code> 或 <code>FAILED</code></td>
+</tr>
+<tr>
+<td><code>unit_id</code></td>
+<td>非空字符串</td>
+</tr>
+<tr>
+<td><code>outputs</code></td>
+<td>路径数组对象，键只能是 <code>sources</code>、<code>runtime</code>、<code>prompts</code>、<code>reports</code>、<code>entry_drafts</code></td>
+</tr>
+<tr>
+<td><code>validation</code></td>
+<td><code>{passed: bool, levels?: {L0–L4: bool}, notes?: string}</code></td>
+</tr>
+<tr>
+<td><code>blockers</code></td>
+<td>字符串数组；只有 <code>status</code> 为 <code>DONE</code> 时才可为空</td>
+</tr>
+</tbody>
+</table>
+<p><code>DONE</code> 还要求 <code>validation.passed</code> 为真；<code>PARTIAL</code> 与 <code>FAILED</code> 至少需要一条 blocker。
+字段缺失或非法会带着字段名被拒绝，该次 stop 记录为 <code>rejected_attempt</code>；若最终被
+force-allow 放行，则记录为 <code>unverified</code>。两者都不会写结果事件。</p>
+<p><strong>角色绑定：</strong> 子代理被派发时的角色（payload 的 <code>agent_type</code>，回退到其
+<code>subagent_start</code> 事件）优先于报告对自身的任何声明；block 声明了不同的
+<code>report_type</code> 会 fail closed。报告无法自行升格或降格，因此记录里不可能出现一个角色
+的 <code>role</code> 配另一个角色的 outcome。<code>log_subagent.classify_stop</code> 会复核同一等式，覆盖
+hook 完全没有校验的路径（force-allow，或没有活跃的流水线角色）。</p>
 <p><strong>每角色必需章节：</strong></p>
 <table>
 <thead>
@@ -3195,6 +3279,10 @@ root stage session 上保留这个 gate。非图片文件（.json、.ogg）被�
 <p><strong>进度提示：</strong> 验证成功后，注入一条进度摘要（已完成的 Worker、Verifier、Reviewer 数量）作为附加上下文。</p>
 <p><strong>Reviewer 内容检查：</strong> ECS Review 和 Issues Found 章节各自必须有至少 50 个字符的内容，防止空洞或走过场的审查。</p>
 <p><strong>防死锁：</strong> <code>BLOCK_LIMIT = 2</code>，每个 <code>agent_id</code> 最多 2 次拦截——超过 2 次后强制放行并给出警告，而不是永远阻止。</p>
+<p>Force-allow 只解除对 agent 的阻塞，<strong>并不</strong>表示接受该报告。这次 stop 记为
+<code>unverified</code> 且不写任何结果特定事件，未通过校验的报告因此永远无法占据本次运行的
+终态。对必须携带 machine outcome 块的角色，警告还会明确告知该报告不是终态、其产物
+不得被注册。</p>
 <p><strong>已知缺口：</strong>
 - Verifier 报告：没有 Hook 验证 Verifier 确实运行了测试（仅检查格式）
 - 没有针对每个 Worker 的截图验证（截图是 <code>/gm-evaluate</code> 中评估器的职责）</p>

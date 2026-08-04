@@ -3064,7 +3064,7 @@ Claude Code / Codex，或提供显式的 OpenCode fallback。</p>
 <td><code>on_subagent_stop.py</code></td>
 <td>SubagentStop</td>
 <td>委托执行</td>
-<td>串行调度器：在同一进程中依次运行 <code>log_subagent.handle_stop</code> 和 <code>check_worker_report.main_with_data</code>，避免 metrics 文件竞争条件</td>
+<td>串行调度器：依次运行 <code>check_worker_report.evaluate</code>、带该结论的 <code>log_subagent.handle_stop</code>、<code>check_worker_report.apply_verdict</code>，避免 metrics 文件竞争条件，并让被拒绝的报告不进入终态记录</td>
 </tr>
 <tr>
 <td><code>check_completion.py</code></td>
