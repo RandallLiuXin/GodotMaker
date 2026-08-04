@@ -12,9 +12,10 @@ hand-maintained tuple in each test. Nothing tied those lists together, so a
 family could advertise a runtime delivery, validate it, and still have no
 adapter that reaches ``ready``, and the suite stayed green.
 
-This module is that single source of truth. The enums elsewhere derive from it,
-and ``tests/tools/test_asset_family_closure.py`` drives every route declared
-here from its representative result through registration to a worker snapshot.
+This module is that single source of truth. The enums elsewhere derive from it.
+``tests/tools/test_asset_family_closure.py`` supplies its own representative
+deliveries and drives every declared route through registration to a worker
+snapshot.
 
 **Routes, not families, are the unit.** Several Skills accept more than one
 request shape and deliver a different layout and artifact for each:
@@ -23,13 +24,12 @@ request shape and deliver a different layout and artifact for each:
 ``fx-bundle`` compiles a ``Texture2D`` for a static effect and a
 ``SpriteFrames`` for an animated one. Recording only the union of a family's
 layouts and artifacts hides a variant whose adapter is missing, because every
-individual assertion still passes against the other variant's fixture. Each
-variant therefore carries its own representative result and registration
-contract.
+individual assertion still passes against the other variant's delivery. Each
+variant therefore carries its own registration contract.
 
 Every declared route is complete. ``--check`` fails closed when a declared
-family, fixture, or adapter stopped shipping, and ``publish.py`` runs it before
-it copies anything.
+family or adapter stopped shipping, and ``publish.py`` runs it before it copies
+anything.
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ from typing import Any
 
 REGISTRY_VERSION = 2
 
-# Where a family's Skill, standalone validator, and fixtures live.
+# Where a family's Skill and standalone validator live.
 SKILLS_ROOT = "skills/assets"
 
 # ``role`` separates a worker-consumable delivery from a reference-only one.
@@ -74,17 +74,12 @@ class DeliveryVariant:
 
     A family with a single request shape has exactly one of these, named
     ``default``. A family whose request selects between genuinely different
-    productions has one per variant, each with its own representative result,
-    so a missing adapter on one variant cannot hide behind the other.
+    productions has one per variant, so a missing adapter on one variant cannot
+    hide behind the other.
     """
 
     variant: str
-    #: The ``source_layout.type`` values this route's entries bind, exactly as
-    #: its representative delivery does. This is the driven contract, not the
-    #: schema's compatibility superset: which artifact a layout *may* compile to
-    #: at all stays in ``asset_stable_entry.LAYOUT_ARTIFACT_TYPES``. Declaring a
-    #: layout no representative delivery binds would be an unverifiable claim,
-    #: so the closure test asserts equality against the fixture.
+    #: The ``source_layout.type`` values this route's entries bind.
     entry_source_layouts: tuple[str, ...]
     #: ``godot_artifact.type`` values its entries bind; empty for reference.
     artifact_types: tuple[str, ...]
@@ -94,12 +89,6 @@ class DeliveryVariant:
     entry_shape: str
     #: Deterministic ``tools/`` builders that adapt the result into drafts.
     entry_builders: tuple[str, ...]
-    #: True when the builder drafts ``compiled`` and promotes it on a later run.
-    promotes_from_compiled: bool
-    #: Repo-relative representative Asset Skill result for this variant.
-    representative_result: str
-    #: Repo-relative representative request, when the family ships one.
-    representative_request: str | None = None
 
     def __post_init__(self) -> None:
         label = f"variant {self.variant!r}"
@@ -138,10 +127,7 @@ class DeliveryVariant:
             "entry_shape": self.entry_shape,
             "entry_builders": list(self.entry_builders),
             "terminal_status": self.terminal_status,
-            "promotes_from_compiled": self.promotes_from_compiled,
             "uses_bundle_id": self.uses_bundle_id,
-            "representative_request": self.representative_request,
-            "representative_result": self.representative_result,
         }
 
 
@@ -227,10 +213,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="one",
                 entry_shape=ONE_ENTRY,
                 entry_builders=("asset_finalize_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_result=(
-                    "skills/assets/background-map/fixtures/representative-result.json"
-                ),
             ),
         ),
     ),
@@ -245,13 +227,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="many",
                 entry_shape=ENTRY_PER_OUTPUT,
                 entry_builders=("asset_ui_card_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_request=(
-                    "skills/assets/card-kit/fixtures/representative-request.json"
-                ),
-                representative_result=(
-                    "skills/assets/card-kit/fixtures/representative-result.json"
-                ),
             ),
         ),
     ),
@@ -266,13 +241,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="one",
                 entry_shape=ONE_ENTRY,
                 entry_builders=("asset_action_entry_draft.py",),
-                promotes_from_compiled=True,
-                representative_request=(
-                    "skills/assets/character-bundle/fixtures/valid-request.json"
-                ),
-                representative_result=(
-                    "skills/assets/character-bundle/fixtures/valid-result.json"
-                ),
             ),
         ),
     ),
@@ -287,11 +255,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="many",
                 entry_shape=ENTRY_PER_OUTPUT,
                 entry_builders=("asset_compact_prop_pack_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_result=(
-                    "skills/assets/compact-prop-pack/fixtures/"
-                    "representative-result.json"
-                ),
             ),
         ),
     ),
@@ -306,13 +269,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="one",
                 entry_shape=ONE_ENTRY,
                 entry_builders=("asset_curation_entry_draft.py",),
-                promotes_from_compiled=True,
-                representative_request=(
-                    "skills/assets/fx-bundle/fixtures/static-request.json"
-                ),
-                representative_result=(
-                    "skills/assets/fx-bundle/fixtures/static-result.json"
-                ),
             ),
             DeliveryVariant(
                 variant="animated",
@@ -321,13 +277,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="one",
                 entry_shape=ONE_ENTRY,
                 entry_builders=("asset_action_entry_draft.py",),
-                promotes_from_compiled=True,
-                representative_request=(
-                    "skills/assets/fx-bundle/fixtures/animated-request.json"
-                ),
-                representative_result=(
-                    "skills/assets/fx-bundle/fixtures/animated-result.json"
-                ),
             ),
         ),
     ),
@@ -342,15 +291,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="many",
                 entry_shape=ENTRY_PER_OUTPUT,
                 entry_builders=("asset_platform_strip_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_request=(
-                    "skills/assets/platform-strip/fixtures/"
-                    "representative-single-request.json"
-                ),
-                representative_result=(
-                    "skills/assets/platform-strip/fixtures/"
-                    "representative-single-result.json"
-                ),
             ),
             DeliveryVariant(
                 variant="atlas",
@@ -359,15 +299,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="many",
                 entry_shape=ENTRY_PER_OUTPUT,
                 entry_builders=("asset_platform_strip_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_request=(
-                    "skills/assets/platform-strip/fixtures/"
-                    "representative-request.json"
-                ),
-                representative_result=(
-                    "skills/assets/platform-strip/fixtures/"
-                    "representative-result.json"
-                ),
             ),
         ),
     ),
@@ -382,10 +313,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="many",
                 entry_shape=ANCHOR_ENTRY,
                 entry_builders=("asset_scene_prop_set_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_result=(
-                    "skills/assets/scene-prop-set/fixtures/representative-result.json"
-                ),
             ),
         ),
     ),
@@ -400,13 +327,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="none",
                 entry_shape=ONE_ENTRY,
                 entry_builders=("asset_finalize_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_request=(
-                    "skills/assets/_shared/samples/request/screen-reference.json"
-                ),
-                representative_result=(
-                    "skills/assets/screen-reference/fixtures/representative-result.json"
-                ),
             ),
         ),
     ),
@@ -421,10 +341,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="one",
                 entry_shape=ONE_ENTRY,
                 entry_builders=("asset_tileset_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_result=(
-                    "skills/assets/tileset/fixtures/representative-result.json"
-                ),
             ),
         ),
     ),
@@ -439,13 +355,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 runtime_outputs="many",
                 entry_shape=ENTRY_PER_OUTPUT,
                 entry_builders=("asset_ui_card_entry_draft.py",),
-                promotes_from_compiled=False,
-                representative_request=(
-                    "skills/assets/ui-kit/fixtures/representative-request.json"
-                ),
-                representative_result=(
-                    "skills/assets/ui-kit/fixtures/representative-result.json"
-                ),
             ),
         ),
     ),
@@ -517,9 +426,9 @@ def check_registry(root: Path | None = None) -> list[str]:
     """Return every disagreement between this map and what the repo ships.
 
     The default pass is structural: an advertised family with no skill
-    directory, a declared builder that does not exist, a missing representative
-    result, or a family the schema allows but this map never declares all mean
-    the registration chain can no longer be reasoned about from one place.
+    directory, a declared builder that does not exist, or a family the schema
+    allows but this map never declares all mean the registration chain can no
+    longer be reasoned about from one place.
     ``publish.py`` runs this before it copies anything.
     """
     base = repo_root() if root is None else Path(root)
@@ -547,17 +456,11 @@ def check_registry(root: Path | None = None) -> list[str]:
             if not (skills_dir / name / required).is_file():
                 issues.append(f"{item.skill_dir}/{required} is missing")
         for variant in item.variants:
-            label = f"{name}[{variant.variant}]"
-            fixtures = (variant.representative_request, variant.representative_result)
-            for relative in [entry for entry in fixtures if entry]:
-                if not (base / relative).is_file():
-                    issues.append(
-                        f"{label} declares a fixture that does not exist: {relative}"
-                    )
             for builder in variant.entry_builders:
                 if not (base / "tools" / builder).is_file():
                     issues.append(
-                        f"{label} names a missing entry builder: tools/{builder}"
+                        f"{name}[{variant.variant}] names a missing entry builder: "
+                        f"tools/{builder}"
                     )
 
     return issues
@@ -571,7 +474,7 @@ def _main() -> int:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Verify the registry against the shipped skills, fixtures, and builders",
+        help="Verify the registry against the shipped skills and entry builders",
     )
     parser.add_argument("--project-root", type=Path, default=None)
     args = parser.parse_args()

@@ -77,6 +77,66 @@ class Delivery:
     variant: str = "default"
 
 
+@dataclass(frozen=True)
+class RouteFixture:
+    """Test-only representative input for one declared route."""
+
+    result: str
+    request: str | None = None
+    promotes_from_compiled: bool = False
+
+
+ROUTE_FIXTURES: dict[tuple[str, str], RouteFixture] = {
+    ("background-map", "default"): RouteFixture(
+        result="skills/assets/background-map/fixtures/representative-result.json"
+    ),
+    ("card-kit", "default"): RouteFixture(
+        request="skills/assets/card-kit/fixtures/representative-request.json",
+        result="skills/assets/card-kit/fixtures/representative-result.json",
+    ),
+    ("character-bundle", "default"): RouteFixture(
+        request="skills/assets/character-bundle/fixtures/valid-request.json",
+        result="skills/assets/character-bundle/fixtures/valid-result.json",
+        promotes_from_compiled=True,
+    ),
+    ("compact-prop-pack", "default"): RouteFixture(
+        result="skills/assets/compact-prop-pack/fixtures/representative-result.json"
+    ),
+    ("fx-bundle", "static"): RouteFixture(
+        request="skills/assets/fx-bundle/fixtures/static-request.json",
+        result="skills/assets/fx-bundle/fixtures/static-result.json",
+        promotes_from_compiled=True,
+    ),
+    ("fx-bundle", "animated"): RouteFixture(
+        request="skills/assets/fx-bundle/fixtures/animated-request.json",
+        result="skills/assets/fx-bundle/fixtures/animated-result.json",
+        promotes_from_compiled=True,
+    ),
+    ("platform-strip", "single"): RouteFixture(
+        request="skills/assets/platform-strip/fixtures/representative-single-request.json",
+        result="skills/assets/platform-strip/fixtures/representative-single-result.json",
+    ),
+    ("platform-strip", "atlas"): RouteFixture(
+        request="skills/assets/platform-strip/fixtures/representative-request.json",
+        result="skills/assets/platform-strip/fixtures/representative-result.json",
+    ),
+    ("scene-prop-set", "default"): RouteFixture(
+        result="skills/assets/scene-prop-set/fixtures/representative-result.json"
+    ),
+    ("screen-reference", "default"): RouteFixture(
+        request="skills/assets/_shared/samples/request/screen-reference.json",
+        result="skills/assets/screen-reference/fixtures/representative-result.json",
+    ),
+    ("tileset", "default"): RouteFixture(
+        result="skills/assets/tileset/fixtures/representative-result.json"
+    ),
+    ("ui-kit", "default"): RouteFixture(
+        request="skills/assets/ui-kit/fixtures/representative-request.json",
+        result="skills/assets/ui-kit/fixtures/representative-result.json",
+    ),
+}
+
+
 # --------------------------------------------------------------------------
 # file helpers
 # --------------------------------------------------------------------------
@@ -111,16 +171,19 @@ def read_fixture(relative: str) -> Any:
     return json.loads((REPO_ROOT / relative).read_text(encoding="utf-8"))
 
 
-def variant_of(family: str, variant: str = "default"):
-    return FAMILIES[family].variant(variant)
+def route_fixture(family: str, variant: str = "default") -> RouteFixture:
+    return ROUTE_FIXTURES[(family, variant)]
 
 
 def representative_result(family: str, variant: str = "default") -> dict[str, Any]:
-    return read_fixture(variant_of(family, variant).representative_result)
+    return read_fixture(route_fixture(family, variant).result)
 
 
 def representative_request(family: str, variant: str = "default") -> dict[str, Any]:
-    return read_fixture(variant_of(family, variant).representative_request)
+    fixture = route_fixture(family, variant).request
+    if fixture is None:
+        raise AssertionError(f"{family}[{variant}] has no representative request")
+    return read_fixture(fixture)
 
 
 def _materialize_result_files(root: Path, result: dict[str, Any]) -> None:
@@ -613,7 +676,7 @@ def _platform_strip(variant: str) -> Callable[[Path], Delivery]:
     def build(root: Path) -> Delivery:
         request = representative_request("platform-strip", variant)
         result = representative_result("platform-strip", variant)
-        declared = variant_of("platform-strip", variant)
+        declared = FAMILIES["platform-strip"].variant(variant)
         _materialize_result_files(root, result)
         assert {item["godot_type"] for item in result["outputs"]} == set(
             declared.artifact_types

@@ -8,9 +8,6 @@ on:
 permissions:
   contents: write
 
-env:
-  PYTHON_VERSION: "3.12"
-
 jobs:
   release:
     name: Create GitHub Release

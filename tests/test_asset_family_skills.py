@@ -26,18 +26,19 @@ STANDALONE_CONTRACT_FAMILIES = (
 )
 
 
-def _expected(family: str) -> dict:
-    """Resolve the route that owns this family's `representative-result.json`.
+FIXTURE_VARIANTS = {
+    "background-map": "default",
+    "platform-strip": "atlas",
+    "scene-prop-set": "default",
+    "screen-reference": "default",
+    "compact-prop-pack": "default",
+}
 
-    A family with several request shapes has one route per shape, and only the
-    one whose fixture these tests read may describe them. Indexing the family's
-    merged layout/artifact tuples would silently pick another variant's values.
-    """
+
+def _expected(family: str) -> dict:
+    """Resolve the stable contract for this test's explicitly chosen fixture."""
     spec = FAMILY_REGISTRY[family]
-    fixture = f"skills/assets/{family}/fixtures/representative-result.json"
-    variant = next(
-        item for item in spec.variants if item.representative_result == fixture
-    )
+    variant = spec.variant(FIXTURE_VARIANTS[family])
     assert len(variant.entry_source_layouts) == 1
     return {
         "role": spec.role,

@@ -73,6 +73,7 @@ from asset_stable_entry import (  # noqa: E402
 
 from tests.tools.asset_family_deliveries import (  # noqa: E402
     DELIVERIES,
+    ROUTE_FIXTURES,
     TAG,
     Delivery,
     planning_table,
@@ -116,7 +117,7 @@ def _route_id(key: tuple[str, str]) -> str:
 # --------------------------------------------------------------------------
 
 
-def test_the_registry_agrees_with_every_skill_fixture_and_builder_that_ships():
+def test_the_registry_agrees_with_every_skill_and_builder_that_ships():
     assert check_registry() == []
 
 
@@ -128,11 +129,6 @@ def _mirror_registry_inputs(root: Path) -> None:
         (skill / "SKILL.md").write_text("stub", encoding="utf-8")
         (skill / "standalone_validation.py").write_text("", encoding="utf-8")
         for variant in spec.variants:
-            fixtures = (variant.representative_request, variant.representative_result)
-            for relative in [item for item in fixtures if item]:
-                path = root / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("{}", encoding="utf-8")
             for builder in variant.entry_builders:
                 tool = root / "tools" / builder
                 tool.parent.mkdir(parents=True, exist_ok=True)
@@ -170,6 +166,26 @@ def test_every_declared_route_has_a_delivery_that_is_actually_driven():
     that already had one.
     """
     assert sorted(DELIVERIES) == ALL_ROUTES
+    assert sorted(ROUTE_FIXTURES) == ALL_ROUTES
+
+
+def test_test_only_route_fixtures_exist_for_every_driven_route():
+    for fixture in ROUTE_FIXTURES.values():
+        assert (REPO_ROOT / fixture.result).is_file()
+        if fixture.request is not None:
+            assert (REPO_ROOT / fixture.request).is_file()
+
+
+def test_test_only_fixture_metadata_marks_each_bundle_promotion():
+    """Only these deliveries promote a compiled build to ready."""
+    promoted_routes = sorted(
+        key for key, fixture in ROUTE_FIXTURES.items() if fixture.promotes_from_compiled
+    )
+    assert promoted_routes == [
+        ("character-bundle", "default"),
+        ("fx-bundle", "animated"),
+        ("fx-bundle", "static"),
+    ]
 
 
 def test_no_surface_keeps_a_second_list_of_public_families():
@@ -222,7 +238,7 @@ def test_route_representative_result_passes_the_generic_validator(key):
     family, name = key
     result = representative_result(family, name)
 
-    assert (REPO_ROOT / _variant(key).representative_result).is_file()
+    assert (REPO_ROOT / ROUTE_FIXTURES[key].result).is_file()
     assert check_result(result)["ok"] is True
     assert result["asset_type"] == family
 
