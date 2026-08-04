@@ -40,6 +40,10 @@ from asset_curation_entry_draft import (  # noqa: E402
     CurationEntryDraftError,
     write_fx_static_entry_draft,
 )
+from asset_finalize_entry_draft import (  # noqa: E402
+    FinalizeEntryDraftError,
+    build_finalize_entry_draft,
+)
 from asset_generation_index import check_index, update_index  # noqa: E402
 from asset_runtime_resolver import (  # noqa: E402
     AssetRuntimeResolverError,
@@ -767,6 +771,154 @@ def test_static_fx_promotion_rejects_a_result_about_another_image(tmp_path):
 
 
 # --------------------------------------------------------------------------
+# background-map -> Texture2D
+# --------------------------------------------------------------------------
+
+BACKGROUND_ID = "sky_dome"
+
+
+def _background_inputs(project_root: Path, *, name: str = BACKGROUND_ID):
+    relative = f"assets/generated/background-map/{BACKGROUND_ID}/{name}.png"
+    _touch(project_root, f"res://{relative}")
+    report = {
+        "ok": True,
+        "source": f".godotmaker/asset-generation/sources/{BACKGROUND_ID}_source.png",
+        "path": relative,
+        "width": 1920,
+        "height": 1080,
+        "required_aspect": "16:9",
+        "aspect_delta": 0.0,
+        "aspect_tolerance": 0.03,
+        "label": BACKGROUND_ID,
+        "asset_id": BACKGROUND_ID,
+    }
+    return (
+        _write_json(
+            project_root
+            / f".godotmaker/asset-generation/reports/{BACKGROUND_ID}_finalize.json",
+            report,
+        ),
+        relative,
+    )
+
+
+def _background_result(relative: str) -> dict:
+    return {
+        "asset_type": "background-map",
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": BACKGROUND_ID,
+                "path": f"res://{relative}",
+                "godot_type": "Texture2D",
+            }
+        ],
+        "sources": [{"path": f"res://{relative}", "layout": "single"}],
+        "previews": [],
+        "validation": {
+            "passed": True,
+            "levels": {level: True for level in LEVELS_PASSED},
+        },
+    }
+
+
+def _draft_background(project_root: Path, report_path, result_path=None):
+    return build_finalize_entry_draft(
+        report_path,
+        asset_id=BACKGROUND_ID,
+        tag=TAG,
+        production_family="background-map",
+        project_root=project_root,
+        result_path=result_path,
+    )
+
+
+def test_background_map_reaches_a_worker_snapshot_from_a_validated_delivery(tmp_path):
+    report_path, relative = _background_inputs(tmp_path)
+    result_path = _write_json(
+        tmp_path / "background-result.json", _background_result(relative)
+    )
+    assets_md = _assets_md(tmp_path, [BACKGROUND_ID])
+
+    entry = _draft_background(tmp_path, report_path, result_path)
+    _register(tmp_path, [entry])
+    update_assets_md(assets_md, [tmp_path / entry_relative_path(TAG, BACKGROUND_ID)])
+
+    # The PNG is the Texture2D Godot imports, so source and artifact are one
+    # file and no .tres wraps it.
+    assert _snapshot(tmp_path, BACKGROUND_ID) == {
+        "asset_id": BACKGROUND_ID,
+        "production_family": "background-map",
+        "source_layout": {"type": "single", "path": f"res://{relative}"},
+        "godot_artifact": {"type": "Texture2D", "path": f"res://{relative}"},
+    }
+    assert not list((tmp_path / relative).parent.glob("*.tres"))
+
+
+def test_a_background_map_without_a_result_stays_out_of_the_worker_handoff(tmp_path):
+    """The gap this closed: a validated background stuck at source_ready."""
+    report_path, _ = _background_inputs(tmp_path)
+    assets_md = _assets_md(tmp_path, [BACKGROUND_ID])
+
+    entry = _draft_background(tmp_path, report_path)
+    assert entry["processing_status"] == "source_ready"
+    _register(tmp_path, [entry])
+
+    with pytest.raises(AssetsMdUpdateError, match="only a ready runtime entry"):
+        update_assets_md(
+            assets_md, [tmp_path / entry_relative_path(TAG, BACKGROUND_ID)]
+        )
+    with pytest.raises(AssetRuntimeResolverError):
+        _snapshot(tmp_path, BACKGROUND_ID)
+
+
+def test_background_map_without_a_passing_ladder_never_registers(tmp_path):
+    report_path, relative = _background_inputs(tmp_path)
+    result = _background_result(relative)
+    result["validation"] = {
+        "passed": False,
+        "levels": {"L0": True, "L1": True, "L2": True, "L3": False, "L4": False},
+    }
+    result_path = _write_json(tmp_path / "background-result.json", result)
+
+    with pytest.raises(FinalizeEntryDraftError, match="passed L0-L4"):
+        _draft_background(tmp_path, report_path, result_path)
+
+
+def test_background_map_registration_fails_closed_on_a_deleted_image(tmp_path):
+    report_path, relative = _background_inputs(tmp_path)
+    result_path = _write_json(
+        tmp_path / "background-result.json", _background_result(relative)
+    )
+    (tmp_path / relative).unlink()
+
+    with pytest.raises(FinalizeEntryDraftError, match="finalized file not found"):
+        _draft_background(tmp_path, report_path, result_path)
+
+
+def test_background_map_rejects_a_result_about_another_asset(tmp_path):
+    report_path, relative = _background_inputs(tmp_path)
+    result = _background_result(relative)
+    result["outputs"][0]["path"] = (
+        "res://assets/generated/background-map/dusk_dome/dusk_dome.png"
+    )
+    result_path = _write_json(tmp_path / "background-result.json", result)
+
+    with pytest.raises(FinalizeEntryDraftError):
+        _draft_background(tmp_path, report_path, result_path)
+
+
+def test_background_map_rejects_a_drifted_finalized_path(tmp_path):
+    report_path, relative = _background_inputs(tmp_path, name=f"{BACKGROUND_ID}_final")
+    result_path = _write_json(
+        tmp_path / "background-result.json", _background_result(relative)
+    )
+
+    with pytest.raises(FinalizeEntryDraftError, match="must finalize into its stable"):
+        _draft_background(tmp_path, report_path, result_path)
+
+
+# --------------------------------------------------------------------------
 # CLI wiring: the documented command is what /gm-asset actually runs.
 # --------------------------------------------------------------------------
 
@@ -844,6 +996,30 @@ def test_tileset_cli_writes_the_ready_draft(tmp_path):
     assert completed.returncode == 0, completed.stdout + completed.stderr
     entry = json.loads(out.read_text(encoding="utf-8"))
     assert entry["godot_artifact"]["type"] == "TileSet"
+    assert entry["processing_status"] == "ready"
+
+
+def test_background_map_cli_writes_the_ready_draft(tmp_path):
+    report_path, relative = _background_inputs(tmp_path)
+    result_path = _write_json(
+        tmp_path / "background-result.json", _background_result(relative)
+    )
+    out = tmp_path / ".godotmaker/asset-generation/work/entries/sky_dome.json"
+
+    completed = _run(
+        "asset_finalize_entry_draft.py",
+        "--finalize-report", str(report_path),
+        "--result", str(result_path),
+        "--asset-id", BACKGROUND_ID,
+        "--tag", TAG,
+        "--production-family", "background-map",
+        "--project-root", str(tmp_path),
+        "--out", str(out),
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    entry = json.loads(out.read_text(encoding="utf-8"))
+    assert entry["godot_artifact"] == {"type": "Texture2D", "path": f"res://{relative}"}
     assert entry["processing_status"] == "ready"
 
 

@@ -247,6 +247,15 @@ python tools/asset_finalize_entry_draft.py \
   --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
 
+Adding `--result <result.json>` switches the same builder to `background-map`
+ready mode. It binds that passing result's one `Texture2D` runtime output and
+its one `single` source to the exact PNG the finalize report published, requires
+all of L0-L4, runs the registered `single -> Texture2D` route, and writes the
+`ready` entry from the artifact that route returned. Godot's default import is
+already that `Texture2D`, so `source_layout.path` and `godot_artifact.path` are
+the same PNG and no `.tres` is produced. Without `--result` the entry stops at
+`source_ready`.
+
 ## asset_output_path.py
 
 `asset_output_path.py` is the authority for the stable output directory

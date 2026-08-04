@@ -38,6 +38,7 @@ ASSET_TOOLS = (
     "asset_bundle_manifest",
     "asset_compact_prop_pack_entry_draft",
     "asset_curation_entry_draft",
+    "asset_finalize_entry_draft",
     "asset_generation_index",
     "asset_runtime_resolver",
     "asset_scene_prop_set_entry_draft",

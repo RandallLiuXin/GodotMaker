@@ -112,8 +112,9 @@ entry to `ready` only after its own L0-L4 loop passes. Both do that promotion by
 handing the evidence back to the same deterministic builder, which binds the
 promotion to the recorded build fingerprint instead of to the stable path.
 A first-class Skill that already holds a passing result
-when it drafts — `compact-prop-pack`, `scene-prop-set`, `ui-kit`, `card-kit`,
-and `tileset` — writes `ready` directly. Nothing else may write `ready`.
+when it drafts — `background-map`, `compact-prop-pack`, `scene-prop-set`,
+`ui-kit`, `card-kit`, and `tileset` — writes `ready` directly.
+Nothing else may write `ready`.
 
 ## Stable Entry Contract
 
@@ -160,10 +161,13 @@ Rules:
    where an animation was promised. There is no generic compiler that makes
    every source layout runtime-ready: a family without its own compiler and
    validation path stays at `source_ready` with no `godot_artifact`. A family
-   with both paths — `character-bundle`, `fx-bundle`, `compact-prop-pack`,
-   `scene-prop-set`, `ui-kit`, `card-kit`, and `tileset` — follows its explicit
-   contract instead, and every one of them has a deterministic builder that
-   registers what it compiled.
+   with both paths — `background-map`, `character-bundle`, `fx-bundle`,
+   `compact-prop-pack`, `scene-prop-set`, `ui-kit`, `card-kit`, and `tileset` —
+   follows its explicit contract instead, and every one of them has a
+   deterministic builder that registers what it compiled. The `single ->
+   Texture2D` route is the one case where the artifact is the source image
+   itself: Godot's default import already produces the `Texture2D`, so both
+   paths name the same PNG and no `.tres` wraps it.
 5. A `reference` layout carries no `godot_artifact` and keeps its `references/`
    location.
 6. Detailed runtime metadata (region rects, frame lists) is a support file beside
@@ -311,6 +315,25 @@ requires that run to have succeeded with `--require-aspect` inside tolerance and
 `--label <asset_id>`. It derives the layout from the family — `reference` pinned
 to `references/` for `screen-reference`, `single` pinned to the stable output
 directory for every other family.
+
+Ready background map (`background-map`):
+
+```bash
+python tools/asset_finalize_entry_draft.py \
+  --finalize-report <finalize_report.json> --result <result.json> \
+  --asset-id <asset_id> --tag <tag> --production-family background-map \
+  --project-root . \
+  --out .godotmaker/asset-generation/work/entries/<asset_id>.json
+```
+
+`--result` is the same builder in one shot, not a second promotion run: the
+Skill already holds its passing L0-L4 result when it drafts. It binds that
+result's one `Texture2D` runtime output and its one `single` source to the exact
+PNG this finalize report published, requires all of L0-L4, runs the registered
+`single -> Texture2D` route, and writes the `ready` entry from the artifact that
+route returned. Source and artifact are the same PNG — do not wrap it in a
+`.tres`. Without `--result` the entry stops at `source_ready` and no worker sees
+it.
 
 Ready compact prop atlas bundle:
 

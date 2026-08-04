@@ -205,6 +205,12 @@ Brief shape:
 - One Skill call may return several logical outputs. Exactly one runtime output
   per logical asset becomes a stable entry; every other output is reported as a
   reference. Never draft a second entry or a `godot_artifact` for a reference.
+- For `background-map`, pass the finalize report and the passing result to
+  `tools/asset_finalize_entry_draft.py --result`. It writes one ready `single ->
+  Texture2D` entry whose source and artifact are the same finalized PNG, because
+  Godot's default import already produces that `Texture2D`. Do not wrap it in a
+  `.tres`. Without `--result` the entry stops at `source_ready` and never
+  reaches a worker.
 - For `character-bundle`, pass the Skill's archived resolved request, one
   action processing report per required action, and its validated result to
   `tools/asset_action_entry_draft.py` bundle mode. It registers exactly one
@@ -289,7 +295,8 @@ does not register a generic result directly.
 3. Confirm every entry draft came from a deterministic builder —
    `tools/asset_action_entry_draft.py` for processed action output,
    `tools/asset_curation_entry_draft.py` for a selected curation candidate,
-   `tools/asset_finalize_entry_draft.py` for a finalized screen reference,
+   `tools/asset_finalize_entry_draft.py` for a finalized screen reference or,
+   with `--result`, a validated `background-map`,
    `tools/asset_compact_prop_pack_entry_draft.py` for a fully ready compact
    prop atlas bundle,
    `tools/asset_scene_prop_set_entry_draft.py` for a compiled scene prop atlas,

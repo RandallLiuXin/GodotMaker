@@ -225,6 +225,209 @@ def test_runtime_family_path_must_be_in_the_stable_directory(tmp_path, path):
         )
 
 
+def make_runtime_result(**overrides):
+    """The background-map Skill result for the image the report finalized."""
+    res_path = f"res://{RUNTIME_PATH}"
+    result = {
+        "asset_type": RUNTIME_FAMILY,
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": RUNTIME_ASSET_ID,
+                "path": res_path,
+                "godot_type": "Texture2D",
+            }
+        ],
+        "sources": [{"path": res_path, "layout": "single"}],
+        "previews": [],
+        "validation": {
+            "passed": True,
+            "levels": {level: True for level in ("L0", "L1", "L2", "L3", "L4")},
+        },
+    }
+    result.update(overrides)
+    return result
+
+
+def write_runtime_result(project_root: Path, result) -> Path:
+    path = project_root / ".godotmaker/asset-generation/sky-result.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(result), encoding="utf-8")
+    return path
+
+
+def build_runtime(project_root: Path, result, *, report=None):
+    report = report if report is not None else make_report(
+        path=RUNTIME_PATH, label=RUNTIME_ASSET_ID, asset_id=RUNTIME_ASSET_ID
+    )
+    return build(
+        project_root,
+        write_report(project_root, report),
+        asset_id=RUNTIME_ASSET_ID,
+        production_family=RUNTIME_FAMILY,
+        result_path=write_runtime_result(project_root, result),
+    )
+
+
+def test_a_validated_background_map_becomes_a_ready_texture2d_entry(tmp_path):
+    """The PNG is the Texture2D Godot imports; no .tres wraps it."""
+    touch(tmp_path, RUNTIME_PATH)
+
+    entry = build_runtime(tmp_path, make_runtime_result())
+
+    assert entry["source_layout"] == {"type": "single", "path": f"res://{RUNTIME_PATH}"}
+    assert entry["godot_artifact"] == {
+        "type": "Texture2D",
+        "path": f"res://{RUNTIME_PATH}",
+    }
+    assert entry["processing_status"] == "ready"
+    validate_entry(entry, project_root=tmp_path, check_files=True)
+
+
+def test_a_failed_ladder_never_reaches_ready(tmp_path):
+    touch(tmp_path, RUNTIME_PATH)
+    result = make_runtime_result()
+    result["validation"] = {
+        "passed": False,
+        "levels": {"L0": True, "L1": True, "L2": True, "L3": False, "L4": False},
+    }
+
+    with pytest.raises(FinalizeEntryDraftError, match="not passing: L3, L4"):
+        build_runtime(tmp_path, result)
+
+
+def test_a_result_without_levels_never_reaches_ready(tmp_path):
+    """`passed: true` alone is a claim; the levels are the evidence."""
+    touch(tmp_path, RUNTIME_PATH)
+    result = make_runtime_result()
+    del result["validation"]["levels"]
+
+    with pytest.raises(FinalizeEntryDraftError, match="no explicit validation levels"):
+        build_runtime(tmp_path, result)
+
+
+def test_a_self_declared_failure_never_reaches_ready(tmp_path):
+    """An all-true ladder plus `passed: false` is still a refused delivery."""
+    touch(tmp_path, RUNTIME_PATH)
+    result = make_runtime_result()
+    result["validation"]["passed"] = False
+    result["validation"]["notes"] = "the horizon line drifts under the viewport"
+
+    with pytest.raises(FinalizeEntryDraftError, match="validation.passed is not true"):
+        build_runtime(tmp_path, result)
+
+
+def test_a_result_about_another_image_cannot_register_this_one(tmp_path):
+    touch(tmp_path, RUNTIME_PATH)
+    result = make_runtime_result()
+    result["outputs"][0]["path"] = "res://assets/generated/background-map/dusk/dusk.png"
+
+    with pytest.raises(FinalizeEntryDraftError, match="must be the finalized stable"):
+        build_runtime(tmp_path, result)
+
+
+def test_a_result_sourced_from_another_image_cannot_register_this_one(tmp_path):
+    """The runtime output alone never says which file carried the layout."""
+    touch(tmp_path, RUNTIME_PATH)
+    result = make_runtime_result()
+    result["sources"] = [
+        {"path": "res://assets/generated/background-map/dusk/dusk.png", "layout": "single"}
+    ]
+
+    with pytest.raises(FinalizeEntryDraftError, match="single source must be"):
+        build_runtime(tmp_path, result)
+
+
+def test_a_result_for_another_family_is_rejected(tmp_path):
+    touch(tmp_path, RUNTIME_PATH)
+
+    with pytest.raises(FinalizeEntryDraftError, match="must be a background-map result"):
+        build_runtime(tmp_path, make_runtime_result(asset_type="fx-bundle"))
+
+
+def test_a_second_runtime_output_is_rejected(tmp_path):
+    # One scenic image is one texture; a second would reach the worker as a
+    # rival background for the same asset.
+    touch(tmp_path, RUNTIME_PATH)
+    result = make_runtime_result()
+    result["outputs"].append(
+        {
+            "role": "runtime",
+            "path": f"res://{stable_output_dir(RUNTIME_FAMILY, RUNTIME_ASSET_ID)}/extra.png",
+            "godot_type": "Texture2D",
+        }
+    )
+
+    with pytest.raises(FinalizeEntryDraftError, match="exactly one runtime output"):
+        build_runtime(tmp_path, result)
+
+
+def test_a_result_declaring_a_wrong_artifact_type_is_rejected(tmp_path):
+    touch(tmp_path, RUNTIME_PATH)
+    result = make_runtime_result()
+    result["outputs"][0]["godot_type"] = "SpriteFrames"
+
+    with pytest.raises(FinalizeEntryDraftError, match="must be the finalized stable"):
+        build_runtime(tmp_path, result)
+
+
+def test_a_drifted_finalized_name_never_reaches_ready(tmp_path):
+    """The stable PNG is `<asset_id>.png`; a `_v2` sibling is drift, not an asset."""
+    drifted = f"{stable_output_dir(RUNTIME_FAMILY, RUNTIME_ASSET_ID)}/{RUNTIME_ASSET_ID}_v2.png"
+    touch(tmp_path, drifted)
+    report = make_report(
+        path=drifted, label=RUNTIME_ASSET_ID, asset_id=RUNTIME_ASSET_ID
+    )
+
+    with pytest.raises(FinalizeEntryDraftError, match="must finalize into its stable"):
+        build_runtime(tmp_path, make_runtime_result(), report=report)
+
+
+def test_a_missing_finalized_image_never_reaches_ready(tmp_path):
+    with pytest.raises(FinalizeEntryDraftError, match="finalized file not found"):
+        build_runtime(tmp_path, make_runtime_result())
+
+
+def test_a_reference_family_cannot_be_promoted_with_a_result(tmp_path):
+    """`--result` compiles a native artifact; a reference never has one."""
+    touch(tmp_path, REFERENCE)
+    result = make_runtime_result(asset_type="screen-reference")
+
+    with pytest.raises(FinalizeEntryDraftError, match="only supported for background-map"):
+        build(
+            tmp_path,
+            write_report(tmp_path, make_report()),
+            result_path=write_runtime_result(tmp_path, result),
+        )
+
+
+def test_a_rejected_promotion_leaves_no_draft_behind(tmp_path):
+    """A partial registration is worse than none: nothing may be written."""
+    touch(tmp_path, RUNTIME_PATH)
+    result = make_runtime_result()
+    result["validation"]["levels"]["L4"] = False
+    result["validation"]["passed"] = False
+    out = tmp_path / ".godotmaker/asset-generation/work/entries/sky.json"
+
+    with pytest.raises(FinalizeEntryDraftError):
+        write_finalize_entry_draft(
+            write_report(
+                tmp_path,
+                make_report(
+                    path=RUNTIME_PATH, label=RUNTIME_ASSET_ID, asset_id=RUNTIME_ASSET_ID
+                ),
+            ),
+            asset_id=RUNTIME_ASSET_ID,
+            tag=TAG,
+            production_family=RUNTIME_FAMILY,
+            project_root=tmp_path,
+            out=out,
+            result_path=write_runtime_result(tmp_path, result),
+        )
+
+    assert not out.exists()
+
+
 def test_unknown_production_family_is_rejected(tmp_path):
     touch(tmp_path, REFERENCE)
 
