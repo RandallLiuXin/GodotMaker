@@ -172,8 +172,9 @@ def test_asset_producer_outcome_template_matches_its_enforcer():
     assert payload["blockers"] == []
 
     # The cross-field rules the hook rejects on must be stated to the producer.
-    assert "`status` `DONE` requires `validation.passed` true" in producer
-    assert "requires at least one blocker" in producer
+    assert "Use `status` `DONE` only with `validation.passed` true" in producer
+    assert "write at least one blocker" in producer
+    assert "Set `report_type` to `asset-producer`." in producer
 
 
 def test_gm_asset_manager_reads_the_machine_outcome():
@@ -181,18 +182,15 @@ def test_gm_asset_manager_reads_the_machine_outcome():
     skill = _flat(_read("skills/core/gm-asset/SKILL.md"))
 
     assert f"the fenced JSON object carrying `{OUTCOME_VERSION_KEY}`" in skill
-    assert "Never read it from the markdown prose" in skill
+    assert "Do not take the status from the markdown prose." in skill
     assert "when the outcome block's `blockers` make the failure actionable" in skill
-    assert "A report the hook rejected is a rejected attempt, not a terminal result." in skill
 
-    # The hook's anti-deadloop escape hatch can release a report with no valid
-    # block, so the manager may not assume the hook filtered those out.
-    assert 'declares `"report_type": "asset-producer"`' in skill
-    assert "anti-deadloop escape hatch releases a subagent after repeated failures" in skill
-    assert "A block for any other role is not a producer handoff." in skill
-    assert "the report has no terminal status" in skill
-    assert "register nothing from it" in skill
-    assert "Do not infer a status from the prose to fill the gap." in skill
+    # The manager verifies the block itself rather than assuming the hook
+    # filtered every invalid one out.
+    assert "Confirm the block is present, well-formed, and declares" in skill
+    assert '`"report_type": "asset-producer"`' in skill
+    assert "without one, register nothing from that report" in skill
+    assert "re-dispatch the production unit once or report it as blocked" in skill
 
 
 def test_first_class_asset_skills_are_the_only_entry_points():

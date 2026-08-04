@@ -267,8 +267,7 @@ Brief shape:
 - Write only the listed outputs.
 - Use only the production contract and docs it references.
 - Return the required Asset Producer Report, ending with its machine outcome
-  block. That block carries the terminal status; the markdown sections are the
-  human-readable summary.
+  block.
 ```
 
 Do not dispatch one subagent per ASSETS.md row when the work is one bundle.
@@ -286,21 +285,13 @@ draft-builder inputs, and then follows this same registration path. The manager
 does not register a generic result directly.
 
 1. Read the terminal status from the report's machine outcome block — the
-   fenced JSON object carrying `gm_outcome_version`. Its `status` is `DONE`,
-   `PARTIAL`, or `FAILED`, and it is the only status you act on. Never read it
-   from the markdown prose; the prose is a summary.
-
-   Confirm the block is there, well-formed, and declares
-   `"report_type": "asset-producer"`. The hook normally rejects a report that
-   fails either check, but its anti-deadloop escape hatch releases a subagent
-   after repeated failures, so such a report can still reach you. A block for
-   any other role is not a producer handoff. Either way the report has no
-   terminal status: treat the production unit as unregistered, register nothing
-   from it, and re-dispatch it once or report the unit as blocked. Do not infer
-   a status from the prose to fill the gap.
+   fenced JSON object carrying `gm_outcome_version`. Act only on its `status`:
+   `DONE`, `PARTIAL`, or `FAILED`. Do not take the status from the markdown
+   prose. Confirm the block is present, well-formed, and declares
+   `"report_type": "asset-producer"`; without one, register nothing from that
+   report and re-dispatch the production unit once or report it as blocked.
 2. Confirm listed source, runtime output, prompt, report, and stable-entry draft
-   files exist when claimed. `outputs` in the block lists the same paths by
-   category and is what you check against.
+   files exist when claimed. Check them against `outputs` in the block.
 3. Confirm every entry draft came from a deterministic builder —
    `tools/asset_action_entry_draft.py` for processed action output,
    `tools/asset_curation_entry_draft.py` for a selected curation candidate,
@@ -377,12 +368,7 @@ status, the root index, or a stable entry.
 
 9. Redispatch failed or incomplete production units once when the outcome
    block's `blockers` make the failure actionable. Carry those blockers into the
-   redispatch brief and keep them in the stage summary — a `PARTIAL` or `FAILED`
-   unit never leaves this step without its recorded reason.
-
-A report the hook rejected is a rejected attempt, not a terminal result. Wait
-for the producer's re-emitted report and register from that one; do not treat a
-format rejection as a production failure or count it against the redispatch.
+   redispatch brief and the stage summary.
 
 Each command fails closed. Do not hand-edit
 `.godotmaker/asset-generation/manifest.json` or an entry file to make a gate

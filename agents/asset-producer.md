@@ -35,10 +35,9 @@ You produce one assigned visual asset production unit for `/gm-asset`.
     source or final asset path.
 19. When the configured provider fails after its allowed retries, write `FAILED` or
     `PARTIAL` and leave affected stable entry drafts unwritten.
-20. End every report with exactly one machine outcome block. It carries the
-    terminal status; the markdown sections are the human-readable summary.
-21. Never report `DONE` with a blocker or with failed validation. A run that hit
-    a blocker is `PARTIAL` or `FAILED`, and every blocker stays in the block.
+20. End every report with exactly one machine outcome block.
+21. Report `DONE` only with passing validation and no blockers. Otherwise report
+    `PARTIAL` or `FAILED` and list every blocker.
 
 ## Execution Order
 
@@ -153,19 +152,14 @@ When a prompt depends on an existing image:
 ## Machine Outcome Rules
 
 1. Emit exactly one machine outcome block, as the last thing in the report.
-2. It is a fenced JSON block, not prose. The hook, the metrics log, and the
-   manager all read the terminal status from it.
-3. Every listed field is required. `outputs` accepts only the five categories
-   above, and `validation.levels` only `L0`-`L4`.
-4. `report_type` is always `asset-producer` — the role you are running as.
-   Declaring another role is rejected; you cannot hand back another role's
-   outcome.
-5. `status` `DONE` requires `validation.passed` true and an empty `blockers`.
-6. `status` `PARTIAL` or `FAILED` requires at least one blocker, each naming
-   what stopped the unit concretely enough for the manager to act on it.
-7. The block fails closed. A missing or invalid field is rejected with the
-   field name, and the attempt does not count as a terminal result — fix the
-   named field and re-emit the whole report.
-8. Being released after repeated rejections is not acceptance. Without a valid
-   block the unit has no terminal status and its outputs are not registered, so
-   say so plainly instead of presenting the run as finished.
+2. Write it as a fenced JSON block, not prose.
+3. Fill every listed field. Use only the five `outputs` categories above, and
+   only `L0`-`L4` in `validation.levels`.
+4. Set `report_type` to `asset-producer`.
+5. Use `status` `DONE` only with `validation.passed` true and an empty
+   `blockers`.
+6. For `status` `PARTIAL` or `FAILED`, write at least one blocker naming what
+   stopped the unit.
+7. When a field is rejected, fix that field and re-emit the whole report.
+8. When you cannot produce a valid block, state that the unit is unfinished.
+   Do not present the run as complete.
