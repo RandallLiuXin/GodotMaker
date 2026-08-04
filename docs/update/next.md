@@ -52,11 +52,11 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
-- Every public asset route must now prove its whole registration chain, and tagging a release fails while any advertised runtime route still has no adapter that turns its validated delivery into a worker-consumable entry.
+- Every public asset route now proves its whole registration chain in ordinary CI, so an advertised route cannot enter main without an adapter that turns its validated delivery into a worker-consumable entry.
 
 - A Skill that accepts more than one request shape now declares one registration chain per shape, so a variant whose adapter is missing can no longer hide behind a sibling variant that works.
 
-- Both `platform-strip` strip kinds are now recorded as having no complete registration chain, so their missing adapter is visible instead of reading as a working path.
+- Both `platform-strip` strip kinds now have complete registration chains that turn validated segment deliveries into worker-consumable stable entries.
 
 - A ui-kit or card-kit now registers one ready stable entry per runtime output, so its `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` are separately resolvable instead of unregisterable; `bundle_id` covers these two families alongside `compact-prop-pack`.
 - Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep

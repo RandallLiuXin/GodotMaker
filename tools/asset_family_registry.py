@@ -398,8 +398,8 @@ def routes(*, role: str | None = None) -> list[tuple[FamilySpec, DeliveryVariant
     """Return every ``(family, variant)`` pair, optionally filtered.
 
     Routes are the unit the closure test enumerates: a family with two request
-    shapes has two independent registration chains, and only one of them may be
-    closed.
+    shapes has two independent registration chains, so each one must be proven
+    independently.
     """
     return [
         (item, variant)
