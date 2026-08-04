@@ -6,9 +6,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from asset_family_registry import FAMILIES, OPEN, open_routes  # noqa: E402
-
-FAMILIES_OPEN_ROUTES = open_routes()
+from asset_family_registry import FAMILIES  # noqa: E402
 
 # The only modules allowed to name the retired schema, and only to reject it.
 LEGACY_REJECTION_TOOLS = {
@@ -1016,64 +1014,6 @@ def test_every_planned_family_routes_through_a_draft_builder():
             assert builder in section, (
                 f"{spec.family} lost the documented path to {builder}"
             )
-
-
-def test_no_open_route_is_also_documented_as_reaching_ready():
-    """The registry and the ladder must not disagree about who reaches `ready`.
-
-    A closure driver only proves the gap is real for the call it makes. When
-    `background-map`'s adapter landed upstream it arrived as a new opt-in
-    `--result` mode, so a driver still invoking the legacy no-result call kept
-    refusing and the registry kept claiming the route was open — while this
-    reference had already moved the family into the list that writes `ready`
-    directly. Reading the grant out of the ladder catches that contradiction
-    even when nothing about the old call path changed.
-    """
-    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
-    ladder = _flat(runtime.split("## Processing Status", 1)[1].split("\n## ", 1)[0])
-    grant = ladder.split("Nothing else may write `ready`.", 1)[0]
-    assert "writes `ready` directly" in grant, "the ladder lost its `ready` grant"
-
-    reaches_ready = {name for name in FAMILIES if f"`{name}`" in grant}
-    assert reaches_ready, "no family is documented as able to reach `ready`"
-
-    contradictory = sorted(
-        {
-            spec.family
-            for spec, _ in FAMILIES_OPEN_ROUTES
-            if spec.family in reaches_ready
-        }
-    )
-    assert not contradictory, (
-        "these families are documented as reaching `ready` while the registry "
-        "still records an open registration chain for them: "
-        + ", ".join(contradictory)
-    )
-
-
-def test_a_family_without_a_closed_chain_is_documented_as_open():
-    """An open family must say so where a reader looks for its builder.
-
-    Naming a family beside a builder that cannot actually register its delivery
-    reads as a working path. The registration reference has to state the gap in
-    the same place, or the next reader wires the wrong builder and the asset
-    silently never reaches a worker.
-    """
-    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
-    open_families = [
-        spec for spec in FAMILIES.values() if spec.registration_closure == OPEN
-    ]
-    if not open_families:
-        return
-
-    assert "### Open Registration Gaps" in runtime
-    gaps = _flat(runtime.split("### Open Registration Gaps", 1)[1].split("\n## ", 1)[0])
-    for spec in open_families:
-        assert f"`{spec.family}`" in gaps, (
-            f"{spec.family} has an open registration chain that the reference "
-            "never declares"
-        )
-        assert "tools/asset_family_registry.py" in gaps
 
 
 def test_gm_asset_registers_through_the_stable_entry_tools_only():

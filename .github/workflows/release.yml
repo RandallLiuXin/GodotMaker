@@ -12,24 +12,8 @@ env:
   PYTHON_VERSION: "3.12"
 
 jobs:
-  # A family that advertises a runtime delivery it can never register looks
-  # identical to a working one from inside a game project: the asset simply
-  # never reaches a worker. A tracked gap may live on main under its upstream
-  # issue; it may not reach a tag.
-  asset-family-closure:
-    name: Asset Family Closure
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-      - run: python tools/asset_family_registry.py --check --require-closed
-
   release:
     name: Create GitHub Release
-    needs: asset-family-closure
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

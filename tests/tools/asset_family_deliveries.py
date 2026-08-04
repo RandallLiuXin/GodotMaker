@@ -18,10 +18,8 @@ A route declared in the registry with no delivery here fails
 `test_asset_family_closure.py` rather than being skipped, which is the whole
 point: no route may enter a release without being driven end to end.
 
-Routes whose chain is still open (`registration_closure="open"`) get a builder
-too. Theirs raises `RegistrationGap`, carrying the concrete mechanical refusal
-that proves the gap is real. When the adapter lands upstream the refusal stops
-happening and the closure test fails until the registry is updated.
+Every route is driven through its production entry-draft builder. A new public
+route without a delivery here fails the closure suite instead of being skipped.
 """
 from __future__ import annotations
 
@@ -49,20 +47,18 @@ from asset_compact_prop_pack_entry_draft import (  # noqa: E402
 from asset_curation_entry_draft import write_fx_static_entry_draft  # noqa: E402
 from asset_family_registry import FAMILIES  # noqa: E402
 from asset_finalize_entry_draft import build_finalize_entry_draft  # noqa: E402
+from asset_platform_strip_entry_draft import (  # noqa: E402
+    build_platform_strip_entry_drafts,
+)
 from asset_scene_prop_set_entry_draft import (  # noqa: E402
     build_scene_prop_set_entry_draft,
 )
-from asset_stable_entry import StableEntryError, write_entry  # noqa: E402
 from asset_tileset_entry_draft import build_tileset_entry_draft  # noqa: E402
 from asset_ui_card_entry_draft import build_ui_card_entry_drafts  # noqa: E402
 
 TAG = "v0.1.0"
 ASSETS_DIR = REPO_ROOT / "skills" / "assets"
 LEVELS_PASSED = {level: True for level in ("L0", "L1", "L2", "L3", "L4")}
-
-
-class RegistrationGap(Exception):
-    """Raised by a family whose validated delivery cannot be registered today."""
 
 
 @dataclass
@@ -612,42 +608,31 @@ def _background_map(root: Path) -> Delivery:
 
 
 def _platform_strip(variant: str) -> Callable[[Path], Delivery]:
-    """Validated segments of either strip variant the schema cannot hold.
-
-    Both `kind` variants publish several independently bindable runtime outputs
-    into the strip's one stable directory, which only a `bundle_id` family may
-    do. Each is driven from its own fixture, so an adapter that lands for one
-    variant cannot make the other look covered.
-    """
+    """Register every validated segment through the platform-strip builder."""
 
     def build(root: Path) -> Delivery:
         request = representative_request("platform-strip", variant)
         result = representative_result("platform-strip", variant)
         declared = variant_of("platform-strip", variant)
         _materialize_result_files(root, result)
-        segment = result["outputs"][0]
-        source = result["sources"][0]
-
-        assert segment["godot_type"] in declared.artifact_types
-        assert source["layout"] in declared.entry_source_layouts
-
-        draft = {
-            "version": 1,
-            "asset_id": segment["name"],
-            "tag": TAG,
-            "production_family": "platform-strip",
-            "bundle_id": request["asset_id"],
-            "source_layout": {"type": source["layout"], "path": source["path"]},
-            "godot_artifact": {"type": segment["godot_type"], "path": segment["path"]},
-            "processing_status": "ready",
-        }
-        try:
-            write_entry(draft, project_root=root, check_files=True)
-        except StableEntryError as exc:
-            raise RegistrationGap(str(exc)) from exc
-        raise AssertionError(
-            f"platform-strip[{variant}] now registers its segments; close its gap "
-            "in tools/asset_family_registry.py"
+        assert {item["godot_type"] for item in result["outputs"]} == set(
+            declared.artifact_types
+        )
+        request_path = root / f"{variant}-platform-strip-request.json"
+        result_path = root / f"{variant}-platform-strip-result.json"
+        request_path.write_text(json.dumps(request), encoding="utf-8")
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+        entries = build_platform_strip_entry_drafts(
+            request_path, result_path, tag=TAG, project_root=root
+        )
+        return Delivery(
+            "platform-strip",
+            tuple(item["name"] for item in result["outputs"]),
+            entries,
+            request_path=request_path,
+            result_path=result_path,
+            bundle=True,
+            variant=variant,
         )
 
     return build

@@ -83,7 +83,7 @@ Regeneration overwrites the same directory in place. A timestamped, `v2`, or
 `final` drift path is rejected. Reference-only assets keep their `references/`
 location and never write into this tree.
 
-`compact-prop-pack`, `ui-kit`, and `card-kit` are the bundle families: one
+`compact-prop-pack`, `platform-strip`, `ui-kit`, and `card-kit` are the bundle families: one
 production delivers several separately bindable resources, so their logical
 stable entries have distinct `asset_id` values but share `bundle_id` and the
 physical directory `assets/generated/<production_family>/<bundle_id>/`. Each
@@ -126,8 +126,8 @@ entry to `ready` only after its own L0-L4 loop passes. Both do that promotion by
 handing the evidence back to the same deterministic builder, which binds the
 promotion to the recorded build fingerprint instead of to the stable path.
 A first-class Skill that already holds a passing result
-when it drafts — `background-map`, `compact-prop-pack`, `scene-prop-set`,
-`ui-kit`, `card-kit`, and `tileset` — writes `ready` directly.
+when it drafts — `background-map`, `compact-prop-pack`, `platform-strip`,
+`scene-prop-set`, `ui-kit`, `card-kit`, and `tileset` — writes `ready` directly.
 Nothing else may write `ready`.
 
 ## Stable Entry Contract
@@ -167,8 +167,8 @@ Rules:
 
 3. Both paths are `res://` paths under the asset's stable output directory. A
    path under `.godotmaker/` is rejected, so finalize into the stable directory
-   before drafting the entry. A compact-prop-pack entry may instead use its
-   validated `bundle_id` directory; no other family may do so.
+   before drafting the entry. A bundle-family entry may instead use its
+   validated `bundle_id` directory.
 4. Only a native compiler writes `godot_artifact`. Never point it at the source
    image to make an asset look finished — a `grid_sheet` is not a `SpriteFrames`
    just because its sheet exists, and a worker that loads it gets a static image
@@ -176,8 +176,8 @@ Rules:
    every source layout runtime-ready: a family without its own compiler and
    validation path stays at `source_ready` with no `godot_artifact`. A family
    with both paths — `background-map`, `character-bundle`, `fx-bundle`,
-   `compact-prop-pack`, `scene-prop-set`, `ui-kit`, `card-kit`, and `tileset` —
-   follows its explicit contract instead, and every one of them has a
+   `compact-prop-pack`, `platform-strip`, `scene-prop-set`, `ui-kit`, `card-kit`,
+   and `tileset` — follows its explicit contract instead, and every one of them has a
    deterministic builder that registers what it compiled. The `single ->
    Texture2D` route is the one case where the artifact is the source image
    itself: Godot's default import already produces the `Texture2D`, so both
@@ -188,7 +188,7 @@ Rules:
    the artifact, never an entry field.
 7. `bundle_id` is allowed only for a family whose one production delivers
    several separately bindable runtime resources out of one directory —
-   `compact-prop-pack`, `ui-kit`, and `card-kit` — and it names that shared
+   `compact-prop-pack`, `platform-strip`, `ui-kit`, and `card-kit` — and it names that shared
    directory. Those entries use `<bundle_id>--<logical_output_id>` as their
    `asset_id`. No other extra runtime field is allowed. Regenerate through
    `/gm-asset` instead of adding one.
@@ -376,6 +376,19 @@ This adapter requires an exact declared atlas/result match, existing physical
 atlas and `.tres` files, and an all-true L0-L4 result. It emits one draft per
 logical prop, each with the shared `bundle_id`.
 
+Validated platform strip (`platform-strip`):
+
+```bash
+python tools/asset_platform_strip_entry_draft.py \
+  --request <request.json> --result <result.json> --tag <tag> \
+  --project-root . \
+  --out-dir .godotmaker/asset-generation/work/entries
+```
+
+This builder requires the declared ordered segment set, exact stable runtime
+paths for the selected `single` or `atlas` kind, and a passing L0-L4 result. It
+emits one ready draft per segment under the strip's shared `bundle_id`.
+
 Validated UI or card kit (`ui-kit`, `card-kit`):
 
 ```bash
@@ -455,7 +468,7 @@ compiler, or L0-L4 checks required by a family that can reach `ready`.
 Producer reports list stable entry drafts. The manager writes each entry, upserts
 its pointer, and runs the root-index gate before updating ASSETS.md.
 
-For `ui-kit`, `card-kit`, and `compact-prop-pack`, the independent child entries
+For `ui-kit`, `card-kit`, `compact-prop-pack`, and `platform-strip`, the independent child entries
 are one production bundle. After every child is ready and registered, write a
 pointer-only bundle manifest that names the existing ASSETS.md planning rows
 satisfied by the production unit:
@@ -509,28 +522,12 @@ not independently validated as `ready` `MISSING`.
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.
 
-### Open Registration Gaps
+### Platform-strip Registration
 
-Two advertised routes have no complete registration chain today. Each one
-produces and validates a real delivery, but nothing turns that delivery into a
-worker-consumable entry, so their ASSETS.md rows stay `MISSING`. Report the
-blockage; do not work around it by hand-writing a draft or editing a status:
-
-1. `platform-strip` with `kind: "single"` — no deterministic entry-draft builder
-   exists. It publishes one `Texture2D` per segment into the strip's one stable
-   directory, which only a `bundle_id` family may do.
-2. `platform-strip` with `kind: "atlas"` — no deterministic entry-draft builder
-   exists. Its several `AtlasTexture` segments share that same directory, with
-   the same consequence.
-
-A family's request shape decides which of these applies: a Skill that accepts
-more than one shape has one registration chain per shape, and closing one does
-not close the other.
-
-`tools/asset_family_registry.py` carries every gap as data, so a route's real
-delivery and registration semantics stay readable from one place while they are
-being closed. `python tools/asset_family_registry.py --check --require-closed`
-is the release gate that refuses to tag while any of them is still open.
+Run `tools/asset_platform_strip_entry_draft.py` after a passing platform-strip
+result. Both `kind: "single"` and `kind: "atlas"` create one ready entry per
+declared segment. Their entries share the strip's `bundle_id`, and the bundle
+manifest updates all original planning rows atomically.
 
 ## Curation
 

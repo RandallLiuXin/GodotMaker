@@ -17,7 +17,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
-- Added `tools/asset_family_registry.py`, the single authoritative map of every public Asset Skill route's source layout, Godot artifact, registration adapter, and terminal status.
+- Added `tools/asset_family_registry.py` and platform-strip entry drafts so every public Asset Skill route reaches a worker through one authoritative registration map.
 
 - `/gm-asset` can now plan, dispatch, and register the `tileset` production unit, so a validated `TileSet` reaches a worker as a tile library instead of stopping at the Skill.
 

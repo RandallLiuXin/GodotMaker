@@ -83,19 +83,6 @@ Steps to follow when publishing a new version of GodotMaker.
      public entrypoint. For the CLI-first path this is `godotmaker-cli`; direct
      `/gm-scaffold` or `/gm-gdd` role commands are advanced/manual entrypoints,
      not the first-run command shown to new users.
-   - **Every advertised asset family can reach a worker.**
-     ```bash
-     python tools/asset_family_registry.py --check --require-closed
-     ```
-     This fails while any public runtime route in
-     `tools/asset_family_registry.py` still has an incomplete registration
-     chain — a family whose Skill produces and validates a real delivery that
-     no adapter can turn into a `ready` stable entry. Such a gap may live on
-     `main` under its upstream issue, but from inside a game project it is
-     indistinguishable from a working family, so it must not ship in a tag.
-     The `Asset Family Closure` job in `release.yml` runs the same command and
-     blocks the release; do not tag around it. Close the adapter, or drop the
-     family from the registry and from `/gm-asset`'s routing tables.
    - **New config keys are in `config.yaml.default`.** Any `*_model` field
      newly referenced by a skill must also be declared in
      `config/config.yaml.default` with the same default value. The automated

@@ -242,8 +242,27 @@ def _expected_bundle_entries(
             raise AssetBundleManifestError(
                 f"bundle request/result handoff is invalid: {exc}"
             ) from exc
+    if family == "platform-strip":
+        from asset_platform_strip_entry_draft import (
+            PlatformStripEntryDraftError,
+            build_platform_strip_entry_drafts,
+        )
+
+        try:
+            return build_platform_strip_entry_drafts(
+                request_path,
+                result_path,
+                tag=tag,
+                project_root=project_root,
+                check_files=True,
+            )
+        except PlatformStripEntryDraftError as exc:
+            raise AssetBundleManifestError(
+                f"bundle request/result handoff is invalid: {exc}"
+            ) from exc
     raise AssetBundleManifestError(
-        "bundle request asset_type must be ui-kit, card-kit, or compact-prop-pack"
+        "bundle request asset_type must be ui-kit, card-kit, compact-prop-pack, "
+        "or platform-strip"
     )
 
 

@@ -27,9 +27,6 @@ family-level assertions ("the type is in the family's set", "some source layout
 matches") pass against one variant's fixture while the other variant's adapter
 is missing entirely.
 
-A route whose chain is still open is not skipped: the registry records the
-missing link, and the test asserts the refusal is still real, so closing the gap
-upstream fails here until the registry is updated.
 """
 from __future__ import annotations
 
@@ -49,10 +46,8 @@ from asset_assets_md_update import (  # noqa: E402
 )
 from asset_bundle_manifest import write_bundle_manifest  # noqa: E402
 from asset_family_registry import (  # noqa: E402
-    CLOSED,
     ENTRY_PER_OUTPUT,
     FAMILIES,
-    OPEN,
     RUNTIME_ROLE,
     check_registry,
     routes,
@@ -80,7 +75,6 @@ from tests.tools.asset_family_deliveries import (  # noqa: E402
     DELIVERIES,
     TAG,
     Delivery,
-    RegistrationGap,
     planning_table,
     representative_result,
 )
@@ -96,8 +90,6 @@ def _keys(**filters) -> list[tuple[str, str]]:
 ALL_FAMILIES = sorted(FAMILIES)
 ALL_ROUTES = _keys()
 RUNTIME_ROUTES = _keys(role=RUNTIME_ROLE)
-CLOSED_ROUTES = _keys(closure=CLOSED)
-OPEN_ROUTES = _keys(closure=OPEN)
 REFERENCE_FAMILIES = sorted(
     name for name, spec in FAMILIES.items() if spec.is_reference_only
 )
@@ -106,7 +98,7 @@ BUNDLE_ROUTES = sorted(
     for spec, variant in routes()
     if variant.uses_bundle_id
 )
-SINGLE_ENTRY_CLOSED_ROUTES = sorted(set(CLOSED_ROUTES) - set(BUNDLE_ROUTES))
+SINGLE_ENTRY_ROUTES = sorted(set(ALL_ROUTES) - set(BUNDLE_ROUTES))
 
 
 def _variant(key: tuple[str, str]):
@@ -160,55 +152,7 @@ def test_the_registry_gate_catches_a_family_or_adapter_that_stopped_shipping(tmp
     assert any("ui-kit" in issue and "ships no Skill" in issue for issue in issues)
 
 
-def test_the_release_gate_fails_while_any_runtime_route_cannot_reach_a_worker(tmp_path):
-    """`--require-closed` is what keeps a known gap out of a tagged release.
-
-    The structural pass deliberately stays green so a tracked gap can live on
-    `main` under its upstream issue without turning every CI run red. The
-    release gate is the one that must refuse, naming each open runtime route.
-    """
-    _mirror_registry_inputs(tmp_path)
-    assert check_registry(tmp_path) == []
-
-    issues = check_registry(tmp_path, require_closed=True)
-    expected = [f"{family}[{variant}]" for family, variant in OPEN_ROUTES]
-
-    assert expected, "the release gate has nothing to prove without an open route"
-    assert len(issues) == len(expected)
-    for label in expected:
-        assert any(issue.startswith(label) for issue in issues), label
-    for issue in issues:
-        assert "no complete registration chain" in issue
-
-
-def test_the_release_gate_is_wired_into_the_tag_workflow_and_checklist():
-    """A gate nobody runs is not a gate.
-
-    `--require-closed` only keeps a gap out of a release if the tag workflow
-    blocks on it and the checklist tells a human to run it, so assert both
-    surfaces name the exact command.
-    """
-    workflow = (REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
-    checklist = (REPO_ROOT / "docs/update/release-checklist.md").read_text(
-        encoding="utf-8"
-    )
-    command = "asset_family_registry.py --check --require-closed"
-
-    assert command in workflow
-    assert command in checklist
-    # The release job must depend on it; a parallel job that merely reports
-    # would still publish the tag.
-    assert "needs: asset-family-closure" in workflow
-
-
-def test_publish_gates_on_the_registry_and_warns_about_every_open_route():
-    """A publish that ships an inconsistent family map is the failure mode.
-
-    Inside a game project an advertised family whose adapter is missing looks
-    exactly like a working one; the asset simply never reaches a worker. The
-    structural gate has to run before the first copy, and an open route has to
-    be said out loud rather than installed silently.
-    """
+def test_publish_fails_closed_when_the_registry_disagrees_with_the_checkout():
     source = (REPO_ROOT / "tools" / "publish.py").read_text(encoding="utf-8")
     body = source.split("\ndef main():", 1)[1]
 
@@ -216,8 +160,6 @@ def test_publish_gates_on_the_registry_and_warns_about_every_open_route():
     gate = body.index("check_registry(repo_root)")
     assert gate < body.index("publish_skills(repo_root")
     assert gate < body.index('publish_directory(repo_root / "tools"')
-    warning = body.index("open_routes(role=RUNTIME_ROLE)")
-    assert warning < body.index("publish_skills(repo_root")
 
 
 def test_every_declared_route_has_a_delivery_that_is_actually_driven():
@@ -256,32 +198,6 @@ def test_the_registry_and_the_stable_entry_schema_agree_on_layouts():
 
     assert declared <= SOURCE_LAYOUT_TYPES
     assert set(REFERENCE_LAYOUTS) <= declared
-
-
-def test_open_routes_carry_the_gap_that_keeps_them_out_of_a_release():
-    for family, variant in OPEN_ROUTES:
-        assert _variant((family, variant)).open_gap, (
-            f"{family}[{variant}] is open with no recorded gap"
-        )
-    assert CLOSED_ROUTES, "the registry lost every closed route"
-
-
-def test_a_family_is_closed_only_when_every_shape_it_accepts_is():
-    """One working variant must not mark a family closed.
-
-    `fx-bundle` has two closed shapes and `platform-strip` two open ones; the
-    rule that matters is the mixed case, where a family with a working static
-    route and a missing animated one would otherwise read as covered.
-    """
-    for spec in FAMILIES.values():
-        expected = (
-            CLOSED
-            if all(v.registration_closure == CLOSED for v in spec.variants)
-            else OPEN
-        )
-        assert spec.registration_closure == expected
-    multi = [spec.family for spec in FAMILIES.values() if len(spec.variants) > 1]
-    assert sorted(multi) == ["fx-bundle", "platform-strip"]
 
 
 # --------------------------------------------------------------------------
@@ -371,7 +287,7 @@ def test_every_route_layout_artifact_pair_is_a_legal_compiler_route(key):
     )
 
 
-@pytest.mark.parametrize("key", CLOSED_ROUTES, ids=_route_id)
+@pytest.mark.parametrize("key", ALL_ROUTES, ids=_route_id)
 def test_a_closed_route_names_deterministic_builders_that_exist(key):
     variant = _variant(key)
 
@@ -425,7 +341,7 @@ def _complete_rows(project_root: Path, delivery: Delivery, paths: list[Path]) ->
     return assets_md
 
 
-@pytest.mark.parametrize("key", CLOSED_ROUTES, ids=_route_id)
+@pytest.mark.parametrize("key", ALL_ROUTES, ids=_route_id)
 def test_a_validated_delivery_reaches_a_worker_through_the_real_chain(tmp_path, key):
     family, name = key
     variant = _variant(key)
@@ -473,27 +389,12 @@ def test_a_validated_delivery_reaches_a_worker_through_the_real_chain(tmp_path, 
             assert (tmp_path / item["godot_artifact"]["path"][len("res://"):]).is_file()
 
 
-@pytest.mark.parametrize("key", OPEN_ROUTES, ids=_route_id)
-def test_an_open_route_still_refuses_at_the_link_the_registry_records(tmp_path, key):
-    """The gap must stay mechanically real, not just described in prose.
-
-    When the missing adapter lands, this stops raising and the test fails, which
-    is the signal to close that route in `tools/asset_family_registry.py`. Each
-    variant is driven from its own fixture, so an adapter that covers one shape
-    cannot silence the other.
-    """
-    with pytest.raises(RegistrationGap) as refusal:
-        DELIVERIES[key](tmp_path)
-
-    assert str(refusal.value)
-
-
 # --------------------------------------------------------------------------
 # the negative paths every route shape has to fail closed on
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("key", SINGLE_ENTRY_CLOSED_ROUTES, ids=_route_id)
+@pytest.mark.parametrize("key", SINGLE_ENTRY_ROUTES, ids=_route_id)
 def test_an_entry_below_its_terminal_status_never_completes_a_row(tmp_path, key):
     variant = _variant(key)
     delivery = DELIVERIES[key](tmp_path)

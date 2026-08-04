@@ -24,24 +24,12 @@ request shape and deliver a different layout and artifact for each:
 ``SpriteFrames`` for an animated one. Recording only the union of a family's
 layouts and artifacts hides a variant whose adapter is missing, because every
 individual assertion still passes against the other variant's fixture. Each
-variant therefore carries its own representative result and its own closure
-state.
+variant therefore carries its own representative result and registration
+contract.
 
-A route whose chain is not closed today is declared, not omitted:
-``registration_closure="open"`` records the concrete missing link and the
-upstream issue that owns it. The closure test then asserts the gap is still
-real, so closing it upstream fails here until this map is updated. Silence is
-never an option: an undeclared family, or an ``open`` route whose gap has
-quietly disappeared, is a test failure either way.
-
-Two gates read this map, and they are deliberately different:
-
-- ``--check`` is structural. It fails when a declared family, fixture, or
-  adapter stopped shipping. ``publish.py`` runs it before it copies anything,
-  and additionally warns about every open route it is about to install.
-- ``--check --require-closed`` is the release gate. It fails while any public
-  runtime route is still open, so a known gap can live on ``main`` under an
-  upstream issue without silently reaching a tagged release.
+Every declared route is complete. ``--check`` fails closed when a declared
+family, fixture, or adapter stopped shipping, and ``publish.py`` runs it before
+it copies anything.
 """
 from __future__ import annotations
 
@@ -73,10 +61,6 @@ ONE_ENTRY = "one_entry"
 ENTRY_PER_OUTPUT = "entry_per_output"
 ANCHOR_ENTRY = "anchor_entry"
 
-# ``registration_closure`` values.
-CLOSED = "closed"
-OPEN = "open"
-
 # The completion state each role's work stops at.
 TERMINAL_STATUS = {RUNTIME_ROLE: "ready", REFERENCE_ROLE: "source_ready"}
 
@@ -106,8 +90,8 @@ class DeliveryVariant:
     artifact_types: tuple[str, ...]
     #: How many runtime outputs one validated delivery declares.
     runtime_outputs: str
-    #: How that delivery becomes stable entries; ``None`` only while open.
-    entry_shape: str | None
+    #: How that delivery becomes stable entries.
+    entry_shape: str
     #: Deterministic ``tools/`` builders that adapt the result into drafts.
     entry_builders: tuple[str, ...]
     #: True when the builder drafts ``compiled`` and promotes it on a later run.
@@ -116,33 +100,16 @@ class DeliveryVariant:
     representative_result: str
     #: Repo-relative representative request, when the family ships one.
     representative_request: str | None = None
-    registration_closure: str = CLOSED
-    #: Why the chain is not closed, and who owns it. Required when ``open``.
-    open_gap: str | None = None
 
     def __post_init__(self) -> None:
         label = f"variant {self.variant!r}"
         if not self.variant.strip():
             raise ValueError("a delivery variant needs a non-empty name")
-        if self.registration_closure not in (CLOSED, OPEN):
-            raise ValueError(
-                f"{label}: unknown registration_closure "
-                f"{self.registration_closure!r}"
-            )
-        if (self.registration_closure == OPEN) != bool(self.open_gap):
-            raise ValueError(
-                f"{label}: an open registration_closure needs an open_gap, and a "
-                "closed one must not carry it"
-            )
         if self.runtime_outputs not in ("none", "one", "many"):
             raise ValueError(f"{label}: unknown runtime_outputs")
-        if self.registration_closure == CLOSED and not self.entry_builders:
-            raise ValueError(
-                f"{label}: a closed chain needs a deterministic entry builder"
-            )
-        if self.registration_closure == CLOSED and self.entry_shape is None:
-            raise ValueError(f"{label}: a closed chain needs an entry_shape")
-        if self.entry_shape not in (None, ONE_ENTRY, ENTRY_PER_OUTPUT, ANCHOR_ENTRY):
+        if not self.entry_builders:
+            raise ValueError(f"{label}: a route needs a deterministic entry builder")
+        if self.entry_shape not in (ONE_ENTRY, ENTRY_PER_OUTPUT, ANCHOR_ENTRY):
             raise ValueError(f"{label}: unknown entry_shape {self.entry_shape!r}")
         if not self.entry_source_layouts:
             raise ValueError(f"{label}: a variant must name its source layout")
@@ -175,8 +142,6 @@ class DeliveryVariant:
             "uses_bundle_id": self.uses_bundle_id,
             "representative_request": self.representative_request,
             "representative_result": self.representative_result,
-            "registration_closure": self.registration_closure,
-            "open_gap": self.open_gap,
         }
 
 
@@ -230,15 +195,6 @@ class FamilySpec:
         return any(item.uses_bundle_id for item in self.variants)
 
     @property
-    def registration_closure(self) -> str:
-        """A family is closed only when every shape it accepts is."""
-        return (
-            CLOSED
-            if all(item.registration_closure == CLOSED for item in self.variants)
-            else OPEN
-        )
-
-    @property
     def skill_dir(self) -> str:
         return f"{SKILLS_ROOT}/{self.family}"
 
@@ -253,7 +209,6 @@ class FamilySpec:
             "family": self.family,
             "role": self.role,
             "terminal_status": self.terminal_status,
-            "registration_closure": self.registration_closure,
             "uses_bundle_id": self.uses_bundle_id,
             "skill_dir": self.skill_dir,
             "variants": [item.to_dict() for item in self.variants],
@@ -385,8 +340,8 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("single",),
                 artifact_types=("Texture2D",),
                 runtime_outputs="many",
-                entry_shape=None,
-                entry_builders=(),
+                entry_shape=ENTRY_PER_OUTPUT,
+                entry_builders=("asset_platform_strip_entry_draft.py",),
                 promotes_from_compiled=False,
                 representative_request=(
                     "skills/assets/platform-strip/fixtures/"
@@ -396,22 +351,14 @@ _SPECS: tuple[FamilySpec, ...] = (
                     "skills/assets/platform-strip/fixtures/"
                     "representative-single-result.json"
                 ),
-                registration_closure=OPEN,
-                open_gap=(
-                    "No deterministic entry-draft builder exists for a "
-                    "kind: \"single\" strip. It publishes one Texture2D per "
-                    "segment into the strip's shared stable directory, which the "
-                    "stable-entry schema only allows through a bundle_id the "
-                    "family does not have, so no segment can be registered."
-                ),
             ),
             DeliveryVariant(
                 variant="atlas",
                 entry_source_layouts=("region_atlas",),
                 artifact_types=("AtlasTexture",),
                 runtime_outputs="many",
-                entry_shape=None,
-                entry_builders=(),
+                entry_shape=ENTRY_PER_OUTPUT,
+                entry_builders=("asset_platform_strip_entry_draft.py",),
                 promotes_from_compiled=False,
                 representative_request=(
                     "skills/assets/platform-strip/fixtures/"
@@ -420,14 +367,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 representative_result=(
                     "skills/assets/platform-strip/fixtures/"
                     "representative-result.json"
-                ),
-                registration_closure=OPEN,
-                open_gap=(
-                    "No deterministic entry-draft builder exists for a "
-                    "kind: \"atlas\" strip. Its several AtlasTexture segments "
-                    "share one stable directory, which the stable-entry schema "
-                    "only allows through a bundle_id the family does not have, so "
-                    "no segment can be registered."
                 ),
             ),
         ),
@@ -537,19 +476,16 @@ def spec(family: str) -> FamilySpec:
         raise FamilyRegistryError(f"unknown production family: {family}") from None
 
 
-def families(*, role: str | None = None, closure: str | None = None) -> list[FamilySpec]:
-    """Return the declared families, optionally filtered by role or closure."""
+def families(*, role: str | None = None) -> list[FamilySpec]:
+    """Return the declared families, optionally filtered by role."""
     return [
         item
         for item in FAMILIES.values()
-        if (role is None or item.role == role)
-        and (closure is None or item.registration_closure == closure)
+        if role is None or item.role == role
     ]
 
 
-def routes(
-    *, role: str | None = None, closure: str | None = None
-) -> list[tuple[FamilySpec, DeliveryVariant]]:
+def routes(*, role: str | None = None) -> list[tuple[FamilySpec, DeliveryVariant]]:
     """Return every ``(family, variant)`` pair, optionally filtered.
 
     Routes are the unit the closure test enumerates: a family with two request
@@ -560,14 +496,8 @@ def routes(
         (item, variant)
         for item in FAMILIES.values()
         for variant in item.variants
-        if (role is None or item.role == role)
-        and (closure is None or variant.registration_closure == closure)
+        if role is None or item.role == role
     ]
-
-
-def open_routes(*, role: str | None = None) -> list[tuple[FamilySpec, DeliveryVariant]]:
-    """Return every route whose registration chain is still incomplete."""
-    return routes(role=role, closure=OPEN)
 
 
 def to_dict() -> dict[str, Any]:
@@ -583,7 +513,7 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def check_registry(root: Path | None = None, *, require_closed: bool = False) -> list[str]:
+def check_registry(root: Path | None = None) -> list[str]:
     """Return every disagreement between this map and what the repo ships.
 
     The default pass is structural: an advertised family with no skill
@@ -591,12 +521,6 @@ def check_registry(root: Path | None = None, *, require_closed: bool = False) ->
     result, or a family the schema allows but this map never declares all mean
     the registration chain can no longer be reasoned about from one place.
     ``publish.py`` runs this before it copies anything.
-
-    ``require_closed`` adds the release rule: no public runtime route may still
-    be open. A tracked gap is allowed to live on ``main`` under its upstream
-    issue, but it may not reach a tagged release, because from inside a game
-    project an advertised family that can never reach a worker is
-    indistinguishable from a working one.
     """
     base = repo_root() if root is None else Path(root)
     issues: list[str] = []
@@ -636,13 +560,6 @@ def check_registry(root: Path | None = None, *, require_closed: bool = False) ->
                         f"{label} names a missing entry builder: tools/{builder}"
                     )
 
-    if require_closed:
-        for item, variant in open_routes(role=RUNTIME_ROLE):
-            issues.append(
-                f"{item.family}[{variant.variant}] is an advertised runtime route "
-                f"with no complete registration chain: {variant.open_gap}"
-            )
-
     return issues
 
 
@@ -656,19 +573,11 @@ def _main() -> int:
         action="store_true",
         help="Verify the registry against the shipped skills, fixtures, and builders",
     )
-    parser.add_argument(
-        "--require-closed",
-        action="store_true",
-        help=(
-            "Release gate: also fail while any public runtime route still has an "
-            "incomplete registration chain"
-        ),
-    )
     parser.add_argument("--project-root", type=Path, default=None)
     args = parser.parse_args()
 
-    if args.check or args.require_closed:
-        issues = check_registry(args.project_root, require_closed=args.require_closed)
+    if args.check:
+        issues = check_registry(args.project_root)
         if issues:
             print(json.dumps({"ok": False, "issues": issues}, indent=2))
             return 1
@@ -678,7 +587,6 @@ def _main() -> int:
                     "ok": True,
                     "families": len(FAMILIES),
                     "routes": len(routes()),
-                    "require_closed": args.require_closed,
                 }
             )
         )
