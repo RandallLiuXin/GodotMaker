@@ -1214,6 +1214,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#asset_family_registrypy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        asset_family_registry.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#asset_output_pathpy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2846,6 +2857,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#asset_family_registrypy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        asset_family_registry.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#asset_output_pathpy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2967,6 +2989,7 @@ debugging one source, one action sheet, or one curation decision.</p>
 <li><code>asset_ui_card_entry_draft.py</code></li>
 <li><code>asset_tileset_entry_draft.py</code></li>
 <li><code>asset_bundle_manifest.py</code></li>
+<li><code>asset_family_registry.py</code></li>
 </ol>
 <h2 id="asset_source_generatepy">asset_source_generate.py<a class="headerlink" href="#asset_source_generatepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_source_generate.py</code> generates API-backed source images from a JSON spec.
@@ -3148,14 +3171,33 @@ standalone runner wrote for the image it examined
 (<code>.godotmaker/asset-generation/reports/&lt;asset_id&gt;_validation.json</code>) and
 recomputes it from disk. Overwriting the PNG after validation — which a normal
 retry does, in place — fails closed until the Skill revalidates.</p>
+<h2 id="asset_family_registrypy">asset_family_registry.py<a class="headerlink" href="#asset_family_registrypy" title="Permanent link">&para;</a></h2>
+<p><code>asset_family_registry.py</code> is the authoritative map of the public first-class
+Asset Skill families. Its unit is the <em>route</em> — one family plus one request
+shape — because a Skill that accepts more than one shape has one registration
+chain per shape: <code>platform-strip</code> publishes per-segment <code>Texture2D</code> files for
+<code>kind: "single"</code> and cut <code>AtlasTexture</code> regions for <code>kind: "atlas"</code>. For each
+route it records the source layout and Godot artifact its stable entries bind,
+the deterministic entry-draft builder that adapts its result, how many entries
+one delivery produces, and the <code>processing_status</code> that completes it. Every
+public route has a complete registration chain.</p>
+<p>Manual entry point:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>tools/asset_family_registry.py<span class="w"> </span>--output<span class="w"> </span>json
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>python<span class="w"> </span>tools/asset_family_registry.py<span class="w"> </span>--check
+</code></pre></div>
+<p><code>--check</code> is the fail-closed structural gate used by <code>publish.py</code>. It rejects a
+mismatch between the declared family map and shipped public Skills, or a
+declared family missing its Skill, standalone validator, or entry-draft builder.
+Representative fixture presence and <code>compiled</code>-to-<code>ready</code> behavior are checked
+by the normal pytest route-closure suite.</p>
 <h2 id="asset_output_pathpy">asset_output_path.py<a class="headerlink" href="#asset_output_pathpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_output_path.py</code> is the authority for the stable output directory
 <code>assets/generated/&lt;production_family&gt;/&lt;asset_id&gt;/</code>. Every worker-consumable file
 for one asset lives there, so regeneration overwrites in place instead of
 drifting into a timestamped or <code>v2</code> path.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>tools/asset_output_path.py<span class="w"> </span>--family<span class="w"> </span>&lt;production_family&gt;<span class="w"> </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>python<span class="w"> </span>tools/asset_output_path.py<span class="w"> </span>--entry<span class="w"> </span>&lt;entry.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--check-files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>tools/asset_output_path.py<span class="w"> </span>--family<span class="w"> </span>&lt;production_family&gt;<span class="w"> </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>python<span class="w"> </span>tools/asset_output_path.py<span class="w"> </span>--entry<span class="w"> </span>&lt;entry.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--check-files
 </code></pre></div>
 <h2 id="asset_atlas_assemblepy">asset_atlas_assemble.py<a class="headerlink" href="#asset_atlas_assemblepy" title="Permanent link">&para;</a></h2>
 <p><code>asset_atlas_assemble.py</code> builds a physical PNG atlas from an explicit JSON
@@ -3164,13 +3206,13 @@ regions. Sources are project-root-relative PNG paths whose dimensions must
 exactly equal their declared slots; output PNG and metadata paths must both be
 inside <code>assets/generated/&lt;production_family&gt;/&lt;asset_id&gt;/</code>.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>tools/asset_atlas_assemble.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>--declaration<span class="w"> </span>&lt;fixed_slots.json&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--atlas-out<span class="w"> </span>assets/generated/ui-kit/&lt;asset_id&gt;/&lt;asset_id&gt;.png<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>--metadata-out<span class="w"> </span>assets/generated/ui-kit/&lt;asset_id&gt;/&lt;asset_id&gt;.json<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span>--family<span class="w"> </span>ui-kit<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span>--project-root<span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>tools/asset_atlas_assemble.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--declaration<span class="w"> </span>&lt;fixed_slots.json&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>--atlas-out<span class="w"> </span>assets/generated/ui-kit/&lt;asset_id&gt;/&lt;asset_id&gt;.png<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>--metadata-out<span class="w"> </span>assets/generated/ui-kit/&lt;asset_id&gt;/&lt;asset_id&gt;.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span>--family<span class="w"> </span>ui-kit<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">  </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">  </span>--project-root<span class="w"> </span>.
 </code></pre></div>
 <p>The tool writes the physical atlas and its deterministic region metadata as one
 rollback-protected output pair. It is the fixed-slot assembly step; compiling
@@ -3220,16 +3262,16 @@ arbitrary ClassDB types:</p>
 <p>Reference-only entries may use only <code>pending</code>, <code>source_ready</code>, or <code>failed</code>;
 <code>source_ready</code> is their sole completion state and is not runtime <code>ready</code>.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>tools/asset_stable_entry.py<span class="w"> </span>&lt;entry_draft.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--write<span class="w"> </span>--check-files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>tools/asset_stable_entry.py<span class="w"> </span>&lt;entry_draft.json&gt;<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--write<span class="w"> </span>--check-files
 </code></pre></div>
 <h2 id="asset_generation_indexpy">asset_generation_index.py<a class="headerlink" href="#asset_generation_indexpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_generation_index.py</code> owns the pointer-only root index at
 <code>.godotmaker/asset-generation/manifest.json</code>. It stores identity plus one
 <code>entry_path</code> per asset and never duplicates an entry body.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>tools/asset_generation_index.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>python<span class="w"> </span>tools/asset_generation_index.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--check-entries<span class="w"> </span>--check-files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>tools/asset_generation_index.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>python<span class="w"> </span>tools/asset_generation_index.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span>--check-entries<span class="w"> </span>--check-files
 </code></pre></div>
 <p><code>--check-entries</code> schema-validates each referenced entry. <code>--check-files</code> adds
 the on-disk check for every source and artifact and implies <code>--check-entries</code>,
@@ -3248,8 +3290,8 @@ updater validates the reference file plus every root-index pointer without
 requiring unrelated pending entries to have files. This records the same entry
 pointer but never creates a <code>godot_artifact</code> or sends the reference to a worker.</p>
 <p>Manual entry point:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>tools/asset_assets_md_update.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>python<span class="w"> </span>tools/asset_assets_md_update.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>--entry-file<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
 </code></pre></div>
 <h2 id="asset_runtime_resolverpy">asset_runtime_resolver.py<a class="headerlink" href="#asset_runtime_resolverpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_runtime_resolver.py</code> resolves one registered, generated ASSETS.md row
@@ -3259,10 +3301,10 @@ the generated root index to agree, then validates the ready stable entry and all
 referenced files. Reference-only entries never produce a worker runtime
 snapshot.</p>
 <p>Manual entry points:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>python<span class="w"> </span>tools/asset_runtime_resolver.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>--tag<span class="w"> </span>&lt;tag&gt;<span class="w"> </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>python<span class="w"> </span>tools/asset_runtime_resolver.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">  </span>--manifest-entry<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>python<span class="w"> </span>tools/asset_runtime_resolver.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>--tag<span class="w"> </span>&lt;tag&gt;<span class="w"> </span>--asset-id<span class="w"> </span>&lt;asset_id&gt;
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>python<span class="w"> </span>tools/asset_runtime_resolver.py<span class="w"> </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>--manifest-entry<span class="w"> </span>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json
 </code></pre></div>
 <h2 id="calling-these-by-hand">Calling these by hand<a class="headerlink" href="#calling-these-by-hand" title="Permanent link">&para;</a></h2>
 <p>You usually do not need to run these scripts directly. <code>/gm-asset</code> orchestrates

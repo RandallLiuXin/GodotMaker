@@ -2736,6 +2736,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
+<p>Added <code>tools/asset_family_registry.py</code> and platform-strip entry drafts so every public Asset Skill route reaches a worker through one authoritative registration map.</p>
+</li>
+<li>
 <p><code>/gm-asset</code> can now plan, dispatch, and register the <code>tileset</code> production unit, so a validated <code>TileSet</code> reaches a worker as a tile library instead of stopping at the Skill.</p>
 </li>
 <li>
@@ -2774,7 +2777,18 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
-<li>A ui-kit or card-kit now registers one ready stable entry per runtime output, so its <code>Theme</code>, every <code>StyleBoxTexture</code>, and every <code>AtlasTexture</code> are separately resolvable instead of unregisterable; <code>bundle_id</code> covers these two families alongside <code>compact-prop-pack</code>.</li>
+<li>
+<p>Every public asset route now proves its whole registration chain in ordinary CI, so an advertised route cannot enter main without an adapter that turns its validated delivery into a worker-consumable entry.</p>
+</li>
+<li>
+<p>A Skill that accepts more than one request shape now declares one registration chain per shape, so a variant whose adapter is missing can no longer hide behind a sibling variant that works.</p>
+</li>
+<li>
+<p>Both <code>platform-strip</code> strip kinds now have complete registration chains that turn validated segment deliveries into worker-consumable stable entries.</p>
+</li>
+<li>
+<p>A ui-kit or card-kit now registers one ready stable entry per runtime output, so its <code>Theme</code>, every <code>StyleBoxTexture</code>, and every <code>AtlasTexture</code> are separately resolvable instead of unregisterable; <code>bundle_id</code> covers these two families alongside <code>compact-prop-pack</code>.</p>
+</li>
 <li>
 <p>Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep
   independent stable entries behind one pointer-only bundle manifest. Existing
