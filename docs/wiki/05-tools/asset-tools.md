@@ -25,6 +25,7 @@ Primary pipeline tools:
 17. `asset_ui_card_entry_draft.py`
 18. `asset_tileset_entry_draft.py`
 19. `asset_bundle_manifest.py`
+20. `asset_family_registry.py`
 
 ## asset_source_generate.py
 
@@ -246,6 +247,26 @@ python tools/asset_finalize_entry_draft.py \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
+
+## asset_family_registry.py
+
+`asset_family_registry.py` is the authoritative map of the public first-class
+Asset Skill families. For each one it records the source layouts and Godot
+artifacts its stable entries may bind, the deterministic entry-draft builder
+that adapts its result, how many entries one delivery produces, and the
+`processing_status` that completes it. A family whose registration chain is not
+finished yet is recorded with the concrete missing link rather than left out, so
+an advertised family can never quietly ship without a way to reach a worker.
+
+Manual entry point:
+
+```bash
+python tools/asset_family_registry.py --output json
+python tools/asset_family_registry.py --check
+```
+
+`--check` is the gate `publish.py` runs before it copies anything: it fails when
+a declared family has no Skill, no representative result, or a missing adapter.
 
 ## asset_output_path.py
 

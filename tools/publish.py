@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE
+from asset_family_registry import check_registry
 from project_config import (
     ProjectConfigResult,
     create_project_config as create_project_config_file,
@@ -1367,6 +1368,19 @@ def main():
 
     # Resolve paths
     repo_root = Path(__file__).resolve().parent.parent
+
+    # Asset family gate — refuse to ship a family map that no longer matches the
+    # Skills, fixtures, and entry-draft builders in this checkout. An advertised
+    # family whose adapter is absent looks identical to a working one inside a
+    # game project, and only shows up when the asset never reaches a worker.
+    registry_issues = check_registry(repo_root)
+    if registry_issues:
+        print("ERROR: the asset family registry disagrees with this checkout:",
+              file=sys.stderr)
+        for issue in registry_issues:
+            print(f"  - {issue}", file=sys.stderr)
+        sys.exit(1)
+
     target = Path(args.target).resolve()
     target.mkdir(parents=True, exist_ok=True)
 

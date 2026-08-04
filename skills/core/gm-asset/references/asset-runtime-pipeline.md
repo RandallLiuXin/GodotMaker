@@ -49,6 +49,16 @@ output directory. Allowed values:
 
 `screen-reference` is the only reference-only family.
 
+`tools/asset_family_registry.py` is the authoritative map behind that list. It
+records, per family, the source layouts and Godot artifacts its entries may
+bind, which deterministic builder adapts its result, how many entries one
+delivery produces, and which `processing_status` completes it. Read it instead
+of inferring a family's semantics from prose:
+
+```bash
+python tools/asset_family_registry.py --output json
+```
+
 ## Stable Output Paths
 
 Every worker-consumable file for one asset — the runtime image, the Godot
@@ -268,8 +278,7 @@ A reference output in that result — a generated canonical, for example — is
 recorded as provenance in the support metadata; it never becomes a second entry
 or a `godot_artifact`.
 
-Selected curation candidate (`ui-kit`, `card-kit`, `compact-prop-pack`,
-`platform-strip`):
+Selected curation candidate:
 
 ```bash
 python tools/asset_curation_entry_draft.py \
@@ -278,6 +287,12 @@ python tools/asset_curation_entry_draft.py \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
+
+This generic mode records the selected image as a `source_ready` entry with no
+`godot_artifact`; it is not a `ready` path for any family. `ui-kit`, `card-kit`,
+and `compact-prop-pack` reach `ready` through their own adapters below, and the
+static `fx-bundle` form further down is the one curation route that compiles and
+then promotes.
 
 Compiled scene prop atlas (`scene-prop-set`):
 
@@ -310,7 +325,9 @@ Capture the report by redirecting `asset_image_finalize.py` stdout. The builder
 requires that run to have succeeded with `--require-aspect` inside tolerance and
 `--label <asset_id>`. It derives the layout from the family — `reference` pinned
 to `references/` for `screen-reference`, `single` pinned to the stable output
-directory for every other family.
+directory for every other family. It always drafts `source_ready`, which is the
+completion state for `screen-reference` only; see Open Registration Gaps below
+before using it for a runtime family.
 
 Ready compact prop atlas bundle:
 
@@ -457,6 +474,24 @@ not independently validated as `ready` `MISSING`.
 
 Register entries for new current-tag assets. Preserve prior entries unless the
 same current-tag asset is being regenerated.
+
+### Open Registration Gaps
+
+Two advertised families have no complete registration chain today. Each one
+produces and validates a real delivery, but nothing turns that delivery into a
+worker-consumable entry, so their ASSETS.md rows stay `MISSING`. Report the
+blockage; do not work around it by hand-writing a draft or editing a status:
+
+1. `platform-strip` — no deterministic entry-draft builder exists for it, and
+   its several `AtlasTexture` segments share one stable directory, which only a
+   `bundle_id` family may do.
+2. `background-map` — `asset_finalize_entry_draft.py` always drafts
+   `source_ready` without a compiled artifact, so a validated `Texture2D`
+   background never reaches `ready`.
+
+`tools/asset_family_registry.py` carries both gaps as data, so a family's real
+delivery and registration semantics stay readable from one place while they are
+being closed.
 
 ## Curation
 

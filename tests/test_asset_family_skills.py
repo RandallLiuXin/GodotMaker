@@ -9,41 +9,40 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ASSETS_DIR = REPO_ROOT / "skills" / "assets"
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
+from asset_family_registry import FAMILIES as FAMILY_REGISTRY  # noqa: E402
 from asset_skill_contract_check import check_result  # noqa: E402
 
 
-FAMILIES = {
-    "background-map": {
-        "role": "runtime",
-        "godot_type": "Texture2D",
-        "source_layout": "single",
-        "path_prefix": "res://assets/generated/background-map/",
-    },
-    "platform-strip": {
-        "role": "runtime",
-        "godot_type": "AtlasTexture",
-        "source_layout": "region_atlas",
-        "path_prefix": "res://assets/generated/platform-strip/",
-    },
-    "scene-prop-set": {
-        "role": "runtime",
-        "godot_type": "AtlasTexture",
-        "source_layout": "region_atlas",
-        "path_prefix": "res://assets/generated/scene-prop-set/",
-    },
-    "screen-reference": {
-        "role": "reference",
-        "godot_type": None,
-        "source_layout": None,
-        "path_prefix": "references/",
-    },
-    "compact-prop-pack": {
-        "role": "runtime",
-        "godot_type": "AtlasTexture",
-        "source_layout": "region_atlas",
-        "path_prefix": "res://assets/generated/compact-prop-pack/",
-    },
-}
+# The families whose SKILL.md carries the shared standalone request/result
+# contract wording. This list records which documents are in scope; what each
+# family actually delivers comes from the authoritative family registry, so a
+# delivery contract can no longer be restated (and drift) here.
+STANDALONE_CONTRACT_FAMILIES = (
+    "background-map",
+    "platform-strip",
+    "scene-prop-set",
+    "screen-reference",
+    "compact-prop-pack",
+)
+
+
+def _expected(family: str) -> dict:
+    spec = FAMILY_REGISTRY[family]
+    return {
+        "role": spec.role,
+        "godot_type": spec.artifact_types[0] if spec.artifact_types else None,
+        "source_layout": (
+            None if spec.is_reference_only else spec.entry_source_layouts[0]
+        ),
+        "path_prefix": (
+            "references/"
+            if spec.is_reference_only
+            else f"res://assets/generated/{family}/"
+        ),
+    }
+
+
+FAMILIES = {family: _expected(family) for family in STANDALONE_CONTRACT_FAMILIES}
 
 
 @pytest.mark.parametrize("family", FAMILIES)
@@ -192,7 +191,7 @@ def test_gm_asset_keeps_no_second_authoritative_copy_of_extracted_families():
     old_units = REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "production-units"
     assert not old_units.exists()
 
-    planned = sorted({*FAMILIES, "character-bundle", "fx-bundle", "ui-kit", "card-kit"})
+    planned = sorted(FAMILY_REGISTRY)
     for path in (
         REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md",
         REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "asset-planner.md",
@@ -209,7 +208,7 @@ def test_gm_asset_dispatches_extracted_families_through_named_skills():
     )
     producer = (REPO_ROOT / "agents" / "asset-producer.md").read_text(encoding="utf-8")
 
-    for family in FAMILIES:
+    for family in FAMILY_REGISTRY:
         assert f"| `{family}` | First-class Asset Skill: `{family}` |" in manager
         assert f"references/production-units/{family}.md" not in manager
     assert "### First-Class Result Adapter" in manager

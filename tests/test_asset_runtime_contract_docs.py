@@ -1,8 +1,12 @@
 import re
+import sys
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "tools"))
+
+from asset_family_registry import FAMILIES, OPEN  # noqa: E402
 
 # The only modules allowed to name the retired schema, and only to reject it.
 LEGACY_REJECTION_TOOLS = {
@@ -20,19 +24,11 @@ RETIRED_TOOLS = (
 )
 
 
-# The nine production units `/gm-asset` can plan. `tileset` ships as a
-# first-class Skill but has no manager routing yet.
-MANAGER_FAMILIES = (
-    "screen-reference",
-    "character-bundle",
-    "fx-bundle",
-    "ui-kit",
-    "card-kit",
-    "compact-prop-pack",
-    "background-map",
-    "platform-strip",
-    "scene-prop-set",
-)
+# Every production unit `/gm-asset` can plan, taken from the authoritative
+# family registry rather than restated here: a doc list that could omit a
+# shipped family is exactly how an advertised family kept a registration chain
+# nobody checked.
+MANAGER_FAMILIES = tuple(sorted(FAMILIES))
 
 
 def _read(relative: str) -> str:
@@ -1001,26 +997,48 @@ def test_every_planned_family_routes_through_a_draft_builder():
     Step 5 rejects a hand-written draft, so a family the manager can plan but
     whose registration reference names no builder would have no legal way to
     register at all. With the production-unit tree gone, the pipeline reference
-    is where that mapping lives.
+    is where that mapping lives, and the family registry is what says which
+    builder each family is entitled to.
     """
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
     section = _flat(runtime.split("## Registration Commands", 1)[1].split("\n## ", 1)[0])
     assert section, "the registration command reference disappeared"
 
-    for builder in (
-        "asset_action_entry_draft.py",
-        "asset_curation_entry_draft.py",
-        "asset_finalize_entry_draft.py",
-        "asset_compact_prop_pack_entry_draft.py",
-        "asset_scene_prop_set_entry_draft.py",
-    ):
-        assert builder in section, f"{builder} lost its documented registration path"
-
     missing = [family for family in MANAGER_FAMILIES if f"`{family}`" not in section]
     assert not missing, (
-        "these planned families have no deterministic draft builder: "
+        "these planned families are absent from the registration reference: "
         + ", ".join(missing)
     )
+    for spec in FAMILIES.values():
+        for builder in spec.entry_builders:
+            assert builder in section, (
+                f"{spec.family} lost the documented path to {builder}"
+            )
+
+
+def test_a_family_without_a_closed_chain_is_documented_as_open():
+    """An open family must say so where a reader looks for its builder.
+
+    Naming a family beside a builder that cannot actually register its delivery
+    reads as a working path. The registration reference has to state the gap in
+    the same place, or the next reader wires the wrong builder and the asset
+    silently never reaches a worker.
+    """
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+    open_families = [
+        spec for spec in FAMILIES.values() if spec.registration_closure == OPEN
+    ]
+    if not open_families:
+        return
+
+    assert "### Open Registration Gaps" in runtime
+    gaps = _flat(runtime.split("### Open Registration Gaps", 1)[1].split("\n## ", 1)[0])
+    for spec in open_families:
+        assert f"`{spec.family}`" in gaps, (
+            f"{spec.family} has an open registration chain that the reference "
+            "never declares"
+        )
+        assert "tools/asset_family_registry.py" in gaps
 
 
 def test_gm_asset_registers_through_the_stable_entry_tools_only():

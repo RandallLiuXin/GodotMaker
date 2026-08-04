@@ -23,6 +23,7 @@ GodotMaker 通过几个小型 Python 辅助脚本生成和处理 2D 美术资源
 17. `asset_ui_card_entry_draft.py`
 18. `asset_tileset_entry_draft.py`
 19. `asset_bundle_manifest.py`
+20. `asset_family_registry.py`
 
 ## asset_source_generate.py
 
@@ -194,6 +195,19 @@ python tools/asset_finalize_entry_draft.py \
   --project-root . \
   --out .godotmaker/asset-generation/work/entries/<asset_id>.json
 ```
+
+## asset_family_registry.py
+
+`asset_family_registry.py` 是公开 first-class Asset Skill family 的权威映射。它为每个 family 记录其 stable entry 可绑定的 source layout 与 Godot artifact、适配其 result 的确定性 entry draft builder、一次交付会产生几条 entry，以及标志完成的 `processing_status`。登记链尚未闭合的 family 会连同具体缺失环节一起记录，而不是被省略，因此一个已对外声明的 family 不可能在没有抵达 worker 的路径时悄悄发布。
+
+手动入口：
+
+```bash
+python tools/asset_family_registry.py --output json
+python tools/asset_family_registry.py --check
+```
+
+`--check` 就是 `publish.py` 在复制任何文件之前运行的 gate：当已声明的 family 缺少 Skill、缺少代表性 result 或缺少 adapter 时它会失败。
 
 ## asset_output_path.py
 
