@@ -42,6 +42,10 @@ class EventType(str, Enum):
     VERIFIER_FAIL = "verifier_fail"
     VERIFIER_PARTIAL = "verifier_partial"
 
+    ASSET_PRODUCER_DONE = "asset_producer_done"
+    ASSET_PRODUCER_PARTIAL = "asset_producer_partial"
+    ASSET_PRODUCER_FAILED = "asset_producer_failed"
+
     SKILL_READ = "skill_read"
 
     FILE_WRITE = "file_write"

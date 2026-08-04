@@ -176,10 +176,25 @@ Role detection order:
    4. `verifier:` / `verify:` → verifier
    5. `reviewer:` / `review:` → reviewer
 
-**handle_stop:** invoked from `on_subagent_stop.py`. Extracts report type,
-status, files changed from the assistant message. Looks up role from the
-matching start event. Records `SUBAGENT_STOP` metric plus outcome-specific
-events: `WORKER_DONE`, `VERIFIER_PASS`, etc.
+**handle_stop:** invoked from `on_subagent_stop.py`. Reads report type and
+status through `metrics.outcome.normalize_report` — the same entry point the
+report hook uses. Looks up role from the matching start event. Records
+`SUBAGENT_STOP` metric plus outcome-specific events: `WORKER_DONE`,
+`VERIFIER_PASS`, `ASSET_PRODUCER_PARTIAL`, etc.
+
+Every `SUBAGENT_STOP` carries `outcome_kind`:
+
+| `outcome_kind` | Meaning |
+|---|---|
+| `terminal` | The report passed validation. Writes the one outcome-specific event. |
+| `rejected_attempt` | The report hook blocked this stop. Writes no outcome event. |
+| `unverified` | Released without passing validation. Writes no outcome event. |
+
+Only a `terminal` stop writes an outcome-specific event, so a report that never
+passed validation can neither read as a result nor pre-empt the retry's real
+status. `unverified` covers the two ways an agent is released without its
+report being accepted: the anti-deadloop force-allow below, and a role that
+must carry a machine outcome block reaching this point without a valid one.
 
 ### on_subagent_stop.py
 
@@ -192,8 +207,15 @@ Claude-style subagent lifecycle hooks.
 Single dispatcher for the `SubagentStop` event. Reads stdin once and runs
 serially:
 
-1. `log_subagent.handle_stop(data)` — record metrics, save traces (never blocks)
-2. `check_worker_report.main_with_data(data)` — validate report (may block)
+1. `check_worker_report.evaluate(data)` — decide the verdict (no side effects)
+2. `log_subagent.handle_stop(data, verdict=…)` — record metrics, labelled by
+   that verdict (never blocks)
+3. `check_worker_report.apply_verdict(verdict)` — emit the decision (may block)
+
+**Why validate first:** the verdict decides whether the stop is a terminal
+record or a rejected attempt. Recording before validating wrote the rejected
+attempt as the run's result, and the duplicate-outcome guard then discarded the
+retry's real status.
 
 **Why a dispatcher:** Claude Code runs multiple `SubagentStop` hooks in
 parallel by default. Both handlers touch `metrics_current.jsonl` —
@@ -211,9 +233,42 @@ pipeline role is active. With no `.godotmaker/current_role`, ordinary
 subagent conversations are allowed and this hook does not block.
 
 **Format detection flow:**
-1. Detect `report_type` from message content (layered: exact marker → regex → fallback)
-2. If `report_type` detected → check required sections for that type
-3. If `report_type` is None but role is known (from start event) → block and demand a formatted report
+1. Resolve `report_type` and `status` through `metrics.outcome.normalize_report`
+   — the machine outcome block first, then the markdown layers (exact marker →
+   regex → fallback)
+2. If the role must carry a machine outcome block → validate it, fail closed
+3. If `report_type` detected → check required sections for that type
+4. If `report_type` is None but role is known (from start event) → block and demand a formatted report
+
+**Machine outcome block:** an `asset-producer` report must end with exactly one
+fenced JSON object carrying `gm_outcome_version`. It is the status protocol —
+the markdown headings are the human-readable summary. The hook, the metrics
+log, and the `/gm-asset` manager all read it through the same parser, so a
+mangled heading can no longer produce a `report_type: unknown` /
+`status: UNKNOWN` record beside a status the manager read correctly.
+
+| Field | Rule |
+|---|---|
+| `gm_outcome_version` | `1` |
+| `report_type` | Must equal the role the subagent was dispatched as |
+| `status` | `DONE`, `PARTIAL`, or `FAILED` |
+| `unit_id` | Non-empty string |
+| `outputs` | Object of path arrays, keyed only by `sources`, `runtime`, `prompts`, `reports`, `entry_drafts` |
+| `validation` | `{passed: bool, levels?: {L0–L4: bool}, notes?: string}` |
+| `blockers` | Array of strings; empty only when `status` is `DONE` |
+
+`DONE` additionally requires `validation.passed`; `PARTIAL` and `FAILED`
+require at least one blocker. A missing or invalid field is rejected with the
+field name, and that stop is logged as a `rejected_attempt` — or `unverified`
+if force-allow eventually released it. Neither writes an outcome event.
+
+**Role binding:** the role a subagent was dispatched as (payload `agent_type`,
+falling back to its `subagent_start` event) outranks anything the report claims
+about itself, and a block declaring a different `report_type` fails closed. A
+report cannot promote or demote its own role, so a record can never carry one
+role's `role` with another role's outcome. `log_subagent.classify_stop` re-checks
+the same equality, which covers the paths where the hook validated nothing
+(force-allow, or no active pipeline role).
 
 **Per-role required sections:**
 
@@ -238,6 +293,12 @@ have ≥50 characters of content. Prevents empty/trivial reviews.
 
 **Anti-deadloop:** `BLOCK_LIMIT = 2` per `agent_id` — after 2 blocks for the
 same subagent, force-allow with a warning rather than re-block forever.
+
+Force-allow releases the agent; it does **not** accept the report. That stop is
+logged as `unverified` and writes no outcome-specific event, so an unvalidated
+report can never claim the run's terminal status. For a role that must carry a
+machine outcome block, the warning also tells the agent the report is not a
+terminal result and its outputs must not be registered.
 
 **Gaps:**
 - Verifier reports: no check that tests were actually run (only format)

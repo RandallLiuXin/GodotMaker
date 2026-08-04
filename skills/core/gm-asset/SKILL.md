@@ -272,7 +272,8 @@ Brief shape:
 ### Scope
 - Write only the listed outputs.
 - Use only the production contract and docs it references.
-- Return the required Asset Producer Report.
+- Return the required Asset Producer Report, ending with its machine outcome
+  block.
 ```
 
 Do not dispatch one subagent per ASSETS.md row when the work is one bundle.
@@ -289,9 +290,14 @@ validates the generic result, materializes the normal report and deterministic
 draft-builder inputs, and then follows this same registration path. The manager
 does not register a generic result directly.
 
-1. Confirm status is `DONE`, `PARTIAL`, or `FAILED`.
+1. Read the terminal status from the report's machine outcome block — the
+   fenced JSON object carrying `gm_outcome_version`. Act only on its `status`:
+   `DONE`, `PARTIAL`, or `FAILED`. Do not take the status from the markdown
+   prose. Confirm the block is present, well-formed, and declares
+   `"report_type": "asset-producer"`; without one, register nothing from that
+   report and re-dispatch the production unit once or report it as blocked.
 2. Confirm listed source, runtime output, prompt, report, and stable-entry draft
-   files exist when claimed.
+   files exist when claimed. Check them against `outputs` in the block.
 3. Confirm every entry draft came from a deterministic builder —
    `tools/asset_action_entry_draft.py` for processed action output,
    `tools/asset_curation_entry_draft.py` for a selected curation candidate,
@@ -367,8 +373,9 @@ write the bundle manifest and leave every planning row `MISSING`.
 Keep runtime entries below `ready` as `MISSING`. Do not hand-edit an ASSETS.md
 status, the root index, or a stable entry.
 
-9. Redispatch failed or incomplete production units once when the failure is
-   actionable from the report.
+9. Redispatch failed or incomplete production units once when the outcome
+   block's `blockers` make the failure actionable. Carry those blockers into the
+   redispatch brief and the stage summary.
 
 Each command fails closed. Do not hand-edit
 `.godotmaker/asset-generation/manifest.json` or an entry file to make a gate

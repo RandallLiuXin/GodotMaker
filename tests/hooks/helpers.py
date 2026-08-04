@@ -91,6 +91,53 @@ def write_metrics(events: list[dict]):
             f.write(json.dumps(e) + "\n")
 
 
+def asset_producer_outcome(status="DONE", unit_id="ui_kit", blockers=None,
+                           passed=None, **overrides):
+    """Render a valid asset-producer machine outcome block as report markdown.
+
+    Defaults are internally consistent: DONE passes with no blockers, PARTIAL
+    and FAILED carry one. `overrides` replace top-level fields verbatim so a
+    test can inject an invalid value.
+    """
+    if blockers is None:
+        blockers = [] if status == "DONE" else ["provider returned no usable sheet"]
+    if passed is None:
+        passed = status == "DONE"
+    payload = {
+        "gm_outcome_version": 1,
+        "report_type": "asset-producer",
+        "status": status,
+        "unit_id": unit_id,
+        "outputs": {
+            "sources": [".godotmaker/asset-generation/sources/ui_source.png"],
+            "runtime": [],
+            "prompts": [],
+            "reports": [],
+            "entry_drafts": [],
+        },
+        "validation": {"passed": passed, "notes": "checked"},
+        "blockers": blockers,
+    }
+    payload.update(overrides)
+    return "### Machine Outcome\n```json\n" + json.dumps(payload, indent=2) + "\n```"
+
+
+def read_metrics(event=None):
+    """Read .godotmaker/metrics_current.jsonl, optionally filtered by event name."""
+    events = []
+    try:
+        with open(".godotmaker/metrics_current.jsonl", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    events.append(json.loads(line))
+    except FileNotFoundError:
+        return []
+    if event is not None:
+        events = [e for e in events if e.get("event") == event]
+    return events
+
+
 def cleanup_metrics():
     """Remove test metrics artifacts."""
     import shutil

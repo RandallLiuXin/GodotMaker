@@ -120,7 +120,7 @@ A condensed summary. For full detail on each hook, see [../../hooks.md](../../ho
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | Yes | Block `build` / `fixgap` from dispatching workers if prerequisite role did not complete |
 | `check_asset_access.py` | PreToolUse (Read) | Yes | Block the main agent from reading image files in `assets/` (forces analyst sub-agent) |
 | `log_subagent.py` | SubagentStart | No | Record sub-agent start with role detection; called again by `on_subagent_stop.py` for stop metrics |
-| `on_subagent_stop.py` | SubagentStop | Delegates | Serial dispatcher: runs `log_subagent.handle_stop` then `check_worker_report.main_with_data` to avoid a metrics file race |
+| `on_subagent_stop.py` | SubagentStop | Delegates | Serial dispatcher: runs `check_worker_report.evaluate`, then `log_subagent.handle_stop` with that verdict, then `check_worker_report.apply_verdict` — avoids a metrics file race and keeps a rejected report out of the terminal record |
 | `check_completion.py` | Stop | Yes | Final gate for `build` / `fixgap`: blocks if workers ran without verifier + reviewer |
 
 ---

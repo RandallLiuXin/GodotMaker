@@ -143,7 +143,22 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
    4. `verifier:` / `verify:` → verifier
    5. `reviewer:` / `review:` → reviewer
 
-**handle_stop：** 由 `on_subagent_stop.py` 调用。从助手消息中提取报告类型、状态、变更文件。从匹配的启动事件中查找角色。记录 `SUBAGENT_STOP` 指标以及结果特定事件：`WORKER_DONE`、`VERIFIER_PASS` 等。
+**handle_stop：** 由 `on_subagent_stop.py` 调用。通过 `metrics.outcome.normalize_report`
+读取报告类型与状态——与报告 Hook 完全相同的入口。从匹配的启动事件中查找角色。记录
+`SUBAGENT_STOP` 指标以及结果特定事件：`WORKER_DONE`、`VERIFIER_PASS`、
+`ASSET_PRODUCER_PARTIAL` 等。
+
+每条 `SUBAGENT_STOP` 都带 `outcome_kind`：
+
+| `outcome_kind` | 含义 |
+|---|---|
+| `terminal` | 报告通过校验，写入唯一的结果特定事件 |
+| `rejected_attempt` | 报告 Hook 拦截了这次 stop，不写结果事件 |
+| `unverified` | 未通过校验即被放行，不写结果事件 |
+
+只有 `terminal` 才写结果特定事件，因此未通过校验的报告既不会被读成结果，也不会
+抢先覆盖重试的真实终态。`unverified` 覆盖两种「放行但未接受报告」的情况：下文的
+防死锁 force-allow，以及必须携带 machine outcome 块的角色在没有合法块时走到这一步。
 
 ### on_subagent_stop.py
 
@@ -155,8 +170,12 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
 
 `SubagentStop` 事件的单一分发器。读取一次 stdin 后串行运行：
 
-1. `log_subagent.handle_stop(data)` — 记录指标，保存追踪（从不阻止）
-2. `check_worker_report.main_with_data(data)` — 验证报告（可能阻止）
+1. `check_worker_report.evaluate(data)` — 判定结论（无副作用）
+2. `log_subagent.handle_stop(data, verdict=…)` — 按该结论标记并记录指标（从不阻止）
+3. `check_worker_report.apply_verdict(verdict)` — 输出决定（可能阻止）
+
+**为什么先验证：** 结论决定这次 stop 是终态记录还是被拒绝的尝试。先记录再验证会把被
+拒绝的尝试写成本次运行的结果，随后去重保护会丢弃重试的真实状态。
 
 **为什么使用分发器：** Claude Code 默认并行运行多个 `SubagentStop` Hook。两个处理程序都会操作 `metrics_current.jsonl`——`log_subagent` 读取，`check_worker_report` 写入——这会导致间歇性的 `JSONDecodeError` 崩溃。在单个进程内串行执行消除了竞态条件。
 
@@ -168,9 +187,36 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
 仅在 `/gm-*` 流水线角色活跃时验证子代理角色的报告格式和内容。没有 `.godotmaker/current_role` 时，普通子代理对话被允许，该 Hook 不阻止。
 
 **格式检测流程：**
-1. 从消息内容检测 `report_type`（分层：精确标记 → 正则 → 回退）
-2. 若检测到 `report_type` → 检查该类型所需的章节
-3. 若 `report_type` 为 None 但从启动事件得知角色 → 阻止并要求提交格式化报告
+1. 通过 `metrics.outcome.normalize_report` 解析 `report_type` 与 `status`——先读
+   machine outcome 块，再走 Markdown 分层（精确标记 → 正则 → 回退）
+2. 若该角色必须携带 machine outcome 块 → 校验该块，fail closed
+3. 若检测到 `report_type` → 检查该类型所需的章节
+4. 若 `report_type` 为 None 但从启动事件得知角色 → 阻止并要求提交格式化报告
+
+**Machine outcome 块：** `asset-producer` 报告必须以恰好一个带 `gm_outcome_version`
+的 fenced JSON 对象结尾。它才是状态协议，Markdown 标题只是人类可读摘要。Hook、
+metrics 与 `/gm-asset` 管理端通过同一个 parser 读取它，因此错乱的标题不会再产生
+`report_type: unknown` / `status: UNKNOWN` 记录，同时管理端却读到了正确状态。
+
+| 字段 | 规则 |
+|---|---|
+| `gm_outcome_version` | `1` |
+| `report_type` | 必须等于该子代理被派发时的角色 |
+| `status` | `DONE`、`PARTIAL` 或 `FAILED` |
+| `unit_id` | 非空字符串 |
+| `outputs` | 路径数组对象，键只能是 `sources`、`runtime`、`prompts`、`reports`、`entry_drafts` |
+| `validation` | `{passed: bool, levels?: {L0–L4: bool}, notes?: string}` |
+| `blockers` | 字符串数组；只有 `status` 为 `DONE` 时才可为空 |
+
+`DONE` 还要求 `validation.passed` 为真；`PARTIAL` 与 `FAILED` 至少需要一条 blocker。
+字段缺失或非法会带着字段名被拒绝，该次 stop 记录为 `rejected_attempt`；若最终被
+force-allow 放行，则记录为 `unverified`。两者都不会写结果事件。
+
+**角色绑定：** 子代理被派发时的角色（payload 的 `agent_type`，回退到其
+`subagent_start` 事件）优先于报告对自身的任何声明；block 声明了不同的
+`report_type` 会 fail closed。报告无法自行升格或降格，因此记录里不可能出现一个角色
+的 `role` 配另一个角色的 outcome。`log_subagent.classify_stop` 会复核同一等式，覆盖
+hook 完全没有校验的路径（force-allow，或没有活跃的流水线角色）。
 
 **每角色必需章节：**
 
@@ -192,6 +238,11 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
 **Reviewer 内容检查：** ECS Review 和 Issues Found 章节各自必须有至少 50 个字符的内容，防止空洞或走过场的审查。
 
 **防死锁：** `BLOCK_LIMIT = 2`，每个 `agent_id` 最多 2 次拦截——超过 2 次后强制放行并给出警告，而不是永远阻止。
+
+Force-allow 只解除对 agent 的阻塞，**并不**表示接受该报告。这次 stop 记为
+`unverified` 且不写任何结果特定事件，未通过校验的报告因此永远无法占据本次运行的
+终态。对必须携带 machine outcome 块的角色，警告还会明确告知该报告不是终态、其产物
+不得被注册。
 
 **已知缺口：**
 - Verifier 报告：没有 Hook 验证 Verifier 确实运行了测试（仅检查格式）

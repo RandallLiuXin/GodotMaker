@@ -88,6 +88,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - A validated background-map now registers as a ready `single -> Texture2D` stable entry through its own finalize builder, instead of stopping at `source_ready` with no way to reach a worker; registration binds to the image bytes its L0-L4 run recorded, so regenerating onto the same stable path fails closed.
 
+- An asset production unit now ends the asset stage with one consistent status, so a retried report no longer reads as a failure and a partial result keeps its blockers instead of being recorded as unknown.
+
 - Replaced legacy magenta edge cleanup with PyMatting using a fixed validated trimap.
 
 - Compact prop packs now generate one provider-authored source sheet, normalize each curated prop into its declared atlas slot, and publish independently addressable AtlasTexture resources with repaired L0-L4 validation.

@@ -116,7 +116,7 @@ Claude Code / Codex，或提供显式的 OpenCode fallback。
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | 是 | 前置角色未完成时，阻止 `build` / `fixgap` 分发 worker |
 | `check_asset_access.py` | PreToolUse (Read) | 是 | 阻止主 Agent 直接读取 `assets/` 中的图片文件（强制使用分析师子 Agent） |
 | `log_subagent.py` | SubagentStart | 否 | 记录子 Agent 启动及角色信息；由 `on_subagent_stop.py` 再次调用以记录停止 metrics |
-| `on_subagent_stop.py` | SubagentStop | 委托执行 | 串行调度器：在同一进程中依次运行 `log_subagent.handle_stop` 和 `check_worker_report.main_with_data`，避免 metrics 文件竞争条件 |
+| `on_subagent_stop.py` | SubagentStop | 委托执行 | 串行调度器：依次运行 `check_worker_report.evaluate`、带该结论的 `log_subagent.handle_stop`、`check_worker_report.apply_verdict`，避免 metrics 文件竞争条件，并让被拒绝的报告不进入终态记录 |
 | `check_completion.py` | Stop | 是 | `build` / `fixgap` 的最终门禁：若 worker 运行后未经过验证器 + 审查员则拦截 |
 
 ---

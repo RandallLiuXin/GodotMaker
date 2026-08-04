@@ -35,6 +35,9 @@ You produce one assigned visual asset production unit for `/gm-asset`.
     source or final asset path.
 19. When the configured provider fails after its allowed retries, write `FAILED` or
     `PARTIAL` and leave affected stable entry drafts unwritten.
+20. End every report with exactly one machine outcome block.
+21. Report `DONE` only with passing validation and no blockers. Otherwise report
+    `PARTIAL` or `FAILED` and list every blocker.
 
 ## Execution Order
 
@@ -88,7 +91,7 @@ When a prompt depends on an existing image:
 
 ## Report Format
 
-```
+~~~
 ## Asset Producer Report: {Unit ID}
 
 ### Status: DONE | PARTIAL | FAILED
@@ -121,4 +124,42 @@ When a prompt depends on an existing image:
 
 ### Asset Skill Result
 {Validated generic result summary for a first-class Skill, or none.}
+
+### Machine Outcome
+```json
+{
+  "gm_outcome_version": 1,
+  "report_type": "asset-producer",
+  "status": "DONE | PARTIAL | FAILED",
+  "unit_id": "{unit id}",
+  "outputs": {
+    "sources": ["{paths}"],
+    "runtime": ["{paths}"],
+    "prompts": ["{paths}"],
+    "reports": ["{paths}"],
+    "entry_drafts": ["{paths}"]
+  },
+  "validation": {
+    "passed": true,
+    "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true},
+    "notes": "{short notes}"
+  },
+  "blockers": []
+}
 ```
+~~~
+
+## Machine Outcome Rules
+
+1. Emit exactly one machine outcome block, as the last thing in the report.
+2. Write it as a fenced JSON block, not prose.
+3. Fill every listed field. Use only the five `outputs` categories above, and
+   only `L0`-`L4` in `validation.levels`.
+4. Set `report_type` to `asset-producer`.
+5. Use `status` `DONE` only with `validation.passed` true and an empty
+   `blockers`.
+6. For `status` `PARTIAL` or `FAILED`, write at least one blocker naming what
+   stopped the unit.
+7. When a field is rejected, fix that field and re-emit the whole report.
+8. When you cannot produce a valid block, state that the unit is unfinished.
+   Do not present the run as complete.

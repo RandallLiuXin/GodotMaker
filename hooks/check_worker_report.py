@@ -6,9 +6,18 @@ results), Build, Memory Entry.
 
 Verifier reports MUST have: Overall, Results, Adversarial Probes.
 
+Asset-producer reports MUST additionally carry a machine-readable outcome
+block (see `metrics/outcome.py`); markdown headings are the human-readable
+presentation, the block is the status protocol.
+
 Blocks (JSON decision: "block") if required sections are missing. When no
 current_role is set, no /gm-* pipeline role is active and regular subagent
 conversations are allowed without report-format enforcement.
+
+Validation is split in two: `evaluate()` is pure and returns a verdict,
+`apply_verdict()` performs the side effects. `on_subagent_stop.py` runs
+`evaluate()` first so the metrics logger can label a rejected attempt as an
+attempt instead of writing a contradictory terminal record.
 
 Anti-deadloop: if a specific agent has been blocked BLOCK_LIMIT times,
 force-allow with a warning to prevent infinite retry loops.
@@ -18,16 +27,51 @@ import json
 import os
 import re
 import sys
+from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metrics import (
     record_event, read_current_events, EventType,
-    detect_report_type, event_has_role,
+    event_has_role, normalize_report, outcome_matches_role,
     REPORT_REQUIRED_SECTIONS, REPORT_FORMAT_HINTS, REPORT_REQUIRED_LABELS,
+    OUTCOME_REQUIRED_ROLES, OUTCOME_TEMPLATE,
+    KNOWN_ROLES,
     get_current_role, state,
 )
 
 BLOCK_LIMIT = 2  # Max blocks per subagent before force-allowing
+
+# Verdict actions
+ACTION_SKIP = "skip"          # hook not applicable — no message, no active role
+ACTION_ALLOW = "allow"        # report validated
+ACTION_BLOCK = "block"        # report rejected — this stop is an attempt, not a result
+ACTION_FORCE_ALLOW = "force_allow"  # deadloop escape hatch
+
+
+@dataclass
+class ReportVerdict:
+    """Outcome of report validation, decided before any side effect runs."""
+    action: str
+    reason: str = ""
+    report_type: str | None = None
+    state_key: str | None = None
+    agent_id: str = ""
+    block_count: int = 0
+    outcome_verified: bool = False
+    event_extra: dict = field(default_factory=dict)
+
+    @property
+    def rejected(self) -> bool:
+        return self.action == ACTION_BLOCK
+
+    @property
+    def force_allowed(self) -> bool:
+        """The deadloop escape hatch fired: the agent is released without its
+        report being validated. Release is not acceptance — see
+        `log_subagent.classify_stop`, which refuses to call such a stop terminal.
+        """
+        return self.action == ACTION_FORCE_ALLOW
+
 
 WORKER_TEST_SUBSTANCE = [
     r"test[_/].*\.gd",
@@ -75,15 +119,6 @@ def _extract_section(message: str, heading: str) -> str | None:
         message, re.DOTALL | re.IGNORECASE,
     )
     return match.group(1).strip() if match else None
-
-
-def _block(reason: str, state_key: str | None = None, **extra) -> None:
-    """Record block event, increment deadloop counter, print decision JSON, and exit."""
-    if state_key:
-        state.increment(state_key)
-    record_event(EventType.HOOK_BLOCK, hook="check_worker_report", reason=reason, **extra)
-    print(json.dumps({"decision": "block", "reason": reason}))
-    sys.exit(0)
 
 
 def check_sections(message: str, required: list[tuple[str, str]]) -> list[str]:
@@ -211,53 +246,116 @@ def main():
 
 def main_with_data(data: dict) -> None:
     """Validate a worker/verifier report. Called from on_subagent_stop.py dispatcher."""
+    apply_verdict(evaluate(data))
+
+
+def resolve_runtime_role(data: dict) -> str | None:
+    """The role this subagent was dispatched as, or None if not a known role.
+
+    The payload's `agent_type` is authoritative when it names a known role; the
+    recorded SubagentStart event is the fallback for generic dispatches. This is
+    the same resolution `log_subagent.handle_stop` uses, so the hook and the
+    metrics logger can never disagree about whose report this is.
+    """
+    agent_type = data.get("agent_type") or ""
+    if agent_type in KNOWN_ROLES:
+        return agent_type
+    agent_id = data.get("agent_id") or ""
+    if agent_id:
+        from log_subagent import lookup_role_from_events
+        role = lookup_role_from_events(agent_id)
+        if role in KNOWN_ROLES:
+            return role
+    return None
+
+
+def evaluate(data: dict) -> ReportVerdict:
+    """Decide whether a report passes validation. No side effects.
+
+    Separated from `apply_verdict` so the metrics logger can learn the verdict
+    before it records the stop, and label a rejected attempt accordingly.
+    """
     message = data.get("last_assistant_message") or ""
     if not message:
-        sys.exit(0)
+        return ReportVerdict(ACTION_SKIP)
 
     if not get_current_role():
-        sys.exit(0)
+        return ReportVerdict(ACTION_SKIP)
 
-    # Anti-deadloop: per-agent block counter
     agent_id = data.get("agent_id") or ""
+    report = normalize_report(message)
+
+    # The role this subagent was dispatched as outranks anything the report
+    # claims about itself. A report cannot promote or demote its own role.
+    runtime_role = resolve_runtime_role(data)
+    declared = report.report_type if report.report_type in KNOWN_ROLES else None
+    report_type = runtime_role or declared
+
+    # Anti-deadloop: per-agent block counter. The role and block are resolved
+    # first so the escape hatch can name the role it releases unvalidated.
     state_key = f"worker_report_block:{agent_id}" if agent_id else "worker_report_block:main"
     block_count = state.get(state_key, 0)
     if block_count >= BLOCK_LIMIT:
-        record_event(EventType.GATE_CHECK, gate="worker_report",
-                     result="force_allow",
-                     reason=f"Agent {agent_id} blocked {block_count} times, force-allowing",
-                     agent_id=agent_id)
-        warning = (
-            f"Force-allowing after {block_count} failed attempts. "
-            f"Your report for agent {agent_id} did not pass validation. "
-            f"You MUST inform the user that this report has unresolved quality issues "
-            f"and may need manual review. Do NOT silently proceed as if everything passed."
+        return ReportVerdict(
+            ACTION_FORCE_ALLOW, agent_id=agent_id, block_count=block_count,
+            report_type=report_type,
+            outcome_verified=outcome_matches_role(report, report_type),
         )
-        print(json.dumps({"decision": "allow", "reason": warning}), file=sys.stderr)
-        sys.exit(0)
+
+    def block(reason: str, **extra) -> ReportVerdict:
+        return ReportVerdict(ACTION_BLOCK, reason=reason, report_type=report_type,
+                             state_key=state_key, agent_id=agent_id,
+                             event_extra=extra)
 
     # Compute worktree directories once to avoid repeated glob calls in _resolve_file
     worktree_dirs = globmod.glob(os.path.join(".claude", "worktrees", "agent-*"))
 
-    report_type = detect_report_type(message)
-
-    if report_type is None:
-        # Check if this agent was dispatched with a known role (worker/verifier/reviewer)
-        # If so, it MUST output a report in the required format — block and demand it.
-        from log_subagent import lookup_role_from_events
-        role = lookup_role_from_events(agent_id) if agent_id else "unknown"
-
-        if role in REPORT_FORMAT_HINTS:
+    if declared is None:
+        # No recognizable report at all. If this agent was dispatched with a
+        # known role it MUST output one — block and demand the format.
+        if report_type in REPORT_FORMAT_HINTS:
             reason = (
-                f"You are a {role} but your output does not contain a properly formatted report. "
+                f"You are a {report_type} but your output does not contain a properly "
+                f"formatted report. "
                 f"You MUST end your response with a report in this format:\n\n"
-                f"{REPORT_FORMAT_HINTS[role]}\n\n"
-                f"Re-output your report now."
+                f"{REPORT_FORMAT_HINTS[report_type]}\n\n"
             )
-            _block(reason, state_key=state_key, agent_id=agent_id, role=role)
+            if report_type in OUTCOME_REQUIRED_ROLES:
+                reason += f"followed by the machine outcome block:\n\n{OUTCOME_TEMPLATE}\n\n"
+            if report.outcome_error:
+                reason += f"Your outcome block was also rejected: {report.outcome_error}\n\n"
+            reason += "Re-output your report now."
+            return block(reason, role=report_type, outcome_error=report.outcome_error)
 
         # Unknown role and no report format — not a worker/verifier/reviewer, allow
-        sys.exit(0)
+        return ReportVerdict(ACTION_SKIP)
+
+    # An outcome block is an explicit structured claim about which role produced
+    # this run. If it contradicts the dispatched role, fail closed: otherwise the
+    # record carries one role with another role's outcome, and the manager cannot
+    # tell whose handoff it is holding.
+    if report.outcome is not None and not outcome_matches_role(report, report_type):
+        reason = (
+            f"Your machine outcome block declares report_type "
+            f"'{report.outcome['report_type']}', but you were dispatched as "
+            f"{report_type}. The block must declare the role you are running as.\n"
+            f"Set \"report_type\": \"{report_type}\" and re-output your report."
+        )
+        return block(reason, declared_report_type=report.outcome["report_type"],
+                     runtime_role=report_type)
+
+    # The machine outcome block is the status protocol for the roles that carry
+    # one. Reject it before the markdown gate so the diagnostic names the field.
+    if report_type in OUTCOME_REQUIRED_ROLES and report.outcome is None:
+        detail = report.outcome_error or "No machine outcome block found."
+        reason = (
+            f"{report_type} report has no valid machine-readable outcome block: {detail}\n"
+            f"End your report with exactly one fenced JSON block in this shape:\n\n"
+            f"{OUTCOME_TEMPLATE}\n\n"
+            f"The markdown sections stay as the human-readable summary; this block "
+            f"is what the hook, metrics, and the manager read the status from."
+        )
+        return block(reason, outcome_error=report.outcome_error)
 
     if report_type in REPORT_REQUIRED_SECTIONS:
         sections = REPORT_REQUIRED_SECTIONS[report_type]
@@ -270,12 +368,12 @@ def main_with_data(data: dict) -> None:
                 f"Add each missing section as a ### heading with content underneath. "
                 f"Refer to the report format in your agent definition for the exact template."
             )
-            _block(reason, state_key=state_key, missing=missing)
+            return block(reason, missing=missing)
 
     if report_type == "worker":
         test_issue = check_test_substance(message)
         if test_issue:
-            _block(test_issue, state_key=state_key)
+            return block(test_issue)
 
         if os.path.exists("project.godot"):
             files = extract_files_changed(message)
@@ -292,19 +390,61 @@ def main_with_data(data: dict) -> None:
 
             res_issue = check_resource_paths(gd_contents, worktree_dirs)
             if res_issue:
-                _block(res_issue, state_key=state_key)
+                return block(res_issue)
 
             classname_issue = check_classname_conflicts(gd_contents)
             if classname_issue:
-                _block(classname_issue, state_key=state_key)
+                return block(classname_issue)
 
     if report_type == "reviewer":
         reviewer_issue = check_reviewer_substance(message)
         if reviewer_issue:
-            _block(reviewer_issue, state_key=state_key)
+            return block(reviewer_issue)
+
+    return ReportVerdict(ACTION_ALLOW, report_type=report_type,
+                         state_key=state_key, agent_id=agent_id)
+
+
+def apply_verdict(verdict: ReportVerdict) -> None:
+    """Record the verdict's events and emit the hook decision."""
+    if verdict.action == ACTION_SKIP:
+        return
+
+    if verdict.action == ACTION_FORCE_ALLOW:
+        record_event(EventType.GATE_CHECK, gate="worker_report",
+                     result="force_allow",
+                     reason=(f"Agent {verdict.agent_id} blocked "
+                             f"{verdict.block_count} times, force-allowing"),
+                     agent_id=verdict.agent_id,
+                     report_type=verdict.report_type,
+                     outcome_verified=verdict.outcome_verified)
+        warning = (
+            f"Force-allowing after {verdict.block_count} failed attempts. "
+            f"Your report for agent {verdict.agent_id} did not pass validation. "
+            f"You MUST inform the user that this report has unresolved quality issues "
+            f"and may need manual review. Do NOT silently proceed as if everything passed."
+        )
+        if verdict.report_type in OUTCOME_REQUIRED_ROLES and not verdict.outcome_verified:
+            warning += (
+                f" This {verdict.report_type} report has NO validated machine outcome, "
+                f"so it is not a terminal result: it is recorded as unverified and "
+                f"produces no outcome event. Do not register its outputs — re-run the "
+                f"production unit or escalate."
+            )
+        print(json.dumps({"decision": "allow", "reason": warning}), file=sys.stderr)
+        return
+
+    if verdict.action == ACTION_BLOCK:
+        if verdict.state_key:
+            state.increment(verdict.state_key)
+        record_event(EventType.HOOK_BLOCK, hook="check_worker_report",
+                     reason=verdict.reason, agent_id=verdict.agent_id,
+                     **verdict.event_extra)
+        print(json.dumps({"decision": "block", "reason": verdict.reason}))
+        return
 
     record_event(EventType.HOOK_ALLOW, hook="check_worker_report",
-                 report_type=report_type)
+                 report_type=verdict.report_type)
 
     # Inject progress reminder on successful validation
     reminder = build_progress_reminder()
