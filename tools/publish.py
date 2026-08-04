@@ -1369,10 +1369,10 @@ def main():
     # Resolve paths
     repo_root = Path(__file__).resolve().parent.parent
 
-    # Asset family gate — refuse to ship a family map that no longer matches the
-    # Skills, fixtures, and entry-draft builders in this checkout. An advertised
-    # family whose adapter is absent looks identical to a working one inside a
-    # game project, and only shows up when the asset never reaches a worker.
+    # Asset family structural gate — refuse to ship a declared map that no longer
+    # matches public Skills, standalone validators, or entry-draft builders in
+    # this checkout. The normal pytest route-closure suite owns representative
+    # fixture and compiled-to-ready behavior checks.
     registry_issues = check_registry(repo_root)
     if registry_issues:
         print("ERROR: the asset family registry disagrees with this checkout:",

@@ -284,7 +284,10 @@ python tools/asset_family_registry.py --check
 ```
 
 `--check` is the fail-closed structural gate used by `publish.py`. It rejects a
-declared family with no Skill, representative result, or entry-draft builder.
+mismatch between the declared family map and shipped public Skills, or a
+declared family missing its Skill, standalone validator, or entry-draft builder.
+Representative fixture presence and `compiled`-to-`ready` behavior are checked
+by the normal pytest route-closure suite.
 
 ## asset_output_path.py
 

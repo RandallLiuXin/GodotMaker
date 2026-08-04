@@ -211,7 +211,7 @@ python tools/asset_family_registry.py --output json
 python tools/asset_family_registry.py --check
 ```
 
-`--check` 是 fail-closed 结构性检查，`publish.py` 在复制任何文件之前运行它。已声明的 family 缺少 Skill、代表性 result 或 entry-draft builder 时失败。
+`--check` 是 fail-closed 结构性检查，`publish.py` 在复制任何文件之前运行它。已声明的 family 映射与已发布的公开 Skill 不一致，或 family 缺少其 Skill、standalone validator 或 entry-draft builder 时失败。代表性 fixture 的存在性和 `compiled` 到 `ready` 的行为由普通 pytest route-closure 测试检查。
 
 ## asset_output_path.py
 
