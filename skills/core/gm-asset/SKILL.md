@@ -207,12 +207,10 @@ Brief shape:
   reference. Never draft a second entry or a `godot_artifact` for a reference.
 - For `background-map`, pass the finalize report and the passing result to
   `tools/asset_finalize_entry_draft.py --result`. It writes one ready `single ->
-  Texture2D` entry whose source and artifact are the same finalized PNG, because
-  Godot's default import already produces that `Texture2D`. Do not wrap it in a
-  `.tres`. It registers only the image the Skill's validation record
-  fingerprinted, so a regeneration after validation fails closed until the Skill
-  revalidates. Without `--result` the entry stops at `source_ready` and never
-  reaches a worker.
+  Texture2D` entry using the finalized PNG as both source and artifact. Do not
+  create a `.tres`. That run requires the Skill's validation record; revalidate
+  a regenerated image before registering it. Without `--result` the entry stops
+  at `source_ready`.
 - For `character-bundle`, pass the Skill's archived resolved request, one
   action processing report per required action, and its validated result to
   `tools/asset_action_entry_draft.py` bundle mode. It registers exactly one
