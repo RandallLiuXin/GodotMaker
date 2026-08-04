@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """The authoritative map from a public Asset Skill family to its registration chain.
 
 Every first-class family advertised by ``/gm-asset`` delivers a generic Asset
@@ -13,20 +13,35 @@ family could advertise a runtime delivery, validate it, and still have no
 adapter that reaches ``ready``, and the suite stayed green.
 
 This module is that single source of truth. The enums elsewhere derive from it,
-and ``tests/tools/test_asset_family_closure.py`` drives every family declared
+and ``tests/tools/test_asset_family_closure.py`` drives every route declared
 here from its representative result through registration to a worker snapshot.
 
-A family whose chain is not closed today is declared, not omitted:
+**Routes, not families, are the unit.** Several Skills accept more than one
+request shape and deliver a different layout and artifact for each:
+``platform-strip`` publishes per-segment ``Texture2D`` files for
+``kind: "single"`` and cut ``AtlasTexture`` regions for ``kind: "atlas"``, and
+``fx-bundle`` compiles a ``Texture2D`` for a static effect and a
+``SpriteFrames`` for an animated one. Recording only the union of a family's
+layouts and artifacts hides a variant whose adapter is missing, because every
+individual assertion still passes against the other variant's fixture. Each
+variant therefore carries its own representative result and its own closure
+state.
+
+A route whose chain is not closed today is declared, not omitted:
 ``registration_closure="open"`` records the concrete missing link and the
 upstream issue that owns it. The closure test then asserts the gap is still
 real, so closing it upstream fails here until this map is updated. Silence is
-never an option: an undeclared family, or an ``open`` one whose gap has
+never an option: an undeclared family, or an ``open`` route whose gap has
 quietly disappeared, is a test failure either way.
 
-Machine-readable form::
+Two gates read this map, and they are deliberately different:
 
-    python tools/asset_family_registry.py --output json
-    python tools/asset_family_registry.py --check
+- ``--check`` is structural. It fails when a declared family, fixture, or
+  adapter stopped shipping. ``publish.py`` runs it before it copies anything,
+  and additionally warns about every open route it is about to install.
+- ``--check --require-closed`` is the release gate. It fails while any public
+  runtime route is still open, so a known gap can live on ``main`` under an
+  upstream issue without silently reaching a tagged release.
 """
 from __future__ import annotations
 
@@ -37,7 +52,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-REGISTRY_VERSION = 1
+REGISTRY_VERSION = 2
 
 # Where a family's Skill, standalone validator, and fixtures live.
 SKILLS_ROOT = "skills/assets"
@@ -62,16 +77,32 @@ ANCHOR_ENTRY = "anchor_entry"
 CLOSED = "closed"
 OPEN = "open"
 
+# The completion state each role's work stops at.
+TERMINAL_STATUS = {RUNTIME_ROLE: "ready", REFERENCE_ROLE: "source_ready"}
+
+# The single request shape a family with no producer variants accepts.
+DEFAULT_VARIANT = "default"
+
 
 @dataclass(frozen=True)
-class FamilySpec:
-    """The complete delivery and registration semantics of one public family."""
+class DeliveryVariant:
+    """One request shape a family accepts, and what that shape registers as.
 
-    family: str
-    role: str
-    #: ``source_layout.type`` values this family's stable entries may bind.
+    A family with a single request shape has exactly one of these, named
+    ``default``. A family whose request selects between genuinely different
+    productions has one per variant, each with its own representative result,
+    so a missing adapter on one variant cannot hide behind the other.
+    """
+
+    variant: str
+    #: The ``source_layout.type`` values this route's entries bind, exactly as
+    #: its representative delivery does. This is the driven contract, not the
+    #: schema's compatibility superset: which artifact a layout *may* compile to
+    #: at all stays in ``asset_stable_entry.LAYOUT_ARTIFACT_TYPES``. Declaring a
+    #: layout no representative delivery binds would be an unverifiable claim,
+    #: so the closure test asserts equality against the fixture.
     entry_source_layouts: tuple[str, ...]
-    #: ``godot_artifact.type`` values its entries may bind; empty for reference.
+    #: ``godot_artifact.type`` values its entries bind; empty for reference.
     artifact_types: tuple[str, ...]
     #: How many runtime outputs one validated delivery declares.
     runtime_outputs: str
@@ -79,49 +110,46 @@ class FamilySpec:
     entry_shape: str | None
     #: Deterministic ``tools/`` builders that adapt the result into drafts.
     entry_builders: tuple[str, ...]
-    #: The ``processing_status`` that makes this family's work complete.
-    terminal_status: str
     #: True when the builder drafts ``compiled`` and promotes it on a later run.
     promotes_from_compiled: bool
-    #: Repo-relative representative Asset Skill result for this family.
+    #: Repo-relative representative Asset Skill result for this variant.
     representative_result: str
+    #: Repo-relative representative request, when the family ships one.
+    representative_request: str | None = None
     registration_closure: str = CLOSED
     #: Why the chain is not closed, and who owns it. Required when ``open``.
     open_gap: str | None = None
-    #: Repo-relative representative request, when the family ships one.
-    representative_request: str | None = None
 
     def __post_init__(self) -> None:
-        if self.role not in (RUNTIME_ROLE, REFERENCE_ROLE):
-            raise ValueError(f"{self.family}: unknown role {self.role!r}")
+        label = f"variant {self.variant!r}"
+        if not self.variant.strip():
+            raise ValueError("a delivery variant needs a non-empty name")
         if self.registration_closure not in (CLOSED, OPEN):
             raise ValueError(
-                f"{self.family}: unknown registration_closure "
+                f"{label}: unknown registration_closure "
                 f"{self.registration_closure!r}"
             )
         if (self.registration_closure == OPEN) != bool(self.open_gap):
             raise ValueError(
-                f"{self.family}: an open registration_closure needs an open_gap, "
-                "and a closed one must not carry it"
+                f"{label}: an open registration_closure needs an open_gap, and a "
+                "closed one must not carry it"
             )
-        if self.role == REFERENCE_ROLE and self.artifact_types:
-            raise ValueError(
-                f"{self.family}: a reference-only family compiles no artifact"
-            )
-        if self.role == RUNTIME_ROLE and not self.artifact_types:
-            raise ValueError(f"{self.family}: a runtime family must name an artifact")
+        if self.runtime_outputs not in ("none", "one", "many"):
+            raise ValueError(f"{label}: unknown runtime_outputs")
         if self.registration_closure == CLOSED and not self.entry_builders:
             raise ValueError(
-                f"{self.family}: a closed chain needs a deterministic entry builder"
+                f"{label}: a closed chain needs a deterministic entry builder"
             )
         if self.registration_closure == CLOSED and self.entry_shape is None:
-            raise ValueError(f"{self.family}: a closed chain needs an entry_shape")
+            raise ValueError(f"{label}: a closed chain needs an entry_shape")
         if self.entry_shape not in (None, ONE_ENTRY, ENTRY_PER_OUTPUT, ANCHOR_ENTRY):
-            raise ValueError(f"{self.family}: unknown entry_shape {self.entry_shape!r}")
+            raise ValueError(f"{label}: unknown entry_shape {self.entry_shape!r}")
+        if not self.entry_source_layouts:
+            raise ValueError(f"{label}: a variant must name its source layout")
 
     @property
     def is_reference_only(self) -> bool:
-        return self.role == REFERENCE_ROLE
+        return not self.artifact_types
 
     @property
     def uses_bundle_id(self) -> bool:
@@ -129,13 +157,14 @@ class FamilySpec:
         return self.entry_shape == ENTRY_PER_OUTPUT
 
     @property
-    def skill_dir(self) -> str:
-        return f"{SKILLS_ROOT}/{self.family}"
+    def terminal_status(self) -> str:
+        return TERMINAL_STATUS[
+            REFERENCE_ROLE if self.is_reference_only else RUNTIME_ROLE
+        ]
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "family": self.family,
-            "role": self.role,
+            "variant": self.variant,
             "entry_source_layouts": list(self.entry_source_layouts),
             "artifact_types": list(self.artifact_types),
             "runtime_outputs": self.runtime_outputs,
@@ -144,7 +173,6 @@ class FamilySpec:
             "terminal_status": self.terminal_status,
             "promotes_from_compiled": self.promotes_from_compiled,
             "uses_bundle_id": self.uses_bundle_id,
-            "skill_dir": self.skill_dir,
             "representative_request": self.representative_request,
             "representative_result": self.representative_result,
             "registration_closure": self.registration_closure,
@@ -152,174 +180,341 @@ class FamilySpec:
         }
 
 
+@dataclass(frozen=True)
+class FamilySpec:
+    """One public first-class Asset Skill family and every shape it delivers."""
+
+    family: str
+    role: str
+    variants: tuple[DeliveryVariant, ...]
+
+    def __post_init__(self) -> None:
+        if self.role not in (RUNTIME_ROLE, REFERENCE_ROLE):
+            raise ValueError(f"{self.family}: unknown role {self.role!r}")
+        if not self.variants:
+            raise ValueError(f"{self.family}: a family must declare a delivery")
+        names = [item.variant for item in self.variants]
+        if len(set(names)) != len(names):
+            raise ValueError(f"{self.family}: duplicate variant name")
+        for item in self.variants:
+            if item.is_reference_only != (self.role == REFERENCE_ROLE):
+                raise ValueError(
+                    f"{self.family}: variant {item.variant!r} does not match the "
+                    f"family role {self.role!r}"
+                )
+
+    @property
+    def is_reference_only(self) -> bool:
+        return self.role == REFERENCE_ROLE
+
+    @property
+    def terminal_status(self) -> str:
+        return TERMINAL_STATUS[self.role]
+
+    @property
+    def entry_source_layouts(self) -> tuple[str, ...]:
+        return tuple(
+            sorted({item for v in self.variants for item in v.entry_source_layouts})
+        )
+
+    @property
+    def artifact_types(self) -> tuple[str, ...]:
+        return tuple(sorted({item for v in self.variants for item in v.artifact_types}))
+
+    @property
+    def entry_builders(self) -> tuple[str, ...]:
+        return tuple(sorted({item for v in self.variants for item in v.entry_builders}))
+
+    @property
+    def uses_bundle_id(self) -> bool:
+        return any(item.uses_bundle_id for item in self.variants)
+
+    @property
+    def registration_closure(self) -> str:
+        """A family is closed only when every shape it accepts is."""
+        return (
+            CLOSED
+            if all(item.registration_closure == CLOSED for item in self.variants)
+            else OPEN
+        )
+
+    @property
+    def skill_dir(self) -> str:
+        return f"{SKILLS_ROOT}/{self.family}"
+
+    def variant(self, name: str) -> DeliveryVariant:
+        for item in self.variants:
+            if item.variant == name:
+                return item
+        raise FamilyRegistryError(f"{self.family} has no delivery variant {name!r}")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "family": self.family,
+            "role": self.role,
+            "terminal_status": self.terminal_status,
+            "registration_closure": self.registration_closure,
+            "uses_bundle_id": self.uses_bundle_id,
+            "skill_dir": self.skill_dir,
+            "variants": [item.to_dict() for item in self.variants],
+        }
+
+
 _SPECS: tuple[FamilySpec, ...] = (
     FamilySpec(
         family="background-map",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("single",),
-        artifact_types=("Texture2D",),
-        runtime_outputs="one",
-        entry_shape=ONE_ENTRY,
-        entry_builders=("asset_finalize_entry_draft.py",),
-        terminal_status="ready",
-        promotes_from_compiled=False,
-        representative_result=(
-            "skills/assets/background-map/fixtures/representative-result.json"
-        ),
-        registration_closure=OPEN,
-        open_gap=(
-            "asset_finalize_entry_draft.py is the only documented adapter and it "
-            "always drafts source_ready with no godot_artifact, so a validated "
-            "Texture2D delivery never reaches ready and never reaches a worker. "
-            "Owned by GodotMaker issue #154."
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("single",),
+                artifact_types=("Texture2D",),
+                runtime_outputs="one",
+                entry_shape=ONE_ENTRY,
+                entry_builders=("asset_finalize_entry_draft.py",),
+                promotes_from_compiled=False,
+                representative_result=(
+                    "skills/assets/background-map/fixtures/representative-result.json"
+                ),
+                registration_closure=OPEN,
+                open_gap=(
+                    "asset_finalize_entry_draft.py is the only documented adapter "
+                    "and it always drafts source_ready with no godot_artifact, so "
+                    "a validated Texture2D delivery never reaches ready and never "
+                    "reaches a worker. Owned by GodotMaker issue #154."
+                ),
+            ),
         ),
     ),
     FamilySpec(
         family="card-kit",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("single", "region_atlas", "theme_recipe"),
-        artifact_types=("AtlasTexture", "StyleBoxTexture", "Theme"),
-        runtime_outputs="many",
-        entry_shape=ENTRY_PER_OUTPUT,
-        entry_builders=("asset_ui_card_entry_draft.py",),
-        terminal_status="ready",
-        promotes_from_compiled=False,
-        representative_request=(
-            "skills/assets/card-kit/fixtures/representative-request.json"
-        ),
-        representative_result=(
-            "skills/assets/card-kit/fixtures/representative-result.json"
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("region_atlas", "theme_recipe"),
+                artifact_types=("AtlasTexture", "StyleBoxTexture", "Theme"),
+                runtime_outputs="many",
+                entry_shape=ENTRY_PER_OUTPUT,
+                entry_builders=("asset_ui_card_entry_draft.py",),
+                promotes_from_compiled=False,
+                representative_request=(
+                    "skills/assets/card-kit/fixtures/representative-request.json"
+                ),
+                representative_result=(
+                    "skills/assets/card-kit/fixtures/representative-result.json"
+                ),
+            ),
         ),
     ),
     FamilySpec(
         family="character-bundle",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("grid_sheet",),
-        artifact_types=("SpriteFrames",),
-        runtime_outputs="one",
-        entry_shape=ONE_ENTRY,
-        entry_builders=("asset_action_entry_draft.py",),
-        terminal_status="ready",
-        promotes_from_compiled=True,
-        representative_request=(
-            "skills/assets/character-bundle/fixtures/valid-request.json"
-        ),
-        representative_result=(
-            "skills/assets/character-bundle/fixtures/valid-result.json"
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("grid_sheet",),
+                artifact_types=("SpriteFrames",),
+                runtime_outputs="one",
+                entry_shape=ONE_ENTRY,
+                entry_builders=("asset_action_entry_draft.py",),
+                promotes_from_compiled=True,
+                representative_request=(
+                    "skills/assets/character-bundle/fixtures/valid-request.json"
+                ),
+                representative_result=(
+                    "skills/assets/character-bundle/fixtures/valid-result.json"
+                ),
+            ),
         ),
     ),
     FamilySpec(
         family="compact-prop-pack",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("region_atlas",),
-        artifact_types=("AtlasTexture",),
-        runtime_outputs="many",
-        entry_shape=ENTRY_PER_OUTPUT,
-        entry_builders=("asset_compact_prop_pack_entry_draft.py",),
-        terminal_status="ready",
-        promotes_from_compiled=False,
-        representative_result=(
-            "skills/assets/compact-prop-pack/fixtures/representative-result.json"
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("region_atlas",),
+                artifact_types=("AtlasTexture",),
+                runtime_outputs="many",
+                entry_shape=ENTRY_PER_OUTPUT,
+                entry_builders=("asset_compact_prop_pack_entry_draft.py",),
+                promotes_from_compiled=False,
+                representative_result=(
+                    "skills/assets/compact-prop-pack/fixtures/"
+                    "representative-result.json"
+                ),
+            ),
         ),
     ),
     FamilySpec(
         family="fx-bundle",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("single", "grid_sheet"),
-        artifact_types=("SpriteFrames", "Texture2D"),
-        runtime_outputs="one",
-        entry_shape=ONE_ENTRY,
-        entry_builders=(
-            "asset_action_entry_draft.py",
-            "asset_curation_entry_draft.py",
+        variants=(
+            DeliveryVariant(
+                variant="static",
+                entry_source_layouts=("single",),
+                artifact_types=("Texture2D",),
+                runtime_outputs="one",
+                entry_shape=ONE_ENTRY,
+                entry_builders=("asset_curation_entry_draft.py",),
+                promotes_from_compiled=True,
+                representative_request=(
+                    "skills/assets/fx-bundle/fixtures/static-request.json"
+                ),
+                representative_result=(
+                    "skills/assets/fx-bundle/fixtures/static-result.json"
+                ),
+            ),
+            DeliveryVariant(
+                variant="animated",
+                entry_source_layouts=("grid_sheet",),
+                artifact_types=("SpriteFrames",),
+                runtime_outputs="one",
+                entry_shape=ONE_ENTRY,
+                entry_builders=("asset_action_entry_draft.py",),
+                promotes_from_compiled=True,
+                representative_request=(
+                    "skills/assets/fx-bundle/fixtures/animated-request.json"
+                ),
+                representative_result=(
+                    "skills/assets/fx-bundle/fixtures/animated-result.json"
+                ),
+            ),
         ),
-        terminal_status="ready",
-        promotes_from_compiled=True,
-        representative_request="skills/assets/fx-bundle/fixtures/static-request.json",
-        representative_result="skills/assets/fx-bundle/fixtures/static-result.json",
     ),
     FamilySpec(
         family="platform-strip",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("region_atlas",),
-        artifact_types=("AtlasTexture",),
-        runtime_outputs="many",
-        entry_shape=None,
-        entry_builders=(),
-        terminal_status="ready",
-        promotes_from_compiled=False,
-        representative_result=(
-            "skills/assets/platform-strip/fixtures/representative-result.json"
-        ),
-        registration_closure=OPEN,
-        open_gap=(
-            "No deterministic entry-draft builder exists for platform-strip. Its "
-            "validated delivery is several AtlasTexture segments sharing one "
-            "stable directory, which the stable-entry schema only allows through "
-            "a bundle_id the family does not have, so none of its runtime "
-            "outputs can be registered at all."
+        variants=(
+            DeliveryVariant(
+                variant="single",
+                entry_source_layouts=("single",),
+                artifact_types=("Texture2D",),
+                runtime_outputs="many",
+                entry_shape=None,
+                entry_builders=(),
+                promotes_from_compiled=False,
+                representative_request=(
+                    "skills/assets/platform-strip/fixtures/"
+                    "representative-single-request.json"
+                ),
+                representative_result=(
+                    "skills/assets/platform-strip/fixtures/"
+                    "representative-single-result.json"
+                ),
+                registration_closure=OPEN,
+                open_gap=(
+                    "No deterministic entry-draft builder exists for a "
+                    "kind: \"single\" strip. It publishes one Texture2D per "
+                    "segment into the strip's shared stable directory, which the "
+                    "stable-entry schema only allows through a bundle_id the "
+                    "family does not have, so no segment can be registered."
+                ),
+            ),
+            DeliveryVariant(
+                variant="atlas",
+                entry_source_layouts=("region_atlas",),
+                artifact_types=("AtlasTexture",),
+                runtime_outputs="many",
+                entry_shape=None,
+                entry_builders=(),
+                promotes_from_compiled=False,
+                representative_request=(
+                    "skills/assets/platform-strip/fixtures/"
+                    "representative-request.json"
+                ),
+                representative_result=(
+                    "skills/assets/platform-strip/fixtures/"
+                    "representative-result.json"
+                ),
+                registration_closure=OPEN,
+                open_gap=(
+                    "No deterministic entry-draft builder exists for a "
+                    "kind: \"atlas\" strip. Its several AtlasTexture segments "
+                    "share one stable directory, which the stable-entry schema "
+                    "only allows through a bundle_id the family does not have, so "
+                    "no segment can be registered."
+                ),
+            ),
         ),
     ),
     FamilySpec(
         family="scene-prop-set",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("region_atlas",),
-        artifact_types=("AtlasTexture",),
-        runtime_outputs="many",
-        entry_shape=ANCHOR_ENTRY,
-        entry_builders=("asset_scene_prop_set_entry_draft.py",),
-        terminal_status="ready",
-        promotes_from_compiled=False,
-        representative_result=(
-            "skills/assets/scene-prop-set/fixtures/representative-result.json"
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("region_atlas",),
+                artifact_types=("AtlasTexture",),
+                runtime_outputs="many",
+                entry_shape=ANCHOR_ENTRY,
+                entry_builders=("asset_scene_prop_set_entry_draft.py",),
+                promotes_from_compiled=False,
+                representative_result=(
+                    "skills/assets/scene-prop-set/fixtures/representative-result.json"
+                ),
+            ),
         ),
     ),
     FamilySpec(
         family="screen-reference",
         role=REFERENCE_ROLE,
-        entry_source_layouts=("reference",),
-        artifact_types=(),
-        runtime_outputs="none",
-        entry_shape=ONE_ENTRY,
-        entry_builders=("asset_finalize_entry_draft.py",),
-        terminal_status="source_ready",
-        promotes_from_compiled=False,
-        representative_request=(
-            "skills/assets/_shared/samples/request/screen-reference.json"
-        ),
-        representative_result=(
-            "skills/assets/screen-reference/fixtures/representative-result.json"
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("reference",),
+                artifact_types=(),
+                runtime_outputs="none",
+                entry_shape=ONE_ENTRY,
+                entry_builders=("asset_finalize_entry_draft.py",),
+                promotes_from_compiled=False,
+                representative_request=(
+                    "skills/assets/_shared/samples/request/screen-reference.json"
+                ),
+                representative_result=(
+                    "skills/assets/screen-reference/fixtures/representative-result.json"
+                ),
+            ),
         ),
     ),
     FamilySpec(
         family="tileset",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("tile_atlas",),
-        artifact_types=("TileSet",),
-        runtime_outputs="one",
-        entry_shape=ONE_ENTRY,
-        entry_builders=("asset_tileset_entry_draft.py",),
-        terminal_status="ready",
-        promotes_from_compiled=False,
-        representative_result=(
-            "skills/assets/tileset/fixtures/representative-result.json"
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("tile_atlas",),
+                artifact_types=("TileSet",),
+                runtime_outputs="one",
+                entry_shape=ONE_ENTRY,
+                entry_builders=("asset_tileset_entry_draft.py",),
+                promotes_from_compiled=False,
+                representative_result=(
+                    "skills/assets/tileset/fixtures/representative-result.json"
+                ),
+            ),
         ),
     ),
     FamilySpec(
         family="ui-kit",
         role=RUNTIME_ROLE,
-        entry_source_layouts=("single", "region_atlas", "theme_recipe"),
-        artifact_types=("AtlasTexture", "StyleBoxTexture", "Theme"),
-        runtime_outputs="many",
-        entry_shape=ENTRY_PER_OUTPUT,
-        entry_builders=("asset_ui_card_entry_draft.py",),
-        terminal_status="ready",
-        promotes_from_compiled=False,
-        representative_request=(
-            "skills/assets/ui-kit/fixtures/representative-request.json"
-        ),
-        representative_result=(
-            "skills/assets/ui-kit/fixtures/representative-result.json"
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("region_atlas", "theme_recipe"),
+                artifact_types=("AtlasTexture", "StyleBoxTexture", "Theme"),
+                runtime_outputs="many",
+                entry_shape=ENTRY_PER_OUTPUT,
+                entry_builders=("asset_ui_card_entry_draft.py",),
+                promotes_from_compiled=False,
+                representative_request=(
+                    "skills/assets/ui-kit/fixtures/representative-request.json"
+                ),
+                representative_result=(
+                    "skills/assets/ui-kit/fixtures/representative-result.json"
+                ),
+            ),
         ),
     ),
 )
@@ -359,6 +554,29 @@ def families(*, role: str | None = None, closure: str | None = None) -> list[Fam
     ]
 
 
+def routes(
+    *, role: str | None = None, closure: str | None = None
+) -> list[tuple[FamilySpec, DeliveryVariant]]:
+    """Return every ``(family, variant)`` pair, optionally filtered.
+
+    Routes are the unit the closure test enumerates: a family with two request
+    shapes has two independent registration chains, and only one of them may be
+    closed.
+    """
+    return [
+        (item, variant)
+        for item in FAMILIES.values()
+        for variant in item.variants
+        if (role is None or item.role == role)
+        and (closure is None or variant.registration_closure == closure)
+    ]
+
+
+def open_routes(*, role: str | None = None) -> list[tuple[FamilySpec, DeliveryVariant]]:
+    """Return every route whose registration chain is still incomplete."""
+    return routes(role=role, closure=OPEN)
+
+
 def to_dict() -> dict[str, Any]:
     """Return the whole registry as plain JSON-serializable data."""
     return {
@@ -372,13 +590,20 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def check_registry(root: Path | None = None) -> list[str]:
+def check_registry(root: Path | None = None, *, require_closed: bool = False) -> list[str]:
     """Return every disagreement between this map and what the repo ships.
 
-    This is the publish- and CI-side gate: an advertised family with no skill
+    The default pass is structural: an advertised family with no skill
     directory, a declared builder that does not exist, a missing representative
     result, or a family the schema allows but this map never declares all mean
     the registration chain can no longer be reasoned about from one place.
+    ``publish.py`` runs this before it copies anything.
+
+    ``require_closed`` adds the release rule: no public runtime route may still
+    be open. A tracked gap is allowed to live on ``main`` under its upstream
+    issue, but it may not reach a tagged release, because from inside a game
+    project an advertised family that can never reach a worker is
+    indistinguishable from a working one.
     """
     base = repo_root() if root is None else Path(root)
     issues: list[str] = []
@@ -404,21 +629,26 @@ def check_registry(root: Path | None = None) -> list[str]:
         for required in ("SKILL.md", "standalone_validation.py"):
             if not (skills_dir / name / required).is_file():
                 issues.append(f"{item.skill_dir}/{required} is missing")
-        if not (base / item.representative_result).is_file():
+        for variant in item.variants:
+            label = f"{name}[{variant.variant}]"
+            fixtures = (variant.representative_request, variant.representative_result)
+            for relative in [entry for entry in fixtures if entry]:
+                if not (base / relative).is_file():
+                    issues.append(
+                        f"{label} declares a fixture that does not exist: {relative}"
+                    )
+            for builder in variant.entry_builders:
+                if not (base / "tools" / builder).is_file():
+                    issues.append(
+                        f"{label} names a missing entry builder: tools/{builder}"
+                    )
+
+    if require_closed:
+        for item, variant in open_routes(role=RUNTIME_ROLE):
             issues.append(
-                f"{name} declares a representative result that does not exist: "
-                f"{item.representative_result}"
+                f"{item.family}[{variant.variant}] is an advertised runtime route "
+                f"with no complete registration chain: {variant.open_gap}"
             )
-        if item.representative_request and not (
-            base / item.representative_request
-        ).is_file():
-            issues.append(
-                f"{name} declares a representative request that does not exist: "
-                f"{item.representative_request}"
-            )
-        for builder in item.entry_builders:
-            if not (base / "tools" / builder).is_file():
-                issues.append(f"{name} names a missing entry builder: tools/{builder}")
 
     return issues
 
@@ -433,15 +663,32 @@ def _main() -> int:
         action="store_true",
         help="Verify the registry against the shipped skills, fixtures, and builders",
     )
+    parser.add_argument(
+        "--require-closed",
+        action="store_true",
+        help=(
+            "Release gate: also fail while any public runtime route still has an "
+            "incomplete registration chain"
+        ),
+    )
     parser.add_argument("--project-root", type=Path, default=None)
     args = parser.parse_args()
 
-    if args.check:
-        issues = check_registry(args.project_root)
+    if args.check or args.require_closed:
+        issues = check_registry(args.project_root, require_closed=args.require_closed)
         if issues:
             print(json.dumps({"ok": False, "issues": issues}, indent=2))
             return 1
-        print(json.dumps({"ok": True, "families": len(FAMILIES)}))
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "families": len(FAMILIES),
+                    "routes": len(routes()),
+                    "require_closed": args.require_closed,
+                }
+            )
+        )
         return 0
 
     print(json.dumps(to_dict(), indent=2))

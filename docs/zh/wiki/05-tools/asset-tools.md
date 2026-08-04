@@ -198,16 +198,20 @@ python tools/asset_finalize_entry_draft.py \
 
 ## asset_family_registry.py
 
-`asset_family_registry.py` 是公开 first-class Asset Skill family 的权威映射。它为每个 family 记录其 stable entry 可绑定的 source layout 与 Godot artifact、适配其 result 的确定性 entry draft builder、一次交付会产生几条 entry，以及标志完成的 `processing_status`。登记链尚未闭合的 family 会连同具体缺失环节一起记录，而不是被省略，因此一个已对外声明的 family 不可能在没有抵达 worker 的路径时悄悄发布。
+`asset_family_registry.py` 是公开 first-class Asset Skill family 的权威映射。它的基本单元是 **route**——一个 family 加一种 request 形态，因为接受多种请求形态的 Skill 每种形态各有一条登记链：`platform-strip` 在 `kind: "single"` 下逐段发布 `Texture2D`，在 `kind: "atlas"` 下发布切好的 `AtlasTexture` region。它为每条 route 记录 stable entry 绑定的 source layout 与 Godot artifact、适配其 result 的确定性 entry draft builder、一次交付会产生几条 entry，以及标志完成的 `processing_status`。登记链尚未闭合的 route 会连同具体缺失环节一起记录，而不是被省略，因此一个已对外声明的 family 不可能在没有抵达 worker 的路径时悄悄发布。
 
 手动入口：
 
 ```bash
 python tools/asset_family_registry.py --output json
 python tools/asset_family_registry.py --check
+python tools/asset_family_registry.py --check --require-closed
 ```
 
-`--check` 就是 `publish.py` 在复制任何文件之前运行的 gate：当已声明的 family 缺少 Skill、缺少代表性 result 或缺少 adapter 时它会失败。
+有两道 gate 读取它，二者的差别是刻意的：
+
+- `--check` 是结构性检查，`publish.py` 在复制任何文件之前运行它：已声明的 family 缺少 Skill、缺少代表性 result 或缺少 adapter 时失败。已知缺口不会阻塞开发安装——publish 会逐条警告仍处于 open 的 route，因此不会被静默装进项目。
+- `--check --require-closed` 是发布 gate。只要还有公开 runtime route 的登记链不完整就失败，因此被跟踪的缺口可以停留在 `main` 上由上游 issue 认领，但不能进入打了 tag 的发布。`release.yml` 中的 `Asset Family Closure` job 会运行它并阻断发布。
 
 ## asset_output_path.py
 

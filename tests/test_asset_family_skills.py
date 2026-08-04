@@ -27,16 +27,27 @@ STANDALONE_CONTRACT_FAMILIES = (
 
 
 def _expected(family: str) -> dict:
+    """Resolve the route that owns this family's `representative-result.json`.
+
+    A family with several request shapes has one route per shape, and only the
+    one whose fixture these tests read may describe them. Indexing the family's
+    merged layout/artifact tuples would silently pick another variant's values.
+    """
     spec = FAMILY_REGISTRY[family]
+    fixture = f"skills/assets/{family}/fixtures/representative-result.json"
+    variant = next(
+        item for item in spec.variants if item.representative_result == fixture
+    )
+    assert len(variant.entry_source_layouts) == 1
     return {
         "role": spec.role,
-        "godot_type": spec.artifact_types[0] if spec.artifact_types else None,
+        "godot_type": variant.artifact_types[0] if variant.artifact_types else None,
         "source_layout": (
-            None if spec.is_reference_only else spec.entry_source_layouts[0]
+            None if variant.is_reference_only else variant.entry_source_layouts[0]
         ),
         "path_prefix": (
             "references/"
-            if spec.is_reference_only
+            if variant.is_reference_only
             else f"res://assets/generated/{family}/"
         ),
     }

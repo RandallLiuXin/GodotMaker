@@ -251,22 +251,35 @@ python tools/asset_finalize_entry_draft.py \
 ## asset_family_registry.py
 
 `asset_family_registry.py` is the authoritative map of the public first-class
-Asset Skill families. For each one it records the source layouts and Godot
-artifacts its stable entries may bind, the deterministic entry-draft builder
-that adapts its result, how many entries one delivery produces, and the
-`processing_status` that completes it. A family whose registration chain is not
-finished yet is recorded with the concrete missing link rather than left out, so
-an advertised family can never quietly ship without a way to reach a worker.
+Asset Skill families. Its unit is the *route* — one family plus one request
+shape — because a Skill that accepts more than one shape has one registration
+chain per shape: `platform-strip` publishes per-segment `Texture2D` files for
+`kind: "single"` and cut `AtlasTexture` regions for `kind: "atlas"`. For each
+route it records the source layout and Godot artifact its stable entries bind,
+the deterministic entry-draft builder that adapts its result, how many entries
+one delivery produces, and the `processing_status` that completes it. A route
+whose registration chain is not finished yet is recorded with the concrete
+missing link rather than left out, so an advertised family can never quietly
+ship without a way to reach a worker.
 
 Manual entry point:
 
 ```bash
 python tools/asset_family_registry.py --output json
 python tools/asset_family_registry.py --check
+python tools/asset_family_registry.py --check --require-closed
 ```
 
-`--check` is the gate `publish.py` runs before it copies anything: it fails when
-a declared family has no Skill, no representative result, or a missing adapter.
+Two gates read it, and they differ on purpose:
+
+- `--check` is structural, and `publish.py` runs it before it copies anything:
+  it fails when a declared family has no Skill, no representative result, or a
+  missing adapter. A known gap does not block a development install — publish
+  warns about each open route instead, so it is never installed silently.
+- `--check --require-closed` is the release gate. It fails while any public
+  runtime route still has an incomplete chain, so a tracked gap can live on
+  `main` under its upstream issue but cannot reach a tagged release. The
+  `Asset Family Closure` job in `release.yml` runs it and blocks the release.
 
 ## asset_output_path.py
 

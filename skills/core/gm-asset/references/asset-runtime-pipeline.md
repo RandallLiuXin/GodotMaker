@@ -50,10 +50,14 @@ output directory. Allowed values:
 `screen-reference` is the only reference-only family.
 
 `tools/asset_family_registry.py` is the authoritative map behind that list. It
-records, per family, the source layouts and Godot artifacts its entries may
-bind, which deterministic builder adapts its result, how many entries one
-delivery produces, and which `processing_status` completes it. Read it instead
-of inferring a family's semantics from prose:
+records, per **route** — one family plus one request shape — the source layout
+and Godot artifact its entries bind, which deterministic builder adapts its
+result, how many entries one delivery produces, and which `processing_status`
+completes it. A Skill that accepts more than one request shape has one route per
+shape: `platform-strip` publishes per-segment `Texture2D` files for
+`kind: "single"` and cut `AtlasTexture` regions for `kind: "atlas"`, and
+`fx-bundle` compiles a `Texture2D` for a static effect and a `SpriteFrames` for
+an animated one. Read it instead of inferring a family's semantics from prose:
 
 ```bash
 python tools/asset_family_registry.py --output json
@@ -477,21 +481,29 @@ same current-tag asset is being regenerated.
 
 ### Open Registration Gaps
 
-Two advertised families have no complete registration chain today. Each one
+Three advertised routes have no complete registration chain today. Each one
 produces and validates a real delivery, but nothing turns that delivery into a
 worker-consumable entry, so their ASSETS.md rows stay `MISSING`. Report the
 blockage; do not work around it by hand-writing a draft or editing a status:
 
-1. `platform-strip` — no deterministic entry-draft builder exists for it, and
-   its several `AtlasTexture` segments share one stable directory, which only a
-   `bundle_id` family may do.
-2. `background-map` — `asset_finalize_entry_draft.py` always drafts
+1. `platform-strip` with `kind: "single"` — no deterministic entry-draft builder
+   exists. It publishes one `Texture2D` per segment into the strip's one stable
+   directory, which only a `bundle_id` family may do.
+2. `platform-strip` with `kind: "atlas"` — no deterministic entry-draft builder
+   exists. Its several `AtlasTexture` segments share that same directory, with
+   the same consequence.
+3. `background-map` — `asset_finalize_entry_draft.py` always drafts
    `source_ready` without a compiled artifact, so a validated `Texture2D`
    background never reaches `ready`.
 
-`tools/asset_family_registry.py` carries both gaps as data, so a family's real
+A family's request shape decides which of these applies: a Skill that accepts
+more than one shape has one registration chain per shape, and closing one does
+not close the other.
+
+`tools/asset_family_registry.py` carries every gap as data, so a route's real
 delivery and registration semantics stay readable from one place while they are
-being closed.
+being closed. `python tools/asset_family_registry.py --check --require-closed`
+is the release gate that refuses to tag while any of them is still open.
 
 ## Curation
 

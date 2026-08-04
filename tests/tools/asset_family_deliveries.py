@@ -1,17 +1,24 @@
-"""One representative delivery per public first-class Asset Skill family.
+"""One representative delivery per public Asset Skill *route*.
 
-Each builder here materializes the files a family's validated result names and
-then runs that family's *real* deterministic entry-draft builder over them. The
-result is the set of stable entries `/gm-asset` Step 5 would register, so the
-closure test can carry them the rest of the way — root index, ASSETS.md, and the
-runtime resolver — without re-implementing any adapter.
+Each builder here materializes the files a validated result names and then runs
+that route's *real* deterministic entry-draft builder over them. The result is
+the set of stable entries `/gm-asset` Step 5 would register, so the closure test
+can carry them the rest of the way — root index, ASSETS.md, and the runtime
+resolver — without re-implementing any adapter.
 
-The table is keyed by `tools/asset_family_registry.py`. A family declared there
-with no delivery here fails `test_asset_family_closure.py` rather than being
-skipped, which is the whole point: a family may not enter a release with a
-registration chain nobody ever drove end to end.
+The table is keyed by `(family, variant)` from `tools/asset_family_registry.py`,
+not by family. A Skill that accepts more than one request shape has one
+registration chain per shape: `platform-strip` publishes per-segment `Texture2D`
+files for `kind: "single"` and cut `AtlasTexture` regions for `kind: "atlas"`,
+and `fx-bundle` compiles a `Texture2D` for a static effect and a `SpriteFrames`
+for an animated one. Driving only one variant would let the other's missing
+adapter pass every family-level assertion.
 
-Families whose chain is still open (`registration_closure="open"`) get a builder
+A route declared in the registry with no delivery here fails
+`test_asset_family_closure.py` rather than being skipped, which is the whole
+point: no route may enter a release without being driven end to end.
+
+Routes whose chain is still open (`registration_closure="open"`) get a builder
 too. Theirs raises `RegistrationGap`, carrying the concrete mechanical refusal
 that proves the gap is real. When the adapter lands upstream the refusal stops
 happening and the closure test fails until the registry is updated.
@@ -31,7 +38,9 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from asset_action_entry_draft import (  # noqa: E402
     build_character_bundle_entry_draft,
+    build_fx_bundle_entry_draft,
     write_character_bundle_entry_draft,
+    write_fx_bundle_entry_draft,
 )
 from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
 from asset_compact_prop_pack_entry_draft import (  # noqa: E402
@@ -62,17 +71,18 @@ class RegistrationGap(Exception):
 
 @dataclass
 class Delivery:
-    """What one validated family delivery produced, ready for registration."""
+    """What one validated route delivery produced, ready for registration."""
 
     family: str
     #: The existing ASSETS.md planning rows this one production satisfies.
     assets_rows: tuple[str, ...]
-    #: Stable entries the family's deterministic builder drafted.
+    #: Stable entries the route's deterministic builder drafted.
     entries: list[dict[str, Any]]
     request_path: Path | None = None
     result_path: Path | None = None
     #: Set for bundle families; the manifest writer needs the original request.
     bundle: bool = False
+    variant: str = "default"
 
 
 # --------------------------------------------------------------------------
@@ -109,8 +119,16 @@ def read_fixture(relative: str) -> Any:
     return json.loads((REPO_ROOT / relative).read_text(encoding="utf-8"))
 
 
-def representative_result(family: str) -> dict[str, Any]:
-    return read_fixture(FAMILIES[family].representative_result)
+def variant_of(family: str, variant: str = "default"):
+    return FAMILIES[family].variant(variant)
+
+
+def representative_result(family: str, variant: str = "default") -> dict[str, Any]:
+    return read_fixture(variant_of(family, variant).representative_result)
+
+
+def representative_request(family: str, variant: str = "default") -> dict[str, Any]:
+    return read_fixture(variant_of(family, variant).representative_request)
 
 
 def _materialize_result_files(root: Path, result: dict[str, Any]) -> None:
@@ -204,9 +222,8 @@ def _tileset(root: Path) -> Delivery:
 
 def _kit(family: str) -> Callable[[Path], Delivery]:
     def build(root: Path) -> Delivery:
-        spec = FAMILIES[family]
-        request = read_fixture(spec.representative_request)
-        result = read_fixture(spec.representative_result)
+        request = representative_request(family)
+        result = representative_result(family)
         _materialize_result_files(root, result)
         request_path = write_json(root, f"{family}-request.json", request)
         result_path = write_json(root, f"{family}-result.json", result)
@@ -423,7 +440,7 @@ def _character_bundle(root: Path) -> Delivery:
     )
 
 
-def _fx_bundle(root: Path) -> Delivery:
+def _fx_static(root: Path) -> Delivery:
     asset_id = "pickup"
     relative = f"assets/generated/fx-bundle/{asset_id}/{asset_id}.png"
     write_png(root, relative)
@@ -448,8 +465,8 @@ def _fx_bundle(root: Path) -> Delivery:
             ],
         },
     )
-    request = read_fixture(FAMILIES["fx-bundle"].representative_request)
-    result = read_fixture(FAMILIES["fx-bundle"].representative_result)
+    request = representative_request("fx-bundle", "static")
+    result = representative_result("fx-bundle", "static")
     request_path = write_json(root, "fx-request.json", request)
     result_path = write_json(root, "fx-result.json", result)
     out = root / ".godotmaker/asset-generation/work/entries/fx.json"
@@ -480,6 +497,71 @@ def _fx_bundle(root: Path) -> Delivery:
         [entry],
         request_path=request_path,
         result_path=result_path,
+        variant="static",
+    )
+
+
+def _fx_animated(root: Path) -> Delivery:
+    request = representative_request("fx-bundle", "animated")
+    result = representative_result("fx-bundle", "animated")
+    asset_id = request["asset_id"]
+    action = request["spec"]["actions"][0]
+    stable = f"assets/generated/fx-bundle/{asset_id}"
+    frames = action["frame_names"]
+    metadata = {
+        "frame_count": len(frames),
+        "final_sheet_path": f"{stable}/{asset_id}_sheet.png",
+        "final_frame_paths": [
+            f"{stable}/{asset_id}_{action['name']}_{frame}.png" for frame in frames
+        ],
+        "align": "center",
+        "shared_scale": True,
+        "action_name": action["name"],
+        "fps": action["fps"],
+        "loop": action["loop"],
+        "frame_durations": action["frame_durations"],
+        "edge_touch_frames": [],
+        "scale_reference": {"checked": False},
+        "cell_size": 256,
+        "grid": {"cols": action["grid"]["columns"], "rows": action["grid"]["rows"]},
+        "frame_labels": frames,
+    }
+    for relative in [metadata["final_sheet_path"], *metadata["final_frame_paths"]]:
+        write_png(root, relative)
+    request_path = write_json(root, "ASSET_REQUEST.json", request)
+    metadata_path = write_json(
+        root,
+        f".godotmaker/asset-generation/work/{action['name']}/pipeline-meta.json",
+        metadata,
+    )
+    result_path = write_json(root, "fx-animated-result.json", result)
+    out = root / ".godotmaker/asset-generation/work/entries/fx.json"
+
+    # Compiles first, so the entry is drafted `compiled` and the passing result
+    # promotes that exact build on a second run.
+    write_fx_bundle_entry_draft(
+        metadata_path,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=root,
+        out=out,
+    )
+    promoted = build_fx_bundle_entry_draft(
+        metadata_path,
+        request_path=request_path,
+        asset_id=asset_id,
+        tag=TAG,
+        project_root=root,
+        result_path=result_path,
+    )
+    return Delivery(
+        "fx-bundle",
+        (asset_id,),
+        [promoted["entry"]],
+        request_path=request_path,
+        result_path=result_path,
+        variant="animated",
     )
 
 
@@ -522,32 +604,46 @@ def _background_map(root: Path) -> Delivery:
     )
 
 
-def _platform_strip(root: Path) -> Delivery:
-    """Validated AtlasTexture segments the stable-entry schema cannot hold."""
-    result = representative_result("platform-strip")
-    _materialize_result_files(root, result)
-    segment = result["outputs"][0]
-    bundle_id = "wood_bridge"
-    source = result["sources"][0]
+def _platform_strip(variant: str) -> Callable[[Path], Delivery]:
+    """Validated segments of either strip variant the schema cannot hold.
 
-    draft = {
-        "version": 1,
-        "asset_id": segment["name"],
-        "tag": TAG,
-        "production_family": "platform-strip",
-        "bundle_id": bundle_id,
-        "source_layout": {"type": "region_atlas", "path": source["path"]},
-        "godot_artifact": {"type": segment["godot_type"], "path": segment["path"]},
-        "processing_status": "ready",
-    }
-    try:
-        write_entry(draft, project_root=root, check_files=True)
-    except StableEntryError as exc:
-        raise RegistrationGap(str(exc)) from exc
-    raise AssertionError(
-        "platform-strip now registers its segments; close its gap in "
-        "tools/asset_family_registry.py"
-    )
+    Both `kind` variants publish several independently bindable runtime outputs
+    into the strip's one stable directory, which only a `bundle_id` family may
+    do. Each is driven from its own fixture, so an adapter that lands for one
+    variant cannot make the other look covered.
+    """
+
+    def build(root: Path) -> Delivery:
+        request = representative_request("platform-strip", variant)
+        result = representative_result("platform-strip", variant)
+        declared = variant_of("platform-strip", variant)
+        _materialize_result_files(root, result)
+        segment = result["outputs"][0]
+        source = result["sources"][0]
+
+        assert segment["godot_type"] in declared.artifact_types
+        assert source["layout"] in declared.entry_source_layouts
+
+        draft = {
+            "version": 1,
+            "asset_id": segment["name"],
+            "tag": TAG,
+            "production_family": "platform-strip",
+            "bundle_id": request["asset_id"],
+            "source_layout": {"type": source["layout"], "path": source["path"]},
+            "godot_artifact": {"type": segment["godot_type"], "path": segment["path"]},
+            "processing_status": "ready",
+        }
+        try:
+            write_entry(draft, project_root=root, check_files=True)
+        except StableEntryError as exc:
+            raise RegistrationGap(str(exc)) from exc
+        raise AssertionError(
+            f"platform-strip[{variant}] now registers its segments; close its gap "
+            "in tools/asset_family_registry.py"
+        )
+
+    return build
 
 
 # --------------------------------------------------------------------------
@@ -572,15 +668,17 @@ def _planning_table(root: Path, rows: list[str], row_type: str = "runtime") -> P
 
 planning_table = _planning_table
 
-DELIVERIES: dict[str, Callable[[Path], Delivery]] = {
-    "background-map": _background_map,
-    "card-kit": _kit("card-kit"),
-    "character-bundle": _character_bundle,
-    "compact-prop-pack": _compact_prop_pack,
-    "fx-bundle": _fx_bundle,
-    "platform-strip": _platform_strip,
-    "scene-prop-set": _scene_prop_set,
-    "screen-reference": _screen_reference,
-    "tileset": _tileset,
-    "ui-kit": _kit("ui-kit"),
+DELIVERIES: dict[tuple[str, str], Callable[[Path], Delivery]] = {
+    ("background-map", "default"): _background_map,
+    ("card-kit", "default"): _kit("card-kit"),
+    ("character-bundle", "default"): _character_bundle,
+    ("compact-prop-pack", "default"): _compact_prop_pack,
+    ("fx-bundle", "static"): _fx_static,
+    ("fx-bundle", "animated"): _fx_animated,
+    ("platform-strip", "single"): _platform_strip("single"),
+    ("platform-strip", "atlas"): _platform_strip("atlas"),
+    ("scene-prop-set", "default"): _scene_prop_set,
+    ("screen-reference", "default"): _screen_reference,
+    ("tileset", "default"): _tileset,
+    ("ui-kit", "default"): _kit("ui-kit"),
 }

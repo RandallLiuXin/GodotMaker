@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE
-from asset_family_registry import check_registry
+from asset_family_registry import RUNTIME_ROLE, check_registry, open_routes
 from project_config import (
     ProjectConfigResult,
     create_project_config as create_project_config_file,
@@ -1380,6 +1380,19 @@ def main():
         for issue in registry_issues:
             print(f"  - {issue}", file=sys.stderr)
         sys.exit(1)
+
+    # A tracked gap does not block development installs — it would block every
+    # unrelated task in the project too — but it must never install silently.
+    # The release gate (`--require-closed`) is what keeps it out of a tag.
+    incomplete = open_routes(role=RUNTIME_ROLE)
+    if incomplete:
+        print("WARNING: these runtime asset families cannot reach a worker yet;",
+              file=sys.stderr)
+        print("         /gm-asset will leave their ASSETS.md rows MISSING:",
+              file=sys.stderr)
+        for family, variant in incomplete:
+            print(f"  - {family.family} ({variant.variant}): {variant.open_gap}",
+                  file=sys.stderr)
 
     target = Path(args.target).resolve()
     target.mkdir(parents=True, exist_ok=True)

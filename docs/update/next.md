@@ -17,7 +17,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
-- Added `tools/asset_family_registry.py`, the single authoritative map of every public Asset Skill family's source layout, Godot artifact, registration adapter, and terminal status.
+- Added `tools/asset_family_registry.py`, the single authoritative map of every public Asset Skill route's source layout, Godot artifact, registration adapter, and terminal status.
 
 - `/gm-asset` can now plan, dispatch, and register the `tileset` production unit, so a validated `TileSet` reaches a worker as a tile library instead of stopping at the Skill.
 
@@ -52,9 +52,11 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
-- Every public asset family must now prove its whole registration chain, so publishing fails when an advertised family has no adapter that turns its validated delivery into a worker-consumable entry.
+- Every public asset route must now prove its whole registration chain, and tagging a release fails while any advertised runtime route still has no adapter that turns its validated delivery into a worker-consumable entry.
 
-- `background-map` and `platform-strip` are now recorded as having no complete registration chain, so their missing adapter is visible instead of reading as a working path.
+- A Skill that accepts more than one request shape now declares one registration chain per shape, so a variant whose adapter is missing can no longer hide behind a sibling variant that works.
+
+- `background-map` and both `platform-strip` strip kinds are now recorded as having no complete registration chain, so their missing adapter is visible instead of reading as a working path.
 
 - A ui-kit or card-kit now registers one ready stable entry per runtime output, so its `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` are separately resolvable instead of unregisterable; `bundle_id` covers these two families alongside `compact-prop-pack`.
 - Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep

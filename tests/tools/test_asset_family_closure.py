@@ -1,4 +1,4 @@
-"""Every public first-class Asset Skill family, from result to worker snapshot.
+"""Every public Asset Skill route, from result to worker snapshot.
 
 `tests/tools/test_asset_registration_closure.py` proves the chain in depth for
 the artifact types that had one. It enumerates nothing, so a family could
@@ -6,19 +6,28 @@ advertise a runtime delivery, ship a Skill, validate that delivery, and still
 have no adapter that ever reaches `ready` — and nothing failed.
 
 This module closes that hole. It enumerates `tools/asset_family_registry.py`,
-the single authoritative map of family delivery and registration semantics, and
-for each family asserts the whole chain is really there:
+the single authoritative map of delivery and registration semantics, and for
+each **route** — one `(family, request variant)` pair — asserts the whole chain
+is really there:
 
-1. the Skill, its standalone validator, and its representative result exist;
-2. that result passes the generic result checker and matches what the registry
-   says the family delivers;
-3. the layout/artifact pairs it declares are compilable routes, not a type the
-   stable-entry schema would refuse;
-4. its deterministic entry-draft builder exists and is what actually drafts;
+1. the Skill, its standalone validator, and the route's representative result
+   exist;
+2. that result passes the generic result checker and delivers exactly the
+   layout and artifact the route declares, not merely something inside the
+   family's union of them;
+3. the layout/artifact pair is a compilable route, not a type the stable-entry
+   schema would refuse;
+4. the route's deterministic entry-draft builder exists and is what drafts;
 5. the drafted entries register, gate, complete their ASSETS.md rows, and come
-   back out of the runtime resolver as the artifact the family promised.
+   back out of the runtime resolver as the artifact the route promised.
 
-A family whose chain is still open is not skipped: the registry records the
+Routes, not families, are the unit on purpose. `platform-strip` and `fx-bundle`
+each accept two request shapes that deliver a different layout and artifact, so
+family-level assertions ("the type is in the family's set", "some source layout
+matches") pass against one variant's fixture while the other variant's adapter
+is missing entirely.
+
+A route whose chain is still open is not skipped: the registry records the
 missing link, and the test asserts the refusal is still real, so closing the gap
 upstream fails here until the registry is updated.
 """
@@ -40,9 +49,13 @@ from asset_assets_md_update import (  # noqa: E402
 )
 from asset_bundle_manifest import write_bundle_manifest  # noqa: E402
 from asset_family_registry import (  # noqa: E402
+    CLOSED,
     ENTRY_PER_OUTPUT,
     FAMILIES,
+    OPEN,
+    RUNTIME_ROLE,
     check_registry,
+    routes,
 )
 from asset_generation_index import check_index, update_index  # noqa: E402
 from asset_runtime_resolver import (  # noqa: E402
@@ -72,20 +85,38 @@ from tests.tools.asset_family_deliveries import (  # noqa: E402
     representative_result,
 )
 
+
+def _keys(**filters) -> list[tuple[str, str]]:
+    """Return `(family, variant)` route keys, sorted for stable test ids."""
+    return sorted(
+        (spec.family, variant.variant) for spec, variant in routes(**filters)
+    )
+
+
 ALL_FAMILIES = sorted(FAMILIES)
-RUNTIME_FAMILIES = sorted(
-    name for name, spec in FAMILIES.items() if not spec.is_reference_only
-)
+ALL_ROUTES = _keys()
+RUNTIME_ROUTES = _keys(role=RUNTIME_ROLE)
+CLOSED_ROUTES = _keys(closure=CLOSED)
+OPEN_ROUTES = _keys(closure=OPEN)
 REFERENCE_FAMILIES = sorted(
     name for name, spec in FAMILIES.items() if spec.is_reference_only
 )
-CLOSED_FAMILIES = sorted(
-    name for name, spec in FAMILIES.items() if spec.registration_closure == "closed"
+BUNDLE_ROUTES = sorted(
+    (spec.family, variant.variant)
+    for spec, variant in routes()
+    if variant.uses_bundle_id
 )
-OPEN_FAMILIES = sorted(
-    name for name, spec in FAMILIES.items() if spec.registration_closure == "open"
-)
-BUNDLE_FAMILIES = sorted(name for name, spec in FAMILIES.items() if spec.uses_bundle_id)
+SINGLE_ENTRY_CLOSED_ROUTES = sorted(set(CLOSED_ROUTES) - set(BUNDLE_ROUTES))
+
+
+def _variant(key: tuple[str, str]):
+    family, name = key
+    return FAMILIES[family].variant(name)
+
+
+def _route_id(key: tuple[str, str]) -> str:
+    """Name the route in the test id, so a failure says which shape broke."""
+    return f"{key[0]}[{key[1]}]"
 
 
 # --------------------------------------------------------------------------
@@ -104,15 +135,16 @@ def _mirror_registry_inputs(root: Path) -> None:
         skill.mkdir(parents=True, exist_ok=True)
         (skill / "SKILL.md").write_text("stub", encoding="utf-8")
         (skill / "standalone_validation.py").write_text("", encoding="utf-8")
-        fixtures = (spec.representative_request, spec.representative_result)
-        for relative in [item for item in fixtures if item]:
-            path = root / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("{}", encoding="utf-8")
-        for builder in spec.entry_builders:
-            tool = root / "tools" / builder
-            tool.parent.mkdir(parents=True, exist_ok=True)
-            tool.write_text("", encoding="utf-8")
+        for variant in spec.variants:
+            fixtures = (variant.representative_request, variant.representative_result)
+            for relative in [item for item in fixtures if item]:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}", encoding="utf-8")
+            for builder in variant.entry_builders:
+                tool = root / "tools" / builder
+                tool.parent.mkdir(parents=True, exist_ok=True)
+                tool.write_text("", encoding="utf-8")
 
 
 def test_the_registry_gate_catches_a_family_or_adapter_that_stopped_shipping(tmp_path):
@@ -128,25 +160,74 @@ def test_the_registry_gate_catches_a_family_or_adapter_that_stopped_shipping(tmp
     assert any("ui-kit" in issue and "ships no Skill" in issue for issue in issues)
 
 
-def test_publish_runs_the_registry_gate_before_it_copies_anything():
+def test_the_release_gate_fails_while_any_runtime_route_cannot_reach_a_worker(tmp_path):
+    """`--require-closed` is what keeps a known gap out of a tagged release.
+
+    The structural pass deliberately stays green so a tracked gap can live on
+    `main` under its upstream issue without turning every CI run red. The
+    release gate is the one that must refuse, naming each open runtime route.
+    """
+    _mirror_registry_inputs(tmp_path)
+    assert check_registry(tmp_path) == []
+
+    issues = check_registry(tmp_path, require_closed=True)
+    expected = [f"{family}[{variant}]" for family, variant in OPEN_ROUTES]
+
+    assert expected, "the release gate has nothing to prove without an open route"
+    assert len(issues) == len(expected)
+    for label in expected:
+        assert any(issue.startswith(label) for issue in issues), label
+    for issue in issues:
+        assert "no complete registration chain" in issue
+
+
+def test_the_release_gate_is_wired_into_the_tag_workflow_and_checklist():
+    """A gate nobody runs is not a gate.
+
+    `--require-closed` only keeps a gap out of a release if the tag workflow
+    blocks on it and the checklist tells a human to run it, so assert both
+    surfaces name the exact command.
+    """
+    workflow = (REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    checklist = (REPO_ROOT / "docs/update/release-checklist.md").read_text(
+        encoding="utf-8"
+    )
+    command = "asset_family_registry.py --check --require-closed"
+
+    assert command in workflow
+    assert command in checklist
+    # The release job must depend on it; a parallel job that merely reports
+    # would still publish the tag.
+    assert "needs: asset-family-closure" in workflow
+
+
+def test_publish_gates_on_the_registry_and_warns_about_every_open_route():
     """A publish that ships an inconsistent family map is the failure mode.
 
     Inside a game project an advertised family whose adapter is missing looks
     exactly like a working one; the asset simply never reaches a worker. The
-    gate has to run before the first copy, not after.
+    structural gate has to run before the first copy, and an open route has to
+    be said out loud rather than installed silently.
     """
     source = (REPO_ROOT / "tools" / "publish.py").read_text(encoding="utf-8")
     body = source.split("\ndef main():", 1)[1]
 
-    assert "from asset_family_registry import check_registry" in source
+    assert "from asset_family_registry import" in source
     gate = body.index("check_registry(repo_root)")
     assert gate < body.index("publish_skills(repo_root")
     assert gate < body.index('publish_directory(repo_root / "tools"')
+    warning = body.index("open_routes(role=RUNTIME_ROLE)")
+    assert warning < body.index("publish_skills(repo_root")
 
 
-def test_every_declared_family_has_a_delivery_that_is_actually_driven():
-    """An enumerated family with no driver would silently prove nothing."""
-    assert sorted(DELIVERIES) == ALL_FAMILIES
+def test_every_declared_route_has_a_delivery_that_is_actually_driven():
+    """A route with no driver would silently prove nothing.
+
+    Keyed by `(family, variant)`: adding a second request shape to a Skill
+    without a delivery for it fails here instead of riding along on the shape
+    that already had one.
+    """
+    assert sorted(DELIVERIES) == ALL_ROUTES
 
 
 def test_no_surface_keeps_a_second_list_of_public_families():
@@ -168,21 +249,39 @@ def test_no_surface_keeps_a_second_list_of_public_families():
 
 
 def test_the_registry_and_the_stable_entry_schema_agree_on_layouts():
-    """Every layout a family may bind has to be one the entry schema accepts."""
+    """Every layout a route may bind has to be one the entry schema accepts."""
     declared = {
-        layout
-        for spec in FAMILIES.values()
-        for layout in spec.entry_source_layouts
+        layout for _, variant in routes() for layout in variant.entry_source_layouts
     }
 
     assert declared <= SOURCE_LAYOUT_TYPES
     assert set(REFERENCE_LAYOUTS) <= declared
 
 
-def test_open_families_carry_the_gap_that_keeps_them_out_of_a_release():
-    for family in OPEN_FAMILIES:
-        assert FAMILIES[family].open_gap, f"{family} is open with no recorded gap"
-    assert CLOSED_FAMILIES, "the registry lost every closed family"
+def test_open_routes_carry_the_gap_that_keeps_them_out_of_a_release():
+    for family, variant in OPEN_ROUTES:
+        assert _variant((family, variant)).open_gap, (
+            f"{family}[{variant}] is open with no recorded gap"
+        )
+    assert CLOSED_ROUTES, "the registry lost every closed route"
+
+
+def test_a_family_is_closed_only_when_every_shape_it_accepts_is():
+    """One working variant must not mark a family closed.
+
+    `fx-bundle` has two closed shapes and `platform-strip` two open ones; the
+    rule that matters is the mixed case, where a family with a working static
+    route and a missing animated one would otherwise read as covered.
+    """
+    for spec in FAMILIES.values():
+        expected = (
+            CLOSED
+            if all(v.registration_closure == CLOSED for v in spec.variants)
+            else OPEN
+        )
+        assert spec.registration_closure == expected
+    multi = [spec.family for spec in FAMILIES.values() if len(spec.variants) > 1]
+    assert sorted(multi) == ["fx-bundle", "platform-strip"]
 
 
 # --------------------------------------------------------------------------
@@ -191,82 +290,93 @@ def test_open_families_carry_the_gap_that_keeps_them_out_of_a_release():
 
 
 @pytest.mark.parametrize("family", ALL_FAMILIES)
-def test_family_ships_its_skill_validator_and_representative_result(family):
+def test_family_ships_its_skill_and_standalone_validator(family):
     spec = FAMILIES[family]
     skill_dir = REPO_ROOT / spec.skill_dir
 
     assert (skill_dir / "SKILL.md").is_file()
     assert (skill_dir / "standalone_validation.py").is_file()
-    assert (REPO_ROOT / spec.representative_result).is_file()
     assert spec.terminal_status == (
         "source_ready" if spec.is_reference_only else "ready"
     )
 
 
-@pytest.mark.parametrize("family", ALL_FAMILIES)
-def test_representative_result_passes_the_generic_validator(family):
-    result = representative_result(family)
+@pytest.mark.parametrize("key", ALL_ROUTES, ids=_route_id)
+def test_route_representative_result_passes_the_generic_validator(key):
+    family, name = key
+    result = representative_result(family, name)
 
+    assert (REPO_ROOT / _variant(key).representative_result).is_file()
     assert check_result(result)["ok"] is True
     assert result["asset_type"] == family
 
 
-@pytest.mark.parametrize("family", ALL_FAMILIES)
-def test_representative_result_delivers_exactly_what_the_registry_declares(family):
-    spec = FAMILIES[family]
-    result = representative_result(family)
+@pytest.mark.parametrize("key", ALL_ROUTES, ids=_route_id)
+def test_route_result_delivers_exactly_the_layout_and_artifact_it_declares(key):
+    """Exact per-route equality, not membership in the family's union.
+
+    Checking `godot_type in family.artifact_types` and "some source layout
+    intersects" is what let `platform-strip`'s `single -> Texture2D` shape go
+    unrecorded: its atlas fixture satisfied both assertions on its own.
+    """
+    family, name = key
+    variant = _variant(key)
+    result = representative_result(family, name)
     runtime = [item for item in result["outputs"] if item["role"] == "runtime"]
 
-    expected = {"none": 0, "one": 1}.get(spec.runtime_outputs)
+    expected = {"none": 0, "one": 1}.get(variant.runtime_outputs)
     if expected is None:
-        assert spec.runtime_outputs == "many"
-        assert len(runtime) > 1, f"{family} declares many runtime outputs but ships one"
+        assert variant.runtime_outputs == "many"
+        assert len(runtime) > 1, f"{family}[{name}] declares many outputs, ships one"
     else:
         assert len(runtime) == expected
 
-    for output in runtime:
-        assert output["godot_type"] in spec.artifact_types, (
-            f"{family} delivers {output['godot_type']}, which its registry entry "
-            "does not declare"
-        )
+    if variant.is_reference_only:
+        assert not runtime
+        assert not variant.artifact_types
+        return
+
+    delivered = {item["godot_type"] for item in runtime}
+    assert delivered == set(variant.artifact_types), (
+        f"{family}[{name}] delivers {sorted(delivered)} but declares "
+        f"{sorted(variant.artifact_types)}"
+    )
     layouts = {
         item["layout"] for item in result["sources"] if item.get("layout") is not None
     }
-    if spec.is_reference_only:
-        assert not runtime
-        assert not spec.artifact_types
-    else:
-        # The entry binds one of the declared layouts; a delivery may carry more
-        # source material than the entry records, never fewer.
-        assert layouts & set(spec.entry_source_layouts), (
-            f"{family} delivers no source in {spec.entry_source_layouts}"
-        )
+    # A delivery may carry extra source material (plans, reports, intermediate
+    # sheets); every layout the entry can bind must be among what it delivers.
+    assert set(variant.entry_source_layouts) <= layouts, (
+        f"{family}[{name}] declares {sorted(variant.entry_source_layouts)} but "
+        f"delivers {sorted(layouts)}"
+    )
 
 
-@pytest.mark.parametrize("family", RUNTIME_FAMILIES)
-def test_every_declared_layout_artifact_pair_is_a_legal_compiler_route(family):
-    """A family may not advertise an artifact the schema would refuse to hold."""
-    spec = FAMILIES[family]
+@pytest.mark.parametrize("key", RUNTIME_ROUTES, ids=_route_id)
+def test_every_route_layout_artifact_pair_is_a_legal_compiler_route(key):
+    """A route may not advertise an artifact the schema would refuse to hold."""
+    family, name = key
+    variant = _variant(key)
     compilable = {
         artifact
-        for layout in spec.entry_source_layouts
+        for layout in variant.entry_source_layouts
         for artifact in LAYOUT_ARTIFACT_TYPES.get(layout, ())
     }
 
-    assert compilable, f"{family} names no compilable source layout"
-    unroutable = sorted(set(spec.artifact_types) - compilable)
+    assert compilable, f"{family}[{name}] names no compilable source layout"
+    unroutable = sorted(set(variant.artifact_types) - compilable)
     assert not unroutable, (
-        f"{family} declares artifacts no declared layout compiles: "
+        f"{family}[{name}] declares artifacts no declared layout compiles: "
         + ", ".join(unroutable)
     )
 
 
-@pytest.mark.parametrize("family", CLOSED_FAMILIES)
-def test_a_closed_family_names_deterministic_builders_that_exist(family):
-    spec = FAMILIES[family]
+@pytest.mark.parametrize("key", CLOSED_ROUTES, ids=_route_id)
+def test_a_closed_route_names_deterministic_builders_that_exist(key):
+    variant = _variant(key)
 
-    assert spec.entry_builders
-    for builder in spec.entry_builders:
+    assert variant.entry_builders
+    for builder in variant.entry_builders:
         assert (REPO_ROOT / "tools" / builder).is_file()
 
 
@@ -297,11 +407,11 @@ def _register(project_root: Path, delivery: Delivery) -> list[Path]:
 
 
 def _complete_rows(project_root: Path, delivery: Delivery, paths: list[Path]) -> Path:
-    """Run the ASSETS.md update path this family's entry shape requires."""
-    spec = FAMILIES[delivery.family]
-    row_type = "reference" if spec.is_reference_only else "runtime"
+    """Run the ASSETS.md update path this route's entry shape requires."""
+    variant = _variant((delivery.family, delivery.variant))
+    row_type = "reference" if variant.is_reference_only else "runtime"
     assets_md = planning_table(project_root, list(delivery.assets_rows), row_type)
-    if spec.entry_shape == ENTRY_PER_OUTPUT:
+    if variant.entry_shape == ENTRY_PER_OUTPUT:
         manifest = write_bundle_manifest(
             paths,
             asset_ids=list(delivery.assets_rows),
@@ -315,30 +425,30 @@ def _complete_rows(project_root: Path, delivery: Delivery, paths: list[Path]) ->
     return assets_md
 
 
-@pytest.mark.parametrize("family", CLOSED_FAMILIES)
-def test_a_validated_delivery_reaches_a_worker_through_the_real_chain(
-    tmp_path, family
-):
-    spec = FAMILIES[family]
-    delivery = DELIVERIES[family](tmp_path)
+@pytest.mark.parametrize("key", CLOSED_ROUTES, ids=_route_id)
+def test_a_validated_delivery_reaches_a_worker_through_the_real_chain(tmp_path, key):
+    family, name = key
+    variant = _variant(key)
+    delivery = DELIVERIES[key](tmp_path)
 
-    assert delivery.entries, f"{family} drafted no stable entry"
+    assert delivery.variant == name
+    assert delivery.entries, f"{family}[{name}] drafted no stable entry"
     for entry in delivery.entries:
         assert entry["production_family"] == family
-        assert entry["processing_status"] == spec.terminal_status
-        assert entry["source_layout"]["type"] in spec.entry_source_layouts
-        assert (entry.get("bundle_id") is not None) is spec.uses_bundle_id
-        if spec.is_reference_only:
+        assert entry["processing_status"] == variant.terminal_status
+        assert entry["source_layout"]["type"] in variant.entry_source_layouts
+        assert (entry.get("bundle_id") is not None) is variant.uses_bundle_id
+        if variant.is_reference_only:
             assert "godot_artifact" not in entry
         else:
-            assert entry["godot_artifact"]["type"] in spec.artifact_types
+            assert entry["godot_artifact"]["type"] in variant.artifact_types
 
     paths = _register(tmp_path, delivery)
     assets_md = _complete_rows(tmp_path, delivery, paths)
     assert "MISSING" not in assets_md.read_text(encoding="utf-8")
 
     for row in delivery.assets_rows:
-        if spec.is_reference_only:
+        if variant.is_reference_only:
             # A reference completes its own row and stops there; it must never
             # become a runtime handoff.
             with pytest.raises(AssetRuntimeResolverError):
@@ -359,41 +469,41 @@ def test_a_validated_delivery_reaches_a_worker_through_the_real_chain(
                 "godot_artifact",
             ]
             assert item["production_family"] == family
-            assert item["godot_artifact"]["type"] in spec.artifact_types
+            assert item["godot_artifact"]["type"] in variant.artifact_types
             assert (tmp_path / item["godot_artifact"]["path"][len("res://"):]).is_file()
 
 
-@pytest.mark.parametrize("family", OPEN_FAMILIES)
-def test_an_open_family_still_refuses_at_the_link_the_registry_records(
-    tmp_path, family
-):
+@pytest.mark.parametrize("key", OPEN_ROUTES, ids=_route_id)
+def test_an_open_route_still_refuses_at_the_link_the_registry_records(tmp_path, key):
     """The gap must stay mechanically real, not just described in prose.
 
     When the missing adapter lands, this stops raising and the test fails, which
-    is the signal to close the family in `tools/asset_family_registry.py`.
+    is the signal to close that route in `tools/asset_family_registry.py`. Each
+    variant is driven from its own fixture, so an adapter that covers one shape
+    cannot silence the other.
     """
     with pytest.raises(RegistrationGap) as refusal:
-        DELIVERIES[family](tmp_path)
+        DELIVERIES[key](tmp_path)
 
     assert str(refusal.value)
 
 
 # --------------------------------------------------------------------------
-# the negative paths every family shape has to fail closed on
+# the negative paths every route shape has to fail closed on
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("family", sorted(set(CLOSED_FAMILIES) - set(BUNDLE_FAMILIES)))
-def test_an_entry_below_its_terminal_status_never_completes_a_row(tmp_path, family):
-    spec = FAMILIES[family]
-    delivery = DELIVERIES[family](tmp_path)
+@pytest.mark.parametrize("key", SINGLE_ENTRY_CLOSED_ROUTES, ids=_route_id)
+def test_an_entry_below_its_terminal_status_never_completes_a_row(tmp_path, key):
+    variant = _variant(key)
+    delivery = DELIVERIES[key](tmp_path)
     entry = delivery.entries[0]
-    entry["processing_status"] = "failed" if spec.is_reference_only else "compiled"
+    entry["processing_status"] = "failed" if variant.is_reference_only else "compiled"
     paths = _register(tmp_path, delivery)
     assets_md = planning_table(
         tmp_path,
         list(delivery.assets_rows),
-        "reference" if spec.is_reference_only else "runtime",
+        "reference" if variant.is_reference_only else "runtime",
     )
 
     with pytest.raises(AssetsMdUpdateError):
@@ -411,9 +521,9 @@ def test_a_reference_family_result_never_declares_a_runtime_artifact(family):
         check_result({**result, "outputs": [{"role": "runtime", "path": "x.png"}]})
 
 
-@pytest.mark.parametrize("family", BUNDLE_FAMILIES)
-def test_a_bundle_publishes_every_declared_child_or_none_of_them(tmp_path, family):
-    delivery = DELIVERIES[family](tmp_path)
+@pytest.mark.parametrize("key", BUNDLE_ROUTES, ids=_route_id)
+def test_a_bundle_publishes_every_declared_child_or_none_of_them(tmp_path, key):
+    delivery = DELIVERIES[key](tmp_path)
     paths = _register(tmp_path, delivery)
     assets_md = planning_table(tmp_path, list(delivery.assets_rows))
     before = assets_md.read_bytes()
@@ -432,11 +542,9 @@ def test_a_bundle_publishes_every_declared_child_or_none_of_them(tmp_path, famil
     assert not (tmp_path / ".godotmaker/asset-generation/bundles").exists()
 
 
-@pytest.mark.parametrize("family", BUNDLE_FAMILIES)
-def test_a_bundle_keeps_its_planning_rows_instead_of_adding_logical_ones(
-    tmp_path, family
-):
-    delivery = DELIVERIES[family](tmp_path)
+@pytest.mark.parametrize("key", BUNDLE_ROUTES, ids=_route_id)
+def test_a_bundle_keeps_its_planning_rows_instead_of_adding_logical_ones(tmp_path, key):
+    delivery = DELIVERIES[key](tmp_path)
     paths = _register(tmp_path, delivery)
     assets_md = planning_table(tmp_path, list(delivery.assets_rows))
     rows_before = len(assets_md.read_text(encoding="utf-8").splitlines())
