@@ -38,7 +38,13 @@ Proceed when either check has current-tag work:
 2. Current-tag scene references whose `references/scene_{name}.png` or report
    is missing or stale against `SCENES.md` and the Visual Asset Contract.
 
-If both checks are empty, stop with:
+If both checks are empty, record the completed asset stage before stopping:
+
+```bash
+python tools/append_stage_event.py asset
+```
+
+Then stop with:
 
 ```text
 No MISSING assets and no missing scene references for the current tag. Recommended next: /gm-build.
