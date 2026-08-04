@@ -148,6 +148,16 @@ def test_gm_asset_manager_dispatches_asset_producer_units():
     assert "leave affected stable entry drafts unwritten" in producer
 
 
+def test_asset_no_work_resume_check_writes_the_asset_stage_event():
+    skill = _read("skills/core/gm-asset/SKILL.md")
+    resume_check = skill[skill.index("## Resume Check"):skill.index("## Manager Rules")]
+
+    assert "python tools/append_stage_event.py asset" in resume_check
+    assert resume_check.index("python tools/append_stage_event.py asset") < resume_check.index(
+        "No MISSING assets and no missing scene references for the current tag."
+    )
+
+
 def test_asset_producer_outcome_template_matches_its_enforcer():
     """The template the producer is told to emit is the one the hook accepts.
 

@@ -86,6 +86,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Ensure `/gm-asset` records an asset-stage completion event when its resume check finds no current-tag work.
+
 - A validated background-map now registers as a ready `single -> Texture2D` stable entry through its own finalize builder, instead of stopping at `source_ready` with no way to reach a worker; registration binds to the image bytes its L0-L4 run recorded, so regenerating onto the same stable path fails closed.
 
 - An asset production unit now ends the asset stage with one consistent status, so a retried report no longer reads as a failure and a partial result keeps its blockers instead of being recorded as unknown.
