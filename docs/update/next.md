@@ -56,7 +56,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - A Skill that accepts more than one request shape now declares one registration chain per shape, so a variant whose adapter is missing can no longer hide behind a sibling variant that works.
 
-- `background-map` and both `platform-strip` strip kinds are now recorded as having no complete registration chain, so their missing adapter is visible instead of reading as a working path.
+- Both `platform-strip` strip kinds are now recorded as having no complete registration chain, so their missing adapter is visible instead of reading as a working path.
 
 - A ui-kit or card-kit now registers one ready stable entry per runtime output, so its `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` are separately resolvable instead of unregisterable; `bundle_id` covers these two families alongside `compact-prop-pack`.
 - Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep
@@ -93,6 +93,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - The stable-entry schema now validates each `source_layout.type` against its closed compatible Godot artifact-type set, including `StyleBoxTexture` for `single` and `region_atlas`, so mismatches are rejected before reaching a worker.
 
 ## Fixed
+
+- A validated background-map now registers as a ready `single -> Texture2D` stable entry through its own finalize builder, instead of stopping at `source_ready` with no way to reach a worker; registration binds to the image bytes its L0-L4 run recorded, so regenerating onto the same stable path fails closed.
 
 - Replaced legacy magenta edge cleanup with PyMatting using a fixed validated trimap.
 

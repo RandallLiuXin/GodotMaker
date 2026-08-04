@@ -42,7 +42,7 @@ from asset_action_entry_draft import (  # noqa: E402
     write_character_bundle_entry_draft,
     write_fx_bundle_entry_draft,
 )
-from asset_assets_md_update import AssetsMdUpdateError, update_assets_md  # noqa: E402
+from asset_build_record import write_validation_record  # noqa: E402
 from asset_compact_prop_pack_entry_draft import (  # noqa: E402
     build_compact_prop_pack_entry_drafts,
 )
@@ -52,11 +52,7 @@ from asset_finalize_entry_draft import build_finalize_entry_draft  # noqa: E402
 from asset_scene_prop_set_entry_draft import (  # noqa: E402
     build_scene_prop_set_entry_draft,
 )
-from asset_stable_entry import (  # noqa: E402
-    StableEntryError,
-    entry_relative_path,
-    write_entry,
-)
+from asset_stable_entry import StableEntryError, write_entry  # noqa: E402
 from asset_tileset_entry_draft import build_tileset_entry_draft  # noqa: E402
 from asset_ui_card_entry_draft import build_ui_card_entry_drafts  # noqa: E402
 
@@ -571,11 +567,33 @@ def _fx_animated(root: Path) -> Delivery:
 
 
 def _background_map(root: Path) -> Delivery:
-    """A validated Texture2D background that no adapter can promote to ready."""
+    """A validated background registered from the image L0-L4 examined.
+
+    Source and artifact are the same PNG: Godot's default import already is the
+    `Texture2D`, so nothing wraps it in a `.tres`. The builder binds the passing
+    result to the validation record the family's standalone runner wrote, which
+    is what stops a later regeneration at the same stable path from registering
+    a build no ladder ever saw.
+    """
     asset_id = "forest_dawn"
     relative = f"assets/generated/background-map/{asset_id}/{asset_id}.png"
     write_png(root, relative, (16, 9))
     report = _finalize_report(root, asset_id=asset_id, relative=relative)
+    result = representative_result("background-map")
+    # The fixture is written against its own asset id; retarget it at this
+    # delivery's stable path rather than inventing a second result shape.
+    result = json.loads(
+        json.dumps(result).replace(
+            "assets/generated/background-map/forest_dawn/forest_dawn.png", relative
+        )
+    )
+    result_path = write_json(root, "background-result.json", result)
+    write_validation_record(
+        root,
+        production_family="background-map",
+        asset_id=asset_id,
+        artifact_path=f"res://{relative}",
+    )
 
     entry = build_finalize_entry_draft(
         report,
@@ -583,24 +601,13 @@ def _background_map(root: Path) -> Delivery:
         tag=TAG,
         production_family="background-map",
         project_root=root,
+        result_path=result_path,
     )
-    if entry.get("godot_artifact") or entry["processing_status"] == "ready":
-        raise AssertionError(
-            "background-map now reaches a ready Texture2D entry; close its gap in "
-            "tools/asset_family_registry.py"
-        )
-    # Prove the refusal at the point it actually bites: the row stays MISSING.
-    write_entry(entry, project_root=root, check_files=True)
-    assets_md = _planning_table(root, ["forest_dawn"])
-    try:
-        update_assets_md(
-            assets_md, [root / entry_relative_path(TAG, asset_id)]
-        )
-    except AssetsMdUpdateError as exc:
-        raise RegistrationGap(str(exc)) from exc
-    raise AssertionError(
-        "background-map now completes its ASSETS.md row; close its gap in "
-        "tools/asset_family_registry.py"
+    return Delivery(
+        "background-map",
+        (asset_id,),
+        [entry],
+        result_path=result_path,
     )
 
 

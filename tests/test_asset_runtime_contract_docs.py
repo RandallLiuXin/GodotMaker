@@ -6,7 +6,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from asset_family_registry import FAMILIES, OPEN  # noqa: E402
+from asset_family_registry import FAMILIES, OPEN, open_routes  # noqa: E402
+
+FAMILIES_OPEN_ROUTES = open_routes()
 
 # The only modules allowed to name the retired schema, and only to reject it.
 LEGACY_REJECTION_TOOLS = {
@@ -1014,6 +1016,39 @@ def test_every_planned_family_routes_through_a_draft_builder():
             assert builder in section, (
                 f"{spec.family} lost the documented path to {builder}"
             )
+
+
+def test_no_open_route_is_also_documented_as_reaching_ready():
+    """The registry and the ladder must not disagree about who reaches `ready`.
+
+    A closure driver only proves the gap is real for the call it makes. When
+    `background-map`'s adapter landed upstream it arrived as a new opt-in
+    `--result` mode, so a driver still invoking the legacy no-result call kept
+    refusing and the registry kept claiming the route was open — while this
+    reference had already moved the family into the list that writes `ready`
+    directly. Reading the grant out of the ladder catches that contradiction
+    even when nothing about the old call path changed.
+    """
+    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+    ladder = _flat(runtime.split("## Processing Status", 1)[1].split("\n## ", 1)[0])
+    grant = ladder.split("Nothing else may write `ready`.", 1)[0]
+    assert "writes `ready` directly" in grant, "the ladder lost its `ready` grant"
+
+    reaches_ready = {name for name in FAMILIES if f"`{name}`" in grant}
+    assert reaches_ready, "no family is documented as able to reach `ready`"
+
+    contradictory = sorted(
+        {
+            spec.family
+            for spec, _ in FAMILIES_OPEN_ROUTES
+            if spec.family in reaches_ready
+        }
+    )
+    assert not contradictory, (
+        "these families are documented as reaching `ready` while the registry "
+        "still records an open registration chain for them: "
+        + ", ".join(contradictory)
+    )
 
 
 def test_a_family_without_a_closed_chain_is_documented_as_open():

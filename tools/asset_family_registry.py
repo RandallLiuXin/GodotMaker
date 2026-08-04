@@ -276,13 +276,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 representative_result=(
                     "skills/assets/background-map/fixtures/representative-result.json"
                 ),
-                registration_closure=OPEN,
-                open_gap=(
-                    "asset_finalize_entry_draft.py is the only documented adapter "
-                    "and it always drafts source_ready with no godot_artifact, so "
-                    "a validated Texture2D delivery never reaches ready and never "
-                    "reaches a worker. Owned by GodotMaker issue #154."
-                ),
             ),
         ),
     ),

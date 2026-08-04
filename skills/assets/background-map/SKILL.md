@@ -75,6 +75,9 @@ For every attempt, retain these project-local records under
    the runtime exposes it, real reference attachments with roles, source path,
    and provider trace or failure.
 4. `reports/<asset_id>_finalize.json`, the deterministic finalization report.
+5. `reports/<asset_id>_validation.json`, written by the validation runner on a
+   fully passing ladder. Do not edit it; run validation again after any
+   regeneration.
 
 The visual source may only be a selected provider output or a user-provided
 source/reference. Never create art with Pillow, System.Drawing, ImageMagick,
