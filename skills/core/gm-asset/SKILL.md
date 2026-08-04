@@ -287,9 +287,16 @@ does not register a generic result directly.
 
 1. Read the terminal status from the report's machine outcome block — the
    fenced JSON object carrying `gm_outcome_version`. Its `status` is `DONE`,
-   `PARTIAL`, or `FAILED`, and it is the only status you act on. Never re-read
-   it from the markdown prose: the prose is a summary, and the report hook
-   already rejected any report whose block was missing or invalid.
+   `PARTIAL`, or `FAILED`, and it is the only status you act on. Never read it
+   from the markdown prose; the prose is a summary.
+
+   Confirm the block is there and well-formed yourself. The hook normally
+   rejects a report without one, but its anti-deadloop escape hatch releases a
+   subagent after repeated failures, so a report with no valid block can still
+   reach you. Such a report has no terminal status: treat the production unit
+   as unregistered, register nothing from it, and re-dispatch it once or
+   report the unit as blocked. Do not infer a status from the prose to fill
+   the gap.
 2. Confirm listed source, runtime output, prompt, report, and stable-entry draft
    files exist when claimed. `outputs` in the block lists the same paths by
    category and is what you check against.

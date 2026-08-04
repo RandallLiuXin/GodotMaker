@@ -152,11 +152,13 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
 
 | `outcome_kind` | 含义 |
 |---|---|
-| `terminal` | 本次运行的终态，写入唯一的结果特定事件 |
-| `rejected_attempt` | 报告 Hook 拒绝了这次 stop，不写结果事件 |
+| `terminal` | 报告通过校验，写入唯一的结果特定事件 |
+| `rejected_attempt` | 报告 Hook 拦截了这次 stop，不写结果事件 |
+| `unverified` | 未通过校验即被放行，不写结果事件 |
 
-被拒绝的尝试永远不会占用那唯一的结果事件，因此纯格式拒绝既不会被读成 producer
-失败，也不会抢先覆盖重试的真实终态。
+只有 `terminal` 才写结果特定事件，因此未通过校验的报告既不会被读成结果，也不会
+抢先覆盖重试的真实终态。`unverified` 覆盖两种「放行但未接受报告」的情况：下文的
+防死锁 force-allow，以及必须携带 machine outcome 块的角色在没有合法块时走到这一步。
 
 ### on_subagent_stop.py
 
@@ -207,7 +209,8 @@ metrics 与 `/gm-asset` 管理端通过同一个 parser 读取它，因此错乱
 | `blockers` | 字符串数组；只有 `status` 为 `DONE` 时才可为空 |
 
 `DONE` 还要求 `validation.passed` 为真；`PARTIAL` 与 `FAILED` 至少需要一条 blocker。
-字段缺失或非法会带着字段名被拒绝，该次 stop 记录为 `rejected_attempt`。
+字段缺失或非法会带着字段名被拒绝，该次 stop 记录为 `rejected_attempt`；若最终被
+force-allow 放行，则记录为 `unverified`。两者都不会写结果事件。
 
 **每角色必需章节：**
 
@@ -229,6 +232,11 @@ metrics 与 `/gm-asset` 管理端通过同一个 parser 读取它，因此错乱
 **Reviewer 内容检查：** ECS Review 和 Issues Found 章节各自必须有至少 50 个字符的内容，防止空洞或走过场的审查。
 
 **防死锁：** `BLOCK_LIMIT = 2`，每个 `agent_id` 最多 2 次拦截——超过 2 次后强制放行并给出警告，而不是永远阻止。
+
+Force-allow 只解除对 agent 的阻塞，**并不**表示接受该报告。这次 stop 记为
+`unverified` 且不写任何结果特定事件，未通过校验的报告因此永远无法占据本次运行的
+终态。对必须携带 machine outcome 块的角色，警告还会明确告知该报告不是终态、其产物
+不得被注册。
 
 **已知缺口：**
 - Verifier 报告：没有 Hook 验证 Verifier 确实运行了测试（仅检查格式）

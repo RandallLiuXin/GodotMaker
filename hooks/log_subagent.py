@@ -16,18 +16,19 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metrics import (
-    record_event, EventType, normalize_report,
+    record_event, EventType, normalize_report, OUTCOME_REQUIRED_ROLES,
     ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST,
     ROLE_ASSET_PRODUCER, ROLE_UNKNOWN,
     KNOWN_ROLES,
 )
 from check_worker_report import extract_files_changed
 
-# A stop the report hook rejected is an attempt, not a result. Labelling it
-# keeps a format-only rejection from reading as a terminal producer failure,
-# and keeps it from claiming the one terminal outcome event.
+# How a stop relates to the run's terminal status. Only `terminal` writes an
+# outcome-specific event, so a report that never passed validation can neither
+# read as a result nor claim the one terminal outcome.
 OUTCOME_TERMINAL = "terminal"
-OUTCOME_REJECTED_ATTEMPT = "rejected_attempt"
+OUTCOME_REJECTED_ATTEMPT = "rejected_attempt"  # the hook blocked this stop
+OUTCOME_UNVERIFIED = "unverified"              # released without passing validation
 
 # Debug logging: always on. Writes to .godotmaker/traces/hook_debug.log.
 _DEBUG_LOG = os.path.join(".godotmaker", "traces", "hook_debug.log")
@@ -175,14 +176,39 @@ def main():
     sys.exit(0)  # Never block
 
 
+def classify_stop(verdict, report, effective_role: str) -> str:
+    """Decide whether this stop is the run's terminal result.
+
+    Only a report that actually passed validation may become `terminal`, and
+    only a `terminal` stop writes an outcome-specific event. The hook can
+    release an agent without accepting its report — it blocks, or its deadloop
+    escape hatch force-allows — and treating either as a result is how an
+    unvalidated report claimed the single terminal outcome.
+    """
+    if verdict is not None and getattr(verdict, "rejected", False):
+        return OUTCOME_REJECTED_ATTEMPT
+
+    # For a role that carries a machine outcome, that block IS the verification,
+    # so it alone decides — including on paths where the hook validated nothing
+    # (force-allow, or no active pipeline role). A valid block still counts; a
+    # missing or malformed one has no terminal status to claim.
+    if effective_role in OUTCOME_REQUIRED_ROLES:
+        return OUTCOME_TERMINAL if report.outcome is not None else OUTCOME_UNVERIFIED
+
+    # Other roles are verified only by the markdown gate, which force-allow skips.
+    if verdict is not None and getattr(verdict, "force_allowed", False):
+        return OUTCOME_UNVERIFIED
+    return OUTCOME_TERMINAL
+
+
 def handle_stop(data: dict, verdict=None) -> None:
     """Handle SubagentStop event. Called from the on_subagent_stop dispatcher.
 
     `verdict` is the report hook's `ReportVerdict` for this same stop, computed
-    before this call. When the hook rejected the report, the stop is recorded as
-    a rejected attempt and writes no terminal outcome event, so a format-only
-    rejection can neither read as a producer failure nor pre-empt the retry's
-    real result.
+    before this call. `classify_stop` turns it into an `outcome_kind`; only a
+    `terminal` stop writes an outcome event, so neither a format rejection nor
+    a force-allowed report can read as a producer result or pre-empt the
+    retry's real one.
     """
     agent_id = data.get("agent_id") or ""
     agent_type = data.get("agent_type") or ""
@@ -205,8 +231,10 @@ def handle_stop(data: dict, verdict=None) -> None:
     # Final-output capture moved to log_agent_tool.py PostToolUse — see
     # this file's header for rationale.
 
-    rejected = bool(verdict is not None and getattr(verdict, "rejected", False))
+    # Role for outcome purposes: the dispatched role first, report type second.
+    effective_role = role if role != ROLE_UNKNOWN else report_type
     outcome = report.outcome or {}
+    kind = classify_stop(verdict, report, effective_role)
 
     record_event(
         EventType.SUBAGENT_STOP,
@@ -216,19 +244,18 @@ def handle_stop(data: dict, verdict=None) -> None:
         report_type=report_type,
         status=status,
         files_changed=files,
-        outcome_kind=OUTCOME_REJECTED_ATTEMPT if rejected else OUTCOME_TERMINAL,
+        outcome_kind=kind,
         unit_id=outcome.get("unit_id"),
         blockers=outcome.get("blockers", []),
         outcome_error=report.outcome_error,
     )
 
-    if rejected:
+    if kind != OUTCOME_TERMINAL:
         return
 
     # Record outcome-specific event based on role (primary) or report_type (fallback).
     # Only record once per agent_id to avoid duplicates when check_worker_report
     # blocks and the SubagentStop hook fires multiple times on retries.
-    effective_role = role if role != ROLE_UNKNOWN else report_type
     outcome_map = _OUTCOME_MAPS.get(effective_role)
     if outcome_map and status in outcome_map and not _has_outcome_event(agent_id):
         record_event(

@@ -163,3 +163,6 @@ When a prompt depends on an existing image:
 6. The block fails closed. A missing or invalid field is rejected with the
    field name, and the attempt does not count as a terminal result — fix the
    named field and re-emit the whole report.
+7. Being released after repeated rejections is not acceptance. Without a valid
+   block the unit has no terminal status and its outputs are not registered, so
+   say so plainly instead of presenting the run as finished.

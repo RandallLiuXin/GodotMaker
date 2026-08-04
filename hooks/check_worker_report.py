@@ -57,11 +57,20 @@ class ReportVerdict:
     state_key: str | None = None
     agent_id: str = ""
     block_count: int = 0
+    outcome_verified: bool = False
     event_extra: dict = field(default_factory=dict)
 
     @property
     def rejected(self) -> bool:
         return self.action == ACTION_BLOCK
+
+    @property
+    def force_allowed(self) -> bool:
+        """The deadloop escape hatch fired: the agent is released without its
+        report being validated. Release is not acceptance — see
+        `log_subagent.classify_stop`, which refuses to call such a stop terminal.
+        """
+        return self.action == ACTION_FORCE_ALLOW
 
 
 WORKER_TEST_SUBSTANCE = [
@@ -253,13 +262,20 @@ def evaluate(data: dict) -> ReportVerdict:
     if not get_current_role():
         return ReportVerdict(ACTION_SKIP)
 
-    # Anti-deadloop: per-agent block counter
     agent_id = data.get("agent_id") or ""
+    agent_type = data.get("agent_type") or ""
+    report = normalize_report(message)
+
+    # Anti-deadloop: per-agent block counter. Resolved before the counter check
+    # so the escape hatch can name the role it is releasing unvalidated.
     state_key = f"worker_report_block:{agent_id}" if agent_id else "worker_report_block:main"
     block_count = state.get(state_key, 0)
     if block_count >= BLOCK_LIMIT:
+        released = agent_type if agent_type in KNOWN_ROLES else report.report_type
         return ReportVerdict(
             ACTION_FORCE_ALLOW, agent_id=agent_id, block_count=block_count,
+            report_type=released if released in KNOWN_ROLES else None,
+            outcome_verified=report.outcome is not None,
         )
 
     def block(reason: str, **extra) -> ReportVerdict:
@@ -270,7 +286,6 @@ def evaluate(data: dict) -> ReportVerdict:
     # Compute worktree directories once to avoid repeated glob calls in _resolve_file
     worktree_dirs = globmod.glob(os.path.join(".claude", "worktrees", "agent-*"))
 
-    report = normalize_report(message)
     report_type = report.report_type if report.report_type in KNOWN_ROLES else None
 
     if report_type is None:
@@ -366,13 +381,22 @@ def apply_verdict(verdict: ReportVerdict) -> None:
                      result="force_allow",
                      reason=(f"Agent {verdict.agent_id} blocked "
                              f"{verdict.block_count} times, force-allowing"),
-                     agent_id=verdict.agent_id)
+                     agent_id=verdict.agent_id,
+                     report_type=verdict.report_type,
+                     outcome_verified=verdict.outcome_verified)
         warning = (
             f"Force-allowing after {verdict.block_count} failed attempts. "
             f"Your report for agent {verdict.agent_id} did not pass validation. "
             f"You MUST inform the user that this report has unresolved quality issues "
             f"and may need manual review. Do NOT silently proceed as if everything passed."
         )
+        if verdict.report_type in OUTCOME_REQUIRED_ROLES and not verdict.outcome_verified:
+            warning += (
+                f" This {verdict.report_type} report has NO validated machine outcome, "
+                f"so it is not a terminal result: it is recorded as unverified and "
+                f"produces no outcome event. Do not register its outputs — re-run the "
+                f"production unit or escalate."
+            )
         print(json.dumps({"decision": "allow", "reason": warning}), file=sys.stderr)
         return
 

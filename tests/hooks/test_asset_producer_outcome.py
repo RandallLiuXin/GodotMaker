@@ -313,6 +313,12 @@ class TestRejectedAttempt:
         assert len(partial) == 1
         assert partial[0]["blockers"]
 
+    def test_missing_block_is_an_attempt_too(self):
+        stop("ap-noblock2", producer_report("DONE").split("### Machine Outcome")[0])
+        record = read_metrics("subagent_stop")[0]
+        assert record["outcome_kind"] == "rejected_attempt"
+        assert read_metrics("asset_producer_done") == []
+
     def test_invalid_block_is_an_attempt_not_a_producer_failure(self):
         message = producer_report("DONE").replace('"unit_id": "ui_kit"', '"unit_id": ""')
         _, _, parsed = stop("ap-badblock", message)
@@ -321,3 +327,73 @@ class TestRejectedAttempt:
         assert record["outcome_kind"] == "rejected_attempt"
         assert "unit_id" in record["outcome_error"]
         assert read_metrics("asset_producer_failed") == []
+
+
+class TestForceAllowNeverTerminal:
+    """The anti-deadloop escape hatch releases the agent, it does not accept
+    the report. An unvalidated report must not claim the terminal outcome.
+    """
+
+    INVALID = producer_report("DONE", unit_id="")
+
+    def _exhaust_block_limit(self, agent_id, message):
+        """Two rejections, so the third stop hits BLOCK_LIMIT force-allow."""
+        for _ in range(2):
+            _, _, parsed = stop(agent_id, message)
+            assert is_blocked(parsed)
+
+    def test_third_invalid_attempt_is_unverified_not_terminal(self):
+        self._exhaust_block_limit("ap-force", self.INVALID)
+
+        _, code, parsed = stop("ap-force", self.INVALID)
+        assert code == 0
+        assert not is_blocked(parsed), "force-allow must release the agent"
+
+        stops = read_metrics("subagent_stop")
+        assert len(stops) == 3
+        assert [s["outcome_kind"] for s in stops] == [
+            "rejected_attempt", "rejected_attempt", "unverified",
+        ]
+        assert not [s for s in stops if s["outcome_kind"] == "terminal"]
+
+    def test_force_allowed_report_writes_no_outcome_event(self):
+        self._exhaust_block_limit("ap-force2", self.INVALID)
+        stop("ap-force2", self.INVALID)
+
+        for event in ("asset_producer_done", "asset_producer_partial",
+                      "asset_producer_failed"):
+            assert read_metrics(event) == [], f"{event} written for an unvalidated report"
+
+    def test_missing_block_cannot_be_force_allowed_into_a_result(self):
+        """The markdown fallback must not supply a status the block never had."""
+        no_block = producer_report("DONE").split("### Machine Outcome")[0]
+        self._exhaust_block_limit("ap-force3", no_block)
+        stop("ap-force3", no_block)
+
+        record = read_metrics("subagent_stop")[-1]
+        assert record["outcome_kind"] == "unverified"
+        assert record["status"] == "DONE", "the prose status is still recorded, just not trusted"
+        assert record["unit_id"] is None
+        assert read_metrics("asset_producer_done") == []
+
+    def test_force_allow_warning_tells_the_manager_it_is_unverified(self):
+        self._exhaust_block_limit("ap-force4", self.INVALID)
+        stdout, _, _ = stop("ap-force4", self.INVALID)
+        assert stdout == "", "force-allow must not print a block decision"
+
+        gate = read_metrics("gate_check")[-1]
+        assert gate["result"] == "force_allow"
+        assert gate["report_type"] == "asset-producer"
+
+    def test_a_valid_retry_after_force_allow_is_still_terminal(self):
+        """The escape hatch must not permanently poison the agent's outcome."""
+        self._exhaust_block_limit("ap-force5", self.INVALID)
+        stop("ap-force5", self.INVALID)
+        assert read_metrics("asset_producer_partial") == []
+
+        stop("ap-force5", producer_report("PARTIAL"))
+        stops = read_metrics("subagent_stop")
+        assert stops[-1]["outcome_kind"] == "terminal"
+        partial = read_metrics("asset_producer_partial")
+        assert len(partial) == 1
+        assert partial[0]["blockers"]

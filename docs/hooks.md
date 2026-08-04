@@ -186,12 +186,15 @@ Every `SUBAGENT_STOP` carries `outcome_kind`:
 
 | `outcome_kind` | Meaning |
 |---|---|
-| `terminal` | The run's result. Writes the one outcome-specific event. |
-| `rejected_attempt` | The report hook rejected this stop. Writes no outcome event. |
+| `terminal` | The report passed validation. Writes the one outcome-specific event. |
+| `rejected_attempt` | The report hook blocked this stop. Writes no outcome event. |
+| `unverified` | Released without passing validation. Writes no outcome event. |
 
-A rejected attempt never claims the single outcome event, so a format-only
-rejection can neither read as a producer failure nor pre-empt the retry's real
-status.
+Only a `terminal` stop writes an outcome-specific event, so a report that never
+passed validation can neither read as a result nor pre-empt the retry's real
+status. `unverified` covers the two ways an agent is released without its
+report being accepted: the anti-deadloop force-allow below, and a role that
+must carry a machine outcome block reaching this point without a valid one.
 
 ### on_subagent_stop.py
 
@@ -256,7 +259,8 @@ mangled heading can no longer produce a `report_type: unknown` /
 
 `DONE` additionally requires `validation.passed`; `PARTIAL` and `FAILED`
 require at least one blocker. A missing or invalid field is rejected with the
-field name, and that stop is logged as a `rejected_attempt`.
+field name, and that stop is logged as a `rejected_attempt` — or `unverified`
+if force-allow eventually released it. Neither writes an outcome event.
 
 **Per-role required sections:**
 
@@ -281,6 +285,12 @@ have ≥50 characters of content. Prevents empty/trivial reviews.
 
 **Anti-deadloop:** `BLOCK_LIMIT = 2` per `agent_id` — after 2 blocks for the
 same subagent, force-allow with a warning rather than re-block forever.
+
+Force-allow releases the agent; it does **not** accept the report. That stop is
+logged as `unverified` and writes no outcome-specific event, so an unvalidated
+report can never claim the run's terminal status. For a role that must carry a
+machine outcome block, the warning also tells the agent the report is not a
+terminal result and its outputs must not be registered.
 
 **Gaps:**
 - Verifier reports: no check that tests were actually run (only format)

@@ -181,9 +181,17 @@ def test_gm_asset_manager_reads_the_machine_outcome():
     skill = _flat(_read("skills/core/gm-asset/SKILL.md"))
 
     assert f"the fenced JSON object carrying `{OUTCOME_VERSION_KEY}`" in skill
-    assert "Never re-read it from the markdown prose" in skill
+    assert "Never read it from the markdown prose" in skill
     assert "when the outcome block's `blockers` make the failure actionable" in skill
     assert "A report the hook rejected is a rejected attempt, not a terminal result." in skill
+
+    # The hook's anti-deadloop escape hatch can release a report with no valid
+    # block, so the manager may not assume the hook filtered those out.
+    assert "Confirm the block is there and well-formed yourself." in skill
+    assert "anti-deadloop escape hatch releases a subagent after repeated failures" in skill
+    assert "Such a report has no terminal status" in skill
+    assert "register nothing from it" in skill
+    assert "Do not infer a status from the prose to fill the gap." in skill
 
 
 def test_first_class_asset_skills_are_the_only_entry_points():
