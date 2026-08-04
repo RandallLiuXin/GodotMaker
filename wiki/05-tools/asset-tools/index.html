@@ -3134,6 +3134,20 @@ pinned to the stable output directory for every other family.</p>
 <a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">  </span>--out<span class="w"> </span>.godotmaker/asset-generation/work/entries/&lt;asset_id&gt;.json
 </code></pre></div>
+<p>Adding <code>--result &lt;result.json&gt;</code> switches the same builder to <code>background-map</code>
+ready mode. It binds that passing result's one <code>Texture2D</code> runtime output and
+its one <code>single</code> source to the exact PNG the finalize report published, requires
+all of L0-L4, runs the registered <code>single -&gt; Texture2D</code> route, and writes the
+<code>ready</code> entry from the artifact that route returned. Godot's default import is
+already that <code>Texture2D</code>, so <code>source_layout.path</code> and <code>godot_artifact.path</code> are
+the same PNG and no <code>.tres</code> is produced. Without <code>--result</code> the entry stops at
+<code>source_ready</code>.</p>
+<p>Because a result names paths and not bytes, and the stable path is derived from
+the asset id, that mode also requires the validation record the family's
+standalone runner wrote for the image it examined
+(<code>.godotmaker/asset-generation/reports/&lt;asset_id&gt;_validation.json</code>) and
+recomputes it from disk. Overwriting the PNG after validation — which a normal
+retry does, in place — fails closed until the Skill revalidates.</p>
 <h2 id="asset_output_pathpy">asset_output_path.py<a class="headerlink" href="#asset_output_pathpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_output_path.py</code> is the authority for the stable output directory
 <code>assets/generated/&lt;production_family&gt;/&lt;asset_id&gt;/</code>. Every worker-consumable file

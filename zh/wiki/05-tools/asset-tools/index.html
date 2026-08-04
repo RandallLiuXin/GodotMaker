@@ -3082,6 +3082,8 @@
 <a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span>--project-root<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">  </span>--out<span class="w"> </span>.godotmaker/asset-generation/work/entries/&lt;asset_id&gt;.json
 </code></pre></div>
+<p>追加 <code>--result &lt;result.json&gt;</code> 会把同一个 builder 切换到 <code>background-map</code> 的 ready 模式：它把通过校验的 result 中唯一的 <code>Texture2D</code> runtime output 和唯一的 <code>single</code> source 绑定到 finalize 报告实际发布的那张 PNG，要求 L0-L4 全部通过，运行已注册的 <code>single -&gt; Texture2D</code> 路由，并用该路由返回的 artifact 写出 <code>ready</code> entry。Godot 的默认导入本身就是那个 <code>Texture2D</code>，因此 <code>source_layout.path</code> 与 <code>godot_artifact.path</code> 是同一张 PNG，不会产生 <code>.tres</code>。不带 <code>--result</code> 时 entry 停在 <code>source_ready</code>。</p>
+<p>由于 result 只声明路径不声明字节，而稳定路径由 asset id 派生，该模式还要求 family 的 standalone 验证运行器为其检查过的图片写下的 validation record（<code>.godotmaker/asset-generation/reports/&lt;asset_id&gt;_validation.json</code>），并从磁盘重新计算比对。验证之后再覆盖这张 PNG（正常重试就是原位覆盖）会 fail closed，必须重新走一次 Skill 验证。</p>
 <h2 id="asset_output_pathpy">asset_output_path.py<a class="headerlink" href="#asset_output_pathpy" title="Permanent link">&para;</a></h2>
 <p><code>asset_output_path.py</code> 是稳定输出目录 <code>assets/generated/&lt;production_family&gt;/&lt;asset_id&gt;/</code> 的唯一权威。一个素材所有可被 worker 消费的文件都放在这里，因此重新生成会就地覆盖，不会漂移到带时间戳或 <code>v2</code> 的路径。</p>
 <p>手动入口：</p>

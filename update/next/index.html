@@ -2819,6 +2819,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
+<p>A validated background-map now registers as a ready <code>single -&gt; Texture2D</code> stable entry through its own finalize builder, instead of stopping at <code>source_ready</code> with no way to reach a worker; registration binds to the image bytes its L0-L4 run recorded, so regenerating onto the same stable path fails closed.</p>
+</li>
+<li>
 <p>Replaced legacy magenta edge cleanup with PyMatting using a fixed validated trimap.</p>
 </li>
 <li>
