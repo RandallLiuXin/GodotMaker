@@ -266,7 +266,9 @@ Brief shape:
 ### Scope
 - Write only the listed outputs.
 - Use only the production contract and docs it references.
-- Return the required Asset Producer Report.
+- Return the required Asset Producer Report, ending with its machine outcome
+  block. That block carries the terminal status; the markdown sections are the
+  human-readable summary.
 ```
 
 Do not dispatch one subagent per ASSETS.md row when the work is one bundle.
@@ -283,9 +285,14 @@ validates the generic result, materializes the normal report and deterministic
 draft-builder inputs, and then follows this same registration path. The manager
 does not register a generic result directly.
 
-1. Confirm status is `DONE`, `PARTIAL`, or `FAILED`.
+1. Read the terminal status from the report's machine outcome block — the
+   fenced JSON object carrying `gm_outcome_version`. Its `status` is `DONE`,
+   `PARTIAL`, or `FAILED`, and it is the only status you act on. Never re-read
+   it from the markdown prose: the prose is a summary, and the report hook
+   already rejected any report whose block was missing or invalid.
 2. Confirm listed source, runtime output, prompt, report, and stable-entry draft
-   files exist when claimed.
+   files exist when claimed. `outputs` in the block lists the same paths by
+   category and is what you check against.
 3. Confirm every entry draft came from a deterministic builder —
    `tools/asset_action_entry_draft.py` for processed action output,
    `tools/asset_curation_entry_draft.py` for a selected curation candidate,
@@ -360,8 +367,14 @@ write the bundle manifest and leave every planning row `MISSING`.
 Keep runtime entries below `ready` as `MISSING`. Do not hand-edit an ASSETS.md
 status, the root index, or a stable entry.
 
-9. Redispatch failed or incomplete production units once when the failure is
-   actionable from the report.
+9. Redispatch failed or incomplete production units once when the outcome
+   block's `blockers` make the failure actionable. Carry those blockers into the
+   redispatch brief and keep them in the stage summary — a `PARTIAL` or `FAILED`
+   unit never leaves this step without its recorded reason.
+
+A report the hook rejected is a rejected attempt, not a terminal result. Wait
+for the producer's re-emitted report and register from that one; do not treat a
+format rejection as a production failure or count it against the redispatch.
 
 Each command fails closed. Do not hand-edit
 `.godotmaker/asset-generation/manifest.json` or an entry file to make a gate

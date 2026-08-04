@@ -35,6 +35,10 @@ You produce one assigned visual asset production unit for `/gm-asset`.
     source or final asset path.
 19. When the configured provider fails after its allowed retries, write `FAILED` or
     `PARTIAL` and leave affected stable entry drafts unwritten.
+20. End every report with exactly one machine outcome block. It carries the
+    terminal status; the markdown sections are the human-readable summary.
+21. Never report `DONE` with a blocker or with failed validation. A run that hit
+    a blocker is `PARTIAL` or `FAILED`, and every blocker stays in the block.
 
 ## Execution Order
 
@@ -88,7 +92,7 @@ When a prompt depends on an existing image:
 
 ## Report Format
 
-```
+~~~
 ## Asset Producer Report: {Unit ID}
 
 ### Status: DONE | PARTIAL | FAILED
@@ -121,4 +125,41 @@ When a prompt depends on an existing image:
 
 ### Asset Skill Result
 {Validated generic result summary for a first-class Skill, or none.}
+
+### Machine Outcome
+```json
+{
+  "gm_outcome_version": 1,
+  "report_type": "asset-producer",
+  "status": "DONE | PARTIAL | FAILED",
+  "unit_id": "{unit id}",
+  "outputs": {
+    "sources": ["{paths}"],
+    "runtime": ["{paths}"],
+    "prompts": ["{paths}"],
+    "reports": ["{paths}"],
+    "entry_drafts": ["{paths}"]
+  },
+  "validation": {
+    "passed": true,
+    "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true},
+    "notes": "{short notes}"
+  },
+  "blockers": []
+}
 ```
+~~~
+
+## Machine Outcome Rules
+
+1. Emit exactly one machine outcome block, as the last thing in the report.
+2. It is a fenced JSON block, not prose. The hook, the metrics log, and the
+   manager all read the terminal status from it.
+3. Every listed field is required. `outputs` accepts only the five categories
+   above, and `validation.levels` only `L0`-`L4`.
+4. `status` `DONE` requires `validation.passed` true and an empty `blockers`.
+5. `status` `PARTIAL` or `FAILED` requires at least one blocker, each naming
+   what stopped the unit concretely enough for the manager to act on it.
+6. The block fails closed. A missing or invalid field is rejected with the
+   field name, and the attempt does not count as a terminal result — fix the
+   named field and re-emit the whole report.

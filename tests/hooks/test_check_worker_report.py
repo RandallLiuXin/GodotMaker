@@ -1,6 +1,9 @@
 """Tests for check_worker_report.py hook."""
 import pytest
-from .helpers import run_hook, is_blocked, cleanup_metrics, write_current_role
+from .helpers import (
+    run_hook, is_blocked, cleanup_metrics, write_current_role,
+    asset_producer_outcome,
+)
 
 HOOK = "check_worker_report.py"
 
@@ -38,7 +41,8 @@ COMPLETE_ASSET_PRODUCER = (
     "### Outputs\n- Sources: .godotmaker/asset-generation/sources/ui_source.png\n\n"
     "### Tools\n- python tools/asset_sheet_process.py --snap-mode autoslice\n\n"
     "### Validation\n- File existence: PASS\n\n"
-    "### Handoff\nUpdate ASSETS.md row ui_kit to generated."
+    "### Handoff\nUpdate ASSETS.md row ui_kit to generated.\n\n"
+    + asset_producer_outcome("DONE")
 )
 
 COMPLETE_ANALYST = (

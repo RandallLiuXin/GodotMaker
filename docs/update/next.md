@@ -86,6 +86,9 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- An asset-producer run now reports its terminal status in a machine-readable outcome block that the report hook, metrics, and `/gm-asset` read through one parser, so a valid PARTIAL is no longer recorded as UNKNOWN.
+- A report the hook rejects on format is now recorded as a rejected attempt, so it neither reads as a production failure nor overwrites the retry's real terminal status.
+
 - Replaced legacy magenta edge cleanup with PyMatting using a fixed validated trimap.
 
 - Compact prop packs now generate one provider-authored source sheet, normalize each curated prop into its declared atlas slot, and publish independently addressable AtlasTexture resources with repaired L0-L4 validation.

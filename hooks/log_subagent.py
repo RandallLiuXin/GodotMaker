@@ -12,17 +12,22 @@ Never blocks (always exit 0).
 """
 import json
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metrics import (
-    record_event, EventType, detect_report_type,
+    record_event, EventType, normalize_report,
     ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST,
     ROLE_ASSET_PRODUCER, ROLE_UNKNOWN,
     KNOWN_ROLES,
 )
 from check_worker_report import extract_files_changed
+
+# A stop the report hook rejected is an attempt, not a result. Labelling it
+# keeps a format-only rejection from reading as a terminal producer failure,
+# and keeps it from claiming the one terminal outcome event.
+OUTCOME_TERMINAL = "terminal"
+OUTCOME_REJECTED_ATTEMPT = "rejected_attempt"
 
 # Debug logging: always on. Writes to .godotmaker/traces/hook_debug.log.
 _DEBUG_LOG = os.path.join(".godotmaker", "traces", "hook_debug.log")
@@ -37,20 +42,6 @@ def _debug(msg: str) -> None:
             f.write(f"[{ts}] {msg}\n")
     except OSError:
         pass
-
-
-def extract_status(message: str) -> str:
-    match = re.search(r"### Status:\s*(DONE|PARTIAL|FAILED)", message)
-    if match:
-        return match.group(1)
-    match = re.search(r"### Overall:\s*(PASS|FAIL|PARTIAL)", message)
-    if match:
-        return match.group(1)
-    return "UNKNOWN"
-
-
-def extract_report_type(message: str) -> str:
-    return detect_report_type(message) or "unknown"
 
 
 def detect_role_from_description(description: str) -> str:
@@ -90,6 +81,25 @@ def detect_role_from_description(description: str) -> str:
 _OUTCOME_EVENTS = {
     "worker_done", "worker_partial", "worker_failed",
     "verifier_pass", "verifier_fail", "verifier_partial",
+    "asset_producer_done", "asset_producer_partial", "asset_producer_failed",
+}
+
+_OUTCOME_MAPS = {
+    ROLE_WORKER: {
+        "DONE": EventType.WORKER_DONE,
+        "PARTIAL": EventType.WORKER_PARTIAL,
+        "FAILED": EventType.WORKER_FAILED,
+    },
+    ROLE_VERIFIER: {
+        "PASS": EventType.VERIFIER_PASS,
+        "FAIL": EventType.VERIFIER_FAIL,
+        "PARTIAL": EventType.VERIFIER_PARTIAL,
+    },
+    ROLE_ASSET_PRODUCER: {
+        "DONE": EventType.ASSET_PRODUCER_DONE,
+        "PARTIAL": EventType.ASSET_PRODUCER_PARTIAL,
+        "FAILED": EventType.ASSET_PRODUCER_FAILED,
+    },
 }
 
 
@@ -165,11 +175,14 @@ def main():
     sys.exit(0)  # Never block
 
 
-def handle_stop(data: dict) -> None:
-    """Handle SubagentStop event. Called from main() or from check_worker_report.
+def handle_stop(data: dict, verdict=None) -> None:
+    """Handle SubagentStop event. Called from the on_subagent_stop dispatcher.
 
-    Extracted so check_worker_report can call it directly, ensuring serial
-    execution (log first, then validate) without parallel hook race conditions.
+    `verdict` is the report hook's `ReportVerdict` for this same stop, computed
+    before this call. When the hook rejected the report, the stop is recorded as
+    a rejected attempt and writes no terminal outcome event, so a format-only
+    rejection can neither read as a producer failure nor pre-empt the retry's
+    real result.
     """
     agent_id = data.get("agent_id") or ""
     agent_type = data.get("agent_type") or ""
@@ -179,8 +192,11 @@ def handle_stop(data: dict) -> None:
     _debug(f"  last_assistant_message: type={type(raw_message).__name__} len={len(message)}")
     if message:
         _debug(f"  message preview: {message[:200]!r}")
-    report_type = extract_report_type(message)
-    status = extract_status(message)
+
+    # One parser for hook, metrics, and the manager handoff.
+    report = normalize_report(message)
+    report_type = report.report_type
+    status = report.status
     files = extract_files_changed(message)
     if agent_type in KNOWN_ROLES:
         role = agent_type
@@ -188,6 +204,9 @@ def handle_stop(data: dict) -> None:
         role = lookup_role_from_events(agent_id)
     # Final-output capture moved to log_agent_tool.py PostToolUse — see
     # this file's header for rationale.
+
+    rejected = bool(verdict is not None and getattr(verdict, "rejected", False))
+    outcome = report.outcome or {}
 
     record_event(
         EventType.SUBAGENT_STOP,
@@ -197,29 +216,28 @@ def handle_stop(data: dict) -> None:
         report_type=report_type,
         status=status,
         files_changed=files,
+        outcome_kind=OUTCOME_REJECTED_ATTEMPT if rejected else OUTCOME_TERMINAL,
+        unit_id=outcome.get("unit_id"),
+        blockers=outcome.get("blockers", []),
+        outcome_error=report.outcome_error,
     )
+
+    if rejected:
+        return
 
     # Record outcome-specific event based on role (primary) or report_type (fallback).
     # Only record once per agent_id to avoid duplicates when check_worker_report
     # blocks and the SubagentStop hook fires multiple times on retries.
     effective_role = role if role != ROLE_UNKNOWN else report_type
-    if effective_role == ROLE_WORKER:
-        outcome_map = {
-            "DONE": EventType.WORKER_DONE,
-            "PARTIAL": EventType.WORKER_PARTIAL,
-            "FAILED": EventType.WORKER_FAILED,
-        }
-        if status in outcome_map and not _has_outcome_event(agent_id):
-            record_event(outcome_map[status], agent_id=agent_id, files=files)
-
-    elif effective_role == ROLE_VERIFIER:
-        outcome_map = {
-            "PASS": EventType.VERIFIER_PASS,
-            "FAIL": EventType.VERIFIER_FAIL,
-            "PARTIAL": EventType.VERIFIER_PARTIAL,
-        }
-        if status in outcome_map and not _has_outcome_event(agent_id):
-            record_event(outcome_map[status], agent_id=agent_id)
+    outcome_map = _OUTCOME_MAPS.get(effective_role)
+    if outcome_map and status in outcome_map and not _has_outcome_event(agent_id):
+        record_event(
+            outcome_map[status],
+            agent_id=agent_id,
+            files=files,
+            unit_id=outcome.get("unit_id"),
+            blockers=outcome.get("blockers", []),
+        )
 
 
 if __name__ == "__main__":

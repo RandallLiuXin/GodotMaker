@@ -176,10 +176,22 @@ Role detection order:
    4. `verifier:` / `verify:` → verifier
    5. `reviewer:` / `review:` → reviewer
 
-**handle_stop:** invoked from `on_subagent_stop.py`. Extracts report type,
-status, files changed from the assistant message. Looks up role from the
-matching start event. Records `SUBAGENT_STOP` metric plus outcome-specific
-events: `WORKER_DONE`, `VERIFIER_PASS`, etc.
+**handle_stop:** invoked from `on_subagent_stop.py`. Reads report type and
+status through `metrics.outcome.normalize_report` — the same entry point the
+report hook uses. Looks up role from the matching start event. Records
+`SUBAGENT_STOP` metric plus outcome-specific events: `WORKER_DONE`,
+`VERIFIER_PASS`, `ASSET_PRODUCER_PARTIAL`, etc.
+
+Every `SUBAGENT_STOP` carries `outcome_kind`:
+
+| `outcome_kind` | Meaning |
+|---|---|
+| `terminal` | The run's result. Writes the one outcome-specific event. |
+| `rejected_attempt` | The report hook rejected this stop. Writes no outcome event. |
+
+A rejected attempt never claims the single outcome event, so a format-only
+rejection can neither read as a producer failure nor pre-empt the retry's real
+status.
 
 ### on_subagent_stop.py
 
@@ -192,8 +204,15 @@ Claude-style subagent lifecycle hooks.
 Single dispatcher for the `SubagentStop` event. Reads stdin once and runs
 serially:
 
-1. `log_subagent.handle_stop(data)` — record metrics, save traces (never blocks)
-2. `check_worker_report.main_with_data(data)` — validate report (may block)
+1. `check_worker_report.evaluate(data)` — decide the verdict (no side effects)
+2. `log_subagent.handle_stop(data, verdict=…)` — record metrics, labelled by
+   that verdict (never blocks)
+3. `check_worker_report.apply_verdict(verdict)` — emit the decision (may block)
+
+**Why validate first:** the verdict decides whether the stop is a terminal
+record or a rejected attempt. Recording before validating wrote the rejected
+attempt as the run's result, and the duplicate-outcome guard then discarded the
+retry's real status.
 
 **Why a dispatcher:** Claude Code runs multiple `SubagentStop` hooks in
 parallel by default. Both handlers touch `metrics_current.jsonl` —
@@ -211,9 +230,33 @@ pipeline role is active. With no `.godotmaker/current_role`, ordinary
 subagent conversations are allowed and this hook does not block.
 
 **Format detection flow:**
-1. Detect `report_type` from message content (layered: exact marker → regex → fallback)
-2. If `report_type` detected → check required sections for that type
-3. If `report_type` is None but role is known (from start event) → block and demand a formatted report
+1. Resolve `report_type` and `status` through `metrics.outcome.normalize_report`
+   — the machine outcome block first, then the markdown layers (exact marker →
+   regex → fallback)
+2. If the role must carry a machine outcome block → validate it, fail closed
+3. If `report_type` detected → check required sections for that type
+4. If `report_type` is None but role is known (from start event) → block and demand a formatted report
+
+**Machine outcome block:** an `asset-producer` report must end with exactly one
+fenced JSON object carrying `gm_outcome_version`. It is the status protocol —
+the markdown headings are the human-readable summary. The hook, the metrics
+log, and the `/gm-asset` manager all read it through the same parser, so a
+mangled heading can no longer produce a `report_type: unknown` /
+`status: UNKNOWN` record beside a status the manager read correctly.
+
+| Field | Rule |
+|---|---|
+| `gm_outcome_version` | `1` |
+| `report_type` | A known role (`asset-producer`) |
+| `status` | `DONE`, `PARTIAL`, or `FAILED` |
+| `unit_id` | Non-empty string |
+| `outputs` | Object of path arrays, keyed only by `sources`, `runtime`, `prompts`, `reports`, `entry_drafts` |
+| `validation` | `{passed: bool, levels?: {L0–L4: bool}, notes?: string}` |
+| `blockers` | Array of strings; empty only when `status` is `DONE` |
+
+`DONE` additionally requires `validation.passed`; `PARTIAL` and `FAILED`
+require at least one blocker. A missing or invalid field is rejected with the
+field name, and that stop is logged as a `rejected_attempt`.
 
 **Per-role required sections:**
 

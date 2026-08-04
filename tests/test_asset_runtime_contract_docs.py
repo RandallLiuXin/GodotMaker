@@ -1,5 +1,11 @@
+import json
 import re
 from pathlib import Path
+
+from metrics.outcome import (
+    OUTCOME_VERSION, OUTCOME_VERSION_KEY, OUTPUT_CATEGORIES, TERMINAL_STATUSES,
+    TOP_LEVEL_KEYS, VALIDATION_LEVELS,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -140,6 +146,44 @@ def test_gm_asset_manager_dispatches_asset_producer_units():
     assert "Use only provider outputs or user-provided assets as raw visual sources." in producer
     assert "Do not create procedural, placeholder, or fallback images" in producer
     assert "leave affected stable entry drafts unwritten" in producer
+
+
+def test_asset_producer_outcome_template_matches_its_enforcer():
+    """The template the producer is told to emit is the one the hook accepts.
+
+    Bound field-by-field to `metrics/outcome.py`, not by token presence: a
+    template that drifts from the enforced key set is exactly how the hook,
+    metrics, and the manager ended up disagreeing on a terminal status.
+    """
+    producer = _read("agents/asset-producer.md")
+
+    assert "## Machine Outcome Rules" in producer
+    section = producer.split("### Machine Outcome", 1)[1]
+    template = re.search(r"```json\n(.*?)\n```", section, re.DOTALL)
+    assert template, "agents/asset-producer.md lost its machine outcome template"
+    payload = json.loads(template.group(1))
+
+    assert set(payload) == set(TOP_LEVEL_KEYS)
+    assert payload[OUTCOME_VERSION_KEY] == OUTCOME_VERSION
+    assert payload["report_type"] == "asset-producer"
+    assert payload["status"] == " | ".join(TERMINAL_STATUSES)
+    assert set(payload["outputs"]) == set(OUTPUT_CATEGORIES)
+    assert set(payload["validation"]["levels"]) == set(VALIDATION_LEVELS)
+    assert payload["blockers"] == []
+
+    # The cross-field rules the hook rejects on must be stated to the producer.
+    assert "`status` `DONE` requires `validation.passed` true" in producer
+    assert "requires at least one blocker" in producer
+
+
+def test_gm_asset_manager_reads_the_machine_outcome():
+    """The manager consumes the same block, not the prose beside it."""
+    skill = _flat(_read("skills/core/gm-asset/SKILL.md"))
+
+    assert f"the fenced JSON object carrying `{OUTCOME_VERSION_KEY}`" in skill
+    assert "Never re-read it from the markdown prose" in skill
+    assert "when the outcome block's `blockers` make the failure actionable" in skill
+    assert "A report the hook rejected is a rejected attempt, not a terminal result." in skill
 
 
 def test_first_class_asset_skills_are_the_only_entry_points():
