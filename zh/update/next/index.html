@@ -2831,6 +2831,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
+<p>Accepting a user-provided asset now fills the row's <code>Runtime Type</code> and <code>res://</code> <code>Runtime Path</code> in the same edit, so a <code>provided</code> row is always resolvable into a worker runtime snapshot instead of failing with incomplete runtime columns.</p>
+</li>
+<li>
 <p>Ensure <code>/gm-asset</code> records an asset-stage completion event when its resume check finds no current-tag work.</p>
 </li>
 <li>
