@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
@@ -360,10 +361,10 @@ def test_background_registration_requires_the_l0_l4_recorded_artifact_bytes(tmp_
     asset_id = "sunset"
     assets_md = tmp_path / "ASSETS.md"
     _assets_md(assets_md, [asset_id])
-    artifact_path = "res://assets/generated/background-map/sunset.png"
+    artifact_path = "res://assets/generated/background-map/sunset/sunset.png"
     artifact = tmp_path / artifact_path.removeprefix("res://")
     artifact.parent.mkdir(parents=True)
-    artifact.write_bytes(b"validated background")
+    Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(artifact)
     request = tmp_path / "request.json"
     request.write_text(
         json.dumps({
@@ -397,7 +398,7 @@ def test_background_registration_requires_the_l0_l4_recorded_artifact_bytes(tmp_
     )
     register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
 
-    artifact.write_bytes(b"regenerated without L0-L4")
+    Image.new("RGBA", (3, 2), (3, 2, 1, 255)).save(artifact)
     with pytest.raises(AssetResultRegistrationError, match="changed since it passed L0-L4"):
         register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
 
