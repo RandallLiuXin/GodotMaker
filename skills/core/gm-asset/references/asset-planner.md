@@ -1,180 +1,31 @@
 # Asset Planning Reference
 
-Use this file when `/gm-asset` builds current-tag production units before
-dispatching `asset-producer`.
+Plan current-tag production units from `ASSETS.md`, `PLAN.md`, `STYLE.md`,
+`STRUCTURE.md`, and `SCENES.md`. A unit owns one public request and names its
+complete expected logical output set in that family's native contract:
+`scene-prop-set` and `compact-prop-pack` slots, `platform-strip` segments and
+kind, or `ui-kit` / `card-kit` styleboxes, atlas regions, and theme. Use
+`request.spec.outputs` only for a multi-output family without a native output
+declaration.
 
-## Inputs
+## Planning rules
 
-Read:
+1. Select a first-class Asset Skill for each missing row or related output set.
+2. For `platform-strip`, set `spec.kind` to `single` or `atlas`; for
+   `fx-bundle`, set `spec.mode` to `static` or `animated`.
+3. Record source, output, prompt, and report paths in the production brief.
+4. Keep one multi-output family invocation together. Do not infer its members
+   from `ASSETS.md` or from a result after generation.
+5. Dispatch independent units in batches of at most three.
 
-1. `ASSETS.md`
-2. `PLAN.md`
-3. `STYLE.md` seed
-4. `STRUCTURE.md`
-5. `SCENES.md`
-6. `references/scene_*.png` summaries from analyst reports
-7. `references/asset-runtime-pipeline.md`
+## Visual anchors
 
-Do not read image binaries in the manager context.
+Use user-provided assets, selected scene references, or previously generated
+files already recorded in `ASSETS.md` as anchors. When none exists, generate
+one `screen-reference` first, collect its report, then rebuild the plan.
 
-## Planning Steps
+## Completion
 
-1. Read the current tag from `PLAN.md`.
-2. Filter `ASSETS.md` to current-tag `MISSING` rows.
-3. Add missing current-tag scene references from `SCENES.md`.
-4. Identify current-tag visual anchors.
-5. Apply the Visual Anchor Gate.
-6. Group generated visual work into production units.
-7. Choose one first-class Asset Skill for each unit.
-8. Choose one provider doc for each unit.
-9. Reserve source, stable output, prompt, report, and entry-draft paths.
-10. Record dependencies between units.
-11. Dispatch independent units in batches of up to 3.
-12. Keep bundle work in one production unit.
-
-## Visual Anchor Gate
-
-Current-tag visual anchors are:
-
-1. User-provided image assets accepted as `direct_runtime`.
-2. Current-tag `references/scene_*.png` files with matching reports.
-3. Current-tag generated `screen-reference` or `style_reference` stable
-   entries at `source_ready` with existing files and canonical
-   pointers that pass the root-index gate. Use them as visual anchors only.
-4. Current-tag canonical character or UI reference images whose stable entries
-   are `ready`.
-
-When no visual anchor exists:
-
-1. Plan only one foundation `screen-reference` production unit.
-2. Use the primary current-tag scene from `SCENES.md`.
-3. Do not dispatch `background-map`, `character-bundle`, `fx-bundle`,
-   `ui-kit`, `card-kit`, `compact-prop-pack`, `platform-strip`, or
-   `scene-prop-set`.
-4. Collect the foundation reference report.
-5. Rebuild the production plan.
-
-When at least one visual anchor exists:
-
-1. Put visible anchor paths in every production-unit brief.
-2. Dispatch independent units in batches of up to 3.
-
-## Production Unit Selection
-
-Choose the first matching unit.
-
-| Unit | Use when | Do not use for |
-| --- | --- | --- |
-| `screen-reference` | Missing `references/scene_*.png`, style anchor, or evaluation visual target. | Runtime backgrounds, map bases, parallax plates, final props, or playable scene objects. |
-| `character-bundle` | Player, enemy, NPC, summon, boss, or recurring creature identity. | Portraits, detached projectiles, impact bursts, UI pieces, props, or terrain. |
-| `fx-bundle` | Projectile, impact, pickup effect, slash, muzzle, aura, explosion, detached effect sequence, or foreground gameplay sprite with effect behavior. | Character body animation, UI icons, props, or map scenery. |
-| `ui-kit` | Buttons, panels, tabs, counters, HUD pieces, map markers, cursors, icons, progress bars, and scalable UI pieces that share one interface style. | Full composite screens, readable text, logos, fonts, card frames, portrait frames, scene backgrounds, or runtime props. |
-| `card-kit` | Card frames, portrait frames, rarity frames, card slots, deck slots, card markers, and card-game-specific UI pieces. | Generic HUD controls, character portraits, full composite screens, readable text, logos, fonts, scene backgrounds, or runtime props. |
-| `compact-prop-pack` | Small props, collectable pickups, crates, stones, bushes, pots, debris, lamps, and signs that can share one source sheet. | Wide, tall, collision-bearing, platform, floor, bridge, wall, ladder, gate, door, terrain, or tileset assets. |
-| `background-map` | Runtime background, map base, parallax plate, fixed battle background, title/splash illustration, or fixed-viewport scenic asset. | Scene references, extracted props, character actors, UI kits, or collision-bearing strips. |
-| `platform-strip` | Floors, bridges, platforms, rails, pipes, long hazards, terrain chunks, and collision-aligned horizontal pieces. | Compact props, characters, FX, UI pieces, or full backgrounds. |
-| `scene-prop-set` | Final runtime foreground objects derived from a scene, map, or stage reference. | Generic prop packs without a scene reference, backgrounds, UI, characters, FX, or uncut single-image foreground sprites. |
-| `tileset` | Reusable tiled terrain: ground, floors, walls, roads, cave or shoreline boundaries that repeat across a map and need autotiling. | One-off scenery, collision-bearing platform strips, props, backgrounds, UI, or a map layout — a `TileSet` is a tile library and the map itself stays a worker decision. |
-
-Default font, logo, and wordmark rows to `provided` or `deferred` unless the
-user explicitly requested generated image assets.
-
-## Production Unit Entry Points
-
-| Unit | First entry document |
-| --- | --- |
-| `screen-reference` | First-class `screen-reference` Asset Skill |
-| `character-bundle` | First-class `character-bundle` Asset Skill |
-| `fx-bundle` | First-class `fx-bundle` Asset Skill |
-| `ui-kit` | First-class `ui-kit` Asset Skill |
-| `card-kit` | First-class `card-kit` Asset Skill |
-| `compact-prop-pack` | First-class `compact-prop-pack` Asset Skill |
-| `background-map` | First-class `background-map` Asset Skill |
-| `platform-strip` | First-class `platform-strip` Asset Skill |
-| `scene-prop-set` | First-class `scene-prop-set` Asset Skill |
-| `tileset` | First-class `tileset` Asset Skill |
-
-## ASSETS Family Routing
-
-| Family | Production unit |
-|--------|-----------------|
-| `screen_reference` | `screen-reference` |
-| `style_reference` | `screen-reference` |
-| `character_canonical` | `character-bundle` |
-| `character_portrait` | not supported by `character-bundle` |
-| `character_action_source` | `character-bundle` |
-| `character_frame_output` | `character-bundle` |
-| `projectile_fx_source` | `fx-bundle` |
-| `impact_fx_source` | `fx-bundle` |
-| `compact_prop_pack` | `compact-prop-pack` |
-| `ui_component_sheet` | `ui-kit` |
-| `icon_pack` | `ui-kit` |
-| `panel_source` | `ui-kit` |
-| `card_component_sheet` | `card-kit` |
-| `card_frame_source` | `card-kit` |
-| `portrait_frame_source` | `card-kit` |
-| `background` | `background-map` |
-| `platform_strip` | `platform-strip` |
-| `scene_prop_set` | `scene-prop-set` |
-| `tileset` | `tileset` |
-| `terrain_atlas` | `tileset` |
-| `runtime_sprite` | `compact-prop-pack` |
-| `texture` | `background-map` |
-| `audio` | no generated production unit |
-
-## Plan Artifact Fields
-
-Record these fields for each generated visual production unit:
-
-1. `unit_id`
-2. `unit_skill`
-3. `provider`
-4. `input_rows`
-5. `dependencies`
-6. `source_paths`
-7. `output_dirs`
-8. `prompt_paths`
-9. `report_path`
-10. `entry_draft_paths`
-11. `source_layouts`
-12. `support_file_paths`
-
-## Dependency Order
-
-Use this order when units depend on each other:
-
-1. `screen-reference` and style anchors.
-2. `background-map`.
-3. `character-bundle` canonicals, `ui-kit`, and `card-kit` source sheets.
-4. `character-bundle` actions, `fx-bundle`, `compact-prop-pack`,
-   `platform-strip`, and `scene-prop-set`.
-5. Curation and stable entry registration.
-
-## Batch Rules
-
-1. Run independent production units in batches of up to 3.
-2. Keep one production unit inside one asset-producer brief.
-3. Do not split a character bundle across unrelated producers.
-4. Do not merge unrelated production units into one brief.
-5. Record sequential fallback in the unit report when needed.
-
-## ASSETS.md Updates
-
-Update current-tag rows after producer reports:
-
-1. `generated`: a registered `ready` non-reference stable entry after the full
-   root-index gate, or a validated `source_ready` reference-only
-   stable entry with its finalized file and canonical root-index pointer.
-2. `provided`: user-provided file matched the row.
-3. `deferred`: unprovided audio or intentionally skipped asset.
-4. `MISSING`: a runtime source exists but the runtime output or curation is
-   incomplete, or a reference lacks its finalized, registered, validated entry.
-
-Update `Generation Params` with:
-
-1. stable entry pointer
-
-Do not duplicate prompt paths, source paths, source layout, support file paths,
-or curation reports in `ASSETS.md`.
-
-Update the Visual Asset Contract for gameplay-visible final assets.
+After standalone validation passes, call `tools/asset_result_registration.py`
+with the request and result. It atomically updates all matching `ASSETS.md`
+rows or none of them. `ASSETS.md` is the sole worker-facing authority.

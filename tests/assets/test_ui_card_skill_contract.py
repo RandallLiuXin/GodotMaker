@@ -22,6 +22,7 @@ from asset_ui_card_contract_check import (  # noqa: E402
 from asset_validation import ProbeReport, ProbeResult  # noqa: E402
 from asset_validation.godot_probe import GodotProbe  # noqa: E402
 from ui_card_standalone_validation import UICardSkillError, compile_and_validate  # noqa: E402
+from asset_result_registration import register_result  # noqa: E402
 from asset_compiler import CompileRequest, build_default_registry, theme  # noqa: E402
 from asset_ui_theme_recipe import (  # noqa: E402
     UI_GEOMETRY_TOKENS,
@@ -530,6 +531,44 @@ def test_standalone_runner_executes_l0_to_l5_for_every_runtime_output(tmp_path, 
         "levels": {"L0": True, "L1": True, "L2": True, "L3": True, "L4": True, "L5": True},
     }
     assert all((tmp_path / item["path"].removeprefix("res://")).is_file() for item in result["outputs"])
+
+
+@pytest.mark.parametrize("family", ["ui-kit", "card-kit"])
+def test_validated_ui_and_card_requests_register_their_native_output_set(
+    tmp_path, monkeypatch, family
+):
+    """The same strict-family request must survive validation and registration."""
+    request = _request(family)
+    result = _result(request)
+    _write_sources(tmp_path, request)
+    monkeypatch.setattr(GodotProbe, "probe", _good_probe(request, result))
+    monkeypatch.setattr("ui_card_standalone_validation._run_consumer_smoke", lambda *args: None)
+
+    validated = compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+    assert validated["validation"]["passed"] is True, validated["validation"]
+
+    names = [output["name"] for output in validated["outputs"]]
+    assets_md = tmp_path / "ASSETS.md"
+    rows = "\n".join(
+        f"| {index} | v0.1.0 | {name} | ui | 64x64 | family={family} | - | - | MISSING |"
+        for index, name in enumerate(names, 1)
+    )
+    assets_md.write_text(
+        "# Assets\n\n"
+        "| # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |\n"
+        "|---|-----|------|------|------|-------------------|--------------|--------------|--------|\n"
+        + rows + "\n",
+        encoding="utf-8",
+    )
+    request_path, result_path = tmp_path / "request.json", tmp_path / "result.json"
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    result_path.write_text(json.dumps(validated), encoding="utf-8")
+
+    registered = register_result(
+        assets_md, result_path, tag="v0.1.0", request_path=request_path, loader=lambda *_: None
+    )
+
+    assert registered["updated"] == names
 
 
 def test_ui_standalone_runs_variable_size_styleboxes_through_real_godot(

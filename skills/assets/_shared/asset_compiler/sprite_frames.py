@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from math import isfinite
 from typing import Any
 
-from ._stable_entry import assert_within_output_dir, check_output_path, resolve_res_path
+from ._asset_paths import assert_within_output_dir, check_output_path, resolve_res_path
 from .contract import CompileRequest, CompilerError
 from .registry import CompilerRegistry, CompilerRoute
 
@@ -67,7 +67,7 @@ def action_spec(request: CompileRequest) -> list[dict[str, Any]]:
                     resolve_res_path(request.project_root, checked, label="frame path"),
                     production_family=request.production_family, asset_id=request.asset_id,
                     label="frame path")
-            except Exception as exc:  # stable entry errors remain compiler errors
+            except Exception as exc:  # runtime record errors remain compiler errors
                 raise CompilerError(str(exc)) from exc
             if file.suffix.lower() != ".png" or not file.is_file():
                 raise CompilerError(f"action frame is not an existing PNG: {path}")

@@ -44,24 +44,9 @@ Use only provider outputs or user-provided images as visual sources. Do not draw
 3. For every resolved source batch, generate a sheet with the identity anchor and all external references attached. Prompt for the concrete pose beats, exact grid, full-body separation, safe gutters, selected visual style, and only the intended body action. Keep every intended body and prop contour complete inside its source frame; a wide pose may use the available frame area but must not cross into a neighboring frame.
 4. Process real source sheets with `tools/asset_action_process.py`. Use `--kind body`, `--align feet`, the resolved batch grid and names, `--cell-size <frame_canvas_px>`, and `--recover-edge-touch`. Preserve candidates, recovery reports, frames, transparent sheets, GIFs, and final stable PNG paths. When the tool exits `2` with `status: "needs_regeneration"`, treat it as an actionable intermediate result rather than success or STOP: inspect the preserved report, revise the same action's provider prompt to address the diagnosed source defect, regenerate that action with the same identity anchor and external references attached, and process it again. Do not compile, return a partial action, or STOP merely because the first source attempt needs regeneration. Use the first action as the current scale reference; later actions may use `--scale-reference-metadata` and `--match-scale-reference`. Treat scale diagnostics as a repair signal, not a substitute for visual review.
 5. For an action with more than one source batch, process batches into work paths, then use `tools/asset_action_batch_merge.py` to copy their real processed frames in resolved order and assemble the sole stable sheet/GIF/report. The merge tool is deterministic delivery assembly, not an art source. For every action write one stable frame PNG per frame, one delivery sheet, and one GIF preview under `assets/generated/character-bundle/<asset_id>/`.
-6. Build the one stable entry and one `SpriteFrames` artifact with `tools/asset_action_entry_draft.py --request <resolved-request.json>`, passing one `--metadata` processing report per required action. Keep `source_layout: grid_sheet` and `godot_artifact: SpriteFrames`. Do not publish a per-action SpriteFrames, portrait runtime artifact, PackedScene, character controller, or detached FX as the runtime result. This entry starts at `processing_status: compiled`: the artifact now exists, but nothing has validated it yet.
+6. Build one final `SpriteFrames` artifact from the resolved actions. Do not publish a per-action SpriteFrames, portrait runtime artifact, PackedScene, character controller, or detached FX as the runtime result. Preserve action reports and the resolved request as result evidence.
 7. Run `standalone_validation.compile_and_validate()` for L0-L4 using the archived resolved request, not the high-level `ASSET_REQUEST.json`. The validator also resolves that archive when given the high-level request, and rejects a missing or mismatched resolved request. If compiler, Godot load, or consumer smoke fails, inspect the report and attempt a scoped repair or regeneration before returning failure. Do not claim readiness until the repaired artifact passes.
-8. Only after every applicable L0-L4 level passes, write the final result and promote that same entry to `processing_status: ready` by re-running the same builder with `--result <result.json>` added:
-
-```bash
-python tools/asset_action_entry_draft.py \
-  --metadata <action-a-pipeline-meta.json> \
-  --metadata <action-b-pipeline-meta.json> \
-  --request <resolved-request.json> \
-  --result <result.json> \
-  --asset-id <asset_id> \
-  --tag <tag> \
-  --production-family character-bundle \
-  --project-root <project_root> \
-  --out <entry.json>
-```
-
-   The builder is the promotion gate. It re-verifies the L0-L4 evidence, the single `SpriteFrames` runtime output, and the ordered per-action `grid_sheet` sources; it does not recompile, so the artifact it registers is the exact one L0-L4 examined. It also compares the resolved request, every action report, every stable sheet and frame, and the artifact against the fingerprint recorded by step 6. Stable paths are identity-derived and a regeneration overwrites them in place, so a result alone cannot say which build it validated — if anything changed since step 6, promotion is refused. Rerun step 6 and then step 7 before promoting again. Do not hand-edit `processing_status`.
+8. Only after every applicable L0-L4 level passes, write the final generic result. It must name the one `SpriteFrames` output and retain the resolved request and action reports as evidence. `/gm-asset` verifies the declared final output type/path and records it directly in `ASSETS.md`; the skill creates no registry record or index.
 9. When `eval/consumer_smoke.gd` exists, run it after L0-L4 with every resolved `<action>:<loop>` pair. Preserve its command, executable, output, and JSON report as L5 evidence. Do not use compiler success as a smoke substitute.
 
 ## Result

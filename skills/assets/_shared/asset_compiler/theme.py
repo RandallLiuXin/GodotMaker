@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .contract import CompileRequest, CompilerError
-from ._stable_entry import StableEntryError, assert_within_output_dir, resolve_res_path
+from ._asset_paths import RuntimeContractError, assert_within_output_dir, resolve_res_path
 from .registry import CompilerRegistry, CompilerRoute
 
 COMPILER_ID = "theme_recipe"
@@ -359,7 +359,7 @@ def _resource(
         _fail(f"{label}.path must be a safe res:// path")
     try:
         resolved = resolve_res_path(root, path, label=f"{label}.path")
-    except StableEntryError as exc:
+    except RuntimeContractError as exc:
         _fail(f"{label}.path must be a safe res:// path: {exc}")
     suffix = Path(path).suffix.lower()
     if suffix not in _RESOURCE_EXTENSIONS[actual_type]:
@@ -372,7 +372,7 @@ def _resource(
             asset_id=asset_id,
             label=f"{label}.path",
         )
-    except StableEntryError as exc:
+    except RuntimeContractError as exc:
         _fail(f"{label}.path must be a safe res:// path: {exc}")
     if not file_path.is_file():
         _fail(f"{label}.path does not exist: {path}")
@@ -439,7 +439,7 @@ def _external_stylebox_texture_path(
             asset_id=asset_id,
             label=f"{label}.properties.path",
         )
-    except StableEntryError as exc:
+    except RuntimeContractError as exc:
         _fail(f"{label}.properties.path must be a safe generated resource path: {exc}")
     if file_path.suffix.lower() != ".tres" or not file_path.is_file():
         _fail(f"{label}.properties.path must name an existing StyleBoxTexture .tres")
@@ -637,7 +637,7 @@ def register_into(registry: CompilerRegistry) -> CompilerRoute:
 
 def validate_theme_structure(request: Any) -> dict[str, Any]:
     """Require Godot to retain every explicitly declared Theme recipe value."""
-    from asset_validation.contract import ValidationError
+    from asset_validation.errors import ValidationError
 
     structure = request.checked_structure("theme")
     types = structure.get("types")

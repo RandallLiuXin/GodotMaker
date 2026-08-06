@@ -3,7 +3,8 @@ name: gm-asset
 description: |
   Asset stage manager. Reads current-tag ASSETS.md gaps, accepts user-provided
   assets, plans visual production units, dispatches asset-producer subagents,
-  collects reports, registers generated-asset stable entries, updates ASSETS.md.
+  collects validated Asset Skill results, updates ASSETS.md directly, and emits
+  minimal worker runtime snapshots from that one authority.
   Explicit invocation only - use /gm-asset.
 disable-model-invocation: true
 ---
@@ -201,61 +202,20 @@ Brief shape:
   production unit is a first-class Skill; there is no production-unit document
   to read and no fallback contract for a family.
 
-### First-Class Result Adapter
-- Validate the generic result with `tools/asset_skill_contract_check.py`.
-- When `validation.passed` is false, report the failure and do not create a
-  stable-entry draft.
-- When it passes, map its `sources`, `outputs`, and validation evidence into
-  the existing Asset Producer Report and the inputs of the appropriate
-  deterministic entry-draft builder.
-- One Skill call may return several logical outputs. Exactly one runtime output
-  per logical asset becomes a stable entry; every other output is reported as a
-  reference. Never draft a second entry or a `godot_artifact` for a reference.
-- For `background-map`, pass the finalize report and the passing result to
-  `tools/asset_finalize_entry_draft.py --result`. It writes one ready `single ->
-  Texture2D` entry using the finalized PNG as both source and artifact. Do not
-  create a `.tres`. That run requires the Skill's validation record; revalidate
-  a regenerated image before registering it. Without `--result` the entry stops
-  at `source_ready`.
-- For `character-bundle`, pass the Skill's archived resolved request, one
-  action processing report per required action, and its validated result to
-  `tools/asset_action_entry_draft.py` bundle mode. It registers exactly one
-  worker-consumable `SpriteFrames` entry, and reaches `ready` only from a result
-  whose L0-L4 levels all passed and whose build still matches the fingerprint
-  recorded when that artifact was compiled. A provider-generated canonical is
-  reported as a reference output beside that one entry; a user-supplied
-  canonical is not republished at all.
-- For `compact-prop-pack`, pass the request and fully validated result to
-  `tools/asset_compact_prop_pack_entry_draft.py`. It writes one ready logical
-  entry draft per AtlasTexture while retaining the shared physical bundle path.
-- For `fx-bundle`, use `tools/asset_curation_entry_draft.py` request mode for a
-   static `single -> Texture2D` result, or `tools/asset_action_entry_draft.py`
-   request mode for its one animated `grid_sheet -> SpriteFrames` result. Both
-   start compiled. Re-run the same builder with `--result` once the Skill's
-   L0-L4 production loop succeeds; that run promotes the same entry to `ready`
-   against the build fingerprint recorded when the artifact was published, and
-   is the only way an FX entry becomes worker-consumable.
-- For `scene-prop-set`, pass the original request, successful result, and first
-  declared logical prop to `tools/asset_scene_prop_set_entry_draft.py` before
-  writing its ready draft. The builder binds metadata geometry to the request.
-- For `ui-kit` and `card-kit`, pass the request and the validator-owned result
-  to `tools/asset_ui_card_entry_draft.py`. One kit production compiles many
-  separately bindable resources, so it writes one ready draft per runtime
-  output — the `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` — each
-  carrying the kit's `bundle_id`. A worker binds one of these per node, so none
-  of them may be collapsed into a single primary artifact.
-- For `tileset`, pass the request and passing result to
-  `tools/asset_tileset_entry_draft.py`. It writes one ready `tile_atlas ->
-  TileSet` entry. Do not ask the Skill for a map: the entry is a tile library,
-  and layout stays a worker decision.
-- The manager consumes only that adapted report and its drafts in Step 5; the
-  first-class Skill never reads registration, manifest, tag, or stage state.
+### First-Class Result Registration
 
+One production unit may return many outputs. Register all runtime outputs together or none through `tools/asset_result_registration.py`; do not choose an anchor output, create a stable entry, or write a family-specific entry draft.
+
+- Validate the generic result with `tools/asset_skill_contract_check.py`.
+- On a failed validation, report the failure and do not register it.
+- On success, retain sources and evidence in the producer report and send only the request/result to direct registration. Each runtime output needs a named logical asset row; reference outputs remain non-runtime.
+- The manager consumes the validated result directly. It never reads or writes registration drafts, manifests, or family-specific adapter state.
 ### Provider
 - {references/providers/<provider>.md}
 - Configured provider: {provider from plan.provider}
 
 ### Shared Docs
+- `references/asset-result-registration.md`
 - {references/asset-runtime-pipeline.md}
 - {references/asset-curation.md when needed}
 
@@ -266,14 +226,12 @@ Brief shape:
 - Canonical references: {paths}
 
 ### Outputs
-- Stable output directory: `assets/generated/{production_family}/{asset_id}/`
+- Generated output directory: `assets/generated/{asset_type}/{asset_id}/`
 - Raw source paths: {scratch paths under .godotmaker/asset-generation/sources/}
-- Runtime output paths: {finalized image and support metadata under the stable
-  output directory; only these may appear in a stable entry}
+- Runtime output paths: {final loadable Godot resources for the logical rows}
 - Reference paths: {paths under references/ for reference-only assets}
 - Prompt paths: {paths}
 - Report path: {path}
-- Stable entry drafts: {paths under .godotmaker/asset-generation/work/entries/}
 
 ### Scope
 - Write only the listed outputs.
@@ -285,128 +243,43 @@ Brief shape:
 Do not dispatch one subagent per ASSETS.md row when the work is one bundle.
 Dispatch one subagent per production unit.
 
-### Step 5 - Register Stable Entries
+### Step 5 - Register Validated Results
 
-Read `references/asset-runtime-pipeline.md`.
+Use this procedure for every production unit.
 
-For each `asset-producer` report:
-
-For a first-class Skill result, the producer is the manager's adapter: it
-validates the generic result, materializes the normal report and deterministic
-draft-builder inputs, and then follows this same registration path. The manager
-does not register a generic result directly.
-
-1. Read the terminal status from the report's machine outcome block — the
-   fenced JSON object carrying `gm_outcome_version`. Act only on its `status`:
-   `DONE`, `PARTIAL`, or `FAILED`. Do not take the status from the markdown
-   prose. Confirm the block is present, well-formed, and declares
-   `"report_type": "asset-producer"`; without one, register nothing from that
-   report and re-dispatch the production unit once or report it as blocked.
-2. Confirm listed source, runtime output, prompt, report, and stable-entry draft
-   files exist when claimed. Check them against `outputs` in the block.
-3. Confirm every entry draft came from a deterministic builder —
-   `tools/asset_action_entry_draft.py` for processed action output,
-   `tools/asset_curation_entry_draft.py` for a selected curation candidate,
-   `tools/asset_finalize_entry_draft.py` for a finalized screen reference or,
-   with `--result`, a validated `background-map`,
-   `tools/asset_compact_prop_pack_entry_draft.py` for a fully ready compact
-   prop atlas bundle,
-   `tools/asset_scene_prop_set_entry_draft.py` for a compiled scene prop atlas,
-   `tools/asset_ui_card_entry_draft.py` for a validated ui-kit or card-kit
-   delivery, or `tools/asset_tileset_entry_draft.py` for a compiled tileset.
-   Every production path has one, so reject a hand-written draft: the builders
-   are what enforce frame count, edge-touch rejection, scale reference, curation
-   selection, aspect validation, promotion fingerprints, and stable-path
-   containment.
-4. Write each draft to its canonical stable-entry path:
+1. Require one validated request and result JSON for the entire production
+   unit. The request declares the complete logical output set; the result must
+   match it exactly.
+2. Ensure `ASSETS.md` uses the Runtime Type / Runtime Path runtime table. Every
+   worker-consumable logical output has one row. Sources, atlases, candidates,
+   and curation evidence remain in production reports.
+3. Register all outputs atomically and verify each runtime resource through
+   Godot before its row becomes `generated`:
 
 ```bash
-python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write --check-files
-```
-
-5. Upsert the written entry into the pointer-only root index:
-
-```bash
-python tools/asset_generation_index.py --project-root . \
-  --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
-```
-
-6. Before marking any runtime entry `generated`, run the full root-index gate:
-
-```bash
-python tools/asset_generation_index.py --project-root . --check-entries --check-files
-```
-
-7. For `ui-kit`, `card-kit`, or `compact-prop-pack`, write one pointer-only
-   bundle manifest after every child entry is `ready`, registered, and covered
-   by the root-index gate. Pass every existing ASSETS.md planning-row ID that
-   this production unit satisfies. Do not add a row per runtime output.
-
-```bash
-python tools/asset_bundle_manifest.py --project-root . \
+python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
   --request <validated-request.json> --result <validated-result.json> \
-  --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
-  --entry-file .godotmaker/asset-generation/entries/<tag>/<child_id>.json \
-  --asset-id <existing_assets_row_id>
+  --godot-path <configured-godot-path>
 ```
 
-8. Update the matching ASSETS.md rows only after the root-index gate passes:
+   Missing, duplicated, unexpected, out-of-project, missing, unloadable, or
+   wrong-type outputs fail closed and leave all rows unchanged. A `reference`
+   output becomes `source_ready` and is never a worker runtime asset.
 
-   - Mark a `ready` non-reference entry `generated` after the full root-index
-     gate passes.
-   - Mark a `screen-reference` entry `generated` only at `source_ready`
-     after its finalized file, canonical entry, and root-index pointer validate.
-   - Do not create a `godot_artifact` or worker runtime handoff for a reference.
+4. Do not create stable entries, manifest pointers, root indexes, bundle
+   manifests, or family-specific entry drafts. Do not use an anchor output for
+   a multi-output production unit.
+5. Do not hand-edit Runtime Type, Runtime Path, or Status to bypass direct
+   result registration.
 
-```bash
-python tools/asset_assets_md_update.py \
-  --entry-file .godotmaker/asset-generation/entries/<tag>/<asset_id>.json
-```
+### Current ASSETS.md Finalization
 
-For a multi-output bundle, update all existing planning rows atomically through
-the bundle manifest instead:
-
-```bash
-python tools/asset_assets_md_update.py \
-  --bundle-manifest .godotmaker/asset-generation/bundles/<tag>/<bundle_id>.json
-```
-
-Each matching row keeps its original asset ID and points at the same bundle
-manifest. Never create logical-output rows, mark original rows superseded, or
-copy child entry fields into ASSETS.md. If any child is below `ready`, do not
-write the bundle manifest and leave every planning row `MISSING`.
-
-Keep runtime entries below `ready` as `MISSING`. Do not hand-edit an ASSETS.md
-status, the root index, or a stable entry.
-
-9. Redispatch failed or incomplete production units once when the outcome
-   block's `blockers` make the failure actionable. Carry those blockers into the
-   redispatch brief and the stage summary.
-
-Each command fails closed. Do not hand-edit
-`.godotmaker/asset-generation/manifest.json` or an entry file to make a gate
-pass.
-
-### Step 6 - Update ASSETS.md
-
-For current-tag rows only:
-
-1. Confirm a `ready` non-reference entry is `generated`; confirm a validated
-   `source_ready` reference-only entry is `generated`.
-2. Mark provided files `provided`.
-3. Mark unprovided audio `deferred`.
-4. Keep runtime rows without a registered `ready` entry as `MISSING`. Mark a
-   registered, validated `screen-reference` at `source_ready` as
-   `generated`.
-5. Confirm `Generation Params` include only the canonical stable-entry pointer,
-   or the shared canonical bundle-manifest pointer for a multi-output bundle.
-6. Update the Visual Asset Contract for gameplay-visible generated assets.
-
-Report registered reference-only entries as non-runtime assets. Do not mark a
-runtime row `generated`, invent a `godot_artifact`, or edit `processing_status`.
-
-Do not mark source sheets, references, or curation candidates as final runtime
-assets unless the production-unit report selected them as final outputs.
+For current-tag rows only, use the result-registration command above. Runtime
+rows are complete only with `Status: generated`, an explicit Runtime Type, and
+a final loadable Runtime Path. Reference/source-only rows use
+`Runtime Type: reference` and `Status: source_ready`; they never enter a worker
+snapshot. `Generation Params` may retain production inputs and evidence links,
+but never runtime metadata or a manifest pointer.
 
 ## Plan Discipline
 
@@ -421,9 +294,9 @@ or leave a fix task for a later role.
 
 ## Completion
 
-Keep generated runtime rows below `ready` as `MISSING`. Registered, validated
-reference-only rows may complete only at `source_ready`. If runtime rows
-remain, report the asset stage blocked on compiler work.
+Runtime rows are complete at `generated` only after direct registration.
+Reference-only rows complete at `source_ready`. If any output cannot be
+validated, report the failing production unit and leave its rows unchanged.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 

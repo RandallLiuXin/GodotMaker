@@ -32,17 +32,17 @@ from typing import Any, Callable
 
 from ._bridge import (
     LAYOUT_ARTIFACT_TYPES,
-    StableEntryError,
+    RuntimeContractError,
     assert_within_output_dir,
     check_output_path,
     resolve_res_path,
 )
-from .contract import ValidationError
+from .errors import ValidationError
 from .godot_probe import PROBE_CHECKS, ProbeResult
 from asset_compiler.atlas_texture import read_atlas_texture_input
 from asset_compiler.stylebox_texture import read_stylebox_texture_input
 
-# Every artifact type the frozen stable-entry relation allows. A validator for a
+# Every artifact type the direct compiler relation allows. A validator for a
 # type outside it could never run, so registering one is a mistake, not a
 # forward-compatible extension.
 KNOWN_ARTIFACT_TYPES = frozenset(
@@ -67,7 +67,7 @@ class StructureRequest:
     spec: Mapping[str, Any] = field(default_factory=dict)
 
     def source_file(self) -> Path:
-        """Resolve the declared source under its stable output directory.
+        """Resolve the declared source under its generated output directory.
 
         L4 validators may need to read their source recipe independently of the
         ladder.  Keep that read behind the same ``res://`` and on-disk
@@ -88,7 +88,7 @@ class StructureRequest:
                 asset_id=self.asset_id,
                 label="source_path",
             )
-        except (OSError, StableEntryError, ValueError) as exc:
+        except (OSError, RuntimeContractError, ValueError) as exc:
             raise ValidationError(
                 f"source_path cannot be resolved: {self.source_path!r} ({exc})"
             ) from exc

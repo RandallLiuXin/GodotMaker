@@ -19,13 +19,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ._stable_entry import (
+from ._asset_paths import (
     LAYOUT_ARTIFACT_TYPES,
     PRODUCTION_FAMILIES,
     REFERENCE_FAMILIES,
     REFERENCE_LAYOUTS,
     SOURCE_LAYOUT_TYPES,
-    StableEntryError,
+    RuntimeContractError,
     assert_within_output_dir,
     check_output_path,
     resolve_res_path,
@@ -73,7 +73,7 @@ class GodotArtifact:
     path: str
 
     def to_dict(self) -> dict[str, str]:
-        """Return the ``godot_artifact`` object of a stable entry, nothing more."""
+        """Return the ``godot_artifact`` object of a runtime record, nothing more."""
         return {"type": self.type, "path": self.path}
 
 
@@ -145,7 +145,7 @@ class CompileRequest:
                     asset_id=self.asset_id,
                     label=label,
                 )
-            except StableEntryError as exc:
+            except RuntimeContractError as exc:
                 raise CompilerError(str(exc)) from exc
 
     def _resolve(self, res_path: str, label: str) -> Path:
@@ -157,7 +157,7 @@ class CompileRequest:
                 asset_id=self.asset_id,
                 label=label,
             )
-        except StableEntryError as exc:
+        except RuntimeContractError as exc:
             raise CompilerError(str(exc)) from exc
 
     def source_file(self) -> Path:

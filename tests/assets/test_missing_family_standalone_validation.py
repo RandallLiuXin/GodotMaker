@@ -27,6 +27,7 @@ from missing_family_standalone_validation import (  # noqa: E402
 from asset_image_finalize import finalize_image_asset  # noqa: E402
 from asset_sheet_process import process_sheet  # noqa: E402
 from asset_validation import ProbeReport, ProbeResult  # noqa: E402
+from asset_result_registration import register_result  # noqa: E402
 import missing_family_standalone_validation as runner  # noqa: E402
 
 
@@ -1149,6 +1150,29 @@ def _write_prop_delivery(
     )
 
 
+def _register_validated_outputs(tmp_path: Path, request: dict, result: dict) -> dict:
+    """Exercise direct registration with the exact request that passed L0-L4."""
+    names = [output["name"] for output in result["outputs"]]
+    assets_md = tmp_path / "ASSETS.md"
+    rows = "\n".join(
+        f"| {index} | v0.1.0 | {name} | prop | 64x64 | family={request['asset_type']} | - | - | MISSING |"
+        for index, name in enumerate(names, 1)
+    )
+    assets_md.write_text(
+        "# Assets\n\n"
+        "| # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |\n"
+        "|---|-----|------|------|------|-------------------|--------------|--------------|--------|\n"
+        + rows + "\n",
+        encoding="utf-8",
+    )
+    request_path, result_path = tmp_path / "request.json", tmp_path / "result.json"
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    result_path.write_text(json.dumps(result), encoding="utf-8")
+    return register_result(
+        assets_md, result_path, tag="v0.1.0", request_path=request_path, loader=lambda *_: None
+    )
+
+
 @pytest.mark.parametrize("family", ["compact-prop-pack", "scene-prop-set"])
 def test_prop_families_run_multi_slot_delivery_through_l4(
     monkeypatch, tmp_path, family
@@ -1185,6 +1209,10 @@ def test_prop_families_run_multi_slot_delivery_through_l4(
     assert actual["validation"]["levels"] == {
         level: True for level in ("L0", "L1", "L2", "L3", "L4")
     }
+    if family == "compact-prop-pack":
+        assert _register_validated_outputs(tmp_path, request, actual)["updated"] == [
+            "coin", "chest"
+        ]
 
 
 def test_compact_prop_multi_slot_delivery_runs_through_real_godot_l4(
@@ -1370,6 +1398,9 @@ def test_platform_strip_runs_each_supported_source_type_to_l4(
     )
 
     assert actual["validation"]["passed"] is True, actual["validation"]
+    assert _register_validated_outputs(tmp_path, request, actual)["updated"] == [
+        "left", "middle", "right"
+    ]
 
 
 @pytest.mark.parametrize(

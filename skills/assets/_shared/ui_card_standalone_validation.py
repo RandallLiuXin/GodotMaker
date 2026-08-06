@@ -9,7 +9,7 @@ import subprocess
 from typing import Any
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry, theme
-from asset_compiler._stable_entry import StableEntryError, assert_within_output_dir, resolve_res_path
+from asset_compiler._asset_paths import RuntimeContractError, assert_within_output_dir, resolve_res_path
 from asset_validation import GodotProbe, ProbeRequest, ValidationError, build_default_structures
 from asset_validation._bridge import prefer_console_godot_path
 from asset_validation.structure import StructureRequest
@@ -137,7 +137,7 @@ def compile_and_validate(
 ) -> dict[str, Any]:
     """Compile and validate every declared standalone UI/card resource.
 
-    No stable entry, manifest, tag, or compiler receipt from another caller is
+    No runtime record, manifest, tag, or compiler receipt from another caller is
     used. The request owns all family declarations; this invocation builds its
     own registry and probes every runtime output returned to the caller.
     """
@@ -182,7 +182,7 @@ def compile_and_validate(
                     raise ValidationError(
                         f"inspected atlas is not a declared region_atlas source: {atlas['path']}"
                     )
-    except (OSError, ValueError, StableEntryError, ValidationError, UICardContractError, UIStyleBoxPlanError) as exc:
+    except (OSError, ValueError, RuntimeContractError, ValidationError, UICardContractError, UIStyleBoxPlanError) as exc:
         return _failure(result, passed, "L1", exc)
 
     passed.append("L1")

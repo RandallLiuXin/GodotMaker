@@ -50,9 +50,9 @@ res://assets/generated/compact-prop-pack/<bundle_id>/<logical_prop_id>.tres
 ```
 
 Return one `runtime` `AtlasTexture` output per declared slot, one
-`region_atlas` source for the physical PNG, and no registration fields. Each
-logical prop is later written as its own ready stable entry while all entries
-declare the same `bundle_id`, source atlas, and physical bundle directory.
+`region_atlas` source for the physical PNG, and no registration fields. The
+request's fixed slots are the complete logical output declaration; the manager
+records every validated prop directly in its own `ASSETS.md` row.
 
 Pixel-art production is not supported by this family. Do not use pixel-art
 prompts, nearest-neighbor resampling, or a pixelated filter to disguise
@@ -147,23 +147,12 @@ modified files, diagnostics, and post-repair results in the trace. Tool names
 are not a STOP condition; invented provider calls, reference attachments, or
 validation evidence are.
 
-## Manager Adapter
+## Result registration
 
-The standalone result remains free of tag and registration state. After it has
-passed L0-L4, the asset producer creates deterministic logical drafts with:
-
-```bash
-python tools/asset_compact_prop_pack_entry_draft.py \
-  --request <request.json> \
-  --result <result.json> \
-  --tag <tag> \
-  --project-root . \
-  --out-dir .godotmaker/asset-generation/work/entries
-```
-
-The adapter rejects incomplete L0-L4 evidence, altered slot geometry, missing
-physical files, and any result that does not expose every declared prop. It
-creates one ready entry per logical prop; do not hand-write entry drafts.
+The standalone result remains free of tag and registration state. After L0-L4
+passes, return the complete named AtlasTexture result. The fixed request slots
+are its output contract; `/gm-asset` validates the result and atomically records
+every prop in its matching `ASSETS.md` row.
 
 ## Evidence and Result
 

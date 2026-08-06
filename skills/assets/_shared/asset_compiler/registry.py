@@ -6,7 +6,7 @@ by the layout alone: ``StyleBoxTexture`` is reachable from both ``single`` and
 layout-to-compiler map would reject those legal routes.
 
 Registration is checked against the frozen ``LAYOUT_ARTIFACT_TYPES`` relation,
-so a compiler cannot claim a pair the stable-entry schema would later refuse.
+so a compiler cannot claim a pair the runtime-contract schema would later refuse.
 Everything else fails closed: an unregistered pair, a mismatched type, a missing
 source, a compiler that raises, a compiler that publishes its source image as
 the artifact, and a compiler that returns without rebuilding its artifact are
@@ -21,7 +21,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 from uuid import uuid4
 
-from ._stable_entry import LAYOUT_ARTIFACT_TYPES
+from ._asset_paths import LAYOUT_ARTIFACT_TYPES
 from .contract import (
     CompileReceipt,
     CompileRequest,
@@ -42,7 +42,7 @@ Compiler = Callable[[CompileRequest], Mapping[str, Any]]
 # source: a compiler that hands back its own source image is publishing a PNG as
 # the resource a worker was promised -- "Declaring the source image as the
 # artifact is the exact shortcut this mapping exists to reject"
-# (tools/asset_stable_entry.py). Existence alone cannot catch that, because the
+# (tools/asset_output_paths.py). Existence alone cannot catch that, because the
 # source file satisfies it.
 SOURCE_IS_ARTIFACT_TYPES = ("Texture2D",)
 
@@ -243,7 +243,7 @@ class CompilerRegistry:
         so an equal value may be constructed without invoking a compiler. The
         identity registry is the non-persistent capability that distinguishes a
         compiler result from such a forgery. It is deliberately scoped to this
-        registry instance and is never written into a stable entry.
+        registry instance and is never written into a runtime record.
         """
         return self._issued_receipts.get(id(receipt)) is receipt
 

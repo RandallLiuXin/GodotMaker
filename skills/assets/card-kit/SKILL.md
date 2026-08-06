@@ -21,9 +21,9 @@ The family contract owns the Theme recipe/variation, requested frame/state
 pairs, and named atlas regions. The request decides which card resources are
 needed; do not add a default front/back, portrait, rarity, or state bundle.
 This card-game-specific UI Skill can be invoked directly or by an orchestrator
-through `gm-asset`, but it never registers stable entries, edits `ASSETS.md`, tags, or
-stage state, or writes generated
-manifests. The producer adapter owns that later registration handoff.
+through `gm-asset`, but it never edits `ASSETS.md`, tags, stage state, or
+generated catalogs. It produces and preserves the validated generic result;
+`/gm-asset` performs the later direct registration.
 
 `references` is optional. When it is non-empty, each path is binding input:
 
@@ -127,8 +127,8 @@ The output is reusable card UI, not pixel-perfect `Control` or `Container`
 composition. Consumers choose their own layout and may apply only the declared
 Theme, StyleBoxTexture, or AtlasTexture resources.
 
-For `gm-asset`, the producer adapter translates a successful generic result
-into stable `source_layout + godot_artifact` entries and performs the normal
-ready handoff. Private Eval independently assesses consumer use, visual quality,
-reference consistency, and whether an improvised repair should become a shared
-tool improvement.
+For `gm-asset`, preserve the successful generic request/result pair. The
+manager registers the complete `result.outputs` set directly and atomically in
+`ASSETS.md`; do not create a second handoff object. Private Eval independently
+assesses consumer use, visual quality, reference consistency, and whether an
+improvised repair should become a shared tool improvement.

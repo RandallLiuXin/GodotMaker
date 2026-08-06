@@ -23,12 +23,8 @@ from asset_compiler import (  # noqa: E402
     build_default_registry,
     texture2d,
 )
-from asset_compiler._stable_entry import StableEntryError, resolve_res_path  # noqa: E402
-from asset_stable_entry import (  # noqa: E402
-    GODOT_ARTIFACT_KEYS,
-    LAYOUT_ARTIFACT_TYPES,
-    validate_entry,
-)
+from asset_compiler._asset_paths import RuntimeContractError, resolve_res_path  # noqa: E402
+from asset_output_paths import LAYOUT_ARTIFACT_TYPES  # noqa: E402
 
 
 def _writer(payload=b"artifact"):
@@ -679,7 +675,7 @@ def test_first_commit_failure_leaves_no_artifact_or_receipt(project, monkeypatch
 
 
 def test_a_writing_route_may_not_hand_back_its_source_image(project):
-    # tools/asset_stable_entry.py calls this out by name: declaring the source
+    # The direct output compiler relation calls this out by name: declaring the source
     # image as the artifact is the shortcut LAYOUT_ARTIFACT_TYPES exists to
     # reject. A worker binding that PNG as SpriteFrames gets a frozen sprite.
     source = project / "assets/generated/character-bundle/hero/hero.png"
@@ -843,34 +839,13 @@ def test_receipt_details_never_widen_the_worker_artifact(project):
 
     # The compiler never builds the artifact, so the keys it returns land in the
     # receipt and cannot overwrite or extend the worker-facing object.
-    assert set(result.godot_artifact.to_dict()) == GODOT_ARTIFACT_KEYS
+    assert set(result.godot_artifact.to_dict()) == {"type", "path"}
     assert result.godot_artifact.to_dict() == {
         "type": "StyleBoxTexture",
         "path": "res://assets/generated/ui-kit/panel/panel.tres",
     }
     assert result.receipt.details["hash"] == "abc"
     assert "hash" not in result.to_dict()["godot_artifact"]
-
-
-def test_compiled_artifact_is_accepted_by_the_stable_entry_schema(project):
-    registry = CompilerRegistry()
-    _register(registry, "single", "StyleBoxTexture")
-    result = registry.compile(
-        _make_request(project, layout="single", artifact_type="StyleBoxTexture")
-    )
-    entry = {
-        "version": 1,
-        "asset_id": "panel",
-        "tag": "v0.1.0",
-        "production_family": "ui-kit",
-        "source_layout": {
-            "type": "single",
-            "path": "res://assets/generated/ui-kit/panel/panel.png",
-        },
-        "godot_artifact": result.godot_artifact.to_dict(),
-        "processing_status": "compiled",
-    }
-    assert validate_entry(entry, project_root=project, check_files=True) == entry
 
 
 # --- Texture2D default import ----------------------------------------------
@@ -948,7 +923,7 @@ def test_relative_project_root_compiles_without_double_anchoring(tmp_path, monke
 
 @pytest.mark.parametrize("path", ["", "assets/generated/ui-kit/panel/panel.png", "/etc/passwd"])
 def test_exported_resolver_rejects_non_resource_paths(project, path):
-    with pytest.raises(StableEntryError, match="res:// path"):
+    with pytest.raises(RuntimeContractError, match="res:// path"):
         resolve_res_path(project, path)
 
 
@@ -1129,7 +1104,7 @@ def test_bridge_imports_the_package_without_tools_on_the_path(tmp_path):
     code = (
         "import sys\n"
         f"sys.path.insert(0, {str(SHARED_DIR)!r})\n"
-        "assert 'asset_stable_entry' not in sys.modules\n"
+        "assert 'asset_output_paths' not in sys.modules\n"
         "import asset_compiler\n"
         "print(asset_compiler.build_default_registry().resolve('single', 'Texture2D').compiler_id)\n"
     )
@@ -1147,12 +1122,12 @@ def test_bridge_imports_the_package_without_tools_on_the_path(tmp_path):
 
 def test_bridge_reports_a_missing_tools_directory_diagnosably(tmp_path):
     # A publish layout that moves the package away from tools/ must say so
-    # instead of raising a bare ModuleNotFoundError: asset_stable_entry.
+    # instead of raising a bare ModuleNotFoundError for output path helpers.
     package = tmp_path / "a" / "b" / "c" / "d" / "asset_compiler"
     package.mkdir(parents=True)
     source = SHARED_DIR / "asset_compiler"
     for name in (
-        "__init__.py", "_stable_entry.py", "contract.py", "registry.py",
+        "__init__.py", "_asset_paths.py", "contract.py", "registry.py",
         "texture2d.py", "atlas_texture.py", "sprite_frames.py", "theme.py",
     ):
         (package / name).write_bytes((source / name).read_bytes())

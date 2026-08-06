@@ -44,11 +44,17 @@ Apply the resume gates in this order:
 Then read context:
 - `PLAN.md` → current tag's `**Tag:**` header + Tag Mechanics + Inherited Mechanics + Playable Unit + pending/in_progress/completed tasks (anything not `verified`)
 - `STRUCTURE.md` → architecture and build order (current tag scope: previous tags' systems already exist on disk and may be touched only when PLAN.md explicitly lists a refactor task for them)
-- `ASSETS.md` and `.godotmaker/asset-generation/manifest.json` → the pointer index to generated assets; for a visual task, resolve each asset with `tools/asset_runtime_resolver.py` instead of reading stable-entry fields yourself
+- `ASSETS.md` → the generated-runtime authority; for a visual task, derive each asset with `tools/asset_result_registration.py --snapshot`
 - `MEMORY.md` index + sub-files (cross-tag accumulating notebook) → avoid repeating known mistakes
 - `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring
 
 ## Hard Rules
+
+### Asset Runtime Authority
+
+`ASSETS.md` is the sole generated-asset runtime authority. For a visual task,
+derive the snapshot with `tools/asset_result_registration.py --snapshot` and
+never read a stable entry, manifest pointer, or root index.
 
 1. **You CANNOT write .gd/.tscn/.tres directly.** All game code goes through Worker dispatch.
 2. **You and your workers CANNOT write to e2e/ directory.** E2E tests are owned by the Evaluator.
@@ -119,10 +125,9 @@ Do NOT delete project code as a "fix" for a tool crash.
 - Include the relevant Playable Unit fields in each worker brief.
 - For visual tasks, fill the `Asset Runtime Snapshot` and
   `Visual Asset Contract` sections from `references/worker-dispatch.md`. The
-  snapshot is `tools/asset_runtime_resolver.py` output pasted verbatim — never
-  hand-copied entry fields. For a bundle result, paste each list item as one
-  snapshot block. If the resolver fails for an asset, report its
-  `error` instead of dispatching the task against an invented path.
+  snapshot is `tools/asset_result_registration.py --snapshot` output pasted
+  verbatim. If it fails for an asset, report its error instead of dispatching
+  against an invented path.
 - Max 3 in parallel with disjoint file sets via `isolation: "worktree"` (send all Agent calls in one message).
 - After each worker reports DONE, mark its task in PLAN.md as `completed`.
 - **`main_scene` retarget is your job.** Scaffold leaves `run/main_scene="res://scenes/main.tscn"` (placeholder). After the worker that creates this tag's entry scene (per SCENES.md) completes and the `.tscn` is on disk, `Edit` `project.godot`'s `[application] run/main_scene` to `res://<path>`.

@@ -15,7 +15,7 @@ from asset_skill_contract_check import (
     check_request,
     check_result,
 )
-from asset_stable_entry import stable_output_dir
+from asset_output_paths import generated_output_dir
 from asset_ui_theme_recipe import UI_ICONS, UI_STYLEBOXES
 
 
@@ -399,11 +399,11 @@ def expected_runtime_path(
     The derivation is not injective on its own: a stylebox literally named
     ``<asset_id>_theme`` derives the Theme's path, and each output still matches
     its own expected value here. The cross-output uniqueness assertion in
-    ``asset_ui_card_entry_draft`` is what closes that, so the two checks are a
+    The direct result-registration contract closes that, so the two checks are a
     pair — do not drop either one.
     """
     stem = f"{asset_id}_theme" if godot_type == "Theme" else output_name
-    return f"res://{stable_output_dir(asset_type, asset_id)}/{stem}.tres"
+    return f"res://{generated_output_dir(asset_type, asset_id)}/{stem}.tres"
 
 
 def _assert_runtime_path(

@@ -1,10 +1,8 @@
-"""Import bridge to the repository modules the readiness ladder validates against.
+"""Import bridge for direct-output validation helpers.
 
-The ladder must judge an asset against exactly the contracts the rest of the
-pipeline enforces, so it imports them instead of restating them:
-
-- ``tools/asset_stable_entry.py`` owns the entry schema (L0) and the stable
-  output-path relation the on-disk checks (L1, L2) resolve against;
+Standalone validators work directly with their request, result, and selected
+output.  They share the compiler registry and output-path checks instead of
+constructing a persisted registration object.
 - ``asset_compiler`` next to this package owns the ``(source_layout, artifact
   type)`` routing relation L2 requires a registered compiler for;
 - ``tools/agent_runtime.py`` owns the Windows console-binary preference the
@@ -49,16 +47,17 @@ from asset_compiler import (  # noqa: E402
     build_default_registry,
 )
 from asset_compiler.registry import is_same_file  # noqa: E402
-from asset_stable_entry import (  # noqa: E402
+from asset_output_paths import (  # noqa: E402
     LAYOUT_ARTIFACT_TYPES,
     REFERENCE_FAMILIES,
     REFERENCE_LAYOUTS,
-    StableEntryError,
+    AssetOutputPathError,
     assert_within_output_dir,
     check_output_path,
-    validate_entry,
 )
-from asset_compiler._stable_entry import resolve_res_path  # noqa: E402
+from asset_compiler._asset_paths import resolve_res_path  # noqa: E402
+
+RuntimeContractError = AssetOutputPathError
 
 __all__ = [
     "LAYOUT_ARTIFACT_TYPES",
@@ -67,12 +66,11 @@ __all__ = [
     "CompileReceipt",
     "CompilerError",
     "CompilerRegistry",
-    "StableEntryError",
+    "RuntimeContractError",
     "assert_within_output_dir",
     "build_default_registry",
     "check_output_path",
     "is_same_file",
     "prefer_console_godot_path",
     "resolve_res_path",
-    "validate_entry",
 ]

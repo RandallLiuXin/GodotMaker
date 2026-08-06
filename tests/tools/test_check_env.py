@@ -461,7 +461,7 @@ class TestCheckFunctions:
 
         imported: list[str] = []
 
-        def fake_import(name):
+        def fake_import(name, *args, **kwargs):
             imported.append(name)
             return object()
 

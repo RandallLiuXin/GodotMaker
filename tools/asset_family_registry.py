@@ -2,11 +2,11 @@
 """The authoritative map from a public Asset Skill family to its registration chain.
 
 Every first-class family advertised by ``/gm-asset`` delivers a generic Asset
-Skill result and has to turn that result into a stable entry a worker can
+Skill result and records the result outputs a worker can
 resolve. Which layout it may bind, which Godot artifact it compiles, which
 deterministic builder adapts the result, how many entries that produces, and
-which ``processing_status`` is its completion state used to be spread across
-``tools/asset_stable_entry.py``, ``tools/asset_skill_contract_check.py``, the
+which logical outputs a completed delivery contains used to be spread across
+the request/result checker, the
 ``/gm-asset`` routing tables, ``references/asset-runtime-pipeline.md``, and a
 hand-maintained tuple in each test. Nothing tied those lists together, so a
 family could advertise a runtime delivery, validate it, and still have no
@@ -49,23 +49,19 @@ SKILLS_ROOT = "skills/assets"
 RUNTIME_ROLE = "runtime"
 REFERENCE_ROLE = "reference"
 
-# ``entry_shape`` is how one validated delivery becomes stable entries:
-#
-# - ``one_entry``           one runtime asset, one entry.
-# - ``entry_per_output``    one production, several separately bindable
-#                           resources out of one shared directory; every entry
-#                           carries the shared ``bundle_id``.
-# - ``anchor_entry``        several runtime resources, but one entry anchors the
-#                           set and the metadata beside it is the inventory.
-ONE_ENTRY = "one_entry"
-ENTRY_PER_OUTPUT = "entry_per_output"
-ANCHOR_ENTRY = "anchor_entry"
-
 # The completion state each role's work stops at.
 TERMINAL_STATUS = {RUNTIME_ROLE: "ready", REFERENCE_ROLE: "source_ready"}
 
 # The single request shape a family with no producer variants accepts.
 DEFAULT_VARIANT = "default"
+
+# A request must explicitly select every family that has more than one delivery
+# route.  Result registration uses this selector to avoid accepting a type from
+# a sibling variant.
+REQUEST_VARIANT_FIELDS = {
+    "fx-bundle": "mode",
+    "platform-strip": "kind",
+}
 
 
 @dataclass(frozen=True)
@@ -85,10 +81,6 @@ class DeliveryVariant:
     artifact_types: tuple[str, ...]
     #: How many runtime outputs one validated delivery declares.
     runtime_outputs: str
-    #: How that delivery becomes stable entries.
-    entry_shape: str
-    #: Deterministic ``tools/`` builders that adapt the result into drafts.
-    entry_builders: tuple[str, ...]
 
     def __post_init__(self) -> None:
         label = f"variant {self.variant!r}"
@@ -96,21 +88,12 @@ class DeliveryVariant:
             raise ValueError("a delivery variant needs a non-empty name")
         if self.runtime_outputs not in ("none", "one", "many"):
             raise ValueError(f"{label}: unknown runtime_outputs")
-        if not self.entry_builders:
-            raise ValueError(f"{label}: a route needs a deterministic entry builder")
-        if self.entry_shape not in (ONE_ENTRY, ENTRY_PER_OUTPUT, ANCHOR_ENTRY):
-            raise ValueError(f"{label}: unknown entry_shape {self.entry_shape!r}")
         if not self.entry_source_layouts:
             raise ValueError(f"{label}: a variant must name its source layout")
 
     @property
     def is_reference_only(self) -> bool:
         return not self.artifact_types
-
-    @property
-    def uses_bundle_id(self) -> bool:
-        """True when each runtime output registers under a shared ``bundle_id``."""
-        return self.entry_shape == ENTRY_PER_OUTPUT
 
     @property
     def terminal_status(self) -> str:
@@ -124,10 +107,7 @@ class DeliveryVariant:
             "entry_source_layouts": list(self.entry_source_layouts),
             "artifact_types": list(self.artifact_types),
             "runtime_outputs": self.runtime_outputs,
-            "entry_shape": self.entry_shape,
-            "entry_builders": list(self.entry_builders),
             "terminal_status": self.terminal_status,
-            "uses_bundle_id": self.uses_bundle_id,
         }
 
 
@@ -173,14 +153,6 @@ class FamilySpec:
         return tuple(sorted({item for v in self.variants for item in v.artifact_types}))
 
     @property
-    def entry_builders(self) -> tuple[str, ...]:
-        return tuple(sorted({item for v in self.variants for item in v.entry_builders}))
-
-    @property
-    def uses_bundle_id(self) -> bool:
-        return any(item.uses_bundle_id for item in self.variants)
-
-    @property
     def skill_dir(self) -> str:
         return f"{SKILLS_ROOT}/{self.family}"
 
@@ -195,7 +167,6 @@ class FamilySpec:
             "family": self.family,
             "role": self.role,
             "terminal_status": self.terminal_status,
-            "uses_bundle_id": self.uses_bundle_id,
             "skill_dir": self.skill_dir,
             "variants": [item.to_dict() for item in self.variants],
         }
@@ -211,8 +182,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("single",),
                 artifact_types=("Texture2D",),
                 runtime_outputs="one",
-                entry_shape=ONE_ENTRY,
-                entry_builders=("asset_finalize_entry_draft.py",),
             ),
         ),
     ),
@@ -225,8 +194,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("region_atlas", "theme_recipe"),
                 artifact_types=("AtlasTexture", "StyleBoxTexture", "Theme"),
                 runtime_outputs="many",
-                entry_shape=ENTRY_PER_OUTPUT,
-                entry_builders=("asset_ui_card_entry_draft.py",),
             ),
         ),
     ),
@@ -239,8 +206,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("grid_sheet",),
                 artifact_types=("SpriteFrames",),
                 runtime_outputs="one",
-                entry_shape=ONE_ENTRY,
-                entry_builders=("asset_action_entry_draft.py",),
             ),
         ),
     ),
@@ -253,8 +218,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("region_atlas",),
                 artifact_types=("AtlasTexture",),
                 runtime_outputs="many",
-                entry_shape=ENTRY_PER_OUTPUT,
-                entry_builders=("asset_compact_prop_pack_entry_draft.py",),
             ),
         ),
     ),
@@ -267,16 +230,12 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("single",),
                 artifact_types=("Texture2D",),
                 runtime_outputs="one",
-                entry_shape=ONE_ENTRY,
-                entry_builders=("asset_curation_entry_draft.py",),
             ),
             DeliveryVariant(
                 variant="animated",
                 entry_source_layouts=("grid_sheet",),
                 artifact_types=("SpriteFrames",),
                 runtime_outputs="one",
-                entry_shape=ONE_ENTRY,
-                entry_builders=("asset_action_entry_draft.py",),
             ),
         ),
     ),
@@ -289,16 +248,12 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("single",),
                 artifact_types=("Texture2D",),
                 runtime_outputs="many",
-                entry_shape=ENTRY_PER_OUTPUT,
-                entry_builders=("asset_platform_strip_entry_draft.py",),
             ),
             DeliveryVariant(
                 variant="atlas",
                 entry_source_layouts=("region_atlas",),
                 artifact_types=("AtlasTexture",),
                 runtime_outputs="many",
-                entry_shape=ENTRY_PER_OUTPUT,
-                entry_builders=("asset_platform_strip_entry_draft.py",),
             ),
         ),
     ),
@@ -311,8 +266,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("region_atlas",),
                 artifact_types=("AtlasTexture",),
                 runtime_outputs="many",
-                entry_shape=ANCHOR_ENTRY,
-                entry_builders=("asset_scene_prop_set_entry_draft.py",),
             ),
         ),
     ),
@@ -325,8 +278,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("reference",),
                 artifact_types=(),
                 runtime_outputs="none",
-                entry_shape=ONE_ENTRY,
-                entry_builders=("asset_finalize_entry_draft.py",),
             ),
         ),
     ),
@@ -339,8 +290,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("tile_atlas",),
                 artifact_types=("TileSet",),
                 runtime_outputs="one",
-                entry_shape=ONE_ENTRY,
-                entry_builders=("asset_tileset_entry_draft.py",),
             ),
         ),
     ),
@@ -353,8 +302,6 @@ _SPECS: tuple[FamilySpec, ...] = (
                 entry_source_layouts=("region_atlas", "theme_recipe"),
                 artifact_types=("AtlasTexture", "StyleBoxTexture", "Theme"),
                 runtime_outputs="many",
-                entry_shape=ENTRY_PER_OUTPUT,
-                entry_builders=("asset_ui_card_entry_draft.py",),
             ),
         ),
     ),
@@ -368,9 +315,6 @@ REFERENCE_FAMILY_NAMES: frozenset[str] = frozenset(
     name for name, spec in FAMILIES.items() if spec.is_reference_only
 )
 RUNTIME_FAMILY_NAMES: frozenset[str] = frozenset(FAMILY_NAMES - REFERENCE_FAMILY_NAMES)
-BUNDLE_FAMILY_NAMES: frozenset[str] = frozenset(
-    name for name, spec in FAMILIES.items() if spec.uses_bundle_id
-)
 
 
 class FamilyRegistryError(Exception):
@@ -383,6 +327,30 @@ def spec(family: str) -> FamilySpec:
         return FAMILIES[family]
     except KeyError:
         raise FamilyRegistryError(f"unknown production family: {family}") from None
+
+
+def variant_for_request(request: dict[str, Any]) -> DeliveryVariant:
+    """Return the single output contract selected by ``request``."""
+    family = request.get("asset_type")
+    if not isinstance(family, str):
+        raise FamilyRegistryError("request.asset_type must be a string")
+    family_spec = spec(family)
+    if len(family_spec.variants) == 1:
+        return family_spec.variants[0]
+    selector = REQUEST_VARIANT_FIELDS.get(family)
+    if selector is None:
+        raise FamilyRegistryError(f"{family} has no request variant selector")
+    request_spec = request.get("spec")
+    value = request_spec.get(selector) if isinstance(request_spec, dict) else None
+    if not isinstance(value, str) or not value.strip():
+        raise FamilyRegistryError(f"{family} request.spec.{selector} must select a variant")
+    try:
+        return family_spec.variant(value)
+    except FamilyRegistryError as exc:
+        allowed = ", ".join(item.variant for item in family_spec.variants)
+        raise FamilyRegistryError(
+            f"{family} request.spec.{selector} must be one of: {allowed}; got {value!r}"
+        ) from exc
 
 
 def families(*, role: str | None = None) -> list[FamilySpec]:
@@ -455,13 +423,6 @@ def check_registry(root: Path | None = None) -> list[str]:
         for required in ("SKILL.md", "standalone_validation.py"):
             if not (skills_dir / name / required).is_file():
                 issues.append(f"{item.skill_dir}/{required} is missing")
-        for variant in item.variants:
-            for builder in variant.entry_builders:
-                if not (base / "tools" / builder).is_file():
-                    issues.append(
-                        f"{name}[{variant.variant}] names a missing entry builder: "
-                        f"tools/{builder}"
-                    )
 
     return issues
 
@@ -474,7 +435,7 @@ def _main() -> int:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Verify the registry against the shipped skills and entry builders",
+        help="Verify the registry against shipped skills and validators",
     )
     parser.add_argument("--project-root", type=Path, default=None)
     args = parser.parse_args()

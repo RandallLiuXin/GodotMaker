@@ -70,27 +70,25 @@ Agent({
 - DO NOT write files outside the project tree (system temp dirs, home directory, etc.). If you genuinely need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p the directory if missing) and delete it before reporting DONE. Claude Code's own scratchpad system is gated behind a feature flag we cannot rely on, so this rule is what guarantees clean tear-down.
 
 ### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
-{List the assets the task binds from the current tag's `.godotmaker/asset-generation/manifest.json`
-pointer index, then resolve each one and paste the tool's JSON verbatim, one
+{List the assets the task binds from the current tag's authoritative ASSETS.md
+runtime rows, then resolve each one and paste the tool's JSON verbatim, one
 block per asset:
 
 ```bash
-python tools/asset_runtime_resolver.py --project-root . --assets-md ASSETS.md \
-  --tag <tag> --asset-id <asset_id>
+python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
+  --snapshot --asset-id <asset_id>
 ```
 
-Paste the resolver output as this section. Do not copy fields out of a stable
-entry, the root index, or an ASSETS.md row by hand. When the resolver returns a
-bundle list, paste each list item as a separate block; do not copy fields out
-of its bundle manifest either. Do not add target size,
+Paste the resolver output as this section. Do not copy fields out of an
+ASSETS.md row by hand. Do not add target size,
 frame_count, fps, loop, frame paths, region names, region rects, or support
 metadata paths.
 Name the runtime state or FX lifecycle a `SpriteFrames` artifact should play in
 `Game Mechanic Function`, not by pasting frame data here.
-The resolver exits non-zero with an `error` on an unregistered pointer, a
-non-`ready` entry, a missing source or artifact file, and a reference-only
-asset. On failure, state the resolver's `error` and do not dispatch the visual
-task. Never fill this section with an artifact path the resolver did not emit.
+The resolver exits non-zero with an `error` on a non-`generated` row, missing
+or invalid runtime columns, a missing artifact file, or a reference-only asset.
+On failure, state the resolver's `error` and do not dispatch the visual task.
+Never fill this section with an artifact path the resolver did not emit.
 Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
 prompt files, or scene references as runtime assets.}
 
@@ -148,7 +146,7 @@ PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
 18. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 19. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
 `Visual Asset Contract` for visual tasks.
-20. **The resolver owns the snapshot.** Use `tools/asset_runtime_resolver.py`
+20. **The resolver owns the snapshot.** Use `tools/asset_result_registration.py --snapshot`
 output as the only `Asset Runtime Snapshot` content. Never hand-copy entry
 fields and never widen the four-field contract.
 21. **Bind the artifact, do not rebuild it.** The brief must ask the worker to

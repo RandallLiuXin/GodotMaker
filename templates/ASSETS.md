@@ -36,17 +36,21 @@ For current-tag gameplay actors:
 ## Asset Table
 
 <!-- Master manifest of all visual assets across all tags. Each row's
-     `Tag` is the tag that introduced the asset. -->
+     `Tag` is the tag that introduced the asset. A row is one logical asset.
+     Runtime Type and Runtime Path are the sole worker handoff: they must name
+     the final loadable Godot resource, never a source sheet, atlas, candidate,
+     report, or manifest pointer. Reference/source-only rows use Runtime Type
+     `reference`, complete as `source_ready`, and never enter a runtime snapshot. -->
 
-| # | Tag | Name | Type | Size | Generation Params | File Path | Status |
-|---|-----|------|------|------|-------------------|-----------|--------|
-| 1 | v0.1.0 | player_canonical | reference | full body | family=character_canonical; role=player | references/characters/player_canonical.png | MISSING |
-| 2 | v0.1.0 | player_action_source | sprite_sheet | action set | family=character_action_source; derived_from=player_canonical; actions=from_current_tag_behavior; curation=.godotmaker/asset-generation/curation/player_actions.json | .godotmaker/asset-generation/sources/player_actions.png | MISSING |
-| 3 | v0.1.0 | player_animation_runtime | animation | frame output | family=character_frame_output; derived_from=player_action_source; source_layout=grid_sheet | assets/generated/character-bundle/player_animation_runtime/player_animation_runtime.png | MISSING |
-| 4 | v0.1.0 | player_portrait | portrait | 256x256 px | family=character_portrait; role=player; derived_from=player_canonical; use=character_select_card; required_if=large_ui_display | assets/generated/character-bundle/player_portrait/player_portrait.png | MISSING |
-| 5 | v0.1.0 | action_button | ui | 96x48 px | family=ui_component_sheet; component=button; selected_candidate=ui_kit.action_button | assets/generated/ui-kit/action_button/action_button.png | MISSING |
-| 6 | v0.1.0 | background_sky | background | 1280x720 | family=background; source_layout=single | assets/generated/background-map/background_sky/background_sky.png | MISSING |
-| ... | ... | ... | ... | ... | ... | ... | ... |
+| # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |
+|---|-----|------|------|------|-------------------|--------------|--------------|--------|
+| 1 | v0.1.0 | player_canonical | reference | full body | family=character_canonical; role=player | reference | res://references/characters/player_canonical.png | MISSING |
+| 2 | v0.1.0 | player_action_source | source-only | action set | family=character_action_source; derived_from=player_canonical; actions=from_current_tag_behavior | reference | res://.godotmaker/asset-generation/sources/player_actions.png | MISSING |
+| 3 | v0.1.0 | player_animation_runtime | animation | frame output | family=character-bundle; derived_from=player_action_source | SpriteFrames | res://assets/generated/character-bundle/player_animation_runtime/player_animation_runtime.tres | MISSING |
+| 4 | v0.1.0 | player_portrait | portrait | 256x256 px | family=background-map; role=player; derived_from=player_canonical | Texture2D | res://assets/generated/character-bundle/player_portrait/player_portrait.png | MISSING |
+| 5 | v0.1.0 | action_button | ui | 96x48 px | family=ui-kit; component=button | Theme | res://assets/generated/ui-kit/action_button/action_button.tres | MISSING |
+| 6 | v0.1.0 | background_sky | background | 1280x720 | family=background-map | Texture2D | res://assets/generated/background-map/background_sky/background_sky.png | MISSING |
+| ... | ... | ... | ... | ... | ... | ... | ... | ... |
 
 ## Visual Asset Contract
 

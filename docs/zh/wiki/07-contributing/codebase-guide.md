@@ -1,5 +1,9 @@
 # 代码库指南
 
+生成资产的 runtime 权威数据位于 `ASSETS.md`。工具
+`tools/asset_result_registration.py` 会验证整个 Asset Skill result，原子记录最终
+runtime 类型和路径行，并派生 worker snapshot。
+
 本页面对 GodotMaker 仓库逐目录进行深度介绍，帮助你在开始修改之前建立全局认知。如需简短概览，请参阅 [开发环境搭建](development-setup.md)。想了解各模块在运行时如何协作，请继续阅读本文。
 
 ## 仓库目录结构
@@ -149,14 +153,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 | `asset_action_process.py` | 将角色动作 sheet 处理成规范化 frames 和 metadata |
 | `asset_sheet_process.py` | 将生产形态的 2D source sheet 拆成 curation candidate |
 | `asset_curation_select.py` | 将选中的 curation candidate finalize 到运行时素材路径 |
-| `asset_action_entry_draft.py` | 根据已处理动作输出生成 action support metadata 和 v1 stable-entry draft |
-| `asset_curation_entry_draft.py` | 根据已选中的 curation candidate 生成 v1 stable-entry draft |
-| `asset_finalize_entry_draft.py` | 根据 asset_image_finalize.py 报告生成 v1 stable-entry draft |
-| `asset_output_path.py` | 解析并校验稳定输出目录 `assets/generated/<family>/<asset_id>/` |
-| `asset_stable_entry.py` | 校验并序列化一个 v1 generated-asset stable entry |
-| `asset_generation_index.py` | 校验并 upsert pointer-only 的 generated-asset root index |
-| `asset_assets_md_update.py` | 根据已注册的 stable entry 更新 ASSETS.md 行 |
-| `asset_runtime_resolver.py` | 将已注册的 ASSETS.md 指针解析为最小 ready runtime snapshot |
+| `asset_result_registration.py` | 在 ASSETS.md 中原子验证并登记 request/result 输出合同，并派生最小 worker snapshot |
 | `migrate.py` | 在任何非 MAJOR 升级时把未应用的迁移脚本应用到目标项目；也通过 `--new <slug>` 生成新脚本模板 |
 
 ### publish.py 如何串联一切

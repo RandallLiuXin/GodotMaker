@@ -40,8 +40,10 @@ def test_each_ui_family_has_an_independent_skill_and_valid_fixture(family, expec
     assert "shared Asset Skill request schema" in skill
     assert "shared result schema and checker" in skill
     assert "invoked directly or by an orchestrator" in skill
-    for forbidden_context in ("ASSETS.md", "tags", "stage state", "generated\nmanifests"):
-        assert forbidden_context in skill
+    # Families may describe the manager-owned direct registration boundary, but
+    # must not revive the retired per-resource handoff contract.
+    for retired_handoff in ("stable entry", "producer adapter", "entry draft"):
+        assert retired_handoff not in skill.lower()
     for term in expected["terms"]:
         assert term in skill
 
@@ -102,17 +104,24 @@ def test_gm_asset_dispatches_ui_and_card_kits_to_their_named_skills():
     manager = (REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md").read_text(
         encoding="utf-8"
     )
-    planner = (
-        REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "asset-planner.md"
-    ).read_text(encoding="utf-8")
+    planner = (REPO_ROOT / "skills" / "core" / "gm-asset" /
+               "references" / "asset-planner.md").read_text(encoding="utf-8")
 
     for family in FAMILIES:
         assert not (REPO_ROOT / "skills" / "core" / "gm-asset" / "references" /
                     "production-units" / f"{family}.md").exists()
         assert f"| `{family}` | First-class `{family}` Asset Skill |" in manager
-        assert f"| `{family}` | First-class `{family}` Asset Skill |" in planner
         assert f"references/production-units/{family}.md" not in manager
         assert f"references/production-units/{family}.md" not in planner
         # The brief's Production Contract must offer this family as a choice, so
         # a producer can never be handed a unit with no named Skill to invoke.
         assert family in manager.split("First-class Asset Skill: {")[1]
+
+    # Planning derives the expected output set from the named family's native
+    # contract; the manager registers the validated result directly into
+    # ASSETS.md instead of handing it to a per-family production-unit document
+    # or stable-entry adapter.
+    assert "native contract" in planner
+    assert "compact-prop-pack" in planner
+    assert "asset_result_registration.py" in planner
+    assert "ASSETS.md" in planner
