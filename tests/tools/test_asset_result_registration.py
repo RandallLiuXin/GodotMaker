@@ -15,6 +15,7 @@ from asset_result_registration import (  # noqa: E402
     register_result,
     runtime_snapshot,
 )
+from asset_build_record import write_validation_record  # noqa: E402
 
 
 TAG = "v0.1.0"
@@ -207,13 +208,54 @@ def test_missing_runtime_file_or_failed_godot_check_keeps_the_whole_unit_missing
     assert assets_md.read_text(encoding="utf-8") == original
 
 
+def test_background_registration_requires_the_l0_l4_recorded_artifact_bytes(tmp_path):
+    asset_id = "sunset"
+    assets_md = tmp_path / "ASSETS.md"
+    _assets_md(assets_md, [asset_id])
+    artifact_path = "res://assets/generated/background-map/sunset.png"
+    artifact = tmp_path / artifact_path.removeprefix("res://")
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"validated background")
+    request = tmp_path / "request.json"
+    request.write_text(
+        json.dumps({
+            "asset_type": "background-map", "asset_id": asset_id,
+            "brief": "a validated sunset background",
+        }),
+        encoding="utf-8",
+    )
+    result = tmp_path / "result.json"
+    result.write_text(
+        json.dumps({
+            "asset_type": "background-map",
+            "outputs": [{
+                "role": "runtime", "path": artifact_path, "godot_type": "Texture2D",
+            }],
+            "sources": [], "previews": [], "validation": {"passed": True},
+        }),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssetResultRegistrationError, match="no validation record"):
+        register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
+
+    write_validation_record(
+        tmp_path,
+        production_family="background-map",
+        asset_id=asset_id,
+        artifact_path=artifact_path,
+    )
+    register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
+
+    artifact.write_bytes(b"regenerated without L0-L4")
+    with pytest.raises(AssetResultRegistrationError, match="changed since it passed L0-L4"):
+        register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
+
+
 @pytest.mark.parametrize(
     ("family", "godot_type", "suffix"),
     [
-        ("background-map", "Texture2D", ".png"),
         ("character-bundle", "SpriteFrames", ".tres"),
-        ("ui-kit", "Theme", ".tres"),
-        ("card-kit", "StyleBoxTexture", ".tres"),
         ("tileset", "TileSet", ".tres"),
         ("fx-bundle", "SpriteFrames", ".tres"),
     ],
@@ -234,11 +276,7 @@ def test_runtime_families_register_their_final_declared_godot_artifact(
                 "asset_type": family,
                 "asset_id": asset_id,
                 "brief": "runtime asset",
-                **(
-                    {"spec": {"outputs": [{"name": asset_id, "role": "runtime", "godot_type": godot_type}]}}
-                    if family in {"ui-kit", "card-kit"}
-                    else ({"spec": {"mode": "animated"}} if family == "fx-bundle" else {})
-                ),
+                    **({"spec": {"mode": "animated"}} if family == "fx-bundle" else {}),
             }
         ),
         encoding="utf-8",
@@ -283,22 +321,52 @@ def test_runtime_families_register_their_final_declared_godot_artifact(
     ]
 
 
-@pytest.mark.parametrize(
-    ("family", "godot_type"),
-    [
-        ("compact-prop-pack", "AtlasTexture"),
-        ("platform-strip", "Texture2D"),
-        ("ui-kit", "Theme"),
-        ("card-kit", "StyleBoxTexture"),
-    ],
-)
+def _native_multi_output_request(family: str, names: list[str]) -> tuple[dict, dict[str, str]]:
+    if family in {"ui-kit", "card-kit"}:
+        return (
+            {
+                "styleboxes": [{"output_name": names[0]}],
+                "atlas_regions": [{"output_name": names[1]}],
+                "theme": None,
+            },
+            {names[0]: "StyleBoxTexture", names[1]: "AtlasTexture"},
+        )
+    if family == "compact-prop-pack":
+        return (
+            {
+                "version": 1,
+                "atlas": {"width": 32, "height": 16},
+                "slots": [
+                    {"name": name, "rect": [index * 16, 0, 16, 16], "source": f"sources/{name}.png"}
+                    for index, name in enumerate(names)
+                ],
+            },
+            {name: "AtlasTexture" for name in names},
+        )
+    if family == "platform-strip":
+        return (
+            {
+                "kind": "single",
+                "grid": {"columns": len(names), "rows": 1, "cell_width": 8, "cell_height": 8},
+                "segments": [
+                    {"name": name, "role": role, "slot": [index, 0]}
+                    for index, (name, role) in enumerate(zip(names, ("left_cap", "right_cap"), strict=True))
+                ],
+            },
+            {name: "Texture2D" for name in names},
+        )
+    raise AssertionError(f"unexpected family: {family}")
+
+
+@pytest.mark.parametrize("family", ["compact-prop-pack", "platform-strip", "ui-kit", "card-kit"])
 @pytest.mark.parametrize("case", ["missing", "duplicate", "unknown", "wrong_type"])
 def test_multi_output_families_use_request_owned_output_contracts(
-    tmp_path, family, godot_type, case
+    tmp_path, family, case
 ):
     names = ["first", "second"]
     assets_md = tmp_path / "ASSETS.md"
     _assets_md(assets_md, names)
+    spec, expected_types = _native_multi_output_request(family, names)
     request = tmp_path / "request.json"
     request.write_text(
         json.dumps(
@@ -306,13 +374,7 @@ def test_multi_output_families_use_request_owned_output_contracts(
                 "asset_type": family,
                 "asset_id": "bundle",
                 "brief": "two independently consumable assets",
-                "spec": {
-                    **({"kind": "single"} if family == "platform-strip" else {}),
-                    "outputs": [
-                        {"name": name, "role": "runtime", "godot_type": godot_type}
-                        for name in names
-                    ]
-                },
+                "spec": spec,
             }
         ),
         encoding="utf-8",
@@ -332,7 +394,7 @@ def test_multi_output_families_use_request_owned_output_contracts(
                 "role": "runtime",
                 "name": name,
                 "path": "res://" + artifact.relative_to(tmp_path).as_posix(),
-                "godot_type": "AtlasTexture" if case == "wrong_type" and godot_type != "AtlasTexture" else ("Theme" if case == "wrong_type" else godot_type),
+                "godot_type": "SpriteFrames" if case == "wrong_type" else expected_types.get(name, next(iter(expected_types.values()))),
             }
         )
     result = tmp_path / "result.json"

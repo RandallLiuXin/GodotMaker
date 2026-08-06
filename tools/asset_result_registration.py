@@ -17,6 +17,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from asset_build_record import (
+    BuildRecordError,
+    assert_validated_artifact,
+    read_validation_record,
+)
 from asset_skill_contract_check import AssetContractError, check_request, check_result
 from asset_family_registry import FamilyRegistryError, variant_for_request
 
@@ -140,13 +145,134 @@ def _asset_outputs(
     return records
 
 
+def _named_runtime_outputs(
+    declarations: Any,
+    *,
+    family: str,
+    declaration_label: str,
+    name_key: str,
+    godot_type: str,
+) -> dict[str, dict[str, str]]:
+    """Turn a family's native request declarations into a closed output set."""
+    if not isinstance(declarations, list) or not declarations:
+        raise AssetResultRegistrationError(
+            f"{family} request must declare one or more {declaration_label}"
+        )
+    declared: dict[str, dict[str, str]] = {}
+    for index, item in enumerate(declarations):
+        if not isinstance(item, dict):
+            raise AssetResultRegistrationError(
+                f"{family} {declaration_label}[{index}] must be an object"
+            )
+        name = item.get(name_key)
+        if not isinstance(name, str) or not name.strip():
+            raise AssetResultRegistrationError(
+                f"{family} {declaration_label}[{index}].{name_key} must be non-empty"
+            )
+        if name in declared:
+            raise AssetResultRegistrationError(
+                f"duplicate declared logical output: {name}"
+            )
+        declared[name] = {"role": "runtime", "type": godot_type}
+    return declared
+
+
+def _merge_declared_outputs(
+    target: dict[str, dict[str, str]], source: dict[str, dict[str, str]]
+) -> None:
+    duplicates = sorted(set(target) & set(source))
+    if duplicates:
+        raise AssetResultRegistrationError(
+            "duplicate declared logical output: " + ", ".join(duplicates)
+        )
+    target.update(source)
+
+
+def _native_multi_output_contract(
+    request: dict[str, Any], *, allowed_types: set[str]
+) -> dict[str, dict[str, str]] | None:
+    """Return output declarations already owned by a public family request.
+
+    These families have a strict standalone schema.  Their resource
+    declarations are the authoritative output set; adding a parallel
+    ``spec.outputs`` list would make standalone validation and registration
+    disagree.
+    """
+    family = request["asset_type"]
+    if family not in {"ui-kit", "card-kit", "compact-prop-pack", "platform-strip"}:
+        return None
+    spec = request.get("spec")
+    if not isinstance(spec, dict):
+        raise AssetResultRegistrationError(f"{family} request.spec must be an object")
+    if family in {"ui-kit", "card-kit"}:
+        declared: dict[str, dict[str, str]] = {}
+        _merge_declared_outputs(
+            declared,
+            _named_runtime_outputs(
+                spec.get("styleboxes"),
+                family=family,
+                declaration_label="spec.styleboxes",
+                name_key="output_name",
+                godot_type="StyleBoxTexture",
+            ),
+        )
+        _merge_declared_outputs(
+            declared,
+            _named_runtime_outputs(
+                spec.get("atlas_regions"),
+                family=family,
+                declaration_label="spec.atlas_regions",
+                name_key="output_name",
+                godot_type="AtlasTexture",
+            ),
+        )
+        theme = spec.get("theme")
+        if theme is not None:
+            if not isinstance(theme, dict):
+                raise AssetResultRegistrationError(f"{family} spec.theme must be an object or null")
+            _merge_declared_outputs(
+                declared,
+                _named_runtime_outputs(
+                    [theme],
+                    family=family,
+                    declaration_label="spec.theme",
+                    name_key="output_name",
+                    godot_type="Theme",
+                ),
+            )
+        return declared
+    if family == "compact-prop-pack":
+        return _named_runtime_outputs(
+            spec.get("slots"),
+            family=family,
+            declaration_label="spec.slots",
+            name_key="name",
+            godot_type="AtlasTexture",
+        )
+    if family == "platform-strip":
+        kind = spec.get("kind")
+        type_for_kind = {"single": "Texture2D", "atlas": "AtlasTexture"}
+        godot_type = type_for_kind.get(kind)
+        if godot_type is None or godot_type not in allowed_types:
+            raise AssetResultRegistrationError(
+                "platform-strip spec.kind must select a supported output type"
+            )
+        return _named_runtime_outputs(
+            spec.get("segments"),
+            family=family,
+            declaration_label="spec.segments",
+            name_key="name",
+            godot_type=godot_type,
+        )
+    return None
+
+
 def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
     """Return the complete, request-owned logical output contract.
 
-    A result must never define its own registration set. Scene-prop-set slots
-    are an existing fixed output declaration. Every other multi-output family
-    must declare ``spec.outputs`` before production; each item names exactly
-    one logical runtime/reference output and its expected final Godot type.
+    A result must never define its own registration set.  Families with native
+    fixed-slot/resource declarations derive that set from their request. Other
+    multi-output families declare ``spec.outputs`` explicitly.
     """
     family = request["asset_type"]
     try:
@@ -160,6 +286,13 @@ def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
             slot["name"]: {"role": "runtime", "type": "AtlasTexture"}
             for slot in request["spec"]["slots"]
         }
+    native_contract = _native_multi_output_contract(request, allowed_types=allowed_types)
+    if native_contract is not None:
+        if "outputs" in request["spec"]:
+            raise AssetResultRegistrationError(
+                f"{family} derives logical outputs from its native spec; do not add spec.outputs"
+            )
+        return native_contract
     contract = request.get("spec", {}).get("outputs")
     if contract is None:
         # A single-output family has one unambiguous logical asset. Multi-output
@@ -204,6 +337,34 @@ def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
                 f"request.spec.outputs[{index}].role must be runtime or reference"
             )
     return declared
+
+
+_VALIDATION_RECORD_FAMILIES = frozenset({"background-map"})
+
+
+def _assert_validation_record_matches(
+    project_root: Path, request: dict[str, Any], outputs: dict[str, dict[str, str]]
+) -> None:
+    """Require record-writing families to register the exact L0-L4 bytes."""
+    family = request["asset_type"]
+    if family not in _VALIDATION_RECORD_FAMILIES:
+        return
+    try:
+        record = read_validation_record(
+            project_root, production_family=family, asset_id=request["asset_id"]
+        )
+        runtime_paths = [
+            output["path"] for output in outputs.values() if output["role"] == "runtime"
+        ]
+        if len(runtime_paths) != 1:
+            raise AssetResultRegistrationError(
+                f"{family} validation record requires exactly one runtime output"
+            )
+        assert_validated_artifact(
+            record, project_root=project_root, artifact_path=runtime_paths[0]
+        )
+    except BuildRecordError as exc:
+        raise AssetResultRegistrationError(str(exc)) from exc
 
 
 def _godot_loader(godot_path: str, project_root: Path, resource_path: str, expected: str) -> None:
@@ -316,6 +477,8 @@ def register_result(
         raise AssetResultRegistrationError(
             "ASSETS.md has no runtime row for result outputs: " + ", ".join(missing)
         )
+
+    _assert_validation_record_matches(project_root, request, outputs)
 
     for logical_id, output in outputs.items():
         _res_to_file(project_root, output["path"])

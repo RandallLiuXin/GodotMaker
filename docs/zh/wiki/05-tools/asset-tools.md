@@ -17,11 +17,13 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
   --request <request.json> --result <result.json> --godot-path <godot_path>
 ```
 
-request 决定输出集合。`scene-prop-set` 使用固定的 `spec.slots`；其余多输出
-family 必须在 `spec.outputs` 中列出每一项的 `name`、`role`（`runtime` 或
-`reference`），以及 runtime 输出的最终 `godot_type`。写入前会拒绝缺少、重复、
-额外、角色不匹配或类型不匹配的输出。runtime 文件还必须位于项目内、确实存在、
-能被 Godot 加载，且实际类型匹配声明。
+request 决定输出集合。`scene-prop-set` 和 `compact-prop-pack` 使用固定的
+`spec.slots`；`platform-strip` 使用 `spec.segments` 和选定的 `spec.kind`；
+`ui-kit` 与 `card-kit` 使用其 `styleboxes`、`atlas_regions` 和可选的 `theme`。
+其他多输出 family 才在 `spec.outputs` 中列出每一项的 `name`、`role`（`runtime`
+或 `reference`），以及 runtime 输出的最终 `godot_type`。写入前会拒绝缺少、
+重复、额外、角色不匹配或类型不匹配的输出。runtime 文件还必须位于项目内、
+确实存在、能被 Godot 加载，且实际类型匹配声明。
 
 reference 输出会变为 `source_ready`，不会进入 worker 的 runtime handoff。
 

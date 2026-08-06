@@ -2,8 +2,11 @@
 
 Plan current-tag production units from `ASSETS.md`, `PLAN.md`, `STYLE.md`,
 `STRUCTURE.md`, and `SCENES.md`. A unit owns one public request and names its
-complete expected logical output set in `request.spec.outputs` whenever it can
-produce several outputs.
+complete expected logical output set in that family's native contract:
+`scene-prop-set` and `compact-prop-pack` slots, `platform-strip` segments and
+kind, or `ui-kit` / `card-kit` styleboxes, atlas regions, and theme. Use
+`request.spec.outputs` only for a multi-output family without a native output
+declaration.
 
 ## Planning rules
 

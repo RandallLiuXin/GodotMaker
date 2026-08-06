@@ -56,8 +56,8 @@ def compile_and_validate(request, result, *, project_root, godot_path):
     The stable output path is derived from ``asset_id``, so a regeneration
     overwrites the very file an older passing result names, and comparing paths
     at registration would prove nothing about which bytes are there. The record
-    this leaves is what registration recomputes from disk, so only a PNG that
-    actually passed L0-L4 can become a ``ready`` entry.
+    this leaves is what direct registration recomputes from disk, so only a PNG
+    that actually passed L0-L4 can be recorded as generated in ``ASSETS.md``.
     """
     validated = _compile_and_validate(request, result, project_root=project_root, godot_path=godot_path, expected_family="background-map")
     levels = validated["validation"]["levels"]

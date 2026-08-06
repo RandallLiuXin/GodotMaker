@@ -14,12 +14,15 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
   --request <request.json> --result <result.json> --godot-path <godot_path>
 ```
 
-The request owns the output set. `scene-prop-set` uses its fixed `spec.slots`;
-every other multi-output family must list `spec.outputs`, where each item has
-`name`, `role` (`runtime` or `reference`), and, for runtime assets, the final
-`godot_type`. The command rejects missing, duplicate, extra, role-mismatched,
-or type-mismatched outputs before it writes any row. Runtime files must be
-project-local, present, loadable by Godot, and match their declared type.
+The request owns the output set. `scene-prop-set` and `compact-prop-pack` use
+their fixed `spec.slots`; `platform-strip` uses its `spec.segments` and selected
+`spec.kind`; `ui-kit` and `card-kit` use their `styleboxes`, `atlas_regions`,
+and optional `theme`. Other multi-output families use `spec.outputs`, where
+each item has `name`, `role` (`runtime` or `reference`), and, for runtime
+assets, the final `godot_type`. The command rejects missing, duplicate, extra,
+role-mismatched, or type-mismatched outputs before it writes any row. Runtime
+files must be project-local, present, loadable by Godot, and match their
+declared type.
 
 Reference outputs become `source_ready` and never enter worker handoff.
 

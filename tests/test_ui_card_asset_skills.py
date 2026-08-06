@@ -117,9 +117,11 @@ def test_gm_asset_dispatches_ui_and_card_kits_to_their_named_skills():
         # a producer can never be handed a unit with no named Skill to invoke.
         assert family in manager.split("First-class Asset Skill: {")[1]
 
-    # Planning declares the expected output set; the manager registers the
-    # validated result directly into ASSETS.md instead of handing it to a
-    # per-family production-unit document or stable-entry adapter.
-    assert "request.spec.outputs" in planner
+    # Planning derives the expected output set from the named family's native
+    # contract; the manager registers the validated result directly into
+    # ASSETS.md instead of handing it to a per-family production-unit document
+    # or stable-entry adapter.
+    assert "native contract" in planner
+    assert "compact-prop-pack" in planner
     assert "asset_result_registration.py" in planner
     assert "ASSETS.md" in planner
