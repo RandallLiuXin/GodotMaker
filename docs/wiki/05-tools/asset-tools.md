@@ -14,17 +14,20 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
   --request <request.json> --result <result.json> --godot-path <godot_path>
 ```
 
-The request owns the output set. `scene-prop-set` and `compact-prop-pack` use
-their fixed `spec.slots`; `platform-strip` uses its `spec.segments` and selected
-`spec.kind`; `ui-kit` and `card-kit` use their `styleboxes`, `atlas_regions`,
-and optional `theme`. Other multi-output families use `spec.outputs`, where
-each item has `name`, `role` (`runtime` or `reference`), and, for runtime
-assets, the final `godot_type`. The command rejects missing, duplicate, extra,
-role-mismatched, or type-mismatched outputs before it writes any row. Runtime
-files must be project-local, present, loadable by Godot, and match their
-declared type.
+The request owns the runtime output set. `scene-prop-set` and
+`compact-prop-pack` use their fixed `spec.slots`; `platform-strip` uses
+`spec.segments` and its selected `spec.kind`; `ui-kit` and `card-kit` use their
+`styleboxes`, `atlas_regions`, and optional `theme`. Other runtime families
+derive their single runtime output from the request. They do not accept a
+parallel `spec.outputs` declaration. The command rejects missing, duplicate,
+extra, role-mismatched, or type-mismatched runtime outputs before it writes any
+row. Runtime files must be project-local, present, loadable by Godot, and match
+their declared type.
 
-Reference outputs become `source_ready` and never enter worker handoff.
+Reference outputs returned by runtime families are validated source evidence,
+not catalog rows. Only reference-only families such as `screen-reference`
+register a `source_ready` row; their reference path is project-relative (for
+example `references/title_screen.png`) and never enters worker handoff.
 
 ## Worker snapshot
 

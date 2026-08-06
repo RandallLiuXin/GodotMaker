@@ -208,7 +208,7 @@ One production unit may return many outputs. Register all runtime outputs togeth
 
 - Validate the generic result with `tools/asset_skill_contract_check.py`.
 - On a failed validation, report the failure and do not register it.
-- On success, retain sources and evidence in the producer report and send only the request/result to direct registration. Each runtime output needs a named logical asset row; reference outputs remain non-runtime.
+- On success, retain sources and evidence in the producer report and send only the request/result to direct registration. Each runtime output needs a named logical asset row. For runtime families, reference outputs are validated evidence only and are not registered; only reference-only families register a `source_ready` reference row.
 - The manager consumes the validated result directly. It never reads or writes registration drafts, manifests, or family-specific adapter state.
 ### Provider
 - {references/providers/<provider>.md}
@@ -263,8 +263,10 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
 ```
 
    Missing, duplicated, unexpected, out-of-project, missing, unloadable, or
-   wrong-type outputs fail closed and leave all rows unchanged. A `reference`
-   output becomes `source_ready` and is never a worker runtime asset.
+   wrong-type runtime outputs fail closed and leave all rows unchanged. Runtime-family
+   reference outputs remain validated evidence and do not create rows; a
+   reference-only family output becomes `source_ready` and is never a worker
+   runtime asset.
 
 4. Do not create stable entries, manifest pointers, root indexes, bundle
    manifests, or family-specific entry drafts. Do not use an anchor output for
@@ -276,9 +278,10 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
 
 For current-tag rows only, use the result-registration command above. Runtime
 rows are complete only with `Status: generated`, an explicit Runtime Type, and
-a final loadable Runtime Path. Reference/source-only rows use
+a final loadable Runtime Path. Only reference-only family rows use
 `Runtime Type: reference` and `Status: source_ready`; they never enter a worker
-snapshot. `Generation Params` may retain production inputs and evidence links,
+snapshot. Reference outputs returned by runtime families remain result evidence,
+not rows. `Generation Params` may retain production inputs and evidence links,
 but never runtime metadata or a manifest pointer.
 
 ## Plan Discipline
@@ -295,8 +298,9 @@ or leave a fix task for a later role.
 ## Completion
 
 Runtime rows are complete at `generated` only after direct registration.
-Reference-only rows complete at `source_ready`. If any output cannot be
-validated, report the failing production unit and leave its rows unchanged.
+Reference-only rows complete at `source_ready`; runtime-family reference outputs
+remain result evidence. If any output cannot be validated, report the failing
+production unit and leave its rows unchanged.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 

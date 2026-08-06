@@ -159,7 +159,7 @@ def test_reference_row_completes_without_entering_worker_runtime_snapshot(tmp_pa
         json.dumps(
             {
                 "asset_type": "screen-reference",
-                "outputs": [{"role": "reference", "name": "screen_ref", "path": "res://references/screen_ref.png"}],
+                "outputs": [{"role": "reference", "name": "screen_ref", "path": "references/screen_ref.png"}],
                 "sources": [],
                 "previews": [],
                 "validation": {"passed": True},
@@ -175,9 +175,47 @@ def test_reference_row_completes_without_entering_worker_runtime_snapshot(tmp_pa
 
     register_result(assets_md, result, tag=TAG, request_path=request, loader=_loader)
 
-    assert "| reference | res://references/screen_ref.png | source_ready |" in assets_md.read_text(encoding="utf-8")
+    assert "| reference | references/screen_ref.png | source_ready |" in assets_md.read_text(encoding="utf-8")
     with pytest.raises(AssetResultRegistrationError, match="expected generated"):
         runtime_snapshot(assets_md, tag=TAG, asset_ids=["screen_ref"])
+
+
+@pytest.mark.parametrize(
+    ("reference_path", "error"),
+    [
+        ("res://references/screen_ref.png", "project-local relative path"),
+        ("../outside.png", "resolves outside the project"),
+    ],
+)
+def test_reference_only_registration_rejects_nonlocal_paths(tmp_path, reference_path, error):
+    assets_md = tmp_path / "ASSETS.md"
+    _assets_md(assets_md, ["screen_ref"])
+    result = tmp_path / "reference-result.json"
+    result.write_text(
+        json.dumps(
+            {
+                "asset_type": "screen-reference",
+                "outputs": [
+                    {"role": "reference", "name": "screen_ref", "path": reference_path}
+                ],
+                "sources": [],
+                "previews": [],
+                "validation": {"passed": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+    request = tmp_path / "request.json"
+    request.write_text(
+        json.dumps({"asset_type": "screen-reference", "asset_id": "screen_ref", "brief": "reference"}),
+        encoding="utf-8",
+    )
+    original = assets_md.read_text(encoding="utf-8")
+
+    with pytest.raises(AssetResultRegistrationError, match=error):
+        register_result(assets_md, result, tag=TAG, request_path=request, loader=_loader)
+
+    assert assets_md.read_text(encoding="utf-8") == original
 
 
 def test_missing_runtime_file_or_failed_godot_check_keeps_the_whole_unit_missing(tmp_path):
@@ -471,3 +509,163 @@ def test_variant_contract_rejects_a_sibling_variants_godot_type(
         register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
 
     assert assets_md.read_text(encoding="utf-8") == original
+
+
+@pytest.mark.parametrize(
+    ("family", "spec", "runtime_outputs"),
+    [
+        (
+            "scene-prop-set",
+            {
+                "version": 1,
+                "atlas": {"width": 16, "height": 16},
+                "slots": [{"name": "prop", "rect": [0, 0, 16, 16], "source": "source.png"}],
+            },
+            [("prop", "AtlasTexture")],
+        ),
+        (
+            "compact-prop-pack",
+            {"slots": [{"name": "prop"}]},
+            [("prop", "AtlasTexture")],
+        ),
+        (
+            "platform-strip",
+            {"kind": "single", "segments": [{"name": "platform"}]},
+            [("platform", "Texture2D")],
+        ),
+        ("fx-bundle", {"mode": "animated"}, [("effect", "SpriteFrames")]),
+        ("tileset", {}, [("tiles", "TileSet")]),
+        (
+            "ui-kit",
+            {
+                "styleboxes": [{"output_name": "panel"}],
+                "atlas_regions": [{"output_name": "icon"}],
+                "theme": None,
+            },
+            [("panel", "StyleBoxTexture"), ("icon", "AtlasTexture")],
+        ),
+        (
+            "card-kit",
+            {
+                "styleboxes": [{"output_name": "card"}],
+                "atlas_regions": [{"output_name": "badge"}],
+                "theme": None,
+            },
+            [("card", "StyleBoxTexture"), ("badge", "AtlasTexture")],
+        ),
+    ],
+)
+def test_runtime_family_reference_outputs_are_evidence_not_registration_rows(
+    tmp_path, family, spec, runtime_outputs
+):
+    assets_md = tmp_path / "ASSETS.md"
+    names = [name for name, _ in runtime_outputs]
+    _assets_md(assets_md, names)
+    request = tmp_path / "request.json"
+    request.write_text(
+        json.dumps(
+            {
+                "asset_type": family,
+                "asset_id": names[0],
+                "brief": "runtime asset with validated reference evidence",
+                "spec": spec,
+            }
+        ),
+        encoding="utf-8",
+    )
+    outputs = []
+    for name, godot_type in runtime_outputs:
+        artifact = tmp_path / "assets" / "generated" / family / f"{name}.tres"
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_bytes(b"artifact")
+        outputs.append(
+            {
+                "role": "runtime",
+                "name": name,
+                "path": "res://" + artifact.relative_to(tmp_path).as_posix(),
+                "godot_type": godot_type,
+            }
+        )
+    outputs.append(
+        {"role": "reference", "name": "canonical", "path": "references/evidence.png"}
+    )
+    result = tmp_path / "result.json"
+    result.write_text(
+        json.dumps(
+            {
+                "asset_type": family,
+                "outputs": outputs,
+                "sources": [],
+                "previews": [],
+                "validation": {"passed": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    registered = register_result(
+        assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None
+    )
+
+    assert registered["updated"] == names
+    text = assets_md.read_text(encoding="utf-8")
+    assert "canonical" not in text
+    assert all("| generated |" in line for line in text.splitlines() if "| prop |" in line)
+
+
+@pytest.mark.parametrize("user_canonical", [True, False])
+def test_character_bundle_registers_with_user_or_generated_canonical_evidence(
+    tmp_path, user_canonical
+):
+    asset_id = "hero"
+    assets_md = tmp_path / "ASSETS.md"
+    _assets_md(assets_md, [asset_id])
+    runtime = tmp_path / "assets" / "generated" / "character-bundle" / "hero.tres"
+    runtime.parent.mkdir(parents=True)
+    runtime.write_bytes(b"sprite frames")
+    request_data = {
+        "asset_type": "character-bundle",
+        "asset_id": asset_id,
+        "brief": "hero actions",
+    }
+    if user_canonical:
+        request_data["references"] = [
+            {"role": "canonical", "path": "references/hero.png"}
+        ]
+    request = tmp_path / "request.json"
+    request.write_text(json.dumps(request_data), encoding="utf-8")
+    outputs = [
+        {
+            "role": "runtime",
+            "path": "res://" + runtime.relative_to(tmp_path).as_posix(),
+            "godot_type": "SpriteFrames",
+        }
+    ]
+    if not user_canonical:
+        outputs.append(
+            {
+                "role": "reference",
+                "name": "canonical",
+                "path": "assets/generated/character-bundle/hero/hero_canonical.png",
+            }
+        )
+    result = tmp_path / "result.json"
+    result.write_text(
+        json.dumps(
+            {
+                "asset_type": "character-bundle",
+                "outputs": outputs,
+                "sources": [],
+                "previews": [],
+                "validation": {"passed": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    registered = register_result(
+        assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None
+    )
+
+    assert registered["updated"] == [asset_id]
+    assert "canonical" not in assets_md.read_text(encoding="utf-8")
