@@ -125,3 +125,19 @@ def test_audio_only_candidates_do_not_require_analyst(tmp_path: Path):
     assert result["image_candidate_count"] == 0
     assert result["audio_candidate_count"] == 1
     assert result["needs_analyst"] is False
+
+
+def test_source_ready_rows_are_already_consumed(tmp_path: Path):
+    (tmp_path / "ASSETS.md").write_text(
+        "| ID | Tag | Name | Type | Size | Params | File Path | Status |\n"
+        "|---|---|---|---|---|---|---|---|\n"
+        "| 1 | v0.1.0 | title | reference | - | - | assets/title.png | source_ready |\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "title.png").write_bytes(b"image")
+
+    result = find_user_asset_candidates(tmp_path)
+
+    assert result["candidate_count"] == 0
+    assert result["consumed_paths"] == ["assets/title.png"]

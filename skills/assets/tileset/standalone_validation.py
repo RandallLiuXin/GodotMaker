@@ -96,6 +96,7 @@ def _runtime_output(result: Mapping[str, Any], asset_id: str) -> Mapping[str, An
     expected_path = f"res://assets/generated/tileset/{asset_id}/{asset_id}.tres"
     if (
         len(outputs) != 1
+        or outputs[0].get("name") != asset_id
         or outputs[0].get("godot_type") != "TileSet"
         or outputs[0].get("path") != expected_path
     ):

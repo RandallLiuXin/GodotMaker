@@ -136,6 +136,11 @@ def test_scene_prop_set_request_requires_the_declared_fixed_slot_schema():
     with pytest.raises(AssetContractError, match="single safe path segment"):
         check_request(unsafe_name)
 
+    duplicate_name = valid_scene_prop_set_request()
+    duplicate_name["spec"]["slots"].append(dict(duplicate_name["spec"]["slots"][0]))
+    with pytest.raises(AssetContractError, match="must be unique"):
+        check_request(duplicate_name)
+
 
 def test_multiple_runtime_outputs_are_counted():
     data = valid_result()

@@ -44,10 +44,10 @@ def safe_identifier(value: str, label: str) -> str:
         raise AssetOutputPathError(f"{label} must be a non-empty string")
     if value in (".", ".."):
         raise AssetOutputPathError(f"{label} must not be '.' or '..'")
-    if any(char in _RESERVED_PATH_CHARS or ord(char) < 32 for char in value):
+    if any(char in _RESERVED_PATH_CHARS or char.isspace() or ord(char) < 32 for char in value):
         raise AssetOutputPathError(
             f"{label} must be a single safe path segment "
-            "(no path separators, ':', ';' or reserved characters)"
+            "(no whitespace, path separators, ':', ';' or reserved characters)"
         )
     if value != value.strip() or value.endswith("."):
         raise AssetOutputPathError(

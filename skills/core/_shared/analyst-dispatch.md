@@ -70,6 +70,9 @@ matches.
 ### Row Matches
 - {asset row/name}: {candidate path} ({confidence}; {notes})
 
+### Processing Sources
+- {candidate path}: {source sheet, tileset, UI kit, prop sheet, or reference use}
+
 ### Uncertain Files
 - {candidate path}: {reason}
 ```

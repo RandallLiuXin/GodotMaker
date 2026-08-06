@@ -133,11 +133,12 @@ When a prompt depends on an existing image:
     "runtime": ["{paths}"],
     "prompts": ["{paths}"],
     "reports": ["{paths}"],
+    "request": ["{validated-request-paths}"],
     "result": ["{validated-result-paths}"]
   },
   "validation": {
     "passed": true,
-    "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true},
+    "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true, "L5": true},
     "notes": "{short notes}"
   },
   "blockers": []
@@ -149,8 +150,8 @@ When a prompt depends on an existing image:
 
 1. Emit exactly one machine outcome block, as the last thing in the report.
 2. Write it as a fenced JSON block, not prose.
-3. Fill every listed field. Use only the five `outputs` categories above, and
-   only `L0`-`L4` in `validation.levels`.
+3. Fill every listed field. Use only the six `outputs` categories above, and
+   only `L0`-`L5` in `validation.levels`.
 4. Set `report_type` to `asset-producer`.
 5. Use `status` `DONE` only with `validation.passed` true and an empty
    `blockers`.

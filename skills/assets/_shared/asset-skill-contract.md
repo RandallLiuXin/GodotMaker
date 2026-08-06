@@ -6,8 +6,8 @@ what it returns. Every asset skill under `skills/assets/<family>/` accepts an
 regardless of who calls it.
 
 A user may invoke an asset skill directly. `/gm-asset` invokes the same skill in
-exactly the same way and then registers the returned result into project
-manifests and stage state. There is no separate "gm mode" inside an asset skill.
+exactly the same way. The calling manager handles any project registration and
+stage-state updates. There is no separate "gm mode" inside an asset skill.
 
 ## Independence
 
@@ -151,7 +151,7 @@ human or later curation review, never a runtime handoff. `previews` may be empty
 
 ### validation
 
-`{ passed: bool, levels?, notes? }`. `levels` is an optional map of `L0`–`L4`
+`{ passed: bool, levels?, notes? }`. `levels` is an optional map of `L0`–`L5`
 booleans. When `passed` is `true` and `levels` is present, every provided level
 must be `true` — a passed result may not report a failed level.
 

@@ -18,7 +18,7 @@ declaration.
    from `ASSETS.md` or from a result after generation.
 5. Dispatch independent units in batches of at most three.
 
-## Visual anchors
+## Visual Anchor Gate
 
 Use user-provided assets, selected scene references, or previously generated
 files already recorded in `ASSETS.md` as anchors. When none exists, generate

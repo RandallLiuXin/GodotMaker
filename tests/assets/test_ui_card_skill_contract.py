@@ -486,6 +486,14 @@ def test_card_contract_rejects_pixel_art_requests():
         check_ui_card_request(request)
 
 
+@pytest.mark.parametrize("output_name", ["rare|normal", "rare normal"])
+def test_ui_card_contract_rejects_unsafe_output_names(output_name):
+    request = _request("card-kit")
+    request["spec"]["styleboxes"][0]["output_name"] = output_name
+    with pytest.raises(UICardContractError, match="single safe path segment"):
+        check_ui_card_request(request)
+
+
 @pytest.mark.parametrize("brief", ["A non-pixel-art card frame.", "A card frame, not pixel art."])
 def test_card_contract_allows_explicit_non_pixel_art_requests(brief):
     request = _request("card-kit")

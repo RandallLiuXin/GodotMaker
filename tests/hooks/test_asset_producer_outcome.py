@@ -97,6 +97,14 @@ class TestOutcomeParser:
         report = normalize_report(message)
         assert report.outcome["blockers"] == ["provider quota exhausted"]
 
+    def test_accepts_persisted_request_and_l5_validation_evidence(self):
+        report = normalize_report(producer_report(
+            outputs={"request": [".godotmaker/asset-generation/ui-request.json"]},
+            validation={"passed": True, "levels": {"L0": True, "L5": True}},
+        ))
+        assert report.outcome["outputs"]["request"] == [".godotmaker/asset-generation/ui-request.json"]
+        assert report.outcome["validation"]["levels"]["L5"] is True
+
     def test_no_block_falls_back_to_markdown(self):
         report = normalize_report(
             "## Asset Producer Report: ui_kit\n\n### Status: PARTIAL\n"

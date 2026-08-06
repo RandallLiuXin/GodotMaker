@@ -62,14 +62,19 @@ def test_published_asset_contract_text_has_no_retired_handoff_instruction(publis
     )
     text_paths = [
         *(published / ".claude" / "skills" / name / "SKILL.md" for name in asset_skill_names),
+        published / ".claude" / "skills" / "gm-build" / "SKILL.md",
+        published / ".claude" / "skills" / "gm-fixgap" / "SKILL.md",
         *(
             (published / ".claude" / "skills").glob("*/references/*dispatch.md")
         ),
         *(published / ".claude" / "templates").rglob("*.md"),
+        *(ROOT / "agents").glob("*.md"),
     ]
     for path in text_paths:
         text = path.read_text(encoding="utf-8")
-        assert retired_instruction.search(text) is None, path
+        for match in retired_instruction.finditer(text):
+            prefix = text[max(0, match.start() - 24):match.start()].lower()
+            assert re.search(r"(?:never|do not) (?:read|use|create) (?:a )?$", prefix), path
 
     reviewer_dispatch = reviewer_dispatch.read_text(encoding="utf-8")
     assert "asset_result_registration.py --assets-md ASSETS.md --tag <tag>" in reviewer_dispatch

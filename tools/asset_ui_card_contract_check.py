@@ -15,7 +15,7 @@ from asset_skill_contract_check import (
     check_request,
     check_result,
 )
-from asset_output_paths import generated_output_dir
+from asset_output_paths import AssetOutputPathError, generated_output_dir, safe_identifier
 from asset_ui_theme_recipe import UI_ICONS, UI_STYLEBOXES
 
 
@@ -87,6 +87,7 @@ def _theme(value: Any, issues: list[str]) -> dict[str, str] | None:
     variation = _text(item.get("variation"), "request.spec.theme.variation", issues)
     if output_name is None or recipe_path is None or variation is None:
         return None
+    _safe_output_name(output_name, "request.spec.theme.output_name", issues)
     if not recipe_path.endswith(".json"):
         issues.append("request.spec.theme.recipe_path must end in .json")
     return {"output_name": output_name, "recipe_path": recipe_path, "variation": variation}
@@ -158,6 +159,7 @@ def _stylebox(value: Any, family: str, index: int, issues: list[str]) -> dict[st
                     preview_sizes.append(list(raw_size))
     if output_name is None or state is None or source_path is None or layout not in {"single", "region_atlas"}:
         return None
+    _safe_output_name(output_name, f"{label}.output_name", issues)
     result = {
         "output_name": output_name,
         "state": state,
@@ -198,6 +200,7 @@ def _atlas_region(value: Any, family: str, index: int, issues: list[str]) -> dic
     logical_asset_id = _text(item.get("logical_asset_id"), f"{label}.logical_asset_id", issues)
     if output_name is None or source_path is None or metadata_path is None or logical_asset_id is None:
         return None
+    _safe_output_name(output_name, f"{label}.output_name", issues)
     if not metadata_path.endswith(".json"):
         issues.append(f"{label}.metadata_path must end in .json")
     if family == "card-kit" and output_name != logical_asset_id:
@@ -208,6 +211,13 @@ def _atlas_region(value: Any, family: str, index: int, issues: list[str]) -> dic
         "metadata_path": metadata_path,
         "logical_asset_id": logical_asset_id,
     }
+
+
+def _safe_output_name(value: str, label: str, issues: list[str]) -> None:
+    try:
+        safe_identifier(value, label)
+    except AssetOutputPathError as exc:
+        issues.append(str(exc))
 
 
 def _spec(request: Mapping[str, Any], issues: list[str]) -> dict[str, Any] | None:
@@ -397,10 +407,8 @@ def expected_runtime_path(
     family has always pinned.
 
     The derivation is not injective on its own: a stylebox literally named
-    ``<asset_id>_theme`` derives the Theme's path, and each output still matches
-    its own expected value here. The cross-output uniqueness assertion in
-    The direct result-registration contract closes that, so the two checks are a
-    pair — do not drop either one.
+    ``<asset_id>_theme`` derives the Theme's path. Each output still matches
+    its expected value here; direct registration rejects duplicate output paths.
     """
     stem = f"{asset_id}_theme" if godot_type == "Theme" else output_name
     return f"res://{generated_output_dir(asset_type, asset_id)}/{stem}.tres"

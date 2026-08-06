@@ -18,7 +18,7 @@ from typing import Any
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 AUDIO_SUFFIXES = {".wav", ".ogg", ".mp3"}
 SUPPORTED_SUFFIXES = IMAGE_SUFFIXES | AUDIO_SUFFIXES
-DONE_STATUSES = {"provided", "generated", "n/a"}
+DONE_STATUSES = {"provided", "generated", "source_ready"}
 UNFILLED_STATUSES = {"missing", "pending", "deferred"}
 ASSET_PATH_RE = re.compile(r"assets[/\\][^\s|,;)]+", re.IGNORECASE)
 
