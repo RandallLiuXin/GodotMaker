@@ -35,11 +35,16 @@ Stop when any required input is missing:
 
 Proceed when either check has current-tag work:
 
-1. Current-tag Asset Table rows with status `MISSING`.
+1. Any current-tag `ASSETS.md` row, including an Audio table row, with status
+   `MISSING`. Under Manager Rule 9, mark unavailable audio rows `deferred`
+   before considering the no-work path; only explicitly deferred audio is
+   exempt from this check.
 2. Current-tag scene references whose `references/scene_{name}.png` or report
    is missing or stale against `SCENES.md` and the Visual Asset Contract.
 
-If both checks are empty, record the completed asset stage before stopping:
+If neither check has work — no current-tag row is `MISSING`, unavailable audio
+is explicitly `deferred`, and all current-tag scene references are current —
+record the completed asset stage before stopping:
 
 ```bash
 python tools/append_stage_event.py asset
@@ -302,7 +307,8 @@ Reference-only rows complete at `source_ready`; runtime-family reference outputs
 remain result evidence. If any output cannot be validated, report the failing
 production unit and leave its rows unchanged.
 
-After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
+After ASSETS.md has no current-tag `MISSING` rows and all unavailable
+current-tag audio rows are explicitly `deferred`:
 
 1. From the project root run:
 
