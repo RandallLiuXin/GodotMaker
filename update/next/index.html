@@ -2736,13 +2736,10 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>Added <code>tools/asset_family_registry.py</code> and platform-strip entry drafts so every public Asset Skill route reaches a worker through one authoritative registration map.</p>
+<p>Added <code>tools/asset_family_registry.py</code> so every public Asset Skill request resolves to one authoritative output contract.</p>
 </li>
 <li>
 <p><code>/gm-asset</code> can now plan, dispatch, and register the <code>tileset</code> production unit, so a validated <code>TileSet</code> reaches a worker as a tile library instead of stopping at the Skill.</p>
-</li>
-<li>
-<p>Added <code>tools/asset_ui_card_entry_draft.py</code> and <code>tools/asset_tileset_entry_draft.py</code>, the deterministic registration adapters for validated ui-kit/card-kit and tileset deliveries.</p>
 </li>
 <li>
 <p>Added deterministic marching-squares-15 and blob-47 TileSet profile templates with fixed atlas guides, strict image validation, and native resource compilation.</p>
@@ -2761,41 +2758,44 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Added fixed 15-cell and 47-cell TileSet profiles with typed requests, deterministic material composition, and optional terrain metadata hand-off.</li>
 <li>Added a deterministic StyleBoxTexture compiler for reusable UI borders, with explicit texture regions, nine-slice borders, expand margins, and stretch axes verified through headless Godot.</li>
 <li>Published first-class Asset Skills for Claude Code, Codex, and OpenCode together with their project-local shared compiler, validator, and schema runtime under <code>.godotmaker/asset-runtime/</code>.</li>
-<li>Added a fail-closed <code>asset_runtime_resolver.py</code> that converts a registered ASSETS.md <code>manifest_entry</code> into the minimal ready worker runtime snapshot (#106).</li>
 <li>Added <code>tools/asset_atlas_assemble.py</code> for reproducible fixed-slot physical PNG atlases and region metadata; it rejects implicit packing, trimming, heuristic discovery, invalid bounds, overlap, size mismatches, and missing source PNGs.</li>
-<li>v1 generated-asset stable entry and root index schema: <code>tools/asset_stable_entry.py</code> (per-asset <code>production_family</code> / <code>source_layout</code> / minimal <code>godot_artifact</code> / <code>processing_status</code> entry written to <code>.godotmaker/asset-generation/entries/&lt;tag&gt;/&lt;asset_id&gt;.json</code>) and <code>tools/asset_generation_index.py</code> (pointer-only root index). Old <code>runtime_artifact</code> schema fails closed and must be regenerated through <code>/gm-asset</code>; no migration or compatibility read is provided.</li>
-<li>Stable generated-asset output-path contract: deterministic <code>assets/generated/&lt;production_family&gt;/&lt;asset_id&gt;/</code> resolver (<code>tools/asset_output_path.py</code>), fail-closed stable-entry path validation, and a reusable <code>assert_within_output_dir</code> write guard.</li>
+<li>Direct generated-output path contract: deterministic <code>assets/generated/&lt;asset_type&gt;/&lt;asset_id&gt;/</code> paths and a reusable <code>assert_within_output_dir</code> write guard.</li>
 <li>Added a standalone asset-skill invocation and result contract under <code>skills/assets/_shared/</code> with declarative JSON schemas, valid samples, a dependency-free checker, and fail-closed tests (#98).</li>
 <li>Added standalone background-map, platform-strip, and screen-reference Asset Skills with typed runtime and reference-only result contracts.</li>
-<li>Added <code>tools/asset_action_entry_draft.py</code>, which builds action support metadata and a v1 stable-entry draft while enforcing frame count, empty edge-touch frames, a recorded scale reference, and stable-path containment.</li>
-<li>Added <code>tools/asset_curation_entry_draft.py</code>, which builds a v1 stable-entry draft from a selected curation candidate while enforcing candidate selection, unambiguous naming, coherent selection counts, and stable-path containment.</li>
-<li>Added <code>tools/asset_finalize_entry_draft.py</code>, which builds a v1 stable-entry draft from an <code>asset_image_finalize.py</code> report for screen references, backgrounds, and single card or portrait frames while enforcing aspect validation, asset-label binding, and path containment.</li>
 <li>Added a shared Godot artifact compiler interface and registry under <code>skills/assets/_shared/</code> that routes on the frozen source-layout to artifact-type compatibility set, keeps compiler receipts out of the worker-facing artifact, requires each compiler to actually rebuild an artifact distinct from its source image, serves <code>Texture2D</code> through Godot's default import, and fails closed on unregistered or mismatched combinations (#107).</li>
-<li>Added the shared L0-L4 asset readiness ladder under <code>skills/assets/_shared/</code>, which reaches <code>ready</code> only after the stable entry contract, the processed source, the compiled artifact, a real headless Godot import and <code>ResourceLoader.load</code> type match, and a registered type-specific structure check all pass (#108).</li>
+<li>Added shared direct-output validation under <code>skills/assets/_shared/</code> for processed sources, compiled artifacts, a real headless Godot import and <code>ResourceLoader.load</code> type match, and type-specific structure checks (#108).</li>
 <li>Added a deterministic <code>theme_recipe</code> compiler with a closed JSON schema for Theme colors, font sizes, constants, fonts, icons, StyleBoxes, and type variations; invalid class types, properties, resources, and StyleBox references fail closed before a loadable Theme is written.</li>
 <li>Added a Phantom Camera supporting skill for optional Godot camera addon guidance.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>Every public asset route now proves its whole registration chain in ordinary CI, so an advertised route cannot enter main without an adapter that turns its validated delivery into a worker-consumable entry.</p>
+<p>Generated assets now use <code>ASSETS.md</code> as the single runtime catalog: each
+  logical asset row records its final Godot type and loadable path directly.
+  Multi-output asset production registers all declared outputs atomically, and
+  workers receive a minimal snapshot derived from those rows instead of a
+  separate stable-entry or manifest layer.</p>
+</li>
+<li>
+<p>Every public asset route now proves its whole direct-registration chain in ordinary CI, so an advertised route cannot enter main without a validated <code>ASSETS.md</code> output.</p>
 </li>
 <li>
 <p>A Skill that accepts more than one request shape now declares one registration chain per shape, so a variant whose adapter is missing can no longer hide behind a sibling variant that works.</p>
 </li>
 <li>
-<p>Both <code>platform-strip</code> strip kinds now have complete registration chains that turn validated segment deliveries into worker-consumable stable entries.</p>
+<p>Both <code>platform-strip</code> strip kinds now have complete registration contracts that turn validated segment deliveries into worker-consumable <code>ASSETS.md</code> rows.</p>
 </li>
 <li>
-<p>A ui-kit or card-kit now registers one ready stable entry per runtime output, so its <code>Theme</code>, every <code>StyleBoxTexture</code>, and every <code>AtlasTexture</code> are separately resolvable instead of unregisterable; <code>bundle_id</code> covers these two families alongside <code>compact-prop-pack</code>.</p>
+<p>A ui-kit or card-kit now registers every declared runtime output atomically, so its <code>Theme</code>, every <code>StyleBoxTexture</code>, and every <code>AtlasTexture</code> are separately resolvable.</p>
 </li>
 <li>
-<p>Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep
-  independent stable entries behind one pointer-only bundle manifest. Existing
-  ASSETS.md planning rows share that pointer; no logical output rows are added.</p>
+<p>Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now declare
+  every worker-consumable logical output in their request and register all
+  matching <code>ASSETS.md</code> rows atomically.</p>
 </li>
 <li>
-<p>An fx-bundle entry now reaches <code>ready</code> by re-running its own entry builder with the passing Skill result, under the same build-fingerprint rule character-bundle uses; static and animated FX previously had no promotion path at all and stopped at <code>compiled</code>.</p>
+<p>fx-bundle now registers its validated static <code>Texture2D</code> or animated
+  <code>SpriteFrames</code> output directly from the request-selected result variant.</p>
 </li>
 <li>
 <p>Workers now own TileMap layout, layers, cell and gameplay object placement, triggers, camera limits, and scene structure, binding a ready <code>TileSet</code> as a tile library and repairing what running the map actually shows.</p>
@@ -2819,16 +2819,15 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
   compiles icon resources before the Theme that binds them.</p>
 </li>
 <li>
-<p><code>/gm-build</code> and <code>/gm-fixgap</code> now hand workers a resolver-produced minimal <code>godot_artifact</code> snapshot instead of hand-copied stable-entry fields, and workers bind the compiled Godot resource rather than rebuilding it from the source layout.</p>
+<p><code>/gm-build</code> and <code>/gm-fixgap</code> now hand workers <code>ASSETS.md</code> runtime snapshots, and workers bind the compiled Godot resource rather than rebuilding it from the source layout.</p>
 </li>
 <li>A worker may now edit or replace the bound runtime artifact and the project-local scene or script that binds it to fix a concrete integration failure, as a narrow file-ownership exception that outranks the generic "no files outside Deliverables" restriction.</li>
-<li><code>/gm-asset</code> now registers every generated asset as a v1 stable entry plus a pointer-only root index entry instead of a full-body <code>runtime_artifact</code> manifest.</li>
-<li>Generated runtime handoff for gm-build, gm-fixgap, worker dispatch, and ASSETS.md rows now resolves the stable entry behind each root-index pointer.</li>
-<li>An ASSETS.md runtime row reaches <code>generated</code> only from a <code>ready</code> non-reference stable entry, while a finalized registered screen reference completes its reference row at <code>source_ready</code> without becoming a worker runtime artifact.</li>
-<li><code>asset_generation_index.py --check-files</code> verifies that every registered source and artifact still exists, catching an asset deleted after registration.</li>
+<li><code>/gm-asset</code> registers each validated request/result output set directly in <code>ASSETS.md</code>.</li>
+<li>Generated runtime handoff for gm-build, gm-fixgap, and worker dispatch reads the matching <code>ASSETS.md</code> runtime rows.</li>
+<li>An <code>ASSETS.md</code> runtime row reaches <code>generated</code> only after direct validation and registration, while a finalized screen reference completes at <code>source_ready</code> without becoming a worker runtime artifact.</li>
 <li>Asset families without a native compiler and L0-L4 validation path stop at <code>source_ready</code>, while a fully validated scene-prop set may register its generated AtlasTexture runtime resources as <code>ready</code>.</li>
 <li><code>godot_artifact</code> is written only by a native compiler, so a <code>grid_sheet</code> can no longer be published as a <code>Texture2D</code> standing in for its unbuilt <code>SpriteFrames</code>.</li>
-<li>The stable-entry schema now validates each <code>source_layout.type</code> against its closed compatible Godot artifact-type set, including <code>StyleBoxTexture</code> for <code>single</code> and <code>region_atlas</code>, so mismatches are rejected before reaching a worker.</li>
+<li>Direct compiler validation checks each <code>source_layout.type</code> against its closed compatible Godot artifact-type set, including <code>StyleBoxTexture</code> for <code>single</code> and <code>region_atlas</code>, so mismatches are rejected before reaching a worker.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2836,7 +2835,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <p>Ensure <code>/gm-asset</code> records an asset-stage completion event when its resume check finds no current-tag work.</p>
 </li>
 <li>
-<p>A validated background-map now registers as a ready <code>single -&gt; Texture2D</code> stable entry through its own finalize builder, instead of stopping at <code>source_ready</code> with no way to reach a worker; registration binds to the image bytes its L0-L4 run recorded, so regenerating onto the same stable path fails closed.</p>
+<p>A validated background-map registers its <code>single -&gt; Texture2D</code> result directly in <code>ASSETS.md</code>; registration binds to the image bytes its validation run recorded, so regenerating onto the same output path fails closed.</p>
 </li>
 <li>
 <p>An asset production unit now ends the asset stage with one consistent status, so a retried report no longer reads as a failure and a partial result keeps its blockers instead of being recorded as unknown.</p>
@@ -2854,10 +2853,13 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <p>Card-kit Asset Skills now compile only the Theme, scalable frames, and fixed AtlasTexture regions requested by each asset request, preserving reusable Godot resources without requiring a fixed card layout.</p>
 </li>
 <li>
-<p>Character-bundle stable entries now reach <code>ready</code> only after their L0-L4 evidence is handed back to the same deterministic builder, instead of being published straight from the compiler.</p>
+<p>Character-bundle registers its validated SpriteFrames output directly in the
+  matching <code>ASSETS.md</code> row; canonical and action sources remain reference
+  provenance rather than extra runtime assets.</p>
 </li>
-<li>Character-bundle promotion now binds to a build fingerprint of the resolved request, action reports, stable frames, and compiled artifact, so a passing result can no longer promote a later regeneration that reused the same stable paths.</li>
-<li>A character-bundle result now registers exactly one worker-consumable SpriteFrames entry, so a generated canonical is recorded as reference provenance and can no longer ship as a second runtime artifact.</li>
+<li>Character-bundle validation binds the resolved request, action reports,
+  frames, and compiled artifact so a stale result cannot register a later
+  regeneration that reused the same output paths.</li>
 <li>Character-bundle assets now resolve animation cadence internally, preserve optional canonical references and 256px runtime frames, and regenerate retryable source-image failures before stopping.</li>
 <li>Character-bundle assembly now binds resolved intent, canvas, frame order, timing, loop state, and scale references through SpriteFrames compilation and GIF previews.</li>
 <li>Fixed blob-47 TileSet masks, edge signatures, and isolated-terrain semantics to match Godot's eight peering points.</li>
@@ -2877,15 +2879,16 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Theme L4 validation now rejects recipe paths outside the declaring asset's stable output directory.</li>
 <li>Published asset validation runners now work after installing GodotMaker into Claude Code, Codex, or OpenCode projects.</li>
 <li>Restored real Godot validation for Theme and TileSet assets, including safe Theme resource paths and imported TileSet atlases.</li>
-<li>Reference-only stable entries now accept only <code>pending</code>, <code>source_ready</code>, or <code>failed</code>; only registered <code>source_ready</code> entries may promote ASSETS.md reference rows.</li>
-<li>Existing reference entries persisted as <code>compiled</code> or <code>ready</code> must be manually corrected to <code>source_ready</code> before root-index validation; no migration or compatibility reader is provided.</li>
+<li>Reference-only rows are <code>source_ready</code>; they never enter a runtime worker snapshot.</li>
 <li>Compiler staging now preserves Godot resource extensions.</li>
 <li>Compiler receipts are now issued only after atomic artifact commits.</li>
-<li>Asset readiness promotion now requires a compiler receipt bound to the compiled entry, while already-ready assets can explicitly revalidate without retaining that receipt.</li>
+<li>Direct registration requires successful compiler and validation evidence for
+  each runtime output before any <code>ASSETS.md</code> row changes.</li>
 <li>Theme recipes now accept only fully decoded raster textures and FreeType-loadable TTF/OTF fonts, rejecting truncated or unsupported resource content before a Theme is written.</li>
 <li>Failed native Godot artifact compilation now retains the previous stable artifact and atomically commits a validated replacement only after success.</li>
 <li>Restored <code>asset_sheet_process.py --snap-mode autoslice</code> to independent Godot-style region extraction without grid bucketing or cross-region unions; fixed-grid extraction continues to require <code>--grid</code>.</li>
-<li>Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at <code>.godotmaker/asset-generation/manifest.json</code> instead of the analyst's <code>assets/manifest.json</code> (#97)</li>
+<li>Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch,
+  worker agent) at <code>ASSETS.md</code> and its deterministic <code>--snapshot</code> output (#97).</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 <ul>

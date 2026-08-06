@@ -3035,6 +3035,9 @@
 
 
 <h1 id="_1">代码库指南<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<p>生成资产的 runtime 权威数据位于 <code>ASSETS.md</code>。工具
+<code>tools/asset_result_registration.py</code> 会验证整个 Asset Skill result，原子记录最终
+runtime 类型和路径行，并派生 worker snapshot。</p>
 <p>本页面对 GodotMaker 仓库逐目录进行深度介绍，帮助你在开始修改之前建立全局认知。如需简短概览，请参阅 <a href="../development-setup/">开发环境搭建</a>。想了解各模块在运行时如何协作，请继续阅读本文。</p>
 <h2 id="_2">仓库目录结构<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>GodotMaker/
@@ -3291,36 +3294,8 @@ Codex 使用 <code>agent-runtimes/&lt;agent&gt;/config/</code> 下的配置文�
 <td>将选中的 curation candidate finalize 到运行时素材路径</td>
 </tr>
 <tr>
-<td><code>asset_action_entry_draft.py</code></td>
-<td>根据已处理动作输出生成 action support metadata 和 v1 stable-entry draft</td>
-</tr>
-<tr>
-<td><code>asset_curation_entry_draft.py</code></td>
-<td>根据已选中的 curation candidate 生成 v1 stable-entry draft</td>
-</tr>
-<tr>
-<td><code>asset_finalize_entry_draft.py</code></td>
-<td>根据 asset_image_finalize.py 报告生成 v1 stable-entry draft</td>
-</tr>
-<tr>
-<td><code>asset_output_path.py</code></td>
-<td>解析并校验稳定输出目录 <code>assets/generated/&lt;family&gt;/&lt;asset_id&gt;/</code></td>
-</tr>
-<tr>
-<td><code>asset_stable_entry.py</code></td>
-<td>校验并序列化一个 v1 generated-asset stable entry</td>
-</tr>
-<tr>
-<td><code>asset_generation_index.py</code></td>
-<td>校验并 upsert pointer-only 的 generated-asset root index</td>
-</tr>
-<tr>
-<td><code>asset_assets_md_update.py</code></td>
-<td>根据已注册的 stable entry 更新 ASSETS.md 行</td>
-</tr>
-<tr>
-<td><code>asset_runtime_resolver.py</code></td>
-<td>将已注册的 ASSETS.md 指针解析为最小 ready runtime snapshot</td>
+<td><code>asset_result_registration.py</code></td>
+<td>在 ASSETS.md 中原子验证并登记 request/result 输出合同，并派生最小 worker snapshot</td>
 </tr>
 <tr>
 <td><code>migrate.py</code></td>
