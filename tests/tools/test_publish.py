@@ -1009,7 +1009,7 @@ class TestPublishedAssetRuntime:
 
         assert (runtime / "schema" / "asset-skill-request.schema.json").exists()
         assert (runtime / "asset_compiler" / "registry.py").exists()
-        assert (runtime / "asset_validation" / "ladder.py").exists()
+        assert (runtime / "asset_validation" / "structure.py").exists()
         assert (runtime / "tools" / "codex_image_claim.py").exists()
         assert (runtime / "references" / "providers" / "native.md").exists()
         assert not (target / skill_root / "_shared").exists()
@@ -1318,14 +1318,12 @@ runtime = Path({str(runtime)!r})
 sys.path.insert(0, str(runtime))
 
 from asset_compiler import build_default_registry
-from asset_validation import build_default_ladder
+from asset_validation import build_default_structures
 
 registry = build_default_registry()
 assert registry.resolve("single", "Texture2D").writes_artifact is False
-ladder = build_default_ladder("unused-godot")
-result = ladder.run({{}}, project_root=runtime.parent.parent)
-assert result.levels[0].status == "failed"
-assert [level.status for level in result.levels[1:]] == ["not_run"] * 4
+structures = build_default_structures()
+assert structures.checks_for("Texture2D")
 '''
         completed = subprocess.run(
             [sys.executable, "-c", script],

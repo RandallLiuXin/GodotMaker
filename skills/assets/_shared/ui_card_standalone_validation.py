@@ -9,7 +9,7 @@ import subprocess
 from typing import Any
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry, theme
-from asset_compiler._runtime_contract import RuntimeContractError, assert_within_output_dir, resolve_res_path
+from asset_compiler._asset_paths import RuntimeContractError, assert_within_output_dir, resolve_res_path
 from asset_validation import GodotProbe, ProbeRequest, ValidationError, build_default_structures
 from asset_validation._bridge import prefer_console_godot_path
 from asset_validation.structure import StructureRequest

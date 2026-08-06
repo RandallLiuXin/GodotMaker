@@ -5,8 +5,8 @@ Every first-class family advertised by ``/gm-asset`` delivers a generic Asset
 Skill result and records the result outputs a worker can
 resolve. Which layout it may bind, which Godot artifact it compiles, which
 deterministic builder adapts the result, how many entries that produces, and
-which ``processing_status`` is its completion state used to be spread across
-``tools/asset_runtime_contract.py``, ``tools/asset_skill_contract_check.py``, the
+which logical outputs a completed delivery contains used to be spread across
+the request/result checker, the
 ``/gm-asset`` routing tables, ``references/asset-runtime-pipeline.md``, and a
 hand-maintained tuple in each test. Nothing tied those lists together, so a
 family could advertise a runtime delivery, validate it, and still have no
@@ -54,6 +54,14 @@ TERMINAL_STATUS = {RUNTIME_ROLE: "ready", REFERENCE_ROLE: "source_ready"}
 
 # The single request shape a family with no producer variants accepts.
 DEFAULT_VARIANT = "default"
+
+# A request must explicitly select every family that has more than one delivery
+# route.  Result registration uses this selector to avoid accepting a type from
+# a sibling variant.
+REQUEST_VARIANT_FIELDS = {
+    "fx-bundle": "mode",
+    "platform-strip": "kind",
+}
 
 
 @dataclass(frozen=True)
@@ -319,6 +327,30 @@ def spec(family: str) -> FamilySpec:
         return FAMILIES[family]
     except KeyError:
         raise FamilyRegistryError(f"unknown production family: {family}") from None
+
+
+def variant_for_request(request: dict[str, Any]) -> DeliveryVariant:
+    """Return the single output contract selected by ``request``."""
+    family = request.get("asset_type")
+    if not isinstance(family, str):
+        raise FamilyRegistryError("request.asset_type must be a string")
+    family_spec = spec(family)
+    if len(family_spec.variants) == 1:
+        return family_spec.variants[0]
+    selector = REQUEST_VARIANT_FIELDS.get(family)
+    if selector is None:
+        raise FamilyRegistryError(f"{family} has no request variant selector")
+    request_spec = request.get("spec")
+    value = request_spec.get(selector) if isinstance(request_spec, dict) else None
+    if not isinstance(value, str) or not value.strip():
+        raise FamilyRegistryError(f"{family} request.spec.{selector} must select a variant")
+    try:
+        return family_spec.variant(value)
+    except FamilyRegistryError as exc:
+        allowed = ", ".join(item.variant for item in family_spec.variants)
+        raise FamilyRegistryError(
+            f"{family} request.spec.{selector} must be one of: {allowed}; got {value!r}"
+        ) from exc
 
 
 def families(*, role: str | None = None) -> list[FamilySpec]:

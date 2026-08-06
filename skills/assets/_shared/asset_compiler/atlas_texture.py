@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ._runtime_contract import RuntimeContractError, resolve_res_path, safe_identifier
+from ._asset_paths import RuntimeContractError, resolve_res_path, safe_identifier
 from .contract import CompileRequest, CompilerError, require_text
 from .registry import CompilerRegistry, CompilerRoute
 

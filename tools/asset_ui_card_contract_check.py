@@ -15,7 +15,7 @@ from asset_skill_contract_check import (
     check_request,
     check_result,
 )
-from asset_runtime_contract import stable_output_dir
+from asset_output_paths import generated_output_dir
 from asset_ui_theme_recipe import UI_ICONS, UI_STYLEBOXES
 
 
@@ -403,7 +403,7 @@ def expected_runtime_path(
     pair — do not drop either one.
     """
     stem = f"{asset_id}_theme" if godot_type == "Theme" else output_name
-    return f"res://{stable_output_dir(asset_type, asset_id)}/{stem}.tres"
+    return f"res://{generated_output_dir(asset_type, asset_id)}/{stem}.tres"
 
 
 def _assert_runtime_path(

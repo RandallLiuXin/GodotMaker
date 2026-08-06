@@ -62,7 +62,7 @@ _configure_runtime_imports()
 
 from asset_compiler import CompileRequest, CompilerError, CompilerRegistry  # noqa: E402
 from asset_compiler import tileset as tileset_compiler  # noqa: E402
-from asset_compiler._runtime_contract import (  # noqa: E402
+from asset_compiler._asset_paths import (  # noqa: E402
     RuntimeContractError,
     assert_within_output_dir,
     resolve_res_path,

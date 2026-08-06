@@ -21,7 +21,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 from uuid import uuid4
 
-from ._runtime_contract import LAYOUT_ARTIFACT_TYPES
+from ._asset_paths import LAYOUT_ARTIFACT_TYPES
 from .contract import (
     CompileReceipt,
     CompileRequest,
@@ -42,7 +42,7 @@ Compiler = Callable[[CompileRequest], Mapping[str, Any]]
 # source: a compiler that hands back its own source image is publishing a PNG as
 # the resource a worker was promised -- "Declaring the source image as the
 # artifact is the exact shortcut this mapping exists to reject"
-# (tools/asset_runtime_contract.py). Existence alone cannot catch that, because the
+# (tools/asset_output_paths.py). Existence alone cannot catch that, because the
 # source file satisfies it.
 SOURCE_IS_ARTIFACT_TYPES = ("Texture2D",)
 

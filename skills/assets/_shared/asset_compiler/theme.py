@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .contract import CompileRequest, CompilerError
-from ._runtime_contract import RuntimeContractError, assert_within_output_dir, resolve_res_path
+from ._asset_paths import RuntimeContractError, assert_within_output_dir, resolve_res_path
 from .registry import CompilerRegistry, CompilerRoute
 
 COMPILER_ID = "theme_recipe"
@@ -637,7 +637,7 @@ def register_into(registry: CompilerRegistry) -> CompilerRoute:
 
 def validate_theme_structure(request: Any) -> dict[str, Any]:
     """Require Godot to retain every explicitly declared Theme recipe value."""
-    from asset_validation.contract import ValidationError
+    from asset_validation.errors import ValidationError
 
     structure = request.checked_structure("theme")
     types = structure.get("types")

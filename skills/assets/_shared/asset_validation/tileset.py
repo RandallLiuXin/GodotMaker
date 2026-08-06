@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from .contract import ValidationError
+from .errors import ValidationError
 from .structure import StructureRequest, StructureValidatorRegistry
 
 VALIDATOR_ID = "tileset_atlas_structure_v1"

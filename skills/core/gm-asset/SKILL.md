@@ -226,7 +226,7 @@ One production unit may return many outputs. Register all runtime outputs togeth
 - Canonical references: {paths}
 
 ### Outputs
-- Stable output directory: `assets/generated/{production_family}/{asset_id}/`
+- Generated output directory: `assets/generated/{asset_type}/{asset_id}/`
 - Raw source paths: {scratch paths under .godotmaker/asset-generation/sources/}
 - Runtime output paths: {final loadable Godot resources for the logical rows}
 - Reference paths: {paths under references/ for reference-only assets}
@@ -245,11 +245,11 @@ Dispatch one subagent per production unit.
 
 ### Step 5 - Register Validated Results
 
-Use this procedure; the retired stable-entry text retained below is historical
-context and must not be followed.
+Use this procedure for every production unit.
 
 1. Require one validated request and result JSON for the entire production
-   unit. A result's `runtime` outputs are the complete logical output set.
+   unit. The request declares the complete logical output set; the result must
+   match it exactly.
 2. Ensure `ASSETS.md` uses the Runtime Type / Runtime Path runtime table. Every
    worker-consumable logical output has one row. Sources, atlases, candidates,
    and curation evidence remain in production reports.
@@ -294,9 +294,9 @@ or leave a fix task for a later role.
 
 ## Completion
 
-Keep generated runtime rows below `ready` as `MISSING`. Registered, validated
-reference-only rows may complete only at `source_ready`. If runtime rows
-remain, report the asset stage blocked on compiler work.
+Runtime rows are complete at `generated` only after direct registration.
+Reference-only rows complete at `source_ready`. If any output cannot be
+validated, report the failing production unit and leave its rows unchanged.
 
 After ASSETS.md has no current-tag `MISSING` rows except deferred audio:
 

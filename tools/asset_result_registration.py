@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from asset_skill_contract_check import AssetContractError, check_request, check_result
-from asset_family_registry import FAMILIES
+from asset_family_registry import FamilyRegistryError, variant_for_request
 
 
 RUNTIME_STATUS = "generated"
@@ -149,8 +149,12 @@ def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
     one logical runtime/reference output and its expected final Godot type.
     """
     family = request["asset_type"]
-    allowed_types = set(FAMILIES[family].artifact_types)
-    output_cardinality = {variant.runtime_outputs for variant in FAMILIES[family].variants}
+    try:
+        variant = variant_for_request(request)
+    except FamilyRegistryError as exc:
+        raise AssetResultRegistrationError(str(exc)) from exc
+    allowed_types = set(variant.artifact_types)
+    output_cardinality = variant.runtime_outputs
     if family == "scene-prop-set":
         return {
             slot["name"]: {"role": "runtime", "type": "AtlasTexture"}
@@ -160,9 +164,17 @@ def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
     if contract is None:
         # A single-output family has one unambiguous logical asset. Multi-output
         # families are deliberately not inferred from a result or ASSETS.md.
-        if output_cardinality == {"one"}:
-            return {request["asset_id"]: {"role": "runtime", "type": ""}}
-        if output_cardinality == {"none"}:
+        if output_cardinality == "one":
+            if len(allowed_types) != 1:
+                raise AssetResultRegistrationError(
+                    f"{family} request must declare output types in spec.outputs"
+                )
+            return {
+                request["asset_id"]: {
+                    "role": "runtime", "type": next(iter(allowed_types))
+                }
+            }
+        if output_cardinality == "none":
             return {request["asset_id"]: {"role": "reference", "type": "reference"}}
         raise AssetResultRegistrationError(
             f"{family} request must declare every logical output in spec.outputs"

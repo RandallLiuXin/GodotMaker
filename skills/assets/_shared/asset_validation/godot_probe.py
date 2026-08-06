@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from ._bridge import prefer_console_godot_path
-from .contract import ValidationError
+from .errors import ValidationError
 
 PROBE_SCRIPT = Path(__file__).resolve().parent / "probe.gd"
 

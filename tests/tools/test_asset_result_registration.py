@@ -237,7 +237,7 @@ def test_runtime_families_register_their_final_declared_godot_artifact(
                 **(
                     {"spec": {"outputs": [{"name": asset_id, "role": "runtime", "godot_type": godot_type}]}}
                     if family in {"ui-kit", "card-kit"}
-                    else {}
+                    else ({"spec": {"mode": "animated"}} if family == "fx-bundle" else {})
                 ),
             }
         ),
@@ -307,6 +307,7 @@ def test_multi_output_families_use_request_owned_output_contracts(
                 "asset_id": "bundle",
                 "brief": "two independently consumable assets",
                 "spec": {
+                    **({"kind": "single"} if family == "platform-strip" else {}),
                     "outputs": [
                         {"name": name, "role": "runtime", "godot_type": godot_type}
                         for name in names
@@ -343,6 +344,61 @@ def test_multi_output_families_use_request_owned_output_contracts(
                 "sources": [],
                 "previews": [],
                 "validation": {"passed": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+    original = assets_md.read_text(encoding="utf-8")
+
+    with pytest.raises(AssetResultRegistrationError):
+        register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
+
+    assert assets_md.read_text(encoding="utf-8") == original
+
+
+@pytest.mark.parametrize(
+    ("family", "selector", "selected", "declared", "actual"),
+    [
+        ("platform-strip", "kind", "atlas", "AtlasTexture", "Texture2D"),
+        ("fx-bundle", "mode", "static", "Texture2D", "SpriteFrames"),
+        ("fx-bundle", "mode", "animated", "SpriteFrames", "Texture2D"),
+    ],
+)
+def test_variant_contract_rejects_a_sibling_variants_godot_type(
+    tmp_path, family, selector, selected, declared, actual
+):
+    asset_id = "variant_asset"
+    assets_md = tmp_path / "ASSETS.md"
+    _assets_md(assets_md, [asset_id])
+    request = tmp_path / "request.json"
+    request.write_text(
+        json.dumps(
+            {
+                "asset_type": family,
+                "asset_id": asset_id,
+                "brief": "variant type must stay fail closed",
+                "spec": {
+                    selector: selected,
+                    "outputs": [{"name": asset_id, "role": "runtime", "godot_type": declared}],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    artifact = tmp_path / "assets" / "generated" / family / f"{asset_id}.tres"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"artifact")
+    result = tmp_path / "result.json"
+    result.write_text(
+        json.dumps(
+            {
+                "asset_type": family,
+                "outputs": [{
+                    "role": "runtime", "name": asset_id,
+                    "path": "res://" + artifact.relative_to(tmp_path).as_posix(),
+                    "godot_type": actual,
+                }],
+                "sources": [], "previews": [], "validation": {"passed": True},
             }
         ),
         encoding="utf-8",

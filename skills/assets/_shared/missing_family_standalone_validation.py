@@ -16,7 +16,7 @@ from typing import Any
 import warnings
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry
-from asset_compiler._runtime_contract import (
+from asset_compiler._asset_paths import (
     RuntimeContractError,
     assert_within_output_dir,
     resolve_res_path,

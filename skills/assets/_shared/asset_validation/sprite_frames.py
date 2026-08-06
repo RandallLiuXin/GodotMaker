@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from math import isclose
 from typing import Any
 
-from .contract import ValidationError
+from .errors import ValidationError
 from .structure import StructureRequest, StructureValidatorRegistry
 
 VALIDATOR_ID = "spriteframes_structure"

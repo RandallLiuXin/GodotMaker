@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ._runtime_contract import (
+from ._asset_paths import (
     LAYOUT_ARTIFACT_TYPES,
     PRODUCTION_FAMILIES,
     REFERENCE_FAMILIES,

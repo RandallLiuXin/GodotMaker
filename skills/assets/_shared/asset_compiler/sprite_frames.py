@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from math import isfinite
 from typing import Any
 
-from ._runtime_contract import assert_within_output_dir, check_output_path, resolve_res_path
+from ._asset_paths import assert_within_output_dir, check_output_path, resolve_res_path
 from .contract import CompileRequest, CompilerError
 from .registry import CompilerRegistry, CompilerRoute
 
