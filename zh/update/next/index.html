@@ -2825,9 +2825,8 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li><code>/gm-asset</code> registers each validated request/result output set directly in <code>ASSETS.md</code>.</li>
 <li>Generated runtime handoff for gm-build, gm-fixgap, and worker dispatch reads the matching <code>ASSETS.md</code> runtime rows.</li>
 <li>An <code>ASSETS.md</code> runtime row reaches <code>generated</code> only after direct validation and registration, while a finalized screen reference completes at <code>source_ready</code> without becoming a worker runtime artifact.</li>
-<li>Asset families without a native compiler and L0-L4 validation path stop at <code>source_ready</code>, while a fully validated scene-prop set may register its generated AtlasTexture runtime resources as <code>ready</code>.</li>
-<li><code>godot_artifact</code> is written only by a native compiler, so a <code>grid_sheet</code> can no longer be published as a <code>Texture2D</code> standing in for its unbuilt <code>SpriteFrames</code>.</li>
-<li>Direct compiler validation checks each <code>source_layout.type</code> against its closed compatible Godot artifact-type set, including <code>StyleBoxTexture</code> for <code>single</code> and <code>region_atlas</code>, so mismatches are rejected before reaching a worker.</li>
+<li>Asset families without a native compiler and L0-L4 validation path stop at <code>source_ready</code>, while a fully validated scene-prop set registers its generated AtlasTexture runtime resources as <code>generated</code>.</li>
+<li>Direct registration validates final declared runtime output types and loadability before a row can reach a worker.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
