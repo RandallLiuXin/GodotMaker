@@ -2688,16 +2688,19 @@ unit and atomically records every declared logical output in <code>ASSETS.md</co
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/asset_result_registration.py<span class="w"> </span>--assets-md<span class="w"> </span>ASSETS.md<span class="w"> </span>--tag<span class="w"> </span>&lt;tag&gt;<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--request<span class="w"> </span>&lt;request.json&gt;<span class="w"> </span>--result<span class="w"> </span>&lt;result.json&gt;<span class="w"> </span>--godot-path<span class="w"> </span>&lt;godot_path&gt;
 </code></pre></div>
-<p>The request owns the output set. <code>scene-prop-set</code> and <code>compact-prop-pack</code> use
-their fixed <code>spec.slots</code>; <code>platform-strip</code> uses its <code>spec.segments</code> and selected
-<code>spec.kind</code>; <code>ui-kit</code> and <code>card-kit</code> use their <code>styleboxes</code>, <code>atlas_regions</code>,
-and optional <code>theme</code>. Other multi-output families use <code>spec.outputs</code>, where
-each item has <code>name</code>, <code>role</code> (<code>runtime</code> or <code>reference</code>), and, for runtime
-assets, the final <code>godot_type</code>. The command rejects missing, duplicate, extra,
-role-mismatched, or type-mismatched outputs before it writes any row. Runtime
-files must be project-local, present, loadable by Godot, and match their
-declared type.</p>
-<p>Reference outputs become <code>source_ready</code> and never enter worker handoff.</p>
+<p>The request owns the runtime output set. <code>scene-prop-set</code> and
+<code>compact-prop-pack</code> use their fixed <code>spec.slots</code>; <code>platform-strip</code> uses
+<code>spec.segments</code> and its selected <code>spec.kind</code>; <code>ui-kit</code> and <code>card-kit</code> use their
+<code>styleboxes</code>, <code>atlas_regions</code>, and optional <code>theme</code>. Other runtime families
+derive their single runtime output from the request. They do not accept a
+parallel <code>spec.outputs</code> declaration. The command rejects missing, duplicate,
+extra, role-mismatched, or type-mismatched runtime outputs before it writes any
+row. Runtime files must be project-local, present, loadable by Godot, and match
+their declared type.</p>
+<p>Reference outputs returned by runtime families are validated source evidence,
+not catalog rows. Only reference-only families such as <code>screen-reference</code>
+register a <code>source_ready</code> row; their reference path is project-relative (for
+example <code>references/title_screen.png</code>) and never enters worker handoff.</p>
 <h2 id="worker-snapshot">Worker snapshot<a class="headerlink" href="#worker-snapshot" title="Permanent link">&para;</a></h2>
 <p>Derive the minimal handoff directly from already-generated catalog rows:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>tools/asset_result_registration.py<span class="w"> </span>--assets-md<span class="w"> </span>ASSETS.md<span class="w"> </span>--tag<span class="w"> </span>&lt;tag&gt;<span class="w"> </span><span class="se">\</span>

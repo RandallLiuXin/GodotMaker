@@ -2690,14 +2690,16 @@ result；登记器直接消费该 result，不再创建单资源登记、索引�
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/asset_result_registration.py<span class="w"> </span>--assets-md<span class="w"> </span>ASSETS.md<span class="w"> </span>--tag<span class="w"> </span>&lt;tag&gt;<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--request<span class="w"> </span>&lt;request.json&gt;<span class="w"> </span>--result<span class="w"> </span>&lt;result.json&gt;<span class="w"> </span>--godot-path<span class="w"> </span>&lt;godot_path&gt;
 </code></pre></div>
-<p>request 决定输出集合。<code>scene-prop-set</code> 和 <code>compact-prop-pack</code> 使用固定的
-<code>spec.slots</code>；<code>platform-strip</code> 使用 <code>spec.segments</code> 和选定的 <code>spec.kind</code>；
-<code>ui-kit</code> 与 <code>card-kit</code> 使用其 <code>styleboxes</code>、<code>atlas_regions</code> 和可选的 <code>theme</code>。
-其他多输出 family 才在 <code>spec.outputs</code> 中列出每一项的 <code>name</code>、<code>role</code>（<code>runtime</code>
-或 <code>reference</code>），以及 runtime 输出的最终 <code>godot_type</code>。写入前会拒绝缺少、
-重复、额外、角色不匹配或类型不匹配的输出。runtime 文件还必须位于项目内、
-确实存在、能被 Godot 加载，且实际类型匹配声明。</p>
-<p>reference 输出会变为 <code>source_ready</code>，不会进入 worker 的 runtime handoff。</p>
+<p>request 决定 runtime 输出集合。<code>scene-prop-set</code> 和 <code>compact-prop-pack</code> 使用
+固定的 <code>spec.slots</code>；<code>platform-strip</code> 使用 <code>spec.segments</code> 和选定的
+<code>spec.kind</code>；<code>ui-kit</code> 与 <code>card-kit</code> 使用其 <code>styleboxes</code>、<code>atlas_regions</code> 和可选的
+<code>theme</code>。其他 runtime family 从 request 推导唯一 runtime 输出，不接受并行的
+<code>spec.outputs</code> 声明。写入前会拒绝缺少、重复、额外、角色不匹配或类型不匹配的
+runtime 输出。runtime 文件还必须位于项目内、确实存在、能被 Godot 加载，且实际
+类型匹配声明。</p>
+<p>runtime family 返回的 reference 输出是已验证的源证据，不是目录行。只有
+<code>screen-reference</code> 等 reference-only family 会登记 <code>source_ready</code> 行；其路径为
+项目相对路径（例如 <code>references/title_screen.png</code>），不会进入 worker runtime handoff。</p>
 <h2 id="worker-snapshot">读取 worker snapshot<a class="headerlink" href="#worker-snapshot" title="Permanent link">&para;</a></h2>
 <p>从已生成的目录行直接派生最小 handoff：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>tools/asset_result_registration.py<span class="w"> </span>--assets-md<span class="w"> </span>ASSETS.md<span class="w"> </span>--tag<span class="w"> </span>&lt;tag&gt;<span class="w"> </span><span class="se">\</span>
