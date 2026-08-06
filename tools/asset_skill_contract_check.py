@@ -140,6 +140,7 @@ def _check_scene_prop_set_spec(value: Any, *, issues: list[str]) -> None:
     if not isinstance(slots, list) or not slots:
         issues.append("request.spec.slots must be a non-empty list")
         return
+    slot_names: set[str] = set()
     for index, slot in enumerate(slots):
         location = f"request.spec.slots[{index}]"
         if not isinstance(slot, dict):
@@ -160,6 +161,10 @@ def _check_scene_prop_set_spec(value: Any, *, issues: list[str]) -> None:
                 safe_identifier(name, f"{location}.name")
             except AssetOutputPathError as exc:
                 issues.append(str(exc))
+            else:
+                if name in slot_names:
+                    issues.append(f"{location}.name must be unique within request.spec.slots")
+                slot_names.add(name)
         if not _non_empty_string(slot.get("source")):
             issues.append(f"{location}.source must be a non-empty string")
         rect = slot.get("rect")

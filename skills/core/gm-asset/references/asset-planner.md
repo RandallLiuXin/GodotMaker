@@ -22,7 +22,7 @@ declaration.
    images, action sheets, source grids, and other provenance remain in the
    request, result, and reports; do not plan them as rows.
 
-## Visual anchors
+## Visual Anchor Gate
 
 Use user-provided assets, selected scene references, or previously generated
 files already recorded in `ASSETS.md` as anchors. When none exists, generate

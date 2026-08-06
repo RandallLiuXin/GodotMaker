@@ -204,8 +204,8 @@ metrics 与 `/gm-asset` 管理端通过同一个 parser 读取它，因此错乱
 | `report_type` | 必须等于该子代理被派发时的角色 |
 | `status` | `DONE`、`PARTIAL` 或 `FAILED` |
 | `unit_id` | 非空字符串 |
-| `outputs` | 路径数组对象，键只能是 `sources`、`runtime`、`prompts`、`reports`、`result` |
-| `validation` | `{passed: bool, levels?: {L0–L4: bool}, notes?: string}` |
+| `outputs` | 路径数组对象，键只能是 `sources`、`runtime`、`prompts`、`reports`、`request`、`result` |
+| `validation` | `{passed: bool, levels?: {L0–L5: bool}, notes?: string}` |
 | `blockers` | 字符串数组；只有 `status` 为 `DONE` 时才可为空 |
 
 `DONE` 还要求 `validation.passed` 为真；`PARTIAL` 与 `FAILED` 至少需要一条 blocker。

@@ -172,7 +172,8 @@ Return exactly one shared generic result JSON object and no prose. A failed
 result has `outputs: []`, `validation.passed: false`, and explanatory notes; it
 must not expose partial runtime output.
 
-For `/gm-asset`, persist the successful generic result at
+For `/gm-asset`, persist the successful generic request/result pair at
+`.godotmaker/asset-generation/<asset_id>-request.json` and
 `.godotmaker/asset-generation/<asset_id>-result.json`. The declared slots are
 the complete output contract. The manager validates the result and directly
 registers every named AtlasTexture in its matching `ASSETS.md` row. The Skill

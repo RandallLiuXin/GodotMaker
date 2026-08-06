@@ -125,8 +125,9 @@ manifests, stable entries, or worker dispatch state.
    eight source patches into 23 stable `StyleBoxTexture` outputs. Base,
    Primary, Secondary, and Danger button families reuse the same state patches
    through deterministic `modulate_color`; popup and tooltip reuse panel
-   patches. Copy `stylebox_plan.styleboxes` unchanged into
-   `ui_kit_request.json.spec.styleboxes` and compile every entry.
+   patches. Copy `stylebox_plan.styleboxes` unchanged into the request at
+   `.godotmaker/asset-generation/<asset_id>-request.json` under `spec.styleboxes`
+   and compile every entry.
 
    Compile 31 stable runtime `AtlasTexture` outputs from the icon metadata.
    Multiple names may intentionally share one of the 24 source rectangles.
@@ -164,16 +165,16 @@ manifests, stable entries, or worker dispatch state.
    this is what keeps each output separately bindable — two resources sharing a
    file would hand a worker the wrong Godot type. `check_ui_card_handoff`
    enforces it at L0, so a drifting filename is a repair, not a late failure.
-   Registration additionally asserts that no two outputs claim the same file;
-   the derivation alone does not guarantee that, because a stylebox named
-   `<asset_id>_theme` would derive the Theme's own path.
+   The family validator checks each output's declared path. Cross-output path
+   uniqueness is enforced when the manager registers the completed result.
 
-7. Write the complete derived request to `ui_kit_request.json` and candidate
-   result to `ui_kit_result.json`. Run the public validator after resources
-   exist:
+7. Write the complete derived request to
+   `.godotmaker/asset-generation/<asset_id>-request.json` and candidate result
+   to `.godotmaker/asset-generation/<asset_id>-result.json`. Run the public
+   validator after resources exist:
 
    ```powershell
-   python tools/asset_ui_card_validate.py --request ui_kit_request.json --result ui_kit_result.json --project-root . --godot-path $env:GODOT_BIN --allow-failure
+   python tools/asset_ui_card_validate.py --request .godotmaker/asset-generation/<asset_id>-request.json --result .godotmaker/asset-generation/<asset_id>-result.json --project-root . --godot-path <configured-godot-path> --allow-failure
    ```
 
    It owns L0-L5 facts. L0-L4 check the closed contract, sources and trace,
@@ -192,7 +193,8 @@ failed level as repair input:
 Record retries. STOP only for an input-gate failure or a pinned provider that
 cannot attach references. Never hand-write L-level values; do not STOP merely because a production validation attempt failed.
 
-Use the configured `GODOT_BIN`; do not substitute another Godot installation.
+Resolve Godot from `.claude/godotmaker.yaml`'s `godot_path`; when it is absent,
+use `godot` on `PATH`. Do not substitute another installation.
 If required validation cannot run, return a failed result rather than claiming
 readiness.
 

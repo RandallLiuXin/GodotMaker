@@ -136,8 +136,8 @@ write a repair record, run a revalidation pass, or author a new skill.
   block, load `godot_artifact.path` and bind it as `godot_artifact.type`.
 - **Bind the artifact, do not rebuild it.** Never reconstruct a `SpriteFrames`,
   `AtlasTexture`, `StyleBoxTexture`, `Theme`, or `TileSet` from
-  `source_layout.path`, and never re-slice, re-grid, or re-region that image.
-  Read `source_layout` as provenance only; do not pass it to your code.
+  a source image or report. Never re-slice, re-grid, or re-region a generated
+  asset; use only the snapshot's final artifact.
 - `SpriteFrames` → `AnimatedSprite2D.sprite_frames` (or an equivalent
   `SpriteFrames`-driven player). Play the actions the brief's mechanic needs; do
   not reduce a multi-frame actor or FX to one static frame. Do not re-declare

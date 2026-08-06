@@ -252,6 +252,9 @@ Dispatch one subagent per production unit.
 
 Use this procedure for every production unit.
 
+Resolve the configured Godot executable from `.claude/godotmaker.yaml`'s
+`godot_path`; when it is absent, use `godot` from `PATH`.
+
 1. Require one validated request and result JSON for the entire production
    unit. The request declares the complete logical output set; the result must
    match it exactly.
@@ -294,7 +297,7 @@ but never runtime metadata or a manifest pointer.
 ASSETS.md status transitions are forward-only:
 
 ```text
-MISSING -> provided | generated | N/A | deferred
+MISSING -> provided | generated | source_ready | deferred
 ```
 
 If the user wants to regenerate an accepted prior asset, add a current-tag row

@@ -159,8 +159,9 @@ every prop in its matching `ASSETS.md` row.
 Keep the raw source, transparent processed sheet, candidate/AABB report,
 curation report, every finalized PNG/report, declaration, atlas, metadata,
 compiled `.tres` files, source/provider report, command trace, and L0-L4
-diagnostics. Before returning, serialize the exact shared result to
-`.godotmaker/asset-generation/work/<bundle_id>/result.json` and validate it
+diagnostics. Before returning, serialize the exact shared request/result pair to
+`.godotmaker/asset-generation/<asset_id>-request.json` and
+`.godotmaker/asset-generation/<asset_id>-result.json`, and validate the result
 with `tools/asset_skill_contract_check.py --kind result`. Return that checked
 JSON byte-for-byte: `outputs` must be the complete array of one named
 `AtlasTexture` per logical prop, never a prose count or summary. A real STOP
