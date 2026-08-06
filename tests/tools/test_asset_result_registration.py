@@ -1,8 +1,10 @@
 """Direct result-to-ASSETS.md registration regressions.
 
-Registration fixtures must be a shape the corresponding family standalone
-validator would admit. An impossible validation -> registration handoff is not
-useful regression coverage.
+The route-closure fixtures in ``test_asset_family_closure.py`` must be shapes
+the corresponding family standalone validator admits. This module also has
+small, deliberately isolated registration-unit fixtures; they exercise only
+the registration guard named by their test and do not claim to be family-valid
+production handoffs.
 """
 from __future__ import annotations
 
