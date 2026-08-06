@@ -1,4 +1,9 @@
-"""Direct result-to-ASSETS.md registration regressions."""
+"""Direct result-to-ASSETS.md registration regressions.
+
+Registration fixtures must be a shape the corresponding family standalone
+validator would admit. An impossible validation -> registration handoff is not
+useful regression coverage.
+"""
 from __future__ import annotations
 
 import json
@@ -21,9 +26,9 @@ from asset_build_record import write_validation_record  # noqa: E402
 TAG = "v0.1.0"
 
 
-def _assets_md(path: Path, names: list[str]) -> None:
+def _assets_md(path: Path, names: list[str], *, family: str = "scene-prop-set") -> None:
     rows = "\n".join(
-        f"| {index} | {TAG} | {name} | prop | 64x64 | family=scene-prop-set | - | - | MISSING |"
+        f"| {index} | {TAG} | {name} | prop | 64x64 | family={family} | - | - | MISSING |"
         for index, name in enumerate(names, 1)
     )
     path.write_text(
@@ -374,9 +379,11 @@ def test_background_registration_requires_the_l0_l4_recorded_artifact_bytes(tmp_
         json.dumps({
             "asset_type": "background-map",
             "outputs": [{
-                "role": "runtime", "path": artifact_path, "godot_type": "Texture2D",
+                "role": "runtime", "name": asset_id,
+                "path": artifact_path, "godot_type": "Texture2D",
             }],
-            "sources": [], "previews": [], "validation": {"passed": True},
+            "sources": [{"path": artifact_path, "layout": "single"}],
+            "previews": [], "validation": {"passed": True},
         }),
         encoding="utf-8",
     )
@@ -489,13 +496,20 @@ def _native_multi_output_request(family: str, names: list[str]) -> tuple[dict, d
             {name: "AtlasTexture" for name in names},
         )
     if family == "platform-strip":
+        assert len(names) >= 3
         return (
             {
                 "kind": "single",
                 "grid": {"columns": len(names), "rows": 1, "cell_width": 8, "cell_height": 8},
                 "segments": [
                     {"name": name, "role": role, "slot": [index, 0]}
-                    for index, (name, role) in enumerate(zip(names, ("left_cap", "right_cap"), strict=True))
+                    for index, (name, role) in enumerate(
+                        zip(
+                            names,
+                            ("left_cap", *("repeat_middle" for _ in names[1:-1]), "right_cap"),
+                            strict=True,
+                        )
+                    )
                 ],
             },
             {name: "Texture2D" for name in names},
@@ -508,7 +522,7 @@ def _native_multi_output_request(family: str, names: list[str]) -> tuple[dict, d
 def test_multi_output_families_use_request_owned_output_contracts(
     tmp_path, family, case
 ):
-    names = ["first", "second"]
+    names = ["first", "middle", "second"] if family == "platform-strip" else ["first", "second"]
     assets_md = tmp_path / "ASSETS.md"
     _assets_md(assets_md, names)
     spec, expected_types = _native_multi_output_request(family, names)
@@ -576,7 +590,8 @@ def test_variant_contract_rejects_a_sibling_variants_godot_type(
 ):
     asset_id = "variant_asset"
     assets_md = tmp_path / "ASSETS.md"
-    _assets_md(assets_md, [asset_id])
+    names = ["left", "middle", "right"] if family == "platform-strip" else [asset_id]
+    _assets_md(assets_md, names, family=family)
     request = tmp_path / "request.json"
     request.write_text(
         json.dumps(
@@ -584,27 +599,43 @@ def test_variant_contract_rejects_a_sibling_variants_godot_type(
                 "asset_type": family,
                 "asset_id": asset_id,
                 "brief": "variant type must stay fail closed",
-                "spec": {
-                    selector: selected,
-                    "outputs": [{"name": asset_id, "role": "runtime", "godot_type": declared}],
-                },
+                "spec": (
+                    {
+                        "kind": selected,
+                        "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+                        "segments": [
+                            {"name": name, "role": role, "slot": [index, 0]}
+                            for index, (name, role) in enumerate(
+                                zip(names, ("left_cap", "repeat_middle", "right_cap"), strict=True)
+                            )
+                        ],
+                    }
+                    if family == "platform-strip"
+                    else {selector: selected}
+                ),
             }
         ),
         encoding="utf-8",
     )
-    artifact = tmp_path / "assets" / "generated" / family / f"{asset_id}.tres"
-    artifact.parent.mkdir(parents=True)
-    artifact.write_bytes(b"artifact")
+    suffix = ".png" if actual == "Texture2D" else ".tres"
+    outputs = []
+    for name in names:
+        artifact = tmp_path / "assets" / "generated" / family / asset_id / f"{name}{suffix}"
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_bytes(b"artifact")
+        outputs.append(
+            {
+                "role": "runtime", "name": name,
+                "path": "res://" + artifact.relative_to(tmp_path).as_posix(),
+                "godot_type": actual,
+            }
+        )
     result = tmp_path / "result.json"
     result.write_text(
         json.dumps(
             {
                 "asset_type": family,
-                "outputs": [{
-                    "role": "runtime", "name": asset_id,
-                    "path": "res://" + artifact.relative_to(tmp_path).as_posix(),
-                    "godot_type": actual,
-                }],
+                "outputs": outputs,
                 "sources": [], "previews": [], "validation": {"passed": True},
             }
         ),
