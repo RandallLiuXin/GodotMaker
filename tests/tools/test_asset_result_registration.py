@@ -120,6 +120,86 @@ def test_scene_prop_set_registers_every_output_atomically_and_snapshots_them(tmp
     assert all(item["godot_artifact"]["type"] == "AtlasTexture" for item in snapshot)
 
 
+def test_same_production_unit_can_reregister_its_generated_rows(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    _assets_md(assets_md, ["torch"])
+    _touch_runtime(tmp_path, "torch")
+    result = tmp_path / "result.json"
+    _result(result, [_runtime("torch")])
+    request = tmp_path / "request.json"
+    _request(request, ["torch"])
+
+    register_result(assets_md, result, tag=TAG, request_path=request, loader=_loader)
+    register_result(assets_md, result, tag=TAG, request_path=request, loader=_loader)
+
+    assert assets_md.read_text(encoding="utf-8").count("| torch |") == 1
+
+
+def test_different_production_unit_cannot_overwrite_completed_logical_row(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    _assets_md(assets_md, ["torch"])
+    _touch_runtime(tmp_path, "torch")
+    first_result = tmp_path / "market-result.json"
+    _result(first_result, [_runtime("torch")])
+    first_request = tmp_path / "market-request.json"
+    _request(first_request, ["torch"])
+    register_result(
+        assets_md, first_result, tag=TAG, request_path=first_request, loader=_loader
+    )
+    original = assets_md.read_text(encoding="utf-8")
+
+    second_path = "res://assets/generated/scene-prop-set/bazaar/torch.tres"
+    second_file = tmp_path / second_path.removeprefix("res://")
+    second_file.parent.mkdir(parents=True)
+    second_file.write_text("[gd_resource type=\"AtlasTexture\" format=3]\n", encoding="utf-8")
+    second_result = tmp_path / "bazaar-result.json"
+    _result(
+        second_result,
+        [{"role": "runtime", "name": "torch", "path": second_path, "godot_type": "AtlasTexture"}],
+    )
+    second_request = tmp_path / "bazaar-request.json"
+    _request(second_request, ["torch"])
+    second_request.write_text(
+        second_request.read_text(encoding="utf-8").replace('"asset_id": "market"', '"asset_id": "bazaar"'),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssetResultRegistrationError, match="different production unit"):
+        register_result(
+            assets_md, second_result, tag=TAG, request_path=second_request, loader=_loader
+        )
+
+    assert assets_md.read_text(encoding="utf-8") == original
+
+
+def test_registration_preserves_crlf_newlines(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    rows = "\r\n".join(
+        [
+            "# Assets",
+            "",
+            "| # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |",
+            "|---|-----|------|------|------|-------------------|--------------|--------------|--------|",
+            "| 1 | v0.1.0 | torch | prop | 64x64 | family=scene-prop-set | - | - | MISSING |",
+            "| 2 | v0.1.0 | untouched | prop | 64x64 | family=scene-prop-set | - | - | MISSING |",
+            "",
+        ]
+    )
+    assets_md.write_bytes(rows.encode("utf-8"))
+    _touch_runtime(tmp_path, "torch")
+    result = tmp_path / "result.json"
+    _result(result, [_runtime("torch")])
+    request = tmp_path / "request.json"
+    _request(request, ["torch"])
+
+    register_result(assets_md, result, tag=TAG, request_path=request, loader=_loader)
+
+    out = assets_md.read_bytes()
+    assert out.count(b"\r\n") == rows.count("\r\n")
+    assert b"\n" not in out.replace(b"\r\n", b"")
+    assert b"| 2 | v0.1.0 | untouched |" in out
+
+
 @pytest.mark.parametrize(
     "outputs",
     [
@@ -178,6 +258,28 @@ def test_reference_row_completes_without_entering_worker_runtime_snapshot(tmp_pa
     assert "| reference | references/screen_ref.png | source_ready |" in assets_md.read_text(encoding="utf-8")
     with pytest.raises(AssetResultRegistrationError, match="expected generated"):
         runtime_snapshot(assets_md, tag=TAG, asset_ids=["screen_ref"])
+
+
+def test_snapshot_accepts_provided_runtime_from_an_earlier_tag(tmp_path):
+    assets_md = tmp_path / "ASSETS.md"
+    runtime_path = "res://assets/user/hero.png"
+    runtime_file = tmp_path / runtime_path.removeprefix("res://")
+    runtime_file.parent.mkdir(parents=True)
+    runtime_file.write_bytes(b"png")
+    assets_md.write_text(
+        "# Assets\n\n"
+        "| # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |\n"
+        "|---|-----|------|------|------|-------------------|--------------|--------------|--------|\n"
+        f"| 1 | v0.1.0 | hero | sprite | 64x64 | direct_runtime | Texture2D | {runtime_path} | provided |\n",
+        encoding="utf-8",
+    )
+
+    assert runtime_snapshot(assets_md, tag="v0.2.0", asset_ids=["hero"]) == [
+        {
+            "asset_id": "hero",
+            "godot_artifact": {"type": "Texture2D", "path": runtime_path},
+        }
+    ]
 
 
 @pytest.mark.parametrize(

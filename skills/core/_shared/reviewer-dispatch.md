@@ -43,6 +43,9 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
 
 Each object contains only `asset_id`, `godot_artifact.type`, and
 `godot_artifact.path`.
+The resolver accepts generated and complete user-provided runtime rows, and can
+resolve a uniquely named row introduced by an earlier tag. A reference-only or
+incomplete row remains a dispatch blocker.
 Do not add source layouts, frame data, atlas regions, provider evidence, or
 support metadata paths. Describe required animation behavior or temporary-FX
 lifecycle in `Context`, not in the snapshot.}

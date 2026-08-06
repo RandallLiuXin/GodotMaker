@@ -70,9 +70,10 @@ Agent({
 - DO NOT write files outside the project tree (system temp dirs, home directory, etc.). If you genuinely need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p the directory if missing) and delete it before reporting DONE. Claude Code's own scratchpad system is gated behind a feature flag we cannot rely on, so this rule is what guarantees clean tear-down.
 
 ### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
-{List the assets the task binds from the current tag's authoritative ASSETS.md
-runtime rows, then resolve each one and paste the tool's JSON verbatim, one
-block per asset:
+{List the assets the task binds from the authoritative ASSETS.md runtime rows.
+Rows keep their introducing tag, so an earlier uniquely named asset remains
+available to the current tag. Resolve each one and paste the tool's JSON
+verbatim, one block per asset:
 
 ```bash
 python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
@@ -85,8 +86,9 @@ frame_count, fps, loop, frame paths, region names, region rects, or support
 metadata paths.
 Name the runtime state or FX lifecycle a `SpriteFrames` artifact should play in
 `Game Mechanic Function`, not by pasting frame data here.
-The resolver exits non-zero with an `error` on a non-`generated` row, missing
-or invalid runtime columns, a missing artifact file, or a reference-only asset.
+The resolver accepts `generated` and complete user-provided `provided` runtime
+rows. It exits non-zero with an `error` on any other status, missing or invalid
+runtime columns, a missing artifact file, or a reference-only asset.
 On failure, state the resolver's `error` and do not dispatch the visual task.
 Never fill this section with an artifact path the resolver did not emit.
 Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
@@ -98,8 +100,8 @@ prompt files, or scene references as runtime assets.}
  Include: asset row/path, runtime size, visual role, readability requirement,
  animation/lifecycle requirement when present, anchor/derivative source, and
  final runtime asset path.
- Take every generated runtime path from the resolved `Asset Runtime Snapshot`
- above; only user-provided asset paths come from ASSETS.md directly.
+ Take every generated or user-provided runtime path from the resolved `Asset
+Runtime Snapshot` above.
  Do not use source sheets, curation candidates, prompt files, scene references,
  or ASSETS.md rows whose type is `reference` as runtime assets.
  Do not replace an available final asset with placeholder art, procedural
