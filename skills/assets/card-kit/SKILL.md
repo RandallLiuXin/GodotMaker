@@ -92,10 +92,9 @@ serves: the Theme at `<asset_id>_theme.tres`, and every `StyleBoxTexture` and
 `AtlasTexture` at `<output_name>.tres`. One kit fills one directory, so this is
 what keeps each output separately bindable — two resources sharing a file would
 hand a worker the wrong Godot type. `check_ui_card_handoff` enforces it at L0,
-so a drifting filename is a repair, not a late failure. Registration
-additionally asserts that no two outputs claim the same file; the derivation
-alone does not guarantee that, because a stylebox named `<asset_id>_theme`
-would derive the Theme's own path.
+so a drifting filename is a repair, not a late failure. The family validator
+checks each output's declared path; cross-output path uniqueness is enforced
+when the manager registers the completed result.
 
 ### 4. Diagnose, repair, and recheck
 
@@ -118,9 +117,10 @@ Return the shared generic result with independently usable native runtime
 resources (`Theme`, `StyleBoxTexture`, and `AtlasTexture`), its `theme_recipe`,
 `single`, or `region_atlas` sources, previews when produced, and final L0-L4
 evidence. Check it with the shared result schema and checker plus this family
-contract. Before responding, persist that exact generic result JSON at
+contract. Before responding, persist the exact request/result pair at
+`.godotmaker/asset-generation/<asset_id>-request.json` and
 `.godotmaker/asset-generation/<asset_id>-result.json`, then return the same
-JSON directly in the final response. The runner, not a self-reported boolean,
+result JSON directly in the final response. The runner, not a self-reported boolean,
 records validation.
 
 The output is reusable card UI, not pixel-perfect `Control` or `Container`

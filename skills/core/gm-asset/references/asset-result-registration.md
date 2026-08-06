@@ -25,6 +25,9 @@ path such as `references/title_screen.png`, not `res://`.
 After a Skill has produced a passing request/result pair, register the whole
 unit in one command:
 
+Resolve `<godot>` from `.claude/godotmaker.yaml`'s `godot_path`; when that
+setting is absent, use the `godot` executable on `PATH`.
+
 ```bash
 python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
   --request <request.json> --result <result.json> --godot-path <godot>

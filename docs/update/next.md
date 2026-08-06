@@ -88,9 +88,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `/gm-asset` registers each validated request/result output set directly in `ASSETS.md`.
 - Generated runtime handoff for gm-build, gm-fixgap, and worker dispatch reads the matching `ASSETS.md` runtime rows.
 - An `ASSETS.md` runtime row reaches `generated` only after direct validation and registration, while a finalized screen reference completes at `source_ready` without becoming a worker runtime artifact.
-- Asset families without a native compiler and L0-L4 validation path stop at `source_ready`, while a fully validated scene-prop set may register its generated AtlasTexture runtime resources as `ready`.
-- `godot_artifact` is written only by a native compiler, so a `grid_sheet` can no longer be published as a `Texture2D` standing in for its unbuilt `SpriteFrames`.
-- Direct compiler validation checks each `source_layout.type` against its closed compatible Godot artifact-type set, including `StyleBoxTexture` for `single` and `region_atlas`, so mismatches are rejected before reaching a worker.
+- Asset families without a native compiler and L0-L4 validation path stop at `source_ready`, while a fully validated scene-prop set registers its generated AtlasTexture runtime resources as `generated`.
+- Direct registration validates final declared runtime output types and loadability before a row can reach a worker.
 
 ## Fixed
 

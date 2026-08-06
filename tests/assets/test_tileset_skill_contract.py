@@ -199,7 +199,7 @@ def test_standalone_runner_maps_request_result_l0_to_l4_without_a_stable_entry(
     source.write_bytes(b"png")
     result = {
         "asset_type": "tileset",
-        "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
+        "outputs": [{"role": "runtime", "name": "grassland", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
         "sources": [{"path": source_path, "layout": "tile_atlas"}],
         "previews": [],
         "validation": {"passed": False},
@@ -277,7 +277,7 @@ def test_standalone_runner_maps_a_godot_setup_failure_to_l3(tmp_path, monkeypatc
     source.write_bytes(b"png")
     result = {
         "asset_type": "tileset",
-        "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
+        "outputs": [{"role": "runtime", "name": "grassland", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
         "sources": [{"path": source_path, "layout": "tile_atlas"}],
         "previews": [],
         "validation": {"passed": False},
@@ -307,7 +307,7 @@ def test_standalone_runner_reports_l1_before_an_l2_validation_error(tmp_path, mo
     source.write_bytes(b"png")
     result = {
         "asset_type": "tileset",
-        "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
+        "outputs": [{"role": "runtime", "name": "grassland", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
         "sources": [{"path": source_path, "layout": "tile_atlas"}],
         "previews": [],
         "validation": {"passed": False},
@@ -329,7 +329,7 @@ def test_standalone_runner_rejects_an_unvalidated_extra_runtime_output(tmp_path)
     result = {
         "asset_type": "tileset",
         "outputs": [
-            {"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"},
+            {"role": "runtime", "name": "grassland", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"},
             {"role": "runtime", "path": "res://assets/generated/tileset/grassland/unvalidated.tres", "godot_type": "Texture2D"},
         ],
         "sources": [{"path": "res://assets/generated/tileset/grassland/grassland_atlas.png", "layout": "tile_atlas"}],
@@ -341,18 +341,20 @@ def test_standalone_runner_rejects_an_unvalidated_extra_runtime_output(tmp_path)
         compile_and_validate(request, result, recipe=_fixture(), project_root=tmp_path, godot_path="godot")
 
 
-@pytest.mark.parametrize("mutation", ["runtime", "result-source", "recipe-source", "multiple-sources"])
+@pytest.mark.parametrize("mutation", ["runtime", "name", "result-source", "recipe-source", "multiple-sources"])
 def test_standalone_runner_rejects_noncanonical_stable_tileset_paths(tmp_path, mutation):
     request = _public_request()
     recipe = _fixture()
     result = {
         "asset_type": "tileset",
-        "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
+        "outputs": [{"role": "runtime", "name": "grassland", "path": "res://assets/generated/tileset/grassland/grassland.tres", "godot_type": "TileSet"}],
         "sources": [{"path": "res://assets/generated/tileset/grassland/grassland_atlas.png", "layout": "tile_atlas"}],
         "previews": [], "validation": {"passed": False},
     }
     if mutation == "runtime":
         result["outputs"][0]["path"] = "res://assets/generated/tileset/grassland/not-the-asset-id.tres"
+    elif mutation == "name":
+        result["outputs"][0]["name"] = "not-the-asset-id"
     elif mutation == "result-source":
         result["sources"][0]["path"] = "res://assets/generated/tileset/grassland/not-the-asset-id.png"
     elif mutation == "recipe-source":

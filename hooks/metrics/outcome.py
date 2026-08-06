@@ -49,8 +49,8 @@ TERMINAL_STATUSES = ("DONE", "PARTIAL", "FAILED")
 # direct consumers.
 OUTCOME_REQUIRED_ROLES = frozenset({ROLE_ASSET_PRODUCER})
 
-OUTPUT_CATEGORIES = ("sources", "runtime", "prompts", "reports", "result")
-VALIDATION_LEVELS = ("L0", "L1", "L2", "L3", "L4")
+OUTPUT_CATEGORIES = ("sources", "runtime", "prompts", "reports", "request", "result")
+VALIDATION_LEVELS = ("L0", "L1", "L2", "L3", "L4", "L5")
 
 TOP_LEVEL_KEYS = (
     OUTCOME_VERSION_KEY, "report_type", "status", "unit_id",
@@ -64,7 +64,7 @@ OUTCOME_TEMPLATE = """```json
   "status": "DONE | PARTIAL | FAILED",
   "unit_id": "{unit_id}",
   "outputs": {
-    "sources": [], "runtime": [], "prompts": [], "reports": [], "result": []
+    "sources": [], "runtime": [], "prompts": [], "reports": [], "request": [], "result": []
   },
   "validation": {"passed": true, "notes": "short note"},
   "blockers": []
@@ -211,7 +211,7 @@ def _validate_validation(value) -> dict:
     if "levels" in value:
         levels = value["levels"]
         if not isinstance(levels, dict):
-            raise OutcomeError("'validation.levels' must be an object of L0-L4 booleans")
+            raise OutcomeError("'validation.levels' must be an object of L0-L5 booleans")
         unknown_levels = sorted(set(levels) - set(VALIDATION_LEVELS))
         if unknown_levels:
             raise OutcomeError(

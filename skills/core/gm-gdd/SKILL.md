@@ -243,7 +243,8 @@ The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the c
 - [ ] `ASSETS.md` exists and any new rows are tagged correctly (per `templates/ASSETS.md` and `gm-asset/SKILL.md`)
 - [ ] `ASSETS.md` Visual Asset Contract covers current-tag gameplay-visible objects with runtime size, scene/mechanic use, readability requirement, and source relationship
 - [ ] `ASSETS.md` applies the Gameplay Actor Asset Rows contract to gameplay
-      actors introduced or changed in this tag
+      actors introduced or changed in this tag: only final runtime outputs are
+      rows; canonical and action-source material remains production evidence
 - [ ] `ASSETS.md` Visual Asset Contract binds large character UI display slots
       to portrait/display rows instead of gameplay runtime frame rows
 - [ ] `ASSETS.md` Visual Asset Contract gives every current-tag gameplay actor
