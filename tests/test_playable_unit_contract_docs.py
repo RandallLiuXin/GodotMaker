@@ -107,6 +107,30 @@ def test_visual_asset_contract_flows_through_build_and_evaluate():
     assert "Visual Verification` section" in fixgap
 
 
+def test_gameplay_actor_asset_rows_only_track_registerable_runtime_outputs():
+    assets = _read("templates/ASSETS.md")
+    gdd = _read("skills/core/gm-gdd/SKILL.md")
+    planner = _read("skills/core/gm-asset/references/asset-planner.md")
+
+    assert "not Asset Table rows" in assets
+    assert "must exactly match the character-bundle request's `asset_id`" in assets
+    assert "player_canonical |" not in assets
+    assert "player_action_source |" not in assets
+    assert "player_animation_runtime/player_animation_runtime.tres" in assets
+    assert "player_portrait/player_portrait.png" in assets
+    assert "only final runtime outputs are" in gdd
+    assert "do not plan them as rows" in planner
+
+
+def test_asset_resume_and_completion_use_the_same_missing_row_boundary():
+    asset_manager = _read("skills/core/gm-asset/SKILL.md")
+
+    assert "including an Audio table row" in asset_manager
+    assert "only explicitly deferred audio is" in asset_manager
+    assert "no current-tag row is `MISSING`, unavailable audio" in asset_manager
+    assert "all unavailable\ncurrent-tag audio rows are explicitly `deferred`" in asset_manager
+
+
 def test_evaluate_requires_runtime_playable_unit_proof():
     evaluate = _read("skills/core/gm-evaluate/SKILL.md")
     schema = _read("config/stage_schemas.json")
