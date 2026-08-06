@@ -254,7 +254,7 @@ mangled heading can no longer produce a `report_type: unknown` /
 | `status` | `DONE`, `PARTIAL`, or `FAILED` |
 | `unit_id` | Non-empty string |
 | `outputs` | Object of path arrays, keyed only by `sources`, `runtime`, `prompts`, `reports`, `request`, `result` |
-| `validation` | `{passed: bool, levels?: {L0–L4: bool}, notes?: string}` |
+| `validation` | `{passed: bool, levels?: {L0–L5: bool}, notes?: string}` |
 | `blockers` | Array of strings; empty only when `status` is `DONE` |
 
 `DONE` additionally requires `validation.passed`; `PARTIAL` and `FAILED`

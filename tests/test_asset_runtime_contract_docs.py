@@ -21,6 +21,12 @@ def test_asset_producer_outcome_template_matches_runtime_schema():
         assert f'"{level}"' in producer
 
 
+def test_hook_docs_document_the_runtime_validation_levels():
+    for relative in ("docs/hooks.md", "docs/zh/hooks.md"):
+        text = _read(relative)
+        assert "L0" in text and "L5" in text
+
+
 def test_asset_no_work_resume_path_appends_the_asset_stage_event():
     skill = _read("skills/core/gm-asset/SKILL.md")
     completion = skill[skill.index("After ASSETS.md has no current-tag"):]

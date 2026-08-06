@@ -1140,6 +1140,7 @@ validated = tileset.compile_and_validate(
         "asset_type": "tileset",
         "outputs": [{{
             "role": "runtime",
+            "name": "grassland",
             "path": "res://assets/generated/tileset/grassland/grassland.tres",
             "godot_type": "TileSet",
         }}],
@@ -1159,6 +1160,7 @@ wrong_path_result = {{
     "asset_type": "tileset",
     "outputs": [{{
         "role": "runtime",
+        "name": "grassland",
         "path": "res://assets/generated/tileset/grassland/not-the-asset-id.tres",
         "godot_type": "TileSet",
     }}],
