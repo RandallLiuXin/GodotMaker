@@ -82,3 +82,21 @@ def test_published_asset_contract_text_has_no_retired_handoff_instruction(publis
         "support\nmetadata paths used",
     ):
         assert retired_field not in reviewer_dispatch
+
+
+def test_release_notes_do_not_describe_retired_asset_handoff_as_current():
+    """Release notes may contrast the retired contract, never prescribe it."""
+    release_notes = (ROOT / "docs" / "update" / "next.md").read_text(encoding="utf-8")
+    # This single contrast sentence is intentionally allowed: it describes the
+    # current ASSETS.md catalog as replacing the old layer.
+    current_contract = release_notes.replace(
+        "separate stable-entry or manifest layer", ""
+    ).lower()
+    for retired_behavior in (
+        "stable entry",
+        "stable entries",
+        "entry builder",
+        "pointer-only bundle manifest",
+        ".godotmaker/asset-generation/manifest.json",
+    ):
+        assert retired_behavior not in current_contract

@@ -59,11 +59,12 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Both `platform-strip` strip kinds now have complete registration contracts that turn validated segment deliveries into worker-consumable `ASSETS.md` rows.
 
 - A ui-kit or card-kit now registers every declared runtime output atomically, so its `Theme`, every `StyleBoxTexture`, and every `AtlasTexture` are separately resolvable.
-- Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now keep
-  independent stable entries behind one pointer-only bundle manifest. Existing
-  ASSETS.md planning rows share that pointer; no logical output rows are added.
+- Multi-output ui-kit, card-kit, and compact-prop-pack deliveries now declare
+  every worker-consumable logical output in their request and register all
+  matching `ASSETS.md` rows atomically.
 
-- An fx-bundle entry now reaches `ready` by re-running its own entry builder with the passing Skill result, under the same build-fingerprint rule character-bundle uses; static and animated FX previously had no promotion path at all and stopped at `compiled`.
+- fx-bundle now registers its validated static `Texture2D` or animated
+  `SpriteFrames` output directly from the request-selected result variant.
 
 - Workers now own TileMap layout, layers, cell and gameplay object placement, triggers, camera limits, and scene structure, binding a ready `TileSet` as a tile library and repairing what running the map actually shows.
 
@@ -106,9 +107,12 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - FX bundle production now separates static autoslice and animated grid paths, preserves provider reference claims, and promotes runtime entries only after L0-L4 validation.
 - Card-kit Asset Skills now compile only the Theme, scalable frames, and fixed AtlasTexture regions requested by each asset request, preserving reusable Godot resources without requiring a fixed card layout.
 
-- Character-bundle stable entries now reach `ready` only after their L0-L4 evidence is handed back to the same deterministic builder, instead of being published straight from the compiler.
-- Character-bundle promotion now binds to a build fingerprint of the resolved request, action reports, stable frames, and compiled artifact, so a passing result can no longer promote a later regeneration that reused the same stable paths.
-- A character-bundle result now registers exactly one worker-consumable SpriteFrames entry, so a generated canonical is recorded as reference provenance and can no longer ship as a second runtime artifact.
+- Character-bundle registers its validated SpriteFrames output directly in the
+  matching `ASSETS.md` row; canonical and action sources remain reference
+  provenance rather than extra runtime assets.
+- Character-bundle validation binds the resolved request, action reports,
+  frames, and compiled artifact so a stale result cannot register a later
+  regeneration that reused the same output paths.
 - Character-bundle assets now resolve animation cadence internally, preserve optional canonical references and 256px runtime frames, and regenerate retryable source-image failures before stopping.
 - Character-bundle assembly now binds resolved intent, canvas, frame order, timing, loop state, and scale references through SpriteFrames compilation and GIF previews.
 - Fixed blob-47 TileSet masks, edge signatures, and isolated-terrain semantics to match Godot's eight peering points.
@@ -124,15 +128,16 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Theme L4 validation now rejects recipe paths outside the declaring asset's stable output directory.
 - Published asset validation runners now work after installing GodotMaker into Claude Code, Codex, or OpenCode projects.
 - Restored real Godot validation for Theme and TileSet assets, including safe Theme resource paths and imported TileSet atlases.
-- Reference-only stable entries now accept only `pending`, `source_ready`, or `failed`; only registered `source_ready` entries may promote ASSETS.md reference rows.
 - Reference-only rows are `source_ready`; they never enter a runtime worker snapshot.
 - Compiler staging now preserves Godot resource extensions.
 - Compiler receipts are now issued only after atomic artifact commits.
-- Asset readiness promotion now requires a compiler receipt bound to the compiled entry, while already-ready assets can explicitly revalidate without retaining that receipt.
+- Direct registration requires successful compiler and validation evidence for
+  each runtime output before any `ASSETS.md` row changes.
 - Theme recipes now accept only fully decoded raster textures and FreeType-loadable TTF/OTF fonts, rejecting truncated or unsupported resource content before a Theme is written.
 - Failed native Godot artifact compilation now retains the previous stable artifact and atomically commits a validated replacement only after success.
 - Restored `asset_sheet_process.py --snap-mode autoslice` to independent Godot-style region extraction without grid bucketing or cross-region unions; fixed-grid extraction continues to require `--grid`.
-- Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch, worker agent) at `.godotmaker/asset-generation/manifest.json` instead of the analyst's `assets/manifest.json` (#97)
+- Point generated-asset runtime handoff (gm-build, gm-fixgap, worker dispatch,
+  worker agent) at `ASSETS.md` and its deterministic `--snapshot` output (#97).
 
 ## Removed
 
