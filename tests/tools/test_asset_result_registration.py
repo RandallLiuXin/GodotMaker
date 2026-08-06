@@ -292,6 +292,33 @@ def test_snapshot_accepts_provided_runtime_from_an_earlier_tag(tmp_path):
 
 
 @pytest.mark.parametrize(
+    ("runtime_type", "runtime_path", "error"),
+    [
+        ("-", "-", "not a runtime resource"),
+        ("Texture2D", "assets/user/hero.png", "clean project-local res:// path"),
+    ],
+)
+def test_snapshot_rejects_provided_rows_with_incomplete_runtime_columns(
+    tmp_path, runtime_type, runtime_path, error
+):
+    """A `provided` row is resolvable only once its runtime columns are filled."""
+    assets_md = tmp_path / "ASSETS.md"
+    runtime_file = tmp_path / "assets" / "user" / "hero.png"
+    runtime_file.parent.mkdir(parents=True)
+    runtime_file.write_bytes(b"png")
+    assets_md.write_text(
+        "# Assets\n\n"
+        "| # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |\n"
+        "|---|-----|------|------|------|-------------------|--------------|--------------|--------|\n"
+        f"| 1 | v0.1.0 | hero | sprite | 64x64 | direct_runtime | {runtime_type} | {runtime_path} | provided |\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AssetResultRegistrationError, match=error):
+        runtime_snapshot(assets_md, tag="v0.1.0", asset_ids=["hero"])
+
+
+@pytest.mark.parametrize(
     ("reference_path", "error"),
     [
         ("res://references/screen_ref.png", "project-local relative path"),
