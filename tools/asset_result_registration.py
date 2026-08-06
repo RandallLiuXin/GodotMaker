@@ -136,7 +136,9 @@ def _runtime_path_belongs_to_request(
         return False
     remainder = runtime_path.removeprefix(prefix)
     parts = remainder.split("/")
-    return (len(parts) > 1 and parts[0] == asset_id) or Path(parts[-1]).stem == asset_id
+    if len(parts) > 1:
+        return parts[0] == asset_id
+    return Path(parts[0]).stem == asset_id
 
 
 def _assert_re_registration_owner(

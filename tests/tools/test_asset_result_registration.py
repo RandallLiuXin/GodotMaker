@@ -135,7 +135,10 @@ def test_same_production_unit_can_reregister_its_generated_rows(tmp_path):
     assert assets_md.read_text(encoding="utf-8").count("| torch |") == 1
 
 
-def test_different_production_unit_cannot_overwrite_completed_logical_row(tmp_path):
+@pytest.mark.parametrize("second_asset_id", ["bazaar", "torch"])
+def test_different_production_unit_cannot_overwrite_completed_logical_row(
+    tmp_path, second_asset_id
+):
     assets_md = tmp_path / "ASSETS.md"
     _assets_md(assets_md, ["torch"])
     _touch_runtime(tmp_path, "torch")
@@ -148,7 +151,7 @@ def test_different_production_unit_cannot_overwrite_completed_logical_row(tmp_pa
     )
     original = assets_md.read_text(encoding="utf-8")
 
-    second_path = "res://assets/generated/scene-prop-set/bazaar/torch.tres"
+    second_path = f"res://assets/generated/scene-prop-set/{second_asset_id}/torch.tres"
     second_file = tmp_path / second_path.removeprefix("res://")
     second_file.parent.mkdir(parents=True)
     second_file.write_text("[gd_resource type=\"AtlasTexture\" format=3]\n", encoding="utf-8")
@@ -160,7 +163,9 @@ def test_different_production_unit_cannot_overwrite_completed_logical_row(tmp_pa
     second_request = tmp_path / "bazaar-request.json"
     _request(second_request, ["torch"])
     second_request.write_text(
-        second_request.read_text(encoding="utf-8").replace('"asset_id": "market"', '"asset_id": "bazaar"'),
+        second_request.read_text(encoding="utf-8").replace(
+            '"asset_id": "market"', f'"asset_id": "{second_asset_id}"'
+        ),
         encoding="utf-8",
     )
 
