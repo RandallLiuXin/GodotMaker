@@ -23,7 +23,7 @@ from asset_build_record import (
     read_validation_record,
 )
 from asset_skill_contract_check import AssetContractError, check_request, check_result
-from asset_family_registry import FamilyRegistryError, variant_for_request
+from asset_family_registry import FamilyRegistryError, spec as family_spec, variant_for_request
 
 
 RUNTIME_STATUS = "generated"
@@ -91,6 +91,30 @@ def _res_to_file(project_root: Path, resource_path: str) -> Path:
     return candidate
 
 
+def _reference_to_file(project_root: Path, reference_path: str) -> Path:
+    """Resolve a reference-only result path without treating it as ``res://``."""
+    if (
+        not isinstance(reference_path, str)
+        or not reference_path
+        or reference_path.startswith("res://")
+        or Path(reference_path).is_absolute()
+    ):
+        raise AssetResultRegistrationError(
+            "reference path must be a project-local relative path: "
+            f"{reference_path!r}"
+        )
+    candidate = (project_root / reference_path).resolve()
+    try:
+        candidate.relative_to(project_root.resolve())
+    except ValueError as exc:
+        raise AssetResultRegistrationError(
+            f"reference path resolves outside the project: {reference_path}"
+        ) from exc
+    if not candidate.is_file():
+        raise AssetResultRegistrationError(f"reference file is missing: {reference_path}")
+    return candidate
+
+
 def _logical_id(output: dict[str, Any], *, single: bool, request_asset_id: str | None) -> str:
     name = output.get("name")
     if isinstance(name, str) and name.strip():
@@ -122,7 +146,19 @@ def _asset_outputs(
     if result["validation"].get("passed") is not True:
         raise AssetResultRegistrationError("Asset Skill result validation did not pass")
 
-    outputs = result["outputs"]
+    try:
+        reference_only = family_spec(result["asset_type"]).is_reference_only
+    except FamilyRegistryError as exc:
+        raise AssetResultRegistrationError(str(exc)) from exc
+
+    # Runtime-family reference outputs are validated production evidence, not
+    # logical assets. Reference-only families (currently screen-reference)
+    # retain their reference output because it is the asset being registered.
+    outputs = [
+        output
+        for output in result["outputs"]
+        if output["role"] == "runtime" or reference_only
+    ]
     records: dict[str, dict[str, str]] = {}
     for output in outputs:
         logical_id = _logical_id(
@@ -481,7 +517,6 @@ def register_result(
     _assert_validation_record_matches(project_root, request, outputs)
 
     for logical_id, output in outputs.items():
-        _res_to_file(project_root, output["path"])
         index, cells = matches[logical_id]
         if cells[columns["Status"]] not in {"MISSING", RUNTIME_STATUS, REFERENCE_STATUS}:
             raise AssetResultRegistrationError(
@@ -489,6 +524,7 @@ def register_result(
                 f"{cells[columns['Status']]!r}"
             )
         if output["role"] == "runtime":
+            _res_to_file(project_root, output["path"])
             if loader is not None:
                 loader(project_root, output["path"], output["type"])
             elif godot_path is None:
@@ -497,6 +533,8 @@ def register_result(
                 )
             else:
                 _godot_loader(godot_path, project_root, output["path"], output["type"])
+        else:
+            _reference_to_file(project_root, output["path"])
 
     rewritten = list(lines)
     updated: list[str] = []

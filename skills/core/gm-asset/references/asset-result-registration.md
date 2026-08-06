@@ -13,9 +13,12 @@ Runtime Path must describe the final resource a worker loads. A PNG is valid
 for `Texture2D`; `AtlasTexture`, `SpriteFrames`, `Theme`,
 `StyleBoxTexture`, and `TileSet` must use their final native resource path.
 
-`reference` outputs are source/reference evidence, not runtime assets. They
-use Runtime Type `reference`, finish as `source_ready`, and are excluded from
-all worker snapshots.
+For runtime families, `reference` outputs are already-validated source or
+canonical evidence: they do not create a logical row, enter the registration
+comparison set, or appear in worker snapshots. A reference-only family such as
+`screen-reference` registers its one reference output with Runtime Type
+`reference` and Status `source_ready`; its path is a project-local relative
+path such as `references/title_screen.png`, not `res://`.
 
 ## Atomic registration
 
@@ -28,9 +31,10 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
 ```
 
 The command fails before changing `ASSETS.md` if the declared and returned
-logical output sets differ, an output is duplicated or unknown, a path escapes
-the project or does not exist, or Godot cannot load the resource as its stated
-type. It never writes only a subset of a multi-output production unit.
+runtime logical output sets differ, a runtime output is duplicated or unknown,
+a path escapes the project or does not exist, or Godot cannot load a runtime
+resource as its stated type. It never writes only a subset of a multi-output
+production unit.
 
 ## Worker handoff
 
