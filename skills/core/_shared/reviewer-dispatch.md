@@ -33,13 +33,19 @@ Agent({
 {Anything you want the reviewer to pay special attention to}
 
 ### Asset Runtime Snapshot                               [REQUIRED when files use visual assets]
-{Stable entry `godot_artifact` paths, `source_layout.type` values, frame_count,
-and the `assets/generated/<production_family>/<asset_id>/<asset_id>.json` support
-metadata paths used by the implementation.
-For `grid_sheet` with frame_count > 1, include the action metadata path,
-expected runtime animation behavior, and temporary-FX teardown requirement.
-For `region_atlas`, include the atlas metadata path; name the expected region
-only when the element-to-region match is not obvious from the binding.}
+{Resolve each required asset from the authoritative catalog and paste only the
+snapshot objects emitted by:
+
+```bash
+python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
+  --snapshot --asset-id <asset_id>
+```
+
+Each object contains only `asset_id`, `godot_artifact.type`, and
+`godot_artifact.path`.
+Do not add source layouts, frame data, atlas regions, provider evidence, or
+support metadata paths. Describe required animation behavior or temporary-FX
+lifecycle in `Context`, not in the snapshot.}
 ```
 
 ## Handling the Reviewer's Report

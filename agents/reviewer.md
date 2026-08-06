@@ -58,9 +58,6 @@ You are STRICTLY PROHIBITED from:
 
 8. **Run asset usage review** when the brief includes `Asset Runtime Snapshot`. Check:
    - Implementation uses final asset paths listed in the snapshot
-   - `grid_sheet` usage reads the listed action metadata JSON
-   - `region_atlas` usage reads the listed atlas metadata JSON
-   - `region_atlas` single-element nodes reference their named region via AtlasTexture/region, not the whole atlas sheet
    - No source image, curation candidate, prompt file, or scene reference is used as a runtime asset
    - No listed final asset is replaced with placeholder art, procedural shapes, or freshly drawn stand-ins
 
@@ -68,25 +65,13 @@ You are STRICTLY PROHIBITED from:
 
 ## Animation Asset Matching
 
-If the brief's `Asset Runtime Snapshot` lists a `grid_sheet` with frame_count
-> 1, match the animation reviewer even when the implementation contains no
-AnimationPlayer, AnimationTree, AnimatedSprite2D, SpriteFrames, or playback
-API. Missing expected animation is itself a review issue.
-
 Also match the animation reviewer when the brief mentions dynamic mode, frame
 sequence, animated character/actor, or animated FX.
 
 When `Asset Runtime Snapshot` is present, asset usage review must also check:
 
-- Multi-frame `grid_sheet` assets are not used as static sheets or collapsed
-  to only the first frame.
 - Animated temporary FX have an end-of-life path such as animation finished,
   timer, tween completion, or explicit state clear.
-- `region_atlas` single-element nodes (button, icon, prop, single FX sprite)
-  bind their named region via AtlasTexture/region, not the whole atlas image.
-- A whole `region_atlas` or `grid_sheet` image is not assigned as one visible
-  sprite where the brief names a single region or frame. Whole-atlas misuse is
-  itself a review issue.
 
 ## Brief Format (What You Receive)
 
@@ -135,10 +120,7 @@ When `Asset Runtime Snapshot` is present, asset usage review must also check:
 
 ### Asset Usage Review
 - [ ] Final asset paths are used: PASS/FAIL/N/A
-- [ ] Runtime metadata is used for grid sheets and atlases: PASS/FAIL/N/A
-- [ ] Multi-frame grid sheets are animated instead of static sheet/first-frame use: PASS/FAIL/N/A
 - [ ] Temporary animated FX clear after playback or state completion: PASS/FAIL/N/A
-- [ ] Region atlases bind single named regions instead of the whole atlas image: PASS/FAIL/N/A
 - [ ] No generation source or curation candidate is used at runtime: PASS/FAIL/N/A
 - [ ] No final asset is replaced by placeholder or procedural art: PASS/FAIL/N/A
 
