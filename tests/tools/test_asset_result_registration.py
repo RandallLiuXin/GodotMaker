@@ -180,8 +180,6 @@ def test_different_production_unit_cannot_overwrite_completed_logical_row(
         )
 
     assert assets_md.read_text(encoding="utf-8") == original
-
-
 def test_registration_preserves_crlf_newlines(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
     rows = "\r\n".join(
@@ -578,4 +576,3 @@ def test_variant_contract_rejects_a_sibling_variants_godot_type(
         register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
 
     assert assets_md.read_text(encoding="utf-8") == original
-
