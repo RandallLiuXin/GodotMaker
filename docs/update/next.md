@@ -8,7 +8,7 @@
 Append your change under the appropriate category below. Use this format:
 
 ```
-- Brief description of the change (#PR_NUMBER) 鈥?@author
+- Brief description of the change (#PR_NUMBER) — @author
 ```
 
 If no category fits, add a new one following [Keep a Changelog](https://keepachangelog.com/) conventions.
