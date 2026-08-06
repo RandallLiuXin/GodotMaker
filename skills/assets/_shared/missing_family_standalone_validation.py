@@ -16,8 +16,8 @@ from typing import Any
 import warnings
 
 from asset_compiler import CompileRequest, CompilerError, build_default_registry
-from asset_compiler._stable_entry import (
-    StableEntryError,
+from asset_compiler._runtime_contract import (
+    RuntimeContractError,
     assert_within_output_dir,
     resolve_res_path,
     safe_identifier,
@@ -493,7 +493,7 @@ def _check_props(
             )
         try:
             safe_identifier(name, f"{family} slots[{index}].name")
-        except StableEntryError as exc:
+        except RuntimeContractError as exc:
             raise MissingFamilySkillError(str(exc)) from exc
         rectangles.append(tuple(rect))
         try:
@@ -1021,7 +1021,7 @@ def compile_and_validate(
                 raise ValidationError(
                     f"reference output or preview is not a non-empty file: {path}"
                 )
-    except (OSError, StableEntryError, ValidationError) as exc:
+    except (OSError, RuntimeContractError, ValidationError) as exc:
         return (
             _reference_failure(result, exc)
             if reference_path is not None

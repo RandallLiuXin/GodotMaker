@@ -115,23 +115,18 @@ STOP condition occurs. Never mark the first failed check as the final result.
 1. Generate and preserve a raw source image. Keep the foreground on a solid
    `#FF00FF` background before deterministic cleanup, with no text or UI.
 2. Choose the static or animated path below. Keep raw sheets, final PNGs,
-   reports, source layout, stable entry, and Godot artifact in the trace.
+   reports, source layout, final artifact, and Godot artifact in the trace.
 3. Construct the shared asset result and run
    `standalone_validation.compile_and_validate()` for the applicable L0-L4
    checks. Read the diagnostic, then repair source art, processing parameters,
    metadata, paths, or Godot artifact and rerun the checks.
-4. The entry builders below write `processing_status: compiled`. Only after all
-   applicable L0-L4 levels pass, set `validation.passed: true`, write the final
-   result, run the request/result handoff checker, and re-run the same entry
-   builder with `--result <result.json>` to promote that same stable entry to
-   `processing_status: ready`. That run does not recompile: it recomputes the
-   build fingerprint the compiled run recorded and fails closed on any drift,
-   so never hand-edit a draft to `ready` instead. The fingerprint catches an
-   artifact that changed between compiling and promoting; it cannot tell that
-   the build was validated, so do not reuse an older result after regenerating. Then write that same
-   generic result object to `ASSET_RESULT.json` in the project root and return
-   only its JSON contents: no Markdown links, prose, or alternate result shape.
-   L5/L6 visual judgment belongs to the private Eval, not this production Skill.
+4. Only after all applicable L0-L4 levels pass, set `validation.passed: true`,
+   write the final result, and run the request/result handoff checker. Preserve
+   the build fingerprint as evidence; `/gm-asset` validates the result and
+   records it directly in `ASSETS.md`. Then write that generic result object to
+   `ASSET_RESULT.json` in the project root and return only its JSON contents:
+   no Markdown links, prose, or alternate result shape. L5/L6 visual judgment
+   belongs to the private Eval, not this production Skill.
 
 ### Godot executable for L3/L4
 
@@ -162,23 +157,7 @@ the detected regions it returns `needs_regeneration` without partial output.
 Treat that as a repair diagnostic: regenerate or relayout the source, or correct
 the intended naming; never drop regions or silently assemble a different effect.
 
-After selecting one candidate at the stable PNG path, write its compiler-bound
-entry with:
-
-```bash
-python tools/asset_curation_entry_draft.py \
-  --report <curation-report.json> \
-  --candidate <candidate> \
-  --request <request.json> \
-  --asset-id <asset_id> \
-  --tag <tag> \
-  --production-family fx-bundle \
-  --project-root <project_root> \
-  --out <entry.json>
-```
-
-This produces the `single -> Texture2D` compiled entry. Do not promote or hand
-it to a worker until the production loop's L0-L4 validation has passed.
+After selecting one candidate at the final PNG path, compile and validate its Texture2D output through the shared route. Preserve the reports and fingerprint as result evidence; do not create a registration record.
 
 ### Animated path
 
@@ -195,24 +174,9 @@ Pass `--final-dir assets/generated/fx-bundle/<asset_id>` and
 the final prefix: each declared `frame_name` already carries its own ordered
 frame label, so omitting the action prefix changes the stable runtime path. The
 separate final sheet name preserves the one stable source-layout path consumed
-by the SpriteFrames entry compiler.
+by the SpriteFrames compiler.
 
-Compile its one action through the shared `grid_sheet -> SpriteFrames` route:
-
-```bash
-python tools/asset_action_entry_draft.py \
-  --metadata <pipeline-meta.json> \
-  --request <request.json> \
-  --asset-id <asset_id> \
-  --tag <tag> \
-  --production-family fx-bundle \
-  --project-root <project_root> \
-  --out <entry.json>
-```
-
-The builder verifies frame order, grid, timing, loop state, center alignment,
-stable paths, and compiles exactly one `SpriteFrames` resource into a compiled
-entry. The production loop promotes it only after L0-L4 pass.
+Compile and validate the one SpriteFrames artifact through the shared route. Preserve frame order, grid, timing, loop state, alignment, paths, and fingerprint as result evidence.
 
 ## Result shape
 

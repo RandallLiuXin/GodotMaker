@@ -39,9 +39,9 @@ path or STOP. Never silently switch providers. For `codex`, non-empty
 references require the `image_gen` call's `referenced_image_paths` argument.
 
 This Skill can be invoked directly or by an orchestrator with the same contract.
-Do not read or write `ASSETS.md`, tags, stage state, generated manifests, or
-worker dispatch state. The `/gm-asset` manager later registers the approved
-finalize report through `asset_finalize_entry_draft.py`.
+Do not read or write `ASSETS.md`, tags, stage state, generated indexes, or
+worker dispatch state. The `/gm-asset` manager later registers its validated
+generic result directly in the matching catalog row.
 
 ## Production contract
 
@@ -90,10 +90,9 @@ python tools/asset_image_finalize.py \
   > .godotmaker/asset-generation/reports/<asset_id>_finalize.json
 ```
 
-If aspect validation or finalization fails, STOP. The manager must use the
-captured finalize report to create the stable entry draft with
-`source_layout.type: reference`, `processing_status: source_ready`, and no
-`godot_artifact`; never hand-write that entry.
+If aspect validation or finalization fails, STOP. Keep the captured finalize
+report as result evidence; the reference result has no runtime artifact and is
+registered as `source_ready` by the manager.
 
 ## Result
 

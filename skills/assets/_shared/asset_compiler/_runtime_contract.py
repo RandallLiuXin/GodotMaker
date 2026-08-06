@@ -1,8 +1,8 @@
-"""Import bridge to the repository's stable-entry contract module.
+"""Import bridge to the repository's runtime-contract contract module.
 
 The compiler registry must route on exactly the layout/artifact compatibility
-set the stable-entry validator enforces. Re-declaring that set here would let
-the two drift, and an artifact could compile that a stable entry then rejects.
+set the runtime-contract validator enforces. Re-declaring that set here would let
+the two drift, and an artifact could compile that a runtime record then rejects.
 So the registry imports the frozen relation instead of copying it.
 
 ``tools/`` is a flat script directory rather than an installed package. The
@@ -34,13 +34,13 @@ if _TOOLS_DIR is None:
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.append(str(_TOOLS_DIR))
 
-from asset_stable_entry import (  # noqa: E402
+from asset_runtime_contract import (  # noqa: E402
     LAYOUT_ARTIFACT_TYPES,
     PRODUCTION_FAMILIES,
     REFERENCE_FAMILIES,
     REFERENCE_LAYOUTS,
     SOURCE_LAYOUT_TYPES,
-    StableEntryError,
+    RuntimeContractError,
     _check_res_path,
     _resolve_res_path,
     _safe_identifier,
@@ -52,7 +52,7 @@ from asset_stable_entry import (  # noqa: E402
 def resolve_res_path(project_root: Path, res_path: str, *, label: str = "path") -> Path:
     """Resolve a ``res://`` path to an absolute file under ``project_root``.
 
-    Both halves of this wrapper exist to make the stable-entry resolver safe to
+    Both halves of this wrapper exist to make the runtime-contract resolver safe to
     share rather than to copy:
 
     - it slices the prefix without checking it, so a path that carries none is
@@ -72,7 +72,7 @@ def resolve_res_path(project_root: Path, res_path: str, *, label: str = "path") 
 def safe_identifier(value: str, label: str) -> str:
     """Validate one cross-platform stable-identity segment.
 
-    ``asset_id`` and related names must use the canonical stable-entry rule so
+    ``asset_id`` and related names must use the canonical runtime-contract rule so
     a compiler cannot accept an identifier that a later manifest or Windows
     filesystem rejects. The canonical helper is deliberately shared rather than
     copied here; it covers control characters and reserved device names as well
@@ -87,7 +87,7 @@ __all__ = [
     "REFERENCE_FAMILIES",
     "REFERENCE_LAYOUTS",
     "SOURCE_LAYOUT_TYPES",
-    "StableEntryError",
+    "RuntimeContractError",
     "assert_within_output_dir",
     "check_output_path",
     "resolve_res_path",

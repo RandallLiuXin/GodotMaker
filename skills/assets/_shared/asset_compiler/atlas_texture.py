@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ._stable_entry import StableEntryError, resolve_res_path, safe_identifier
+from ._runtime_contract import RuntimeContractError, resolve_res_path, safe_identifier
 from .contract import CompileRequest, CompilerError, require_text
 from .registry import CompilerRegistry, CompilerRoute
 
@@ -106,19 +106,19 @@ def read_atlas_texture_input(request: Any) -> AtlasTextureInput:
     )
     try:
         safe_identifier(logical_asset_id, "AtlasTexture spec.logical_asset_id")
-    except StableEntryError as exc:
+    except RuntimeContractError as exc:
         raise CompilerError(str(exc)) from exc
     if not metadata_path.endswith(".json"):
         raise CompilerError("AtlasTexture spec.metadata_path must end in .json")
     try:
         metadata_file = resolve_res_path(request.project_root, metadata_path, label="AtlasTexture spec.metadata_path")
-    except Exception as exc:  # stable-entry error vocabulary belongs behind CompilerError
+    except Exception as exc:  # runtime-contract error vocabulary belongs behind CompilerError
         raise CompilerError(str(exc)) from exc
     try:
         source_file = resolve_res_path(
             request.project_root, request.source_path, label="source_path"
         )
-    except Exception as exc:  # stable-entry error vocabulary belongs behind CompilerError
+    except Exception as exc:  # runtime-contract error vocabulary belongs behind CompilerError
         raise CompilerError(str(exc)) from exc
     if metadata_file.parent != source_file.parent:
         raise CompilerError("AtlasTexture metadata_path must be beside source_path")

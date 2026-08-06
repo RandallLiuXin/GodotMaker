@@ -23,8 +23,8 @@ from asset_compiler import (  # noqa: E402
     build_default_registry,
     texture2d,
 )
-from asset_compiler._stable_entry import StableEntryError, resolve_res_path  # noqa: E402
-from asset_stable_entry import (  # noqa: E402
+from asset_compiler._runtime_contract import RuntimeContractError, resolve_res_path  # noqa: E402
+from asset_runtime_contract import (  # noqa: E402
     GODOT_ARTIFACT_KEYS,
     LAYOUT_ARTIFACT_TYPES,
     validate_entry,
@@ -679,7 +679,7 @@ def test_first_commit_failure_leaves_no_artifact_or_receipt(project, monkeypatch
 
 
 def test_a_writing_route_may_not_hand_back_its_source_image(project):
-    # tools/asset_stable_entry.py calls this out by name: declaring the source
+    # tools/asset_runtime_contract.py calls this out by name: declaring the source
     # image as the artifact is the shortcut LAYOUT_ARTIFACT_TYPES exists to
     # reject. A worker binding that PNG as SpriteFrames gets a frozen sprite.
     source = project / "assets/generated/character-bundle/hero/hero.png"
@@ -948,7 +948,7 @@ def test_relative_project_root_compiles_without_double_anchoring(tmp_path, monke
 
 @pytest.mark.parametrize("path", ["", "assets/generated/ui-kit/panel/panel.png", "/etc/passwd"])
 def test_exported_resolver_rejects_non_resource_paths(project, path):
-    with pytest.raises(StableEntryError, match="res:// path"):
+    with pytest.raises(RuntimeContractError, match="res:// path"):
         resolve_res_path(project, path)
 
 
@@ -1129,7 +1129,7 @@ def test_bridge_imports_the_package_without_tools_on_the_path(tmp_path):
     code = (
         "import sys\n"
         f"sys.path.insert(0, {str(SHARED_DIR)!r})\n"
-        "assert 'asset_stable_entry' not in sys.modules\n"
+        "assert 'asset_runtime_contract' not in sys.modules\n"
         "import asset_compiler\n"
         "print(asset_compiler.build_default_registry().resolve('single', 'Texture2D').compiler_id)\n"
     )
@@ -1147,12 +1147,12 @@ def test_bridge_imports_the_package_without_tools_on_the_path(tmp_path):
 
 def test_bridge_reports_a_missing_tools_directory_diagnosably(tmp_path):
     # A publish layout that moves the package away from tools/ must say so
-    # instead of raising a bare ModuleNotFoundError: asset_stable_entry.
+    # instead of raising a bare ModuleNotFoundError: asset_runtime_contract.
     package = tmp_path / "a" / "b" / "c" / "d" / "asset_compiler"
     package.mkdir(parents=True)
     source = SHARED_DIR / "asset_compiler"
     for name in (
-        "__init__.py", "_stable_entry.py", "contract.py", "registry.py",
+        "__init__.py", "_runtime_contract.py", "contract.py", "registry.py",
         "texture2d.py", "atlas_texture.py", "sprite_frames.py", "theme.py",
     ):
         (package / name).write_bytes((source / name).read_bytes())

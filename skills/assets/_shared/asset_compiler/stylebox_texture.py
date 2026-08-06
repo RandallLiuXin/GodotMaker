@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ._stable_entry import resolve_res_path
+from ._runtime_contract import resolve_res_path
 from .contract import CompileRequest, CompilerError
 from .registry import CompilerRegistry, CompilerRoute
 

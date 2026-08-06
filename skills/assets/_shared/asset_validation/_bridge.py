@@ -3,7 +3,7 @@
 The ladder must judge an asset against exactly the contracts the rest of the
 pipeline enforces, so it imports them instead of restating them:
 
-- ``tools/asset_stable_entry.py`` owns the entry schema (L0) and the stable
+- ``tools/asset_runtime_contract.py`` owns the entry schema (L0) and the stable
   output-path relation the on-disk checks (L1, L2) resolve against;
 - ``asset_compiler`` next to this package owns the ``(source_layout, artifact
   type)`` routing relation L2 requires a registered compiler for;
@@ -49,16 +49,16 @@ from asset_compiler import (  # noqa: E402
     build_default_registry,
 )
 from asset_compiler.registry import is_same_file  # noqa: E402
-from asset_stable_entry import (  # noqa: E402
+from asset_runtime_contract import (  # noqa: E402
     LAYOUT_ARTIFACT_TYPES,
     REFERENCE_FAMILIES,
     REFERENCE_LAYOUTS,
-    StableEntryError,
+    RuntimeContractError,
     assert_within_output_dir,
     check_output_path,
     validate_entry,
 )
-from asset_compiler._stable_entry import resolve_res_path  # noqa: E402
+from asset_compiler._runtime_contract import resolve_res_path  # noqa: E402
 
 __all__ = [
     "LAYOUT_ARTIFACT_TYPES",
@@ -67,7 +67,7 @@ __all__ = [
     "CompileReceipt",
     "CompilerError",
     "CompilerRegistry",
-    "StableEntryError",
+    "RuntimeContractError",
     "assert_within_output_dir",
     "build_default_registry",
     "check_output_path",

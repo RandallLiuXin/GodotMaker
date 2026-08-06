@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from asset_skill_contract_check import AssetContractError, check_request, check_result
+from asset_family_registry import FAMILIES
 
 
 RUNTIME_STATUS = "generated"
@@ -139,18 +140,58 @@ def _asset_outputs(
     return records
 
 
-def _declared_output_ids(request: dict[str, Any], outputs: dict[str, dict[str, str]]) -> set[str]:
-    """Return the logical outputs explicitly enumerated by a request.
+def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """Return the complete, request-owned logical output contract.
 
-    A scene-prop-set slot declaration names every independently consumable
-    resource. Other multi-output families deliberately leave naming to the
-    Skill result, while a single-output request declares its ``asset_id``.
+    A result must never define its own registration set. Scene-prop-set slots
+    are an existing fixed output declaration. Every other multi-output family
+    must declare ``spec.outputs`` before production; each item names exactly
+    one logical runtime/reference output and its expected final Godot type.
     """
-    if request["asset_type"] == "scene-prop-set":
-        return {slot["name"] for slot in request["spec"]["slots"]}
-    if len(outputs) == 1:
-        return {request["asset_id"]}
-    return set(outputs)
+    family = request["asset_type"]
+    allowed_types = set(FAMILIES[family].artifact_types)
+    output_cardinality = {variant.runtime_outputs for variant in FAMILIES[family].variants}
+    if family == "scene-prop-set":
+        return {
+            slot["name"]: {"role": "runtime", "type": "AtlasTexture"}
+            for slot in request["spec"]["slots"]
+        }
+    contract = request.get("spec", {}).get("outputs")
+    if contract is None:
+        # A single-output family has one unambiguous logical asset. Multi-output
+        # families are deliberately not inferred from a result or ASSETS.md.
+        if output_cardinality == {"one"}:
+            return {request["asset_id"]: {"role": "runtime", "type": ""}}
+        if output_cardinality == {"none"}:
+            return {request["asset_id"]: {"role": "reference", "type": "reference"}}
+        raise AssetResultRegistrationError(
+            f"{family} request must declare every logical output in spec.outputs"
+        )
+    if not isinstance(contract, list) or not contract:
+        raise AssetResultRegistrationError("request.spec.outputs must be a non-empty list")
+    declared: dict[str, dict[str, str]] = {}
+    for index, item in enumerate(contract):
+        if not isinstance(item, dict):
+            raise AssetResultRegistrationError(f"request.spec.outputs[{index}] must be an object")
+        name, role = item.get("name"), item.get("role")
+        if not isinstance(name, str) or not name.strip():
+            raise AssetResultRegistrationError(f"request.spec.outputs[{index}].name must be non-empty")
+        if name in declared:
+            raise AssetResultRegistrationError(f"duplicate declared logical output: {name}")
+        if role == "runtime":
+            godot_type = item.get("godot_type")
+            if not isinstance(godot_type, str) or godot_type not in allowed_types:
+                raise AssetResultRegistrationError(
+                    f"request.spec.outputs[{index}].godot_type is not allowed for {family}: {godot_type!r}"
+                )
+            declared[name] = {"role": role, "type": godot_type}
+        elif role == "reference":
+            declared[name] = {"role": role, "type": "reference"}
+        else:
+            raise AssetResultRegistrationError(
+                f"request.spec.outputs[{index}].role must be runtime or reference"
+            )
+    return declared
 
 
 def _godot_loader(godot_path: str, project_root: Path, resource_path: str, expected: str) -> None:
@@ -223,14 +264,24 @@ def register_result(
     outputs = _asset_outputs(result, request_asset_id=request_asset_id)
     if request["asset_type"] != result["asset_type"]:
         raise AssetResultRegistrationError("request and result asset_type do not match")
-    expected_outputs = _declared_output_ids(request, outputs)
-    if set(outputs) != expected_outputs:
+    expected_outputs = _declared_outputs(request)
+    if set(outputs) != set(expected_outputs):
         raise AssetResultRegistrationError(
             "result output set does not match its request declaration: expected "
             + ", ".join(sorted(expected_outputs))
             + "; got "
             + ", ".join(sorted(outputs))
         )
+    for logical_id, expected in expected_outputs.items():
+        actual = outputs[logical_id]
+        if actual["role"] != expected["role"]:
+            raise AssetResultRegistrationError(
+                f"result output {logical_id} role {actual['role']!r} does not match request {expected['role']!r}"
+            )
+        if expected["type"] and actual["type"] != expected["type"]:
+            raise AssetResultRegistrationError(
+                f"result output {logical_id} Godot type {actual['type']!r} does not match request {expected['type']!r}"
+            )
     lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
     _, columns = _runtime_header(lines)
     default_newline = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"

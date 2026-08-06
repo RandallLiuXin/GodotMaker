@@ -30,7 +30,7 @@ from ._bridge import (
     CompileReceipt,
     CompilerError,
     CompilerRegistry,
-    StableEntryError,
+    RuntimeContractError,
     assert_within_output_dir,
     build_default_registry,
     is_same_file,
@@ -86,7 +86,7 @@ class _Run:
 
 
 class ValidationLadder:
-    """Runs L0-L4 over one stable entry and returns the readiness verdict.
+    """Runs L0-L4 over one runtime record and returns the readiness verdict.
 
     The ladder never raises for a bad asset -- a failure is a result, because the
     caller has to record which level failed and why. It raises only when it is
@@ -119,7 +119,7 @@ class ValidationLadder:
         receipt: CompileReceipt | None = None,
         mode: str = PROMOTION,
     ) -> LadderResult:
-        """Validate one stable entry and return every level's outcome."""
+        """Validate one runtime record and return every level's outcome."""
         if not isinstance(project_root, (str, Path)):
             return self._verdict(
                 _Run(entry=entry, project_root=Path("."), spec={}),
@@ -145,7 +145,7 @@ class ValidationLadder:
         for spec_row, step in zip(LEVELS, steps):
             try:
                 details = step(run)
-            except (ValidationError, StableEntryError, CompilerError) as exc:
+            except (ValidationError, RuntimeContractError, CompilerError) as exc:
                 results.append(
                     LevelResult(
                         level=spec_row.level,
@@ -183,7 +183,7 @@ class ValidationLadder:
 
     # ------------------------------------------------------------------ L0
     def _l0(self, run: _Run) -> dict[str, Any]:
-        """The entry itself must satisfy the v1 stable-entry contract."""
+        """The entry itself must satisfy the v1 runtime-contract contract."""
         validated = validate_entry(run.entry, project_root=run.project_root)
 
         family = validated["production_family"]
@@ -292,7 +292,7 @@ class ValidationLadder:
         """Bind a supplied compile receipt to the entry it claims to describe.
 
         Promotion always supplies one. Revalidation may omit it because an
-        already-ready stable entry can outlive the compiler process; when it is
+        already-ready runtime record can outlive the compiler process; when it is
         supplied, it must still be this asset's.
         """
         receipt = run.receipt

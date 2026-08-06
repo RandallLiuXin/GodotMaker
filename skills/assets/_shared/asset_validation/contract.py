@@ -15,7 +15,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-# The stable-entry processing statuses this layer may conclude. The intermediate
+# The runtime-contract processing statuses this layer may conclude. The intermediate
 # statuses (``pending``, ``source_ready``, ``compiled``) describe how far
 # production got and are written by the producing step; the ladder only decides
 # whether that production is worker-consumable.
@@ -47,8 +47,8 @@ LEVELS: tuple[LevelSpec, ...] = (
     LevelSpec(
         level="L0",
         name="contract",
-        consumes="the stable entry object and the project root",
-        proves="the entry satisfies the v1 stable-entry schema and path contract",
+        consumes="the runtime record object and the project root",
+        proves="the entry satisfies the v1 runtime-contract schema and path contract",
     ),
     LevelSpec(
         level="L1",
@@ -138,7 +138,7 @@ class LadderResult:
 
     @property
     def processing_status(self) -> str:
-        """The stable-entry status this verdict permits: ``ready`` or ``failed``."""
+        """The runtime-contract status this verdict permits: ``ready`` or ``failed``."""
         return STATUS_READY if self.ready else STATUS_FAILED
 
     def to_dict(self) -> dict[str, Any]:

@@ -20,10 +20,9 @@ the result may carry, and the skill must not read:
 - `assets/manifest.json` or `.godotmaker/asset-generation/manifest.json`;
 - manifest registration, stable entries, or worker dispatch.
 
-Registration concepts — `tag`, `stage`, `manifest_entry`, `godot_artifact`,
-`source_layout`, `processing_status` — belong to `/gm-asset` and the stable-entry
-schema, never to this contract. The schemas set `additionalProperties: false`, so
-a leaked pipeline field fails closed.
+Registration concepts — `tag`, `stage`, `manifest_entry`, and any index or
+worker-handoff data — never belong to this contract. The schemas set
+`additionalProperties: false`, so leaked pipeline fields fail closed.
 
 ## Files
 
@@ -118,9 +117,9 @@ When `validation.passed` is `true`, `outputs` has at least one entry. A failed
 result (`validation.passed: false`) may use an empty `outputs` array to state
 that no usable asset was produced. One successful invocation may return
 multiple logical outputs (for example a `Theme` plus a `StyleBoxTexture`, or
-several actors); each is a separate entry, and `/gm-asset` registration turns
-each `runtime` output into its own stable entry with one primary
-`godot_artifact`.
+several actors). The request declares every logical output before production;
+`/gm-asset` atomically records the validated outputs directly in their matching
+`ASSETS.md` rows.
 
 | Field | Required | Type | Rule |
 |---|---|---|---|

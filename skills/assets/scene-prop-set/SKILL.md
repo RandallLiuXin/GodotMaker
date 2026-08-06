@@ -173,13 +173,10 @@ result has `outputs: []`, `validation.passed: false`, and explanatory notes; it
 must not expose partial runtime output.
 
 For `/gm-asset`, persist the successful generic result at
-`.godotmaker/asset-generation/<asset_id>-result.json`. The producer adapter
-validates it, then runs `tools/asset_scene_prop_set_entry_draft.py` with the
-first declared slot as the deterministic v1 primary artifact. The entry keeps
-the shared `source_layout: region_atlas`, one real `godot_artifact:
-AtlasTexture`, and `processing_status: ready`; the stable metadata and all
-other independent AtlasTexture files remain the authoritative set inventory.
-The Skill itself does not register entries or update stage documents.
+`.godotmaker/asset-generation/<asset_id>-result.json`. The declared slots are
+the complete output contract. The manager validates the result and directly
+registers every named AtlasTexture in its matching `ASSETS.md` row. The Skill
+itself does not register catalog rows or update stage documents.
 
 See `samples/result/market-scene.json` and
 `samples/atlas/market-scene.json` for the stable multi-output shape.

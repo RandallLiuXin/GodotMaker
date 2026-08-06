@@ -154,12 +154,23 @@ def test_reference_row_completes_without_entering_worker_runtime_snapshot(tmp_pa
     reference.parent.mkdir()
     reference.write_bytes(b"png")
     result = tmp_path / "reference-result.json"
-    _result(
-        result,
-        [{"role": "reference", "name": "screen_ref", "path": "res://references/screen_ref.png"}],
+    result.write_text(
+        json.dumps(
+            {
+                "asset_type": "screen-reference",
+                "outputs": [{"role": "reference", "name": "screen_ref", "path": "res://references/screen_ref.png"}],
+                "sources": [],
+                "previews": [],
+                "validation": {"passed": True},
+            }
+        ),
+        encoding="utf-8",
     )
     request = tmp_path / "request.json"
-    _request(request, ["screen_ref"])
+    request.write_text(
+        json.dumps({"asset_type": "screen-reference", "asset_id": "screen_ref", "brief": "reference"}),
+        encoding="utf-8",
+    )
 
     register_result(assets_md, result, tag=TAG, request_path=request, loader=_loader)
 
@@ -218,7 +229,18 @@ def test_runtime_families_register_their_final_declared_godot_artifact(
     artifact.write_bytes(b"artifact")
     request = tmp_path / "request.json"
     request.write_text(
-        json.dumps({"asset_type": family, "asset_id": asset_id, "brief": "runtime asset"}),
+        json.dumps(
+            {
+                "asset_type": family,
+                "asset_id": asset_id,
+                "brief": "runtime asset",
+                **(
+                    {"spec": {"outputs": [{"name": asset_id, "role": "runtime", "godot_type": godot_type}]}}
+                    if family in {"ui-kit", "card-kit"}
+                    else {}
+                ),
+            }
+        ),
         encoding="utf-8",
     )
     result = tmp_path / "result.json"
@@ -259,3 +281,75 @@ def test_runtime_families_register_their_final_declared_godot_artifact(
             },
         }
     ]
+
+
+@pytest.mark.parametrize(
+    ("family", "godot_type"),
+    [
+        ("compact-prop-pack", "AtlasTexture"),
+        ("platform-strip", "Texture2D"),
+        ("ui-kit", "Theme"),
+        ("card-kit", "StyleBoxTexture"),
+    ],
+)
+@pytest.mark.parametrize("case", ["missing", "duplicate", "unknown", "wrong_type"])
+def test_multi_output_families_use_request_owned_output_contracts(
+    tmp_path, family, godot_type, case
+):
+    names = ["first", "second"]
+    assets_md = tmp_path / "ASSETS.md"
+    _assets_md(assets_md, names)
+    request = tmp_path / "request.json"
+    request.write_text(
+        json.dumps(
+            {
+                "asset_type": family,
+                "asset_id": "bundle",
+                "brief": "two independently consumable assets",
+                "spec": {
+                    "outputs": [
+                        {"name": name, "role": "runtime", "godot_type": godot_type}
+                        for name in names
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    actual_names = names if case != "missing" else ["first"]
+    if case == "duplicate":
+        actual_names = ["first", "first", "second"]
+    if case == "unknown":
+        actual_names = ["first", "second", "unexpected"]
+    outputs = []
+    for name in actual_names:
+        artifact = tmp_path / "assets" / "generated" / family / f"{name}.tres"
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_bytes(b"artifact")
+        outputs.append(
+            {
+                "role": "runtime",
+                "name": name,
+                "path": "res://" + artifact.relative_to(tmp_path).as_posix(),
+                "godot_type": "AtlasTexture" if case == "wrong_type" and godot_type != "AtlasTexture" else ("Theme" if case == "wrong_type" else godot_type),
+            }
+        )
+    result = tmp_path / "result.json"
+    result.write_text(
+        json.dumps(
+            {
+                "asset_type": family,
+                "outputs": outputs,
+                "sources": [],
+                "previews": [],
+                "validation": {"passed": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+    original = assets_md.read_text(encoding="utf-8")
+
+    with pytest.raises(AssetResultRegistrationError):
+        register_result(assets_md, result, tag=TAG, request_path=request, loader=lambda *_: None)
+
+    assert assets_md.read_text(encoding="utf-8") == original

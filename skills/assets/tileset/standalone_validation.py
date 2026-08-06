@@ -1,7 +1,7 @@
 """Standalone L0-L4 execution for the TileSet Asset Skill.
 
 This module deliberately does not use ``ValidationLadder``. That shared ladder
-validates a registered stable entry, whereas a first-class asset skill receives
+validates a registered runtime record, whereas a first-class asset skill receives
 only the public request and result contract. The two boundaries must stay
 separate: this runner proves a standalone call without inventing tag, manifest,
 or processing-status state.
@@ -62,8 +62,8 @@ _configure_runtime_imports()
 
 from asset_compiler import CompileRequest, CompilerError, CompilerRegistry  # noqa: E402
 from asset_compiler import tileset as tileset_compiler  # noqa: E402
-from asset_compiler._stable_entry import (  # noqa: E402
-    StableEntryError,
+from asset_compiler._runtime_contract import (  # noqa: E402
+    RuntimeContractError,
     assert_within_output_dir,
     resolve_res_path,
 )
@@ -164,7 +164,7 @@ def compile_and_validate(
     links. L1 checks every declared atlas path. L2 compiles through a fresh
     registry and keeps its receipt inside this invocation. L3 asks headless
     Godot to load the returned runtime path, and L4 runs the registered TileSet
-    structure validator against the same explicit recipe. No stable entry is
+    structure validator against the same explicit recipe. No runtime record is
     constructed or read at any point.
     """
     try:
@@ -192,7 +192,7 @@ def compile_and_validate(
             )
             if not source_file.is_file() or source_file.stat().st_size <= 0:
                 raise ValidationError(f"tileset atlas source is not a non-empty file: {atlas_path}")
-    except (OSError, StableEntryError, ValidationError) as exc:
+    except (OSError, RuntimeContractError, ValidationError) as exc:
         return _failure(result, passed, "L1", exc)
 
     passed.append("L1")

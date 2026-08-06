@@ -6,7 +6,7 @@ Skill result and records the result outputs a worker can
 resolve. Which layout it may bind, which Godot artifact it compiles, which
 deterministic builder adapts the result, how many entries that produces, and
 which ``processing_status`` is its completion state used to be spread across
-``tools/asset_stable_entry.py``, ``tools/asset_skill_contract_check.py``, the
+``tools/asset_runtime_contract.py``, ``tools/asset_skill_contract_check.py``, the
 ``/gm-asset`` routing tables, ``references/asset-runtime-pipeline.md``, and a
 hand-maintained tuple in each test. Nothing tied those lists together, so a
 family could advertise a runtime delivery, validate it, and still have no

@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from asset_family_registry import FAMILY_NAMES
-from asset_stable_entry import StableEntryError, safe_identifier
+from asset_runtime_contract import RuntimeContractError, safe_identifier
 
 # The public families a request or result may name are exactly the first-class
 # Asset Skills the family registry declares.
@@ -158,7 +158,7 @@ def _check_scene_prop_set_spec(value: Any, *, issues: list[str]) -> None:
         else:
             try:
                 safe_identifier(name, f"{location}.name")
-            except StableEntryError as exc:
+            except RuntimeContractError as exc:
                 issues.append(str(exc))
         if not _non_empty_string(slot.get("source")):
             issues.append(f"{location}.source must be a non-empty string")
