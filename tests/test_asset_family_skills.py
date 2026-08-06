@@ -223,15 +223,15 @@ def test_gm_asset_dispatches_extracted_families_through_named_skills():
     for family in FAMILY_REGISTRY:
         assert f"| `{family}` | First-class Asset Skill: `{family}` |" in manager
         assert f"references/production-units/{family}.md" not in manager
-    assert "### First-Class Result Adapter" in manager
-    assert "does not register a generic result directly." in manager
+    assert "### First-Class Result Registration" in manager
+    assert "result-registration command" in manager
     assert "invoke it with the supplied generic request" in producer
-    assert "adapt its sources,\n   outputs, and validation evidence" in producer
-    assert "asset_scene_prop_set_entry_draft.py" in manager
+    assert "preserve its request,\n   result, sources, outputs, and validation evidence" in producer
+    assert "asset_result_registration.py" in manager
     assert "one provider source sheet" in producer
 
 
-def test_gm_asset_adapts_a_first_class_result_without_inventing_a_second_entry():
+def test_gm_asset_registers_every_first_class_result_output_atomically():
     """The manager's role in a first-class call is adapter, never author.
 
     A Skill call may deliver several logical outputs. Only one of them is the
@@ -245,18 +245,13 @@ def test_gm_asset_adapts_a_first_class_result_without_inventing_a_second_entry()
     producer = (REPO_ROOT / "agents" / "asset-producer.md").read_text(encoding="utf-8")
     flat = " ".join(manager.split())
 
-    assert "One Skill call may return several logical outputs." in flat
-    assert "Exactly one runtime output per logical asset becomes a stable entry" in flat
-    assert "Never draft a second entry or a `godot_artifact` for a reference." in flat
+    assert "One production unit may return many outputs." in flat
+    assert "Register all runtime outputs together or none" in flat
+    assert "do not choose an anchor output" in flat
 
-    # character-bundle hands back the resolved request, one report per action,
-    # and the validated result — that triple is what the builder binds together.
-    assert "archived resolved request" in flat
-    assert "one action processing report per required action" in flat
-    assert "registers exactly one worker-consumable `SpriteFrames` entry" in flat
-    assert "reaches `ready` only from a result whose L0-L4 levels all passed" in flat
-    assert "a user-supplied canonical is not republished at all" in flat
-    assert "archived resolved request" in " ".join(producer.split())
+    assert "send only the request/result to direct registration" in flat
+    assert "family-specific adapter state" in flat
+    assert "never choose a primary artifact" in producer
 
     # No family may fall back to a production-unit document any more.
     assert "production-unit document to read" in flat

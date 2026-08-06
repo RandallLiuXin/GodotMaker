@@ -39,10 +39,16 @@ Then read context:
 - `.godotmaker/verify_report.json` → mechanical-layer failures from the most recent verify
 - `PLAN.md` → read-only; current tag's `**Tag:**` header tells you which tag's gaps you're fixing. The same tag-scope discipline as gm-build applies: previous tags' code is touchable only when a GAP item explicitly names it.
 - `STRUCTURE.md` → architecture (fixes need to respect existing system boundaries)
-- `ASSETS.md` and `.godotmaker/asset-generation/manifest.json` → the pointer index to generated assets; for a visual task, resolve each asset with `tools/asset_runtime_resolver.py` instead of reading stable-entry fields yourself
+- `ASSETS.md` → the generated-runtime authority; for a visual task, derive each asset with `tools/asset_result_registration.py --snapshot`
 - `MEMORY.md` index + sub-files → past decisions and known gotchas
 
 ## Hard Rules
+
+### Asset Runtime Authority
+
+`ASSETS.md` is the sole generated-asset runtime authority. For a visual task,
+derive the snapshot with `tools/asset_result_registration.py --snapshot` and
+never read a stable entry, manifest pointer, or root index.
 
 1. **You CANNOT write .gd/.tscn/.tres directly.** All game code goes through Worker dispatch.
 2. **You and your workers CANNOT write to e2e/ directory.** E2E tests are owned by the Evaluator.
@@ -174,10 +180,9 @@ Worker-dispatch tasks only — Step 1b classified main-agent-direct and escalate
 - In each brief, paste the specific finding from GAP.md, the file(s) to modify, and the correct behavior from GDD.md.
 - For visual tasks, fill `Asset Runtime Snapshot` from
   `references/worker-dispatch.md`. The snapshot is
-  `tools/asset_runtime_resolver.py` output pasted verbatim — never hand-copied
-  entry fields; for a bundle result, paste each list item as one snapshot
-  block. If the resolver fails for an asset, report its `error` instead
-  of dispatching the task against an invented path.
+  `tools/asset_result_registration.py --snapshot` output pasted verbatim. If it
+  fails for an asset, report its error instead of dispatching the task against
+  an invented path.
 - For blocking evaluation-source visual tasks, fill `Visual Asset Contract` and
   `Visual Self-Check` from `references/worker-dispatch.md`.
 - Update task status `pending` → `in_progress` when dispatched, `in_progress` → `completed` when worker reports DONE.

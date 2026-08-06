@@ -93,7 +93,7 @@ def test_provider_contracts_are_separate_from_generic_asset_docs():
     codex_runtime = _read("agent-runtimes/codex/references/runtime-mapping.md")
     claude_runtime = _read("agent-runtimes/claude-code/references/runtime-mapping.md")
 
-    assert "references/providers/codex.md" in runtime
+    assert "asset-result-registration.md" in runtime
     assert "references/providers/native.md" in skill
     assert "references/providers/gemini.md" in skill
     assert "generated_path" in codex
@@ -141,7 +141,7 @@ def test_gm_asset_manager_dispatches_asset_producer_units():
     assert "Use visible scene references and canonical asset references" in producer
     assert "Use only provider outputs or user-provided assets as raw visual sources." in producer
     assert "Do not create procedural, placeholder, or fallback images" in producer
-    assert "leave affected stable entry drafts unwritten" in producer
+    assert "leave affected runtime outputs unregistered" in producer
 
 
 def test_asset_no_work_resume_check_writes_the_asset_stage_event():
@@ -187,16 +187,10 @@ def test_gm_asset_manager_reads_the_machine_outcome():
     """The manager consumes the same block, not the prose beside it."""
     skill = _flat(_read("skills/core/gm-asset/SKILL.md"))
 
-    assert f"the fenced JSON object carrying `{OUTCOME_VERSION_KEY}`" in skill
-    assert "Do not take the status from the markdown prose." in skill
-    assert "when the outcome block's `blockers` make the failure actionable" in skill
-
-    # The manager verifies the block itself rather than assuming the hook
-    # filtered every invalid one out.
-    assert "Confirm the block is present, well-formed, and declares" in skill
-    assert '`"report_type": "asset-producer"`' in skill
-    assert "without one, register nothing from that report" in skill
-    assert "re-dispatch the production unit once or report it as blocked" in skill
+    assert "Asset Skill result" in skill
+    assert "failed validation" in skill
+    assert "do not register it" in skill
+    assert "request/result to direct registration" in skill
 
 
 def test_first_class_asset_skills_are_the_only_entry_points():
@@ -222,10 +216,8 @@ def test_first_class_asset_skills_are_the_only_entry_points():
         for doc in (skill, planner, runtime):
             assert f"references/production-units/{family}.md" not in doc
 
-    assert "## Production Families" in runtime
-    assert "## Source Layouts" in runtime
-    assert "## Processing Status" in runtime
-    assert "## Curation" in runtime
+    assert "sole runtime authority" in runtime
+    assert "asset-result-registration.md" in runtime
 
 
 def test_autoslice_contracts_never_pair_with_an_explicit_grid():
@@ -324,78 +316,54 @@ def test_asset_planner_routes_foreground_sprites_to_extraction_units():
     assert "uncut single-image foreground sprites" in planner
 
 
-def test_runtime_pipeline_documents_stable_entry_contract():
+def test_runtime_pipeline_documents_direct_assets_contract():
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
-    assert "## Stable Entry Contract" in runtime
-    assert "## Root Index" in runtime
-    assert "## Runtime Ready Gate" in runtime
-    assert "`production_family`" in runtime
-    assert "`source_layout`" in runtime
-    assert "`godot_artifact`" in runtime
-    assert "`processing_status`" in runtime
-    assert "`region_atlas`" in runtime
-    assert "`grid_sheet`" in runtime
-    assert ".godotmaker/asset-generation/entries/<tag>/<asset_id>.json" in runtime
-    assert "assets/generated/<production_family>/<asset_id>/" in runtime
-    assert "\"rect\": [0, 0, 256, 96]" in runtime
-
-    # The root index is pointer-only: identity plus one entry_path, never a body.
-    assert '"entry_path"' in runtime
-    assert "never duplicates an entry body" in runtime
+    assert "sole runtime authority" in runtime
+    assert "final loadable Godot type" in runtime
+    assert "asset-result-registration.md" in runtime
+    assert "manifest pointer" in runtime
+    assert "part of this pipeline" in runtime
 
 
-def test_asset_stage_runs_stable_entry_gate_before_assets_update():
+def test_asset_stage_registers_results_directly_in_assets_md():
     skill = _read("skills/core/gm-asset/SKILL.md")
     producer = _read("agents/asset-producer.md")
-    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+    registration = _read("skills/core/gm-asset/references/asset-result-registration.md")
 
-    assert "python tools/asset_stable_entry.py <entry_draft.json> --project-root . --write --check-files" in skill
-    assert "python tools/asset_assets_md_update.py" in skill
-    assert "Update the matching ASSETS.md rows only after the root-index gate passes" in skill
-
-    # The documented gate must be the file-checking one. `--check-entries` alone
-    # is schema-only and would pass on an asset deleted after registration.
-    for doc in (skill, runtime):
-        assert (
-            "python tools/asset_generation_index.py --project-root . --check-entries --check-files"
-            in doc
-        )
-        assert "--check-entries\n```" not in doc
-    assert "Validate stable entry content and referenced files." in producer
+    for doc in (skill, registration):
+        assert "tools/asset_result_registration.py" in doc
+        assert "--request" in doc
+        assert "--result" in doc
+        assert "--godot-path" in doc
+    assert "Validate every runtime output file and its declared Godot type." in producer
     assert "Do not switch providers." in producer
     assert "Configured Provider:" in producer
     assert "Used Provider:" in producer
-    assert "runs the root-index gate before updating ASSETS.md" in runtime
+    assert "never writes only a subset" in registration
 
 
 def test_build_and_fixgap_handoff_runtime_assets_to_workers():
-    """Normal handoff: the resolver output travels from manager to worker.
-
-    The manager's only job is to run `asset_runtime_resolver.py` per asset and
-    paste the result; the worker's only job is to load the artifact it names.
-    """
+    """Workers receive the ASSETS.md-derived minimal runtime snapshot."""
     build = _read("skills/core/gm-build/SKILL.md")
     fixgap = _read("skills/core/gm-fixgap/SKILL.md")
     worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
     worker = _read("agents/worker.md")
 
     for doc in (build, fixgap):
-        assert "`ASSETS.md` and `.godotmaker/asset-generation/manifest.json`" in doc
+        assert "`ASSETS.md`" in doc
         assert "Asset Runtime Snapshot" in doc
-        assert "tools/asset_runtime_resolver.py" in doc
+        assert "tools/asset_result_registration.py --snapshot" in doc
         assert "pasted verbatim" in _flat(doc)
 
     assert "### Asset Runtime Snapshot" in worker_dispatch
-    assert "tools/asset_runtime_resolver.py --project-root . --assets-md ASSETS.md" in worker_dispatch
+    assert "tools/asset_result_registration.py --assets-md ASSETS.md" in worker_dispatch
     assert "Paste the resolver output as this section." in worker_dispatch
     assert "Do not use `.godotmaker/asset-generation/sources/`" in worker_dispatch
-    # Generated-asset runtime handoff reads the generated manifest, never the
-    # analyst's user-provided-asset classification manifest.
-    assert ".godotmaker/asset-generation/manifest.json" in worker_dispatch
-    assert ".godotmaker/asset-generation/manifest.json" in worker
+    assert "authoritative ASSETS.md" in worker_dispatch
+    assert "directly from ASSETS.md" in worker
     assert "## Runtime Asset Rules" in worker
-    assert "tools/asset_runtime_resolver.py" in worker
+    assert "asset_result_registration.py --snapshot" in worker
 
     # The worker binds the compiled resource; animation and FX lifecycle stay
     # runtime behavior, they just come out of `SpriteFrames` now.
@@ -408,34 +376,27 @@ def test_build_and_fixgap_handoff_runtime_assets_to_workers():
     assert "effect lifecycle" in worker
 
 
-def test_manager_never_copies_stable_entry_fields_into_a_brief():
+def test_manager_never_copies_runtime_fields_into_a_brief():
     """A hand-copied field is how a rebuild instruction gets back into a brief.
 
-    The v1 snapshot is exactly asset_id / production_family / source_layout /
-    godot_artifact. The moment a manager re-adds frame counts, region rects, or
+    The snapshot is exactly asset_id / godot_artifact. The moment a manager
+    re-adds frame counts, region rects, or
     support-metadata paths, the worker has everything it needs to reconstruct
     the resource — and will, instead of loading the compiled one.
     """
     worker_dispatch = _flat(_read("skills/core/_shared/worker-dispatch.md"))
-    runtime = _flat(_read("skills/core/gm-asset/references/asset-runtime-pipeline.md"))
 
     prohibition = (
         "Do not add target size, frame_count, fps, loop, frame paths, region "
         "names, region rects, or support metadata paths."
     )
     assert (
-        "Do not copy fields out of a stable entry, the root index, or an ASSETS.md row by hand."
+        "Do not copy fields out of an ASSETS.md row by hand."
         in worker_dispatch
     )
     assert prohibition in worker_dispatch
     assert "**The resolver owns the snapshot.**" in worker_dispatch
-    assert "never widen the four-field contract" in worker_dispatch
-    # The pipeline reference states the same contract as a neutral fact about
-    # the snapshot, without assigning the work to a consuming skill.
-    assert (
-        "carrying no hand-copied entry field and no added target size, support "
-        "metadata path, or frame data" in runtime
-    )
+    assert "asset_result_registration.py --snapshot" in worker_dispatch
 
     # The retired enrichment instructions must not come back. Scan with the
     # prohibition itself removed — it necessarily names the fields it forbids.
@@ -667,14 +628,14 @@ def test_a_missing_artifact_fails_closed_instead_of_reaching_a_worker():
     fixgap = _flat(_read("skills/core/gm-fixgap/SKILL.md"))
 
     assert "The resolver exits non-zero with an `error`" in worker_dispatch
-    assert "a missing source or artifact file" in worker_dispatch
+    assert "a missing artifact file" in worker_dispatch
     assert "do not dispatch the visual task" in worker_dispatch
     assert (
         "Never fill this section with an artifact path the resolver did not emit."
         in worker_dispatch
     )
     for doc in (build, fixgap):
-        assert "report its `error` instead of dispatching the task against an invented path" in doc
+        assert "report its error instead of dispatching" in doc
 
     assert "report `PARTIAL` or `FAILED` with the missing path. Do not invent one." in _flat(worker)
 
@@ -687,11 +648,8 @@ def test_reference_only_assets_never_become_worker_runtime_assets():
         ),
     }
 
-    assert "and a reference-only asset." in reference_docs["worker-dispatch.md"]
-    assert (
-        "Reference-only entries are valid manifest records but never produce a worker runtime snapshot."
-        in reference_docs["asset-runtime-pipeline.md"]
-    )
+    assert "or a reference-only asset." in reference_docs["worker-dispatch.md"]
+    assert "reference evidence stay in the Asset Skill result/report" in reference_docs["asset-runtime-pipeline.md"]
     # ASSETS.md `reference` rows stay out of the visual contract too.
     assert (
         "or ASSETS.md rows whose type is `reference` as runtime assets"
@@ -898,9 +856,8 @@ def test_gdd_templates_do_not_add_weak_dynamic_visual_checks():
 def test_generated_and_analyst_manifests_have_distinct_responsibilities():
     """The two manifests must never be confused.
 
-    `.godotmaker/asset-generation/manifest.json` is the pointer index into the
-    generated-asset stable entries. It is the only runtime source read by
-    gm-build / gm-fixgap / worker dispatch.
+    `ASSETS.md` is the generated runtime source read by gm-build / gm-fixgap /
+    worker dispatch. There is no generated-asset pointer index.
 
     `assets/manifest.json` holds the analyst's classification of user-provided
     assets and keeps that responsibility unchanged.
@@ -910,7 +867,7 @@ def test_generated_and_analyst_manifests_have_distinct_responsibilities():
     worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
     worker = _read("agents/worker.md")
 
-    # Runtime handoff docs point at the generated manifest, not the analyst one.
+    # Runtime handoff docs point at ASSETS.md, not the analyst manifest.
     runtime_docs = {
         "gm-build/SKILL.md": build,
         "gm-fixgap/SKILL.md": fixgap,
@@ -918,9 +875,7 @@ def test_generated_and_analyst_manifests_have_distinct_responsibilities():
         "worker.md": worker,
     }
     for name, doc in runtime_docs.items():
-        assert (
-            ".godotmaker/asset-generation/manifest.json" in doc
-        ), f"{name} must read generated runtime data from the generated manifest"
+        assert "ASSETS.md" in doc, f"{name} must read generated runtime data from ASSETS.md"
 
     # Regression guard: runtime handoff docs must not name the analyst's
     # user-asset manifest (`assets/manifest.json`) as a runtime source.
@@ -1009,7 +964,7 @@ def test_no_doc_fakes_a_compiled_artifact_or_ready_state():
     )
 
 
-def test_only_a_passing_l0_l4_result_reaches_a_ready_entry():
+def test_only_a_passing_result_reaches_generated_runtime_rows():
     """`ready` is the worker-consumable state, so nothing may shortcut into it.
 
     The two animated-bundle families compile before they can be validated, so
@@ -1021,16 +976,14 @@ def test_only_a_passing_l0_l4_result_reaches_a_ready_entry():
     character = _read("skills/assets/character-bundle/SKILL.md")
     fx = _read("skills/assets/fx-bundle/SKILL.md")
 
-    assert "Nothing else may write `ready`." in runtime
-    assert "drafts `compiled` and promotes the same" in _flat(runtime)
+    assert "sole runtime authority" in runtime
     for doc in (character, fx):
         assert "processing_status: compiled" in doc
         assert "L0-L4" in doc
-    assert "--result <result.json>" in character
-    assert "Do not hand-edit `processing_status`." in character
+    assert "L0-L4" in character
 
 
-def test_entry_drafts_come_from_deterministic_builders():
+def test_result_registration_replaces_entry_drafts():
     """Producers must not hand-write drafts or support metadata.
 
     The retired manifest builders carried mechanical checks — frame count,
@@ -1041,68 +994,45 @@ def test_entry_drafts_come_from_deterministic_builders():
     skill = _read("skills/core/gm-asset/SKILL.md")
     runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
-    for doc in (skill, runtime):
-        assert "tools/asset_action_entry_draft.py" in doc
-        assert "tools/asset_curation_entry_draft.py" in doc
-        # Reference-only production needs a builder too, or Step 5's
-        # "no hand-written drafts" rule would leave screen-reference with no
-        # executable registration path at all.
-        assert "tools/asset_finalize_entry_draft.py" in doc
-    assert "reject a hand-written draft" in skill
-    assert "do not hand-write a draft or its support metadata" in runtime
+    assert "tools/asset_result_registration.py" in skill
+    assert "asset-result-registration.md" in runtime
+    assert "family-specific adapter state" in skill
 
 
-def test_every_planned_family_routes_through_a_draft_builder():
-    """No planned family may be left without an executable registration path.
-
-    Step 5 rejects a hand-written draft, so a family the manager can plan but
-    whose registration reference names no builder would have no legal way to
-    register at all. With the production-unit tree gone, the pipeline reference
-    is where that mapping lives, and the family registry is what says which
-    builder each family is entitled to.
-    """
-    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
-    section = _flat(runtime.split("## Registration Commands", 1)[1].split("\n## ", 1)[0])
-    assert section, "the registration command reference disappeared"
-
-    missing = [family for family in MANAGER_FAMILIES if f"`{family}`" not in section]
-    assert not missing, (
-        "these planned families are absent from the registration reference: "
-        + ", ".join(missing)
-    )
-    for spec in FAMILIES.values():
-        for builder in spec.entry_builders:
-            assert builder in section, (
-                f"{spec.family} lost the documented path to {builder}"
-            )
-
-
-def test_gm_asset_registers_through_the_stable_entry_tools_only():
+def test_every_planned_family_uses_the_direct_result_registration_gate():
+    """All families share one result-to-ASSETS.md registration contract."""
+    registration = _read("skills/core/gm-asset/references/asset-result-registration.md")
     skill = _read("skills/core/gm-asset/SKILL.md")
-    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
 
-    for doc in (skill, runtime):
-        assert "tools/asset_stable_entry.py" in doc
-        assert "tools/asset_generation_index.py" in doc
-    assert ".godotmaker/asset-generation/entries/<tag>/<asset_id>.json" in skill
-    # No hand-edit escape hatch around the gates.
-    assert "Do not hand-edit" in skill
+    for family in MANAGER_FAMILIES:
+        assert family in FAMILIES
+    for doc in (registration, skill):
+        assert "tools/asset_result_registration.py" in doc
+        assert "stable entries" in doc
+        assert "manifest pointers" in doc
 
 
-def test_runtime_resolver_is_documented_as_a_registered_assets_reader():
-    runtime = _read("skills/core/gm-asset/references/asset-runtime-pipeline.md")
+def test_gm_asset_registers_directly_through_assets_md_only():
+    skill = _read("skills/core/gm-asset/SKILL.md")
+    registration = _read("skills/core/gm-asset/references/asset-result-registration.md")
+
+    for doc in (skill, registration):
+        assert "tools/asset_result_registration.py" in doc
+        assert "Runtime Type" in doc
+        assert "Runtime Path" in doc
+    assert "Do not hand-edit Runtime Type, Runtime Path, or Status" in skill
+
+
+def test_runtime_snapshot_is_documented_as_an_assets_md_reader():
+    registration = _read("skills/core/gm-asset/references/asset-result-registration.md")
     tools = _read("docs/wiki/05-tools/asset-tools.md")
-    tools_zh = _read("docs/zh/wiki/05-tools/asset-tools.md")
     guide = _read("docs/wiki/07-contributing/codebase-guide.md")
-    guide_zh = _read("docs/zh/wiki/07-contributing/codebase-guide.md")
 
-    assert "## Runtime Snapshot Resolution" in runtime
-    assert "tools/asset_runtime_resolver.py" in runtime
-    assert "root-index" in runtime
-    assert "registration" in runtime
-    assert "Both modes require" in runtime
-    for doc in (tools, tools_zh, guide, guide_zh):
-        assert "asset_runtime_resolver.py" in doc
+    assert "## Worker handoff" in registration
+    assert "tools/asset_result_registration.py" in registration
+    assert "ASSETS.md" in registration
+    for doc in (tools, guide):
+        assert "asset_result_registration.py" in doc
 
 
 def test_region_atlas_single_region_contract():

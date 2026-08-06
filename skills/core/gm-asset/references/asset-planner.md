@@ -1,5 +1,8 @@
 # Asset Planning Reference
 
+> Runtime registration uses `asset-result-registration.md`. Do not plan stable
+> entries, manifest pointers, bundle manifests, or an anchor output.
+
 Use this file when `/gm-asset` builds current-tag production units before
 dispatching `asset-producer`.
 

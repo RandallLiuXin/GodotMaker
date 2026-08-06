@@ -41,6 +41,7 @@ ASSET_TOOLS = (
     "asset_finalize_entry_draft",
     "asset_generation_index",
     "asset_runtime_resolver",
+    "asset_result_registration",
     "asset_scene_prop_set_entry_draft",
     "asset_stable_entry",
     "asset_tileset_entry_draft",

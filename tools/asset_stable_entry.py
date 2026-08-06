@@ -22,11 +22,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from asset_family_registry import (
-    BUNDLE_FAMILY_NAMES,
-    FAMILY_NAMES,
-    REFERENCE_FAMILY_NAMES,
-)
+from asset_family_registry import FAMILY_NAMES, REFERENCE_FAMILY_NAMES
 
 SCHEMA_VERSION = 1
 
@@ -55,7 +51,7 @@ REFERENCE_LAYOUTS = {"reference"}
 # runtime resources out of a single shared output directory. Their logical
 # entries carry ``bundle_id`` plus a ``<bundle_id>--<logical_output_id>``
 # ``asset_id``; every other family owns its directory alone.
-BUNDLE_FAMILIES = set(BUNDLE_FAMILY_NAMES)
+BUNDLE_FAMILIES = {"card-kit", "compact-prop-pack", "platform-strip", "ui-kit"}
 
 # Families whose assets are reference-only. A ``reference`` layout is legal only
 # for these, and these families must use a ``reference`` layout. Binding the two

@@ -1,5 +1,9 @@
 # Codebase Guide
 
+Generated asset runtime authority lives in `ASSETS.md`. The
+`tools/asset_result_registration.py` tool validates a whole Asset Skill result,
+records final runtime type/path rows atomically, and derives worker snapshots.
+
 This page gives a folder-by-folder tour of the GodotMaker repository, with enough depth to orient you before you start editing. For a shorter overview, see [Development setup](development-setup.md). For how all the pieces wire together at runtime, keep reading.
 
 ## Repository layout

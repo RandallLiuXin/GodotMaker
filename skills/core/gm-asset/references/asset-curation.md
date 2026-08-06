@@ -1,5 +1,8 @@
 # Asset Curation Reference
 
+> Curation evidence remains production evidence. Runtime registration is direct
+> result-to-ASSETS.md via `asset-result-registration.md`, not stable entries.
+
 Use this file for shared candidate-selection states and ASSETS.md handoff
 rules. Use the assigned first-class Asset Skill for extraction and
 post-processing commands.

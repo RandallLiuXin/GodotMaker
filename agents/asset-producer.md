@@ -1,6 +1,6 @@
 ---
 name: asset-producer
-description: Produces one assigned visual asset production unit for the asset stage. Generates sources, runs asset tools, writes scoped outputs, and reports stable-entry handoff.
+description: Produces one assigned visual asset production unit for the asset stage. Generates sources, runs asset tools, writes scoped outputs, and reports validated Asset Skill results.
 model: inherit
 ---
 
@@ -25,16 +25,16 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 11. Use the provider document and configured provider named in the brief.
 12. Do not switch providers.
 13. Use built-in image generation or the configured provider path for raw art.
-14. Use asset tools for finalization, curation, action processing, and stable
-    entry drafting.
+14. Use asset tools for finalization, curation, action processing, compilation,
+    and validation.
 15. Keep all scratch files under `.godotmaker/asset-generation/`.
 16. Report every generated source, runtime output, prompt, curation report, and
-    stable entry draft.
+    the validated request/result pair.
 17. Use only provider outputs or user-provided assets as raw visual sources.
 18. Do not create procedural, placeholder, or fallback images for a planned
     source or final asset path.
 19. When the configured provider fails after its allowed retries, write `FAILED` or
-    `PARTIAL` and leave affected stable entry drafts unwritten.
+    `PARTIAL` and leave affected runtime outputs unregistered.
 20. End every report with exactly one machine outcome block.
 21. Report `DONE` only with passing validation and no blockers. Otherwise report
     `PARTIAL` or `FAILED` and list every blocker.
@@ -50,23 +50,18 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 6. Stop the affected asset path when source generation or claim fails.
 7. Run required processing tools for claimed or provided sources.
 8. For a first-class Asset Skill result, validate the generic result with
-   `tools/asset_skill_contract_check.py`; if it passed, adapt its sources,
-   outputs, and validation evidence into this report and the declared
-   deterministic draft-builder inputs. If it failed, report the failure and do
-   not write a stable-entry draft.
-   For `character-bundle`, pass the Skill's archived resolved request, one
-   `--metadata` action processing report per required action, and the validated
-   result to `tools/asset_action_entry_draft.py`. It registers exactly one
-   `SpriteFrames` entry; report any reference output beside it and never draft a
-   second entry for one.
+   `tools/asset_skill_contract_check.py`; if it passed, preserve its request,
+   result, sources, outputs, and validation evidence in this report. If it
+   failed, report the failure and leave all ASSETS.md rows unchanged.
+   For `character-bundle`, the runtime output is its compiled `SpriteFrames`;
+   canonical and action source files remain reference/source evidence.
    For `scene-prop-set`, one provider source sheet is one generation attempt
    for the complete declared set. Preserve the provider trace, autoslice,
    curation, per-prop finalize, atlas, and validation reports. Use
-   `tools/asset_scene_prop_set_entry_draft.py` only after every declared
-   AtlasTexture has passed L0-L4; use the first declared prop as its
-   deterministic v1 primary artifact.
-9. Write prompt files, reports, and stable entry draft files.
-10. Validate stable entry content and referenced files.
+   every declared AtlasTexture after L0-L4. Return every declared logical prop
+   as its own runtime output; never choose a primary artifact.
+9. Write prompt files, reports, and the validated Asset Skill result.
+10. Validate every runtime output file and its declared Godot type.
 11. Verify listed output files exist.
 12. Write the Asset Producer Report.
 
@@ -108,19 +103,20 @@ When a prompt depends on an existing image:
 - Runtime outputs: {paths under assets/generated/<production_family>/<asset_id>/ or none}
 - Prompts: {paths or none}
 - Reports: {paths or none}
-- Stable Entry Drafts: {paths or none}
+- Asset Skill Request: {path}
+- Asset Skill Result: {path}
 
 ### Tools
 - {exact commands run}
 
 ### Validation
 - File existence: PASS | FAIL
-- Stable entries: PASS | FAIL | SKIP
+- Runtime outputs: PASS | FAIL | SKIP
 - Curation: PASS | FAIL | SKIP
 - Notes: {short notes}
 
 ### Handoff
-{Which stable entries the manager should register and which ASSETS.md rows they update.}
+{Which logical output rows the manager should register atomically in ASSETS.md.}
 
 ### Asset Skill Result
 {Validated generic result summary for a first-class Skill, or none.}
@@ -137,7 +133,7 @@ When a prompt depends on an existing image:
     "runtime": ["{paths}"],
     "prompts": ["{paths}"],
     "reports": ["{paths}"],
-    "entry_drafts": ["{paths}"]
+    "result": ["{validated-result-paths}"]
   },
   "validation": {
     "passed": true,

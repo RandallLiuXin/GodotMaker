@@ -52,6 +52,12 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Generated assets now use `ASSETS.md` as the single runtime catalog: each
+  logical asset row records its final Godot type and loadable path directly.
+  Multi-output asset production registers all declared outputs atomically, and
+  workers receive a minimal snapshot derived from those rows instead of a
+  separate stable-entry or manifest layer.
+
 - Every public asset route now proves its whole registration chain in ordinary CI, so an advertised route cannot enter main without an adapter that turns its validated delivery into a worker-consumable entry.
 
 - A Skill that accepts more than one request shape now declares one registration chain per shape, so a variant whose adapter is missing can no longer hide behind a sibling variant that works.

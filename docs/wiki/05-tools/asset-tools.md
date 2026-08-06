@@ -6,6 +6,11 @@ debugging one source, one action sheet, or one curation decision.
 
 Primary pipeline tools:
 
+`asset_result_registration.py` records a validated Asset Skill result directly
+in ASSETS.md, atomically checks every runtime output through Godot, and emits
+the minimal ASSETS.md-derived worker snapshot. It replaces stable-entry and
+manifest-pointer registration in the active pipeline.
+
 1. `asset_source_generate.py`
 2. `asset_layout_guide.py`
 3. `asset_action_process.py`

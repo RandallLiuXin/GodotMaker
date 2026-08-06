@@ -19,7 +19,7 @@ A report carries exactly one outcome block:
         "runtime": [],
         "prompts": [],
         "reports": [],
-        "entry_drafts": []
+        "result": []
       },
       "validation": {"passed": false, "notes": "atlas regions unverified"},
       "blockers": ["provider returned no usable surface sheet"]
@@ -49,7 +49,7 @@ TERMINAL_STATUSES = ("DONE", "PARTIAL", "FAILED")
 # direct consumers.
 OUTCOME_REQUIRED_ROLES = frozenset({ROLE_ASSET_PRODUCER})
 
-OUTPUT_CATEGORIES = ("sources", "runtime", "prompts", "reports", "entry_drafts")
+OUTPUT_CATEGORIES = ("sources", "runtime", "prompts", "reports", "result")
 VALIDATION_LEVELS = ("L0", "L1", "L2", "L3", "L4")
 
 TOP_LEVEL_KEYS = (
@@ -64,7 +64,7 @@ OUTCOME_TEMPLATE = """```json
   "status": "DONE | PARTIAL | FAILED",
   "unit_id": "{unit_id}",
   "outputs": {
-    "sources": [], "runtime": [], "prompts": [], "reports": [], "entry_drafts": []
+    "sources": [], "runtime": [], "prompts": [], "reports": [], "result": []
   },
   "validation": {"passed": true, "notes": "short note"},
   "blockers": []
