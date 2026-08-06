@@ -134,7 +134,10 @@ When image candidates exist:
 
 1. Dispatch `analyst` with only the candidate paths.
 2. Use the analyst report and `assets/manifest.json`.
-3. Update high-confidence `direct_runtime` current-tag rows to `provided`.
+3. Update high-confidence `direct_runtime` current-tag rows to `provided`, and
+   fill `Runtime Type` and the `res://` `Runtime Path` of the accepted file in
+   the same edit. A `provided` row with incomplete runtime columns cannot be
+   resolved into a worker snapshot.
 4. Keep `source_for_processing` rows in the generated visual production plan.
 5. Leave uncertain files unchanged.
 
