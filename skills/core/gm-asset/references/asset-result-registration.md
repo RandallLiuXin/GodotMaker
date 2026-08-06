@@ -36,8 +36,10 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
 The command fails before changing `ASSETS.md` if the declared and returned
 runtime logical output sets differ, a runtime output is duplicated or unknown,
 a path escapes the project or does not exist, or Godot cannot load a runtime
-resource as its stated type. It never writes only a subset of a multi-output
-production unit.
+resource as its stated type. Re-registering a completed row also requires the
+existing row's generated path (or reference metadata) to identify the same
+production unit; a different unit cannot overwrite it. It never writes only a
+subset of a multi-output production unit.
 
 ## Worker handoff
 
@@ -48,5 +50,9 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
   --snapshot --asset-id <asset_id>
 ```
 
-The output contains only `asset_id` and `godot_artifact.type/path`. Do not add
-sources, provider data, curation reports, frame lists, atlas data, or receipts.
+The output contains only `asset_id` and `godot_artifact.type/path`. It resolves
+both `generated` rows and user-provided runtime rows marked `provided`, provided
+their Runtime Type and `res://` Runtime Path are complete and the file exists.
+Rows retain their introducing tag, so an earlier uniquely named asset can be
+resolved during a later tag. Do not add sources, provider data, curation
+reports, frame lists, atlas data, or receipts.

@@ -61,6 +61,18 @@ def _newline(line: str, default: str) -> str:
     return "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else default
 
 
+def _assets_lines(path: Path) -> list[str]:
+    """Read ASSETS.md without universal-newline conversion.
+
+    Registration rewrites only matching table rows, so preserving the source
+    newline convention is part of the atomic update contract.
+    """
+    try:
+        return path.read_bytes().decode("utf-8").splitlines(keepends=True)
+    except (OSError, UnicodeDecodeError) as exc:
+        raise AssetResultRegistrationError(f"cannot read ASSETS.md: {path}") from exc
+
+
 def _runtime_header(lines: list[str]) -> tuple[int, dict[str, int]]:
     for index, line in enumerate(lines):
         cells = _split_row(line)
@@ -113,6 +125,48 @@ def _reference_to_file(project_root: Path, reference_path: str) -> Path:
     if not candidate.is_file():
         raise AssetResultRegistrationError(f"reference file is missing: {reference_path}")
     return candidate
+
+
+def _runtime_path_belongs_to_request(
+    runtime_path: str, *, family: str, asset_id: str
+) -> bool:
+    """Check the stable generated-path identity of an already registered row."""
+    prefix = f"res://assets/generated/{family}/"
+    if not runtime_path.startswith(prefix):
+        return False
+    remainder = runtime_path.removeprefix(prefix)
+    parts = remainder.split("/")
+    if len(parts) > 1:
+        return parts[0] == asset_id
+    return Path(parts[0]).stem == asset_id
+
+
+def _assert_re_registration_owner(
+    cells: list[str],
+    columns: dict[str, int],
+    *,
+    tag: str,
+    logical_id: str,
+    request: dict[str, Any],
+) -> None:
+    """Reject a completed logical row owned by a different production unit."""
+    status = cells[columns["Status"]]
+    if status not in {RUNTIME_STATUS, REFERENCE_STATUS}:
+        return
+    family = request["asset_type"]
+    asset_id = request["asset_id"]
+    params = cells[columns["Generation Params"]]
+    if status == RUNTIME_STATUS:
+        owns_row = _runtime_path_belongs_to_request(
+            cells[columns["Runtime Path"]], family=family, asset_id=asset_id
+        )
+    else:
+        owns_row = f"family={family}" in params and logical_id == asset_id
+    if not owns_row:
+        raise AssetResultRegistrationError(
+            f"ASSETS.md row {tag}/{logical_id} is already owned by a different "
+            f"production unit; refusing to overwrite it"
+        )
 
 
 def _logical_id(output: dict[str, Any], *, single: bool, request_asset_id: str | None) -> str:
@@ -491,7 +545,7 @@ def register_result(
             raise AssetResultRegistrationError(
                 f"result output {logical_id} Godot type {actual['type']!r} does not match request {expected['type']!r}"
             )
-    lines = assets_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines = _assets_lines(assets_md)
     _, columns = _runtime_header(lines)
     default_newline = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"
 
@@ -523,6 +577,9 @@ def register_result(
                 f"ASSETS.md row {tag}/{logical_id} has non-promotable status "
                 f"{cells[columns['Status']]!r}"
             )
+        _assert_re_registration_owner(
+            cells, columns, tag=tag, logical_id=logical_id, request=request
+        )
         if output["role"] == "runtime":
             _res_to_file(project_root, output["path"])
             if loader is not None:
@@ -561,8 +618,14 @@ def register_result(
 
 
 def runtime_snapshot(assets_md: Path, *, tag: str, asset_ids: list[str]) -> list[dict[str, Any]]:
-    """Return the minimal worker handoff directly from generated ASSETS.md rows."""
-    lines = Path(assets_md).read_text(encoding="utf-8").splitlines()
+    """Return worker handoff from uniquely named generated or provided rows.
+
+    ``tag`` is the current work tag. Rows retain their introducing tag, so an
+    asset introduced by an earlier tag remains available to later work.
+    """
+    if not isinstance(tag, str) or not tag.strip():
+        raise AssetResultRegistrationError("tag must be a non-empty string")
+    lines = _assets_lines(Path(assets_md))
     _, columns = _runtime_header(lines)
     requested = set(asset_ids)
     snapshots: dict[str, dict[str, Any]] = {}
@@ -571,15 +634,20 @@ def runtime_snapshot(assets_md: Path, *, tag: str, asset_ids: list[str]) -> list
         if cells is None or len(cells) != len(RUNTIME_HEADERS):
             continue
         asset_id = cells[columns["Name"]]
-        if cells[columns["Tag"]] != tag or asset_id not in requested:
+        if asset_id not in requested:
             continue
         if asset_id in snapshots:
-            raise AssetResultRegistrationError(f"ASSETS.md has multiple runtime rows for {tag}/{asset_id}")
+            raise AssetResultRegistrationError(
+                f"ASSETS.md has multiple runtime rows for asset {asset_id}"
+            )
         status = cells[columns["Status"]]
         runtime_type = cells[columns["Runtime Type"]]
         runtime_path = cells[columns["Runtime Path"]]
-        if status != RUNTIME_STATUS:
-            raise AssetResultRegistrationError(f"ASSETS.md row {tag}/{asset_id} is {status!r}; expected generated")
+        if status not in {RUNTIME_STATUS, "provided"}:
+            raise AssetResultRegistrationError(
+                f"ASSETS.md row {cells[columns['Tag']]}/{asset_id} is {status!r}; "
+                "expected generated or provided"
+            )
         if runtime_type in {"", "-", "reference"}:
             raise AssetResultRegistrationError(f"ASSETS.md row {tag}/{asset_id} is not a runtime resource")
         _res_to_file(Path(assets_md).parent.resolve(), runtime_path)

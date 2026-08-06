@@ -16,8 +16,10 @@ declaration.
 3. Record source, output, prompt, and report paths in the production brief.
 4. Keep one multi-output family invocation together. Do not infer its members
    from `ASSETS.md` or from a result after generation.
-5. Dispatch independent units in batches of at most three.
-6. Plan Asset Table rows only for registered logical outputs. For a runtime
+5. Keep logical output names unique within the tag. A completed row is owned by
+   its production unit and must never be reused by a different request.
+6. Dispatch independent units in batches of at most three.
+7. Plan Asset Table rows only for registered logical outputs. For a runtime
    family, each row name must match a declared runtime output name. Canonical
    images, action sheets, source grids, and other provenance remain in the
    request, result, and reports; do not plan them as rows.

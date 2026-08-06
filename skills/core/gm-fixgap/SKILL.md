@@ -46,9 +46,11 @@ Then read context:
 
 ### Asset Runtime Authority
 
-`ASSETS.md` is the sole generated-asset runtime authority. For a visual task,
+`ASSETS.md` is the sole runtime-asset authority. For a visual task,
 derive the snapshot with `tools/asset_result_registration.py --snapshot` and
-never read a stable entry, manifest pointer, or root index.
+never read a stable entry, manifest pointer, or root index. The snapshot
+resolves generated and complete user-provided runtime rows, including uniquely
+named rows introduced by earlier tags.
 
 1. **You CANNOT write .gd/.tscn/.tres directly.** All game code goes through Worker dispatch.
 2. **You and your workers CANNOT write to e2e/ directory.** E2E tests are owned by the Evaluator.
