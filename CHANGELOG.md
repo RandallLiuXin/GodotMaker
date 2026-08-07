@@ -1,16 +1,5 @@
 # Changelog
 
-## [0.8.3] - 2026-08-07
-
-### Added
-
-- Added Pi 0.84.1 publishing support with project-local `.pi/skills`, role definitions, runtime mapping, and a trust-aware `--approve` setup path.
-- Added the Pi runtime bridge for managed Godot debug operations and isolated worker/verifier/reviewer/decomposer dispatch through Pi JSON child processes and git worktrees.
-
-### Changed
-
-- Environment checks now distinguish a missing Pi binary, missing Pi extension or sidecar files, project-resource trust, and unavailable native image/VQA capability instead of advertising incomplete parity.
-
 All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
