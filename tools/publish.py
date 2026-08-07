@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE
+from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE, AGENT_PI
 from asset_family_registry import check_registry
 from project_config import (
     ProjectConfigResult,
@@ -50,11 +50,12 @@ class VersionCheckResult(NamedTuple):
     source_ver: SemVer | None
 
 EXCLUDE_DIRS = {"__pycache__", "doc_source", ".workspace"}
-AGENT_CHOICES = (AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE)
+AGENT_CHOICES = (AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE, AGENT_PI)
 AGENT_RUNTIME_SOURCE_ROOTS = {
     AGENT_CLAUDE_CODE: Path("agent-runtimes") / "claude-code",
     AGENT_CODEX: Path("agent-runtimes") / "codex",
     AGENT_OPENCODE: Path("agent-runtimes") / "opencode",
+    AGENT_PI: Path("agent-runtimes") / "pi",
 }
 AGENT_RUNTIME_REFERENCES = {
     AGENT_CODEX: (
@@ -64,10 +65,14 @@ AGENT_RUNTIME_REFERENCES = {
     AGENT_OPENCODE: (
         Path("references") / "runtime-mapping.md",
     ),
+    AGENT_PI: (
+        Path("references") / "runtime-mapping.md",
+    ),
 }
 AGENT_ROOT_BOOTSTRAP_TEMPLATES = {
     AGENT_CODEX: Path("templates") / "agents-bootstrap.md",
     AGENT_OPENCODE: Path("templates") / "agents-bootstrap.md",
+    AGENT_PI: Path("templates") / "agents-bootstrap.md",
 }
 AGENT_HOOK_CONFIGS = {
     AGENT_CLAUDE_CODE: (
@@ -78,6 +83,10 @@ AGENT_HOOK_CONFIGS = {
         Path("config") / "hooks.json",
         Path(".codex") / "hooks.json",
     ),
+}
+AGENT_RUNTIME_EXTENSION_DIRS = {
+    AGENT_OPENCODE: "plugins",
+    AGENT_PI: "extensions",
 }
 
 # Shared asset implementation code is project runtime, not an agent skill. It
@@ -168,6 +177,20 @@ AGENT_ADAPTERS = {
         templates_root=".opencode/templates",
         plugins_root=".opencode/plugins",
         runtime_references_root=".opencode/references",
+        root_instruction_filename="AGENTS.md",
+        register_claude_mcp=False,
+        register_godot_permissions=False,
+        ensure_worktreeinclude=False,
+    ),
+    AGENT_PI: AgentPublishAdapter(
+        agent_id=AGENT_PI,
+        project_config_root=".pi",
+        skill_root=".pi/skills",
+        agents_root=".pi/agents",
+        config_root=".pi/config",
+        templates_root=".pi/templates",
+        plugins_root=".pi/extensions",
+        runtime_references_root=".pi/references",
         root_instruction_filename="AGENTS.md",
         register_claude_mcp=False,
         register_godot_permissions=False,
@@ -695,6 +718,26 @@ def render_opencode_agent_role_text(text: str, role_name: str) -> str:
     return rendered
 
 
+def render_pi_agent_role_text(text: str, role_name: str) -> str:
+    """Render a shared role definition for Pi's extension-backed delegates."""
+    frontmatter, body = _split_frontmatter(text)
+    updated = list(frontmatter or [])
+    if frontmatter is None:
+        body = text
+    updated = _frontmatter_without_key(updated, "model")
+    rendered = "---\n" + "\n".join(updated) + "\n---\n" + body
+    replacements = {
+        ".claude/skills": ".pi/skills",
+        ".claude/agents": ".pi/agents",
+        ".claude/templates": ".pi/templates",
+        ".claude/config": ".pi/config",
+        ".claude/godotmaker.yaml": ".pi/godotmaker.yaml",
+    }
+    for old, new in replacements.items():
+        rendered = rendered.replace(old, new)
+    return rendered
+
+
 def publish_agents(repo_root: Path, agents_target: Path,
                    agent: str = AGENT_CLAUDE_CODE) -> int:
     """Publish GodotMaker role definitions for the selected runtime."""
@@ -711,6 +754,8 @@ def publish_agents(repo_root: Path, agents_target: Path,
         source = file.read_text(encoding="utf-8")
         if agent == AGENT_OPENCODE:
             rendered = render_opencode_agent_role_text(source, file.stem)
+        elif agent == AGENT_PI:
+            rendered = render_pi_agent_role_text(source, file.stem)
         else:
             rendered = source
         (agents_target / file.name).write_text(rendered, encoding="utf-8")
@@ -732,7 +777,9 @@ def publish_agent_plugins(repo_root: Path, target: Path,
     source_root = AGENT_RUNTIME_SOURCE_ROOTS.get(agent)
     if source_root is None:
         return 0
-    plugins_src = repo_root / source_root / "plugins"
+    plugins_src = repo_root / source_root / AGENT_RUNTIME_EXTENSION_DIRS.get(
+        agent, "plugins"
+    )
     if not plugins_src.exists():
         return 0
 

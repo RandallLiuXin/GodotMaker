@@ -73,6 +73,7 @@ Coding-agent runtime：
 - [Claude Code](providers/agent-runtimes/claude-code.md)
 - [Codex](providers/agent-runtimes/codex.md)
 - [OpenCode](providers/agent-runtimes/opencode.md)
+- [Pi](providers/agent-runtimes/pi.md)
 
 图片和 VQA provider：
 

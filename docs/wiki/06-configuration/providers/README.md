@@ -13,6 +13,7 @@ provider. Configure both layers in `.godotmaker/config.yaml`.
 - [Claude Code](agent-runtimes/claude-code.md)
 - [Codex](agent-runtimes/codex.md)
 - [OpenCode](agent-runtimes/opencode.md)
+- [Pi](agent-runtimes/pi.md)
 
 ## Image and VQA providers
 

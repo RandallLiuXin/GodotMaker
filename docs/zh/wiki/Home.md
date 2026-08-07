@@ -41,7 +41,7 @@ GodotMaker 把你的游戏想法变成可运行的 Godot 4 原型。正常路径
 - 当前暂不支持音频生成。
 - 长时间自动运行对成本敏感，极少数项目也可能在多轮 build/fix/evaluate 后仍无法收敛。
 
-手动 `/gm-*` 角色命令仍然保留给高级用户、调试和框架开发使用，但已经不是推荐的新手首跑路径。正常 CLI 路径支持 Claude Code、Codex 和 OpenCode runner；runner 相关设置见[安装](01-getting-started/installation.md)。
+手动角色命令仍然保留给高级用户、调试和框架开发使用，但已经不是推荐的新手首跑路径。正常 CLI 路径支持 Claude Code、Codex、OpenCode 和 Pi runner；Pi 使用 `/skill:gm-*` 调用角色。runner 相关设置见[安装](01-getting-started/installation.md)。
 
 ## 项目状态
 

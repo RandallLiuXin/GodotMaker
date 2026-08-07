@@ -10,6 +10,7 @@ import sys
 AGENT_CLAUDE_CODE = "claude-code"
 AGENT_CODEX = "codex"
 AGENT_OPENCODE = "opencode"
+AGENT_PI = "pi"
 
 
 def _read_yaml_scalar(path: Path, key: str) -> str | None:
@@ -34,6 +35,8 @@ def normalize_agent(value: str | None) -> str | None:
         return AGENT_CODEX
     if normalized in {"opencode", "open-code"}:
         return AGENT_OPENCODE
+    if normalized in {"pi", "pi-coding-agent", "pi-coding"}:
+        return AGENT_PI
     if normalized in {"claude", "claude-code", "anthropic-claude-code"}:
         return AGENT_CLAUDE_CODE
     return None
@@ -52,6 +55,8 @@ def detect_agent(project_dir: Path) -> str:
         return AGENT_CODEX
     if (project_dir / ".opencode").exists():
         return AGENT_OPENCODE
+    if (project_dir / ".pi").exists():
+        return AGENT_PI
     return AGENT_CLAUDE_CODE
 
 
@@ -61,6 +66,8 @@ def agent_config_root(project_dir: Path, agent: str | None = None) -> Path:
         return project_dir / ".agents"
     if selected == AGENT_OPENCODE:
         return project_dir / ".opencode"
+    if selected == AGENT_PI:
+        return project_dir / ".pi"
     return project_dir / ".claude"
 
 
@@ -74,6 +81,8 @@ def agent_runtime_mapping(project_dir: Path, agent: str | None = None) -> Path:
         return project_dir / ".agents" / "references" / "runtime-mapping.md"
     if selected == AGENT_OPENCODE:
         return project_dir / ".opencode" / "references" / "runtime-mapping.md"
+    if selected == AGENT_PI:
+        return project_dir / ".pi" / "references" / "runtime-mapping.md"
     return project_dir / ".claude" / "references" / "runtime-mapping.md"
 
 
@@ -120,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--agent",
-        choices=[AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE],
+        choices=[AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE, AGENT_PI],
         default=None,
         help="Override selected agent runtime",
     )

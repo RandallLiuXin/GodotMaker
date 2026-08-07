@@ -1,5 +1,5 @@
 # Publish GodotMaker skills into a target Godot project directory.
-# Usage: .\shell\publish.ps1 [-Force|--force] [--no-config-review] [-Agent claude-code|codex|--agent <agent>] <target_godot_project_dir>
+# Usage: .\shell\publish.ps1 [-Force|--force] [--no-config-review] [-Agent claude-code|codex|opencode|pi|--agent <agent>] <target_godot_project_dir>
 #
 # On upgrade, compares VERSION against the target's .godotmaker/version:
 #   PATCH  -> auto-proceed
@@ -39,7 +39,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
 }
 
 if (-not $Target) {
-    Write-Host "Usage: .\shell\publish.ps1 [-Force|--force] [--no-config-review] [-Agent claude-code|codex|--agent <agent>] <target_godot_project_dir>"
+    Write-Host "Usage: .\shell\publish.ps1 [-Force|--force] [--no-config-review] [-Agent claude-code|codex|opencode|pi|--agent <agent>] <target_godot_project_dir>"
     exit 1
 }
 
