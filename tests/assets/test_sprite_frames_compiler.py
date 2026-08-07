@@ -1,12 +1,14 @@
 import sys
+import subprocess
 from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(SHARED_DIR))
+sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from asset_compiler import (  # noqa: E402
     CompileRequest,
@@ -22,11 +24,24 @@ from asset_validation import (  # noqa: E402
     StructureRequest,
     build_default_structures,
 )
+from asset_action_process import ActionRegenerationRequired, process_action_sheet  # noqa: E402
 
 
 def _png(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.new("RGBA", (2, 2), (255, 255, 255, 255)).save(path)
+
+
+def _incomplete_edge_sheet(path: Path) -> None:
+    image = Image.new("RGBA", (80, 80), (255, 0, 255, 255))
+    draw = ImageDraw.Draw(image)
+    for box, color in [
+        ((0, 8, 30, 32), (220, 40, 40, 255)),
+        ((50, 8, 72, 32), (40, 220, 40, 255)),
+        ((8, 50, 30, 72), (40, 40, 220, 255)),
+    ]:
+        draw.rectangle(box, fill=color)
+    image.save(path)
 
 
 def _request(project: Path, actions: list[dict]) -> CompileRequest:
@@ -129,6 +144,66 @@ def test_headless_godot_loads_spriteframes_and_reports_its_animation_structure(
         artifact_path=result.godot_artifact.path, project_root=godot_project,
         probe=report.resources[0], spec={"actions": [action]},
     )) == {"animations": ["idle"]}
+
+
+def test_fixed_grid_recovery_chain_compiles_and_loads_spriteframes(godot_project, godot_bin):
+    source = godot_project / "missing-frame-source.png"
+    recovered = godot_project / "recovered.png"
+    report = godot_project / "recovery-report.json"
+    output = godot_project / "assets/generated/character-bundle/player"
+    _incomplete_edge_sheet(source)
+    args = {
+        "action_name": "idle", "fps": 8, "loop": False,
+        "frame_durations": [1, 1, 1, 1],
+    }
+
+    with pytest.raises(ActionRegenerationRequired):
+        process_action_sheet(
+            source, godot_project / "strict", grid="2x2",
+            names="idle_01,idle_02,idle_03,idle_04", asset_id="player",
+            recover_edge_touch=True, **args,
+        )
+    recovery = subprocess.run(
+        [
+            sys.executable, str(REPO_ROOT / "tools/asset_connected_component_recovery.py"),
+            "--source", str(source), "--output", str(recovered), "--grid", "2x2",
+            "--background", "magenta", "--report", str(report),
+        ],
+        capture_output=True, text=True, check=False,
+    )
+    assert recovery.returncode == 2
+    fallback = process_action_sheet(
+        source, godot_project / "fallback", grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04", asset_id="player",
+        fixed_grid_fallback=True, final_dir=output, final_prefix="player",
+        final_sheet_name="player_idle_sheet.png", **args,
+    )
+    frame_paths = [
+        "res://" + Path(path).relative_to(godot_project).as_posix()
+        for path in fallback["final_frame_paths"]
+    ]
+    compiled = build_default_registry().compile(
+        CompileRequest(
+            production_family="character-bundle", asset_id="player",
+            source_layout_type="grid_sheet",
+            source_path="res://assets/generated/character-bundle/player/player_idle_sheet.png",
+            artifact_type="SpriteFrames",
+            artifact_path="res://assets/generated/character-bundle/player/player.tres",
+            project_root=godot_project,
+            spec={"required_actions": ["idle"], "actions": [{
+                "name": "idle", "fps": 8, "loop": False,
+                "frame_paths": frame_paths, "frame_durations": [1, 1, 1, 1],
+            }]},
+        )
+    )
+    probe = GodotProbe(godot_bin).probe(
+        godot_project,
+        [ProbeRequest(compiled.godot_artifact.path, "SpriteFrames", checks=("spriteframes",))],
+    )
+
+    assert fallback["warnings"][0]["human_review_required"] is True
+    assert probe.resources[0].loaded is True
+    assert probe.resources[0].type_matches is True
 
 
 def test_l4_validator_checks_the_explicit_timing_and_texture_contract(tmp_path):
