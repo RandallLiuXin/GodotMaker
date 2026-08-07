@@ -110,7 +110,9 @@ def _maximum_weight_assignment(weights: list[list[int]]) -> list[int]:
     return assignment
 
 
-def _components(image: Any, *, min_area: int) -> list[dict[str, object]]:
+def _components(
+    image: Any, *, min_area: int
+) -> tuple[list[dict[str, object]], dict[str, object]]:
     """Find 8-connected non-transparent components without using their AABBs."""
     alpha = image.getchannel("A")
     width, height = image.size
@@ -119,6 +121,7 @@ def _components(image: Any, *, min_area: int) -> list[dict[str, object]]:
     finally:
         alpha.close()
     found: list[dict[str, object]] = []
+    filtered_areas: list[int] = []
     while foreground:
         start = min(foreground)
         foreground.remove(start)
@@ -135,6 +138,7 @@ def _components(image: Any, *, min_area: int) -> list[dict[str, object]]:
                         foreground.remove(neighbour)
                         stack.append(neighbour)
         if len(pixels) < min_area:
+            filtered_areas.append(len(pixels))
             continue
         xs = [point % width for point in pixels]
         ys = [point // width for point in pixels]
@@ -144,7 +148,14 @@ def _components(image: Any, *, min_area: int) -> list[dict[str, object]]:
             "bbox": [min(xs), min(ys), max(xs) + 1, max(ys) + 1],
             "centre": [sum(xs) / len(xs), sum(ys) / len(ys)],
         })
-    return sorted(found, key=lambda component: tuple(component["bbox"]))
+    return (
+        sorted(found, key=lambda component: tuple(component["bbox"])),
+        {
+            "count": len(filtered_areas),
+            "total_area": sum(filtered_areas),
+            "areas": sorted(filtered_areas),
+        },
+    )
 
 
 def _cell_index(x: int, y: int, *, width: int, height: int, cols: int, rows: int) -> int:
@@ -179,7 +190,9 @@ def _recover(
             scan = image.copy()
             cleanup = {"background": "transparent", "algorithm": None}
         try:
-            components = _components(scan, min_area=min_component_area)
+            components, filtered_components = _components(
+                scan, min_area=min_component_area
+            )
             expected = cols * rows
             if len(components) != expected:
                 raise RecoveryIncomplete({
@@ -187,6 +200,7 @@ def _recover(
                     "error_code": "component_count_mismatch",
                     "message": f"found {len(components)} connected components; expected {expected}",
                     "component_count": len(components), "expected_component_count": expected,
+                    "filtered_components": filtered_components,
                 })
 
             ownership: list[list[int]] = []
@@ -225,6 +239,7 @@ def _recover(
                         "message": "a component cannot be assigned to a source cell with majority pixel ownership",
                         "component_index": component_index, "assigned_cell": [cell % cols, cell // cols],
                         "ownership_ratio": ratio,
+                        "filtered_components": filtered_components,
                     })
                 ordered[cell] = component
                 placements[cell] = {
@@ -270,7 +285,8 @@ def _recover(
                 "source_path": str(source), "output_path": str(output), "background": background,
                 "cleanup": cleanup, "grid": {"cols": cols, "rows": rows},
                 "min_component_area": min_component_area, "padding": padding,
-                "component_count": len(components), "original_size": list(scan.size),
+                "component_count": len(components), "filtered_components": filtered_components,
+                "original_size": list(scan.size),
                 "recovered_size": [cell_w * cols, cell_h * rows],
                 "recovered_cell_size": [cell_w, cell_h], "placements": placements,
             }

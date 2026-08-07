@@ -1023,8 +1023,8 @@ def process_action_sheet(
         "validation": {
             "passed": True,
             "notes": (
-                ["Fixed-grid fallback delivered a mechanically complete action; human visual review is required."]
-                if fallback_warning else []
+                "Fixed-grid fallback delivered a mechanically complete action; human visual review is required."
+                if fallback_warning else ""
             ),
         },
     }

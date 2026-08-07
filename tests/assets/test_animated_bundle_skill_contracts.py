@@ -52,6 +52,21 @@ def test_character_fixture_has_a_valid_high_level_public_contract():
     assert request["spec"]["actions"][1]["loop"] is False
 
 
+def test_character_final_handoff_retains_a_fixed_grid_warning_as_string_notes():
+    request = _character_request()
+    result = _fixture("character-bundle", "valid-result.json")
+    result["validation"]["notes"] = "Fixed-grid fallback used for attack; review action report warnings."
+
+    handoff = check_bundle_handoff(request, result)
+
+    assert handoff["kind"] == "handoff"
+    assert result["validation"]["notes"].startswith("Fixed-grid fallback")
+
+    result["validation"]["notes"] = ["not a public result string"]
+    with pytest.raises(AnimatedBundleContractError, match="notes must be a string"):
+        check_bundle_handoff(request, result)
+
+
 def test_character_resolved_request_retains_the_compiler_boundary():
     request = _resolved_character_request()
 
