@@ -67,6 +67,15 @@ def _source_adapter(family: str):
     return module
 
 
+def test_final_validation_mapping_preserves_string_fallback_notes():
+    result = _background_result()
+    result["validation"]["notes"] = "Fixed-grid fallback used for attack; review action report warnings."
+
+    actual = runner._mapped(result, {level: True for level in ("L0", "L1", "L2", "L3", "L4")})
+
+    assert actual["validation"]["notes"] == result["validation"]["notes"]
+
+
 def test_skill_local_adapters_reject_a_legal_request_for_another_family(tmp_path):
     request = {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."}
     for family in (

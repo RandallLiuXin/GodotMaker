@@ -662,6 +662,81 @@ def _has_edge_touch_rejection(curation: dict[str, object]) -> bool:
     return any(isinstance(item, dict) and item.get("reason") == "edge_touch" for item in rejected)
 
 
+def _fixed_grid_candidates(
+    source: Path,
+    candidate_dir: Path,
+    *,
+    cols: int,
+    rows: int,
+    frame_names: list[str],
+    background: str,
+) -> tuple[dict[str, Path], list[dict[str, object]]]:
+    """Force declared grid crops, retaining a usable frame for every slot.
+
+    This is an explicit delivery fallback: it intentionally does not use any
+    component or edge-touch rejection and never infers an asset family.
+    """
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise ActionProcessError("Pillow is required for fixed-grid fallback") from exc
+    try:
+        image = Image.open(source).convert("RGBA")
+        image.load()
+    except Exception as exc:
+        raise ActionProcessError(f"Frame is not a readable image: {source}") from exc
+    try:
+        if background == "magenta":
+            cleaned, _cleanup = _remove_magenta_background(image)
+        elif background == "transparent":
+            cleaned = image.copy()
+        else:
+            raise ActionProcessError("--background must be transparent or magenta")
+        crops: list[Any] = []
+        try:
+            available: list[int] = []
+            for index in range(cols * rows):
+                row, col = divmod(index, cols)
+                left = round(col * cleaned.width / cols)
+                right = round((col + 1) * cleaned.width / cols)
+                top = round(row * cleaned.height / rows)
+                bottom = round((row + 1) * cleaned.height / rows)
+                crop = cleaned.crop((left, top, right, bottom))
+                crops.append(crop)
+                if crop.getchannel("A").getbbox() is not None:
+                    available.append(index)
+            candidates: dict[str, Path] = {}
+            substitutions: list[dict[str, object]] = []
+            candidate_dir.mkdir(parents=True, exist_ok=True)
+            for index, (name, crop) in enumerate(zip(frame_names, crops)):
+                used = crop
+                if index not in available:
+                    if available:
+                        source_index = min(available, key=lambda candidate: (abs(candidate - index), candidate))
+                        used = crops[source_index]
+                        substitutions.append({
+                            "frame": name,
+                            "source_cell": [source_index % cols, source_index // cols],
+                            "reason": "empty_grid_cell_copied_nearest_valid_frame",
+                        })
+                    else:
+                        substitutions.append({
+                            "frame": name,
+                            "source_cell": None,
+                            "reason": "all_grid_cells_empty_transparent_frame_retained",
+                        })
+                path = candidate_dir / f"{name}.png"
+                used.save(path)
+                candidates[name] = path
+            return candidates, substitutions
+        finally:
+            cleaned.close()
+            for crop in crops:
+                crop.close()
+    finally:
+        image.close()
+
+
 def process_action_sheet(
     source: Path,
     output_dir: Path,
@@ -684,6 +759,7 @@ def process_action_sheet(
     frame_durations: list[float] | None = None,
     reject_edge_touch: bool = True,
     recover_edge_touch: bool = False,
+    fixed_grid_fallback: bool = False,
     recovery_timestamp: str | None = None,
     scale_reference_metadata: Path | None = None,
     scale_tolerance: float = 0.15,
@@ -724,6 +800,7 @@ def process_action_sheet(
     initial_curation_report = output_dir / "curation-report.initial-grid.json"
     source_recovery: dict[str, object] | None = None
     recovered_background = background
+    fallback_warning: dict[str, object] | None = None
 
     try:
         curation = process_sheet(
@@ -742,7 +819,9 @@ def process_action_sheet(
             report=curation_report,
         )
     except SheetProcessError as exc:
-        raise ActionProcessError(str(exc)) from exc
+        if not fixed_grid_fallback:
+            raise ActionProcessError(str(exc)) from exc
+        curation = {"candidates": [], "rejected": [{"reason": "curation_error", "message": str(exc)}]}
 
     candidates = {
         str(item.get("name")): Path(str(item.get("path")))
@@ -767,41 +846,76 @@ def process_action_sheet(
             # magenta cleanup again would double-matte semitransparent edges.
             recovered_background = "transparent"
         except ActionRegenerationRequired as exc:
-            diagnostic = {
-                **exc.result,
-                "action_name": action_name,
-                "grid": grid,
-                "frame_names": frame_names,
-                "initial_curation_report_path": str(initial_curation_report),
+            if fixed_grid_fallback:
+                source_recovery = None
+                candidates, substitutions = _fixed_grid_candidates(
+                    source, candidate_dir, cols=cols, rows=rows,
+                    frame_names=frame_names, background=background,
+                )
+                missing = []
+                fallback_warning = {
+                    "asset": asset_id,
+                    "action": action_name,
+                    "fallback_level": "fixed_grid_forced_cut",
+                    "affected_frames": frame_names,
+                    "reason": "edge_touch_recovery_incomplete",
+                    "human_review_required": True,
+                    "frame_substitutions": substitutions,
+                }
+            else:
+                diagnostic = {
+                    **exc.result,
+                    "action_name": action_name,
+                    "grid": grid,
+                    "frame_names": frame_names,
+                    "initial_curation_report_path": str(initial_curation_report),
+                }
+                diagnostic_report = report or output_dir / "regeneration-report.json"
+                diagnostic["report"] = str(diagnostic_report)
+                _write_atomic_json(diagnostic_report, diagnostic)
+                raise ActionRegenerationRequired(diagnostic) from exc
+        if fallback_warning is None:
+            try:
+                curation = process_sheet(
+                    source,
+                    candidate_dir,
+                    grid=grid,
+                    names=names,
+                    asset_id=asset_id,
+                    tag=tag,
+                    background=recovered_background,
+                    snap_mode="grid",
+                    component_mode=component_mode,
+                    component_padding=component_padding,
+                    min_component_area=min_component_area,
+                    reject_edge_touch=reject_edge_touch,
+                    report=curation_report,
+                )
+            except SheetProcessError as exc:
+                if not fixed_grid_fallback:
+                    raise ActionProcessError(str(exc)) from exc
+                curation = {"candidates": []}
+            candidates = {
+                str(item.get("name")): Path(str(item.get("path")))
+                for item in curation.get("candidates", [])
+                if isinstance(item, dict) and item.get("path")
             }
-            diagnostic_report = report or output_dir / "regeneration-report.json"
-            diagnostic["report"] = str(diagnostic_report)
-            _write_atomic_json(diagnostic_report, diagnostic)
-            raise ActionRegenerationRequired(diagnostic) from exc
-        try:
-            curation = process_sheet(
-                source,
-                candidate_dir,
-                grid=grid,
-                names=names,
-                asset_id=asset_id,
-                tag=tag,
-                background=recovered_background,
-                snap_mode="grid",
-                component_mode=component_mode,
-                component_padding=component_padding,
-                min_component_area=min_component_area,
-                reject_edge_touch=reject_edge_touch,
-                report=curation_report,
-            )
-        except SheetProcessError as exc:
-            raise ActionProcessError(str(exc)) from exc
-        candidates = {
-            str(item.get("name")): Path(str(item.get("path")))
-            for item in curation.get("candidates", [])
-            if isinstance(item, dict) and item.get("path")
+            missing = [name for name in frame_names if name not in candidates]
+    if missing and fixed_grid_fallback:
+        candidates, substitutions = _fixed_grid_candidates(
+            source, candidate_dir, cols=cols, rows=rows,
+            frame_names=frame_names, background=recovered_background,
+        )
+        missing = []
+        fallback_warning = {
+            "asset": asset_id,
+            "action": action_name,
+            "fallback_level": "fixed_grid_forced_cut",
+            "affected_frames": frame_names,
+            "reason": "visual_grid_rejections_ignored",
+            "human_review_required": True,
+            "frame_substitutions": substitutions,
         }
-        missing = [name for name in frame_names if name not in candidates]
     if missing:
         raise ActionProcessError(f"Missing required frames: {', '.join(missing)}")
 
@@ -905,6 +1019,14 @@ def process_action_sheet(
         "final_sheet_path": final_sheet,
         "final_gif_path": final_gif,
         "scale_normalization": scale_normalization,
+        "warnings": [fallback_warning] if fallback_warning else [],
+        "validation": {
+            "passed": True,
+            "notes": (
+                "Fixed-grid fallback delivered a mechanically complete action; human visual review is required."
+                if fallback_warning else ""
+            ),
+        },
     }
     metadata["scale_reference"] = _check_scale_reference(
         metadata,
@@ -935,6 +1057,8 @@ def _main() -> int:
     )
     parser.add_argument("--align", choices=["center", "bottom", "feet"])
     parser.add_argument("--recover-edge-touch", action="store_true")
+    parser.add_argument("--fixed-grid-fallback", action="store_true",
+                        help="Explicitly force declared grid crops and emit a human-review warning")
     parser.add_argument("--scale-reference-metadata", type=Path)
     parser.add_argument("--scale-tolerance", type=float, default=0.15)
     parser.add_argument("--fit-scale", type=float, default=0.85)
@@ -967,6 +1091,7 @@ def _main() -> int:
             component_mode=component_mode,
             align=align,
             recover_edge_touch=args.recover_edge_touch,
+            fixed_grid_fallback=args.fixed_grid_fallback,
             scale_reference_metadata=args.scale_reference_metadata,
             scale_tolerance=args.scale_tolerance,
             fit_scale=args.fit_scale,

@@ -64,6 +64,15 @@ def _mapped(
     mapped["validation"] = {"passed": all(levels.values()), "levels": dict(levels)}
     if error is not None:
         mapped["validation"]["notes"] = str(error)
+    else:
+        original_validation = result.get("validation")
+        original_note = (
+            original_validation.get("notes")
+            if isinstance(original_validation, Mapping)
+            else None
+        )
+        if isinstance(original_note, str) and original_note:
+            mapped["validation"]["notes"] = original_note
     try:
         check_result(mapped)
     except AssetContractError as exc:  # protected by L0

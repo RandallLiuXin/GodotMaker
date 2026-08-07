@@ -17,6 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- Added whole-sheet 8-connected-component recovery and fixed-grid warning fallback for animated asset sheets (#169).
+
 - Added `tools/asset_family_registry.py` so every public Asset Skill request resolves to one authoritative output contract.
 
 - `/gm-asset` can now plan, dispatch, and register the `tileset` production unit, so a validated `TileSet` reaches a worker as a tile library instead of stopping at the Skill.

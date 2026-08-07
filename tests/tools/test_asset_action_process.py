@@ -7,7 +7,9 @@ import pytest
 from PIL import Image, ImageDraw
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
+SHARED_DIR = Path(__file__).resolve().parents[2] / "skills" / "assets" / "_shared"
 sys.path.insert(0, str(TOOLS_DIR))
+sys.path.insert(0, str(SHARED_DIR))
 
 from asset_action_process import (  # noqa: E402
     ActionProcessError,
@@ -16,6 +18,7 @@ from asset_action_process import (  # noqa: E402
     _write_recovered_action_source,
     process_action_sheet,
 )
+from asset_compiler import CompileRequest, build_default_registry  # noqa: E402
 
 
 def animation_args():
@@ -71,6 +74,19 @@ def make_irregular_recovery_sheet(path: Path):
     draw.rectangle((90, 24, 116, 27), fill=(40, 220, 40, 255))
     draw.rectangle((6, 52, 24, 96), fill=(40, 40, 220, 255))
     draw.rectangle((76, 61, 96, 90), fill=(220, 180, 40, 255))
+    image.save(path)
+
+
+def make_aabb_overlap_recovery_sheet(path: Path):
+    """Create four disconnected figures whose two top AABBs overlap."""
+    image = Image.new("RGBA", (80, 80), (255, 0, 255, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((3, 5, 10, 35), fill=(220, 40, 40, 255))
+    draw.rectangle((10, 10, 55, 12), fill=(220, 40, 40, 255))
+    draw.rectangle((45, 20, 55, 38), fill=(40, 220, 40, 255))
+    draw.rectangle((55, 35, 77, 37), fill=(40, 220, 40, 255))
+    draw.rectangle((8, 48, 25, 72), fill=(40, 40, 220, 255))
+    draw.rectangle((52, 50, 70, 74), fill=(220, 180, 40, 255))
     image.save(path)
 
 
@@ -326,6 +342,114 @@ def test_recovery_uses_foreground_ownership_for_a_weapon_crossing_a_cell_edge(tm
     assert wide_attack["cell_scores"][0]["score"] > wide_attack["cell_scores"][1]["score"]
 
 
+def test_connected_component_recovery_reprocesses_a_magenta_aabb_failure_as_transparent(tmp_path):
+    source = tmp_path / "aabb-overlap-source.png"
+    recovered = tmp_path / "recovered.png"
+    recovery_report = tmp_path / "recovery-report.json"
+    make_aabb_overlap_recovery_sheet(source)
+
+    with pytest.raises(ActionRegenerationRequired, match="Autoslice recovery found 3 frames; expected 4"):
+        process_action_sheet(
+            source,
+            tmp_path / "strict",
+            grid="2x2",
+            names="idle_01,idle_02,idle_03,idle_04",
+            asset_id="player_idle",
+            recover_edge_touch=True,
+            **animation_args(),
+        )
+
+    recovery = subprocess.run(
+        [
+            sys.executable, str(TOOLS_DIR / "asset_connected_component_recovery.py"),
+            "--source", str(source), "--output", str(recovered), "--grid", "2x2",
+            "--background", "magenta", "--min-component-area", "10", "--report", str(recovery_report),
+        ],
+        capture_output=True, text=True, check=False,
+    )
+
+    assert recovery.returncode == 0, recovery.stderr
+    result = process_action_sheet(
+        recovered,
+        tmp_path / "reprocessed",
+        grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04",
+        asset_id="player_idle",
+        background="transparent",
+        **animation_args(),
+    )
+
+    assert result["frame_count"] == 4
+    assert result["warnings"] == []
+
+
+def test_recoverable_component_failure_uses_fixed_grid_frames_for_spriteframes_compile(tmp_path):
+    source = tmp_path / "missing-frame-source.png"
+    recovered = tmp_path / "recovered.png"
+    recovery_report = tmp_path / "recovery-report.json"
+    final_dir = tmp_path / "assets" / "generated" / "character-bundle" / "player"
+    make_edge_touch_action_sheet(source, missing_last=True)
+
+    with pytest.raises(ActionRegenerationRequired):
+        process_action_sheet(
+            source,
+            tmp_path / "strict",
+            grid="2x2",
+            names="idle_01,idle_02,idle_03,idle_04",
+            asset_id="player",
+            recover_edge_touch=True,
+            **animation_args(),
+        )
+    recovery = subprocess.run(
+        [
+            sys.executable, str(TOOLS_DIR / "asset_connected_component_recovery.py"),
+            "--source", str(source), "--output", str(recovered), "--grid", "2x2",
+            "--background", "magenta", "--report", str(recovery_report),
+        ],
+        capture_output=True, text=True, check=False,
+    )
+    assert recovery.returncode == 2
+
+    fallback = process_action_sheet(
+        source,
+        tmp_path / "fallback",
+        grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04",
+        asset_id="player",
+        fixed_grid_fallback=True,
+        final_dir=final_dir,
+        final_prefix="player",
+        final_sheet_name="player_idle_sheet.png",
+        **animation_args(),
+    )
+    frame_paths = [
+        "res://" + Path(path).relative_to(tmp_path).as_posix()
+        for path in fallback["final_frame_paths"]
+    ]
+    compiled = build_default_registry().compile(
+        CompileRequest(
+            production_family="character-bundle",
+            asset_id="player",
+            source_layout_type="grid_sheet",
+            source_path="res://assets/generated/character-bundle/player/player_idle_sheet.png",
+            artifact_type="SpriteFrames",
+            artifact_path="res://assets/generated/character-bundle/player/player.tres",
+            project_root=tmp_path,
+            spec={
+                "required_actions": ["idle"],
+                "actions": [{
+                    "name": "idle", "fps": 8, "loop": False,
+                    "frame_paths": frame_paths, "frame_durations": [1, 1, 1, 1],
+                }],
+            },
+        )
+    )
+
+    assert fallback["warnings"][0]["human_review_required"] is True
+    assert compiled.godot_artifact.type == "SpriteFrames"
+    assert (final_dir / "player.tres").is_file()
+
+
 def test_recovery_preserves_rows_when_component_bounding_boxes_overlap_vertically(tmp_path):
     source = tmp_path / "overlapping-rows-source.png"
     image = Image.new("RGBA", (120, 100), (0, 0, 0, 0))
@@ -494,6 +618,36 @@ def test_process_action_sheet_recovery_requests_source_regeneration(tmp_path):
     assert diagnostic["recommended_action"] == "regenerate_source"
     assert json.loads(report.read_text(encoding="utf-8")) == diagnostic
     assert not (source.parent / "history" / "player_idle_source.20260609-120000.png").exists()
+
+
+def test_fixed_grid_fallback_delivers_complete_action_with_human_review_warning(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source, missing_last=True)
+
+    result = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04",
+        asset_id="player_idle",
+        fixed_grid_fallback=True,
+        **animation_args(),
+    )
+
+    assert result["frame_count"] == 4
+    assert len(result["frame_paths"]) == 4
+    warning = result["warnings"][0]
+    assert warning["asset"] == "player_idle"
+    assert warning["action"] == "idle"
+    assert warning["fallback_level"] == "fixed_grid_forced_cut"
+    assert warning["affected_frames"] == ["idle_01", "idle_02", "idle_03", "idle_04"]
+    assert warning["human_review_required"] is True
+    assert warning["frame_substitutions"] == [{
+        "frame": "idle_04", "source_cell": [0, 1],
+        "reason": "empty_grid_cell_copied_nearest_valid_frame",
+    }]
+    assert result["validation"]["passed"] is True
+    assert "human visual review" in result["validation"]["notes"]
 
 
 def test_cli_reports_source_regeneration_as_an_intermediate_result(tmp_path):
