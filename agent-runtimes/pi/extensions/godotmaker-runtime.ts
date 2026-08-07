@@ -52,7 +52,7 @@ function piInvocation(args: string[]): { command: string; args: string[] } | nul
   const script = process.argv[1];
   if (script && fs.existsSync(script)) return { command: process.execPath, args: [script, ...args] };
   const packageDir = process.env.PI_PACKAGE_DIR;
-  const packageCli = packageDir && path.join(packageDir, "dist", "cli", "index.js");
+  const packageCli = packageDir && path.join(packageDir, "dist", "cli.js");
   if (packageCli && fs.existsSync(packageCli)) return { command: process.execPath, args: [packageCli, ...args] };
   return null;
 }

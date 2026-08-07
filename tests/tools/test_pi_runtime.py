@@ -60,6 +60,8 @@ def test_pi_runtime_bridge_fails_closed_for_missing_dependencies():
     assert '".pi/extensions/godotmaker-runtime.ts"' in text
     assert "DEFAULT_DELEGATE_TIMEOUT_SECONDS" in text
     assert "PI_PACKAGE_DIR" in text
+    assert 'path.join(packageDir, "dist", "cli.js")' in text
+    assert 'path.join(packageDir, "dist", "cli", "index.js")' not in text
 
 
 def test_pi_gitignore_covers_runtime_state(tmp_path):
