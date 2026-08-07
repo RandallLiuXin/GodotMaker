@@ -496,6 +496,36 @@ def test_process_action_sheet_recovery_requests_source_regeneration(tmp_path):
     assert not (source.parent / "history" / "player_idle_source.20260609-120000.png").exists()
 
 
+def test_fixed_grid_fallback_delivers_complete_action_with_human_review_warning(tmp_path):
+    source = tmp_path / "player_idle_source.png"
+    make_action_sheet(source, missing_last=True)
+
+    result = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="2x2",
+        names="idle_01,idle_02,idle_03,idle_04",
+        asset_id="player_idle",
+        fixed_grid_fallback=True,
+        **animation_args(),
+    )
+
+    assert result["frame_count"] == 4
+    assert len(result["frame_paths"]) == 4
+    warning = result["warnings"][0]
+    assert warning["asset"] == "player_idle"
+    assert warning["action"] == "idle"
+    assert warning["fallback_level"] == "fixed_grid_forced_cut"
+    assert warning["affected_frames"] == ["idle_01", "idle_02", "idle_03", "idle_04"]
+    assert warning["human_review_required"] is True
+    assert warning["frame_substitutions"] == [{
+        "frame": "idle_04", "source_cell": [0, 1],
+        "reason": "empty_grid_cell_copied_nearest_valid_frame",
+    }]
+    assert result["validation"]["passed"] is True
+    assert "human visual review" in result["validation"]["notes"][0]
+
+
 def test_cli_reports_source_regeneration_as_an_intermediate_result(tmp_path):
     source = tmp_path / "player_idle_source.png"
     make_edge_touch_action_sheet(source, missing_last=True)
