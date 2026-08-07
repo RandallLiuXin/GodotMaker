@@ -237,12 +237,6 @@ goes, so when your brief binds one, the map is yours.
 - Handoff condition: {complete | partial | timeout | forced_handoff | tool_or_environment_error}
 - Suggested classification: {verified_success | effective_repair_candidate | incomplete_handoff | orchestration_failure}
 
-`effective_repair_candidate` requires a relevant production diff, a focused
-verification that ran and failed normally, and a failure fingerprint. A test,
-fixture, parser/discovery, tool, environment, permission, timeout, or
-analysis-only outcome is never that candidate. The lead applies
-`references/repair-attempt-accounting.md` to make the final classification.
-
 ### Visual Self-Check
 Required only when the brief includes `Visual Self-Check`.
 - Status: PASS | FAIL | SKIP

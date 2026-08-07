@@ -62,14 +62,14 @@ def test_contract_excludes_incomplete_and_tooling_outcomes_from_repair_budget():
         "dispatch_count",
         "repair_attempt_count",
         "no_progress_count",
-        "actual, relevant production implementation",
+        "relevant production implementation diff",
         "focused verification",
         "failure fingerprint",
-        "test discovery/parser failure",
+        "test discovery/parser",
         "environment/network/permission failure",
-        "At **3 consecutive** no-progress outcomes",
+        "At 3 consecutive no-progress outcomes",
         "repair_attempt_count == 5",
-        "must not become `failed`",
+        "do not mark it `failed`",
     ):
         assert required in accounting
 
