@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from PIL import Image, ImageDraw
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_DIR = REPO_ROOT / "skills" / "assets" / "_shared"
@@ -19,6 +20,7 @@ from asset_animated_bundle_contract_check import (  # noqa: E402
     check_bundle_request,
     check_bundle_result,
 )
+from asset_action_process import process_action_sheet  # noqa: E402
 from asset_compiler import CompileRequest, build_default_registry  # noqa: E402
 
 
@@ -209,6 +211,74 @@ def test_fx_fixture_reaches_the_real_spriteframes_compiler_through_public_handof
     assert '"loop": false' in (output / "impact.tres").read_text(encoding="utf-8")
 
 
+def test_fx_fixed_grid_fallback_keeps_declared_handoff_and_shared_warning_shape(tmp_path):
+    request = _fx_request()
+    action = request["spec"]["actions"][0]
+    source = tmp_path / "impact-source.png"
+    final_dir = tmp_path / "assets" / "generated" / "fx-bundle" / "impact"
+    image = Image.new("RGBA", (96, 32), (255, 0, 255, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((4, 4, 27, 27), fill=(80, 180, 255, 255))
+    draw.rectangle((36, 4, 59, 27), fill=(120, 220, 255, 255))
+    image.save(source)
+
+    processed = process_action_sheet(
+        source,
+        tmp_path / "processed",
+        grid="3x1",
+        names=",".join(action["frame_names"]),
+        asset_id="impact",
+        background="magenta",
+        align="center",
+        action_name=action["name"],
+        fps=action["fps"],
+        loop=action["loop"],
+        frame_durations=action["frame_durations"],
+        fixed_grid_fallback=True,
+        final_dir=final_dir,
+        final_prefix="impact_impact",
+        final_sheet_name="impact_sheet.png",
+    )
+    frame_paths = [
+        "res://" + Path(path).relative_to(tmp_path).as_posix()
+        for path in processed["final_frame_paths"]
+    ]
+    spec = build_spriteframes_spec(request, {"impact": frame_paths})
+    compiled = build_default_registry().compile(
+        CompileRequest(
+            production_family="fx-bundle",
+            asset_id="impact",
+            source_layout_type="grid_sheet",
+            source_path="res://assets/generated/fx-bundle/impact/impact_sheet.png",
+            artifact_type="SpriteFrames",
+            artifact_path="res://assets/generated/fx-bundle/impact/impact.tres",
+            project_root=tmp_path,
+            spec=spec,
+        )
+    )
+    result = _fixture("fx-bundle", "animated-result.json")
+    result["validation"]["notes"] = processed["validation"]["notes"]
+
+    assert processed["frame_count"] == action["grid"]["columns"] * action["grid"]["rows"]
+    assert processed["warnings"] == [{
+        "asset": "impact",
+        "action": "impact",
+        "fallback_level": "fixed_grid_forced_cut",
+        "affected_frames": action["frame_names"],
+        "reason": "visual_grid_rejections_ignored",
+        "human_review_required": True,
+        "frame_substitutions": [{
+            "frame": "impact_03",
+            "source_cell": [1, 0],
+            "reason": "empty_grid_cell_copied_nearest_valid_frame",
+        }],
+    }]
+    assert isinstance(result["validation"]["notes"], str)
+    assert check_bundle_handoff(request, result)["kind"] == "handoff"
+    assert compiled.godot_artifact.type == "SpriteFrames"
+    assert (final_dir / "impact.tres").is_file()
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -258,6 +328,10 @@ def test_fx_skill_keeps_static_autoslice_and_animated_grid_paths_separate():
     assert "needs_regeneration" in skill
     assert "Animation\nnever uses autoslice" in skill
     assert "--align center" in skill
+    assert "--fixed-grid-fallback" in skill
+    assert "asset_connected_component_recovery.py" not in skill
+    assert "components, bounds, or autoslice regions" in skill
+    assert "validation.notes" in skill
     assert "--final-prefix <asset_id>_<action>" in skill
     assert "list that script's exact path in the same step's `modified_files`" in skill
     assert "ASSET_RESULT.json" in skill
