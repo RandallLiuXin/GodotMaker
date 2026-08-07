@@ -176,6 +176,18 @@ frame label, so omitting the action prefix changes the stable runtime path. The
 separate final sheet name preserves the one stable source-layout path consumed
 by the SpriteFrames compiler.
 
+Use `grid.columns * grid.rows`, ordered `frame_names`, `frame_durations`, and
+`loop` as the only frame-slicing facts. Do not split, merge, or reorder frames
+from components, bounds, or autoslice regions.
+
+On `status: "needs_regeneration"`, preserve the report, repair or regenerate
+the same source with the declared grid, and process it again. If visual grid
+rejections remain after suitable provider repair, process the preserved source
+again with the same grid, names, timing, delivery paths, and
+`--fixed-grid-fallback`. Do not run connected-component recovery. Preserve the
+action report's structured `warnings[]`, complete compilation and L0-L4, and
+copy a concise warning summary to the final result's string `validation.notes`.
+
 Compile and validate the one SpriteFrames artifact through the shared route. Preserve frame order, grid, timing, loop state, alignment, paths, and fingerprint as result evidence.
 
 ## Result shape
