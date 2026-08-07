@@ -183,7 +183,7 @@ def test_bundle_emits_required_keys(project_dir: Path):
     assert "git_log_since_previous_tag" in data
     assert "test_count" in data
     assert "evidence" in data
-    assert set(data["test_count"].keys()) == {"unit", "e2e"}
+    assert set(data["test_count"].keys()) == {"unit", "unit_backend", "e2e"}
     assert set(data["evidence"].keys()) == {"archive_path", "e2e_files", "screenshots"}
 
 
@@ -233,7 +233,83 @@ def test_bundle_counts_unit_and_e2e_tests(project_dir: Path):
     r = run(project_dir, "bundle", "v0.1.0")
     data = json.loads(r.stdout)
     assert data["test_count"]["unit"] == 2
+    assert data["test_count"]["unit_backend"] == "gdunit"
     assert data["test_count"]["e2e"] == 2
+
+
+def test_bundle_uses_passing_dotnet_verify_report_count(project_dir: Path):
+    (project_dir / ".godotmaker" / "config.yaml").write_text(
+        "language_backend: csharp\n"
+        "unit_test_backend: dotnet\n"
+        "dotnet_target: Game.sln\n",
+        encoding="utf-8",
+    )
+    (project_dir / ".godotmaker" / "verify_report.json").write_text(
+        json.dumps({
+            "result": "pass",
+            "backend": {
+                "language": "csharp",
+                "unit_tests": "dotnet",
+                "selection": "config",
+                "dotnet_target": "Game.sln",
+                "godot_csharp_project": "Game.csproj",
+            },
+            "checks": {
+                "unit_tests": {
+                    "result": "pass",
+                    "framework": "dotnet",
+                    "passed": 305,
+                    "failed": 0,
+                    "skipped": 0,
+                    "failures": [],
+                },
+            },
+        }),
+        encoding="utf-8",
+    )
+
+    r = run(project_dir, "bundle", "v0.1.0")
+
+    assert r.returncode == 0, r.stderr
+    data = json.loads(r.stdout)
+    assert data["test_count"]["unit"] == 305
+    assert data["test_count"]["unit_backend"] == "dotnet"
+
+
+@pytest.mark.parametrize("report_result", [None, "fail"])
+def test_bundle_rejects_dotnet_project_without_passing_verify_evidence(
+    project_dir: Path,
+    report_result: str | None,
+):
+    (project_dir / ".godotmaker" / "config.yaml").write_text(
+        "language_backend: csharp\n"
+        "unit_test_backend: dotnet\n"
+        "dotnet_target: Game.sln\n",
+        encoding="utf-8",
+    )
+    if report_result is not None:
+        (project_dir / ".godotmaker" / "verify_report.json").write_text(
+            json.dumps({
+                "result": report_result,
+                "backend": {"language": "csharp", "unit_tests": "dotnet"},
+                "checks": {
+                    "unit_tests": {
+                        "result": "error",
+                        "framework": "dotnet",
+                        "passed": 0,
+                        "failed": 0,
+                        "skipped": 0,
+                        "failures": [],
+                    },
+                },
+            }),
+            encoding="utf-8",
+        )
+
+    r = run(project_dir, "bundle", "v0.1.0")
+
+    assert r.returncode == 1
+    assert "passing dotnet verify evidence" in r.stderr
 
 
 def test_bundle_reads_archived_evidence_manifest(project_dir: Path):

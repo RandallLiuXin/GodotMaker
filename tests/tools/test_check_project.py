@@ -1,15 +1,27 @@
 """Tests for check_project.py."""
+import importlib.util
 import os
 import subprocess
 import sys
 import pytest
 import tempfile
+from pathlib import Path
 
 # tests/tools/ → project_root/tools/
 CHECK_SCRIPT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "tools", "check_project.py"
 )
+
+def _load_check_project_module():
+    spec = importlib.util.spec_from_file_location("check_project_under_test", CHECK_SCRIPT)
+    tools_dir = os.path.dirname(CHECK_SCRIPT)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 
 
 def run_check(project_dir: str, *flags: str) -> tuple[str, int]:
@@ -115,6 +127,60 @@ def _write_godot_config(project_dir: str, godot_path: str):
     os.makedirs(os.path.join(project_dir, ".claude"), exist_ok=True)
     with open(os.path.join(project_dir, ".claude", "godotmaker.yaml"), "w", encoding="utf-8") as f:
         f.write(f'godot_path: "{godot_path}"\n')
+
+
+def _write_fake_git(project_dir: str, body: str) -> str:
+    bin_dir = os.path.join(project_dir, "fake-bin")
+    os.makedirs(bin_dir, exist_ok=True)
+    if os.name == "nt":
+        path = os.path.join(bin_dir, "git.cmd")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(body)
+    else:
+        path = os.path.join(bin_dir, "git")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(body)
+        os.chmod(path, 0o755)
+    return bin_dir
+
+
+def _seed_csharp_build_project(project_dir: str):
+    with open(os.path.join(project_dir, "project.godot"), "w", encoding="utf-8") as f:
+        f.write(
+            'config_version=5\n\n'
+            '[application]\n'
+            'config/name="CSharp Test"\n\n'
+            '[autoload]\n'
+            'AutomationServer="*res://addons/godot_e2e/automation_server.gd"\n\n'
+            '[editor_plugins]\n'
+            'enabled=PackedStringArray("res://addons/godot_e2e/plugin.cfg")\n'
+        )
+    addon_dir = os.path.join(project_dir, "addons", "godot_e2e")
+    os.makedirs(addon_dir, exist_ok=True)
+    for rel_path in ("plugin.cfg", "automation_server.gd"):
+        with open(os.path.join(addon_dir, rel_path), "w", encoding="utf-8") as f:
+            f.write("# fixture\n")
+    e2e_dir = os.path.join(project_dir, "e2e")
+    os.makedirs(e2e_dir, exist_ok=True)
+    with open(os.path.join(e2e_dir, "conftest.py"), "w", encoding="utf-8") as f:
+        f.write("from godot_e2e import GodotE2E\n")
+    with open(os.path.join(project_dir, "Game.csproj"), "w", encoding="utf-8") as f:
+        f.write('<Project Sdk="Godot.NET.Sdk/4.5.0"></Project>\n')
+    test_dir = os.path.join(project_dir, "Game.Tests")
+    os.makedirs(test_dir, exist_ok=True)
+    with open(os.path.join(test_dir, "Game.Tests.csproj"), "w", encoding="utf-8") as f:
+        f.write(
+            '<Project><PropertyGroup><IsTestProject>true</IsTestProject>'
+            '</PropertyGroup></Project>\n'
+        )
+    subprocess.run(["git", "init", "-q"], cwd=project_dir, check=True)
+    subprocess.run(["git", "-C", project_dir, "config", "user.email", "x@y.z"], check=True)
+    subprocess.run(["git", "-C", project_dir, "config", "user.name", "x"], check=True)
+    subprocess.run(["git", "-C", project_dir, "add", "-A"], check=True)
+    subprocess.run(
+        ["git", "-C", project_dir, "commit", "-q", "-m", "init"],
+        check=True,
+    )
 
 
 class TestBuildCheck:
@@ -297,6 +363,191 @@ class TestBuildCheck:
         assert code == 1
         assert "HEAD does not resolve" in stdout
 
+    def test_git_dubious_ownership_retries_with_command_safe_directory(self, project_dir, monkeypatch):
+        module = _load_check_project_module()
+        project_path = Path(project_dir).resolve()
+        calls = []
+
+        def fake_run(cmd, *args, **kwargs):
+            calls.append(cmd)
+            if cmd[:2] == ["git", "-c"]:
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout="abc123def456\n",
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(
+                cmd,
+                128,
+                stdout="",
+                stderr=(
+                    "fatal: detected dubious ownership in repository at "
+                    f"'{project_path}'\n"
+                ),
+            )
+
+        monkeypatch.setattr(module.subprocess, "run", fake_run)
+        result = module.CheckResult()
+        safe_directory = project_path.as_posix()
+
+        module._check_git_head(project_path, result)
+
+        assert result.success
+        assert result.warnings == [
+            "git HEAD resolves after command-level safe.directory "
+            f"(abc123de; safe.directory={safe_directory})"
+        ]
+        assert calls == [
+            ["git", "-C", str(project_path), "rev-parse", "--verify", "HEAD^{commit}"],
+            ["git", "-c", f"safe.directory={safe_directory}", "-C", str(project_path), "rev-parse", "--verify", "HEAD^{commit}"],
+        ]
+
+    def test_git_safe_directory_uses_forward_slashes_for_windows_path(self):
+        module = _load_check_project_module()
+
+        assert (
+            module._git_safe_directory_path(Path("F:/workspace/sample-game"))
+            == "F:/workspace/sample-game"
+        )
+
+    def test_git_flag_runs_head_check_only(self, project_dir):
+        _seed_scaffolded_project(project_dir)
+
+        stdout, code = run_check(project_dir, "--git")
+
+        assert code == 0, stdout
+        assert "--- Git HEAD ---" in stdout
+        assert "git HEAD resolves" in stdout
+        assert "--- Build Readiness ---" not in stdout
+
+    def test_git_dubious_ownership_retry_failure_is_error(self, project_dir, monkeypatch):
+        module = _load_check_project_module()
+        project_path = Path(project_dir).resolve()
+
+        def fake_run(cmd, *args, **kwargs):
+            if cmd[:2] == ["git", "-c"]:
+                return subprocess.CompletedProcess(
+                    cmd,
+                    128,
+                    stdout="",
+                    stderr="fatal: detected dubious ownership after retry\n",
+                )
+            return subprocess.CompletedProcess(
+                cmd,
+                128,
+                stdout="",
+                stderr=(
+                    "fatal: detected dubious ownership in repository at "
+                    f"'{project_path}'\n"
+                ),
+            )
+
+        monkeypatch.setattr(module.subprocess, "run", fake_run)
+        result = module.CheckResult()
+
+        module._check_git_head(project_path, result)
+
+        assert not result.success
+        assert result.errors == [
+            "git dubious ownership retry failed with command-level "
+            f"safe.directory={project_path.as_posix()}: "
+            "fatal: detected dubious ownership after retry"
+        ]
+
+    def test_git_unclassified_failure_is_error(self, project_dir, monkeypatch):
+        module = _load_check_project_module()
+        project_path = Path(project_dir).resolve()
+
+        def fake_run(cmd, *args, **kwargs):
+            return subprocess.CompletedProcess(
+                cmd,
+                128,
+                stdout="",
+                stderr="fatal: transport endpoint is not connected\n",
+            )
+
+        monkeypatch.setattr(module.subprocess, "run", fake_run)
+        result = module.CheckResult()
+
+        module._check_git_head(project_path, result)
+
+        assert not result.success
+        assert result.errors == [
+            "git rev-parse HEAD failed: "
+            "fatal: transport endpoint is not connected"
+        ]
+        assert result.failed == []
+
+    def test_git_missing_executable_is_error(self, project_dir, monkeypatch):
+        module = _load_check_project_module()
+        project_path = Path(project_dir).resolve()
+
+        def fake_run(cmd, *args, **kwargs):
+            raise FileNotFoundError("missing git")
+
+        monkeypatch.setattr(module.subprocess, "run", fake_run)
+        result = module.CheckResult()
+
+        module._check_git_head(project_path, result)
+
+        assert not result.success
+        assert result.errors == ["git executable not found; cannot verify HEAD"]
+
+    def test_git_timeout_is_error(self, project_dir, monkeypatch):
+        module = _load_check_project_module()
+        project_path = Path(project_dir).resolve()
+
+        def fake_run(cmd, *args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd=cmd, timeout=10)
+
+        monkeypatch.setattr(module.subprocess, "run", fake_run)
+        result = module.CheckResult()
+
+        module._check_git_head(project_path, result)
+
+        assert not result.success
+        assert result.errors == ["git rev-parse --verify HEAD^{commit} timed out"]
+
+    def test_backend_selection_error_is_error(self, project_dir):
+        with open(os.path.join(project_dir, "Game.csproj"), "w", encoding="utf-8") as f:
+            f.write('<Project Sdk="Godot.NET.Sdk/4.5.0"></Project>\n')
+        stdout, code = run_check(project_dir, "--ecs")
+
+        assert code == 1
+        assert "[ERROR] verification backend selection failed" in stdout
+        assert "unit test backend" in stdout
+
+    def test_csharp_build_does_not_require_gecs_or_gdunit(self, project_dir):
+        _seed_csharp_build_project(project_dir)
+        _write_godot_config(
+            project_dir,
+            _write_fake_godot(
+                project_dir,
+                output="4.5.1.stable.mono.official",
+            ),
+        )
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 0, stdout
+        assert "addons/gecs" not in stdout
+        assert "addons/gdUnit4" not in stdout
+        assert "godot-e2e plugin enabled" in stdout
+        assert "Godot Mono/.NET runtime detected" in stdout
+
+    def test_csharp_build_rejects_non_mono_godot(self, project_dir):
+        _seed_csharp_build_project(project_dir)
+        _write_godot_config(
+            project_dir,
+            _write_fake_godot(project_dir, output="4.5.1.stable.official"),
+        )
+
+        stdout, code = run_check(project_dir, "--build")
+
+        assert code == 1
+        assert "C# backend requires Godot Mono/.NET" in stdout
+
     def test_headless_fails_when_godot_path_missing(self, project_dir):
         _seed_scaffolded_project(project_dir)
         # No .claude/godotmaker.yaml means the build gate cannot run
@@ -442,10 +693,29 @@ class TestEcsCheck:
         os.makedirs(sys_dir)
         with open(os.path.join(sys_dir, "movement_system.gd"), "w") as f:
             f.write("extends System\nfunc _process(delta):\n\tpass\n")
+        test_dir = os.path.join(project_dir, "test")
+        os.makedirs(test_dir)
+        with open(os.path.join(test_dir, "test_movement.gd"), "w") as f:
+            f.write("extends GdUnitTestSuite\n")
 
         stdout, code = run_check(project_dir, "--ecs")
         assert code == 0
         assert "[PASS]" in stdout
+
+    def test_csharp_backend_skips_gdscript_ecs_scan(self, project_dir):
+        with open(os.path.join(project_dir, "Game.csproj"), "w", encoding="utf-8") as f:
+            f.write('<Project Sdk="Godot.NET.Sdk/4.5.0"></Project>\n')
+        test_dir = os.path.join(project_dir, "Game.Tests")
+        os.makedirs(test_dir, exist_ok=True)
+        with open(os.path.join(test_dir, "Game.Tests.csproj"), "w", encoding="utf-8") as f:
+            f.write('<Project><PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup></Project>\n')
+
+        stdout, code = run_check(project_dir, "--ecs")
+
+        assert code == 0
+        assert "[SKIP]" in stdout
+        assert "C# backend" in stdout
+        assert "No Component files found" not in stdout
 
 
 class TestTestsCheck:
@@ -456,6 +726,15 @@ class TestTestsCheck:
 
     def test_system_without_test(self, project_dir):
         os.makedirs(os.path.join(project_dir, "addons", "gdUnit4"))
+        config_dir = os.path.join(project_dir, ".godotmaker")
+        os.makedirs(config_dir)
+        with open(
+            os.path.join(config_dir, "config.yaml"), "w", encoding="utf-8"
+        ) as f:
+            f.write(
+                "language_backend: gdscript\n"
+                "unit_test_backend: gdunit\n"
+            )
         sys_dir = os.path.join(project_dir, "systems")
         os.makedirs(sys_dir)
         with open(os.path.join(sys_dir, "move.gd"), "w") as f:
@@ -479,6 +758,21 @@ class TestTestsCheck:
 
         stdout, code = run_check(project_dir, "--tests")
         assert code == 0
+
+    def test_csharp_backend_skips_gdunit_test_scan(self, project_dir):
+        with open(os.path.join(project_dir, "Game.csproj"), "w", encoding="utf-8") as f:
+            f.write('<Project Sdk="Godot.NET.Sdk/4.5.0"></Project>\n')
+        test_dir = os.path.join(project_dir, "Game.Tests")
+        os.makedirs(test_dir, exist_ok=True)
+        with open(os.path.join(test_dir, "Game.Tests.csproj"), "w", encoding="utf-8") as f:
+            f.write('<Project><PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup></Project>\n')
+
+        stdout, code = run_check(project_dir, "--tests")
+
+        assert code == 0
+        assert "[SKIP]" in stdout
+        assert "C# backend" in stdout
+        assert "gdUnit4 addon not found" not in stdout
 
 
 class TestPlanCheck:

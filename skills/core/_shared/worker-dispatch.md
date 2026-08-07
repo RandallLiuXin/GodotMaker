@@ -25,7 +25,10 @@ Agent({
 
 ### Context                                              [REQUIRED]
 - Project: {game name and type}
-- ECS Framework: gecs
+- Language backend: {resolved language_backend from .godotmaker/config.yaml}
+- Unit-test backend: {resolved unit_test_backend from .godotmaker/config.yaml}
+- .NET targets: {dotnet_target and godot_csharp_project, or N/A}
+- ECS Framework: {gecs for GDScript, or the project-owned C# contract}
 
 ### Input Files (Read These First)                       [REQUIRED]
 - {path}: {what it contains}
@@ -38,7 +41,7 @@ Agent({
 
 ### Deliverables                                         [REQUIRED]
 - [ ] {file path}: {what it should contain}
-- [ ] {unit test file path}: {test scenarios — minimum 2 unit tests per changed system}
+- [ ] {backend-selected unit test file path}: {test scenarios — minimum 2 unit tests per changed system}
 - [ ] e2e-testable interface: public methods / signals / simulate_* helpers for affected systems/scenes/UI, with unit tests covering each one
 - [ ] Load every `Asset Runtime Snapshot` `godot_artifact.path` and bind it as its declared `godot_artifact.type`; do not rebuild it from `source_layout`
 - [ ] If runtime assets include a `SpriteFrames` artifact: wire animation playback from that resource, not one static frame
@@ -51,7 +54,7 @@ Agent({
 - [ ] MEMORY entry: discoveries, gotchas, decisions (<100 words)
 
 ### Component Definitions                                [REQUIRED]
-{Paste the actual Component class definitions, not just names}
+{Paste the actual backend-native Component definitions, not just names}
 
 ### Scope Boundaries                                     [REQUIRED]
 - MUST: {explicit requirements}
@@ -130,8 +133,8 @@ Runtime Snapshot` above.
 4. **Workers must not spawn sub-workers.**
 5. **Include game context.** Add the relevant Playable Unit fields to the brief.
 6. **MEMORY entry is mandatory.** Every worker reports what they learned.
-7. **Test file naming**: `test_{source_file_stem}.gd` — e.g., system file `s_movement.gd` → test file `test_s_movement.gd`. check_project.py enforces this pattern.
-8. **gdUnit4 version compatibility**: Godot 4.4 → gdUnit4 v5.x, Godot 4.5+ → gdUnit4 v6.x. Headless mode requires `--ignoreHeadlessMode`.
+7. **Test backend from config**: GDScript/gdUnit uses `test_{source_file_stem}.gd`; C#/.NET uses the existing test project's convention (normally `*Tests.cs`). Do not create a second test backend.
+8. **Runner compatibility**: GDScript uses the installed gdUnit4 version with `--ignoreHeadlessMode`; C# uses `dotnet test <dotnet_target> --logger trx` and reports TRX/xUnit/NUnit/MSTest results.
 9. **E2E input handling**: do NOT use `Input.is_action_just_pressed()` in ECS systems. Use `_input()` callback + flag variable pattern, expose `simulate_*()` methods so the Evaluator's e2e tests can drive the mechanic function.
 10. **E2E state setup**: when the brief asks for a test interface, implement a
 bounded setup helper or `simulate_*` method that calls the real runtime code
@@ -144,7 +147,7 @@ PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
 14. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
 15. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
 16. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
-17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
+17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (for example `src/systems/s_jump.gd` or `src/JumpSystem.cs`, never an absolute project path). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
 18. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 19. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
 `Visual Asset Contract` for visual tasks.
@@ -202,7 +205,7 @@ Workers with **no file ownership overlap** can run in parallel using git worktre
 
 ### When to parallelize
 
-- Two or more tasks have **completely disjoint file sets** (no shared .gd/.tscn/.tres files)
+- Two or more tasks have **completely disjoint file sets** (no shared .gd/.tscn/.tres/.cs/.csproj/.sln files)
 - Both tasks are in the same `/gm-build` cycle (risk or main phase)
 - Neither task depends on the other's output
 
@@ -264,8 +267,16 @@ If a worker's branch is missing or `git diff main..{branch}` is empty, treat the
    git merge {branch_B} --no-edit
    ```
 
-3. **Run build after merge** to catch integration issues and refresh main's class_name cache (workers' worktree caches are gitignored and don't propagate):
+3. **Run the config-selected build after merge** to catch integration issues.
+   GDScript/gdUnit projects refresh the `class_name` cache with:
    ```bash
+   godot --headless --import 2>&1
+   ```
+   C#/.NET projects run the test target, build the Godot C# project separately
+   when it is not already covered by that target, then import:
+   ```bash
+   dotnet build <dotnet_target>
+   dotnet build <godot_csharp_project>
    godot --headless --import 2>&1
    ```
 

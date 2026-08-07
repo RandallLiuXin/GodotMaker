@@ -1,4 +1,4 @@
-# 9 个流水线角色 + 1 个诊断角色
+﻿# 9 个流水线角色 + 1 个诊断角色
 
 每个角色对应一条你在 Claude Code 里输入的斜杠命令。9 个流水线角色按顺序执行——如果跳过了某个前置步骤，系统会告诉你。第 10 个角色 `/gm-rescue` 在主流程之外，只在卡住时调用。
 
@@ -63,7 +63,7 @@
 
 ## `/gm-build`
 
-**做什么：** 通过协调一组专门的辅助 Agent，实现 **当前 tag** 的范围——所有的 GDScript 代码、场景和单元测试。
+**做什么：** 通过协调一组专门的辅助 Agent，实现 **当前 tag** 的范围——所有由后端选择的源代码、场景和单元测试。
 
 **什么时候运行：** 在 `/gm-asset` 之后。当前 tag 必须已完成 `/gm-gdd`。
 
@@ -76,7 +76,7 @@
 - 只要本轮有任何 finding 被 ACCEPT，循环就回到派遣 Worker 阶段
 - 只有当 `PLAN.md` 里所有任务都标记为 `verified`，且最后一轮评审 ACCEPT 数为零，构建才结束
 
-**你得到什么：** `src/` 里的游戏代码、`scenes/` 里的场景、`test/` 里的单元测试——全部限定在本 tag 的新增 / refactor 范围内。
+**你得到什么：** `src/` 里的游戏代码、`scenes/` 里的场景，以及由后端选择的单元测试——全部限定在本 tag 的新增 / refactor 范围内。
 
 **需要知道的：** 在这个步骤里你无法自己写游戏代码——权限系统会阻止。主 Agent 负责协调，Worker 负责实际写代码。Worker 触动当前 tag 范围之外的文件，必须 `PLAN.md` 中有显式 refactor 任务点名那些文件；不允许"顺手清理"。如果同一个任务失败三次，构建会暂停并询问你下一步怎么做。
 
@@ -90,7 +90,7 @@
 
 **背后发生了什么：**
 - 无界面运行 Godot 构建，检查编译错误
-- 通过 `gdUnit4` 运行 `test/` 里的所有单元测试
+- 通过配置的 unit test backend 运行单元测试（GDScript 项目使用 `gdUnit4`，C#/.NET 项目使用 `.NET` 测试命令）
 - 通过 `tools/check_project.py` 跑静态项目检查（build/ecs/tests/plan/mcp 五项；e2e 检查归 Evaluator 阶段）
 - 把结构化结论写入 `.godotmaker/verify_report.json`（每次都写，无论 PASS 还是 FAIL）
 

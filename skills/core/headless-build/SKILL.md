@@ -12,19 +12,40 @@ description: |
 
 Compile-check a Godot project. Fastest feedback loop: "did my code parse?"
 
+## Select verification backend
+
+Read `.godotmaker/config.yaml` before choosing commands:
+
+- `language_backend: gdscript` with `unit_test_backend: gdunit`
+- `language_backend: csharp` with `unit_test_backend: dotnet`
+- `auto` values must be resolved by the project's backend selector before
+  dispatch; do not infer the backend from the worker's current file alone.
+
 ## Run
+
+Resolve the configured Godot executable first:
 
 ```bash
 python tools/agent_runtime.py godot_path
 ```
 
-Then substitute the printed value for `<godot_path>`:
+For GDScript/gdUnit, run:
 
 ```bash
 "<godot_path>" --headless --quit 2>&1
 ```
 
-Run from the project root (where `project.godot` lives). Should exit within 30 seconds.
+For C#/.NET, build the test target, build the Godot C# project separately when
+it is not already covered by that target, then run Godot headless:
+
+```bash
+dotnet build <dotnet_target>
+dotnet build <godot_csharp_project>
+"<godot_path>" --headless --quit 2>&1
+```
+
+Run from the project root (where `project.godot` lives). The Godot command
+should exit within 30 seconds.
 If it hangs, an autoload may block in `_ready()` — kill and report.
 
 ## Filter output

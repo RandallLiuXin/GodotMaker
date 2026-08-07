@@ -1,4 +1,4 @@
-# 常见问题
+﻿# 常见问题
 
 ---
 
@@ -26,7 +26,7 @@ Godot 4.5 或更高版本。GodotMaker 不支持 Godot 3.x 或 Godot 4.3 及以�
 
 ### 我可以用 C# 代替 GDScript 吗？
 
-可以。GodotMaker 同时支持 GDScript 和 C#。ECS 组件和系统可以用任一语言编写。使用 C# 时，请确保你使用的是支持 .NET 的 Godot 构建版本。
+已有 Godot .NET 项目可以通过 C#/.NET 后端使用：项目自有玩法代码和标准 .NET 测试保留在你的 `.sln` / `.csproj` 中，并使用支持 .NET 的 Godot 构建版本。GodotMaker 目前不会自动脚手架一个新的 C# 架构；第一轮 scaffold 只识别已有 C#/.NET 项目并记录后端。C# ECS 静态检查目前报告为 N/A，直到实现 C# Component/System 扫描器。
 
 ---
 

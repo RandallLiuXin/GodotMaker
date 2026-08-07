@@ -249,8 +249,70 @@ def _count_files(directory: Path, pattern: str) -> int:
     return sum(1 for path in directory.rglob(pattern) if path.is_file())
 
 
-def _count_unit_tests(project_path: Path) -> int:
-    return _count_files(project_path / "test", "*.gd")
+def _configured_unit_test_backend(project_path: Path) -> str | None:
+    config_path = project_path / ".godotmaker" / "config.yaml"
+    if not config_path.is_file():
+        return None
+    for raw_line in config_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        if key.strip() == "unit_test_backend":
+            return value.strip().strip("'\"").lower()
+    return None
+
+
+def _dotnet_verify_test_count(project_path: Path) -> int | None:
+    report_path = project_path / ".godotmaker" / "verify_report.json"
+    configured_backend = _configured_unit_test_backend(project_path)
+    if not report_path.is_file():
+        if configured_backend == "dotnet":
+            raise ValueError("passing dotnet verify evidence is required")
+        return None
+
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        if configured_backend == "dotnet":
+            raise ValueError(
+                f"passing dotnet verify evidence is required: {exc}"
+            ) from exc
+        return None
+
+    backend = report.get("backend", {})
+    report_backend = backend.get("unit_tests") if isinstance(backend, dict) else None
+    expects_dotnet = configured_backend == "dotnet" or report_backend == "dotnet"
+    if not expects_dotnet:
+        return None
+
+    unit_check = report.get("checks", {}).get("unit_tests", {})
+    valid = (
+        report.get("result") == "pass"
+        and report_backend == "dotnet"
+        and isinstance(unit_check, dict)
+        and unit_check.get("framework") == "dotnet"
+        and unit_check.get("result") in {"pass", "warn"}
+    )
+    counters = [
+        unit_check.get("passed"),
+        unit_check.get("failed"),
+        unit_check.get("skipped", 0),
+    ]
+    if not valid or not all(isinstance(value, int) and value >= 0 for value in counters):
+        raise ValueError("passing dotnet verify evidence is required")
+    passed, failed, skipped = counters
+    total = passed + failed + skipped
+    if failed or total == 0:
+        raise ValueError("passing dotnet verify evidence is required")
+    return total
+
+
+def _unit_test_summary(project_path: Path) -> tuple[int, str]:
+    dotnet_count = _dotnet_verify_test_count(project_path)
+    if dotnet_count is not None:
+        return dotnet_count, "dotnet"
+    return _count_files(project_path / "test", "*.gd"), "gdunit"
 
 
 def _evidence_summary(project_path: Path, tag: str) -> dict:
@@ -273,6 +335,7 @@ def _evidence_summary(project_path: Path, tag: str) -> dict:
 def cmd_bundle(project_path: Path, tag: str) -> int:
     try:
         previous_tag, upper = _resolve_tag_anchors(project_path, tag)
+        unit_count, unit_backend = _unit_test_summary(project_path)
         bundle = {
             "tag": tag,
             "previous_tag": previous_tag,
@@ -283,7 +346,8 @@ def cmd_bundle(project_path: Path, tag: str) -> int:
             # split is LLM judgment (which test files belong to this tag), so bundle
             # provides the total and SKILL Step 8 narrates the split.
             "test_count": {
-                "unit": _count_unit_tests(project_path),
+                "unit": unit_count,
+                "unit_backend": unit_backend,
                 "e2e": _count_files(project_path / "e2e", "test_*.py"),
             },
             "evidence": _evidence_summary(project_path, tag),
@@ -294,7 +358,7 @@ def cmd_bundle(project_path: Path, tag: str) -> int:
         # to stdout.buffer sidesteps the encoding entirely.
         payload = json.dumps(bundle, indent=2, ensure_ascii=False) + "\n"
         sys.stdout.buffer.write(payload.encode("utf-8"))
-    except (OSError, UnicodeError) as exc:
+    except (OSError, UnicodeError, ValueError) as exc:
         # ROADMAP.md / PLAN.md read or stdout write blew up — surface a
         # CLI exit-code instead of leaking a traceback so /gm-finalize can
         # halt cleanly.

@@ -32,9 +32,12 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 
 Scaffold is **lifetime-once** — its event gets cleared after each tag's finalize (stage.jsonl is truncated). So determine "already scaffolded" from project artifacts on disk, not the event log:
 
-- If `project.godot` exists AND `addons/gecs/` exists AND `git log` has at least one commit → STOP. Tell the user:
-  > "Project is already scaffolded. Recommended next: /gm-gdd.
-  > If you need to re-scaffold (rare — usually addon migrations are handled by `tools/publish.py`), just tell me."
+- If `project.godot` exists AND `git log` has at least one commit, first determine the backend:
+  - Existing C#/.NET resume detection must not require `addons/gecs/` or `addons/gdUnit4/`. If `.godotmaker/config.yaml` records `language_backend: csharp`, or the project has existing `.sln` / `.csproj` Godot C# files, STOP and tell the user:
+    > "Project is already scaffolded as an existing C#/.NET project. Recommended next: /gm-gdd."
+  - For the GDScript/gecs backend, require `addons/gecs/` as part of the already-scaffolded check. If present, STOP and tell the user:
+    > "Project is already scaffolded. Recommended next: /gm-gdd.
+    > If you need to re-scaffold (rare — usually addon migrations are handled by `tools/publish.py`), just tell me."
 - Otherwise → proceed.
 
 ## Hard Rules
@@ -57,12 +60,29 @@ user to choose a dimension during scaffold.
 
 Other settings (genre, art style, mechanics) are deferred to `/gm-gdd`.
 
+### 1b. Recognize existing C#/.NET projects
+
+If the target already contains a Godot .NET project (`*.sln`, `*.csproj`, or
+Godot-generated C# project files), recognize the backend before creating any
+new architecture:
+
+- record `language_backend: csharp` in `.godotmaker/config.yaml` when the file
+  exists and the project is clearly C#/.NET-owned
+- keep `unit_test_backend: auto` unless the user explicitly selected a
+  backend
+- Do not generate .sln/.csproj or C# ECS architecture in this first scaffold
+  pass
+- do not create Component/System/test files; `/gm-gdd` and `/gm-build` own the
+  architecture after the backend has been recorded
+
 ### 2a. Run project-scaffold skill
 
-Invoke `.claude/skills/project-scaffold/SKILL.md` with only the gathered game
-name. Use project-scaffold defaults for every other template variable. Run only
-Steps 1, 2, and 3. Do not run genre adaptations. From Step 3's template table,
-fill just these four templates:
+For empty or GDScript projects, invoke `.claude/skills/project-scaffold/SKILL.md`
+with only the gathered game name. Use project-scaffold defaults for every other
+template variable. Run only Steps 1, 2, and 3. Do not run genre adaptations.
+For existing C#/.NET projects, skip GDScript starter architecture and preserve
+existing `.sln`, `.csproj`, source, test, and scene layout. From Step 3's
+template table, the GDScript branch fills just these four templates:
 
 - `project.godot.tmpl` → `project.godot`
 - `main_scene.tmpl` → `scenes/main.tscn`
@@ -76,17 +96,17 @@ The remaining items in project-scaffold belong to other parts of the pipeline:
 
 | project-scaffold concern | Owner |
 |--------------------------|-------|
-| Component / System / test files (with or without a Game Plan) | decomposer in `/gm-gdd` writes STRUCTURE.md first; workers in `/gm-build` create the actual `.gd` files |
+| Component / System / test files (with or without a Game Plan) | decomposer in `/gm-gdd` writes STRUCTURE.md first; workers in `/gm-build` create the actual backend-owned source files |
 | Genre Adaptations — `[physics]` / `[input]` (Step 4) | `/gm-gdd` |
 | Post-Scaffold publish (Step 5) | already done by `tools/publish.py` before scaffold runs |
 | Addon install | step 2b below |
 
-### 2b. Install addon-only directories
+### 2b. Install backend-required addon-only directories
 
 Install required addons from the active runtime's `config/addon_versions.json`.
-Follow `project-scaffold/references/addons.md`.
+Follow `project-scaffold/references/addons.md`, but choose the row by backend.
 
-Required result:
+GDScript backend required result:
 
 1. `addons/gecs/plugin.cfg`
 2. `addons/gdUnit4/plugin.cfg`
@@ -96,8 +116,16 @@ Required result:
 6. `addons/godot_e2e/automation_server.gd`
 7. no `addons/*/project.godot`
 
-Then enable plugin entries in `project.godot` and register
-`AutomationServer`.
+Existing C#/.NET backend required result:
+
+1. `addons/godot_e2e/plugin.cfg`
+2. `addons/godot_e2e/automation_server.gd`
+3. no `addons/godot_e2e/project.godot`
+4. Missing `addons/gecs/` or `addons/gdUnit4/` must not fail existing C#/.NET scaffold.
+
+Then enable the installed plugin entries in `project.godot` and register
+`AutomationServer`. C# projects enable only the shared `godot_e2e` plugin here;
+GDScript projects enable `gecs`, `gdUnit4`, and `godot_e2e`.
 
 `.godotmaker/config.yaml` is created by `tools/publish.py` before this skill
 runs — verify it exists and move on.
@@ -164,19 +192,30 @@ Required for `isolation: "worktree"` in worker dispatch — without `HEAD`, para
 python tools/check_project.py <project_dir> --build
 ```
 
-`--build` is the gm-scaffold readiness check — it covers all of:
+`--build` is the gm-scaffold readiness check. Shared readiness covers all of:
 
 - `project.godot` exists with `[application]`
-- `addons/gecs/`, `addons/gdUnit4/`, `addons/godot_e2e/` present
-- each required addon has `plugin.cfg`
-- no required addon contains a nested `project.godot`
-- `addons/gdUnit4/bin/GdUnitCmdTool.gd` and
-  `addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd` exist
+- `addons/godot_e2e/` is present with `plugin.cfg`
+- no installed addon contains a nested `project.godot`
 - `godot-e2e` plugin enabled in `[editor_plugins]`
 - `AutomationServer` autoload registered for `godot-e2e`
 - `e2e/conftest.py` imports `GodotE2E`
 - `.git/` resolves `HEAD` (worker worktree isolation needs it)
 - `<godot_path> --headless --quit` exits 0 with no blocking Godot diagnostics
+
+GDScript backend readiness additionally requires:
+
+- `addons/gecs/` and `addons/gdUnit4/` present
+- each GDScript-required addon has `plugin.cfg`
+- `addons/gdUnit4/bin/GdUnitCmdTool.gd` and
+  `addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd` exist
+
+Existing C#/.NET backend readiness additionally requires:
+
+- `language_backend: csharp` is recorded or an existing Godot C# `.csproj` / `.sln` is present
+- the configured Godot executable reports a Mono/.NET build from `--version`
+- Missing `addons/gecs/` or `addons/gdUnit4/` must not fail existing C#/.NET scaffold readiness
+- C# unit tests are selected later through `unit_test_backend` / `dotnet_target`, not gdUnit4
 
 The command must exit 0 with no `[FAIL]` entries for scaffold to be
 considered done. Shutdown-note `[WARN]` entries do not block scaffold.

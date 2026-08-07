@@ -1,4 +1,4 @@
-# Game Plan: {Name}
+﻿# Game Plan: {Name}
 
 <!-- Decomposed from GDD.md by /gm-gdd. See GDD.md for full game design.
      Scoped to a single tag (see ROADMAP.md). -->
@@ -63,7 +63,7 @@
 - **Verify:**
   - {specific criteria targeting the failure mode}
   - DAG check passes with new systems integrated
-  - gdUnit tests cover the core algorithm
+  - backend-selected unit tests cover the core algorithm
 
 ### 2. {Risk Feature}
 - **Why isolated:** ...
@@ -126,7 +126,7 @@ the player-facing state, feedback, and presentation needed to play this tag.}
 - No visual glitches, clipping, or placeholder assets
 - reference.png consistency: color palette, scale, camera angle, visual density
 - DAG check passes (no circular node-creation dependencies)
-- All gdUnit tests pass (pure logic systems + materialization systems)
+- All backend-selected unit tests pass (pure logic systems + materialization systems)
 - Optional VQA validation on screenshots
 
 ## Task Status

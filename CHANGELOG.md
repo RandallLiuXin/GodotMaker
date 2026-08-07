@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to GodotMaker will be documented in this file.
 
@@ -11,10 +11,26 @@ Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 - Documented where the single godotmaker-cli pipeline model override belongs while leaving concrete model IDs to the CLI documentation (#81).
 - Added a commented `reasoning_effort` example to the default project config template for GodotMakerApp-driven pipelines (#82).
 - Added and refined the README demo section with video links and concrete game-type labels (#84, #85, #86).
+- Documented backend-aware C#/.NET project configuration and made scaffold,
+  planning, structure, and project instructions backend-neutral for existing
+  Godot .NET projects.
+- Added explicit or auto-detected `GDScript + gdUnit` and `C# + dotnet test`
+  verification backends, including project-relative solution/project targets.
+- Added backend-aware build, fixgap, scaffold, worker, verifier, finalize, and
+  seal contracts for existing Godot Mono projects.
 
 ### Fixed
 
 - Fixed gm-accept so every invocation writes the `accept` role marker as its first action, including idempotent re-entry when `.godotmaker/current_role` already contains it (#93).
+- Fixed `gm-verify` to build configured .NET targets, aggregate TRX results,
+  and report GDScript/gecs and gdUnit discovery as explicit N/A checks for C#.
+- Fixed Git HEAD verification to distinguish unborn repositories from dubious
+  ownership and retry only with command-scoped `safe.directory`.
+- Fixed C# worker permissions, report evidence, and `res://` path validation.
+- Fixed finalize evidence so passing dotnet reports supply the real test count
+  instead of falling back to GDScript file discovery.
+- Fixed forced publishing so project-owned files under `tools/`, including
+  `.cs`, `.csproj`, and `.sln` files, are preserved.
 
 ## [0.8.1] - 2026-07-09
 

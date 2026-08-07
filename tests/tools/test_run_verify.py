@@ -1,4 +1,4 @@
-"""Tests for tools/run_verify.py — the mechanical /gm-verify runner.
+"""Tests for tools/run_verify.py —the mechanical /gm-verify runner.
 
 Subprocess is mocked at the module-under-test level (`run_verify.subprocess.run`)
 to avoid actually launching godot. The composed report is then validated
@@ -49,6 +49,28 @@ def _write_gdunit_xml_from_cmd(cmd: list, xml: str) -> Path:
     results_xml.write_text(xml, encoding="utf-8")
     return results_xml
 
+class _Backend:
+    def __init__(
+        self,
+        backend: str = "gdscript",
+        dotnet_target: str | None = None,
+        godot_csharp_project: str | None = None,
+    ):
+        self.backend = backend
+        self.language_backend = backend
+        self.unit_test_backend = "dotnet" if backend == "csharp" else "gdunit"
+        self.source = "test"
+        self.dotnet_target = dotnet_target
+        self.godot_csharp_project = godot_csharp_project
+
+
+def _write_trx_from_cmd(cmd: list, xml: str, name: str = "results.trx") -> Path:
+    results_dir = Path(cmd[cmd.index("--results-directory") + 1])
+    results_dir.mkdir(parents=True, exist_ok=True)
+    trx = results_dir / name
+    trx.write_text(xml, encoding="utf-8")
+    return trx
+
 
 @pytest.fixture
 def project_dir(tmp_path: Path) -> Path:
@@ -70,6 +92,123 @@ def test_check_build_pass():
     assert note is None
 
 
+def test_check_build_csharp_runs_dotnet_targets_before_godot(project_dir: Path):
+    sln = project_dir / "Game.sln"
+    godot_csproj = project_dir / "Game.Godot.csproj"
+    sln.write_text(
+        'Project("{GUID}") = "Core", "Game.Core.csproj", "{GUID2}"\n'
+        "EndProject\n",
+        encoding="utf-8",
+    )
+    godot_csproj.write_text("<Project />", encoding="utf-8")
+    backend = _Backend(
+        "csharp",
+        dotnet_target="Game.sln",
+        godot_csharp_project="Game.Godot.csproj",
+    )
+    calls = []
+
+    def fake_run(cmd, *args, **kwargs):
+        calls.append(cmd)
+        if cmd == ["/usr/bin/godot", "--version"]:
+            return _make_proc(stdout="4.5.1.stable.mono.official\n")
+        return _make_proc(stdout="ok\n")
+
+    with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+        result, note = run_verify.check_build(
+            "/usr/bin/godot",
+            project_dir,
+            backend=backend,
+        )
+
+    assert result == {"result": "pass", "errors": []}
+    assert note is None
+    assert calls[0][:3] == ["dotnet", "build", str(sln)]
+    assert calls[1][:3] == ["dotnet", "build", str(godot_csproj)]
+    assert calls[2] == ["/usr/bin/godot", "--version"]
+    assert calls[3][0:2] == ["/usr/bin/godot", "--headless"]
+
+
+def test_check_build_csharp_solution_in_subdir_does_not_crash_for_root_godot_project(project_dir: Path):
+    solution_dir = project_dir / "core"
+    solution_dir.mkdir()
+    sln = solution_dir / "Game.sln"
+    godot_csproj = project_dir / "Game.Godot.csproj"
+    sln.write_text(
+        'Project("{GUID}") = "Core", "Game.Core.csproj", "{GUID2}"\n'
+        "EndProject\n",
+        encoding="utf-8",
+    )
+    godot_csproj.write_text("<Project />", encoding="utf-8")
+    backend = _Backend(
+        "csharp",
+        dotnet_target="core/Game.sln",
+        godot_csharp_project="Game.Godot.csproj",
+    )
+    calls = []
+
+    def fake_run(cmd, *args, **kwargs):
+        calls.append(cmd)
+        if cmd == ["/usr/bin/godot", "--version"]:
+            return _make_proc(stdout="4.5.1.stable.mono.official\n")
+        return _make_proc(stdout="ok\n")
+
+    with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+        result, note = run_verify.check_build(
+            "/usr/bin/godot",
+            project_dir,
+            backend=backend,
+        )
+
+    assert run_verify._solution_mentions_project(sln, godot_csproj) is False
+    assert result == {"result": "pass", "errors": []}
+    assert note is None
+    assert calls[0][:3] == ["dotnet", "build", str(sln)]
+    assert calls[1][:3] == ["dotnet", "build", str(godot_csproj)]
+    assert calls[2] == ["/usr/bin/godot", "--version"]
+    assert calls[3][0:2] == ["/usr/bin/godot", "--headless"]
+
+def test_check_build_csharp_rejects_non_mono_godot(project_dir: Path):
+    backend = _Backend("csharp", dotnet_target="Game.sln")
+
+    def fake_run(cmd, *args, **kwargs):
+        if cmd[:2] == ["dotnet", "build"]:
+            return _make_proc(stdout="build ok\n")
+        if cmd == ["/usr/bin/godot", "--version"]:
+            return _make_proc(stdout="4.5.1.stable.official\n")
+        raise AssertionError(f"unexpected command after non-Mono detection: {cmd}")
+
+    with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+        result, note = run_verify.check_build(
+            "/usr/bin/godot",
+            project_dir,
+            backend=backend,
+        )
+
+    assert result["result"] == "fail"
+    assert "requires Godot Mono/.NET" in result["errors"][0]["message"]
+    assert note is None
+
+def test_check_build_csharp_dotnet_failure_blocks_before_godot(project_dir: Path):
+    backend = _Backend("csharp", dotnet_target="Game.sln")
+
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(
+            stderr="CSC : error CS1002: ; expected\n",
+            returncode=1,
+        )
+        result, note = run_verify.check_build(
+            "/usr/bin/godot",
+            project_dir,
+            backend=backend,
+        )
+
+    assert result["result"] == "fail"
+    assert result["errors"][0]["file"] == "Game.sln"
+    assert "error CS1002" in result["errors"][0]["message"]
+    assert note is None
+    assert run.call_count == 1
+
 def test_check_build_fail_with_errors_and_locations():
     output = (
         "ERROR: Parse Error: Identifier 'bar' not declared.\n"
@@ -84,7 +223,7 @@ def test_check_build_fail_with_errors_and_locations():
     assert result["errors"][0]["file"] == "src/foo.gd"
     assert result["errors"][0]["line"] == 42
     assert "Identifier 'bar'" in result["errors"][0]["message"]
-    # Second ERROR has no GDScript location → file empty, line 0
+    # Second ERROR has no GDScript location →file empty, line 0
     assert result["errors"][1]["file"] == ""
     assert result["errors"][1]["line"] == 0
     assert note is None
@@ -289,6 +428,142 @@ def test_check_unit_tests_pass_with_cases_summary():
         result, note = run_verify.check_unit_tests("/usr/bin/godot", Path("/x"))
     assert result == {"result": "pass", "passed": 267, "failed": 0, "failures": []}
     assert note is None
+
+
+def test_check_unit_tests_csharp_parses_namespaced_trx(project_dir: Path):
+    trx = """<?xml version="1.0" encoding="utf-8"?>
+<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <ResultSummary outcome="Failed">
+    <Counters total="3" executed="3" passed="1" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" notExecuted="1" />
+  </ResultSummary>
+  <Results>
+    <UnitTestResult testName="Passes" outcome="Passed" />
+    <UnitTestResult testName="Fails" outcome="Failed">
+      <Output><ErrorInfo><Message>Expected 2 but got 1</Message></ErrorInfo></Output>
+    </UnitTestResult>
+    <UnitTestResult testName="Skipped" outcome="NotExecuted" />
+  </Results>
+</TestRun>
+"""
+    backend = _Backend("csharp", dotnet_target="Game.sln")
+
+    def fake_run(cmd, *args, **kwargs):
+        _write_trx_from_cmd(cmd, trx)
+        return _make_proc(stdout="Test run failed.", returncode=1)
+
+    with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+        result, note = run_verify.check_unit_tests(
+            "/usr/bin/godot",
+            project_dir,
+            backend=backend,
+        )
+
+    assert result["framework"] == "dotnet"
+    assert result["result"] == "fail"
+    assert result["total"] == 3
+    assert result["passed"] == 1
+    assert result["failed"] == 1
+    assert result["skipped"] == 1
+    assert result["failures"] == [
+        {"test": "Fails", "message": "Expected 2 but got 1"}
+    ]
+    assert note is None
+
+
+def test_parse_trx_files_counts_each_file_without_global_counters(tmp_path: Path):
+    with_counters = tmp_path / "with_counters.trx"
+    with_counters.write_text(
+        """<TestRun><ResultSummary><Counters total="1" passed="1" failed="0" /></ResultSummary></TestRun>""",
+        encoding="utf-8",
+    )
+    without_counters = tmp_path / "without_counters.trx"
+    without_counters.write_text(
+        """<TestRun><Results><UnitTestResult testName="SecondPass" outcome="Passed" /></Results></TestRun>""",
+        encoding="utf-8",
+    )
+
+    result = run_verify._parse_trx_files([with_counters, without_counters])
+
+    assert result["result"] == "pass"
+    assert result["total"] == 2
+    assert result["passed"] == 2
+    assert result["failed"] == 0
+    assert result["skipped"] == 0
+
+def test_check_unit_tests_csharp_missing_trx_is_error(project_dir: Path):
+    backend = _Backend("csharp", dotnet_target="Game.sln")
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout="No TRX here", returncode=0)
+        result, note = run_verify.check_unit_tests(
+            "/usr/bin/godot",
+            project_dir,
+            backend=backend,
+        )
+
+    assert result == {
+        "result": "error",
+        "framework": "dotnet",
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "failures": [],
+    }
+    assert note["tool"] == "dotnet"
+    assert "TRX" in note["error"]
+
+
+def test_check_unit_tests_csharp_zero_tests_is_tooling_error(project_dir: Path):
+    trx = (
+        "<TestRun><ResultSummary>"
+        '<Counters total="0" passed="0" failed="0" notExecuted="0" />'
+        "</ResultSummary></TestRun>"
+    )
+    backend = _Backend("csharp", dotnet_target="Game.sln")
+
+    def fake_run(cmd, *args, **kwargs):
+        _write_trx_from_cmd(cmd, trx)
+        return _make_proc(stdout="No tests matched.", returncode=0)
+
+    with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+        result, note = run_verify.check_unit_tests(
+            "/usr/bin/godot",
+            project_dir,
+            backend=backend,
+        )
+
+    assert result["result"] == "error"
+    assert result["total"] == 0
+    assert note["tool"] == "dotnet"
+    assert "zero tests" in note["error"]
+
+
+def test_check_unit_tests_csharp_nonzero_exit_with_passing_trx_is_tooling_error(
+    project_dir: Path,
+):
+    trx = (
+        "<TestRun><ResultSummary>"
+        '<Counters total="1" passed="1" failed="0" notExecuted="0" />'
+        "</ResultSummary></TestRun>"
+    )
+    backend = _Backend("csharp", dotnet_target="Game.sln")
+
+    def fake_run(cmd, *args, **kwargs):
+        _write_trx_from_cmd(cmd, trx)
+        return _make_proc(stdout="Host failed after tests.", returncode=1)
+
+    with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+        result, note = run_verify.check_unit_tests(
+            "/usr/bin/godot",
+            project_dir,
+            backend=backend,
+        )
+
+    assert result["result"] == "error"
+    assert result["total"] == 1
+    assert result["passed"] == 1
+    assert note["tool"] == "dotnet"
+    assert "exited with code 1 despite passing TRX" in note["error"]
 
 
 def test_check_unit_tests_uses_official_gdunit_cmdtool_args():
@@ -581,7 +856,7 @@ def test_check_static_pass():
     with patch.object(run_verify.subprocess, "run") as run:
         run.return_value = _make_proc(stdout=output)
         result, note = run_verify.check_static(Path("/x"))
-    assert result == {"result": "pass", "issues": []}
+    assert result == {"result": "pass", "issues": [], "skipped_checks": []}
     assert note is None
 
 
@@ -612,6 +887,52 @@ def test_check_static_fail_without_check_prefix():
     ]
 
 
+def test_check_static_parses_skip_and_error_lines():
+    output = (
+        "[PASS] project.godot exists\n"
+        "[SKIP] ecs: C# backend skips GDScript ECS scan\n"
+        "[ERROR] mcp: config unreadable\n"
+    )
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout=output, returncode=1)
+        result, note = run_verify.check_static(Path("/x"))
+
+    assert result["result"] == "error"
+    assert result["issues"] == []
+    assert result["skipped_checks"] == [
+        {"check": "ecs", "detail": "C# backend skips GDScript ECS scan"}
+    ]
+    assert note["tool"] == "check_project"
+    assert "mcp: config unreadable" in note["error"]
+
+
+def test_check_static_gdscript_includes_git_gate_flags(project_dir: Path):
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout="[PASS] all good\n")
+        result, note = run_verify.check_static(project_dir)
+
+    cmd = run.call_args.args[0]
+    assert cmd[-5:] == ["--git", "--ecs", "--tests", "--plan", "--mcp"]
+    assert result == {"result": "pass", "issues": [], "skipped_checks": []}
+    assert note is None
+
+def test_check_static_csharp_omits_build_ecs_tests_flags(project_dir: Path):
+    backend = _Backend("csharp", dotnet_target="Game.sln")
+    with patch.object(run_verify.subprocess, "run") as run:
+        run.return_value = _make_proc(stdout="[PASS] plan ok\n")
+        result, note = run_verify.check_static(project_dir, backend=backend)
+
+    cmd = run.call_args.args[0]
+    assert cmd[-3:] == ["--git", "--plan", "--mcp"]
+    assert "--build" not in cmd
+    assert "--ecs" not in cmd
+    assert "--tests" not in cmd
+    assert result["skipped_checks"] == [
+        {"check": "gdscript_gecs", "reason": "not applicable to C#/.NET verification backend"},
+        {"check": "gdunit_discovery", "reason": "unit tests handled by dotnet test"},
+    ]
+    assert note is None
+
 def test_check_static_timeout_is_error():
     with patch.object(
         run_verify.subprocess, "run",
@@ -631,7 +952,7 @@ def test_check_static_nonzero_without_fail_output_is_error():
         )
         result, note = run_verify.check_static(Path("/x"))
 
-    assert result == {"result": "error", "issues": []}
+    assert result == {"result": "error", "issues": [], "skipped_checks": []}
     assert note["tool"] == "check_project"
     assert note["suggested_fallback"] == "escalate"
     assert "exited with code 2" in note["error"]
@@ -688,9 +1009,9 @@ def test_prefer_console_godot_path_keeps_original_when_missing(tmp_path: Path):
 def _fake_run_factory(*, build="ok", unit="ok", static="ok"):
     """Build a subprocess.run fake. Each arg selects per-tool behaviour:
 
-    - "ok"      → clean pass output
-    - "fail"    → output that parses to a failing result
-    - "timeout" → raise TimeoutExpired
+    - "ok"      →clean pass output
+    - "fail"    →output that parses to a failing result
+    - "timeout" →raise TimeoutExpired
     """
     BUILD_OK = "Setting Up MainLoop...\nDone.\n"
     BUILD_FAIL = "ERROR: Cannot open file 'res://x.tscn'.\n"
@@ -725,8 +1046,53 @@ def test_build_report_all_pass_is_schema_valid(project_dir: Path):
                       side_effect=_fake_run_factory()):
         report = run_verify.build_report(project_dir)
     assert report["result"] == "pass"
+    assert report["backend"] == {
+        "language": "gdscript",
+        "unit_tests": "gdunit",
+        "selection": "legacy-default",
+        "dotnet_target": None,
+        "godot_csharp_project": None,
+    }
     assert report["tooling_notes"] == []
     assert report["checks"]["lint"]["format_drift"] is None
+    assert report["checks"]["unit_tests"]["framework"] == "gdunit"
+    assert report["checks"]["unit_tests"]["total"] == 100
+    assert report["checks"]["unit_tests"]["skipped"] == 0
+    assert report["checks"]["static_check"]["skipped_checks"] == []
+    assert validate_report(report) == []
+
+
+def test_build_report_csharp_uses_selected_backend(project_dir: Path):
+    trx = """<TestRun><ResultSummary><Counters total="1" passed="1" failed="0" /></ResultSummary></TestRun>"""
+    backend = _Backend("csharp", dotnet_target="Game.sln")
+
+    def fake_run(cmd, *args, **kwargs):
+        if cmd == ["/usr/bin/godot", "--version"]:
+            return _make_proc(stdout="4.5.1.stable.mono.official\n")
+        cmd_str = " ".join(str(c) for c in cmd)
+        if " test " in f" {cmd_str} ":
+            _write_trx_from_cmd(cmd, trx)
+        return _make_proc(stdout="[PASS] ok\n")
+
+    with patch.object(run_verify, "select_verification_backend", return_value=backend):
+        with patch.object(run_verify.subprocess, "run", side_effect=fake_run):
+            report = run_verify.build_report(project_dir)
+
+    assert report["backend"] == {
+        "language": "csharp",
+        "unit_tests": "dotnet",
+        "selection": "test",
+        "dotnet_target": "Game.sln",
+        "godot_csharp_project": None,
+    }
+    assert report["result"] == "pass"
+    assert report["checks"]["unit_tests"]["framework"] == "dotnet"
+    assert report["checks"]["unit_tests"]["total"] == 1
+    assert report["checks"]["unit_tests"]["skipped"] == 0
+    assert report["checks"]["static_check"]["skipped_checks"] == [
+        {"check": "gdscript_gecs", "reason": "not applicable to C#/.NET verification backend"},
+        {"check": "gdunit_discovery", "reason": "unit tests handled by dotnet test"},
+    ]
     assert validate_report(report) == []
 
 
@@ -776,7 +1142,7 @@ def test_build_report_build_timeout_pairs_with_tooling_note(project_dir: Path):
 
 
 def test_build_report_multiple_tool_errors_emit_multiple_notes(project_dir: Path):
-    """build + static both timing out → 2 entries in tooling_notes."""
+    """build + static both timing out →2 entries in tooling_notes."""
     with patch.object(
         run_verify.subprocess, "run",
         side_effect=_fake_run_factory(build="timeout", static="timeout"),
@@ -796,6 +1162,62 @@ def test_build_report_static_fail_is_schema_valid(project_dir: Path):
     assert report["checks"]["static_check"]["issues"][0]["check"] == "missing_unit_test"
     assert validate_report(report) == []
 
+
+def test_build_report_backend_selection_error_is_schema_valid(project_dir: Path):
+    with patch.object(
+        run_verify,
+        "select_verification_backend",
+        side_effect=run_verify.BackendSelectionError(
+            "auto detected mixed language backends"
+        ),
+    ):
+        report = run_verify.build_report(project_dir)
+
+    assert report["result"] == "fail"
+    assert report["backend"] == {
+        "language": "unknown",
+        "unit_tests": "unknown",
+        "selection": "error",
+        "dotnet_target": None,
+        "godot_csharp_project": None,
+    }
+    assert report["checks"]["build"] == {"result": "error", "errors": []}
+    assert report["checks"]["unit_tests"] == {
+        "result": "error",
+        "framework": "unknown",
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "failures": [],
+    }
+    assert report["checks"]["static_check"] == {
+        "result": "error",
+        "issues": [],
+        "skipped_checks": [],
+    }
+    assert report["tooling_notes"][0]["tool"] == "verification_backend"
+    assert report["tooling_notes"][0]["crashed_on"] == str(project_dir)
+    assert "mixed language" in report["tooling_notes"][0]["error"]
+    assert validate_report(report) == []
+
+
+def test_main_backend_selection_error_emits_fail_json(project_dir: Path, capsys):
+    with patch.object(
+        run_verify,
+        "select_verification_backend",
+        side_effect=run_verify.BackendSelectionError(
+            "unit_test_backend must be one of: auto, dotnet, gdunit; got 'bogus'"
+        ),
+    ):
+        rc = run_verify.main(["--project-path", str(project_dir)])
+
+    assert rc == 0
+    parsed = json.loads(capsys.readouterr().out)
+    assert parsed["result"] == "fail"
+    assert parsed["tooling_notes"][0]["tool"] == "verification_backend"
+    assert "unit_test_backend" in parsed["tooling_notes"][0]["error"]
+    assert validate_report(parsed) == []
 
 # ---------- main / CLI ----------
 
@@ -827,11 +1249,11 @@ def test_main_defaults_to_cwd(project_dir: Path, capsys, monkeypatch):
 
 
 def test_main_subprocess_invocation_real(project_dir: Path):
-    """End-to-end via real subprocess — godot/gdunit/check_project all fail
+    """End-to-end via real subprocess —godot/gdunit/check_project all fail
     to launch, so we expect rc=0 with a JSON whose checks.* are 'error'.
 
     Important: this guards against the script breaking at import time
-    (syntax errors, missing imports) — the rest of the file mocks at
+    (syntax errors, missing imports) —the rest of the file mocks at
     module level and would miss those.
     """
     proc = subprocess.run(
@@ -843,13 +1265,13 @@ def test_main_subprocess_invocation_real(project_dir: Path):
     )
     assert proc.returncode == 0, proc.stderr
     parsed = json.loads(proc.stdout)
-    # godot not on PATH → build + unit are 'error'. Lint stub-passes.
+    # godot not on PATH →build + unit are 'error'. Lint stub-passes.
     assert parsed["checks"]["build"]["result"] == "error"
     assert parsed["checks"]["unit_tests"]["result"] == "error"
     assert parsed["checks"]["lint"]["result"] == "pass"
     # check_project.py runs (sys.executable is still found) so static_check
     # depends on whether it errors out on the empty project; tolerate
-    # either pass or fail/error here — the assertion that matters is that
+    # either pass or fail/error here —the assertion that matters is that
     # the script ran end-to-end and produced a schema-valid JSON.
     assert validate_report(parsed) == []
 

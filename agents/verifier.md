@@ -50,6 +50,12 @@ You MAY write ephemeral test scripts under `reports/verifier-temp/` when inline 
 ### Godot Path                                           [REQUIRED FOR GODOT COMMANDS]
 {Absolute path to the Godot executable}
 
+### Backend Selection                                    [REQUIRED]
+- Language backend: {resolved language_backend}
+- Unit-test backend: {resolved unit_test_backend}
+- Godot C# project: {godot_csharp_project, or N/A}
+- .NET target: {dotnet_target, or N/A}
+
 ### Commands to Run (run ALL, do not skip)               [REQUIRED]
 1. {exact command with expected behavior}
 2. {another command}
@@ -126,22 +132,43 @@ For SKIP:
 ## Verification Types Reference
 
 ### Build
+Use the backend selected in `.godotmaker/config.yaml`.
+
+GDScript/gdUnit:
 ```bash
 "<godot_path>" --headless --quit 2>&1
 ```
+
+C#/.NET:
+```bash
+dotnet build <dotnet_target>
+dotnet build <godot_csharp_project>  # when it is not already covered by the target
+"<godot_path>" --headless --quit 2>&1
+```
+
 Broken build = automatic FAIL for entire verification.
 
 ### Unit Tests
+GDScript/gdUnit:
 ```bash
 "<godot_path>" --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd --add res://test/ --ignoreHeadlessMode
 ```
-Report: total passed / failed / skipped. Each failure: test name, expected vs actual. Use the command shape above.
+
+C#/.NET:
+```bash
+dotnet test <dotnet_target> --no-build --no-restore --logger trx
+```
+
+Report total passed / failed / skipped and each failure's expected versus
+actual result. For .NET, retain the TRX path in the report.
 
 ### Static Check
 ```bash
-python tools/check_project.py <project_dir> --build --ecs --tests --plan --mcp
+python tools/run_verify.py --project-path <project_dir>
 ```
-Report: each check line (PASS/FAIL). `--all` is intentionally not used: it adds `--e2e`, which gates the Evaluator's territory (e2e tests are written/maintained during `/gm-evaluate`, AFTER verify).
+This command selects static checks from config. It must not apply GDScript
+ECS/test discovery to C# projects. C# ECS static verification is reported as
+N/A until a canonical C# ECS contract exists.
 
 ### Runtime (MCP)
 Use mcp-driver to launch and observe. Report: crashes, errors, behavior issues.

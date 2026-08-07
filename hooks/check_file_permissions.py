@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metrics import record_event, EventType, get_current_role, WORKER_DISPATCH_ROLES
 
-GAME_CODE_EXTENSIONS = {".gd", ".tscn", ".tres"}
+GAME_CODE_EXTENSIONS = {".gd", ".tscn", ".tres", ".cs", ".csproj", ".sln"}
 # Project-root planning artifacts — subagents may NOT modify these unless
 # their agent_type is in PLANNING_WRITER_AGENT_TYPES. Includes the four
 # 1c decomposer outputs (PLAN/STRUCTURE/STYLE/ASSETS + SCENES/TOC), the

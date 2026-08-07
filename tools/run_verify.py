@@ -31,6 +31,7 @@ Exit codes:
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import subprocess
 import sys
@@ -47,10 +48,24 @@ from agent_runtime import (
 )
 from godot_output import classify_godot_headless_output
 
+try:
+    from verification_backend import BackendSelectionError, select_verification_backend
+except ImportError:  # Backward-compatible fallback for older published tools.
+    class BackendSelectionError(ValueError):
+        """Fallback exception for older published tools without backend selection."""
 
-# Same flags as gm-verify/SKILL.md Section 4. `--all` deliberately not
-# used: it adds `--e2e` which is the Evaluator's territory.
-STATIC_CHECK_FLAGS = ["--build", "--ecs", "--tests", "--plan", "--mcp"]
+    def select_verification_backend(project_dir: Path) -> dict[str, str]:
+        return {"backend": "gdscript"}
+
+
+# Same scope as gm-verify's static check, minus --build: build is owned by
+# check_build(), including backend-specific C#/.NET compilation.
+STATIC_CHECK_FLAGS = ["--git", "--ecs", "--tests", "--plan", "--mcp"]
+CSHARP_STATIC_CHECK_FLAGS = ["--git", "--plan", "--mcp"]
+CSHARP_STATIC_SKIPS = [
+    {"check": "gdscript_gecs", "reason": "not applicable to C#/.NET verification backend"},
+    {"check": "gdunit_discovery", "reason": "unit tests handled by dotnet test"},
+]
 
 # Per-check timeout (seconds). headless `godot --quit` is normally <10s
 # but allow 60s for cold-start + project import. gdUnit4 can take
@@ -70,8 +85,7 @@ def _now_iso_utc() -> str:
 
 def _tooling_note(tool: str, crashed_on: str, error: str,
                   fallback: str = "escalate") -> dict:
-    """Build a tooling_notes entry. We always emit `escalate` here —
-    this script is the producer and per gm-verify producer rule, when
+    """Build a tooling_notes entry. We always emit `escalate` here —    this script is the producer and per gm-verify producer rule, when
     we can't fill a routable fallback's operand we MUST emit escalate.
     Routable fallbacks (exclude_file / scope_narrow / add_gdlintrc_rule
     / skip_check) are reserved for cases with a clear remediation; a
@@ -88,13 +102,88 @@ def _tooling_note(tool: str, crashed_on: str, error: str,
     }
 
 
+def _backend_value(backend: Any, name: str, default: Any = None) -> Any:
+    if backend is None:
+        return default
+    if isinstance(backend, dict):
+        return backend.get(name, default)
+    return getattr(backend, name, default)
+
+
+def _backend_name(backend: Any) -> str:
+    raw = (
+        _backend_value(backend, "language_backend")
+        or _backend_value(backend, "backend")
+        or _backend_value(backend, "name")
+        or _backend_value(backend, "kind")
+        or _backend_value(backend, "language")
+        or "gdscript"
+    )
+    normalized = str(raw).strip().lower()
+    if normalized in {"c#", "cs", "csharp", "dotnet", ".net"}:
+        return "csharp"
+    return normalized or "gdscript"
+
+
+def _backend_unit_name(backend: Any) -> str:
+    raw = (
+        _backend_value(backend, "unit_test_backend")
+        or _backend_value(backend, "unit_tests")
+        or _backend_value(backend, "test_backend")
+    )
+    if raw is None:
+        return "dotnet" if _backend_name(backend) == "csharp" else "gdunit"
+    normalized = str(raw).strip().lower()
+    if normalized in {"c#", "cs", "csharp", "dotnet", ".net"}:
+        return "dotnet"
+    return normalized or "gdunit"
+
+
+def _backend_report_path(backend: Any, name: str) -> str | None:
+    value = _backend_value(backend, name)
+    if value is None:
+        return None
+    return str(value).replace("\\", "/")
+
+
+def _backend_report(backend: Any) -> dict[str, Any]:
+    return {
+        "language": _backend_name(backend),
+        "unit_tests": _backend_unit_name(backend),
+        "selection": str(_backend_value(backend, "source", "legacy")),
+        "dotnet_target": _backend_report_path(backend, "dotnet_target"),
+        "godot_csharp_project": _backend_report_path(backend, "godot_csharp_project"),
+    }
+
+
+def _is_csharp_backend(backend: Any) -> bool:
+    return _backend_name(backend) == "csharp"
+
+
+def _backend_path(project_dir: Path, backend: Any, name: str) -> Path | None:
+    value = _backend_value(backend, name)
+    if not value:
+        return None
+    path = Path(str(value))
+    return path if path.is_absolute() else project_dir / path
+
+
+def _empty_dotnet_result(result: str = "error") -> dict:
+    return {
+        "result": result,
+        "framework": "dotnet",
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "failures": [],
+    }
+
 # ---------------------------------------------------------------------------
 # 1. Build
 # ---------------------------------------------------------------------------
 
-def check_build(godot_path: str, project_dir: Path
-                ) -> tuple[dict, dict | None]:
-    """Run `<godot_path> --headless --quit` and parse blocking diagnostics."""
+def _run_godot_headless_build(godot_path: str, project_dir: Path) -> tuple[dict, dict | None]:
     log_file = godot_log_file(project_dir, "build")
     try:
         proc = subprocess.run(
@@ -139,6 +228,153 @@ def check_build(godot_path: str, project_dir: Path
     return ({"result": result, "errors": errors}, None)
 
 
+def _dotnet_build(target: Path) -> tuple[dict | None, dict | None]:
+    try:
+        proc = subprocess.run(
+            ["dotnet", "build", str(target)],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=BUILD_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return (
+            {"result": "error", "errors": []},
+            _tooling_note(
+                tool="dotnet",
+                crashed_on=str(target),
+                error=f"dotnet build timed out after {BUILD_TIMEOUT}s",
+            ),
+        )
+    except FileNotFoundError as ex:
+        return (
+            {"result": "error", "errors": []},
+            _tooling_note(
+                tool="dotnet",
+                crashed_on="dotnet",
+                error=f"dotnet executable not found: {ex}",
+            ),
+        )
+
+    if proc.returncode == 0:
+        return None, None
+
+    combined = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    return (
+        {
+            "result": "fail",
+            "errors": [{
+                "file": str(target.name),
+                "line": 0,
+                "message": combined or f"dotnet build exited with code {proc.returncode}",
+            }],
+        },
+        None,
+    )
+
+
+def _solution_mentions_project(solution: Path, project: Path) -> bool:
+    if solution.resolve() == project.resolve():
+        return True
+    if solution.suffix.lower() != ".sln" or not solution.exists():
+        return False
+    try:
+        text = solution.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    rel = os.path.relpath(project, solution.parent).replace("/", "\\")
+    return project.name in text or rel in text or rel.replace("\\", "/") in text
+
+
+def _check_godot_dotnet_runtime(
+    godot_path: str,
+) -> tuple[dict | None, dict | None]:
+    """Require the configured Godot executable to be the Mono/.NET build."""
+    try:
+        proc = subprocess.run(
+            [godot_path, "--version"],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=15,
+        )
+    except FileNotFoundError as ex:
+        return (
+            {"result": "error", "errors": []},
+            _tooling_note(
+                tool="godot",
+                crashed_on=godot_path,
+                error=f"godot executable not found: {ex}",
+            ),
+        )
+    except subprocess.TimeoutExpired:
+        return (
+            {"result": "error", "errors": []},
+            _tooling_note(
+                tool="godot",
+                crashed_on=godot_path,
+                error="godot --version timed out after 15s",
+            ),
+        )
+
+    combined = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    version = combined.splitlines()[-1] if combined else "(no version output)"
+    if proc.returncode != 0:
+        return (
+            {
+                "result": "fail",
+                "errors": [{
+                    "file": Path(godot_path).name,
+                    "line": 0,
+                    "message": f"could not query Godot Mono/.NET version: {version}",
+                }],
+            },
+            None,
+        )
+    if "mono" not in combined.lower():
+        return (
+            {
+                "result": "fail",
+                "errors": [{
+                    "file": Path(godot_path).name,
+                    "line": 0,
+                    "message": (
+                        "C# verification requires Godot Mono/.NET; "
+                        f"configured executable reports {version}"
+                    ),
+                }],
+            },
+            None,
+        )
+    return None, None
+
+
+def check_build(godot_path: str, project_dir: Path,
+                backend: Any | None = None) -> tuple[dict, dict | None]:
+    """Run backend-specific compile checks, then Godot headless parse."""
+    if _is_csharp_backend(backend):
+        dotnet_target = _backend_path(project_dir, backend, "dotnet_target")
+        godot_project = _backend_path(project_dir, backend, "godot_csharp_project")
+        if not dotnet_target:
+            return (
+                {"result": "error", "errors": []},
+                _tooling_note(
+                    tool="dotnet",
+                    crashed_on="dotnet_target",
+                    error="C# verification backend selected but dotnet_target is missing",
+                ),
+            )
+
+        build_result, note = _dotnet_build(dotnet_target)
+        if build_result is not None:
+            return build_result, note
+        if godot_project and not _solution_mentions_project(dotnet_target, godot_project):
+            build_result, note = _dotnet_build(godot_project)
+            if build_result is not None:
+                return build_result, note
+
+        runtime_result, note = _check_godot_dotnet_runtime(godot_path)
+        if runtime_result is not None:
+            return runtime_result, note
+
+    return _run_godot_headless_build(godot_path, project_dir)
+
 # ---------------------------------------------------------------------------
 # 2. Unit Tests
 # ---------------------------------------------------------------------------
@@ -171,6 +407,10 @@ _GDUNIT_ORPHAN_WARNING = re.compile(
     r"Found\s+\d+\s+possible\s+orphan\s+nodes?\.?",
     re.IGNORECASE,
 )
+_TRX_FAIL_OUTCOMES = {"failed", "error", "timeout", "aborted"}
+_TRX_SKIP_OUTCOMES = {
+    "notexecuted", "notrunnable", "skipped", "inconclusive",
+}
 
 
 def _gdunit_warning_messages(combined: str, returncode: int) -> list[str]:
@@ -309,8 +549,174 @@ def _parse_gdunit_stdout(combined: str, returncode: int) -> dict | None:
     }
 
 
-def check_unit_tests(godot_path: str, project_dir: Path
-                     ) -> tuple[dict, dict | None]:
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _find_child(element: ET.Element, name: str) -> ET.Element | None:
+    for child in element.iter():
+        if _xml_local_name(child.tag) == name:
+            return child
+    return None
+
+
+def _find_trx_files(report_path: Path) -> list[Path]:
+    return sorted(report_path.rglob("*.trx"))
+
+
+def _parse_trx_files(trx_files: list[Path]) -> dict:
+    total = passed = failed = skipped = 0
+    failures: list[dict] = []
+    for trx in trx_files:
+        root = ET.parse(trx).getroot()
+        counters = _find_child(root, "Counters")
+        file_has_counters = counters is not None
+        if file_has_counters:
+            total += _int_attr(counters, "total")
+            passed += _int_attr(counters, "passed")
+            failed += (
+                _int_attr(counters, "failed")
+                + _int_attr(counters, "error")
+                + _int_attr(counters, "timeout")
+                + _int_attr(counters, "aborted")
+            )
+            skipped += (
+                _int_attr(counters, "notExecuted")
+                + _int_attr(counters, "notRunnable")
+                + _int_attr(counters, "inconclusive")
+            )
+        for result in root.iter():
+            if _xml_local_name(result.tag) != "UnitTestResult":
+                continue
+            outcome = result.attrib.get("outcome", "").strip().lower()
+            test_name = result.attrib.get("testName", "").strip() or "<dotnet-test>"
+            if not file_has_counters:
+                total += 1
+                if outcome == "passed":
+                    passed += 1
+                elif outcome in _TRX_FAIL_OUTCOMES:
+                    failed += 1
+                elif outcome in _TRX_SKIP_OUTCOMES:
+                    skipped += 1
+            if outcome in _TRX_FAIL_OUTCOMES:
+                msg_node = _find_child(result, "Message")
+                stack_node = _find_child(result, "StackTrace")
+                message = _strip_xml_text(msg_node.text if msg_node is not None else "")
+                stack = _strip_xml_text(stack_node.text if stack_node is not None else "")
+                if stack and stack not in message:
+                    message = f"{message}: {stack}" if message else stack
+                failures.append({
+                    "test": test_name,
+                    "message": message or f"dotnet test outcome: {outcome}",
+                })
+
+    result = "fail" if failed else "pass"
+    return {
+        "result": result,
+        "framework": "dotnet",
+        "total": total,
+        "passed": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "failures": failures,
+    }
+
+
+def _check_dotnet_tests(project_dir: Path, backend: Any) -> tuple[dict, dict | None]:
+    dotnet_target = _backend_path(project_dir, backend, "dotnet_target")
+    if not dotnet_target:
+        return (
+            _empty_dotnet_result(),
+            _tooling_note(
+                tool="dotnet",
+                crashed_on="dotnet_target",
+                error="C# verification backend selected but dotnet_target is missing",
+            ),
+        )
+
+    with tempfile.TemporaryDirectory(prefix="godotmaker-dotnet-") as report_dir:
+        report_path = Path(report_dir)
+        cmd = [
+            "dotnet", "test", str(dotnet_target),
+            "--no-build", "--no-restore",
+            "--logger", "trx",
+            "--results-directory", str(report_path),
+        ]
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=UNIT_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            return (
+                _empty_dotnet_result(),
+                _tooling_note(
+                    tool="dotnet",
+                    crashed_on=str(dotnet_target),
+                    error=f"dotnet test timed out after {UNIT_TIMEOUT}s",
+                ),
+            )
+        except FileNotFoundError as ex:
+            return (
+                _empty_dotnet_result(),
+                _tooling_note(
+                    tool="dotnet",
+                    crashed_on="dotnet",
+                    error=f"dotnet executable not found: {ex}",
+                ),
+            )
+
+        trx_files = _find_trx_files(report_path)
+        if not trx_files:
+            return (
+                _empty_dotnet_result(),
+                _tooling_note(
+                    tool="dotnet",
+                    crashed_on=str(report_path),
+                    error="dotnet test produced no TRX results",
+                ),
+            )
+        try:
+            parsed = _parse_trx_files(trx_files)
+        except ET.ParseError as ex:
+            return (
+                _empty_dotnet_result(),
+                _tooling_note(
+                    tool="dotnet",
+                    crashed_on=str(trx_files[0]),
+                    error=f"could not parse dotnet TRX report: {ex}",
+                ),
+            )
+        if parsed["total"] == 0:
+            return (
+                parsed | {"result": "error"},
+                _tooling_note(
+                    tool="dotnet",
+                    crashed_on=str(report_path),
+                    error="dotnet test reported zero tests",
+                ),
+            )
+        if proc.returncode != 0 and parsed["result"] == "pass":
+            return (
+                parsed | {"result": "error"},
+                _tooling_note(
+                    tool="dotnet",
+                    crashed_on=str(dotnet_target),
+                    error=(
+                        f"dotnet test exited with code {proc.returncode} "
+                        "despite passing TRX results"
+                    ),
+                ),
+            )
+        return parsed, None
+
+
+def _check_gdunit_tests(godot_path: str, project_dir: Path
+                        ) -> tuple[dict, dict | None]:
     with tempfile.TemporaryDirectory(prefix="godotmaker-gdunit-") as report_dir:
         report_path = Path(report_dir)
         cmd = [
@@ -429,9 +835,16 @@ def check_unit_tests(godot_path: str, project_dir: Path
             ),
         )
 
+def check_unit_tests(godot_path: str, project_dir: Path,
+                     backend: Any | None = None) -> tuple[dict, dict | None]:
+    if _is_csharp_backend(backend):
+        return _check_dotnet_tests(project_dir, backend)
+    return _check_gdunit_tests(godot_path, project_dir)
+
+
 
 # ---------------------------------------------------------------------------
-# 3. Lint — gdtoolkit currently disabled (gm-verify SKILL Section 3)
+# 3. Lint —gdtoolkit currently disabled (gm-verify SKILL Section 3)
 # ---------------------------------------------------------------------------
 
 def check_lint() -> dict:
@@ -443,13 +856,29 @@ def check_lint() -> dict:
 # ---------------------------------------------------------------------------
 
 _STATIC_FAIL_LINE = re.compile(r"^\[FAIL\]\s+(.+)$", re.MULTILINE)
+_STATIC_SKIP_LINE = re.compile(r"^\[SKIP\]\s+(.+)$", re.MULTILINE)
+_STATIC_ERROR_LINE = re.compile(r"^\[ERROR\]\s+(.+)$", re.MULTILINE)
 
 
-def check_static(project_dir: Path) -> tuple[dict, dict | None]:
+def _static_line_items(pattern: re.Pattern[str], combined: str,
+                       default_name: str) -> list[dict]:
+    items: list[dict] = []
+    for m in pattern.finditer(combined):
+        detail = m.group(1).strip()
+        if ":" in detail:
+            check_name, _, rest = detail.partition(":")
+            items.append({"check": check_name.strip(), "detail": rest.strip()})
+        else:
+            items.append({"check": default_name, "detail": detail})
+    return items
+
+
+def check_static(project_dir: Path,
+                 backend: Any | None = None) -> tuple[dict, dict | None]:
     check_project = Path(__file__).parent / "check_project.py"
     if not check_project.exists():
         return (
-            {"result": "error", "issues": []},
+            {"result": "error", "issues": [], "skipped_checks": []},
             _tooling_note(
                 tool="check_project",
                 crashed_on=str(check_project),
@@ -457,7 +886,9 @@ def check_static(project_dir: Path) -> tuple[dict, dict | None]:
             ),
         )
 
-    cmd = [sys.executable, str(check_project), str(project_dir)] + STATIC_CHECK_FLAGS
+    skipped_checks = list(CSHARP_STATIC_SKIPS) if _is_csharp_backend(backend) else []
+    flags = CSHARP_STATIC_CHECK_FLAGS if _is_csharp_backend(backend) else STATIC_CHECK_FLAGS
+    cmd = [sys.executable, str(check_project), str(project_dir)] + flags
     try:
         proc = subprocess.run(
             cmd,
@@ -469,7 +900,7 @@ def check_static(project_dir: Path) -> tuple[dict, dict | None]:
         )
     except subprocess.TimeoutExpired:
         return (
-            {"result": "error", "issues": []},
+            {"result": "error", "issues": [], "skipped_checks": skipped_checks},
             _tooling_note(
                 tool="check_project",
                 crashed_on=str(project_dir),
@@ -478,14 +909,19 @@ def check_static(project_dir: Path) -> tuple[dict, dict | None]:
         )
 
     combined = (proc.stdout or "") + (proc.stderr or "")
-    issues: list[dict] = []
-    for m in _STATIC_FAIL_LINE.finditer(combined):
-        detail = m.group(1).strip()
-        if ":" in detail:
-            check_name, _, rest = detail.partition(":")
-            issues.append({"check": check_name.strip(), "detail": rest.strip()})
-        else:
-            issues.append({"check": "static_check", "detail": detail})
+    issues = _static_line_items(_STATIC_FAIL_LINE, combined, "static_check")
+    skipped_checks.extend(_static_line_items(_STATIC_SKIP_LINE, combined, "static_check"))
+    errors = _static_line_items(_STATIC_ERROR_LINE, combined, "static_check")
+
+    if errors:
+        return (
+            {"result": "error", "issues": issues, "skipped_checks": skipped_checks},
+            _tooling_note(
+                tool="check_project",
+                crashed_on=str(project_dir),
+                error="; ".join(f"{e['check']}: {e['detail']}" for e in errors),
+            ),
+        )
 
     if proc.returncode != 0 and not issues:
         excerpt = combined.strip()
@@ -494,7 +930,7 @@ def check_static(project_dir: Path) -> tuple[dict, dict | None]:
         if not excerpt:
             excerpt = "no stdout/stderr output"
         return (
-            {"result": "error", "issues": []},
+            {"result": "error", "issues": [], "skipped_checks": skipped_checks},
             _tooling_note(
                 tool="check_project",
                 crashed_on=str(project_dir),
@@ -506,7 +942,7 @@ def check_static(project_dir: Path) -> tuple[dict, dict | None]:
         )
 
     result = "fail" if issues else "pass"
-    return ({"result": result, "issues": issues}, None)
+    return ({"result": result, "issues": issues, "skipped_checks": skipped_checks}, None)
 
 
 # ---------------------------------------------------------------------------
@@ -518,10 +954,61 @@ def build_report(project_dir: Path) -> dict[str, Any]:
         read_godot_path(project_dir, default="godot")
     )
 
-    build_dict, build_note = check_build(godot_path, project_dir)
-    unit_dict, unit_note = check_unit_tests(godot_path, project_dir)
+    try:
+        backend = select_verification_backend(project_dir)
+    except BackendSelectionError as ex:
+        return {
+            "result": "fail",
+            "backend": {
+                "language": "unknown",
+                "unit_tests": "unknown",
+                "selection": "error",
+                "dotnet_target": None,
+                "godot_csharp_project": None,
+            },
+            "ts": _now_iso_utc(),
+            "checks": {
+                "build": {"result": "error", "errors": []},
+                "unit_tests": {
+                    "result": "error",
+                    "framework": "unknown",
+                    "total": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "skipped": 0,
+                    "failures": [],
+                },
+                "lint": check_lint(),
+                "static_check": {
+                    "result": "error",
+                    "issues": [],
+                    "skipped_checks": [],
+                },
+            },
+            "tooling_notes": [
+                _tooling_note(
+                    tool="verification_backend",
+                    crashed_on=str(project_dir),
+                    error=str(ex),
+                )
+            ],
+        }
+    backend_name = _backend_name(backend)
+    unit_backend_name = _backend_unit_name(backend)
+
+    build_dict, build_note = check_build(godot_path, project_dir, backend=backend)
+    unit_dict, unit_note = check_unit_tests(godot_path, project_dir, backend=backend)
     lint_dict = check_lint()
-    static_dict, static_note = check_static(project_dir)
+    static_dict, static_note = check_static(project_dir, backend=backend)
+    unit_dict.setdefault("framework", unit_backend_name)
+    unit_dict.setdefault("passed", 0)
+    unit_dict.setdefault("failed", 0)
+    unit_dict.setdefault("skipped", 0)
+    unit_dict.setdefault(
+        "total",
+        unit_dict["passed"] + unit_dict["failed"] + unit_dict["skipped"],
+    )
+    static_dict.setdefault("skipped_checks", [])
 
     notes: list[dict] = [n for n in (build_note, unit_note, static_note) if n]
 
@@ -529,11 +1016,12 @@ def build_report(project_dir: Path) -> dict[str, Any]:
         build_dict["result"], unit_dict["result"],
         lint_dict["result"], static_dict["result"],
     }
-    # Top-level pass iff every per-check result ∈ {pass, warn}.
+    # Top-level pass iff every per-check result ∈{pass, warn}.
     overall = "pass" if per_check_results <= {"pass", "warn"} else "fail"
 
     return {
         "result": overall,
+        "backend": _backend_report(backend),
         "ts": _now_iso_utc(),
         "checks": {
             "build": build_dict,

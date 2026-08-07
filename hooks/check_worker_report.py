@@ -74,8 +74,16 @@ class ReportVerdict:
 
 
 WORKER_TEST_SUBSTANCE = [
-    r"test[_/].*\.gd",
-    r"(\d+\s*(passed|failed|tests?))|Commands?\s*run",
+    r"test[_/\\].*\.gd",
+    r"(?:^|[/\\])(?:test|tests)[/\\].*\.cs\b",
+    r"\b[\w.-]+(?:tests?|specs?)\.cs\b",
+    r"\bdotnet\s+test\b",
+    r"\b[^\s`\"']+\.trx\b",
+]
+
+WORKER_TEST_RESULTS = [
+    r"\d+\s*(?:passed|failed|tests?)",
+    r"(?:passed|failed)\s*[:=]\s*\d+",
 ]
 
 # Most dangerous Godot built-in names that conflict with class_name.
@@ -151,17 +159,18 @@ def extract_files_changed(message: str) -> list[str]:
     return result
 
 
-def check_resource_paths(gd_contents: dict[str, str], worktree_dirs: list[str]) -> str | None:
-    """Check that res:// paths referenced in worker's .gd files actually exist.
+def check_resource_paths(source_contents: dict[str, str], worktree_dirs: list[str]) -> str | None:
+    """Check that res:// paths referenced in worker's .gd/.cs files exist.
 
     Checks both main project and worktree directories.
     """
     try:
         missing = []
-        for _gd_file, content in gd_contents.items():
+        for source_file, content in source_contents.items():
+            is_csharp = source_file.lower().endswith(".cs")
             for line in content.splitlines():
                 stripped = line.strip()
-                if stripped.startswith("#"):
+                if stripped.startswith("#") or (is_csharp and stripped.startswith("//")):
                     continue
                 for m in re.finditer(r'res://([^"\'`\s]+)', line):
                     res_path = m.group(1)
@@ -211,12 +220,18 @@ def check_test_substance(message: str) -> str | None:
     if not has_substance:
         return "Tests section lacks substance — must include test file paths and pass/fail results"
 
-    has_unittest = bool(re.search(r"unit\s*test|gdunit|test_.*\.gd", content, re.IGNORECASE))
+    has_unittest = has_substance
     if not has_unittest:
         return (
             "Tests section missing unittest results — every system must have unit tests. "
             "Include the test file name (e.g., test_movement.gd) and run output (e.g., '5 tests -- 5 passed, 0 failed')."
         )
+
+    has_results = any(
+        re.search(p, content, re.IGNORECASE) for p in WORKER_TEST_RESULTS
+    )
+    if not has_results:
+        return "Tests section lacks substance: must include pass/fail result counts"
 
     return None
 
@@ -377,18 +392,23 @@ def evaluate(data: dict) -> ReportVerdict:
 
         if os.path.exists("project.godot"):
             files = extract_files_changed(message)
+            source_contents: dict[str, str] = {}
             gd_contents: dict[str, str] = {}
             for f in files:
-                if f.endswith(".gd"):
+                lower_f = f.lower()
+                if lower_f.endswith((".gd", ".cs")):
                     resolved = _resolve_file(f, worktree_dirs)
                     if resolved:
                         try:
                             with open(resolved, encoding="utf-8", errors="ignore") as fh:
-                                gd_contents[f] = fh.read()
+                                content = fh.read()
+                            source_contents[f] = content
+                            if lower_f.endswith(".gd"):
+                                gd_contents[f] = content
                         except OSError:
                             pass
 
-            res_issue = check_resource_paths(gd_contents, worktree_dirs)
+            res_issue = check_resource_paths(source_contents, worktree_dirs)
             if res_issue:
                 return block(res_issue)
 

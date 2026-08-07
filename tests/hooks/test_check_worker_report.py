@@ -17,6 +17,18 @@ COMPLETE_WORKER = (
     "### Memory Entry\nLearned about movement"
 )
 
+COMPLETE_CSHARP_WORKER = (
+    "## Report: BattleKernel\n\n"
+    "### Status: DONE\n\n"
+    "### Files Changed\n- `src/BattleKernel.cs`: created\n\n"
+    "### Tests\n#### Test Results\n"
+    "- `tests/BattleKernelTests.cs`: xUnit, 3 tests, 3 passed, 0 failed\n"
+    "- Command run: dotnet test Game.sln --logger trx\n"
+    "- TRX: TestResults/results.trx\n\n"
+    "### Build\n- Command run: dotnet build Game.sln\n- Status: PASS\n\n"
+    "### Memory Entry\nKept the battle kernel deterministic"
+)
+
 COMPLETE_VERIFIER = (
     "## Verification Report: Integration\n\n"
     "### Overall: PASS\n\n"
@@ -125,6 +137,98 @@ class TestWorkerReport:
         assert not is_blocked(parsed), (
             "Worker report without e2e mention should be allowed"
         )
+
+    @pytest.mark.parametrize(
+        "test_evidence",
+        [
+            "- Command run: dotnet test Game.sln\n- 3 tests, 3 passed, 0 failed",
+            "- `tests/BattleKernelTests.cs`: 3 tests, 3 passed, 0 failed",
+            "- `tests/BattleKernelTests.cs`: xUnit, 3 tests, 3 passed, 0 failed",
+            "- NUnit\n- Command run: dotnet test Game.sln\n- 3 tests, 3 passed, 0 failed",
+            "- MSTest\n- Command run: dotnet test Game.sln\n- 3 tests, 3 passed, 0 failed",
+            "- TRX: TestResults/results.trx\n- 3 tests, 3 passed, 0 failed",
+        ],
+    )
+    def test_csharp_unit_test_evidence_allowed(self, test_evidence):
+        msg = COMPLETE_CSHARP_WORKER.replace(
+            "- `tests/BattleKernelTests.cs`: xUnit, 3 tests, 3 passed, 0 failed\n"
+            "- Command run: dotnet test Game.sln --logger trx\n"
+            "- TRX: TestResults/results.trx",
+            test_evidence,
+        )
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "csharp-worker",
+            "last_assistant_message": msg,
+        })
+        assert not is_blocked(parsed), test_evidence
+
+    @pytest.mark.parametrize("framework", ["xUnit", "NUnit", "MSTest"])
+    def test_framework_name_and_counts_without_auditable_evidence_blocked(
+        self,
+        framework,
+    ):
+        msg = COMPLETE_CSHARP_WORKER.replace(
+            "- `tests/BattleKernelTests.cs`: xUnit, 3 tests, 3 passed, 0 failed\n"
+            "- Command run: dotnet test Game.sln --logger trx\n"
+            "- TRX: TestResults/results.trx",
+            f"- {framework} results: 3 tests, 3 passed, 0 failed",
+        )
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "csharp-framework-only-worker",
+            "last_assistant_message": msg,
+        })
+        assert is_blocked(parsed)
+
+    def test_csharp_res_path_must_exist(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        write_current_role("build")
+        (tmp_path / "project.godot").write_text(
+            '[application]\nconfig/name="Test"\n',
+            encoding="utf-8",
+        )
+        source_dir = tmp_path / "src"
+        source_dir.mkdir()
+        (source_dir / "BattleKernel.cs").write_text(
+            'var scene = GD.Load<PackedScene>("res://scenes/missing.tscn");\n',
+            encoding="utf-8",
+        )
+
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "csharp-resource-worker",
+            "last_assistant_message": COMPLETE_CSHARP_WORKER,
+        })
+
+        assert is_blocked(parsed)
+        assert "res://scenes/missing.tscn" in parsed["reason"]
+
+    def test_class_name_conflict_check_remains_gdscript_only(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
+        monkeypatch.chdir(tmp_path)
+        write_current_role("build")
+        (tmp_path / "project.godot").write_text(
+            '[application]\nconfig/name="Test"\n',
+            encoding="utf-8",
+        )
+        source_dir = tmp_path / "src"
+        source_dir.mkdir()
+        (source_dir / "BattleKernel.cs").write_text(
+            "class_name Node\n",
+            encoding="utf-8",
+        )
+
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "csharp-class-worker",
+            "last_assistant_message": COMPLETE_CSHARP_WORKER,
+        })
+
+        assert not is_blocked(parsed)
 
 
 class TestVerifierReport:

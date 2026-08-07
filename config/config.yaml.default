@@ -18,6 +18,26 @@ agent: claude-code
 # pipeline:
 #   model: <agent-model-id>
 
+# Source-language backend for project-owned gameplay code.
+# Supported values: auto, gdscript, csharp
+# Existing .NET projects are detected when auto is selected. New scaffolded
+# projects still use GDScript until C# project generation is implemented.
+language_backend: auto
+
+# Unit test backend.
+# Supported values: auto, gdunit, dotnet
+# `auto` keeps gdUnit4 for GDScript projects and uses standard .NET test
+# commands for existing C# projects when a .sln or test .csproj can be identified.
+unit_test_backend: auto
+
+# Optional project-relative .NET solution or test project used when
+# unit_test_backend resolves to dotnet.
+# dotnet_target: tests/MyGame.Tests/MyGame.Tests.csproj
+
+# Optional project-relative Godot C# project used for build/import checks when
+# it is different from dotnet_target.
+# godot_csharp_project: MyGame.csproj
+
 # Optional reasoning level override for the selected coding-agent runtime.
 # Leave this commented to inherit the agent/user default. Common tested values
 # include low, medium, high, and xhigh; provider-specific values may also work
