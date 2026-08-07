@@ -46,7 +46,6 @@ Then read context:
 
 ## Hard Rules
 
-<<<<<<< HEAD
 ### Asset Runtime Authority
 
 `ASSETS.md` is the sole runtime-asset authority. For a visual task,
@@ -55,10 +54,7 @@ never read a stable entry, manifest pointer, or root index. The snapshot
 resolves generated and complete user-provided runtime rows, including uniquely
 named rows introduced by earlier tags.
 
-1. **You CANNOT write .gd/.tscn/.tres directly.** All game code goes through Worker dispatch.
-=======
 1. **You CANNOT write .gd/.tscn/.tres/.cs/.csproj/.sln directly.** All game code and language project files go through Worker dispatch.
->>>>>>> 841f8c7 (feat: make build pipeline csharp aware)
 2. **You and your workers CANNOT write to e2e/ directory.** E2E tests are owned by the Evaluator.
 3. **Workers CANNOT modify GAP.md/PLAN.md/STRUCTURE.md/ASSETS.md.**
 4. **Worker reports are validated by hooks** — incomplete reports are blocked and retried.

@@ -147,11 +147,7 @@ PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
 14. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
 15. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
 16. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
-<<<<<<< HEAD
-17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
-=======
-17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (for example `src/systems/s_jump.gd` or `src/JumpSystem.cs`, never an absolute project path).
->>>>>>> 841f8c7 (feat: make build pipeline csharp aware)
+17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (for example `src/systems/s_jump.gd` or `src/JumpSystem.cs`, never an absolute project path). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
 18. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
 19. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
 `Visual Asset Contract` for visual tasks.
