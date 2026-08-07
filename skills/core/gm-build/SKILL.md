@@ -62,7 +62,7 @@ named rows introduced by earlier tags.
 2. **You and your workers CANNOT write to e2e/ directory.** E2E tests are owned by the Evaluator.
 3. **Workers CANNOT modify PLAN.md/STRUCTURE.md/ASSETS.md.**
 4. **Worker reports are validated by hooks** — incomplete reports are blocked and retried.
-5. **MUST NOT skip stages.** Fix issues first; report to user after 5 attempts.
+5. **MUST NOT skip stages.** Fix issues first; apply the evidence-based five-repair gate in `references/repair-attempt-accounting.md`.
 6. **MUST NOT self-certify completion.** Dispatch verifiers, then reviewers. Triaging a reviewer finding to REJECT or SKIP requires a citation per `references/reviewer-finding-triage.md` (mandatory for critical/major; optional for minor).
 7. **Tag scope discipline.** Workers MAY touch files from previous tags **only if** PLAN.md has an explicit refactor / fix task naming those files. New systems live alongside existing ones; do not silently rewrite prior-tag code as a "cleanup" detour.
 8. **Build the Playable Unit.** PLAN.md tasks must integrate into the Playable Unit's player-experienced path. Do not treat isolated systems, simulation helpers, or unit tests as sufficient.
@@ -123,6 +123,9 @@ Do NOT delete project code as a "fix" for a tool crash.
 ### Step 1 — Dispatch Workers (until PLAN is clean)
 
 - Read `references/worker-dispatch.md` for the brief template
+- Read and apply `references/repair-attempt-accounting.md` after every worker
+  handoff. Increment `dispatch_count` for the handoff, then classify it from
+  the report evidence before changing any retry counter or task state.
 - Use `subagent_type: "worker"`. Each worker implements ONE game mechanic function + its tests.
 - Include the relevant Playable Unit fields in each worker brief.
 - For visual tasks, fill the `Asset Runtime Snapshot` and
@@ -163,9 +166,10 @@ verify+review pass produced no new ACCEPTED tasks AND the verifier passed.
 
 ## Retry Limits
 
-Max 5 attempts to fix the same task. After 5 failures, stop and escalate to
-the user with a summary of what was tried — do not retry the identical
-action, do not suppress errors, do not claim success without verification.
+Five **effective production repairs**, not five dispatches, are the only
+failure gate. Apply `references/repair-attempt-accounting.md`: incomplete
+handoffs and orchestration failures use its no-progress process, keep the task
+continuable, and do not consume the repair budget.
 
 ## Parallel Worker Rules
 

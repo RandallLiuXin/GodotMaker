@@ -230,6 +230,13 @@ goes, so when your brief binds one, the map is yours.
 - Command: {exact command}
 - Output: {build output — copy-paste if FAIL, "clean" if PASS}
 
+### Repair Attempt Evidence
+- Production diff: {relevant implementation files + summary, or `none`}
+- Focused verification: {exact task-specific command + PASS/FAIL, or `not run`}
+- Failure fingerprint: {stable test/build fingerprint, or `none`}
+- Handoff condition: {complete | partial | timeout | forced_handoff | tool_or_environment_error}
+- Suggested classification: {verified_success | effective_repair_candidate | incomplete_handoff | orchestration_failure}
+
 ### Visual Self-Check
 Required only when the brief includes `Visual Self-Check`.
 - Status: PASS | FAIL | SKIP

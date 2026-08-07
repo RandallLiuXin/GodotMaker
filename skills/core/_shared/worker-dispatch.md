@@ -49,6 +49,9 @@ Agent({
 - [ ] If `Visual Self-Check` is present: capture screenshot(s), run visual-qa, include output
 - [ ] Summary of what was implemented (<200 words)
 - [ ] MEMORY entry: discoveries, gotchas, decisions (<100 words)
+- [ ] Repair Attempt Evidence: production diff, focused verification command
+  and result, failure fingerprint (if any), handoff condition, and suggested
+  classification as defined in `references/repair-attempt-accounting.md`
 
 ### Component Definitions                                [REQUIRED]
 {Paste the actual Component class definitions, not just names}

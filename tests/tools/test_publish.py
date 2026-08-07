@@ -1576,6 +1576,8 @@ class TestCodexPublishParity:
         assert "Apply this mapping before filesystem access" in mapping
         assert "read `.agents/godotmaker.yaml`" in mapping
         assert "Codex publish must register `godot-mcp` by default" in mapping
+        assert "`classify_repair_attempt`" in mapping
+        assert "Repair Attempt Evidence" in mapping
         assert "explicit user\n  opt-in" not in mapping
 
     def test_published_codex_mapping_uses_single_canonical_reference(

@@ -177,6 +177,9 @@ For each non-`verified` task in GAP.md:
 Worker-dispatch tasks only — Step 1b classified main-agent-direct and escalate-to-user tasks; handle those per their classification, not here.
 
 - Read `references/worker-dispatch.md` for the brief template.
+- Read and apply `references/repair-attempt-accounting.md` after every worker
+  handoff. Increment `dispatch_count` for the handoff, then classify it from
+  the report evidence before changing any retry counter or task state.
 - Dispatch verify-source before evaluation-source within `pending`.
 - Use `subagent_type: "worker"`. Max 3 in parallel with disjoint file sets via `isolation: "worktree"`.
 - In each brief, paste the specific finding from GAP.md, the file(s) to modify, and the correct behavior from GDD.md.
@@ -231,9 +234,10 @@ so the project root is clean for the next round.
 
 ## Retry Limits
 
-Max 5 attempts to fix the same task. After 5 failures, stop and escalate to
-the user with a summary of what was tried — do not retry the identical
-action, do not suppress errors, do not claim success without verification.
+Five **effective production repairs**, not five dispatches, are the only
+failure gate. Apply `references/repair-attempt-accounting.md`: incomplete
+handoffs and orchestration failures use its no-progress process, keep the task
+continuable, and do not consume the repair budget.
 
 ## Parallel Worker Rules
 
