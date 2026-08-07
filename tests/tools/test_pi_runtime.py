@@ -54,6 +54,20 @@ def test_pi_runtime_bridge_fails_closed_for_missing_dependencies():
     assert "Missing Pi role definition" in text
     assert "Godot unavailable" in text
     assert "worktree" in text
+    assert "REQUIRED_RUNTIME_PATHS" in text
+    assert "Pi worktree is missing published runtime resources" in text
+    assert '"AGENTS.md"' in text
+    assert '".pi/extensions/godotmaker-runtime.ts"' in text
+    assert "DEFAULT_DELEGATE_TIMEOUT_SECONDS" in text
+    assert "PI_PACKAGE_DIR" in text
+
+
+def test_pi_gitignore_covers_runtime_state(tmp_path):
+    publish.ensure_gitignore(tmp_path, publish.AGENT_PI)
+    entries = (tmp_path / ".gitignore").read_text(encoding="utf-8")
+    assert ".godotmaker/pi-runtime.json" in entries
+    assert ".godotmaker/pi-runtime.log" in entries
+    assert ".godotmaker/pi-worktrees/" in entries
 
 
 @patch("check_env.shutil.which", return_value="/usr/bin/pi")

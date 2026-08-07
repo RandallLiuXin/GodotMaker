@@ -16,8 +16,20 @@ const ROLES = new Set([
   "worker", "verifier", "reviewer", "analyst", "asset-producer", "decomposer", "gdd-auditor",
 ]);
 const MAX_PARALLEL = 3;
+const DEFAULT_DELEGATE_TIMEOUT_SECONDS = 15 * 60;
+const MAX_DELEGATE_TIMEOUT_SECONDS = 60 * 60;
+const REQUIRED_RUNTIME_PATHS = [
+  ".pi/skills",
+  ".pi/agents",
+  ".pi/godotmaker.yaml",
+  ".pi/references/runtime-mapping.md",
+  ".pi/extensions/godotmaker-runtime.ts",
+  ".godotmaker/config.yaml",
+  "tools",
+  "AGENTS.md",
+];
 
-type DelegateRequest = { role: string; task: string; isolation?: string };
+type DelegateRequest = { role: string; task: string; isolation?: string; timeoutSeconds?: number };
 
 function projectRoot(cwd: string): string {
   let current = path.resolve(cwd);
@@ -36,10 +48,13 @@ function readGodotPath(root: string): string | null {
   return match?.[1].trim() || null;
 }
 
-function piInvocation(args: string[]): { command: string; args: string[] } {
+function piInvocation(args: string[]): { command: string; args: string[] } | null {
   const script = process.argv[1];
   if (script && fs.existsSync(script)) return { command: process.execPath, args: [script, ...args] };
-  return { command: "pi", args };
+  const packageDir = process.env.PI_PACKAGE_DIR;
+  const packageCli = packageDir && path.join(packageDir, "dist", "cli", "index.js");
+  if (packageCli && fs.existsSync(packageCli)) return { command: process.execPath, args: [packageCli, ...args] };
+  return null;
 }
 
 function finalAssistantText(jsonl: string): string {
@@ -67,8 +82,24 @@ function createWorktree(root: string, role: string): { cwd: string; branch: stri
   return { cwd: directory, branch };
 }
 
+function missingRuntimePaths(root: string): string[] {
+  return REQUIRED_RUNTIME_PATHS.filter((relative) => !fs.existsSync(path.join(root, relative)));
+}
+
+function removeWorktree(root: string, directory: string): void {
+  try {
+    execFileSync("git", ["worktree", "remove", "--force", directory], {
+      cwd: root, stdio: "pipe", windowsHide: true,
+    });
+  } catch { /* Preserve the original gate failure; cleanup is best effort. */ }
+}
+
 async function runDelegate(root: string, request: DelegateRequest, signal?: AbortSignal) {
   if (!ROLES.has(request.role)) throw new Error(`Unsupported GodotMaker Pi role: ${request.role}`);
+  const rootMissing = missingRuntimePaths(root);
+  if (rootMissing.length) {
+    throw new Error(`Pi delegation requires published runtime resources: ${rootMissing.join(", ")}. Re-run publish with --agent pi.`);
+  }
   const roleFile = path.join(root, ".pi", "agents", `${request.role}.md`);
   if (!fs.existsSync(roleFile)) throw new Error(`Missing Pi role definition: ${roleFile}. Re-run publish with --agent pi.`);
 
@@ -79,6 +110,14 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
       const isolated = createWorktree(root, request.role);
       cwd = isolated.cwd;
       branch = isolated.branch;
+      const isolatedMissing = missingRuntimePaths(cwd);
+      if (isolatedMissing.length) {
+        removeWorktree(root, cwd);
+        throw new Error(
+          `Pi worktree is missing published runtime resources: ${isolatedMissing.join(", ")}. `
+          + "Commit .pi/, .godotmaker/config.yaml and hooks, tools/, and AGENTS.md before delegating."
+        );
+      }
     } catch (error) {
       throw new Error(`Pi delegation requires a git worktree for ${request.role}: ${String(error)}`);
     }
@@ -99,15 +138,40 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
     "--append-system-prompt", promptFile,
     `GodotMaker role: ${request.role}\n\nTask:\n${request.task}`,
   ]);
+  if (!invocation) {
+    fs.rmSync(promptDir, { recursive: true, force: true });
+    if (branch) removeWorktree(root, cwd);
+    throw new Error("Could not resolve Pi's JavaScript CLI. Run the delegate from an active Pi session with PI_PACKAGE_DIR available.");
+  }
+  const timeoutSeconds = Math.max(
+    1,
+    Math.min(request.timeoutSeconds ?? DEFAULT_DELEGATE_TIMEOUT_SECONDS, MAX_DELEGATE_TIMEOUT_SECONDS),
+  );
   try {
     const result = await new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
       const child = spawn(invocation.command, invocation.args, { cwd, shell: false, windowsHide: true });
       let stdout = "";
       let stderr = "";
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        child.kill();
+      }, timeoutSeconds * 1000);
+      const finish = (code: number) => {
+        clearTimeout(timeout);
+        resolve({
+          code,
+          stdout,
+          stderr: timedOut ? `${stderr}\nTimed out after ${timeoutSeconds}s` : stderr,
+        });
+      };
       child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
       child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
-      child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
-      child.on("error", (error) => resolve({ code: 1, stdout, stderr: `${stderr}\n${error}` }));
+      child.on("close", (code) => finish(code ?? 1));
+      child.on("error", (error) => {
+        stderr += `\n${error}`;
+        finish(1);
+      });
       const abort = () => child.kill();
       if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
     });
@@ -135,15 +199,17 @@ export default function (pi: ExtensionAPI) {
       role: Type.Optional(Type.String()),
       task: Type.Optional(Type.String()),
       isolation: Type.Optional(Type.Union([Type.Literal("worktree"), Type.Literal("shared")])),
+      timeoutSeconds: Type.Optional(Type.Number({ minimum: 1, maximum: MAX_DELEGATE_TIMEOUT_SECONDS })),
       requests: Type.Optional(Type.Array(Type.Object({
         role: Type.String(), task: Type.String(),
         isolation: Type.Optional(Type.Union([Type.Literal("worktree"), Type.Literal("shared")])),
+        timeoutSeconds: Type.Optional(Type.Number({ minimum: 1, maximum: MAX_DELEGATE_TIMEOUT_SECONDS })),
       }))),
     }),
     async execute(_id, params, signal, _update, ctx) {
       const root = projectRoot(ctx.cwd);
       const requests: DelegateRequest[] = params.requests ?? (params.role && params.task
-        ? [{ role: params.role, task: params.task, isolation: params.isolation }] : []);
+        ? [{ role: params.role, task: params.task, isolation: params.isolation, timeoutSeconds: params.timeoutSeconds }] : []);
       if (!requests.length || requests.length > MAX_PARALLEL) {
         return { ...toolText(`Provide one role/task or 1-${MAX_PARALLEL} requests.`), isError: true };
       }
@@ -212,10 +278,19 @@ export default function (pi: ExtensionAPI) {
       fs.mkdirSync(path.dirname(statePath), { recursive: true });
       const log = path.join(root, ".godotmaker", "pi-runtime.log");
       const logFd = fs.openSync(log, "w");
-      const child = spawn(godot, args, { cwd: root, shell: false, windowsHide: true, detached: true, stdio: ["ignore", logFd, logFd] });
-      child.unref();
-      fs.writeFileSync(statePath, JSON.stringify({ pid: child.pid, log, started_at: new Date().toISOString() }) + "\n");
-      return toolText(`Started Pi-managed Godot process ${child.pid}. Use godotmaker_runtime debug_output or stop.`, { pid: child.pid, log });
+      return await new Promise((resolve) => {
+        const child = spawn(godot, args, { cwd: root, shell: false, windowsHide: true, detached: true, stdio: ["ignore", logFd, logFd] });
+        child.once("error", (error) => {
+          fs.closeSync(logFd);
+          resolve({ ...toolText(`Godot start failed: ${error.message}`), isError: true });
+        });
+        child.once("spawn", () => {
+          fs.closeSync(logFd);
+          child.unref();
+          fs.writeFileSync(statePath, JSON.stringify({ pid: child.pid, log, started_at: new Date().toISOString() }) + "\n");
+          resolve(toolText(`Started Pi-managed Godot process ${child.pid}. Use godotmaker_runtime debug_output or stop.`, { pid: child.pid, log }));
+        });
+      });
     },
   });
 }

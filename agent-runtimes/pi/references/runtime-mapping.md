@@ -38,13 +38,27 @@ Pi has no built-in MCP or `Agent` tool. GodotMaker publishes
   child processes from `.pi/agents/*.md`. Worker-like jobs use a separate git
   worktree by default and return a merge-candidate branch. Run at most three
   disjoint worktree jobs in parallel, inspect their branches, merge them, then
-  run the normal build/verify gates. Verifier and reviewer roles remain
-  read-only by their role definitions.
+  run the normal build/verify gates.
+
+Before using `worktree` delegation, commit the published runtime resources that
+the delegate must receive: `.pi/`, `.godotmaker/config.yaml` and hooks,
+`tools/`, and `AGENTS.md`. The extension verifies these resources inside every
+new worktree and fails closed when they are absent; it does not copy untracked
+files into an isolated worker. `shared` is only for one non-parallel role and
+does not provide isolation.
+
+Pi has no per-role filesystem permission model. Reviewer and verifier prompts
+prohibit mutation, but that is not a hard sandbox boundary when `bash` is
+available. Treat their result as independent model judgment, not OS-enforced
+read-only execution.
 
 If the extension, trust, `pi` binary, `git HEAD`, or configured Godot executable
 is unavailable, stop before the dependent stage and state the missing setup.
 Pi's `--approve` trusts project resources only; it does not bypass an OS
 sandbox or grant permissions beyond the Pi process.
+Pi child processes also inherit their parent environment and may read ancestor
+`AGENTS.md` files. Run delegation from a clean project environment and do not
+place workspace credentials in inherited environment variables.
 
 ## Capability boundaries
 
