@@ -2,6 +2,7 @@
   "_doc": "Each entry maps a shared reference doc to the skills that consume it. publish.py reads this manifest and copies _shared/<file> into <skill>/references/<file> at deploy time. The _shared/ directory itself is NOT deployed. Edit the source under _shared/, never the deployed copies.",
   "files": {
     "worker-dispatch.md":          ["gm-build", "gm-fixgap"],
+    "repair-attempt-accounting.md": ["gm-build", "gm-fixgap"],
     "verifier-dispatch.md":        ["gm-build", "gm-fixgap"],
     "reviewer-dispatch.md":        ["gm-build", "gm-fixgap"],
     "reviewer-finding-triage.md":  ["gm-build", "gm-fixgap"],
