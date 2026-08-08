@@ -2768,6 +2768,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Added a shared Godot artifact compiler interface and registry under <code>skills/assets/_shared/</code> that routes on the frozen source-layout to artifact-type compatibility set, keeps compiler receipts out of the worker-facing artifact, requires each compiler to actually rebuild an artifact distinct from its source image, serves <code>Texture2D</code> through Godot's default import, and fails closed on unregistered or mismatched combinations (#107).</li>
 <li>Added shared direct-output validation under <code>skills/assets/_shared/</code> for processed sources, compiled artifacts, a real headless Godot import and <code>ResourceLoader.load</code> type match, and type-specific structure checks (#108).</li>
 <li>Added a deterministic <code>theme_recipe</code> compiler with a closed JSON schema for Theme colors, font sizes, constants, fonts, icons, StyleBoxes, and type variations; invalid class types, properties, resources, and StyleBox references fail closed before a loadable Theme is written.</li>
+<li>FixGap can hand evaluator-owned E2E evidence back to Evaluate without claiming a normal repair completion.</li>
 <li>Added a Phantom Camera supporting skill for optional Godot camera addon guidance.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
