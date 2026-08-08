@@ -93,14 +93,15 @@ cd my-game
 godotmaker-cli --agent claude-code
 ```
 
-Use Codex or OpenCode for the same workflow:
+Use Codex, OpenCode, or Pi for the same workflow:
 
 ```bash
 godotmaker-cli --agent codex
 godotmaker-cli --agent opencode
+godotmaker-cli --agent pi
 ```
 
-The CLI drives the workflow from idea capture and GDD planning to a playable Godot prototype. Agent selection resolves in this order: `--agent`, project `.godotmaker/config.yaml`, CLI-global `~/.godotmaker/cli/config.yaml`, then the default runner. Advanced users can still run the underlying role commands directly in Claude Code (`/gm-*`), Codex (`$gm-*`), or OpenCode (`/gm-*`).
+The CLI drives the workflow from idea capture and GDD planning to a playable Godot prototype. Agent selection resolves in this order: `--agent`, project `.godotmaker/config.yaml`, CLI-global `~/.godotmaker/cli/config.yaml`, then the default runner. Advanced users can still run the underlying role commands directly in Claude Code (`/gm-*`), Codex (`$gm-*`), OpenCode (`/gm-*`), or Pi (`/skill:gm-*`).
 
 For framework development:
 
@@ -116,7 +117,7 @@ python tools/check_env.py
 | Tool | Why |
 |---|---|
 | [Godot 4.5+](https://godotengine.org) | Runs the generated project |
-| [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex/), or [OpenCode](https://opencode.ai/) | Command-line agent runtime for CLI-driven runs; desktop chat apps are not sufficient |
+| [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex/), [OpenCode](https://opencode.ai/), or [Pi](https://github.com/badlogic/pi-mono) | Command-line agent runtime for CLI-driven runs; desktop chat apps are not sufficient |
 | Node.js 22+ | Runs `godotmaker-cli` and Godot MCP tooling |
 | Python 3.10+ | Runs GodotMaker helper scripts |
 | Git 2.30+ | Enables local history and agent worktrees |

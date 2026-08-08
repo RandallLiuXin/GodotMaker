@@ -41,7 +41,7 @@ GodotMaker turns a game idea into a playable Godot 4 prototype. The normal path 
 - Audio generation is not supported yet.
 - Very long automated runs are cost-sensitive, and rare projects may fail to converge after repeated build/fix/evaluate loops.
 
-Manual `/gm-*` role commands still exist for advanced users, debugging, and framework development. They are not the recommended first-run path. The normal CLI path supports Claude Code, Codex, and OpenCode runners; see [Installation](01-getting-started/installation.md) for runner-specific setup notes.
+Manual role commands still exist for advanced users, debugging, and framework development. They are not the recommended first-run path. The normal CLI path supports Claude Code, Codex, OpenCode, and Pi runners; Pi invokes roles as `/skill:gm-*`. See [Installation](01-getting-started/installation.md) for runner-specific setup notes.
 
 ## Project status
 

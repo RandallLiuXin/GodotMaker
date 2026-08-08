@@ -13,6 +13,7 @@ GodotMaker 有两层相互独立的 provider：
 - [Claude Code](agent-runtimes/claude-code.md)
 - [Codex](agent-runtimes/codex.md)
 - [OpenCode](agent-runtimes/opencode.md)
+- [Pi](agent-runtimes/pi.md)
 
 ## 图片和 VQA provider
 

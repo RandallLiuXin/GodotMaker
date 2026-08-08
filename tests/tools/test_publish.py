@@ -248,6 +248,35 @@ def _publish_opencode_project(tmp_path, monkeypatch, before_publish=None):
     return target
 
 
+def _publish_pi_project(tmp_path, monkeypatch, before_publish=None):
+    from _version import SemVer
+
+    target = tmp_path / "target"
+    config_dir = target / ".pi"
+    config_dir.mkdir(parents=True)
+    (config_dir / "godotmaker.yaml").write_text(
+        'godot_path: "/test/godot"\n', encoding="utf-8"
+    )
+    if before_publish is not None:
+        before_publish(target)
+
+    monkeypatch.setattr(
+        publish, "check_version_upgrade",
+        lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)),
+    )
+    for name in (
+        "register_codex_mcp", "register_opencode_mcp", "register_mcp",
+        "register_godot_permissions", "ensure_git_repo", "baseline_applied",
+    ):
+        monkeypatch.setattr(publish, name, lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(publish, "run_migrations", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(sys, "argv", [
+        "publish.py", "--agent", "pi", "--force", "--no-config-review", str(target),
+    ])
+    publish.main()
+    return target
+
+
 class TestReadGodotPath:
     def test_missing_file(self, tmp_path):
         assert read_godot_path(tmp_path / "nope.yaml") == "godot"
@@ -1058,6 +1087,7 @@ class TestPublishedAssetRuntime:
             publish.AGENT_CLAUDE_CODE: _publish_claude_project,
             publish.AGENT_CODEX: _publish_codex_project,
             publish.AGENT_OPENCODE: _publish_opencode_project,
+            publish.AGENT_PI: _publish_pi_project,
         }[agent]
         skill_root = publish.get_agent_adapter(agent).skill_root
         result = publish_project(tmp_path, monkeypatch)

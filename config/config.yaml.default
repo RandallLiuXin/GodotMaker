@@ -3,7 +3,7 @@
 # Deployed to .godotmaker/config.yaml by publish script
 
 # Selected coding-agent runtime for this project.
-# Supported values: claude-code, codex, opencode
+# Supported values: claude-code, codex, opencode, pi
 # publish.py updates this value on each publish.
 #
 # OpenCode projects must use codex or API-backed selectors for image and VQA

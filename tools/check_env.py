@@ -18,6 +18,7 @@ from agent_runtime import (
     AGENT_CLAUDE_CODE,
     AGENT_CODEX,
     AGENT_OPENCODE,
+    AGENT_PI,
     detect_agent,
     read_godot_path,
 )
@@ -337,6 +338,35 @@ def check_opencode(r: EnvCheck, project_dir: Path):
         r.fail("Could not list OpenCode MCP servers")
 
 
+def check_pi(r: EnvCheck, project_dir: Path):
+    """Check the project-local Pi adapter and its required runtime bridge."""
+    print("\n--- Pi ---")
+    cmd = shutil.which("pi") or shutil.which("pi.cmd") or shutil.which("pi.exe")
+    if not cmd:
+        r.fail("Pi CLI not found. Install @earendil-works/pi-coding-agent before using agent: pi.")
+        return
+    version = get_version(cmd, pattern=r"(\d+(?:\.\d+)+)")
+    r.ok(f"Pi CLI found: {cmd}" + (f" ({version})" if version else ""))
+
+    paths = [
+        (project_dir / ".pi" / "skills", ".pi/skills"),
+        (project_dir / ".pi" / "agents", ".pi/agents"),
+        (project_dir / ".pi" / "references" / "runtime-mapping.md", ".pi/references/runtime-mapping.md"),
+        (project_dir / ".pi" / "godotmaker.yaml", ".pi/godotmaker.yaml"),
+        (project_dir / ".pi" / "extensions" / "godotmaker-runtime.ts", ".pi/extensions/godotmaker-runtime.ts"),
+    ]
+    for path, label in paths:
+        if path.exists():
+            r.ok(f"{label} present")
+        else:
+            r.fail(f"{label} missing; re-run publish with --agent pi")
+
+    # Pi intentionally separates resource trust from its tool permissions. The
+    # on-disk layout cannot prove a user's saved trust decision, so surface the
+    # exact required invocation rather than treating file presence as parity.
+    r.warn("Pi project resources require trust; start Pi with --approve or approve the project interactively")
+
+
 def check_selected_agent(r: EnvCheck, project_dir: Path):
     agent = detect_agent(project_dir)
     print(f"\n--- Selected Agent ({agent}) ---")
@@ -346,6 +376,8 @@ def check_selected_agent(r: EnvCheck, project_dir: Path):
         check_claude(r)
     elif agent == AGENT_OPENCODE:
         check_opencode(r, project_dir)
+    elif agent == AGENT_PI:
+        check_pi(r, project_dir)
     else:
         r.fail(f"Unsupported GodotMaker agent: {agent}")
 
@@ -358,16 +390,16 @@ def check_runtime_model_provider(
 ):
     print("\n--- Runtime Image Provider ---")
     if provider == "native":
-        if agent == AGENT_OPENCODE:
+        if agent in {AGENT_OPENCODE, AGENT_PI}:
             if capability == "image_generation":
                 r.fail(
-                    "native image generation is unsupported for OpenCode; "
+                    f"native image generation is unsupported for {agent}; "
                     "set asset_image_model to codex, gemini:<model>, "
                     "openai:<model>, or grok:<model>"
                 )
             else:
                 r.fail(
-                    "native image inspection is unsupported for OpenCode; "
+                    f"native image inspection is unsupported for {agent}; "
                     "set vqa_model to codex, gemini:<model>, or openai:<model>"
                 )
             return
