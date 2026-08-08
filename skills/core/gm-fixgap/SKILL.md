@@ -284,6 +284,25 @@ Your context window is finite. Protect it:
 
 ## When Done
 
+### E2E handoff
+
+Handoff only after runtime GAP work is complete and the remaining failure is
+an E2E assertion, scenario, capture, or capture-timing defect.
+
+1. Keep affected GAP tasks non-`verified`; do not archive GAP.md.
+2. Add an `Evaluator handoff` note with the source evaluation, runtime evidence
+   location, and failing E2E/capture location.
+3. From the project root, run:
+
+   ```text
+   python tools/append_stage_event.py fixgap --outcome=handoff --next_role=evaluate --reason=evaluator_owned_e2e
+   ```
+
+4. Commit with `git add -A && git commit -m "chore(fixgap): evaluator handoff <Tag>"`.
+5. Inform the user: `FixGap handed off E2E evidence to /gm-evaluate.`
+
+### Ordinary completion
+
 After all GAP.md tasks are `verified`, the final reviewer added no new tasks, and GAP.md has been archived:
 
 1. From the project root run `python tools/append_stage_event.py fixgap` to append a `{"role": "fixgap", "ts": "<server-generated UTC>"}` line to `.godotmaker/stage.jsonl`. Do NOT hand-write the JSON or the timestamp — the helper exists so the timestamp comes from the system clock, not your own output.

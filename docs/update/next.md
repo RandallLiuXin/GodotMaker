@@ -44,6 +44,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - Added a shared Godot artifact compiler interface and registry under `skills/assets/_shared/` that routes on the frozen source-layout to artifact-type compatibility set, keeps compiler receipts out of the worker-facing artifact, requires each compiler to actually rebuild an artifact distinct from its source image, serves `Texture2D` through Godot's default import, and fails closed on unregistered or mismatched combinations (#107).
 - Added shared direct-output validation under `skills/assets/_shared/` for processed sources, compiled artifacts, a real headless Godot import and `ResourceLoader.load` type match, and type-specific structure checks (#108).
 - Added a deterministic `theme_recipe` compiler with a closed JSON schema for Theme colors, font sizes, constants, fonts, icons, StyleBoxes, and type variations; invalid class types, properties, resources, and StyleBox references fail closed before a loadable Theme is written.
+- FixGap can hand evaluator-owned E2E evidence back to Evaluate without claiming a normal repair completion.
 - Added a Phantom Camera supporting skill for optional Godot camera addon guidance.
 
 ## Changed
