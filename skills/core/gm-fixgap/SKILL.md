@@ -284,31 +284,22 @@ Your context window is finite. Protect it:
 
 ## When Done
 
-### Evaluator-owned E2E handoff (narrow alternative)
+### E2E handoff
 
-This is **not** ordinary FixGap completion. Use it only when all runtime
-requirements assigned to FixGap are already satisfied and the remaining
-failure is exclusively an Evaluator-owned E2E assertion, scenario, capture,
-or capture-timing defect. Do not use it for a game bug, a missing runtime test
-interface, or a GAP task that a worker can still fix.
+Handoff only after runtime GAP work is complete and the remaining failure is
+an E2E assertion, scenario, capture, or capture-timing defect.
 
-Before handing off:
-
-1. Preserve every affected GAP task as non-`verified`; do not archive GAP.md
-   and do not claim the FixGap iteration succeeded.
-2. Add an `Evaluator handoff` note to each affected task with the source
-   evaluation, the runtime evidence location, and the failing E2E/capture
-   location. Keep the task available for `/gm-evaluate` to consume.
-3. Append exactly this structured routing event from the project root:
+1. Keep affected GAP tasks non-`verified`; do not archive GAP.md.
+2. Add an `Evaluator handoff` note with the source evaluation, runtime evidence
+   location, and failing E2E/capture location.
+3. From the project root, run:
 
    ```text
    python tools/append_stage_event.py fixgap --outcome=handoff --next_role=evaluate --reason=evaluator_owned_e2e
    ```
 
-   Do not hand-write JSON, substitute another role or reason, or add a normal
-   `fixgap` completion event as well.
-4. Commit the handoff note with `git add -A && git commit -m "chore(fixgap): evaluator handoff <Tag>"`.
-5. Inform the user: `FixGap handed evaluator-owned E2E evidence back to /gm-evaluate.`
+4. Commit with `git add -A && git commit -m "chore(fixgap): evaluator handoff <Tag>"`.
+5. Inform the user: `FixGap handed off E2E evidence to /gm-evaluate.`
 
 ### Ordinary completion
 

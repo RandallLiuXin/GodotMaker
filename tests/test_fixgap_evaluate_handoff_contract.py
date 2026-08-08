@@ -17,7 +17,6 @@ def test_fixgap_handoff_uses_the_fixed_stage_event_contract():
     assert "--outcome=handoff" in fixgap
     assert "--next_role=evaluate" in fixgap
     assert "--reason=evaluator_owned_e2e" in fixgap
-    assert "not** ordinary FixGap completion" in fixgap
     assert "do not archive GAP.md" in fixgap
     assert "non-`verified`" in fixgap
 
@@ -28,5 +27,5 @@ def test_evaluate_consumes_only_the_evaluator_owned_handoff():
     assert 'outcome == "handoff"' in evaluate
     assert 'next_role == "evaluate"' in evaluate
     assert 'reason == "evaluator_owned_e2e"' in evaluate
-    assert "Repair the owned `e2e/` scenario/assertion/capture timing" in evaluate
-    assert "never infer a route from GAP.md, MEMORY.md, or\n  final prose" in evaluate
+    assert "repair the `e2e/` scenario/assertion/capture timing" in evaluate
+    assert "Ask the user to run\n  `/gm-fixgap`." in evaluate
