@@ -33,6 +33,16 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 - If the **last event** has `role == "evaluate"` AND `.godotmaker/evaluation.json` exists → STOP. Tell the user:
   > "Evaluate already ran at {timestamp} with no verify since. Recommended next: /gm-accept (if approved) or /gm-fixgap (if rejected).
   > If you need to redo this step or have other plans, just tell me."
+- If the **last event** is `role == "fixgap"` with exactly
+  `outcome == "handoff"`, `next_role == "evaluate"`, and
+  `reason == "evaluator_owned_e2e"` → proceed as an Evaluator handoff.
+  Read the handoff notes in GAP.md plus the referenced runtime evidence before
+  Phase 2. Repair the owned `e2e/` scenario/assertion/capture timing, then
+  re-run the affected checks and write a new evaluation. Do not ignore the
+  handoff and return the same unresolved evaluator-owned failure to FixGap.
+- Any other `fixgap` event carrying `outcome` is unsupported. STOP and ask for
+  a fresh `/gm-fixgap` run; never infer a route from GAP.md, MEMORY.md, or
+  final prose.
 - Otherwise → proceed (evaluate is naturally re-invoked after each verify pass).
 
 ## Resolve `godot` binary
