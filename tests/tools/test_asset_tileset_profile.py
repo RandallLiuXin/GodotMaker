@@ -1,6 +1,7 @@
 """Regression coverage for deterministic TileSet terrain profiles."""
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -12,6 +13,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from asset_tileset_profile import (  # noqa: E402
     TileSetProfileError,
+    _main,
     _terrain_mask,
     _resolve_runtime_root,
     build_profile_atlas_declaration,
@@ -291,6 +293,48 @@ def test_material_composition_repairs_topology_without_flat_color_corner_patches
     assert validated["seam_diagnostics"]["mismatch_count"] == 0
     with Image.open(atlas) as composed:
         assert composed.convert("RGBA").crop((0, 0, 24, 24)).getchannel("A").getbbox() is None
+
+
+def test_cli_request_material_composition_does_not_require_recipe_inputs(
+    tmp_path, monkeypatch
+):
+    request = tmp_path / "ASSET_REQUEST.json"
+    request.write_text(
+        json.dumps({
+            "asset_type": "tileset",
+            "asset_id": "meadow_dirt",
+            "brief": "Meadow and dirt terrain.",
+            "provider": "codex",
+            "spec": {
+                "autotile_profile": "blob_47",
+                "tile_size": {"width": 24, "height": 24},
+                "terrain": {
+                    "name": "meadow_dirt",
+                    "foreground_material": "dirt",
+                    "background_material": "grass",
+                },
+            },
+        }),
+        encoding="utf-8",
+    )
+    material_source = tmp_path / "materials.png"
+    image = Image.new("RGBA", (96, 96), (45, 165, 70, 255))
+    image.paste((185, 105, 45, 255), (48, 0, 96, 96))
+    image.save(material_source)
+    atlas = tmp_path / "atlas.png"
+    report = tmp_path / "composition.json"
+    monkeypatch.setattr(sys, "argv", [
+        "asset_tileset_profile.py",
+        "--request", str(request),
+        "--tile-size", "24x24",
+        "--material-source", str(material_source),
+        "--composed-atlas-out", str(atlas),
+        "--composition-report", str(report),
+    ])
+
+    assert _main() == 0
+    assert atlas.is_file()
+    assert json.loads(report.read_text(encoding="utf-8"))["profile"] == "blob_47"
 
 
 def test_material_composition_selects_named_water_and_vegetation_materials(tmp_path):

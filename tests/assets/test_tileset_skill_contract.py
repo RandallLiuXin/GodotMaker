@@ -71,6 +71,11 @@ def test_tileset_skill_is_standalone_and_reuses_shared_contracts():
         assert forbidden_dependency in text
 
 
+def test_tileset_documented_result_includes_required_runtime_name():
+    text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    assert '"name": "<asset_id>"' in text
+
+
 def test_tileset_skill_documents_recipe_only_semantics_and_l0_to_l4():
     text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
     for field in (
