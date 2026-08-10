@@ -409,3 +409,650 @@ for family in {sorted(FAMILY_NAMES)!r}:
         assert '$a -eq "--subset"' in ps1
         assert '$pyArgs += @("--subset", $Subset)' in ps1
         assert '"$@"' in sh and "--subset assets" in sh
+    @pytest.mark.parametrize("force", [False, True])
+    def test_update_preserves_unowned_files_inside_subset_directories(
+        self, tmp_path, force
+    ):
+        target = tmp_path / "target"
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=publish.AGENT_CODEX
+        )
+        skill_note = (
+            publish.get_agent_adapter(publish.AGENT_CODEX).skill_dir(target)
+            / "tileset"
+            / "user-note.md"
+        )
+        runtime_note = (
+            target / publish.ASSET_RUNTIME_TARGET / "user-runtime-note.txt"
+        )
+        provider_note = (
+            target
+            / publish.ASSET_RUNTIME_TARGET
+            / "references"
+            / "providers"
+            / "user-provider-note.txt"
+        )
+        skill_note.write_text("keep skill note\n", encoding="utf-8")
+        runtime_note.write_text("keep runtime note\n", encoding="utf-8")
+        provider_note.write_text("keep provider note\n", encoding="utf-8")
+
+        publish.publish_asset_subset(
+            REPO_ROOT,
+            target,
+            agent=publish.AGENT_CODEX,
+            force=force,
+        )
+
+        assert skill_note.read_text(encoding="utf-8") == "keep skill note\n"
+        assert runtime_note.read_text(encoding="utf-8") == "keep runtime note\n"
+        assert provider_note.read_text(
+            encoding="utf-8"
+        ) == "keep provider note\n"
+
+    def test_first_install_rejects_unowned_file_collision(self, tmp_path):
+        target = tmp_path / "target"
+        skill_file = (
+            publish.get_agent_adapter(publish.AGENT_CODEX).skill_dir(target)
+            / "tileset"
+            / "SKILL.md"
+        )
+        skill_file.parent.mkdir(parents=True)
+        skill_file.write_text("user-owned skill\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="unowned file"):
+            publish.publish_asset_subset(
+                REPO_ROOT,
+                target,
+                agent=publish.AGENT_CODEX,
+                force=True,
+            )
+
+        assert skill_file.read_text(encoding="utf-8") == "user-owned skill\n"
+        assert not (target / publish.ASSET_SUBSET_STATE_TARGET).exists()
+
+    @pytest.mark.parametrize("force", [False, True])
+    def test_update_removes_retired_inventory_entries(
+        self, tmp_path, monkeypatch, force
+    ):
+        target = tmp_path / "target"
+        manifest = json.loads(
+            (REPO_ROOT / publish.ASSET_SUBSET_MANIFEST_SOURCE).read_text(
+                encoding="utf-8"
+            )
+        )
+        manifest["retired_files"] = {
+            "skills": ["tileset/retired-skill-file.md"],
+            "runtime": ["retired-runtime-file.py"],
+            "tools": ["tools/retired_asset_tool.py"],
+        }
+        monkeypatch.setattr(
+            publish, "_read_asset_subset_manifest", lambda _repo: manifest
+        )
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=publish.AGENT_CODEX
+        )
+
+        adapter = publish.get_agent_adapter(publish.AGENT_CODEX)
+        retired = (
+            Path(adapter.skill_root) / "tileset" / "retired-skill-file.md",
+            publish.ASSET_RUNTIME_TARGET / "retired-runtime-file.py",
+            Path("tools") / "retired_asset_tool.py",
+        )
+        state_path = target / publish.ASSET_SUBSET_STATE_TARGET
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["managed_files"].extend(path.as_posix() for path in retired)
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        for relative in retired:
+            destination = target / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_text("obsolete\n", encoding="utf-8")
+
+        publish.publish_asset_subset(
+            REPO_ROOT,
+            target,
+            agent=publish.AGENT_CODEX,
+            force=force,
+        )
+
+        assert all(not (target / relative).exists() for relative in retired)
+        updated_state = json.loads(state_path.read_text(encoding="utf-8"))
+        assert all(
+            relative.as_posix() not in updated_state["managed_files"]
+            for relative in retired
+        )
+
+    @pytest.mark.parametrize(
+        ("category", "path"),
+        [
+            ("skills", "../outside.md"),
+            ("runtime", "../outside.py"),
+            ("tools", "README.md"),
+        ],
+    )
+    def test_manifest_rejects_unsafe_retired_files(
+        self, tmp_path, monkeypatch, category, path
+    ):
+        manifest = json.loads(
+            (REPO_ROOT / publish.ASSET_SUBSET_MANIFEST_SOURCE).read_text(
+                encoding="utf-8"
+            )
+        )
+        manifest["retired_files"] = {
+            "skills": [],
+            "runtime": [],
+            "tools": [],
+        }
+        manifest["retired_files"][category] = [path]
+        monkeypatch.setattr(
+            publish, "_read_asset_subset_manifest", lambda _repo: manifest
+        )
+
+        with pytest.raises(ValueError, match="retired"):
+            publish.publish_asset_subset(
+                REPO_ROOT,
+                tmp_path / "target",
+                agent=publish.AGENT_CODEX,
+            )
+
+    @pytest.mark.parametrize(
+        "relative",
+        [
+            Path(".agents") / "skills" / "tileset" / "user-note.md",
+            publish.ASSET_RUNTIME_TARGET / "user-runtime.py",
+            Path("tools") / "user_asset_tool.py",
+        ],
+    )
+    def test_force_rejects_unlisted_files_inside_subset_boundaries(
+        self, tmp_path, relative
+    ):
+        target = tmp_path / "target"
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text("keep\n", encoding="utf-8")
+        state = target / publish.ASSET_SUBSET_STATE_TARGET
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "subset": "assets",
+                "agent": publish.AGENT_CODEX,
+                "managed_files": [relative.as_posix()],
+            }),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="not owned"):
+            publish.publish_asset_subset(
+                REPO_ROOT,
+                target,
+                agent=publish.AGENT_CODEX,
+                force=True,
+            )
+
+        assert destination.read_text(encoding="utf-8") == "keep\n"
+
+    @pytest.mark.parametrize(
+        "blocking_path",
+        [
+            Path(".godotmaker"),
+            Path("tools"),
+            Path(".agents") / "skills",
+        ],
+    )
+    def test_first_install_rejects_non_directory_parent_without_partial_publish(
+        self, tmp_path, blocking_path
+    ):
+        target = tmp_path / "target"
+        blocker = target / blocking_path
+        blocker.parent.mkdir(parents=True, exist_ok=True)
+        blocker.write_text("keep blocker\n", encoding="utf-8")
+        before = {
+            path.relative_to(target)
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+
+        with pytest.raises(ValueError, match="parent must be a directory"):
+            publish.publish_asset_subset(
+                REPO_ROOT,
+                target,
+                agent=publish.AGENT_CODEX,
+                force=True,
+            )
+
+        after = {
+            path.relative_to(target)
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+        assert after == before
+        assert blocker.read_text(encoding="utf-8") == "keep blocker\n"
+
+    def test_update_between_agent_layouts_preserves_unowned_files(
+        self, tmp_path
+    ):
+        target = tmp_path / "target"
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=publish.AGENT_CODEX
+        )
+        codex_skills = publish.get_agent_adapter(
+            publish.AGENT_CODEX
+        ).skill_dir(target)
+        custom_note = codex_skills / "tileset" / "user-note.md"
+        custom_note.write_text("keep\n", encoding="utf-8")
+
+        publish.publish_asset_subset(
+            REPO_ROOT,
+            target,
+            agent=publish.AGENT_CLAUDE_CODE,
+            force=True,
+        )
+
+        claude_skills = publish.get_agent_adapter(
+            publish.AGENT_CLAUDE_CODE
+        ).skill_dir(target)
+        state = json.loads(
+            (target / publish.ASSET_SUBSET_STATE_TARGET).read_text(
+                encoding="utf-8"
+            )
+        )
+        assert custom_note.read_text(encoding="utf-8") == "keep\n"
+        assert not (codex_skills / "tileset" / "SKILL.md").exists()
+        assert (claude_skills / "tileset" / "SKILL.md").is_file()
+        assert state["agent"] == publish.AGENT_CLAUDE_CODE
+
+    def test_agent_switch_preflights_old_layout_before_removing_files(
+        self, tmp_path, monkeypatch
+    ):
+        target = tmp_path / "target"
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=publish.AGENT_CODEX
+        )
+        previous = publish._asset_subset_managed_files(
+            REPO_ROOT, publish.AGENT_CODEX
+        )
+        blocked = Path(".agents/skills/tileset/SKILL.md")
+        preserved_relative = next(
+            path for path in previous
+            if path.name == "SKILL.md" and path.as_posix() < blocked.as_posix()
+        )
+        preserved = target / preserved_relative
+        preserved_content = preserved.read_bytes()
+        original_safe_target = publish._safe_subset_target
+
+        def reject_late_old_layout_path(project, relative):
+            normalized = publish.validate_asset_subset_path(relative)
+            if normalized == blocked:
+                raise ValueError("simulated unsafe old-layout parent")
+            return original_safe_target(project, normalized)
+
+        monkeypatch.setattr(
+            publish, "_safe_subset_target", reject_late_old_layout_path
+        )
+
+        with pytest.raises(ValueError, match="unsafe old-layout parent"):
+            publish.publish_asset_subset(
+                REPO_ROOT,
+                target,
+                agent=publish.AGENT_CLAUDE_CODE,
+                force=True,
+            )
+
+        assert preserved.read_bytes() == preserved_content
+        assert not (target / ".claude").exists()
+
+    @pytest.mark.parametrize("force", [False, True])
+    def test_copy_failure_rolls_back_files_and_state(
+        self, tmp_path, monkeypatch, force
+    ):
+        target = tmp_path / "target"
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=publish.AGENT_CODEX
+        )
+        managed = publish._asset_subset_managed_files(
+            REPO_ROOT, publish.AGENT_CODEX
+        )
+        first_target = target / managed[0]
+        first_target.write_text("preserve previous content\n", encoding="utf-8")
+        before = {
+            path.relative_to(target): path.read_bytes()
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+        fail_at = target / managed[1]
+        original_copy2 = publish.shutil.copy2
+        failed = False
+
+        def fail_once_during_target_copy(source, destination, *args, **kwargs):
+            nonlocal failed
+            if Path(destination) == fail_at and not failed:
+                failed = True
+                raise OSError("simulated target copy failure")
+            return original_copy2(source, destination, *args, **kwargs)
+
+        monkeypatch.setattr(
+            publish.shutil, "copy2", fail_once_during_target_copy
+        )
+
+        with pytest.raises(OSError, match="target copy failure"):
+            publish.publish_asset_subset(
+                REPO_ROOT,
+                target,
+                agent=publish.AGENT_CODEX,
+                force=force,
+            )
+
+        after = {
+            path.relative_to(target): path.read_bytes()
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+        assert failed
+        assert after == before
+
+    def test_state_write_failure_rolls_back_published_files(
+        self, tmp_path, monkeypatch
+    ):
+        target = tmp_path / "target"
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=publish.AGENT_CODEX
+        )
+        managed = publish._asset_subset_managed_files(
+            REPO_ROOT, publish.AGENT_CODEX
+        )
+        changed_target = target / managed[0]
+        changed_target.write_text(
+            "preserve previous content\n", encoding="utf-8"
+        )
+        before = {
+            path.relative_to(target): path.read_bytes()
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+        state_parent = target / ".godotmaker"
+        original_write_text = Path.write_text
+
+        def fail_subset_state_write(path, content, *args, **kwargs):
+            if (
+                path.parent == state_parent
+                and '"managed_files"' in content
+            ):
+                raise OSError("simulated state write failure")
+            return original_write_text(path, content, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "write_text", fail_subset_state_write)
+
+        with pytest.raises(OSError, match="state write failure"):
+            publish.publish_asset_subset(
+                REPO_ROOT, target, agent=publish.AGENT_CODEX
+            )
+
+        after = {
+            path.relative_to(target): path.read_bytes()
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+        assert after == before
+
+    def test_source_tree_rejects_symlinks(self, tmp_path, monkeypatch):
+        source = tmp_path / "source"
+        source.mkdir()
+        linked = source / "linked.py"
+        linked.write_text("external content\n", encoding="utf-8")
+        original_is_symlink = Path.is_symlink
+        monkeypatch.setattr(
+            Path,
+            "is_symlink",
+            lambda path: path == linked or original_is_symlink(path),
+        )
+
+        with pytest.raises(ValueError, match="source must not contain symlinks"):
+            publish._source_tree_files(source)
+
+
+    def _make_synthetic_subset_repo(self, tmp_path, monkeypatch):
+        repo = tmp_path / "repo"
+        family = "fixture-skill"
+        skill = repo / "skills" / "assets" / family
+        runtime = repo / publish.ASSET_RUNTIME_SOURCE
+        providers = repo / publish.ASSET_PROVIDER_REFERENCES_SOURCE
+        tools = repo / "tools"
+        config = repo / "config"
+        for directory in (skill, runtime, providers, tools, config):
+            directory.mkdir(parents=True, exist_ok=True)
+
+        (skill / "SKILL.md").write_text("fixture skill\n", encoding="utf-8")
+        (skill / "claude.md.tmpl").write_text(
+            "Write CLAUDE.md\n", encoding="utf-8"
+        )
+        (runtime / "runtime.py").write_text("RUNTIME = 1\n", encoding="utf-8")
+        (providers / "provider.md").write_text("provider\n", encoding="utf-8")
+        (tools / "codex_image_claim.py").write_text(
+            "CLAIM = 1\n", encoding="utf-8"
+        )
+        (tools / "asset_demo.py").write_text("TOOL = 1\n", encoding="utf-8")
+        (config / "asset_subset_manifest.json").write_text(
+            json.dumps({
+                "schema_version": 1,
+                "tools": ["tools/asset_demo.py"],
+                "retired_files": {
+                    "skills": [],
+                    "runtime": [],
+                    "tools": [],
+                },
+            }),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(publish, "FAMILY_NAMES", (family,))
+        sources = {
+            "skill": skill / "SKILL.md",
+            "runtime": runtime / "runtime.py",
+            "provider": providers / "provider.md",
+            "tool": tools / "asset_demo.py",
+            "claim": tools / "codex_image_claim.py",
+            "manifest": config / "asset_subset_manifest.json",
+        }
+        return repo, family, sources
+
+    @pytest.mark.parametrize(
+        "agent",
+        [
+            publish.AGENT_CODEX,
+            publish.AGENT_OPENCODE,
+            publish.AGENT_PI,
+        ],
+    )
+    def test_rendered_template_path_is_recorded_in_managed_inventory(
+        self, tmp_path, monkeypatch, agent
+    ):
+        repo, family, _ = self._make_synthetic_subset_repo(
+            tmp_path, monkeypatch
+        )
+        target = tmp_path / "target"
+
+        publish.publish_asset_subset(repo, target, agent=agent)
+
+        adapter = publish.get_agent_adapter(agent)
+        skill = adapter.skill_dir(target) / family
+        rendered = skill / "agents.md.tmpl"
+        state = json.loads(
+            (target / publish.ASSET_SUBSET_STATE_TARGET).read_text(
+                encoding="utf-8"
+            )
+        )
+        rendered_relative = rendered.relative_to(target).as_posix()
+        source_relative = (
+            skill / "claude.md.tmpl"
+        ).relative_to(target).as_posix()
+        assert rendered.read_text(encoding="utf-8") == (
+            f"Write {adapter.root_instruction_filename}\n"
+        )
+        assert not (skill / "claude.md.tmpl").exists()
+        assert rendered_relative in state["managed_files"]
+        assert source_relative not in state["managed_files"]
+
+    def test_rendered_template_collision_is_rejected_before_target_mutation(
+        self, tmp_path, monkeypatch
+    ):
+        repo, family, _ = self._make_synthetic_subset_repo(
+            tmp_path, monkeypatch
+        )
+        (repo / "skills" / "assets" / family / "agents.md.tmpl").write_text(
+            "existing target\n", encoding="utf-8"
+        )
+        target = tmp_path / "target"
+        target.mkdir()
+        marker = target / "keep.txt"
+        marker.write_text("keep\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="same target"):
+            publish.publish_asset_subset(
+                repo, target, agent=publish.AGENT_CODEX
+            )
+
+        assert marker.read_text(encoding="utf-8") == "keep\n"
+        assert {path for path in target.rglob("*") if path.is_file()} == {
+            marker
+        }
+
+    @pytest.mark.parametrize(
+        "surface",
+        ["skill", "runtime", "provider", "tool", "claim", "manifest"],
+    )
+    def test_symlinked_source_is_rejected_before_target_mutation(
+        self, tmp_path, monkeypatch, surface
+    ):
+        repo, _, sources = self._make_synthetic_subset_repo(
+            tmp_path, monkeypatch
+        )
+        linked = sources[surface]
+        original_is_symlink = Path.is_symlink
+        monkeypatch.setattr(
+            Path,
+            "is_symlink",
+            lambda path: path == linked or original_is_symlink(path),
+        )
+        target = tmp_path / "target"
+        target.mkdir()
+        marker = target / "keep.txt"
+        marker.write_text("keep\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="symlink"):
+            publish.publish_asset_subset(
+                repo, target, agent=publish.AGENT_CODEX
+            )
+
+        assert marker.read_text(encoding="utf-8") == "keep\n"
+        assert {path for path in target.rglob("*") if path.is_file()} == {
+            marker
+        }
+
+
+    def test_first_install_copy_failure_leaves_no_partial_layout(
+        self, tmp_path, monkeypatch
+    ):
+        target = tmp_path / "target"
+        target.mkdir()
+        marker = target / "keep.txt"
+        marker.write_text("keep\n", encoding="utf-8")
+        before = {
+            path.relative_to(target): (
+                "directory" if path.is_dir() else path.read_bytes()
+            )
+            for path in target.rglob("*")
+        }
+        managed = publish._asset_subset_managed_files(
+            REPO_ROOT, publish.AGENT_CODEX
+        )
+        fail_at = target / managed[0]
+        original_copy2 = publish.shutil.copy2
+        failed = False
+
+        def fail_once_during_target_copy(source, destination, *args, **kwargs):
+            nonlocal failed
+            if Path(destination) == fail_at and not failed:
+                failed = True
+                raise OSError("simulated first-install copy failure")
+            return original_copy2(source, destination, *args, **kwargs)
+
+        monkeypatch.setattr(
+            publish.shutil, "copy2", fail_once_during_target_copy
+        )
+
+        with pytest.raises(OSError, match="first-install copy failure"):
+            publish.publish_asset_subset(
+                REPO_ROOT, target, agent=publish.AGENT_CODEX
+            )
+
+        assert failed
+        assert {
+            path.relative_to(target): (
+                "directory" if path.is_dir() else path.read_bytes()
+            )
+            for path in target.rglob("*")
+        } == before
+
+    @pytest.mark.parametrize("force", [False, True])
+    def test_retired_removal_failure_rolls_back_files_and_state(
+        self, tmp_path, monkeypatch, force
+    ):
+        target = tmp_path / "target"
+        manifest = json.loads(
+            (REPO_ROOT / publish.ASSET_SUBSET_MANIFEST_SOURCE).read_text(
+                encoding="utf-8"
+            )
+        )
+        retired = [
+            Path("tools/retired-a.py"),
+            Path("tools/retired-z.py"),
+        ]
+        manifest["retired_files"] = {
+            "skills": [],
+            "runtime": [],
+            "tools": [path.as_posix() for path in retired],
+        }
+        monkeypatch.setattr(
+            publish, "_read_asset_subset_manifest", lambda _repo: manifest
+        )
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=publish.AGENT_CODEX
+        )
+        state_path = target / publish.ASSET_SUBSET_STATE_TARGET
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["managed_files"].extend(path.as_posix() for path in retired)
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        for relative in retired:
+            destination = target / relative
+            destination.write_text(
+                f"preserve {relative.name}\n", encoding="utf-8"
+            )
+        before = {
+            path.relative_to(target): path.read_bytes()
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+        original_remove = publish._remove_asset_subset_files
+
+        def fail_after_first_removal(project, paths):
+            ordered = sorted(paths, key=lambda item: item.as_posix())
+            original_remove(project, {ordered[0]})
+            raise OSError("simulated retired removal failure")
+
+        monkeypatch.setattr(
+            publish, "_remove_asset_subset_files", fail_after_first_removal
+        )
+
+        with pytest.raises(OSError, match="retired removal failure"):
+            publish.publish_asset_subset(
+                REPO_ROOT,
+                target,
+                agent=publish.AGENT_CODEX,
+                force=force,
+            )
+
+        after = {
+            path.relative_to(target): path.read_bytes()
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+        assert after == before

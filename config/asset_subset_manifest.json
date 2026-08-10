@@ -28,5 +28,10 @@
     "tools/asset_ui_theme_recipe.py",
     "tools/asset_user_preflight.py",
     "tools/requirements.txt"
-  ]
+  ],
+  "retired_files": {
+    "skills": [],
+    "runtime": [],
+    "tools": []
+  }
 }

@@ -44,6 +44,27 @@ The subset publisher records its owned files in a subset-specific manifest
 under `.godotmaker/`. It does not write the full-install version marker or run
 the full-install migration lifecycle.
 
+Subset updates merge current files individually. A file may be replaced only
+when the installed subset state identifies it as owned; a first install rejects
+an existing same-path file instead of treating `--force` as an ownership grant.
+Unowned files elsewhere inside a managed Skill or runtime directory remain
+untouched.
+
+Subset preparation and validation finish before the target is changed. During
+commit, existing managed files and state are journaled; a removal, copy, or
+state-write failure restores the previous byte-for-byte file set. The state
+manifest is replaced atomically, and `--force` never expands file ownership.
+
+Skill, runtime, provider, tool, claim, and manifest sources must be ordinary
+repository files rather than symlinks. For non-Claude agents, managed
+inventory records the final rendered `agents.md.tmpl` path, not its source
+`claude.md.tmpl` name.
+
+When a release removes or renames a published Skill, runtime, or tool file, move
+its agent-neutral logical path to the matching `retired_files` category in
+`config/asset_subset_manifest.json`. This exact historical inventory permits
+safe cleanup of old installs without trusting broad directory prefixes.
+
 ## Implementation sequence
 
 1. Add failing publication-contract tests for argument parsing, exact file
