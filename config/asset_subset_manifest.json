@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "tools": [
+    "tools/agent_runtime.py",
+    "tools/asset_action_batch_merge.py",
+    "tools/asset_action_process.py",
+    "tools/asset_animated_bundle_contract_check.py",
+    "tools/asset_atlas_assemble.py",
+    "tools/asset_build_record.py",
+    "tools/asset_connected_component_recovery.py",
+    "tools/asset_curation_select.py",
+    "tools/asset_family_registry.py",
+    "tools/asset_image_finalize.py",
+    "tools/asset_layout_guide.py",
+    "tools/asset_output_paths.py",
+    "tools/asset_result_registration.py",
+    "tools/asset_runtime_path.py",
+    "tools/asset_scene_prop_set_validate.py",
+    "tools/asset_sheet_process.py",
+    "tools/asset_skill_contract_check.py",
+    "tools/asset_source_generate.py",
+    "tools/asset_tileset_contract_check.py",
+    "tools/asset_tileset_profile.py",
+    "tools/asset_ui_card_contract_check.py",
+    "tools/asset_ui_card_validate.py",
+    "tools/asset_ui_source_sheet_plan.py",
+    "tools/asset_ui_stylebox_plan.py",
+    "tools/asset_ui_theme_recipe.py",
+    "tools/asset_user_preflight.py",
+    "tools/requirements.txt"
+  ]
+}

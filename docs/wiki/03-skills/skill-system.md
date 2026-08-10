@@ -1,6 +1,6 @@
 # Skill System
 
-In Claude Code, a "skill" is a bundle of instructions and reference documents that Claude loads for a specific job. Think of each skill as a specialist handbook: when Claude needs to do something — scaffold a project, write gameplay code, check for common bugs — it reaches for the matching skill and follows its guidance. GodotMaker's skills are organized into two layers.
+In Claude Code, a "skill" is a bundle of instructions and reference documents that Claude loads for a specific job. Think of each skill as a specialist handbook: when Claude needs to do something — scaffold a project, write gameplay code, check for common bugs — it reaches for the matching skill and follows its guidance. GodotMaker's skills are organized into three layers.
 
 ## Layer 1 — Core skills
 
@@ -15,6 +15,21 @@ Core skills are the engine that drives the whole game-creation process. They com
 Reviewer skills are eight domain-specific checklists covering areas like physics, UI, audio, and animation. They are not slash commands — you never type them directly. Instead, a reviewer sub-agent (a separate Claude instance that runs automatically) loads the relevant ones during `/gm-build` and `/gm-fixgap`, checks the freshly written code against known Godot pitfalls, and reports any issues it finds.
 
 For the full list and examples of what each reviewer catches, see [Reviewer skills](reviewer-skills.md).
+
+
+## Layer 3 - Asset skills
+
+Asset skills are standalone production contracts for Godot's non-AI-native art
+surfaces, including tilesets, UI kits, animated characters, backgrounds,
+effects, props, platforms, and cards. Each public Asset Skill uses the shared
+schemas, compilers, and validators in `.godotmaker/asset-runtime/`.
+
+Projects that do not use the full GodotMaker pipeline can install only this
+layer with `python tools/publish.py --subset assets <project>`. Add `--agent
+codex`, `--agent opencode`, or `--agent pi` to select another supported skill
+layout. See [Publish](../05-tools/publish.md#standalone-asset-skills) for the
+install-and-use flow. This standalone layer is the third layer in addition to
+the core and reviewer layers described above.
 
 ## How skills are deployed
 

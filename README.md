@@ -112,6 +112,28 @@ pip install -r tools/requirements.txt
 python tools/check_env.py
 ```
 
+## Standalone Asset Skills
+
+Already have a Godot project and only want the reusable art-production skills?
+Publish the standalone `assets` subset instead of the full automation:
+
+```bash
+# Claude Code
+python tools/publish.py --subset assets /path/to/my-game
+
+# Codex
+python tools/publish.py --agent codex --subset assets /path/to/my-game
+```
+
+This installs the ten Asset Skills, their shared compilers and validators,
+provider references, provenance helper, and required asset tools. It does not
+install the `/gm-*` pipeline, hooks, agents, migrations, MCP registration, or
+Git metadata. After installing `tools/requirements.txt`, invoke a published
+skill such as `tileset` from the selected coding agent.
+
+See the [standalone Asset Skills publish guide](docs/wiki/05-tools/publish.md#standalone-asset-skills)
+for all supported agents, configuration, safe owned-file updates, and full/subset version compatibility.
+
 ## Requirements
 
 | Tool | Why |

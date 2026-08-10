@@ -4,7 +4,9 @@
 Flattens skills/core/* and skills/reviewer/* into the selected agent-native
 skill location: .claude/skills/ for Claude Code, .agents/skills/ for Codex,
 or .opencode/skills/ for OpenCode.
-Also copies tools, config, hooks, templates, and sets up agent-specific files.
+The full mode also copies tools, config, hooks, templates, and agent-specific
+files. ``--subset assets`` publishes only the standalone Asset Skills and
+their runtime dependencies.
 
 Supports versioned upgrades: compares source VERSION against the
 target's .godotmaker/version and prompts accordingly.
@@ -14,6 +16,7 @@ Usage:
     python tools/publish.py --agent codex <target_godot_project_dir>
     python tools/publish.py --agent opencode <target_godot_project_dir>
     python tools/publish.py --force <target_godot_project_dir>
+    python tools/publish.py --agent codex --subset assets <target_godot_project_dir>
 """
 import argparse
 import json
@@ -24,11 +27,11 @@ import stat
 import subprocess
 import sys
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import NamedTuple
 
 from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE, AGENT_PI
-from asset_family_registry import check_registry
+from asset_family_registry import FAMILY_NAMES, check_registry
 from project_config import (
     ProjectConfigResult,
     create_project_config as create_project_config_file,
@@ -95,6 +98,9 @@ AGENT_RUNTIME_EXTENSION_DIRS = {
 ASSET_RUNTIME_SOURCE = Path("skills") / "assets" / "_shared"
 ASSET_RUNTIME_TARGET = Path(".godotmaker") / "asset-runtime"
 ASSET_PROVIDER_REFERENCES_SOURCE = Path("skills") / "core" / "gm-asset" / "references" / "providers"
+ASSET_SUBSET_MANIFEST_SOURCE = Path("config") / "asset_subset_manifest.json"
+ASSET_SUBSET_STATE_TARGET = Path(".godotmaker") / "asset-subset.json"
+SUBSET_CHOICES = ("assets",)
 
 @dataclass(frozen=True)
 class AgentPublishAdapter:
@@ -444,6 +450,219 @@ def publish_skills(repo_root: Path, skills_target: Path,
 
     print(f"Published skills: {count}")
     return count
+
+
+def validate_asset_subset_path(path: Path | str) -> Path:
+    """Return a normalized project-relative path or reject unsafe input."""
+    raw = str(path).strip()
+    posix = PurePosixPath(raw.replace("\\", "/"))
+    windows = PureWindowsPath(raw)
+    if (
+        not raw
+        or posix.is_absolute()
+        or windows.is_absolute()
+        or bool(windows.drive)
+        or any(part == ".." for part in posix.parts)
+    ):
+        raise ValueError(f"asset subset paths must be project-relative: {path}")
+    parts = tuple(part for part in posix.parts if part not in ("", "."))
+    if not parts:
+        raise ValueError(f"asset subset paths must be project-relative: {path}")
+    return Path(*parts)
+
+
+def _asset_subset_tool_paths(repo_root: Path) -> tuple[Path, ...]:
+    manifest_path = repo_root / ASSET_SUBSET_MANIFEST_SOURCE
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid asset subset manifest: {manifest_path}") from exc
+    if manifest.get("schema_version") != 1:
+        raise ValueError("asset subset manifest schema_version must be 1")
+    raw_tools = manifest.get("tools")
+    if not isinstance(raw_tools, list) or not raw_tools:
+        raise ValueError("asset subset manifest tools must be a non-empty list")
+
+    tools: list[Path] = []
+    for raw_path in raw_tools:
+        if not isinstance(raw_path, str):
+            raise ValueError("asset subset manifest tool paths must be strings")
+        relative = validate_asset_subset_path(raw_path)
+        if relative.parts[0] != "tools":
+            raise ValueError(f"asset subset tool must publish under tools/: {raw_path}")
+        source = repo_root / relative
+        if not source.is_file():
+            raise ValueError(f"asset subset tool source is missing: {relative.as_posix()}")
+        tools.append(relative)
+    if len(set(tools)) != len(tools):
+        raise ValueError("asset subset manifest contains duplicate tool paths")
+    return tuple(tools)
+
+
+def _source_tree_files(source: Path) -> list[Path]:
+    return [
+        path.relative_to(source)
+        for path in sorted(source.rglob("*"))
+        if path.is_file()
+        and not any(part in EXCLUDE_DIRS for part in path.relative_to(source).parts)
+    ]
+
+
+def _safe_subset_target(target: Path, relative: Path) -> Path:
+    relative = validate_asset_subset_path(relative)
+    target_root = target.resolve()
+    destination = target / relative
+    current = target_root
+    for part in relative.parts[:-1]:
+        current /= part
+        if current.is_symlink():
+            raise ValueError(
+                f"asset subset target parent must not be a symlink: {relative.as_posix()}")
+    parent = destination.parent.resolve(strict=False)
+    if not parent.is_relative_to(target_root):
+        raise ValueError(f"asset subset target escapes project root: {relative.as_posix()}")
+    if destination.is_symlink():
+        raise ValueError(f"asset subset target must not be a symlink: {relative.as_posix()}")
+    return destination
+
+
+def publish_asset_skills(
+    repo_root: Path,
+    skills_target: Path,
+    agent: str = AGENT_CLAUDE_CODE,
+) -> int:
+    """Publish only public Asset Skills declared by the family registry."""
+    adapter = get_agent_adapter(agent)
+    skills_target.mkdir(parents=True, exist_ok=True)
+    for family in sorted(FAMILY_NAMES):
+        source = repo_root / "skills" / "assets" / family
+        if not source.is_dir():
+            raise FileNotFoundError(f"asset skill is missing: {source}")
+        destination = skills_target / family
+        if destination.is_symlink():
+            raise ValueError(f"asset skill target must not be a symlink: {destination}")
+        copy_tree(source, destination)
+        render_agent_template_tree(destination, adapter)
+    print(f"Published asset skills: {len(FAMILY_NAMES)}")
+    return len(FAMILY_NAMES)
+
+
+def _asset_subset_managed_files(repo_root: Path, agent: str) -> list[Path]:
+    adapter = get_agent_adapter(agent)
+    managed: set[Path] = set()
+    for family in sorted(FAMILY_NAMES):
+        source = repo_root / "skills" / "assets" / family
+        for relative in _source_tree_files(source):
+            managed.add(Path(adapter.skill_root) / family / relative)
+
+    runtime_source = repo_root / ASSET_RUNTIME_SOURCE
+    for relative in _source_tree_files(runtime_source):
+        managed.add(ASSET_RUNTIME_TARGET / relative)
+    provider_source = repo_root / ASSET_PROVIDER_REFERENCES_SOURCE
+    for relative in _source_tree_files(provider_source):
+        managed.add(ASSET_RUNTIME_TARGET / "references" / "providers" / relative)
+    managed.add(ASSET_RUNTIME_TARGET / "tools" / "codex_image_claim.py")
+    managed.update(_asset_subset_tool_paths(repo_root))
+    return sorted(managed, key=lambda item: item.as_posix())
+
+
+def _ensure_asset_subset_version_compatible(repo_root: Path, target: Path) -> None:
+    """Prevent subset files from drifting away from an installed full runtime."""
+    target_version = read_target_version(target)
+    if target_version is None:
+        return
+    source_version = read_source_version(repo_root)
+    if source_version != target_version:
+        raise ValueError(
+            "asset subset source version must match the full installation version "
+            f"({source_version or 'unknown'} != {target_version})"
+        )
+
+
+def _remove_previous_asset_subset_files(repo_root: Path, target: Path) -> None:
+    state_path = target / ASSET_SUBSET_STATE_TARGET
+    if not state_path.exists():
+        return
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid installed asset subset state: {state_path}") from exc
+    if state.get("schema_version") != 1:
+        raise ValueError("installed asset subset state has unsupported schema_version")
+    if state.get("subset") != "assets":
+        raise ValueError("installed asset subset state has unexpected subset")
+    state_agent = state.get("agent")
+    if state_agent not in AGENT_CHOICES:
+        raise ValueError("installed asset subset state has unsupported agent")
+    managed_files = state.get("managed_files")
+    if not isinstance(managed_files, list):
+        raise ValueError("installed asset subset state has no managed_files list")
+
+    allowed = set(_asset_subset_managed_files(repo_root, state_agent))
+    validated: list[Path] = []
+    for raw_path in managed_files:
+        if not isinstance(raw_path, str):
+            raise ValueError("installed asset subset paths must be strings")
+        relative = validate_asset_subset_path(raw_path)
+        if relative not in allowed:
+            raise ValueError(
+                f"installed asset subset path is not owned by the subset: "
+                f"{relative.as_posix()}"
+            )
+        validated.append(relative)
+    if len(set(validated)) != len(validated):
+        raise ValueError("installed asset subset state contains duplicate paths")
+
+    for relative in validated:
+        destination = target / relative
+        if destination.is_symlink():
+            destination.unlink()
+            continue
+        destination = _safe_subset_target(target, relative)
+        if destination.is_file():
+            destination.unlink()
+
+
+def publish_asset_subset(
+    repo_root: Path,
+    target: Path,
+    *,
+    agent: str = AGENT_CLAUDE_CODE,
+    force: bool = False,
+) -> int:
+    """Publish the standalone Asset Skill unit without full-pipeline effects."""
+    target = target.resolve()
+    target.mkdir(parents=True, exist_ok=True)
+    _ensure_asset_subset_version_compatible(repo_root, target)
+    adapter = get_agent_adapter(agent)
+    managed = _asset_subset_managed_files(repo_root, agent)
+    for relative in (*managed, ASSET_SUBSET_STATE_TARGET):
+        _safe_subset_target(target, relative)
+
+    if force:
+        _remove_previous_asset_subset_files(repo_root, target)
+
+    publish_asset_skills(repo_root, adapter.skill_dir(target), agent)
+    publish_asset_runtime(repo_root, target)
+    tool_paths = _asset_subset_tool_paths(repo_root)
+    for relative in tool_paths:
+        destination = _safe_subset_target(target, relative)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(repo_root / relative, destination)
+
+    state_path = _safe_subset_target(target, ASSET_SUBSET_STATE_TARGET)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    source_version = read_source_version(repo_root)
+    state = {
+        "schema_version": 1,
+        "subset": "assets",
+        "agent": agent,
+        "framework_version": str(source_version) if source_version else None,
+        "managed_files": [path.as_posix() for path in managed],
+    }
+    state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+    print(f"Published asset subset: {len(managed)} files")
+    return len(managed)
 
 
 def publish_asset_runtime(repo_root: Path, target: Path) -> int:
@@ -1412,6 +1631,9 @@ def main():
     parser.add_argument("--force", action="store_true",
                         help="Clean existing agent skills before publishing; "
                              "skip upgrade confirmation prompts")
+    parser.add_argument("--subset", choices=SUBSET_CHOICES, default=None,
+                        help="Publish only a standalone subset instead of the "
+                             "full GodotMaker framework")
     parser.add_argument("--no-config-review", action="store_true",
                         help="Do not pause after creating .godotmaker/config.yaml")
     args = parser.parse_args()
@@ -1433,6 +1655,13 @@ def main():
 
     target = Path(args.target).resolve()
     target.mkdir(parents=True, exist_ok=True)
+
+    if args.subset == "assets":
+        publish_asset_subset(
+            repo_root, target, agent=args.agent, force=args.force
+        )
+        print("\nDone. Standalone Asset Skills are ready in the target project.")
+        return
 
     # Version check — may abort on MAJOR/MINOR without --force
     proceed, level, target_ver, source_ver = check_version_upgrade(
