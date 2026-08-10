@@ -132,3 +132,15 @@ images. A technical pass must never be presented as visual approval.
   repository-owned evidence directory.
 
 These decisions do not block the initial TDD implementation.
+
+## Validation evidence
+
+The completed implementation was validated against the current `main`
+baseline with `1770 passed, 72 skipped`. A clean Codex subset publish reported
+ten Asset Skills, 40 runtime files, 119 subset-owned files, and exit code zero.
+The published `tileset` Skill then produced a Godot-loadable `blob_47` TileSet
+with all 47 required runtime variants rendered, zero mismatches across 423
+seam checks, and human visual acceptance.
+
+- [Native subset publish command](../assets/issue-176/publish-subset-command.png)
+- [TileSet end-to-end review board](../assets/issue-176/tileset-e2e-review.png)
