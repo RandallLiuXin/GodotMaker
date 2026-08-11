@@ -753,6 +753,172 @@ class TestCreateProjectConfig:
         with pytest.raises(ValueError, match="must not be a symlink"):
             agent_runtime.detect_agent(tmp_path)
 
+    @pytest.mark.parametrize("link_method", ["is_symlink", "is_junction"])
+    def test_linked_godotmaker_root_fails_before_config_or_state(
+        self, tmp_path, monkeypatch, link_method
+    ):
+        if not hasattr(Path, link_method):
+            pytest.skip(f"Path.{link_method} is unavailable")
+        metadata = tmp_path / ".godotmaker"
+        metadata.mkdir()
+        (metadata / "config.yaml").write_text(
+            "agent: codex\n", encoding="utf-8"
+        )
+        (metadata / "asset-subset.json").write_text(
+            json.dumps({
+                "schema_version": 1,
+                "subset": "assets",
+                "agent": "opencode",
+                "managed_files": [],
+            }),
+            encoding="utf-8",
+        )
+        original = getattr(Path, link_method)
+        monkeypatch.setattr(
+            Path,
+            link_method,
+            lambda path: path == metadata or original(path),
+        )
+
+        with pytest.raises(
+            agent_runtime.AgentRuntimeStateError,
+            match="metadata directory.*link",
+        ):
+            agent_runtime.detect_agent(tmp_path)
+
+    def test_symlinked_project_config_fails_before_subset_state(
+        self, tmp_path, monkeypatch
+    ):
+        metadata = tmp_path / ".godotmaker"
+        metadata.mkdir()
+        config = metadata / "config.yaml"
+        config.write_text("agent: codex\n", encoding="utf-8")
+        (metadata / "asset-subset.json").write_text(
+            json.dumps({
+                "schema_version": 1,
+                "subset": "assets",
+                "agent": "opencode",
+                "managed_files": [],
+            }),
+            encoding="utf-8",
+        )
+        original_is_symlink = Path.is_symlink
+        monkeypatch.setattr(
+            Path,
+            "is_symlink",
+            lambda path: path == config or original_is_symlink(path),
+        )
+
+        with pytest.raises(
+            agent_runtime.AgentRuntimeStateError,
+            match="project config.*link",
+        ):
+            agent_runtime.detect_agent(tmp_path)
+
+    def test_invalid_godotmaker_root_type_fails_closed(self, tmp_path):
+        (tmp_path / ".godotmaker").write_text("not a directory\n", encoding="utf-8")
+        (tmp_path / ".agents").mkdir()
+
+        with pytest.raises(
+            agent_runtime.AgentRuntimeStateError,
+            match="metadata path must be a directory",
+        ):
+            agent_runtime.detect_agent(tmp_path)
+
+    @pytest.mark.parametrize(
+        "managed_path",
+        [
+            "../outside",
+            "tools/../../outside",
+            r"..\outside",
+            r"tools\..\outside",
+            "/outside",
+            r"\outside",
+            r"C:\outside",
+            "C:/outside",
+            r"C:relative",
+            r"\\server\share\outside",
+            "",
+            "   ",
+            ".",
+            "./",
+            "tools/control\x00.py",
+            "\ttools/a.py",
+            "tools/a.py\n",
+        ],
+    )
+    def test_subset_state_rejects_unsafe_managed_paths(
+        self, tmp_path, managed_path
+    ):
+        (tmp_path / ".agents").mkdir()
+        state = tmp_path / publish.ASSET_SUBSET_STATE_TARGET
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "subset": "assets",
+                "agent": "opencode",
+                "managed_files": [managed_path],
+            }),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(
+            agent_runtime.AgentRuntimeStateError,
+            match="invalid managed_files path",
+        ):
+            agent_runtime.detect_agent(tmp_path)
+
+    @pytest.mark.parametrize(
+        "managed_files",
+        [
+            ["tools/a.py", "tools/a.py"],
+            ["tools/a.py", r"tools\a.py"],
+            ["tools/a.py", "./tools/a.py"],
+            ["tools/A.py", "tools/a.py"],
+        ],
+    )
+    def test_subset_state_rejects_portable_duplicate_managed_paths(
+        self, tmp_path, managed_files
+    ):
+        state = tmp_path / publish.ASSET_SUBSET_STATE_TARGET
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "subset": "assets",
+                "agent": "opencode",
+                "managed_files": managed_files,
+            }),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(
+            agent_runtime.AgentRuntimeStateError,
+            match="duplicate managed_files paths",
+        ):
+            agent_runtime.detect_agent(tmp_path)
+
+    def test_subset_state_accepts_valid_nested_managed_paths(self, tmp_path):
+        (tmp_path / ".agents").mkdir()
+        state = tmp_path / publish.ASSET_SUBSET_STATE_TARGET
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "subset": "assets",
+                "agent": "opencode",
+                "managed_files": [
+                    ".agents/skills/tileset/SKILL.md",
+                    ".godotmaker/asset-runtime/schema.json",
+                    "tools/asset_x.py",
+                ],
+            }),
+            encoding="utf-8",
+        )
+
+        assert agent_runtime.detect_agent(tmp_path) == publish.AGENT_OPENCODE
+
     def test_agent_runtime_cli_reports_corrupt_subset_state(
         self, tmp_path, capsys
     ):

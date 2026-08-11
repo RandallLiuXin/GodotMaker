@@ -28,10 +28,16 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path
 from typing import NamedTuple
 
-from agent_runtime import AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE, AGENT_PI
+from agent_runtime import (
+    AGENT_CLAUDE_CODE,
+    AGENT_CODEX,
+    AGENT_OPENCODE,
+    AGENT_PI,
+    normalize_project_relative_path,
+)
 from asset_family_registry import FAMILY_NAMES, check_registry
 from project_config import (
     ProjectConfigResult,
@@ -460,21 +466,11 @@ def publish_skills(repo_root: Path, skills_target: Path,
 
 def validate_asset_subset_path(path: Path | str) -> Path:
     """Return a normalized project-relative path or reject unsafe input."""
-    raw = str(path).strip()
-    posix = PurePosixPath(raw.replace("\\", "/"))
-    windows = PureWindowsPath(raw)
-    if (
-        not raw
-        or posix.is_absolute()
-        or windows.is_absolute()
-        or bool(windows.drive)
-        or any(part == ".." for part in posix.parts)
-    ):
-        raise ValueError(f"asset subset paths must be project-relative: {path}")
-    parts = tuple(part for part in posix.parts if part not in ("", "."))
-    if not parts:
-        raise ValueError(f"asset subset paths must be project-relative: {path}")
-    return Path(*parts)
+    try:
+        return normalize_project_relative_path(path)
+    except ValueError as exc:
+        message = f"asset subset paths must be project-relative: {path}"
+        raise ValueError(message) from exc
 
 
 def _validate_subset_source_path(
