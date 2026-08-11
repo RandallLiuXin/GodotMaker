@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 from pathlib import Path
 import sys
 
@@ -11,6 +12,12 @@ AGENT_CLAUDE_CODE = "claude-code"
 AGENT_CODEX = "codex"
 AGENT_OPENCODE = "opencode"
 AGENT_PI = "pi"
+
+ASSET_SUBSET_STATE = Path(".godotmaker") / "asset-subset.json"
+
+
+class AgentRuntimeStateError(ValueError):
+    """Raised when persisted agent selection state is unsafe or invalid."""
 
 
 def _read_yaml_scalar(path: Path, key: str) -> str | None:
@@ -42,6 +49,53 @@ def normalize_agent(value: str | None) -> str | None:
     return None
 
 
+def _read_asset_subset_agent(project_dir: Path) -> str | None:
+    """Read the standalone subset's selected agent after strict validation."""
+    state_path = project_dir / ASSET_SUBSET_STATE
+    if state_path.is_symlink():
+        raise AgentRuntimeStateError(
+            f"asset subset state must not be a symlink: {state_path}"
+        )
+    if not state_path.exists():
+        return None
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AgentRuntimeStateError(
+            f"invalid asset subset state: {state_path}"
+        ) from exc
+    if not isinstance(state, dict):
+        raise AgentRuntimeStateError(
+            f"asset subset state must be an object: {state_path}"
+        )
+    if state.get("schema_version") != 1:
+        raise AgentRuntimeStateError(
+            f"asset subset state has unsupported schema_version: {state_path}"
+        )
+    if state.get("subset") != "assets":
+        raise AgentRuntimeStateError(
+            f"asset subset state has unexpected subset: {state_path}"
+        )
+    raw_agent = state.get("agent")
+    if not isinstance(raw_agent, str) or raw_agent not in {
+        AGENT_CLAUDE_CODE,
+        AGENT_CODEX,
+        AGENT_OPENCODE,
+        AGENT_PI,
+    }:
+        raise AgentRuntimeStateError(
+            f"asset subset state has unsupported agent: {state_path}"
+        )
+    managed_files = state.get("managed_files")
+    if not isinstance(managed_files, list) or not all(
+        isinstance(path, str) for path in managed_files
+    ):
+        raise AgentRuntimeStateError(
+            f"asset subset state has invalid managed_files: {state_path}"
+        )
+    return raw_agent
+
+
 def detect_agent(project_dir: Path) -> str:
     """Detect the selected coding agent for a published project."""
     config = project_dir / ".godotmaker" / "config.yaml"
@@ -49,6 +103,10 @@ def detect_agent(project_dir: Path) -> str:
         agent = normalize_agent(_read_yaml_scalar(config, key))
         if agent:
             return agent
+
+    subset_agent = _read_asset_subset_agent(project_dir)
+    if subset_agent:
+        return subset_agent
 
     # Backward-compatible fallback for older projects without `agent`.
     if (project_dir / ".agents").exists():
@@ -141,12 +199,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     project_dir = find_project_dir(Path(args.project))
-    value = read_config_value(
-        project_dir,
-        args.key,
-        agent=args.agent,
-        default=args.default,
-    )
+    try:
+        value = read_config_value(
+            project_dir,
+            args.key,
+            agent=args.agent,
+            default=args.default,
+        )
+    except AgentRuntimeStateError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
     if value:
         print(value)
         return 0

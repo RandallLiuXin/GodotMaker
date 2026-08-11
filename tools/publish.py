@@ -536,6 +536,15 @@ def _asset_subset_tool_paths(repo_root: Path) -> tuple[Path, ...]:
     return tuple(tools)
 
 
+def _render_asset_skill_relative_path(
+    relative: Path, adapter: AgentPublishAdapter
+) -> Path:
+    """Map a logical Asset Skill path to its selected-agent target path."""
+    if adapter.agent_id != AGENT_CLAUDE_CODE and relative.name == "claude.md.tmpl":
+        return relative.with_name("agents.md.tmpl")
+    return relative
+
+
 def _asset_subset_retired_files(
     repo_root: Path, agent: str
 ) -> tuple[Path, ...]:
@@ -576,6 +585,7 @@ def _asset_subset_retired_files(
                     raise ValueError(
                         f"invalid retired skill path: {raw_path}"
                     )
+                logical = _render_asset_skill_relative_path(logical, adapter)
                 retired.append(Path(adapter.skill_root) / logical)
             elif category == "runtime":
                 retired.append(ASSET_RUNTIME_TARGET / logical)
@@ -681,11 +691,7 @@ def _asset_subset_managed_files(repo_root: Path, agent: str) -> list[Path]:
         source = repo_root / "skills" / "assets" / family
         _validate_subset_source_path(repo_root, source, "skill")
         for relative in _source_tree_files(source):
-            if (
-                adapter.agent_id != AGENT_CLAUDE_CODE
-                and relative.name == "claude.md.tmpl"
-            ):
-                relative = relative.with_name("agents.md.tmpl")
+            relative = _render_asset_skill_relative_path(relative, adapter)
             add_managed(Path(adapter.skill_root) / family / relative)
 
     runtime_source = repo_root / ASSET_RUNTIME_SOURCE

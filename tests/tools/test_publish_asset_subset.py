@@ -837,6 +837,50 @@ for family in {sorted(FAMILY_NAMES)!r}:
         assert (claude_skills / "tileset" / "SKILL.md").is_file()
         assert state["agent"] == publish.AGENT_CLAUDE_CODE
 
+    @pytest.mark.parametrize(
+        ("agent", "config_root"),
+        [
+            (publish.AGENT_OPENCODE, ".opencode"),
+            (publish.AGENT_PI, ".pi"),
+        ],
+    )
+    def test_agent_switch_runtime_uses_recorded_subset_agent(
+        self, tmp_path, agent, config_root
+    ):
+        target = tmp_path / "target"
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=publish.AGENT_CODEX
+        )
+        old_config = target / ".agents" / "godotmaker.yaml"
+        old_config.write_text("godot_path: old-codex\n", encoding="utf-8")
+        selected_config = target / config_root / "godotmaker.yaml"
+        selected_config.parent.mkdir(parents=True, exist_ok=True)
+        selected_config.write_text(
+            f"godot_path: selected-{agent}\n", encoding="utf-8"
+        )
+
+        publish.publish_asset_subset(
+            REPO_ROOT, target, agent=agent, force=True
+        )
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(target / "tools" / "agent_runtime.py"),
+                "godot_path",
+                "--project",
+                str(target),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == f"selected-{agent}"
+        assert old_config.read_text(encoding="utf-8") == (
+            "godot_path: old-codex\n"
+        )
+
     def test_agent_switch_preflights_old_layout_before_removing_files(
         self, tmp_path, monkeypatch
     ):
@@ -1066,6 +1110,88 @@ for family in {sorted(FAMILY_NAMES)!r}:
         assert not (skill / "claude.md.tmpl").exists()
         assert rendered_relative in state["managed_files"]
         assert source_relative not in state["managed_files"]
+
+    @pytest.mark.parametrize("agent", publish.AGENT_CHOICES)
+    def test_retired_template_removes_rendered_agent_path(
+        self, tmp_path, monkeypatch, agent
+    ):
+        repo, family, _ = self._make_synthetic_subset_repo(
+            tmp_path, monkeypatch
+        )
+        target = tmp_path / "target"
+        publish.publish_asset_subset(repo, target, agent=agent)
+        adapter = publish.get_agent_adapter(agent)
+        template_name = (
+            "claude.md.tmpl"
+            if agent == publish.AGENT_CLAUDE_CODE
+            else "agents.md.tmpl"
+        )
+        installed_template = (
+            adapter.skill_dir(target) / family / template_name
+        )
+        assert installed_template.is_file()
+
+        (repo / "skills" / "assets" / family / "claude.md.tmpl").unlink()
+        manifest_path = repo / publish.ASSET_SUBSET_MANIFEST_SOURCE
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["retired_files"]["skills"] = [
+            f"{family}/claude.md.tmpl"
+        ]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        publish.publish_asset_subset(repo, target, agent=agent)
+
+        state = json.loads(
+            (target / publish.ASSET_SUBSET_STATE_TARGET).read_text(
+                encoding="utf-8"
+            )
+        )
+        assert not installed_template.exists()
+        assert installed_template.relative_to(target).as_posix() not in state[
+            "managed_files"
+        ]
+
+    @pytest.mark.parametrize(
+        "agent",
+        [publish.AGENT_CODEX, publish.AGENT_OPENCODE, publish.AGENT_PI],
+    )
+    def test_retired_template_mapping_rejects_duplicate_targets(
+        self, tmp_path, monkeypatch, agent
+    ):
+        repo, family, _ = self._make_synthetic_subset_repo(
+            tmp_path, monkeypatch
+        )
+        (repo / "skills" / "assets" / family / "claude.md.tmpl").unlink()
+        manifest_path = repo / publish.ASSET_SUBSET_MANIFEST_SOURCE
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["retired_files"]["skills"] = [
+            f"{family}/claude.md.tmpl",
+            f"{family}/agents.md.tmpl",
+        ]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="duplicate"):
+            publish._asset_subset_retired_files(repo, agent)
+
+    @pytest.mark.parametrize(
+        "agent",
+        [publish.AGENT_CODEX, publish.AGENT_OPENCODE, publish.AGENT_PI],
+    )
+    def test_retired_template_mapping_rejects_current_target_overlap(
+        self, tmp_path, monkeypatch, agent
+    ):
+        repo, family, _ = self._make_synthetic_subset_repo(
+            tmp_path, monkeypatch
+        )
+        manifest_path = repo / publish.ASSET_SUBSET_MANIFEST_SOURCE
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["retired_files"]["skills"] = [
+            f"{family}/claude.md.tmpl"
+        ]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="still current"):
+            publish._asset_subset_retired_files(repo, agent)
 
     @pytest.mark.parametrize(
         "agent",
