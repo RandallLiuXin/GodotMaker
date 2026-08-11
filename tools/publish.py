@@ -710,17 +710,18 @@ def _asset_subset_managed_files(repo_root: Path, agent: str) -> list[Path]:
     return sorted(managed, key=lambda item: item.as_posix())
 
 
-def _ensure_asset_subset_version_compatible(repo_root: Path, target: Path) -> None:
-    """Prevent subset files from drifting away from an installed full runtime."""
+def _ensure_asset_subset_version_compatible(repo_root: Path, target: Path) -> bool:
+    """Validate a full runtime version and report whether one is installed."""
     target_version = read_target_version(target)
     if target_version is None:
-        return
+        return False
     source_version = read_source_version(repo_root)
     if source_version != target_version:
         raise ValueError(
             "asset subset source version must match the full installation version "
             f"({source_version or 'unknown'} != {target_version})"
         )
+    return True
 
 
 def _read_previous_asset_subset_files(
@@ -793,11 +794,29 @@ def _stage_asset_subset_files(
     return runtime_count
 
 
+def _asset_subset_files_match(source: Path, destination: Path) -> bool:
+    """Compare regular files byte-for-byte without trusting metadata."""
+    if source.stat().st_size != destination.stat().st_size:
+        return False
+    with source.open("rb") as source_stream, destination.open(
+        "rb"
+    ) as target_stream:
+        while True:
+            source_chunk = source_stream.read(1024 * 1024)
+            target_chunk = target_stream.read(1024 * 1024)
+            if source_chunk != target_chunk:
+                return False
+            if not source_chunk:
+                return True
+
+
 def _preflight_asset_subset_copy(
     staging: Path,
     target: Path,
     managed: list[Path],
     previous_owned: set[Path],
+    *,
+    adopt_matching_full_install: bool = False,
 ) -> None:
     for relative in managed:
         source = staging / relative
@@ -811,10 +830,15 @@ def _preflight_asset_subset_copy(
                 f"asset subset target must be a file: {relative.as_posix()}"
             )
         if destination.exists() and relative not in previous_owned:
-            raise ValueError(
-                "asset subset would overwrite an unowned file: "
-                f"{relative.as_posix()}"
+            may_adopt = (
+                adopt_matching_full_install
+                and _asset_subset_files_match(source, destination)
             )
+            if not may_adopt:
+                raise ValueError(
+                    "asset subset would overwrite an unowned file: "
+                    f"{relative.as_posix()}"
+                )
 
 
 def _preflight_previous_asset_subset_files(
@@ -935,11 +959,14 @@ def publish_asset_subset(
     """Publish the standalone Asset Skill unit without full-pipeline effects."""
     target = target.resolve()
     target.mkdir(parents=True, exist_ok=True)
-    _ensure_asset_subset_version_compatible(repo_root, target)
+    has_matching_full_install = _ensure_asset_subset_version_compatible(
+        repo_root, target
+    )
     managed = _asset_subset_managed_files(repo_root, agent)
     retired = _asset_subset_retired_files(repo_root, agent)
     for relative in (*managed, *retired, ASSET_SUBSET_STATE_TARGET):
         _safe_subset_target(target, relative)
+    subset_state_existed = (target / ASSET_SUBSET_STATE_TARGET).exists()
 
     previous_owned = _read_previous_asset_subset_files(repo_root, target)
     _preflight_previous_asset_subset_files(target, previous_owned)
@@ -959,7 +986,13 @@ def publish_asset_subset(
         staging = Path(raw_staging)
         runtime_count = _stage_asset_subset_files(repo_root, staging, agent)
         _preflight_asset_subset_copy(
-            staging, target, managed, previous_owned
+            staging,
+            target,
+            managed,
+            previous_owned,
+            adopt_matching_full_install=(
+                has_matching_full_install and not subset_state_existed
+            ),
         )
         backup = staging / "__rollback__"
         previously_existing = _snapshot_asset_subset_files(

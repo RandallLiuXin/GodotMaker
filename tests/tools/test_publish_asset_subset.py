@@ -346,6 +346,182 @@ for family in {sorted(FAMILY_NAMES)!r}:
         assert full_marker.read_text(encoding="utf-8") == "keep\n"
         assert (target / ".godotmaker" / "asset-runtime").is_dir()
 
+    @pytest.mark.parametrize("agent", publish.AGENT_CHOICES)
+    def test_subset_adopts_matching_files_from_same_version_full_install(
+        self, tmp_path, agent
+    ):
+        target = tmp_path / "target"
+        adapter = publish.get_agent_adapter(agent)
+        publish.publish_skills(REPO_ROOT, adapter.skill_dir(target), agent)
+        publish.publish_asset_runtime(REPO_ROOT, target)
+        publish.publish_directory(
+            REPO_ROOT / "tools", target / "tools", "tools/"
+        )
+        source_version = publish.read_source_version(REPO_ROOT)
+        assert source_version is not None
+        version = target / ".godotmaker" / "version"
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text(f"{source_version}\n", encoding="utf-8")
+        managed = publish._asset_subset_managed_files(REPO_ROOT, agent)
+        before = {
+            relative: (target / relative).read_bytes()
+            for relative in managed
+        }
+        full_only_skill = adapter.skill_dir(target) / "gm-build" / "SKILL.md"
+        full_only_tool = target / "tools" / "publish.py"
+        assert full_only_skill.is_file()
+        assert full_only_tool.is_file()
+        assert not (target / publish.ASSET_SUBSET_STATE_TARGET).exists()
+
+        publish.publish_asset_subset(REPO_ROOT, target, agent=agent)
+
+        state = json.loads(
+            (target / publish.ASSET_SUBSET_STATE_TARGET).read_text(
+                encoding="utf-8"
+            )
+        )
+        assert state["agent"] == agent
+        assert state["managed_files"] == [
+            path.as_posix() for path in managed
+        ]
+        assert {
+            relative: (target / relative).read_bytes()
+            for relative in managed
+        } == before
+        assert full_only_skill.is_file()
+        assert full_only_tool.is_file()
+        assert full_only_skill.relative_to(target).as_posix() not in state[
+            "managed_files"
+        ]
+        assert full_only_tool.relative_to(target).as_posix() not in state[
+            "managed_files"
+        ]
+        assert version.read_text(encoding="utf-8") == f"{source_version}\n"
+
+    @pytest.mark.parametrize(
+        "surface",
+        ["skill", "runtime", "provider", "runtime_claim", "declared_tool"],
+    )
+    def test_full_install_adoption_rejects_changed_managed_file(
+        self, tmp_path, surface
+    ):
+        target = tmp_path / "target"
+        agent = publish.AGENT_CODEX
+        adapter = publish.get_agent_adapter(agent)
+        publish.publish_skills(REPO_ROOT, adapter.skill_dir(target), agent)
+        publish.publish_asset_runtime(REPO_ROOT, target)
+        publish.publish_directory(
+            REPO_ROOT / "tools", target / "tools", "tools/"
+        )
+        source_version = publish.read_source_version(REPO_ROOT)
+        assert source_version is not None
+        version = target / ".godotmaker" / "version"
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text(f"{source_version}\n", encoding="utf-8")
+        candidates = {
+            "skill": adapter.skill_dir(target) / "tileset" / "SKILL.md",
+            "runtime": (
+                target
+                / publish.ASSET_RUNTIME_TARGET
+                / "animation-planning.md"
+            ),
+            "provider": (
+                target
+                / publish.ASSET_RUNTIME_TARGET
+                / "references"
+                / "providers"
+                / "openai.md"
+            ),
+            "runtime_claim": (
+                target
+                / publish.ASSET_RUNTIME_TARGET
+                / "tools"
+                / "codex_image_claim.py"
+            ),
+            "declared_tool": (
+                target
+                / publish._asset_subset_tool_paths(REPO_ROOT)[0]
+            ),
+        }
+        changed = candidates[surface]
+        assert changed.is_file()
+        changed.write_bytes(changed.read_bytes() + b"\nuser-owned change\n")
+        before = {
+            path.relative_to(target): path.read_bytes()
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+
+        with pytest.raises(ValueError, match="unowned file") as exc_info:
+            publish.publish_asset_subset(REPO_ROOT, target, agent=agent)
+
+        assert changed.relative_to(target).as_posix() in str(exc_info.value)
+        after = {
+            path.relative_to(target): path.read_bytes()
+            for path in target.rglob("*")
+            if path.is_file()
+        }
+        assert after == before
+        assert not (target / publish.ASSET_SUBSET_STATE_TARGET).exists()
+
+    def test_first_install_rejects_identical_file_without_full_version(
+        self, tmp_path
+    ):
+        target = tmp_path / "target"
+        agent = publish.AGENT_CODEX
+        destination = (
+            publish.get_agent_adapter(agent).skill_dir(target)
+            / "tileset"
+            / "SKILL.md"
+        )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        source = REPO_ROOT / "skills" / "assets" / "tileset" / "SKILL.md"
+        shutil.copy2(source, destination)
+        before = destination.read_bytes()
+
+        with pytest.raises(ValueError, match="unowned file"):
+            publish.publish_asset_subset(REPO_ROOT, target, agent=agent)
+
+        assert destination.read_bytes() == before
+        assert not (target / publish.ASSET_SUBSET_STATE_TARGET).exists()
+
+    def test_existing_subset_state_prevents_implicit_full_install_adoption(
+        self, tmp_path
+    ):
+        target = tmp_path / "target"
+        agent = publish.AGENT_CODEX
+        destination = (
+            publish.get_agent_adapter(agent).skill_dir(target)
+            / "tileset"
+            / "SKILL.md"
+        )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        source = REPO_ROOT / "skills" / "assets" / "tileset" / "SKILL.md"
+        shutil.copy2(source, destination)
+        source_version = publish.read_source_version(REPO_ROOT)
+        assert source_version is not None
+        version = target / ".godotmaker" / "version"
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text(f"{source_version}\n", encoding="utf-8")
+        state = target / publish.ASSET_SUBSET_STATE_TARGET
+        state.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "subset": "assets",
+                "agent": agent,
+                "managed_files": [],
+            }),
+            encoding="utf-8",
+        )
+        before = destination.read_bytes()
+
+        with pytest.raises(ValueError, match="unowned file"):
+            publish.publish_asset_subset(REPO_ROOT, target, agent=agent)
+
+        assert destination.read_bytes() == before
+        installed_state = json.loads(state.read_text(encoding="utf-8"))
+        assert installed_state["managed_files"] == []
+
     def test_subset_rejects_project_internal_parent_symlink_before_writing(
         self, tmp_path, monkeypatch
     ):
@@ -888,6 +1064,51 @@ for family in {sorted(FAMILY_NAMES)!r}:
             f"Write {adapter.root_instruction_filename}\n"
         )
         assert not (skill / "claude.md.tmpl").exists()
+        assert rendered_relative in state["managed_files"]
+        assert source_relative not in state["managed_files"]
+
+    @pytest.mark.parametrize(
+        "agent",
+        [
+            publish.AGENT_CODEX,
+            publish.AGENT_OPENCODE,
+            publish.AGENT_PI,
+        ],
+    )
+    def test_subset_adopts_identical_rendered_template_from_full_install(
+        self, tmp_path, monkeypatch, agent
+    ):
+        repo, family, _ = self._make_synthetic_subset_repo(
+            tmp_path, monkeypatch
+        )
+        (repo / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+        target = tmp_path / "target"
+        adapter = publish.get_agent_adapter(agent)
+        publish.publish_skills(repo, adapter.skill_dir(target), agent)
+        publish.publish_asset_runtime(repo, target)
+        publish.publish_directory(repo / "tools", target / "tools", "tools/")
+        version = target / ".godotmaker" / "version"
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1.0.0\n", encoding="utf-8")
+        rendered = adapter.skill_dir(target) / family / "agents.md.tmpl"
+        expected = f"Write {adapter.root_instruction_filename}\n"
+        assert rendered.read_text(encoding="utf-8") == expected
+        assert not (target / publish.ASSET_SUBSET_STATE_TARGET).exists()
+
+        publish.publish_asset_subset(repo, target, agent=agent)
+
+        state = json.loads(
+            (target / publish.ASSET_SUBSET_STATE_TARGET).read_text(
+                encoding="utf-8"
+            )
+        )
+        rendered_relative = rendered.relative_to(target).as_posix()
+        source_relative = (
+            rendered.with_name("claude.md.tmpl")
+            .relative_to(target)
+            .as_posix()
+        )
+        assert rendered.read_text(encoding="utf-8") == expected
         assert rendered_relative in state["managed_files"]
         assert source_relative not in state["managed_files"]
 
