@@ -202,7 +202,7 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
     brief = request.get("brief")
     if not isinstance(asset_id, str) or not asset_id:
         raise UISourcePlanError("request.asset_id must be a non-empty string")
-    if provider not in {"native", "codex", "gemini", "openai"}:
+    if provider not in {"native", "codex", "gemini", "openai", "wan"}:
         raise UISourcePlanError("request.provider must be pinned")
     if not isinstance(references, list) or not references:
         raise UISourcePlanError("ui-kit requires a binding reference")

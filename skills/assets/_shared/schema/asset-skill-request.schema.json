@@ -64,7 +64,7 @@
     },
     "provider": {
       "type": "string",
-      "enum": ["native", "codex", "gemini", "openai"]
+      "enum": ["native", "codex", "gemini", "openai", "wan"]
     },
     "spec": {
       "type": "object"

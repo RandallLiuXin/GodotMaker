@@ -27,7 +27,7 @@ complete object list from the written brief. With references, every path must be
 a readable image, every declared role must be preserved, and the actual images
 must be supplied to the pinned provider. A path mentioned only in prompt text is
 not reference use. If the selected provider cannot attach a required image,
-return STOP. Never silently change `native`, `codex`, `gemini`, or `openai` to
+return STOP. Never silently change `native`, `codex`, `gemini`, `openai`, or `wan` to
 another provider. For Codex, call image generation with
 `referenced_image_paths` containing every readable local reference image.
 

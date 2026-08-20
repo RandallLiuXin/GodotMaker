@@ -44,6 +44,7 @@ fields before running the full pipeline.
 | `GOOGLE_API_KEY` or `GEMINI_API_KEY` | `vqa_model` or an asset model uses `gemini:<model>` | Gemini visual QA and image generation |
 | `OPENAI_API_KEY` | `vqa_model` or an asset model uses `openai:<model>` | OpenAI vision and image generation |
 | `XAI_API_KEY` | an asset image model uses `grok:<model>` | xAI image generation |
+| `DASHSCOPE_API_KEY`, `DASHSCOPE_REGION` | an asset image model uses `wan:<model>` | Alibaba Cloud Model Studio Wan 2.7 image generation |
 
 ### Windows PowerShell
 

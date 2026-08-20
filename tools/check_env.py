@@ -88,7 +88,7 @@ def split_model_selector(selector: str, default_provider: str) -> tuple[str, str
     if ":" in raw:
         provider, model = raw.split(":", 1)
         return provider.strip(), model.strip()
-    if raw in {"native", "codex", "gemini", "openai", "grok", "none"}:
+    if raw in {"native", "codex", "gemini", "openai", "grok", "wan", "none"}:
         return raw, raw
     if raw:
         return default_provider, raw
@@ -104,10 +104,14 @@ def image_model_from_config(config: dict[str, str]) -> str:
         return f"gemini:{model}"
     if provider == "grok":
         return f"grok:{config.get('grok_image_model') or 'grok-imagine-image'}"
+    if provider == "wan":
+        return f"wan:{config.get('wan_image_model') or 'wan2.7-image'}"
     if config.get("gemini_image_model"):
         return f"gemini:{config['gemini_image_model']}"
     if config.get("grok_image_model"):
         return f"grok:{config['grok_image_model']}"
+    if config.get("wan_image_model"):
+        return f"wan:{config['wan_image_model']}"
     return provider or "native"
 
 
@@ -489,6 +493,38 @@ def check_api_keys(
         r.ok("XAI_API_KEY set (optional)")
     else:
         r.warn("XAI_API_KEY not set (optional)")
+
+    if image_provider == "wan":
+        if not os.environ.get("DASHSCOPE_API_KEY"):
+            r.fail("DASHSCOPE_API_KEY not set but asset_image_model uses a Wan model")
+        else:
+            r.ok("DASHSCOPE_API_KEY set")
+        region = os.environ.get("DASHSCOPE_REGION", "").strip().lower()
+        if region not in {"beijing", "singapore"}:
+            r.fail("DASHSCOPE_REGION must be set to beijing or singapore for a Wan model")
+        else:
+            r.ok(f"DASHSCOPE_REGION set to {region}")
+        base_url = os.environ.get("DASHSCOPE_BASE_URL", "").strip()
+        suffixes = {
+            "beijing": ("dashscope.aliyuncs.com", ".cn-beijing.maas.aliyuncs.com"),
+            "singapore": ("dashscope-intl.aliyuncs.com", ".ap-southeast-1.maas.aliyuncs.com"),
+        }
+        if base_url and region in suffixes:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(base_url)
+            hostname = parsed.hostname or ""
+            public, workspace = suffixes[region]
+            if parsed.scheme != "https" or (hostname != public and not hostname.endswith(workspace)):
+                r.fail("DASHSCOPE_BASE_URL does not match DASHSCOPE_REGION for the Wan model")
+            else:
+                r.ok("DASHSCOPE_BASE_URL matches DASHSCOPE_REGION")
+        elif not base_url:
+            r.ok("DASHSCOPE_BASE_URL not set; using the official regional endpoint")
+    elif os.environ.get("DASHSCOPE_API_KEY"):
+        r.ok("DASHSCOPE_API_KEY set (optional)")
+    else:
+        r.warn("DASHSCOPE_API_KEY not set (optional)")
 
 
 

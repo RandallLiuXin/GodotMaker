@@ -19,7 +19,7 @@ Use an explicit visual style or attached style image. Examples are `hand-drawn c
 
 ## References and identity anchor
 
-External references are optional. Validate each path is a readable image, preserve its `canonical`, `style`, or `screen` role, resolve `res://` from the project root, and attach the actual images to the declared provider. Never replace an image attachment with a path in prompt text. Use only the declared `native`, `codex`, `gemini`, or `openai` provider; do not silently switch. Stop clearly when the selected provider cannot generate or attach the required images.
+External references are optional. Validate each path is a readable image, preserve its `canonical`, `style`, or `screen` role, resolve `res://` from the project root, and attach the actual images to the declared provider. Never replace an image attachment with a path in prompt text. Use only the declared `native`, `codex`, `gemini`, `openai`, or `wan` provider; do not silently switch. Stop clearly when the selected provider cannot generate or attach the required images.
 
 Choose one identity anchor:
 

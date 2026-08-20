@@ -34,10 +34,10 @@ generated catalogs. It produces and preserves the validated generic result;
 
 A prompt-only filename, silent omission, or provider substitution is not
 reference use. Use only the requested provider (`native`, `codex`, `gemini`,
-or `openai`). For Codex, call `image_gen` with the real
+`openai`, or `wan`). For Codex, call `image_gen` with the real
 `referenced_image_paths` when any are present. Record provider, model identity
 when exposed, coding model, reasoning, attachment paths/roles, and provider
-call identity. For `openai` and `gemini`, use `tools/asset_source_generate.py`
+call identity. For `openai`, `gemini`, and `wan`, use `tools/asset_source_generate.py`
 with `reference_inputs`; it records hashes and attachment provenance.
 
 ## Production Loop

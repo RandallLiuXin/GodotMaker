@@ -1,3 +1,4 @@
+import io
 import json
 import subprocess
 import sys
@@ -44,11 +45,11 @@ def png_bytes(size=(12, 10)):
     return buf.getvalue()
 
 
-def write_refs(tmp_path: Path, count: int) -> list[str]:
+def write_refs(tmp_path: Path, count: int, size=(12, 10)) -> list[str]:
     refs = []
     for index in range(count):
         path = tmp_path / f"ref-{index}.png"
-        write_png(path)
+        write_png(path, size=size)
         refs.append(str(path))
     return refs
 
@@ -131,6 +132,178 @@ def test_generate_source_supports_openai_selector(tmp_path, monkeypatch):
     assert result["cost_cents"] == 5
     assert (tmp_path / result["source_path"]).exists()
     assert (tmp_path / result["report_path"]).exists()
+
+
+class FakeHTTPResponse:
+    def __init__(self, body: bytes):
+        self.body = body
+
+    def read(self, *_args):
+        return self.body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+
+def wan_success_response(url="https://result.example/image.png"):
+    return {
+        "request_id": "wan-request-123",
+        "usage": {"image_count": 1, "size": "1365*768"},
+        "output": {
+            "choices": [{"message": {"content": [{"type": "image", "image": url}]}}]
+        },
+    }
+
+
+def test_wan_selector_defaults_to_wan_27_image(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    spec = source_generate.load_spec(make_spec(tmp_path, model="wan"))
+    monkeypatch.setattr(source_generate, "_generate_wan", lambda *_args: write_png(_args[1]) or {})
+
+    result = source_generate.generate_source(spec)
+
+    assert result["provider"] == "wan"
+    assert result["model"] == "wan2.7-image"
+
+
+def test_wan_posts_ordered_reference_bytes_and_downloads_png(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    refs = write_refs(tmp_path, 9, size=(240, 240))
+    spec = source_generate.load_spec(
+        make_spec(
+            tmp_path,
+            model="wan:wan2.7-image-pro",
+            size="2K",
+            aspect_ratio="16:9",
+            reference_inputs=[{"role": "style", "path": path} for path in refs],
+            report_path=".godotmaker/asset-generation/reports/coin_source.json",
+        )
+    )
+    seen = []
+    response_body = json.dumps(wan_success_response()).encode()
+
+    def fake_urlopen(request, timeout):
+        seen.append((request, timeout))
+        if isinstance(request, str):
+            return FakeHTTPResponse(png_bytes((64, 48)))
+        return FakeHTTPResponse(response_body)
+
+    monkeypatch.setattr(source_generate, "urlopen", fake_urlopen)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "not-a-real-key")
+    monkeypatch.setenv("DASHSCOPE_REGION", "beijing")
+
+    result = source_generate.generate_source(spec)
+
+    request = seen[0][0]
+    payload = json.loads(request.data.decode())
+    content = payload["input"]["messages"][0]["content"]
+    assert request.full_url.startswith("https://dashscope.aliyuncs.com/")
+    assert request.get_header("Authorization") == "Bearer not-a-real-key"
+    assert payload["model"] == "wan2.7-image-pro"
+    assert payload["parameters"] == {"size": "2730*1536", "n": 1, "watermark": False}
+    assert [entry["image"].split(",", 1)[1] for entry in content[:-1]] == [
+        source_generate.base64.b64encode(Path(path).read_bytes()).decode() for path in refs
+    ]
+    assert content[-1] == {"text": spec["prompt"]}
+    assert Path(result["source_path"]).is_file()
+    assert result["provider_payload"]["request_id"] == "wan-request-123"
+    assert result["provider_payload"]["usage"] == {"image_count": 1, "size": "1365*768"}
+    report = Path(result["report_path"]).read_text(encoding="utf-8")
+    assert "not-a-real-key" not in report
+    assert "data:image" not in report
+    assert "result.example" not in report
+
+
+def test_wan_text_generation_uses_singapore_business_space_endpoint(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    spec = source_generate.load_spec(make_spec(tmp_path, model="wan", aspect_ratio="9:16"))
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        calls.append(request)
+        if isinstance(request, str):
+            return FakeHTTPResponse(png_bytes())
+        return FakeHTTPResponse(json.dumps(wan_success_response()).encode())
+
+    monkeypatch.setattr(source_generate, "urlopen", fake_urlopen)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "test")
+    monkeypatch.setenv("DASHSCOPE_REGION", "singapore")
+    monkeypatch.setenv("DASHSCOPE_BASE_URL", "https://space.ap-southeast-1.maas.aliyuncs.com")
+
+    source_generate.generate_source(spec)
+
+    payload = json.loads(calls[0].data.decode())
+    assert calls[0].full_url.startswith("https://space.ap-southeast-1.maas.aliyuncs.com/")
+    assert payload["parameters"]["size"] == "768*1365"
+
+
+def test_wan_rejects_missing_key_and_region_base_mismatch(tmp_path, monkeypatch):
+    spec = source_generate.load_spec(make_spec(tmp_path, model="wan"))
+    monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)
+    monkeypatch.setenv("DASHSCOPE_REGION", "beijing")
+    with pytest.raises(source_generate.SourceGenerateError, match="DASHSCOPE_API_KEY"):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "test")
+    monkeypatch.setenv("DASHSCOPE_BASE_URL", "https://dashscope-intl.aliyuncs.com")
+    with pytest.raises(source_generate.SourceGenerateError, match="does not match"):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "message"),
+    [
+        (401, b'{"code":"InvalidApiKey"}', "authentication"),
+        (429, b'{"code":"QuotaExhausted"}', "quota exhausted"),
+        (500, b'{"code":"InternalError"}', "service error"),
+        (400, b'{"code":"DataInspectionFailed"}', "content moderation"),
+    ],
+)
+def test_wan_classifies_http_errors(tmp_path, monkeypatch, status, body, message):
+    spec = source_generate.load_spec(make_spec(tmp_path, model="wan"))
+
+    def fake_urlopen(request, timeout):
+        raise source_generate.HTTPError(request.full_url, status, "failed", {}, io.BytesIO(body))
+
+    monkeypatch.setattr(source_generate, "urlopen", fake_urlopen)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "test")
+    monkeypatch.setenv("DASHSCOPE_REGION", "beijing")
+
+    with pytest.raises(source_generate.SourceGenerateError, match=message):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+
+def test_wan_classifies_timeout_empty_choices_and_bad_download_url(tmp_path, monkeypatch):
+    spec = source_generate.load_spec(make_spec(tmp_path, model="wan"))
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "test")
+    monkeypatch.setenv("DASHSCOPE_REGION", "beijing")
+    monkeypatch.setattr(source_generate, "urlopen", lambda *_args, **_kwargs: (_ for _ in ()).throw(TimeoutError()))
+    with pytest.raises(source_generate.SourceGenerateError, match="timed out"):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+    monkeypatch.setattr(source_generate, "_wan_request", lambda *_args: {"output": {"choices": []}})
+    with pytest.raises(source_generate.SourceGenerateError, match="no image choices"):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+    monkeypatch.setattr(source_generate, "_wan_request", lambda *_args: wan_success_response("not-a-url"))
+    with pytest.raises(source_generate.SourceGenerateError, match="invalid image URL"):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+
+def test_wan_rejects_more_than_nine_or_transparent_references(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    spec = source_generate.load_spec(make_spec(tmp_path, model="wan", reference_images=write_refs(tmp_path, 10, size=(240, 240))))
+    with pytest.raises(source_generate.SourceGenerateError, match="at most 9"):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+    alpha = tmp_path / "alpha.png"
+    Image.new("RGBA", (240, 240), (1, 2, 3, 0)).save(alpha)
+    spec = source_generate.load_spec(make_spec(tmp_path, model="wan", reference_images=[str(alpha)]))
+    with pytest.raises(source_generate.SourceGenerateError, match="transparent"):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
 
 
 def test_openai_uses_all_reference_images_for_edit(tmp_path, monkeypatch):

@@ -8,7 +8,7 @@
     "asset_type": {"const": "tileset"},
     "asset_id": {"type": "string", "minLength": 1},
     "brief": {"type": "string", "minLength": 1},
-    "provider": {"enum": ["native", "codex", "gemini", "openai"]},
+    "provider": {"enum": ["native", "codex", "gemini", "openai", "wan"]},
     "references": {"type": "array"},
     "spec": {
       "type": "object",

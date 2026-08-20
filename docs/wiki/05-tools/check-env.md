@@ -25,7 +25,7 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 
 - Python 3.10 or later is running this script.
 - Core packages are installed: `requests`, `pillow`.
-- Provider packages are checked based on `.godotmaker/config.yaml`: `google-genai` for Gemini, `openai` for OpenAI, and `xai-sdk` for Grok image generation.
+- Provider packages are checked based on `.godotmaker/config.yaml`: `google-genai` for Gemini, `openai` for OpenAI, and `xai-sdk` for Grok image generation. Wan uses the standard-library HTTP client; its selected configuration also requires `DASHSCOPE_API_KEY` and an explicit `DASHSCOPE_REGION`.
 
 ### Node.js
 

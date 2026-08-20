@@ -24,7 +24,7 @@ from asset_output_paths import AssetOutputPathError, safe_identifier
 ASSET_TYPES = set(FAMILY_NAMES)
 
 REFERENCE_ROLES = {"canonical", "style", "screen"}
-PROVIDERS = {"native", "codex", "gemini", "openai"}
+PROVIDERS = {"native", "codex", "gemini", "openai", "wan"}
 OUTPUT_ROLES = {"runtime", "reference"}
 SOURCE_LAYOUTS = {
     "single",

@@ -6,9 +6,15 @@ import base64
 import hashlib
 import io
 import json
+import math
+import os
 import sys
+import tempfile
 from contextlib import ExitStack
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 from asset_image_finalize import ImageFinalizeError, finalize_image_asset
 
@@ -62,6 +68,22 @@ ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS))
 OPENAI_MODEL = "gpt-image-2"
 OPENAI_MAX_REFERENCE_IMAGES = 16
 OPENAI_COSTS = {"1:1": 5, "portrait": 7, "landscape": 7}
+WAN_MODEL = "wan2.7-image"
+WAN_PRO_MODEL = "wan2.7-image-pro"
+WAN_MAX_REFERENCE_IMAGES = 9
+WAN_TIMEOUT_SECONDS = 90
+WAN_GENERATION_PATH = "/api/v1/services/aigc/multimodal-generation/generation"
+WAN_REGIONS = {
+    "beijing": {
+        "base_url": "https://dashscope.aliyuncs.com",
+        "workspace_suffix": ".cn-beijing.maas.aliyuncs.com",
+    },
+    "singapore": {
+        "base_url": "https://dashscope-intl.aliyuncs.com",
+        "workspace_suffix": ".ap-southeast-1.maas.aliyuncs.com",
+    },
+}
+WAN_SIZE_PIXELS = {"512": 1024, "1K": 1024, "2K": 2048, "4K": 4096}
 REFERENCE_ROLES = {"canonical", "style", "screen"}
 
 
@@ -78,11 +100,12 @@ def _split_model_selector(selector: str, *, default_provider: str,
         model = model.strip()
         if provider and model:
             return provider, model
-    if raw in {"gemini", "openai", "grok", "native", "codex", "none"}:
+    if raw in {"gemini", "openai", "grok", "wan", "native", "codex", "none"}:
         defaults = {
             "gemini": GEMINI_MODEL,
             "openai": OPENAI_MODEL,
             "grok": GROK_MODEL,
+            "wan": WAN_MODEL,
             "native": "native",
             "codex": "codex",
             "none": "none",
@@ -344,6 +367,264 @@ def _generate_openai(spec, output: Path, model_name: str):
     _save_openai_b64(response, output)
 
 
+def _wan_ratio(aspect_ratio: str) -> float:
+    try:
+        left, right = aspect_ratio.split(":", 1)
+        width_ratio = float(left)
+        height_ratio = float(right)
+    except ValueError as exc:
+        raise SourceGenerateError(f"Invalid Wan aspect ratio: {aspect_ratio}") from exc
+    if width_ratio <= 0 or height_ratio <= 0:
+        raise SourceGenerateError(f"Invalid Wan aspect ratio: {aspect_ratio}")
+    ratio = width_ratio / height_ratio
+    if not 1 / 8 <= ratio <= 8:
+        raise SourceGenerateError("Wan aspect ratio must be between 1:8 and 8:1")
+    return ratio
+
+
+def _wan_size(size: str, aspect_ratio: str, model_name: str, has_references: bool) -> str:
+    """Map the shared size/aspect contract to Wan's explicit WIDTH*HEIGHT form."""
+    if size not in WAN_SIZE_PIXELS:
+        raise SourceGenerateError("Wan supports size 512, 1K, 2K, or 4K")
+    if model_name not in {WAN_MODEL, WAN_PRO_MODEL}:
+        raise SourceGenerateError(
+            f"Unsupported Wan model {model_name!r}. Use {WAN_MODEL} or {WAN_PRO_MODEL}"
+        )
+    if size == "4K" and model_name != WAN_PRO_MODEL:
+        raise SourceGenerateError("Wan 2.7 Image supports at most 2K; 4K requires wan2.7-image-pro")
+    if size == "4K" and has_references:
+        raise SourceGenerateError("Wan image editing supports at most 2K; use 1K or 2K references")
+
+    ratio = _wan_ratio(aspect_ratio)
+    target_side = WAN_SIZE_PIXELS[size]
+    target_pixels = target_side * target_side
+    height = round(math.sqrt(target_pixels / ratio))
+    width = round(height * ratio)
+    max_side = 4096 if not has_references and model_name == WAN_PRO_MODEL else 2048
+    max_pixels = max_side * max_side
+    # Rounding an explicit aspect can exceed the documented pixel cap by a few
+    # pixels. Keep the closest bounded integer size instead of rejecting a
+    # nominally valid 1K/2K request.
+    if width * height > max_pixels:
+        width = max_pixels // height
+    if width * height < 768 * 768 or width * height > max_pixels:
+        operation = "image editing" if has_references else "image generation"
+        raise SourceGenerateError(
+            f"Wan {operation} size {size} at {aspect_ratio} exceeds the model pixel limit; "
+            "choose a smaller size or a less extreme aspect ratio"
+        )
+    return f"{width}*{height}"
+
+
+def _validate_wan_reference(path: Path) -> None:
+    """Fail closed for Wan's documented image-input limits, especially PNG alpha."""
+    if path.stat().st_size > 20 * 1024 * 1024:
+        raise SourceGenerateError(f"Wan reference exceeds 20MB: {path}")
+    try:
+        from PIL import Image
+
+        with Image.open(path) as image:
+            image.load()
+            width, height = image.size
+            ratio = width / height
+            has_alpha = "A" in image.getbands() or "transparency" in image.info
+            fmt = (image.format or path.suffix.lstrip(".")).upper()
+    except Exception as exc:
+        raise SourceGenerateError(f"Wan reference is not readable: {path}") from exc
+    if fmt not in {"JPEG", "JPG", "PNG", "BMP", "WEBP"}:
+        raise SourceGenerateError(f"Wan reference format is unsupported: {path}")
+    if has_alpha:
+        raise SourceGenerateError(
+            "Wan 2.7 does not accept transparent reference images; provide an opaque reference instead: "
+            f"{path}"
+        )
+    if not (240 <= width <= 8000 and 240 <= height <= 8000):
+        raise SourceGenerateError(f"Wan reference dimensions must be 240..8000px: {path}")
+    if not 1 / 8 <= ratio <= 8:
+        raise SourceGenerateError(f"Wan reference aspect ratio must be between 1:8 and 8:1: {path}")
+
+
+def _wan_endpoint() -> tuple[str, str]:
+    """Return a region-safe endpoint without guessing a key's home region."""
+    region = os.environ.get("DASHSCOPE_REGION", "").strip().lower()
+    if region not in WAN_REGIONS:
+        raise SourceGenerateError(
+            "DASHSCOPE_REGION must be explicitly set to 'beijing' or 'singapore' for Wan"
+        )
+    configured = os.environ.get("DASHSCOPE_BASE_URL", "").strip()
+    base_url = configured or WAN_REGIONS[region]["base_url"]
+    parsed = urlparse(base_url)
+    hostname = parsed.hostname or ""
+    if parsed.scheme != "https" or not hostname:
+        raise SourceGenerateError("DASHSCOPE_BASE_URL must be an HTTPS DashScope base URL")
+    public_host = urlparse(WAN_REGIONS[region]["base_url"]).hostname
+    workspace_suffix = WAN_REGIONS[region]["workspace_suffix"]
+    if hostname != public_host and not hostname.endswith(workspace_suffix):
+        raise SourceGenerateError(
+            f"DASHSCOPE_BASE_URL does not match DASHSCOPE_REGION={region}; "
+            "use the region public endpoint or its business-space hostname"
+        )
+    normalized = base_url.rstrip("/")
+    if normalized.endswith(WAN_GENERATION_PATH):
+        return normalized, region
+    if parsed.path not in {"", "/"}:
+        raise SourceGenerateError("DASHSCOPE_BASE_URL must be a base URL, not an unrelated API path")
+    return normalized + WAN_GENERATION_PATH, region
+
+
+def _wan_error(prefix: str, *, status: int | None = None, body: str = "") -> SourceGenerateError:
+    lowered = body.lower()
+    code = ""
+    try:
+        parsed = json.loads(body)
+        if isinstance(parsed, dict):
+            code = str(parsed.get("code") or "")
+            message = str(parsed.get("message") or "")
+            lowered += " " + code.lower() + " " + message.lower()
+    except ValueError:
+        pass
+    suffix = f" (HTTP {status})" if status is not None else ""
+    if status in {401, 403}:
+        return SourceGenerateError(
+            "Wan authentication failed" + suffix + "; verify DASHSCOPE_API_KEY matches "
+            "DASHSCOPE_REGION and DASHSCOPE_BASE_URL"
+        )
+    if status == 429:
+        label = "quota exhausted" if "quota" in lowered else "rate limited"
+        return SourceGenerateError(f"Wan request {label}{suffix}; retry later or check account quota")
+    if status is not None and 500 <= status <= 599:
+        return SourceGenerateError(f"Wan service error{suffix}; retry later")
+    if any(token in lowered for token in ("datainspection", "content", "moderation", "safety")):
+        return SourceGenerateError("Wan content moderation rejected the request" + suffix)
+    if code:
+        return SourceGenerateError(f"Wan API request failed ({code})" + suffix)
+    return SourceGenerateError(prefix + suffix)
+
+
+def _wan_request(endpoint: str, payload: dict[str, object], api_key: str) -> dict[str, object]:
+    request = Request(
+        endpoint,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=WAN_TIMEOUT_SECONDS) as response:
+            raw = response.read()
+    except HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")[:4096]
+        raise _wan_error("Wan API request failed", status=exc.code, body=body) from exc
+    except TimeoutError as exc:
+        raise SourceGenerateError("Wan API request timed out") from exc
+    except URLError as exc:
+        if isinstance(exc.reason, TimeoutError) or "timed out" in str(exc.reason).lower():
+            raise SourceGenerateError("Wan API request timed out") from exc
+        raise SourceGenerateError("Wan API request could not reach DashScope") from exc
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise SourceGenerateError("Wan API returned invalid JSON") from exc
+    if not isinstance(data, dict):
+        raise SourceGenerateError("Wan API returned an invalid response object")
+    if data.get("code") or data.get("message") and not data.get("output"):
+        raise _wan_error("Wan API request failed", body=json.dumps(data, ensure_ascii=False))
+    return data
+
+
+def _download_wan_png(url: str, output: Path) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+        raise SourceGenerateError("Wan returned an invalid image URL")
+    try:
+        with urlopen(url, timeout=WAN_TIMEOUT_SECONDS) as response:
+            raw = response.read(50 * 1024 * 1024 + 1)
+    except HTTPError as exc:
+        raise SourceGenerateError(f"Wan result download failed (HTTP {exc.code})") from exc
+    except TimeoutError as exc:
+        raise SourceGenerateError("Wan result download timed out") from exc
+    except URLError as exc:
+        if isinstance(exc.reason, TimeoutError) or "timed out" in str(exc.reason).lower():
+            raise SourceGenerateError("Wan result download timed out") from exc
+        raise SourceGenerateError("Wan result download could not be reached") from exc
+    if len(raw) > 50 * 1024 * 1024:
+        raise SourceGenerateError("Wan result download exceeded 50MB")
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(raw)) as image:
+            image.load()
+            if image.format != "PNG":
+                raise SourceGenerateError("Wan result download was not a PNG image")
+    except SourceGenerateError:
+        raise
+    except Exception as exc:
+        raise SourceGenerateError("Wan result download was not a valid PNG image") from exc
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(delete=False, dir=output.parent, suffix=".png") as handle:
+        temporary = Path(handle.name)
+        handle.write(raw)
+    try:
+        temporary.replace(output)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _generate_wan(spec, output: Path, model_name: str) -> dict[str, object]:
+    references = spec["reference_images"]
+    if len(references) > WAN_MAX_REFERENCE_IMAGES:
+        raise SourceGenerateError(
+            f"Wan image editing supports at most {WAN_MAX_REFERENCE_IMAGES} reference images"
+        )
+    for path in references:
+        _validate_wan_reference(path)
+    api_key = os.environ.get("DASHSCOPE_API_KEY", "").strip()
+    if not api_key:
+        raise SourceGenerateError("DASHSCOPE_API_KEY is not set for the selected Wan model")
+    endpoint, region = _wan_endpoint()
+    api_size = _wan_size(spec["size"], spec["aspect_ratio"], model_name, bool(references))
+    content = [{"image": _image_data_uri(path)} for path in references]
+    content.append({"text": spec["prompt"]})
+    parameters: dict[str, object] = {"size": api_size, "n": 1, "watermark": False}
+    if spec.get("seed") is not None:
+        parameters["seed"] = spec["seed"]
+    payload = {
+        "model": model_name,
+        "input": {"messages": [{"role": "user", "content": content}]},
+        "parameters": parameters,
+    }
+    response = _wan_request(endpoint, payload, api_key)
+    output_data = response.get("output")
+    choices = output_data.get("choices") if isinstance(output_data, dict) else None
+    if not isinstance(choices, list) or not choices:
+        raise SourceGenerateError("Wan API returned no image choices")
+    first_choice = choices[0]
+    if not isinstance(first_choice, dict):
+        raise SourceGenerateError("Wan API returned an invalid image choice")
+    message = first_choice.get("message")
+    items = message.get("content") if isinstance(message, dict) else None
+    image_url = next(
+        (item.get("image") for item in items if isinstance(item, dict) and isinstance(item.get("image"), str)),
+        None,
+    ) if isinstance(items, list) else None
+    if not image_url:
+        raise SourceGenerateError("Wan API returned an image choice without a valid URL")
+    _download_wan_png(image_url, output)
+    usage = response.get("usage") if isinstance(response.get("usage"), dict) else {}
+    return {
+        "operation": "multimodal-generation.edit" if references else "multimodal-generation.generate",
+        "reference_input_count": len(references),
+        "references_attached": bool(references),
+        "request_id": response.get("request_id"),
+        "usage": usage,
+        "requested_size": api_size,
+        "region": region,
+    }
+
+
 def load_spec(path: Path) -> dict:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -359,6 +640,9 @@ def load_spec(path: Path) -> dict:
     selector = _required_string(data, "model")
     size = _optional_string(data, "size", "1K")
     aspect_ratio = _optional_string(data, "aspect_ratio", "1:1")
+    seed = data.get("seed")
+    if seed is not None and (type(seed) is not int or not 0 <= seed <= 2_147_483_647):
+        raise SourceGenerateError("Spec field 'seed' must be an integer between 0 and 2147483647")
     reference_inputs = _reference_inputs(data)
     reference_images = [item["path"] for item in reference_inputs]
     report_path = data.get("report_path")
@@ -373,6 +657,7 @@ def load_spec(path: Path) -> dict:
         "source_path": source_path,
         "size": size,
         "aspect_ratio": aspect_ratio,
+        "seed": seed,
         "reference_images": reference_images,
         "reference_inputs": reference_inputs,
         "report_path": Path(report_path) if report_path else None,
@@ -388,7 +673,7 @@ def generate_source(spec: dict) -> dict[str, object]:
     )
     if backend in {"native", "codex"}:
         raise SourceGenerateError(f"Model selector {backend!r} is runtime-native")
-    if backend not in {"gemini", "openai", "grok"}:
+    if backend not in {"gemini", "openai", "grok", "wan"}:
         raise SourceGenerateError(
             f"Invalid API-backed image model selector: {selector!r}"
         )
@@ -402,6 +687,11 @@ def generate_source(spec: dict) -> dict[str, object]:
         if size not in GROK_SIZES:
             raise SourceGenerateError(f"Grok does not support size {size}. Use: {', '.join(GROK_SIZES)}")
         cost = GROK_COST
+    elif backend == "wan":
+        # Wan pricing changes by region/model; retain provider usage instead of
+        # fabricating a local cents estimate.
+        _wan_size(size, spec["aspect_ratio"], model_name, bool(spec["reference_images"]))
+        cost = 0
     else:
         _, cost = _openai_size(size, spec["aspect_ratio"])
 
@@ -415,10 +705,13 @@ def generate_source(spec: dict) -> dict[str, object]:
         label += " (image-to-image)"
     print(f"Generating source image ({label})...", file=sys.stderr)
 
+    wan_payload: dict[str, object] | None = None
     if backend == "gemini":
         _generate_gemini(spec, output, model_name)
     elif backend == "grok":
         _generate_grok(spec, output, model_name)
+    elif backend == "wan":
+        wan_payload = _generate_wan(spec, output, model_name)
     else:
         _generate_openai(spec, output, model_name)
 
@@ -432,7 +725,7 @@ def generate_source(spec: dict) -> dict[str, object]:
         "prompt_path": _json_path(spec["prompt_path"]),
         "reference_images": [_json_path(path) for path in spec["reference_images"]],
         "reference_inputs": _reference_provenance(spec["reference_inputs"]),
-        "provider_payload": {
+        "provider_payload": wan_payload or {
             "operation": (
                 "images.edit" if backend == "openai" and spec["reference_images"]
                 else "images.generate" if backend == "openai"

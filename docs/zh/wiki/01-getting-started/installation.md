@@ -47,6 +47,7 @@ GodotMaker 可以根据 `.godotmaker/config.yaml` 使用 runtime 原生图片和
 | `GOOGLE_API_KEY` 或 `GEMINI_API_KEY` | `vqa_model` 或素材模型使用 `gemini:<model>` | Gemini 视觉 QA 和图片生成 |
 | `OPENAI_API_KEY` | `vqa_model` 或素材模型使用 `openai:<model>` | OpenAI 视觉理解和图片生成 |
 | `XAI_API_KEY` | 素材图片模型使用 `grok:<model>` | xAI 图片生成 |
+| `DASHSCOPE_API_KEY`、`DASHSCOPE_REGION` | 素材图片模型使用 `wan:<model>` | 阿里云百炼 Wan 2.7 图片生成 |
 
 ### Windows PowerShell
 

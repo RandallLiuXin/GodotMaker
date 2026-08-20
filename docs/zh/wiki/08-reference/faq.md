@@ -10,7 +10,7 @@
 
 ### 我需要付费 API key 吗？
 
-只有当项目配置选择 API 后端时才需要对应 key。runtime-native 图片生成或 VQA 取决于你选择的 Agent runtime；OpenCode 项目应配置为 `codex` 或 API 后端图片/VQA provider。`gemini:<model>` 需要 `GOOGLE_API_KEY` 或 `GEMINI_API_KEY`，`openai:<model>` 需要 `OPENAI_API_KEY`，`grok:<model>` 需要 `XAI_API_KEY`。
+只有当项目配置选择 API 后端时才需要对应 key。runtime-native 图片生成或 VQA 取决于你选择的 Agent runtime；OpenCode 项目应配置为 `codex` 或 API 后端图片/VQA provider。`gemini:<model>` 需要 `GOOGLE_API_KEY` 或 `GEMINI_API_KEY`，`openai:<model>` 需要 `OPENAI_API_KEY`，`grok:<model>` 需要 `XAI_API_KEY`，`wan:<model>` 需要 `DASHSCOPE_API_KEY` 与 `DASHSCOPE_REGION`。
 
 Claude Code 本身需要 Anthropic 账号并开通 API 访问（或已开通 Claude Code 的 Claude Pro / Team 订阅）。
 
@@ -95,7 +95,7 @@ AI 代码生成不是确定性的，游戏系统之间复杂的交互可能产�
 
 ### 我的游戏数据去哪了？
 
-所有游戏文件都在你自己的机器上。AI 调用会发送给当前智能体运行时使用的模型服务商。API 后端图片生成会发送给 `asset_image_model` 选择的提供方（Gemini、OpenAI 或 xAI）；`native` 图片生成由当前运行时处理，`codex` 图片生成由 Codex 处理。GodotMaker 没有自己的服务器，因此不会把游戏内容存储到 GodotMaker 服务器上。
+所有游戏文件都在你自己的机器上。AI 调用会发送给当前智能体运行时使用的模型服务商。API 后端图片生成会发送给 `asset_image_model` 选择的提供方（Gemini、OpenAI、xAI 或阿里云百炼 Wan）；`native` 图片生成由当前运行时处理，`codex` 图片生成由 Codex 处理。GodotMaker 没有自己的服务器，因此不会把游戏内容存储到 GodotMaker 服务器上。
 
 ### 我的游戏项目属于我吗？
 

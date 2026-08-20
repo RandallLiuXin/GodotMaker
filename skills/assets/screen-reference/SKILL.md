@@ -34,7 +34,7 @@ present and non-empty, every `{ role, path }` is a required visual input:
    or the selected provider cannot attach it.
 
 Use the configured provider named by the request or production brief. `native`,
-`codex`, `gemini`, and `openai` are binding selections: execute that documented
+`codex`, `gemini`, `openai`, and `wan` are binding selections: execute that documented
 path or STOP. Never silently switch providers. For `codex`, non-empty
 references require the `image_gen` call's `referenced_image_paths` argument.
 
@@ -59,7 +59,7 @@ For every accepted image, retain these deterministic paths:
 4. final reference: `references/<asset_id>.png`;
 5. finalize report: `.godotmaker/asset-generation/reports/<asset_id>_finalize.json`.
 
-For `openai` and `gemini`, write a source-generation spec using
+For `openai`, `gemini`, and `wan`, write a source-generation spec using
 `reference_inputs` for role-preserving references, then run:
 
 ```bash

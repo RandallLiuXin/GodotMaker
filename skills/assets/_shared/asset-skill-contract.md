@@ -77,7 +77,7 @@ not independently triggerable.
 | `asset_id` | yes | string | Stable logical id, `^[a-z0-9][a-z0-9_-]*$` |
 | `brief` | yes | string | Non-empty natural-language description of the asset to produce |
 | `references` | no | array | Visible reference images; each `{ role, path }` |
-| `provider` | no | string | Image provider hint: `native`, `codex`, `gemini`, `openai` |
+| `provider` | no | string | Image provider hint: `native`, `codex`, `gemini`, `openai`, `wan` |
 | `spec` | no | object | Family-specific structured parameters; inner shape owned by each family skill |
 
 `references[].role` is one of `canonical`, `style`, `screen`. `references[].path`
