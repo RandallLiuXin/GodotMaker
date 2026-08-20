@@ -17,6 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- Added Alibaba Cloud Model Studio Wan 2.7 as an API-backed `/gm-asset` image provider with regional endpoint validation, ordered reference-image editing, and sanitized provenance reports.
+
 - Added whole-sheet 8-connected-component recovery and fixed-grid warning fallback for animated asset sheets (#169).
 
 - Added `tools/asset_family_registry.py` so every public Asset Skill request resolves to one authoritative output contract.

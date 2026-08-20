@@ -22,3 +22,4 @@ GodotMaker 有两层相互独立的 provider：
 - [gemini](image-vqa/gemini.md)
 - [openai](image-vqa/openai.md)
 - [grok](image-vqa/grok.md)
+- [wan](image-vqa/wan.md)
