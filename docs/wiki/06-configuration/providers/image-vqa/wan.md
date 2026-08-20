@@ -12,7 +12,8 @@ asset_image_model: wan
 Set `DASHSCOPE_API_KEY` and `DASHSCOPE_REGION` to `beijing` or `singapore`.
 The key and endpoint are regional and cannot be mixed. `DASHSCOPE_BASE_URL` is
 optional; if set, it must be the matching public DashScope endpoint or the
-matching business-space endpoint. `python tools/check_env.py` checks this
+matching business-space endpoint, either as the host or with its `/api/v1`
+base path (a trailing slash is accepted). `python tools/check_env.py` checks this
 configuration.
 
 Wan supports text-to-image and 0–9 ordered references. The pipeline sends real

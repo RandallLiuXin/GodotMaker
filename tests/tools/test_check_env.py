@@ -335,7 +335,7 @@ class TestCheckFunctions:
         {
             "DASHSCOPE_API_KEY": "test-key",
             "DASHSCOPE_REGION": "singapore",
-            "DASHSCOPE_BASE_URL": "https://space.ap-southeast-1.maas.aliyuncs.com",
+            "DASHSCOPE_BASE_URL": "https://space.ap-southeast-1.maas.aliyuncs.com/api/v1/",
         },
         clear=True,
     )
@@ -364,6 +364,23 @@ class TestCheckFunctions:
         check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
 
         assert any("DASHSCOPE_BASE_URL" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "beijing",
+            "DASHSCOPE_BASE_URL": "https://dashscope.aliyuncs.com/not-api-v1",
+        },
+        clear=True,
+    )
+    def test_wan_preflight_rejects_the_same_invalid_base_url_path_as_runtime(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("may be the regional host" in failure for failure in r.failed)
 
     @patch.dict(os.environ, {}, clear=True)
     def test_native_image_model_still_requires_configured_gemini_vqa_key(self):

@@ -240,6 +240,81 @@ def test_wan_text_generation_uses_singapore_business_space_endpoint(tmp_path, mo
     assert payload["parameters"]["size"] == "768*1365"
 
 
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://dashscope.aliyuncs.com/api/v1",
+        "https://dashscope.aliyuncs.com/api/v1/",
+        "https://ws-abc.cn-beijing.maas.aliyuncs.com/api/v1/",
+        "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+    ],
+)
+def test_wan_endpoint_accepts_official_base_url_forms(base_url):
+    assert source_generate.wan_endpoint_from_config("beijing", base_url) == (
+        "https://" + base_url.split("//", 1)[1].split("/", 1)[0]
+        + "/api/v1/services/aigc/multimodal-generation/generation"
+    )
+
+
+def test_wan_allows_fully_opaque_rgba_reference_and_reports_bmp_mime(tmp_path):
+    rgba = tmp_path / "opaque-rgba.png"
+    Image.new("RGBA", (240, 240), (1, 2, 3, 255)).save(rgba)
+    assert source_generate._validate_wan_reference(rgba) > 0
+
+    bmp = tmp_path / "reference.bmp"
+    Image.new("RGB", (240, 240), (1, 2, 3)).save(bmp)
+    assert source_generate._image_data_uri(bmp).startswith("data:image/bmp;base64,")
+    assert source_generate._reference_provenance([{"role": "style", "path": bmp}])[0]["mime_type"] == "image/bmp"
+
+
+def test_wan_rejects_unsupported_512_and_oversized_reference_payload(tmp_path, monkeypatch):
+    with pytest.raises(source_generate.SourceGenerateError, match="512 is unsupported"):
+        source_generate._wan_size("512", "1:1", "wan2.7-image", False)
+
+    refs = write_refs(tmp_path, 2, size=(240, 240))
+    spec = source_generate.load_spec(make_spec(tmp_path, model="wan", reference_images=refs))
+    monkeypatch.setattr(source_generate, "WAN_MAX_REFERENCE_PAYLOAD_BYTES", 1)
+    with pytest.raises(source_generate.SourceGenerateError, match="payload exceeds"):
+        source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+
+def test_wan_keeps_invalid_parameter_distinct_from_content_moderation():
+    error = source_generate._wan_error(
+        "Wan API request failed",
+        body=json.dumps({
+            "code": "InvalidParameter",
+            "message": "input.messages[0].content[0].image is invalid",
+        }),
+    )
+
+    assert "InvalidParameter" in str(error)
+    assert "moderation" not in str(error)
+
+
+def test_wan_download_rejects_non_png_http_error_and_oversized_body(tmp_path, monkeypatch):
+    output = tmp_path / "output.png"
+    monkeypatch.setattr(source_generate, "urlopen", lambda *_args, **_kwargs: FakeHTTPResponse(b"not a png"))
+    with pytest.raises(source_generate.SourceGenerateError, match="valid PNG"):
+        source_generate._download_wan_png("https://result.example/image.png", output)
+
+    def http_error(request, timeout):
+        raise source_generate.HTTPError(str(request), 502, "bad gateway", {}, io.BytesIO())
+
+    monkeypatch.setattr(source_generate, "urlopen", http_error)
+    with pytest.raises(source_generate.SourceGenerateError, match=r"download failed \(HTTP 502\)"):
+        source_generate._download_wan_png("https://result.example/image.png", output)
+
+    monkeypatch.setattr(source_generate, "WAN_MAX_DOWNLOAD_BYTES", 10)
+    monkeypatch.setattr(source_generate, "urlopen", lambda *_args, **_kwargs: FakeHTTPResponse(b"x" * 11))
+    with pytest.raises(source_generate.SourceGenerateError, match="exceeded"):
+        source_generate._download_wan_png("https://result.example/image.png", output)
+
+
+def test_wan_download_requires_https(tmp_path):
+    with pytest.raises(source_generate.SourceGenerateError, match="invalid image URL"):
+        source_generate._download_wan_png("http://result.example/image.png", tmp_path / "output.png")
+
+
 def test_wan_rejects_missing_key_and_region_base_mismatch(tmp_path, monkeypatch):
     spec = source_generate.load_spec(make_spec(tmp_path, model="wan"))
     monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)

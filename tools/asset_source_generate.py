@@ -73,6 +73,12 @@ WAN_PRO_MODEL = "wan2.7-image-pro"
 WAN_MAX_REFERENCE_IMAGES = 9
 WAN_TIMEOUT_SECONDS = 90
 WAN_GENERATION_PATH = "/api/v1/services/aigc/multimodal-generation/generation"
+WAN_API_BASE_PATH = "/api/v1"
+WAN_MAX_REFERENCE_FILE_BYTES = 20 * 1024 * 1024
+# The API's 20MB per-image limit applies before Base64 encoding. Keep the
+# aggregate POST body bounded as well, because all references are inlined.
+WAN_MAX_REFERENCE_PAYLOAD_BYTES = 32 * 1024 * 1024
+WAN_MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024
 WAN_REGIONS = {
     "beijing": {
         "base_url": "https://dashscope.aliyuncs.com",
@@ -83,7 +89,7 @@ WAN_REGIONS = {
         "workspace_suffix": ".ap-southeast-1.maas.aliyuncs.com",
     },
 }
-WAN_SIZE_PIXELS = {"512": 1024, "1K": 1024, "2K": 2048, "4K": 4096}
+WAN_SIZE_PIXELS = {"1K": 1024, "2K": 2048, "4K": 4096}
 REFERENCE_ROLES = {"canonical", "style", "screen"}
 
 
@@ -121,6 +127,7 @@ def _mime_for_image(path: Path) -> str:
     return {
         ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
         ".png": "image/png", ".webp": "image/webp",
+        ".bmp": "image/bmp",
     }.get(path.suffix.lower(), "image/png")
 
 
@@ -385,7 +392,7 @@ def _wan_ratio(aspect_ratio: str) -> float:
 def _wan_size(size: str, aspect_ratio: str, model_name: str, has_references: bool) -> str:
     """Map the shared size/aspect contract to Wan's explicit WIDTH*HEIGHT form."""
     if size not in WAN_SIZE_PIXELS:
-        raise SourceGenerateError("Wan supports size 512, 1K, 2K, or 4K")
+        raise SourceGenerateError("Wan supports size 1K, 2K, or 4K; size 512 is unsupported")
     if model_name not in {WAN_MODEL, WAN_PRO_MODEL}:
         raise SourceGenerateError(
             f"Unsupported Wan model {model_name!r}. Use {WAN_MODEL} or {WAN_PRO_MODEL}"
@@ -416,9 +423,10 @@ def _wan_size(size: str, aspect_ratio: str, model_name: str, has_references: boo
     return f"{width}*{height}"
 
 
-def _validate_wan_reference(path: Path) -> None:
+def _validate_wan_reference(path: Path) -> int:
     """Fail closed for Wan's documented image-input limits, especially PNG alpha."""
-    if path.stat().st_size > 20 * 1024 * 1024:
+    file_bytes = path.stat().st_size
+    if file_bytes > WAN_MAX_REFERENCE_FILE_BYTES:
         raise SourceGenerateError(f"Wan reference exceeds 20MB: {path}")
     try:
         from PIL import Image
@@ -427,13 +435,24 @@ def _validate_wan_reference(path: Path) -> None:
             image.load()
             width, height = image.size
             ratio = width / height
-            has_alpha = "A" in image.getbands() or "transparency" in image.info
+            if "A" in image.getbands():
+                alpha_min, _alpha_max = image.getchannel("A").getextrema()
+                has_transparency = alpha_min < 255
+            elif "transparency" in image.info:
+                rgba = image.convert("RGBA")
+                try:
+                    alpha_min, _alpha_max = rgba.getchannel("A").getextrema()
+                    has_transparency = alpha_min < 255
+                finally:
+                    rgba.close()
+            else:
+                has_transparency = False
             fmt = (image.format or path.suffix.lstrip(".")).upper()
     except Exception as exc:
         raise SourceGenerateError(f"Wan reference is not readable: {path}") from exc
     if fmt not in {"JPEG", "JPG", "PNG", "BMP", "WEBP"}:
         raise SourceGenerateError(f"Wan reference format is unsupported: {path}")
-    if has_alpha:
+    if has_transparency:
         raise SourceGenerateError(
             "Wan 2.7 does not accept transparent reference images; provide an opaque reference instead: "
             f"{path}"
@@ -442,34 +461,43 @@ def _validate_wan_reference(path: Path) -> None:
         raise SourceGenerateError(f"Wan reference dimensions must be 240..8000px: {path}")
     if not 1 / 8 <= ratio <= 8:
         raise SourceGenerateError(f"Wan reference aspect ratio must be between 1:8 and 8:1: {path}")
+    return 4 * ((file_bytes + 2) // 3)
+
+
+def wan_endpoint_from_config(region: str, base_url: str = "") -> str:
+    """Validate a regional DashScope base URL and return the generation endpoint."""
+    normalized_region = region.strip().lower()
+    if normalized_region not in WAN_REGIONS:
+        raise SourceGenerateError(
+            "DASHSCOPE_REGION must be explicitly set to 'beijing' or 'singapore' for Wan"
+        )
+    candidate = base_url.strip() or WAN_REGIONS[normalized_region]["base_url"]
+    parsed = urlparse(candidate)
+    hostname = parsed.hostname or ""
+    if parsed.scheme != "https" or not hostname or parsed.params or parsed.query or parsed.fragment:
+        raise SourceGenerateError("DASHSCOPE_BASE_URL must be an HTTPS DashScope base URL")
+    public_host = urlparse(WAN_REGIONS[normalized_region]["base_url"]).hostname
+    workspace_suffix = WAN_REGIONS[normalized_region]["workspace_suffix"]
+    if hostname != public_host and not hostname.endswith(workspace_suffix):
+        raise SourceGenerateError(
+            f"DASHSCOPE_BASE_URL does not match DASHSCOPE_REGION={normalized_region}; "
+            "use the region public endpoint or its business-space hostname"
+        )
+    path = parsed.path.rstrip("/")
+    if path not in {"", WAN_API_BASE_PATH, WAN_GENERATION_PATH}:
+        raise SourceGenerateError(
+            "DASHSCOPE_BASE_URL may be the regional host, its /api/v1 base, "
+            "or the Wan generation endpoint"
+        )
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return origin + (WAN_GENERATION_PATH if path != WAN_GENERATION_PATH else path)
 
 
 def _wan_endpoint() -> tuple[str, str]:
     """Return a region-safe endpoint without guessing a key's home region."""
     region = os.environ.get("DASHSCOPE_REGION", "").strip().lower()
-    if region not in WAN_REGIONS:
-        raise SourceGenerateError(
-            "DASHSCOPE_REGION must be explicitly set to 'beijing' or 'singapore' for Wan"
-        )
     configured = os.environ.get("DASHSCOPE_BASE_URL", "").strip()
-    base_url = configured or WAN_REGIONS[region]["base_url"]
-    parsed = urlparse(base_url)
-    hostname = parsed.hostname or ""
-    if parsed.scheme != "https" or not hostname:
-        raise SourceGenerateError("DASHSCOPE_BASE_URL must be an HTTPS DashScope base URL")
-    public_host = urlparse(WAN_REGIONS[region]["base_url"]).hostname
-    workspace_suffix = WAN_REGIONS[region]["workspace_suffix"]
-    if hostname != public_host and not hostname.endswith(workspace_suffix):
-        raise SourceGenerateError(
-            f"DASHSCOPE_BASE_URL does not match DASHSCOPE_REGION={region}; "
-            "use the region public endpoint or its business-space hostname"
-        )
-    normalized = base_url.rstrip("/")
-    if normalized.endswith(WAN_GENERATION_PATH):
-        return normalized, region
-    if parsed.path not in {"", "/"}:
-        raise SourceGenerateError("DASHSCOPE_BASE_URL must be a base URL, not an unrelated API path")
-    return normalized + WAN_GENERATION_PATH, region
+    return wan_endpoint_from_config(region, configured), region
 
 
 def _wan_error(prefix: str, *, status: int | None = None, body: str = "") -> SourceGenerateError:
@@ -494,7 +522,8 @@ def _wan_error(prefix: str, *, status: int | None = None, body: str = "") -> Sou
         return SourceGenerateError(f"Wan request {label}{suffix}; retry later or check account quota")
     if status is not None and 500 <= status <= 599:
         return SourceGenerateError(f"Wan service error{suffix}; retry later")
-    if any(token in lowered for token in ("datainspection", "content", "moderation", "safety")):
+    normalized_code = code.replace("_", "").replace("-", "").lower()
+    if "datainspection" in normalized_code:
         return SourceGenerateError("Wan content moderation rejected the request" + suffix)
     if code:
         return SourceGenerateError(f"Wan API request failed ({code})" + suffix)
@@ -536,11 +565,11 @@ def _wan_request(endpoint: str, payload: dict[str, object], api_key: str) -> dic
 
 def _download_wan_png(url: str, output: Path) -> None:
     parsed = urlparse(url)
-    if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+    if parsed.scheme != "https" or not parsed.netloc:
         raise SourceGenerateError("Wan returned an invalid image URL")
     try:
         with urlopen(url, timeout=WAN_TIMEOUT_SECONDS) as response:
-            raw = response.read(50 * 1024 * 1024 + 1)
+            raw = response.read(WAN_MAX_DOWNLOAD_BYTES + 1)
     except HTTPError as exc:
         raise SourceGenerateError(f"Wan result download failed (HTTP {exc.code})") from exc
     except TimeoutError as exc:
@@ -549,7 +578,7 @@ def _download_wan_png(url: str, output: Path) -> None:
         if isinstance(exc.reason, TimeoutError) or "timed out" in str(exc.reason).lower():
             raise SourceGenerateError("Wan result download timed out") from exc
         raise SourceGenerateError("Wan result download could not be reached") from exc
-    if len(raw) > 50 * 1024 * 1024:
+    if len(raw) > WAN_MAX_DOWNLOAD_BYTES:
         raise SourceGenerateError("Wan result download exceeded 50MB")
     try:
         from PIL import Image
@@ -579,8 +608,11 @@ def _generate_wan(spec, output: Path, model_name: str) -> dict[str, object]:
         raise SourceGenerateError(
             f"Wan image editing supports at most {WAN_MAX_REFERENCE_IMAGES} reference images"
         )
-    for path in references:
-        _validate_wan_reference(path)
+    encoded_reference_bytes = sum(_validate_wan_reference(path) for path in references)
+    if encoded_reference_bytes > WAN_MAX_REFERENCE_PAYLOAD_BYTES:
+        raise SourceGenerateError(
+            "Wan Base64 reference payload exceeds 32MB; use fewer or smaller reference images"
+        )
     api_key = os.environ.get("DASHSCOPE_API_KEY", "").strip()
     if not api_key:
         raise SourceGenerateError("DASHSCOPE_API_KEY is not set for the selected Wan model")

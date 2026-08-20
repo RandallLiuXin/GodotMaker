@@ -22,6 +22,7 @@ from agent_runtime import (
     detect_agent,
     read_godot_path,
 )
+from asset_source_generate import SourceGenerateError, wan_endpoint_from_config
 
 
 class EnvCheck:
@@ -505,21 +506,14 @@ def check_api_keys(
         else:
             r.ok(f"DASHSCOPE_REGION set to {region}")
         base_url = os.environ.get("DASHSCOPE_BASE_URL", "").strip()
-        suffixes = {
-            "beijing": ("dashscope.aliyuncs.com", ".cn-beijing.maas.aliyuncs.com"),
-            "singapore": ("dashscope-intl.aliyuncs.com", ".ap-southeast-1.maas.aliyuncs.com"),
-        }
-        if base_url and region in suffixes:
-            from urllib.parse import urlparse
-
-            parsed = urlparse(base_url)
-            hostname = parsed.hostname or ""
-            public, workspace = suffixes[region]
-            if parsed.scheme != "https" or (hostname != public and not hostname.endswith(workspace)):
-                r.fail("DASHSCOPE_BASE_URL does not match DASHSCOPE_REGION for the Wan model")
+        if region in {"beijing", "singapore"}:
+            try:
+                wan_endpoint_from_config(region, base_url)
+            except SourceGenerateError as exc:
+                r.fail(str(exc))
             else:
                 r.ok("DASHSCOPE_BASE_URL matches DASHSCOPE_REGION")
-        elif not base_url:
+        if not base_url:
             r.ok("DASHSCOPE_BASE_URL not set; using the official regional endpoint")
     elif os.environ.get("DASHSCOPE_API_KEY"):
         r.ok("DASHSCOPE_API_KEY set (optional)")
