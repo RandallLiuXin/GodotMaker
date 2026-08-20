@@ -123,7 +123,21 @@ def _split_model_selector(selector: str, *, default_provider: str,
 
 
 def _mime_for_image(path: Path) -> str:
-    """Detect image MIME type from file extension."""
+    """Detect image MIME type from decoded content, falling back to extension."""
+    try:
+        from PIL import Image
+
+        with Image.open(path) as image:
+            image.load()
+            detected_format = (image.format or "").upper()
+    except Exception:
+        detected_format = ""
+    by_format = {
+        "JPEG": "image/jpeg", "JPG": "image/jpeg",
+        "PNG": "image/png", "WEBP": "image/webp", "BMP": "image/bmp",
+    }
+    if detected_format in by_format:
+        return by_format[detected_format]
     return {
         ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
         ".png": "image/png", ".webp": "image/webp",

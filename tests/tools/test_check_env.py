@@ -330,6 +330,15 @@ class TestCheckFunctions:
         assert any("DASHSCOPE_API_KEY" in failure for failure in r.failed)
         assert any("DASHSCOPE_REGION" in failure for failure in r.failed)
 
+    @patch.dict(os.environ, {}, clear=True)
+    def test_check_api_keys_rejects_wan_as_a_vqa_provider(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "native", "vqa_model": "wan"}, agent="codex")
+
+        assert any("vqa_model provider 'wan' is unsupported" in failure for failure in r.failed)
+
     @patch.dict(
         os.environ,
         {

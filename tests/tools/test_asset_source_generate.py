@@ -266,6 +266,14 @@ def test_wan_allows_fully_opaque_rgba_reference_and_reports_bmp_mime(tmp_path):
     assert source_generate._image_data_uri(bmp).startswith("data:image/bmp;base64,")
     assert source_generate._reference_provenance([{"role": "style", "path": bmp}])[0]["mime_type"] == "image/bmp"
 
+    disguised_bmp = tmp_path / "reference.png"
+    Image.new("RGB", (240, 240), (1, 2, 3)).save(disguised_bmp, format="BMP")
+    assert source_generate._validate_wan_reference(disguised_bmp) > 0
+    assert source_generate._image_data_uri(disguised_bmp).startswith("data:image/bmp;base64,")
+    assert source_generate._reference_provenance(
+        [{"role": "style", "path": disguised_bmp}]
+    )[0]["mime_type"] == "image/bmp"
+
 
 def test_wan_rejects_unsupported_512_and_oversized_reference_payload(tmp_path, monkeypatch):
     with pytest.raises(source_generate.SourceGenerateError, match="512 is unsupported"):

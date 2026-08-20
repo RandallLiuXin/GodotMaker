@@ -24,6 +24,8 @@ from agent_runtime import (
 )
 from asset_source_generate import SourceGenerateError, wan_endpoint_from_config
 
+VQA_PROVIDERS = {"native", "codex", "gemini", "openai"}
+
 
 class EnvCheck:
     def __init__(self):
@@ -446,6 +448,13 @@ def check_api_keys(
         config.get("vqa_model") or "native", "gemini"
     )
     required = {image_provider, vqa_provider}
+
+    if vqa_provider not in VQA_PROVIDERS:
+        r.fail(
+            f"vqa_model provider {vqa_provider!r} is unsupported; "
+            "use native, codex, gemini:<model>, or openai:<model>"
+        )
+        required.discard(vqa_provider)
 
     if image_provider in {"native", "codex"}:
         required.discard("native")
