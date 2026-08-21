@@ -22,7 +22,12 @@ from agent_runtime import (
     detect_agent,
     read_godot_path,
 )
-from asset_source_generate import SourceGenerateError, wan_endpoint_from_config
+from asset_source_generate import (
+    SourceGenerateError,
+    WAN_MODEL,
+    WAN_PRO_MODEL,
+    wan_endpoint_from_config,
+)
 
 VQA_PROVIDERS = {"native", "codex", "gemini", "openai"}
 
@@ -443,7 +448,7 @@ def check_api_keys(
 ):
     print("\n--- API Keys ---")
     config = config or {}
-    image_provider, _ = split_model_selector(image_model_from_config(config), "gemini")
+    image_provider, image_model = split_model_selector(image_model_from_config(config), "gemini")
     vqa_provider, _ = split_model_selector(
         config.get("vqa_model") or "native", "gemini"
     )
@@ -505,6 +510,12 @@ def check_api_keys(
         r.warn("XAI_API_KEY not set (optional)")
 
     if image_provider == "wan":
+        selected_wan_model = WAN_MODEL if image_model == "wan" else image_model
+        if selected_wan_model not in {WAN_MODEL, WAN_PRO_MODEL}:
+            r.fail(
+                f"Unsupported Wan image model {selected_wan_model!r}; "
+                f"use {WAN_MODEL} or {WAN_PRO_MODEL}"
+            )
         if not os.environ.get("DASHSCOPE_API_KEY"):
             r.fail("DASHSCOPE_API_KEY not set but asset_image_model uses a Wan model")
         else:
