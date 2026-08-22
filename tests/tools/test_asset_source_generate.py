@@ -270,6 +270,12 @@ def test_wan_endpoint_rejects_invalid_authorities(base_url):
         source_generate.wan_endpoint_from_config("beijing", base_url)
 
 
+def test_wan_endpoint_normalizes_explicit_default_port():
+    assert source_generate.wan_endpoint_from_config(
+        "beijing", "https://dashscope.aliyuncs.com:443"
+    ) == "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
+
+
 def test_wan_allows_fully_opaque_rgba_reference_and_reports_bmp_mime(tmp_path):
     rgba = tmp_path / "opaque-rgba.png"
     Image.new("RGBA", (240, 240), (1, 2, 3, 255)).save(rgba)
@@ -335,6 +341,9 @@ def test_wan_download_rejects_non_png_http_error_and_oversized_body(tmp_path, mo
 def test_wan_download_requires_https(tmp_path):
     with pytest.raises(source_generate.SourceGenerateError, match="invalid image URL"):
         source_generate._download_wan_png("http://result.example/image.png", tmp_path / "output.png")
+
+    with pytest.raises(source_generate.SourceGenerateError, match="invalid image URL"):
+        source_generate._download_wan_png("https://result.example:abc/image.png", tmp_path / "output.png")
 
 
 def test_wan_rejects_missing_key_and_region_base_mismatch(tmp_path, monkeypatch):

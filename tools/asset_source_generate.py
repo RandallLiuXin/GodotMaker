@@ -478,19 +478,13 @@ def _validate_wan_reference(path: Path) -> int:
     return 4 * ((file_bytes + 2) // 3)
 
 
-def wan_endpoint_from_config(region: str, base_url: str = "") -> str:
-    """Validate a regional DashScope base URL and return the generation endpoint."""
-    normalized_region = region.strip().lower()
-    if normalized_region not in WAN_REGIONS:
-        raise SourceGenerateError(
-            "DASHSCOPE_REGION must be explicitly set to 'beijing' or 'singapore' for Wan"
-        )
-    candidate = base_url.strip() or WAN_REGIONS[normalized_region]["base_url"]
-    parsed = urlparse(candidate)
+def _validated_https_url(value: str, error_message: str):
+    """Parse an HTTPS URL without allowing malformed or nonstandard authority."""
+    parsed = urlparse(value)
     try:
         port = parsed.port
     except ValueError as exc:
-        raise SourceGenerateError("DASHSCOPE_BASE_URL must use the standard HTTPS authority") from exc
+        raise SourceGenerateError(error_message) from exc
     hostname = parsed.hostname or ""
     if (
         parsed.scheme != "https"
@@ -503,7 +497,21 @@ def wan_endpoint_from_config(region: str, base_url: str = "") -> str:
         or parsed.netloc.endswith(":")
         or port not in {None, 443}
     ):
-        raise SourceGenerateError("DASHSCOPE_BASE_URL must be an HTTPS DashScope base URL")
+        raise SourceGenerateError(error_message)
+    return parsed, hostname
+
+
+def wan_endpoint_from_config(region: str, base_url: str = "") -> str:
+    """Validate a regional DashScope base URL and return the generation endpoint."""
+    normalized_region = region.strip().lower()
+    if normalized_region not in WAN_REGIONS:
+        raise SourceGenerateError(
+            "DASHSCOPE_REGION must be explicitly set to 'beijing' or 'singapore' for Wan"
+        )
+    candidate = base_url.strip() or WAN_REGIONS[normalized_region]["base_url"]
+    parsed, hostname = _validated_https_url(
+        candidate, "DASHSCOPE_BASE_URL must use the standard HTTPS authority"
+    )
     public_host = urlparse(WAN_REGIONS[normalized_region]["base_url"]).hostname
     workspace_suffix = WAN_REGIONS[normalized_region]["workspace_suffix"]
     if hostname != public_host and not hostname.endswith(workspace_suffix):
@@ -517,7 +525,7 @@ def wan_endpoint_from_config(region: str, base_url: str = "") -> str:
             "DASHSCOPE_BASE_URL may be the regional host, its /api/v1 base, "
             "or the Wan generation endpoint"
         )
-    origin = f"{parsed.scheme}://{parsed.netloc}"
+    origin = f"{parsed.scheme}://{hostname}"
     return origin + (WAN_GENERATION_PATH if path != WAN_GENERATION_PATH else path)
 
 
@@ -592,9 +600,7 @@ def _wan_request(endpoint: str, payload: dict[str, object], api_key: str) -> dic
 
 
 def _download_wan_png(url: str, output: Path) -> None:
-    parsed = urlparse(url)
-    if parsed.scheme != "https" or not parsed.netloc:
-        raise SourceGenerateError("Wan returned an invalid image URL")
+    _validated_https_url(url, "Wan returned an invalid image URL")
     try:
         with urlopen(url, timeout=WAN_TIMEOUT_SECONDS) as response:
             raw = response.read(WAN_MAX_DOWNLOAD_BYTES + 1)

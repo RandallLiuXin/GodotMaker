@@ -376,6 +376,19 @@ class TestCheckFunctions:
 
     @patch.dict(
         os.environ,
+        {"DASHSCOPE_API_KEY": "test-key", "DASHSCOPE_REGION": "beijing"},
+        clear=True,
+    )
+    def test_wan_image_model_does_not_treat_explicit_wan_as_the_bare_alias(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan:wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("Unsupported Wan image model 'wan'" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
         {
             "DASHSCOPE_API_KEY": "test-key",
             "DASHSCOPE_REGION": "beijing",
