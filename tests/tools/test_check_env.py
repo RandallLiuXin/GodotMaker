@@ -408,6 +408,23 @@ class TestCheckFunctions:
 
         assert any("may be the regional host" in failure for failure in r.failed)
 
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "beijing",
+            "DASHSCOPE_BASE_URL": "https://dashscope.aliyuncs.com:abc",
+        },
+        clear=True,
+    )
+    def test_wan_preflight_rejects_invalid_base_url_authority(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("standard HTTPS authority" in failure for failure in r.failed)
+
     @patch.dict(os.environ, {}, clear=True)
     def test_native_image_model_still_requires_configured_gemini_vqa_key(self):
         from check_env import check_api_keys

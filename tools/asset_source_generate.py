@@ -487,8 +487,22 @@ def wan_endpoint_from_config(region: str, base_url: str = "") -> str:
         )
     candidate = base_url.strip() or WAN_REGIONS[normalized_region]["base_url"]
     parsed = urlparse(candidate)
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise SourceGenerateError("DASHSCOPE_BASE_URL must use the standard HTTPS authority") from exc
     hostname = parsed.hostname or ""
-    if parsed.scheme != "https" or not hostname or parsed.params or parsed.query or parsed.fragment:
+    if (
+        parsed.scheme != "https"
+        or not hostname
+        or parsed.params
+        or parsed.query
+        or parsed.fragment
+        or parsed.username
+        or parsed.password
+        or parsed.netloc.endswith(":")
+        or port not in {None, 443}
+    ):
         raise SourceGenerateError("DASHSCOPE_BASE_URL must be an HTTPS DashScope base URL")
     public_host = urlparse(WAN_REGIONS[normalized_region]["base_url"]).hostname
     workspace_suffix = WAN_REGIONS[normalized_region]["workspace_suffix"]

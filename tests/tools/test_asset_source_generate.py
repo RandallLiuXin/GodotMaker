@@ -256,6 +256,20 @@ def test_wan_endpoint_accepts_official_base_url_forms(base_url):
     )
 
 
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://dashscope.aliyuncs.com:abc",
+        "https://dashscope.aliyuncs.com:8443",
+        "https://dashscope.aliyuncs.com:",
+        "https://user@dashscope.aliyuncs.com",
+    ],
+)
+def test_wan_endpoint_rejects_invalid_authorities(base_url):
+    with pytest.raises(source_generate.SourceGenerateError, match="HTTPS"):
+        source_generate.wan_endpoint_from_config("beijing", base_url)
+
+
 def test_wan_allows_fully_opaque_rgba_reference_and_reports_bmp_mime(tmp_path):
     rgba = tmp_path / "opaque-rgba.png"
     Image.new("RGBA", (240, 240), (1, 2, 3, 255)).save(rgba)
