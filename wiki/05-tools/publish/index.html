@@ -2846,7 +2846,7 @@ or by your own command wrapper. For remote-control sessions, permissions are set
 when the local host process starts; the mobile app cannot raise them after it
 connects. Start the host like this when you intend to run the full pipeline from
 remote control:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">codex</span><span class="p">.</span><span class="n">cmd</span> <span class="n">remote-control</span> <span class="n">-c</span> <span class="n">sandbox_mode</span><span class="p">=</span><span class="s1">&#39;&quot;danger-full-access&quot;&#39;</span> <span class="n">-c</span> <span class="n">approval_policy</span><span class="p">=</span><span class="s1">&#39;&quot;never&quot;&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">codex</span><span class="p">.</span><span class="n">cmd</span> <span class="n">remote-control</span> <span class="n">-c</span> <span class="n">sandbox_mode</span><span class="p">=</span><span class="s1">'"danger-full-access"'</span> <span class="n">-c</span> <span class="n">approval_policy</span><span class="p">=</span><span class="s1">'"never"'</span>
 </code></pre></div>
 <p><code>workspace-write</code> plus <code>--add-dir</code> can be used for narrower manual experiments,
 but it is not the baseline unattended mode because Godot's default log directory

@@ -2811,7 +2811,7 @@
 <li>If <code>GAP.md</code> is absent from the project root (it has been moved to <code>.godotmaker/gaps/&lt;n&gt;/</code>) — the last fixgap finished. Running <code>/gm-fixgap</code> again will start a new iteration from the current <code>evaluation.json</code>.</li>
 </ul>
 <p>To check which state you are in:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ls<span class="w"> </span>GAP.md<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;fixgap in progress&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;no active fixgap&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ls<span class="w"> </span>GAP.md<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"fixgap in progress"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"no active fixgap"</span>
 </code></pre></div>
 <p>If a fixgap was interrupted mid-task, apply the same <code>in_progress</code> → <code>pending</code> fix in <code>GAP.md</code> as described for <code>/gm-build</code> above.</p>
 <hr />
@@ -2906,7 +2906,7 @@
 <ol>
 <li><strong>Clear <code>current_role</code></strong> if it looks stale:</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>.godotmaker/current_role
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">""</span><span class="w"> </span>&gt;<span class="w"> </span>.godotmaker/current_role
 </code></pre></div>
 <ol>
 <li><strong>Start a fresh session</strong> and run the appropriate <code>/gm-*</code> command from the last clean state.</li>

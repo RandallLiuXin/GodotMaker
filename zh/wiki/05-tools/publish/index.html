@@ -2833,7 +2833,7 @@ Claude Code <code>--dangerously-skip-permissions</code> 的完整宿主权限启
 模式。对于 remote-control 会话，权限在本机宿主进程启动时确定；手机端 app
 连接之后无法再提升权限。如果你打算通过 remote control 跑完整流水线，请这样
 启动本机宿主：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">codex</span><span class="p">.</span><span class="n">cmd</span> <span class="n">remote-control</span> <span class="n">-c</span> <span class="n">sandbox_mode</span><span class="p">=</span><span class="s1">&#39;&quot;danger-full-access&quot;&#39;</span> <span class="n">-c</span> <span class="n">approval_policy</span><span class="p">=</span><span class="s1">&#39;&quot;never&quot;&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">codex</span><span class="p">.</span><span class="n">cmd</span> <span class="n">remote-control</span> <span class="n">-c</span> <span class="n">sandbox_mode</span><span class="p">=</span><span class="s1">'"danger-full-access"'</span> <span class="n">-c</span> <span class="n">approval_policy</span><span class="p">=</span><span class="s1">'"never"'</span>
 </code></pre></div>
 <p><code>workspace-write</code> 加 <code>--add-dir</code> 可以用于更窄的手动实验，但它不是无人值守的
 基准模式，因为 Godot 默认日志目录和 sibling worktree 可能位于项目根目录之外。</p>

@@ -3360,9 +3360,9 @@
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">XAI_API_KEY</span><span class="o">=</span>your-key-here
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># Windows (PowerShell)</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nv">$env</span>:GOOGLE_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="nv">$env</span>:OPENAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nv">$env</span>:XAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nv">$env</span>:GOOGLE_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your-key-here"</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="nv">$env</span>:OPENAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your-key-here"</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nv">$env</span>:XAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your-key-here"</span>
 </code></pre></div>
 <p>如果想永久生效，把变量写入 shell 配置文件（<code>~/.bashrc</code>、<code>~/.zshrc</code>），或者写入 Windows 用户环境变量。</p>
 <hr />
@@ -3399,8 +3399,8 @@
 <p><strong>症状：</strong> Worker 子 Agent 报错，提示 <code>Author identity unknown</code> 或 <code>git commit</code> 拒绝执行。</p>
 <p><strong>原因：</strong> Git 创建提交记录时必须知道 <code>user.name</code> 和 <code>user.email</code>。Worker 子 Agent 会代替你提交代码。</p>
 <p><strong>解决办法：</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;Your Name&quot;</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;you@example.com&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">"Your Name"</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">"you@example.com"</span>
 </code></pre></div>
 <p>配完之后跑一下 <code>python tools/check_env.py</code>，两项都应该显示 <code>[PASS]</code>。</p>
 <hr />

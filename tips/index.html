@@ -2663,7 +2663,7 @@ These exist to prevent future confusion when reading the code.</p>
 <p><strong>What:</strong> <code>/gm-scaffold</code> must create an initial git commit after scaffolding.</p>
 <p><strong>Why:</strong> Workers use <code>isolation: "worktree"</code> for parallel execution.
 Git worktree requires at least one commit — without it:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>fatal: not a valid object name: &#39;HEAD&#39;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>fatal: not a valid object name: 'HEAD'
 </code></pre></div>
 Push is NOT required, only a local commit.</p>
 <p><strong>Discovered:</strong> 3 failures across 3-game testing. Workaround was falling

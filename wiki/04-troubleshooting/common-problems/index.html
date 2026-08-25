@@ -3360,9 +3360,9 @@
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">XAI_API_KEY</span><span class="o">=</span>your-key-here
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># Windows (PowerShell)</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nv">$env</span>:GOOGLE_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="nv">$env</span>:OPENAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nv">$env</span>:XAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-key-here&quot;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nv">$env</span>:GOOGLE_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your-key-here"</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="nv">$env</span>:OPENAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your-key-here"</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nv">$env</span>:XAI_API_KEY<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"your-key-here"</span>
 </code></pre></div>
 <p>To make it permanent, add the export line to your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>, or Windows System Environment Variables).</p>
 <hr />
@@ -3399,8 +3399,8 @@
 <p><strong>Symptom:</strong> A worker sub-agent errors out with a message like <code>Author identity unknown</code> or <code>git commit</code> refuses to run.</p>
 <p><strong>Cause:</strong> Git requires <code>user.name</code> and <code>user.email</code> to create commits. Worker sub-agents commit code on your behalf.</p>
 <p><strong>Fix:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;Your Name&quot;</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;you@example.com&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">"Your Name"</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">"you@example.com"</span>
 </code></pre></div>
 <p>Confirm with <code>python tools/check_env.py</code> — both should show <code>[PASS]</code>.</p>
 <hr />

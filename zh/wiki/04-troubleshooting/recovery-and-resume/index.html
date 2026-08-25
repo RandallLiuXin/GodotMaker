@@ -2811,7 +2811,7 @@
 <li>如果项目根目录没有 <code>GAP.md</code>（它已被移动到 <code>.godotmaker/gaps/&lt;n&gt;/</code>）——说明上次 fixgap 已经完成。再次运行 <code>/gm-fixgap</code> 会从当前的 <code>evaluation.json</code> 开始一次新的迭代。</li>
 </ul>
 <p>查看当前处于哪种状态：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ls<span class="w"> </span>GAP.md<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;fixgap in progress&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;no active fixgap&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ls<span class="w"> </span>GAP.md<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"fixgap in progress"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"no active fixgap"</span>
 </code></pre></div>
 <p>如果 fixgap 在任务中途被中断了，和处理 <code>/gm-build</code> 一样，把 <code>GAP.md</code> 里的 <code>in_progress</code> 改回 <code>pending</code>。</p>
 <hr />
@@ -2906,7 +2906,7 @@
 <ol>
 <li><strong>清除 <code>current_role</code></strong>，如果它看起来是残留的旧值：</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>.godotmaker/current_role
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">""</span><span class="w"> </span>&gt;<span class="w"> </span>.godotmaker/current_role
 </code></pre></div>
 <ol>
 <li><strong>开一个新会话</strong>，从最后一个干净的状态对应的 <code>/gm-*</code> 命令重新开始。</li>

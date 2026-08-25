@@ -2663,7 +2663,7 @@
 <p><strong>是什么：</strong> <code>/gm-scaffold</code> 完成脚手架搭建后，必须创建一个初始 git 提交。</p>
 <p><strong>为什么：</strong> Worker 使用 <code>isolation: "worktree"</code> 实现并行执行。
 Git worktree 要求至少有一个提交——没有提交时会报错：
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>fatal: not a valid object name: &#39;HEAD&#39;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>fatal: not a valid object name: 'HEAD'
 </code></pre></div>
 不需要推送到远端，只需要本地提交即可。</p>
 <p><strong>发现经过：</strong> 在 3 个游戏的测试中出现了 3 次失败。当时的应急方案是回退到顺序执行，但根本解决方案就是先提交一次。</p>
