@@ -40,3 +40,14 @@ def test_reference_only_assets_never_become_worker_runtime_inputs():
     assert "do not create a logical row" in registration
     assert "must not enter worker runtime handoff" in screen_reference
     assert "a reference-only asset" in worker_dispatch
+
+
+def test_codex_screen_reference_claims_raw_image_before_final_validation():
+    provider = _read("skills/core/gm-asset/references/providers/codex.md")
+    screen_reference = _read("skills/assets/screen-reference/SKILL.md")
+
+    assert "The provider step owns generation and source handoff" in provider
+    assert "Do not reject the raw provider image" in provider
+    assert "claim it so the production unit can finalize and validate it" in provider
+    assert "--fit cover" in screen_reference
+    assert "Pixel-exact runtime sprite dimensions remain" in screen_reference

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import shutil
 import sys
 import tempfile
@@ -137,6 +138,28 @@ def _fit_with_padding(image, size: tuple[int, int]):
     return canvas
 
 
+def _fit_with_crop(image, size: tuple[int, int]):
+    """Resize preserving aspect ratio, cropping to exactly ``size``.
+
+    The image is scaled until it covers the target canvas, then center-cropped.
+    ``ceil`` is required here: rounding a nearly matching source aspect down by
+    one pixel would reintroduce the uncovered edge this mode is meant to avoid.
+    """
+    from PIL import Image
+
+    target_w, target_h = size
+    src_w, src_h = image.size
+    scale = max(target_w / src_w, target_h / src_h)
+    fit_w = max(target_w, math.ceil(src_w * scale))
+    fit_h = max(target_h, math.ceil(src_h * scale))
+    fitted = image.resize((fit_w, fit_h), Image.Resampling.LANCZOS)
+    left = (fit_w - target_w) // 2
+    top = (fit_h - target_h) // 2
+    cropped = fitted.crop((left, top, left + target_w, top + target_h))
+    fitted.close()
+    return cropped
+
+
 def _origin_path_for(output: Path) -> Path:
     """Archive location for the untouched original of a finalized asset.
 
@@ -162,6 +185,7 @@ def finalize_image_asset(
     label: str | None = None,
     archive_original: bool = True,
     background: str = "none",
+    fit: str = "contain",
 ) -> dict[str, object]:
     """Copy or transform a generated source image into its final path."""
     source = Path(source)
@@ -175,6 +199,10 @@ def finalize_image_asset(
     required_aspect = _parse_aspect(require_aspect)
     if background not in {"none", "magenta"}:
         raise ImageFinalizeError("--background must be none or magenta")
+    if fit not in {"contain", "cover"}:
+        raise ImageFinalizeError("--fit must be contain or cover")
+    if fit != "contain" and requested_size is None:
+        raise ImageFinalizeError("--fit cover requires --resize")
     if aspect_tolerance < 0:
         raise ImageFinalizeError("--aspect-tolerance must be non-negative")
     image = _load_image(source)
@@ -219,7 +247,11 @@ def finalize_image_asset(
             except SheetProcessError as exc:
                 raise ImageFinalizeError(str(exc)) from exc
         if requested_size is not None:
-            image = _fit_with_padding(image, requested_size)
+            image = (
+                _fit_with_crop(image, requested_size)
+                if fit == "cover"
+                else _fit_with_padding(image, requested_size)
+            )
         if image_format.lower() == "png" and image.mode not in {"RGB", "RGBA"}:
             image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
 
@@ -258,6 +290,8 @@ def finalize_image_asset(
         result["origin"] = origin_saved
     if requested_size is not None:
         result["resize"] = f"{requested_size[0]}x{requested_size[1]}"
+        if fit != "contain":
+            result["fit"] = fit
     if background_cleanup is not None:
         result["background"] = "magenta"
         result["background_cleanup"] = background_cleanup
@@ -276,6 +310,12 @@ def _main() -> int:
     parser.add_argument("--source", required=True, help="Generated source image path")
     parser.add_argument("--out", required=True, help="Final project image path")
     parser.add_argument("--resize", default=None, help="Optional WIDTHxHEIGHT resize")
+    parser.add_argument(
+        "--fit",
+        default="contain",
+        choices=["contain", "cover"],
+        help="Resize fit mode: transparent padding or center crop",
+    )
     parser.add_argument(
         "--require-aspect",
         default=None,
@@ -315,6 +355,7 @@ def _main() -> int:
             label=args.label,
             archive_original=args.archive_original,
             background=args.background,
+            fit=args.fit,
         )
     except ImageFinalizeError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))

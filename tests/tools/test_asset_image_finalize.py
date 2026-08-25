@@ -146,6 +146,65 @@ def test_finalize_keeps_matching_aspect_without_padding(tmp_path):
         )
 
 
+def test_finalize_cover_crops_near_aspect_source_without_transparent_edge(tmp_path):
+    source = tmp_path / "generated" / "scene.png"
+    output = tmp_path / "references" / "scene.png"
+    make_png(source, size=(1672, 941), color=(20, 80, 160, 255))
+
+    result = finalize_image_asset(
+        source,
+        output,
+        resize="1280x720",
+        require_aspect="16:9",
+        fit="cover",
+    )
+
+    assert (result["width"], result["height"]) == (1280, 720)
+    assert result["fit"] == "cover"
+    with Image.open(output) as image:
+        rgba = image.convert("RGBA")
+        assert all(
+            rgba.getpixel(point)[3] == 255
+            for point in ((0, 0), (1279, 0), (0, 719), (1279, 719))
+        )
+
+
+def test_finalize_cover_requires_resize(tmp_path):
+    source = tmp_path / "generated" / "scene.png"
+    make_png(source)
+
+    with pytest.raises(ImageFinalizeError, match="--fit cover requires --resize"):
+        finalize_image_asset(source, tmp_path / "references" / "scene.png", fit="cover")
+
+
+def test_cli_cover_crops_without_transparent_edge(tmp_path):
+    source = tmp_path / "generated" / "scene.png"
+    output = tmp_path / "references" / "scene.png"
+    make_png(source, size=(1672, 941), color=(20, 80, 160, 255))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(TOOLS_DIR / "asset_image_finalize.py"),
+            "--source", str(source),
+            "--out", str(output),
+            "--resize", "1280x720",
+            "--require-aspect", "16:9",
+            "--fit", "cover",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    data = json.loads(result.stdout)
+    assert data["fit"] == "cover"
+    with Image.open(output) as image:
+        rgba = image.convert("RGBA")
+        assert rgba.getpixel((1279, 719))[3] == 255
+
+
 def test_finalize_keeps_magenta_background_by_default(tmp_path):
     source = tmp_path / "generated" / "boss.png"
     output = tmp_path / "assets" / "sprites" / "boss.png"
