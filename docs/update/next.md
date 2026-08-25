@@ -96,6 +96,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Screen references now claim successful Codex images before final validation and use proportional cover cropping to avoid transparent canvas edges (#180) — @RandallLiuXin.
+
 - Accepting a user-provided asset now fills the row's `Runtime Type` and `res://` `Runtime Path` in the same edit, so a `provided` row is always resolvable into a worker runtime snapshot instead of failing with incomplete runtime columns.
 
 - Ensure `/gm-asset` records an asset-stage completion event when its resume check finds no current-tag work.

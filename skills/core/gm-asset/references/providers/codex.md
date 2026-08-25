@@ -21,6 +21,19 @@ For each generated image:
 8. Do not report a project `source_path` as `generated_path`.
 9. Do not create placeholder or procedural images when generation fails.
 
+## Provider Success Boundary
+
+The provider step owns generation and source handoff, not final asset
+validation. A generation attempt succeeds when `image_gen` returns exactly one
+current-turn path and that path is a readable image that the claim step can
+copy. Do not reject the raw provider image because its canvas dimensions,
+aspect fit, background edges, object positions, or object pixel sizes differ
+from the final production-unit contract.
+
+Claim a successful raw image first. Then let the named production unit run its
+controlled finalization and validate the finalized output. This boundary is
+the same for Active Codex Runtime and for another coding agent invoking Codex.
+
 ## Reference Images
 
 References are optional. When a production unit supplies one or more required
@@ -137,6 +150,9 @@ For each asset:
 8. When an asset has references, pass every source_path reference to `image_gen`
    through `referenced_image_paths` and report the attached paths and roles.
 9. Do not create placeholder or procedural images.
+10. Treat a readable current-turn image as provider success. Do not measure the
+    raw image against final canvas, background-edge, layout, or object-pixel
+    requirements; claim it so the production unit can finalize and validate it.
 
 Assets:
 - id: <asset_id>
