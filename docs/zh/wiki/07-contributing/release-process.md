@@ -85,8 +85,7 @@ GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；
    git tag v<VERSION>
    ```
 
-   版本中包含 `-` 的 tag 会创建 GitHub Pre-release。已发布的 tag 不得移动；
-   修复应发布下一个预发布标识符。
+   已发布的 tag 不得移动；修复应发布下一个预发布标识符。
 
 ---
 

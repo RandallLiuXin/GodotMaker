@@ -87,8 +87,7 @@ High-level checklist. Follow the canonical steps in
    git tag v<VERSION>
    ```
 
-   A tag whose version contains `-` creates a GitHub Pre-release. Never move a
-   published tag; release the next identifier instead.
+   Never move a published tag; release the next identifier instead.
 
 ---
 

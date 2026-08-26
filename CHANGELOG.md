@@ -16,7 +16,7 @@ Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH[-PREREL
 
 - Made `ASSETS.md` the single runtime asset catalog with atomic multi-output registration and worker snapshots.
 - Published the shared asset compiler, schema, and validation runtime for every supported coding agent.
-- Preserved and compared pre-release identifiers across source versions, target stamps, changelog lookup, and GitHub Releases.
+- Preserved and compared pre-release identifiers across source versions, target stamps, and changelog lookup.
 - Blocked MAJOR re-publication before cleanup when a preserved legacy `ASSETS.md` cannot satisfy the direct runtime schema.
 
 ### Fixed

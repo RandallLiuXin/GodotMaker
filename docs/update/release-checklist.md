@@ -141,14 +141,11 @@ move or reuse a published pre-release tag — fixes go into the next identifier
    require separate release authorization.
    This triggers the `release.yml` workflow, which automatically:
    - Reads release notes from `docs/update/v<VERSION>.md`
-   - Marks versions containing a `-` suffix as GitHub Pre-releases
    - Creates a GitHub Release (source code archives are attached by GitHub)
 
 8. **Verify the release**
    - Check the [Releases page](https://github.com/RandallLiuXin/GodotMaker/releases)
    - Verify release notes match `CHANGELOG.md`
-   - For a pre-release, verify GitHub shows **Pre-release** and does not replace
-     the latest stable release
    - Download or publish from the tag once and verify `.godotmaker/version`
      contains the exact version, including the pre-release suffix
 
