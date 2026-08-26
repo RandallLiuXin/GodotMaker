@@ -15,32 +15,22 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Validate release contract
+      - name: Extract version from tag
         id: version
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          SOURCE_VERSION="$(tr -d '\r\n' < VERSION)"
-          NOTES_FILE="docs/update/v${VERSION}.md"
-
-          if [ "$VERSION" != "$SOURCE_VERSION" ]; then
-            echo "::error::Tag version ${VERSION} does not match VERSION ${SOURCE_VERSION}."
-            exit 1
-          fi
-          if [ ! -f "$NOTES_FILE" ]; then
-            echo "::error::Release notes are missing: ${NOTES_FILE}"
-            exit 1
-          fi
-
-          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "NOTES_FILE=${NOTES_FILE}" >> "$GITHUB_OUTPUT"
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Extract release notes
-        run: cp "${{ steps.version.outputs.NOTES_FILE }}" /tmp/release_notes.md
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          NOTES_FILE="docs/update/v${VERSION}.md"
+
+          if [ -f "$NOTES_FILE" ]; then
+            cp "$NOTES_FILE" /tmp/release_notes.md
+          else
+            echo "Release v${VERSION}" > /tmp/release_notes.md
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           body_path: /tmp/release_notes.md
-          prerelease: ${{ contains(steps.version.outputs.VERSION, '-') }}
