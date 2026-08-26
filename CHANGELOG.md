@@ -16,7 +16,6 @@ Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
 - Made `ASSETS.md` the single runtime asset catalog with atomic multi-output registration and worker snapshots.
 - Published the shared asset compiler, schema, and validation runtime for every supported coding agent.
-- Blocked MAJOR re-publication before cleanup when a preserved legacy `ASSETS.md` cannot satisfy the direct runtime schema.
 
 ### Fixed
 
