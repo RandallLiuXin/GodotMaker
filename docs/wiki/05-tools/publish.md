@@ -124,10 +124,10 @@ python tools/publish.py --agent opencode --force /path/to/my-game
 
 1. Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.
 2. Overwrites the selected runner's hook config or adapter (`.claude/settings.json`, `.codex/hooks.json`, or `.opencode/plugins/godotmaker-hooks.js`) even if you've already customized it.
-3. Skips the confirmation prompts for minor and major upgrades.
+3. Skips the minor-upgrade confirmation and explicitly authorizes the clean re-initialization required for a major upgrade.
 4. Allows downgrades.
 
-For **major** upgrades with `--force`, the clean-up is more thorough: the selected agent's `skills/`, `agents/`, `config/`, and `templates/` folders, `.godotmaker/hooks/`, `tools/`, and the runtime state files are all wiped and rebuilt from scratch.
+For **major** upgrades with `--force`, the clean-up is more thorough: the selected agent's `skills/`, `agents/`, `config/`, and `templates/` folders, `.godotmaker/hooks/`, `tools/`, and current pipeline state (`state.json`, `pipeline_state.json`, `stage.jsonl`, `current_role`, `evaluation.json`, `verify_report.json`, `final_report.json`, metrics, schemas, and the migration tracker) are wiped and rebuilt from scratch. Historical evidence under `.godotmaker/evaluation-runs/`, `.godotmaker/gaps/`, and `.godotmaker/asset-generation/` is preserved.
 
 ## What is preserved on upgrade
 

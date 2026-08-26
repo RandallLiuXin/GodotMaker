@@ -642,12 +642,11 @@ class TestSelectMigrationAction:
         from publish import select_migration_action
         assert select_migration_action("MAJOR", force=True) == "baseline"
 
-    def test_major_without_force_defensive_run(self):
-        """MAJOR without --force is filtered out by check_version_upgrade,
-        so this path is unreachable in production. Test the defensive
-        default anyway."""
+    def test_major_without_force_fails_closed(self):
+        """No caller may route a MAJOR upgrade through incremental migration."""
         from publish import select_migration_action
-        assert select_migration_action("MAJOR", force=False) == "run"
+        with pytest.raises(ValueError, match="require --force"):
+            select_migration_action("MAJOR", force=False)
 
     def test_same_runs(self):
         from publish import select_migration_action
@@ -849,26 +848,70 @@ class TestPublishMainMigrationRouting:
         assert len(env["baseline_calls"]) == 1
         assert env["run_calls"] == []
 
-    def test_major_force_cleanup_removes_applied_migrations_file(
+    def test_major_without_force_exits_before_publish_or_migrations(
         self, env, monkeypatch
     ):
-        """The MAJOR --force cleanup loop must delete an existing
-        applied_migrations.json (so the subsequent baseline starts fresh).
-        Replaces the previous source-text grep test with a real one."""
+        """The top-level entry point must not let a prompt bypass MAJOR reset."""
+        import publish
+
+        self._force_source_version(monkeypatch, 1, 0, 0)
+        self._seed_target_version(env["target"], "0.8.2")
+        monkeypatch.setattr(
+            "builtins.input",
+            lambda _: pytest.fail("MAJOR without --force must not prompt"),
+        )
+        monkeypatch.setattr(
+            publish,
+            "publish_skills",
+            lambda *_args, **_kwargs: pytest.fail("publish must not start"),
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            self._run_main(monkeypatch, env["target"])
+
+        assert exc_info.value.code == 1
+        assert env["baseline_calls"] == []
+        assert env["run_calls"] == []
+
+    def test_major_force_cleanup_resets_incompatible_runtime_state(
+        self, env, monkeypatch
+    ):
+        """MAJOR --force resets gates and current-run reports before baseline."""
         self._force_source_version(monkeypatch, 1, 0, 0)
         self._seed_target_version(env["target"], "0.4.0")
 
-        applied_file = env["target"] / ".godotmaker" / "applied_migrations.json"
-        applied_file.write_text(
-            '{"applied":[{"id":"old_v","applied_at":"x","source":"executed"}]}'
-        )
-        assert applied_file.exists()
+        godotmaker_dir = env["target"] / ".godotmaker"
+        reset_files = [
+            "state.json",
+            "metrics.jsonl",
+            "metrics_current.jsonl",
+            "pipeline_state.json",
+            "stage.jsonl",
+            "current_role",
+            "evaluation.json",
+            "verify_report.json",
+            "final_report.json",
+            "stage_schemas.json",
+            "applied_migrations.json",
+        ]
+        for name in reset_files:
+            (godotmaker_dir / name).write_text("old runtime state")
+
+        # Historical evidence and user-authored project content are not reset.
+        evidence = godotmaker_dir / "evaluation-runs" / "1" / "evaluation.json"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_text("historical evidence")
+        gdd = env["target"] / "GDD.md"
+        gdd.write_text("user design")
 
         self._run_main(monkeypatch, env["target"], force=True)
 
         # baseline_applied is mocked, so the file is NOT recreated here;
         # we only verify the cleanup loop did its job.
-        assert not applied_file.exists()
+        for name in reset_files:
+            assert not (godotmaker_dir / name).exists()
+        assert evidence.read_text() == "historical evidence"
+        assert gdd.read_text() == "user design"
         assert len(env["baseline_calls"]) == 1
         assert env["run_calls"] == []
 
@@ -1085,10 +1128,15 @@ class TestCheckVersionUpgrade:
         assert result.proceed is True
         assert result.level == "MINOR"
 
-    def test_major_upgrade_without_force_prompts(self, tmp_path, monkeypatch):
+    def test_major_upgrade_without_force_is_blocked_without_prompt(
+        self, tmp_path, monkeypatch
+    ):
         from publish import check_version_upgrade
         repo, target = self._setup_versions(tmp_path, "1.0.0", "0.4.0")
-        monkeypatch.setattr("builtins.input", lambda _: "n")
+        monkeypatch.setattr(
+            "builtins.input",
+            lambda _: pytest.fail("MAJOR without --force must not prompt"),
+        )
         result = check_version_upgrade(repo, target, force=False)
         assert result.proceed is False
         assert result.level == "MAJOR"

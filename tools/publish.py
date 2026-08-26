@@ -304,14 +304,8 @@ def check_version_upgrade(repo_root: Path, target: Path, force: bool
     # MAJOR upgrade — block incremental, require --force for clean re-init
     if level == "MAJOR" and not force:
         print("  MAJOR upgrades require --force (clean re-initialization).")
-        print("  This will wipe .claude/skills/ and .godotmaker/hooks/ and re-deploy.")
-        try:
-            answer = input("  Proceed with MAJOR upgrade? [y/N] ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            answer = ""
-        if answer not in ("y", "yes"):
-            print("  Upgrade cancelled.")
-            return VersionCheckResult(False, level, target_ver, source_ver)
+        print("  Re-run this command with --force to authorize the reset.")
+        return VersionCheckResult(False, level, target_ver, source_ver)
 
     # MINOR upgrades require confirmation (unless --force)
     elif level == "MINOR" and not force:
@@ -342,11 +336,11 @@ def select_migration_action(level: str, force: bool) -> str:
       auto-created, then any pending migrations run normally through
       the standard pending-application path.
 
-    MAJOR without `--force` is filtered out by check_version_upgrade()
-    before this function is called, so the (level="MAJOR", force=False)
-    case is unreachable in practice; if it does arrive (defensive),
-    treating it as "run" is harmless because publish would have aborted.
+    MAJOR without `--force` is invalid. Raise instead of falling back to
+    incremental migrations so a future caller cannot bypass the version gate.
     """
+    if level == "MAJOR" and not force:
+        raise ValueError("MAJOR upgrades require --force")
     if level == "FRESH" or (level == "MAJOR" and force):
         return "baseline"
     return "run"
@@ -1410,8 +1404,8 @@ def main():
                         help="Coding agent target to publish for "
                              "(default: claude-code)")
     parser.add_argument("--force", action="store_true",
-                        help="Clean existing agent skills before publishing; "
-                             "skip upgrade confirmation prompts")
+                        help="Authorize a MAJOR clean re-init, clean existing "
+                             "agent skills, and skip MINOR confirmation")
     parser.add_argument("--no-config-review", action="store_true",
                         help="Do not pause after creating .godotmaker/config.yaml")
     args = parser.parse_args()
@@ -1475,6 +1469,12 @@ def main():
             target / ".godotmaker" / "state.json",
             target / ".godotmaker" / "metrics.jsonl",
             target / ".godotmaker" / "metrics_current.jsonl",
+            target / ".godotmaker" / "pipeline_state.json",
+            target / ".godotmaker" / "stage.jsonl",
+            target / ".godotmaker" / "current_role",
+            target / ".godotmaker" / "evaluation.json",
+            target / ".godotmaker" / "verify_report.json",
+            target / ".godotmaker" / "final_report.json",
             target / ".godotmaker" / "stage_schemas.json",
             target / ".godotmaker" / "applied_migrations.json",
         ]:

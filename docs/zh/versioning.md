@@ -118,16 +118,21 @@ python tools/migrate.py --new fix-state-path
 
 MAJOR 版本变更意味着无法通过增量迁移处理的破坏性变更。`publish.py` 拒绝跨 MAJOR 边界升级，除非使用 `--force`，该选项会执行干净的重新初始化。
 
-全量重建会清除所有框架管理的内容：
+全量重建会重新部署框架代码，并清除不兼容的当前状态：
 - 所选 runner 的 `skills/`、`agents/`、`config/`、`templates/`
 - `.godotmaker/hooks/`、`.godotmaker/stage_schemas.json`
-- `.godotmaker/state.json`、`.godotmaker/metrics*.jsonl`
+- 当前流水线状态：`.godotmaker/state.json`、`pipeline_state.json`、
+  `stage.jsonl`、`current_role`、`evaluation.json`、`verify_report.json`、
+  `final_report.json`
+- `.godotmaker/metrics*.jsonl`
 - `.godotmaker/applied_migrations.json`（重新部署后会重建 baseline）
 - `tools/`
 - 所选 runner 的 hook config 或 plugin adapter（强制覆盖）
 
 保留（用户配置）：
 - `CLAUDE.md` / `AGENTS.md`、所选 runner 的 `godotmaker.yaml`、`.godotmaker/config.yaml`
+- 游戏代码、场景、素材、规划文档，以及 `.godotmaker/evaluation-runs/`、
+  `.godotmaker/gaps/`、`.godotmaker/asset-generation/` 等历史证据
 
 重新部署完后，`publish.py` 调用 `baseline_applied()` 把所有当前迁移
 标记为已应用而不执行——跟全新安装一样。迁移时间戳序列本身是单调全局的，

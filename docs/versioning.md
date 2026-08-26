@@ -133,10 +133,13 @@ MAJOR version bumps indicate breaking changes that cannot be handled
 by incremental migration. `publish.py` refuses to upgrade across MAJOR
 boundaries without `--force`, which performs a clean re-initialization.
 
-Full rebuild cleans all framework-managed content:
+Full rebuild re-deploys framework code and removes incompatible current state:
 - The selected runner's `skills/`, `agents/`, `config/`, and `templates/`
 - `.godotmaker/hooks/`, `.godotmaker/stage_schemas.json`
-- `.godotmaker/state.json`, `.godotmaker/metrics*.jsonl`
+- Current pipeline state: `.godotmaker/state.json`, `pipeline_state.json`,
+  `stage.jsonl`, `current_role`, `evaluation.json`, `verify_report.json`,
+  and `final_report.json`
+- `.godotmaker/metrics*.jsonl`
 - `.godotmaker/applied_migrations.json` (re-baselined after re-deploy)
 - `tools/`
 - The selected runner's hook config or plugin adapter (force-overwritten)
@@ -144,6 +147,9 @@ Full rebuild cleans all framework-managed content:
 Preserved (user configuration):
 - `CLAUDE.md` / `AGENTS.md`, the selected runner's `godotmaker.yaml`,
   `.godotmaker/config.yaml`
+- Game code, scenes, assets, planning documents, and historical evidence such
+  as `.godotmaker/evaluation-runs/`, `.godotmaker/gaps/`, and
+  `.godotmaker/asset-generation/`
 
 After re-deploy, `publish.py` calls `baseline_applied()` to mark every
 current migration as applied without running it — same as a fresh install.
