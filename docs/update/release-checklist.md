@@ -2,7 +2,7 @@
 
 Steps to follow when publishing a new version of GodotMaker.
 
-## Pre-release
+## Release preparation
 
 1. **Finalize `docs/update/next.md`**
    - Review all entries, fix typos, group by category
@@ -102,20 +102,30 @@ Steps to follow when publishing a new version of GodotMaker.
      track. If this policy ever changes, mirror notes under `docs/zh/update/`
      and update this checklist.
 
-6. **Commit and push**
+6. **Create the release-preparation PR**
    ```bash
-   git add -A
+   git switch -c release/vX.Y.Z
+   git add <reviewed-release-files>
    git commit -m "chore: prepare release vX.Y.Z"
-   git push origin main
+   git push -u origin release/vX.Y.Z
+   gh pr create --base main --head release/vX.Y.Z
    ```
+   Review the exact staged paths before committing. A maintainer merges the PR
+   after CI and review; creating the PR does not authorize the release agent to
+   merge it.
 
 ## Publish
 
 7. **Create a git tag and push**
    ```bash
+   git switch main
+   git pull --ff-only origin main
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
+   Verify the tag points at the merged release-preparation commit on
+   `origin/main`. Tagging and pushing happen only after the PR is merged and
+   require separate release authorization.
    This triggers the `release.yml` workflow, which automatically:
    - Reads release notes from `docs/update/vX.Y.Z.md`
    - Creates a GitHub Release (source code archives are attached by GitHub)
