@@ -114,6 +114,21 @@ pip install -r tools/requirements.txt
 python tools/check_env.py
 ```
 
+## 仅安装 Asset Skills
+
+如果已有 Godot 项目只需要 AI 原生资源能力，可以只安装 `assets` 子集：
+
+```bash
+# Claude Code
+python tools/publish.py --subset assets /path/to/my-game
+
+# Codex
+python tools/publish.py --agent codex --subset assets /path/to/my-game
+```
+
+该模式发布公开 Asset Skills、共享运行时、provider 参考资料、provenance helper 和所需工具，不部署 `/gm-*` 流水线、hooks、agents、migrations、MCP 或 Git 初始化。先安装发布后的 `tools/requirements.txt`，再通过所选 coding agent 调用例如 `tileset` 的 Skill。
+
+其他 agent、`--force` 边界和 full/subset 版本兼容规则见[仅安装 Asset Skills](docs/zh/wiki/05-tools/publish.md#仅安装-asset-skills)。
 ## 你需要准备
 
 | 工具 | 用途 |

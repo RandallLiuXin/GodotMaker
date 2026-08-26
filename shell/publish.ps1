@@ -1,5 +1,5 @@
 # Publish GodotMaker skills into a target Godot project directory.
-# Usage: .\shell\publish.ps1 [-Force|--force] [--no-config-review] [-Agent claude-code|codex|opencode|pi|--agent <agent>] <target_godot_project_dir>
+# Usage: .\shell\publish.ps1 [-Force|--force] [--subset assets] [--no-config-review] [-Agent claude-code|codex|opencode|pi|--agent <agent>] <target_godot_project_dir>
 #
 # On upgrade, compares VERSION against the target's .godotmaker/version:
 #   PATCH  -> auto-proceed
@@ -17,6 +17,7 @@ $Script = Join-Path $RepoRoot "tools\publish.py"
 # Parse args manually to accept both PowerShell-style and POSIX-style flags.
 $ForceFlag = $false
 $NoConfigReview = $false
+$Subset = $null
 $Agent = $null
 $Target = $null
 
@@ -33,13 +34,23 @@ for ($i = 0; $i -lt $args.Count; $i++) {
             exit 1
         }
         $Agent = $args[$i]
+    } elseif ($a -eq "--subset") {
+        $i += 1
+        if ($i -ge $args.Count) {
+            Write-Host "Missing value for $a"
+            exit 1
+        }
+        $Subset = $args[$i]
     } elseif (-not $Target) {
         $Target = $a
+    } else {
+        Write-Host "Unexpected argument: $a"
+        exit 1
     }
 }
 
 if (-not $Target) {
-    Write-Host "Usage: .\shell\publish.ps1 [-Force|--force] [--no-config-review] [-Agent claude-code|codex|opencode|pi|--agent <agent>] <target_godot_project_dir>"
+    Write-Host "Usage: .\shell\publish.ps1 [-Force|--force] [--subset assets] [--no-config-review] [-Agent claude-code|codex|opencode|pi|--agent <agent>] <target_godot_project_dir>"
     exit 1
 }
 
@@ -47,6 +58,7 @@ $pyArgs = @($Script)
 if ($ForceFlag) { $pyArgs += "--force" }
 if ($NoConfigReview) { $pyArgs += "--no-config-review" }
 if ($Agent) { $pyArgs += @("--agent", $Agent) }
+if ($Subset) { $pyArgs += @("--subset", $Subset) }
 $pyArgs += $Target
 
 & python @pyArgs

@@ -855,7 +855,10 @@ def _main() -> int:
                 background_material=(request_spec or {}).get("terrain", {}).get("background_material", "grass"),
             ),
         )
-        if all(value is None for value in (arguments.atlas, arguments.texture, arguments.godot_path, arguments.terrain_name, arguments.recipe_out)):
+        if all(value is None for value in (
+            arguments.atlas, arguments.texture, arguments.godot_path,
+            arguments.recipe_out,
+        )):
             return 0
     recipe_values = (arguments.atlas, arguments.texture, arguments.tile_size, arguments.godot_path, arguments.terrain_name, arguments.recipe_out)
     if all(value is None for value in recipe_values):

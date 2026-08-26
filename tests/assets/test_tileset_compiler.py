@@ -374,14 +374,21 @@ def test_tileset_compiler_imports_before_running_the_builder(tmp_path, monkeypat
         stderr = ""
         stdout = ""
 
-    def fake_run(args, **_kwargs):
-        calls.append(args)
+    def fake_run(args, **kwargs):
+        calls.append((args, kwargs))
         return Result()
 
     monkeypatch.setattr(compiler.subprocess, "run", fake_run)
     assert compiler.compile_tileset(request) == {"sources": 1, "tile_size": [16, 16]}
-    assert calls[0][-1] == "--import"
-    assert "--script" in calls[1]
+    assert calls[0][0][-1] == "--import"
+    assert "--script" in calls[1][0]
+    for _args, kwargs in calls:
+        assert kwargs["encoding"] == "utf-8"
+        assert kwargs["errors"] == "replace"
+
+    GodotProbe("godot")._run(["godot", "--version"], timeout=1)
+    assert calls[-1][1]["encoding"] == "utf-8"
+    assert calls[-1][1]["errors"] == "replace"
 
 
 def test_tileset_builder_failure_preserves_existing_artifact(godot_bin, godot_project):

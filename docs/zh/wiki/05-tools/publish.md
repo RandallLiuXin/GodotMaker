@@ -2,6 +2,38 @@
 
 `publish.py` 将 GodotMaker 框架安装到目标 Godot 项目文件夹中。创建新项目时运行一次，以后每次升级 GodotMaker 时再次运行。
 
+## 仅安装 Asset Skills
+
+如果已有 Godot 项目只需要独立的资源生成与验证能力，可使用 `assets` 子集：
+
+```bash
+# Claude Code
+python tools/publish.py --subset assets /path/to/my-game
+
+# Codex
+python tools/publish.py --agent codex --subset assets /path/to/my-game
+
+# OpenCode 或 Pi
+python tools/publish.py --agent opencode --subset assets /path/to/my-game
+python tools/publish.py --agent pi --subset assets /path/to/my-game
+```
+
+PowerShell 包装器支持相同参数：
+
+```powershell
+.\shell\publish.ps1 --agent codex --subset assets C:\Games\my-game
+```
+
+该模式只发布公开的 `skills/assets/`、共享 asset runtime、provider 参考资料、provenance helper，以及 manifest 明确列出的资源工具。它不会发布 `/gm-*` 流水线、reviewer skills、agents、hooks、stage schemas、pipeline templates，也不会注册 MCP、运行 migrations 或初始化 Git。
+
+先在目标项目中安装 Python 依赖，并通过所选 agent 的 `godotmaker.yaml` 或 `GM_EVAL_GODOT_PATH` / `GODOT_BIN` 指定 Godot：
+
+```bash
+cd /path/to/my-game
+python -m pip install -r tools/requirements.txt
+```
+
+随后在所选 coding agent 中调用例如 `tileset` 的 Asset Skill。`--force --subset assets` 只替换 `.godotmaker/asset-subset.json` 记录并经当前 manifest 验证的 subset-owned 文件；不删除无关项目文件。若目标已有完整 GodotMaker 安装，subset 的框架版本必须与 `.godotmaker/version` 一致，避免共享 runtime 发生版本偏斜。
 ## 全新安装
 
 把 `publish.py` 指向一个空文件夹（或已有的 Godot 项目文件夹），并选择这个项目要使用的 coding agent：

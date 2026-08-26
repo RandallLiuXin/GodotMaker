@@ -2,6 +2,57 @@
 
 `publish.py` installs the GodotMaker framework into a target Godot project folder. You'll run it once to create a project, and again whenever you upgrade GodotMaker.
 
+## Standalone Asset Skills
+
+If you only want GodotMaker's ten reusable Asset Skills in an existing Godot
+project, publish the `assets` subset:
+
+```bash
+# Claude Code
+python tools/publish.py --subset assets /path/to/my-game
+
+# Codex
+python tools/publish.py --agent codex --subset assets /path/to/my-game
+
+# OpenCode or Pi
+python tools/publish.py --agent opencode --subset assets /path/to/my-game
+python tools/publish.py --agent pi --subset assets /path/to/my-game
+```
+
+The shell wrappers accept the same option. On Windows, for example:
+
+```powershell
+.\shell\publish.ps1 --agent codex --subset assets C:\Games\my-game
+```
+
+This mode installs only the public skills under `skills/assets/`, the shared
+asset runtime, provider references, provenance helper, and required asset
+tools. It does not install the `/gm-*` pipeline, reviewer skills, agents,
+hooks, stage schemas, pipeline templates, MCP registration, migrations, or Git
+metadata.
+
+Install the published Python dependencies, then configure the Godot executable
+through the selected agent's `godotmaker.yaml` or an explicit environment
+variable such as `GM_EVAL_GODOT_PATH`:
+
+```bash
+cd /path/to/my-game
+python -m pip install -r tools/requirements.txt
+```
+
+You can then invoke a published Asset Skill such as `tileset` and provide its
+`ASSET_REQUEST.json`. The Skill writes generated sources and reports beneath
+`.godotmaker/asset-generation/` and stable runtime assets beneath
+`assets/generated/`.
+
+Re-run the command to update the subset. `--force --subset assets` removes only
+files recorded in `.godotmaker/asset-subset.json` after every path is validated
+against the current subset manifest; unrelated project files, skills, and tools
+are preserved. The subset has its own install state and does not write the full
+framework's `.godotmaker/version` or migration tracker. When a full installation
+is present, its version must match the subset source version so the shared asset
+runtime cannot drift out of sync.
+
 ## Fresh install
 
 Point `publish.py` at an empty folder (or an existing Godot project folder). Choose the coding agent you want to use for that project:

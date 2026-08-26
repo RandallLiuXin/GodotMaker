@@ -67,8 +67,11 @@ manifests, stable entries, or worker dispatch state.
 
 2. Generate the deterministic source plan:
 
+   Resolve `references/source-sheet-scheme.json` relative to this Skill's own
+   directory and pass that resolved path as `<scheme-path>`:
+
    ```powershell
-   python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --scheme .agents/skills/ui-kit/references/source-sheet-scheme.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
+   python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --scheme <scheme-path> --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
    ```
 
    Use the plan prompts unchanged. Make exactly two provider calls, attaching
@@ -193,8 +196,10 @@ failed level as repair input:
 Record retries. STOP only for an input-gate failure or a pinned provider that
 cannot attach references. Never hand-write L-level values; do not STOP merely because a production validation attempt failed.
 
-Resolve Godot from `.claude/godotmaker.yaml`'s `godot_path`; when it is absent,
-use `godot` on `PATH`. Do not substitute another installation.
+Resolve a configured Godot path with `python tools/agent_runtime.py godot_path`.
+When no selected-agent config provides it, honor `GM_EVAL_GODOT_PATH` or
+`GODOT_BIN`; otherwise use `godot` on `PATH`. Do not substitute another
+installation when one of those sources pins the executable.
 If required validation cannot run, return a failed result rather than claiming
 readiness.
 

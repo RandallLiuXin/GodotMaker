@@ -375,7 +375,8 @@ def compile_tileset(request: CompileRequest) -> dict[str, Any]:
         try:
             imported = subprocess.run(
                 [recipe["godot_path"], "--headless", "--path", str(request.project_root), "--import"],
-                capture_output=True, text=True, timeout=300, check=False,
+                capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=300, check=False,
             )
             if imported.returncode != 0:
                 message = (imported.stderr or imported.stdout).strip()
@@ -386,7 +387,8 @@ def compile_tileset(request: CompileRequest) -> dict[str, Any]:
                     "--script", str(_SCRIPT), "--", "--recipe", str(config),
                     "--output", request.artifact_path,
                 ],
-                capture_output=True, text=True, timeout=300, check=False,
+                capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=300, check=False,
             )
         except FileNotFoundError as exc:
             raise CompilerError(f"TileSet Godot binary was not found: {recipe['godot_path']}") from exc

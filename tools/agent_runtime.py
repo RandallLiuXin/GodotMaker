@@ -3,14 +3,97 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-from pathlib import Path
+import json
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import sys
+import unicodedata
 
 
 AGENT_CLAUDE_CODE = "claude-code"
 AGENT_CODEX = "codex"
 AGENT_OPENCODE = "opencode"
 AGENT_PI = "pi"
+
+ASSET_SUBSET_STATE = Path(".godotmaker") / "asset-subset.json"
+
+
+class AgentRuntimeStateError(ValueError):
+    """Raised when persisted agent selection state is unsafe or invalid."""
+
+
+def normalize_project_relative_path(path: Path | str) -> Path:
+    """Return a normalized, portable project-relative path."""
+    untrusted = str(path)
+    if any(ord(character) < 32 or ord(character) == 127 for character in untrusted):
+        raise ValueError(f"project path contains control characters: {path}")
+    raw = untrusted.strip()
+    posix = PurePosixPath(raw.replace("\\", "/"))
+    windows = PureWindowsPath(raw)
+    if (
+        not raw
+        or posix.is_absolute()
+        or windows.is_absolute()
+        or bool(windows.drive)
+        or bool(windows.root)
+        or any(part == ".." for part in posix.parts)
+    ):
+        raise ValueError(f"project path must be relative: {path}")
+    parts = tuple(part for part in posix.parts if part not in ("", "."))
+    if not parts:
+        raise ValueError(f"project path must be relative: {path}")
+    return Path(*parts)
+
+
+def portable_project_path_key(path: Path | str) -> str:
+    """Return a host-independent key for detecting path aliases."""
+    normalized = normalize_project_relative_path(path)
+    portable = "/".join(normalized.parts)
+    return unicodedata.normalize("NFC", portable).casefold()
+
+
+def _is_link_or_junction(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction and is_junction())
+
+
+def _validate_metadata_directory(project_dir: Path) -> Path:
+    metadata = project_dir / ".godotmaker"
+    try:
+        if _is_link_or_junction(metadata):
+            raise AgentRuntimeStateError(
+                f"GodotMaker metadata directory must not be a symlink or junction: "
+                f"{metadata}"
+            )
+        if metadata.exists() and not metadata.is_dir():
+            raise AgentRuntimeStateError(
+                f"GodotMaker metadata path must be a directory: {metadata}"
+            )
+    except OSError as exc:
+        raise AgentRuntimeStateError(
+            f"unable to validate GodotMaker metadata directory: {metadata}"
+        ) from exc
+    return metadata
+
+
+def _validate_metadata_file(path: Path, description: str) -> bool:
+    try:
+        if _is_link_or_junction(path):
+            raise AgentRuntimeStateError(
+                f"{description} must not be a symlink or junction: {path}"
+            )
+        if not path.exists():
+            return False
+        if not path.is_file():
+            raise AgentRuntimeStateError(
+                f"{description} must be a regular file: {path}"
+            )
+    except OSError as exc:
+        raise AgentRuntimeStateError(
+            f"unable to validate {description}: {path}"
+        ) from exc
+    return True
 
 
 def _read_yaml_scalar(path: Path, key: str) -> str | None:
@@ -42,13 +125,80 @@ def normalize_agent(value: str | None) -> str | None:
     return None
 
 
+def _read_asset_subset_agent(project_dir: Path) -> str | None:
+    """Read the standalone subset's selected agent after strict validation."""
+    state_path = project_dir / ASSET_SUBSET_STATE
+    if not _validate_metadata_file(state_path, "asset subset state"):
+        return None
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AgentRuntimeStateError(
+            f"invalid asset subset state: {state_path}"
+        ) from exc
+    if not isinstance(state, dict):
+        raise AgentRuntimeStateError(
+            f"asset subset state must be an object: {state_path}"
+        )
+    if state.get("schema_version") != 1:
+        raise AgentRuntimeStateError(
+            f"asset subset state has unsupported schema_version: {state_path}"
+        )
+    if state.get("subset") != "assets":
+        raise AgentRuntimeStateError(
+            f"asset subset state has unexpected subset: {state_path}"
+        )
+    raw_agent = state.get("agent")
+    if not isinstance(raw_agent, str) or raw_agent not in {
+        AGENT_CLAUDE_CODE,
+        AGENT_CODEX,
+        AGENT_OPENCODE,
+        AGENT_PI,
+    }:
+        raise AgentRuntimeStateError(
+            f"asset subset state has unsupported agent: {state_path}"
+        )
+    managed_files = state.get("managed_files")
+    if not isinstance(managed_files, list) or not all(
+        isinstance(path, str) for path in managed_files
+    ):
+        raise AgentRuntimeStateError(
+            f"asset subset state has invalid managed_files: {state_path}"
+        )
+    managed_keys: set[str] = set()
+    for raw_path in managed_files:
+        try:
+            key = portable_project_path_key(raw_path)
+        except ValueError as exc:
+            raise AgentRuntimeStateError(
+                f"asset subset state has invalid managed_files path: {state_path}"
+            ) from exc
+        if key in managed_keys:
+            raise AgentRuntimeStateError(
+                f"asset subset state has duplicate managed_files paths: {state_path}"
+            )
+        managed_keys.add(key)
+    return raw_agent
+
+
 def detect_agent(project_dir: Path) -> str:
     """Detect the selected coding agent for a published project."""
-    config = project_dir / ".godotmaker" / "config.yaml"
-    for key in ("agent", "agent_runtime"):
-        agent = normalize_agent(_read_yaml_scalar(config, key))
-        if agent:
-            return agent
+    metadata = _validate_metadata_directory(project_dir)
+    config = metadata / "config.yaml"
+    if _validate_metadata_file(config, "project config"):
+        try:
+            for key in ("agent", "agent_runtime"):
+                agent = normalize_agent(_read_yaml_scalar(config, key))
+                if agent:
+                    return agent
+        except OSError as exc:
+            raise AgentRuntimeStateError(
+                f"unable to read project config: {config}"
+            ) from exc
+
+    subset_agent = _read_asset_subset_agent(project_dir)
+    if subset_agent:
+        return subset_agent
 
     # Backward-compatible fallback for older projects without `agent`.
     if (project_dir / ".agents").exists():
@@ -141,12 +291,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     project_dir = find_project_dir(Path(args.project))
-    value = read_config_value(
-        project_dir,
-        args.key,
-        agent=args.agent,
-        default=args.default,
-    )
+    try:
+        value = read_config_value(
+            project_dir,
+            args.key,
+            agent=args.agent,
+            default=args.default,
+        )
+    except AgentRuntimeStateError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
     if value:
         print(value)
         return 0

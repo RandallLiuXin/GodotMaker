@@ -14,7 +14,7 @@ Read and enforce `.godotmaker/asset-runtime/asset-skill-contract.md` and `schema
 ```json
 {
   "asset_type": "tileset",
-  "outputs": [{"role": "runtime", "path": "res://assets/generated/tileset/<asset_id>/<asset_id>.tres", "godot_type": "TileSet"}],
+  "outputs": [{"role": "runtime", "name": "<asset_id>", "path": "res://assets/generated/tileset/<asset_id>/<asset_id>.tres", "godot_type": "TileSet"}],
   "sources": [{"path": "res://assets/generated/tileset/<asset_id>/<asset_id>_atlas.png", "layout": "tile_atlas"}],
   "previews": [],
   "validation": {"passed": true, "levels": {"L0": true, "L1": true, "L2": true, "L3": true, "L4": true}}
