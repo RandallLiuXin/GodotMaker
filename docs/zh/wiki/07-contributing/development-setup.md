@@ -32,7 +32,7 @@ GodotMaker/
 ├── docs/           Wiki、贡献指南、版本参考、hooks 参考
 ├── shell/          publish.sh / publish.ps1, report.sh / report.bat
 ├── migrations/     跨版本迁移脚本
-├── VERSION         语义版本号 (MAJOR.MINOR.PATCH)——唯一真实来源
+├── VERSION         语义版本号 (MAJOR.MINOR.PATCH[-PRERELEASE])——唯一真实来源
 └── CHANGELOG.md    每次发版的变更说明
 ```
 

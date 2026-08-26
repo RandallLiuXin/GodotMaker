@@ -1,7 +1,7 @@
 # Next Release
 
 > **Contributors:** Every pull request MUST include an entry in this file describing the change.
-> When a new version is released, this file will be archived as `vX.Y.Z.md` and a fresh copy will take its place.
+> When a new version is released, this file will be archived as `v<VERSION>.md` and a fresh copy will take its place.
 
 ## How to add an entry
 

@@ -32,7 +32,7 @@ GodotMaker/
 ├── docs/           Wiki, contributing guides, versioning reference, hooks reference
 ├── shell/          publish.sh / publish.ps1, report.sh / report.bat
 ├── migrations/     Per-version-jump migration scripts
-├── VERSION         Semantic version (MAJOR.MINOR.PATCH) — source of truth
+├── VERSION         Semantic version (MAJOR.MINOR.PATCH[-PRERELEASE]) — source of truth
 └── CHANGELOG.md    Per-release change notes
 ```
 

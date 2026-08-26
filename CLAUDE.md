@@ -79,7 +79,7 @@ Per-tag archives (immutable once sealed): `docs/tags/<tag>/`.
 
 ## Versioning
 
-- `VERSION` file at repo root (semantic versioning: MAJOR.MINOR.PATCH)
+- `VERSION` file at repo root (semantic versioning: MAJOR.MINOR.PATCH[-PRERELEASE])
 - `CHANGELOG.md` tracks all changes
 - Publish compares versions and prompts on MINOR/MAJOR upgrades
 

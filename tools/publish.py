@@ -45,7 +45,7 @@ from migrate import (
 
 class VersionCheckResult(NamedTuple):
     proceed: bool
-    level: str  # "FRESH" | "SAME" | "PATCH" | "MINOR" | "MAJOR" | "DOWNGRADE"
+    level: str  # INVALID | FRESH | SAME | PRERELEASE | PATCH | MINOR | MAJOR | DOWNGRADE
     target_ver: SemVer | None
     source_ver: SemVer | None
 
@@ -95,6 +95,17 @@ AGENT_RUNTIME_EXTENSION_DIRS = {
 ASSET_RUNTIME_SOURCE = Path("skills") / "assets" / "_shared"
 ASSET_RUNTIME_TARGET = Path(".godotmaker") / "asset-runtime"
 ASSET_PROVIDER_REFERENCES_SOURCE = Path("skills") / "core" / "gm-asset" / "references" / "providers"
+ASSETS_RUNTIME_HEADERS = (
+    "#",
+    "Tag",
+    "Name",
+    "Type",
+    "Size",
+    "Generation Params",
+    "Runtime Type",
+    "Runtime Path",
+    "Status",
+)
 
 @dataclass(frozen=True)
 class AgentPublishAdapter:
@@ -248,15 +259,25 @@ def check_version_upgrade(repo_root: Path, target: Path, force: bool
 
     Returns a VersionCheckResult with fields:
       - proceed: True if publish should continue
-      - level: "FRESH" | "SAME" | "PATCH" | "MINOR" | "MAJOR" | "DOWNGRADE"
+      - level: INVALID | FRESH | SAME | PRERELEASE | PATCH | MINOR | MAJOR | DOWNGRADE
       - target_ver: version currently in the target project (None if fresh)
       - source_ver: version in the GodotMaker repo (None if no VERSION file)
     """
     source_ver = read_source_version(repo_root)
+    source_version_file = repo_root / "VERSION"
+    if source_version_file.exists() and not source_ver:
+        raw = source_version_file.read_text(encoding="utf-8").strip()
+        print(f"\n  ERROR: invalid source VERSION: {raw!r}", file=sys.stderr)
+        return VersionCheckResult(False, "INVALID", None, None)
     if not source_ver:
         return VersionCheckResult(True, "FRESH", None, None)
 
     target_ver = read_target_version(target)
+    target_version_file = target / ".godotmaker" / "version"
+    if target_version_file.exists() and not target_ver:
+        raw = target_version_file.read_text(encoding="utf-8").strip()
+        print(f"\n  ERROR: invalid target VERSION: {raw!r}", file=sys.stderr)
+        return VersionCheckResult(False, "INVALID", None, source_ver)
 
     # Fresh install — no existing version
     if not target_ver:
@@ -285,6 +306,10 @@ def check_version_upgrade(repo_root: Path, target: Path, force: bool
         level = "MINOR"
         color = ">>  "
         msg = "Backward-compatible new features / behavior changes. Review changelog below."
+    elif source_ver.patch == target_ver.patch:
+        level = "PRERELEASE"
+        color = ">>  "
+        msg = "Pre-release iteration; compatibility may still change before the stable release."
     else:
         level = "PATCH"
         color = "    "
@@ -313,8 +338,8 @@ def check_version_upgrade(repo_root: Path, target: Path, force: bool
             print("  Upgrade cancelled.")
             return VersionCheckResult(False, level, target_ver, source_ver)
 
-    # MINOR upgrades require confirmation (unless --force)
-    elif level == "MINOR" and not force:
+    # MINOR and PRERELEASE upgrades require confirmation (unless --force)
+    elif level in ("MINOR", "PRERELEASE") and not force:
         try:
             answer = input(f"  Proceed with {level} upgrade? [y/N] ").strip().lower()
         except (EOFError, KeyboardInterrupt):
@@ -350,6 +375,39 @@ def select_migration_action(level: str, force: bool) -> str:
     if level == "FRESH" or (level == "MAJOR" and force):
         return "baseline"
     return "run"
+
+
+def major_assets_schema_error(target: Path) -> str | None:
+    """Return a fail-closed error for an incompatible preserved ASSETS.md.
+
+    MAJOR ``--force`` deliberately preserves user project documents and skips
+    migrations. The 1.0 direct-registration contract cannot safely infer
+    native runtime resources from the legacy ``File Path`` column, so publish
+    must stop before cleaning anything instead of leaving a half-upgraded
+    project.
+    """
+    assets_file = target / "ASSETS.md"
+    if not assets_file.exists():
+        return None
+    try:
+        lines = assets_file.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return "cannot read the preserved ASSETS.md as UTF-8"
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped.startswith("|") or not stripped.endswith("|"):
+            continue
+        cells = tuple(cell.strip() for cell in stripped.strip("|").split("|"))
+        if cells == ASSETS_RUNTIME_HEADERS:
+            return None
+        if cells[:6] == ASSETS_RUNTIME_HEADERS[:6] and cells[-1:] == ("Status",):
+            return (
+                "the preserved ASSETS.md uses a legacy asset table schema; "
+                "v1.0.0-alpha.1 cannot infer Runtime Type and Runtime Path "
+                "during a MAJOR --force re-publication"
+            )
+    return "the preserved ASSETS.md has no recognized runtime asset table header"
 
 
 def _rmtree_handle_readonly(func, path, _):
@@ -1446,6 +1504,19 @@ def main():
     config_dir = adapter.project_config_dir(target)
     skills_target = adapter.skill_dir(target)
     config_file = config_dir / "godotmaker.yaml"
+
+    # MAJOR upgrade with --force: validate preserved project documents before
+    # cleaning any framework-managed content.
+    if level == "MAJOR" and args.force:
+        assets_error = major_assets_schema_error(target)
+        if assets_error:
+            print(f"\nERROR: {assets_error}.", file=sys.stderr)
+            print(
+                "Create a fresh workspace for this alpha or update ASSETS.md "
+                "to the direct runtime schema before retrying.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     # MAJOR upgrade with --force: clean all framework-managed content
     if level == "MAJOR" and args.force:

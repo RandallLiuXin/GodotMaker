@@ -4,13 +4,25 @@ GodotMaker 的版本追踪方式，以及版本之间的升级处理机制。
 
 ## 版本方案
 
-GodotMaker 使用[语义化版本](https://semver.org/)：`MAJOR.MINOR.PATCH`
+GodotMaker 使用[语义化版本](https://semver.org/)：
+`MAJOR.MINOR.PATCH[-PRERELEASE]`。
 
 | 级别 | 含义 | 示例 | 升级行为 |
 |------|------|------|----------|
 | **PATCH** | 向后兼容的 bug 修复，无新行为 | `0.3.0 → 0.3.1` | 自动继续；执行所有未应用的迁移脚本 |
 | **MINOR** | 向后兼容的新功能或行为变化 | `0.3.0 → 0.4.0` | 显示 Changelog，要求确认；执行所有未应用的迁移脚本 |
 | **MAJOR** | 破坏性变更（不向后兼容） | `0.x → 1.x` | 强烈警告；必须使用 `--force` 进行干净的重新初始化（跳过迁移，改为 baseline） |
+| **PRERELEASE** | 同一个未来稳定版的预发布迭代 | `1.0.0-alpha.1 → 1.0.0-alpha.2` | 显示 Changelog 并要求确认；稳定版前兼容性仍可能变化 |
+
+预发布标识符遵循 SemVer 的正常优先级：
+
+```text
+0.8.2 < 1.0.0-alpha.1 < 1.0.0-alpha.2 < 1.0.0-beta.1 < 1.0.0-rc.1 < 1.0.0
+```
+
+`VERSION`、目标项目中的 `.godotmaker/version`、Changelog 标题、发布说明文件名和 Git tag
+都会精确保留预发布标识符。构建元数据在存在时也会保留，但不参与优先级比较。已发布的 tag
+不可移动；修正预发布版本时必须使用新的标识符。
 
 ### 本项目中"向后兼容"的具体含义
 
@@ -75,6 +87,7 @@ python tools/publish.py /path/to/my-game
 | **PATCH** | 自动继续；执行所有未应用的迁移脚本 |
 | **MINOR** | 显示 Changelog，询问确认；执行所有未应用的迁移脚本 |
 | **MAJOR** | 阻止增量迁移，需要 `--force` 才能进行干净的重新初始化 |
+| **PRERELEASE** | 显示 Changelog 并询问确认；执行所有未应用的迁移脚本 |
 
 ### 版本迁移
 
@@ -118,6 +131,11 @@ python tools/migrate.py --new fix-state-path
 
 MAJOR 版本变更意味着无法通过增量迁移处理的破坏性变更。`publish.py` 拒绝跨 MAJOR 边界升级，除非使用 `--force`，该选项会执行干净的重新初始化。
 
+在清理任何内容之前，MAJOR `--force` 会先验证新 runtime 仍需读取的保留项目文档。
+特别是 1.0 的直接资产注册契约无法从旧 `ASSETS.md` 的 `File Path` 表格推断原生资源
+类型和路径。这类项目会在修改发生前被阻止；需要新建 workspace，或先显式把资产表更新
+为当前 runtime schema。
+
 全量重建会清除所有框架管理的内容：
 - 所选 runner 的 `skills/`、`agents/`、`config/`、`templates/`
 - `.godotmaker/hooks/`、`.godotmaker/stage_schemas.json`
@@ -153,21 +171,21 @@ schema 变更，请从 VCS 快照恢复目标项目。
 
 ## 会话中的版本显示
 
-在已发布的项目中启动受支持的 coding-agent 会话时，`session_start.py` Hook 会读取 `.godotmaker/version`，并在 runtime 支持注入上下文时写入 `[GodotMaker vX.Y.Z]`。这让当前角色技能知道部署的是哪个框架版本。
+在已发布的项目中启动受支持的 coding-agent 会话时，`session_start.py` Hook 会读取 `.godotmaker/version`，并在 runtime 支持注入上下文时写入 `[GodotMaker v<VERSION>]`。这让当前角色技能知道部署的是哪个框架版本。
 
 ## 发布新版本的工作流程
 
 1. 在 GodotMaker 仓库中做出你的修改
-2. 按上面的决策树确定 bump 级别（PATCH / MINOR / MAJOR）
+2. 按上面的决策树确定 bump 级别，并决定是否为预发布版本
 3. 如果修改需要在已有目标项目里改写某些东西，用 `python tools/migrate.py --new <slug>`
    生成一个新迁移脚本——详见 `migrations/README.md`。**任意 bump 级别都可以**。
-4. 更新 `CHANGELOG.md`——在顶部添加新的 `## [X.Y.Z]` 分区
+4. 更新 `CHANGELOG.md`——在顶部添加新的 `## [<VERSION>]` 分区
 5. 更新 `VERSION`——改为新版本号
 6. 提交并（可选）打标签：
    ```bash
    git add VERSION CHANGELOG.md migrations/
-   git commit -m "release: vX.Y.Z"
-   git tag vX.Y.Z
+   git commit -m "release: v<VERSION>"
+   git tag v<VERSION>
    ```
 7. 发布到目标项目：
    ```bash

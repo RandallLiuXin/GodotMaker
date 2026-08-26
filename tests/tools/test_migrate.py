@@ -668,6 +668,41 @@ class TestSelectMigrationAction:
         assert select_migration_action("DOWNGRADE", force=True) == "run"
 
 
+class TestMajorAssetsSchemaGuard:
+    def test_missing_assets_file_is_compatible(self, tmp_path):
+        from publish import major_assets_schema_error
+        assert major_assets_schema_error(tmp_path) is None
+
+    def test_current_runtime_header_is_compatible(self, tmp_path):
+        from publish import ASSETS_RUNTIME_HEADERS, major_assets_schema_error
+        header = "| " + " | ".join(ASSETS_RUNTIME_HEADERS) + " |\n"
+        (tmp_path / "ASSETS.md").write_text(header, encoding="utf-8")
+        assert major_assets_schema_error(tmp_path) is None
+
+    def test_legacy_file_path_header_fails_closed(self, tmp_path):
+        from publish import major_assets_schema_error
+        (tmp_path / "ASSETS.md").write_text(
+            "| # | Tag | Name | Type | Size | Generation Params | File Path | Status |\n",
+            encoding="utf-8",
+        )
+        error = major_assets_schema_error(tmp_path)
+        assert error is not None
+        assert "legacy asset table schema" in error
+
+    def test_unknown_assets_header_fails_closed(self, tmp_path):
+        from publish import major_assets_schema_error
+        (tmp_path / "ASSETS.md").write_text(
+            "# Assets\n\n| Name | Path |\n|---|---|\n",
+            encoding="utf-8",
+        )
+        assert major_assets_schema_error(tmp_path) is not None
+
+    def test_guard_header_matches_registration_contract(self):
+        from asset_result_registration import RUNTIME_HEADERS
+        from publish import ASSETS_RUNTIME_HEADERS
+        assert ASSETS_RUNTIME_HEADERS == RUNTIME_HEADERS
+
+
 # ---------------------------------------------------------------------------
 # MAJOR --force cleanup of applied_migrations.json
 # ---------------------------------------------------------------------------
@@ -847,6 +882,30 @@ class TestPublishMainMigrationRouting:
         self._seed_target_version(env["target"], "0.4.0")
         self._run_main(monkeypatch, env["target"], force=True)
         assert len(env["baseline_calls"]) == 1
+        assert env["run_calls"] == []
+
+    def test_major_force_legacy_assets_exits_before_cleanup(
+        self, env, monkeypatch
+    ):
+        self._force_source_version(monkeypatch, 1, 0, 0)
+        self._seed_target_version(env["target"], "0.4.0")
+        assets_file = env["target"] / "ASSETS.md"
+        assets_file.write_text(
+            "| # | Tag | Name | Type | Size | Generation Params | File Path | Status |\n",
+            encoding="utf-8",
+        )
+        managed_dir = env["target"] / ".claude" / "skills"
+        managed_dir.mkdir(parents=True)
+        marker = managed_dir / "preserved-before-abort.txt"
+        marker.write_text("keep", encoding="utf-8")
+
+        with pytest.raises(SystemExit) as exc:
+            self._run_main(monkeypatch, env["target"], force=True)
+
+        assert exc.value.code == 1
+        assert marker.read_text(encoding="utf-8") == "keep"
+        assert assets_file.exists()
+        assert env["baseline_calls"] == []
         assert env["run_calls"] == []
 
     def test_major_force_cleanup_removes_applied_migrations_file(
@@ -1048,12 +1107,63 @@ class TestCheckVersionUpgrade:
         assert result.level == "FRESH"
         assert result.target_ver is None
 
+    def test_invalid_source_version_fails_closed(self, tmp_path):
+        from publish import check_version_upgrade
+        repo, target = self._setup_versions(tmp_path, "1.0.0-alpha.01")
+        result = check_version_upgrade(repo, target, force=True)
+        assert result.proceed is False
+        assert result.level == "INVALID"
+
+    def test_invalid_target_version_fails_closed(self, tmp_path):
+        from publish import check_version_upgrade
+        repo, target = self._setup_versions(tmp_path, "1.0.0-alpha.1", "broken")
+        result = check_version_upgrade(repo, target, force=True)
+        assert result.proceed is False
+        assert result.level == "INVALID"
+
     def test_same_version(self, tmp_path):
         from publish import check_version_upgrade
         repo, target = self._setup_versions(tmp_path, "0.4.0", "0.4.0")
         result = check_version_upgrade(repo, target, force=False)
         assert result.proceed is True
         assert result.level == "SAME"
+
+    def test_prerelease_upgrade_prompts(self, tmp_path, monkeypatch):
+        from publish import check_version_upgrade
+        repo, target = self._setup_versions(
+            tmp_path,
+            "1.0.0-alpha.2",
+            "1.0.0-alpha.1",
+        )
+        monkeypatch.setattr("builtins.input", lambda _: "y")
+        result = check_version_upgrade(repo, target, force=False)
+        assert result.proceed is True
+        assert result.level == "PRERELEASE"
+
+    def test_prerelease_downgrade_is_blocked(self, tmp_path):
+        from publish import check_version_upgrade
+        repo, target = self._setup_versions(
+            tmp_path,
+            "1.0.0-alpha.1",
+            "1.0.0-alpha.2",
+        )
+        result = check_version_upgrade(repo, target, force=False)
+        assert result.proceed is False
+        assert result.level == "DOWNGRADE"
+
+    def test_prerelease_changelog_keeps_suffix(self, tmp_path, monkeypatch, capsys):
+        from publish import check_version_upgrade
+        repo, target = self._setup_versions(
+            tmp_path,
+            "1.0.0-alpha.2",
+            "1.0.0-alpha.1",
+        )
+        (repo / "CHANGELOG.md").write_text(
+            "# Changelog\n\n## [1.0.0-alpha.2] - 2026-08-26\n\n- Alpha fix.\n"
+        )
+        monkeypatch.setattr("builtins.input", lambda _: "y")
+        check_version_upgrade(repo, target, force=False)
+        assert "## [1.0.0-alpha.2]" in capsys.readouterr().out
 
     def test_patch_upgrade(self, tmp_path):
         from publish import check_version_upgrade

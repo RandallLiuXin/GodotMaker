@@ -2,15 +2,21 @@
 
 Steps to follow when publishing a new version of GodotMaker.
 
+Stable releases use `X.Y.Z`. Pre-releases use a full Semantic Versioning
+identifier such as `X.Y.Z-alpha.1`; the Git tag adds the leading `v`. Never
+move or reuse a published pre-release tag — fixes go into the next identifier
+(for example, `alpha.1` → `alpha.2`).
+
 ## Pre-release
 
 1. **Finalize `docs/update/next.md`**
    - Review all entries, fix typos, group by category
-   - Rename `next.md` to `vX.Y.Z.md` (e.g., `v0.5.0.md`) as a permanent archive
+   - Rename `next.md` to `v<VERSION>.md` (e.g., `v0.5.0.md` or
+     `v1.0.0-alpha.1.md`) as a permanent archive
    - Create a new empty `next.md` by copying `next.template.md`
    ```bash
    cd docs/update
-   mv next.md vX.Y.Z.md
+   mv next.md v<VERSION>.md
    cp next.template.md next.md
    ```
 
@@ -46,9 +52,15 @@ Steps to follow when publishing a new version of GodotMaker.
      your release notes for that release.
 
 3. **Update version numbers** — these MUST stay in lockstep. Skipping any one ships a half-bumped release.
-   - **`VERSION`** — single-line file at the repo root, content is the bare `X.Y.Z` (no leading `v`, no trailing newline issues). This is the **source-of-truth** `tools/publish.py` reads (`read_source_version()` at `tools/publish.py:43`) and writes into target projects' `.godotmaker/version`. Forgetting this bump causes downstream consumers (`godotmaker-cli`, `publish.py` upgrade detection) to see `installed_version != target_version` on every run, triggering an infinite "framework upgrade X.Y.Z-1 → X.Y.Z" loop that never converges.
-   - `pyproject.toml` — update `version = "X.Y.Z"`. Python package metadata only; not consumed by the publish pipeline, but kept in sync so PyPI/SDK consumers see the same number.
-   - `CHANGELOG.md` — add a new `## [X.Y.Z] — YYYY-MM-DD` section with entries from the archived `next.md`
+   - **`VERSION`** — single-line file at the repo root, content is the exact
+     bare SemVer (for example, `1.0.0-alpha.1`; no leading `v`). This is the
+     **source-of-truth** `tools/publish.py` reads and writes into target
+     projects' `.godotmaker/version`. The pre-release suffix must be preserved.
+   - `pyproject.toml` — update `version = "<VERSION>"`. Python package
+     metadata may normalize an alpha version when building a distribution,
+     but the source value stays identical to `VERSION`.
+   - `CHANGELOG.md` — add a new `## [<VERSION>] — YYYY-MM-DD` section with
+     entries from the archived `next.md`
    - **`LICENSE` Change Date** — in the `Change Date` field, pin this release's concrete Change Date: the calendar date equal to this release's publication date plus four years (a release published 2026-06-01 records `2030-06-01`). BUSL treats `Change Date` as a license parameter, so the tagged release's `LICENSE` should contain only the concrete value, followed directly by `Change License`.
      ```text
      Change Date:
@@ -93,7 +105,7 @@ Steps to follow when publishing a new version of GodotMaker.
      either the role's `SKILL.md` actually writes that file or the doc claim
      is removed. There is no "documented but not produced" file in the
      pipeline.
-   - **Release notes are visible.** Every new `docs/update/vX.Y.Z.md` must
+   - **Release notes are visible.** Every new `docs/update/v<VERSION>.md` must
      appear under the `Release Notes` section of `mkdocs.yml`. Adding the
      archive without the nav entry hides it from the published site.
    - **Chinese release-note policy.** Release notes under `docs/update/` are
@@ -102,27 +114,43 @@ Steps to follow when publishing a new version of GodotMaker.
      track. If this policy ever changes, mirror notes under `docs/zh/update/`
      and update this checklist.
 
-6. **Commit and push**
+6. **Create the release-preparation PR**
    ```bash
-   git add -A
-   git commit -m "chore: prepare release vX.Y.Z"
-   git push origin main
+   git switch -c release/v<VERSION>
+   git add <reviewed-release-files>
+   git commit -m "chore: prepare release v<VERSION>"
+   git push -u origin release/v<VERSION>
+   gh pr create --base main --head release/v<VERSION>
    ```
+
+   Review the exact staged paths before committing; do not use a broad add when
+   unrelated worktree changes exist. A maintainer merges the PR after CI and
+   review. Creating the PR does not authorize the release agent to merge it.
 
 ## Publish
 
 7. **Create a git tag and push**
    ```bash
-   git tag vX.Y.Z
-   git push origin vX.Y.Z
+   git switch main
+   git pull --ff-only origin main
+   git tag v<VERSION>
+   git push origin v<VERSION>
    ```
+   Verify the tag points at the merged release-preparation commit on
+   `origin/main`. Tagging and pushing happen only after the PR is merged and
+   require separate release authorization.
    This triggers the `release.yml` workflow, which automatically:
-   - Reads release notes from `docs/update/vX.Y.Z.md`
+   - Reads release notes from `docs/update/v<VERSION>.md`
+   - Marks versions containing a `-` suffix as GitHub Pre-releases
    - Creates a GitHub Release (source code archives are attached by GitHub)
 
 8. **Verify the release**
    - Check the [Releases page](https://github.com/RandallLiuXin/GodotMaker/releases)
    - Verify release notes match `CHANGELOG.md`
+   - For a pre-release, verify GitHub shows **Pre-release** and does not replace
+     the latest stable release
+   - Download or publish from the tag once and verify `.godotmaker/version`
+     contains the exact version, including the pre-release suffix
 
 ## Post-release
 

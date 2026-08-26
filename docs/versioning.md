@@ -4,13 +4,26 @@ How GodotMaker tracks versions and handles upgrades between releases.
 
 ## Version Scheme
 
-GodotMaker uses [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`
+GodotMaker uses [Semantic Versioning](https://semver.org/):
+`MAJOR.MINOR.PATCH[-PRERELEASE]`.
 
 | Level | Meaning | Example | Upgrade behavior |
 |-------|---------|---------|------------------|
 | **PATCH** | Backward-compatible bug fixes, no new behavior | `0.3.0 → 0.3.1` | Auto-proceed; applies any pending migrations |
 | **MINOR** | Backward-compatible new features or behavior changes | `0.3.0 → 0.4.0` | Show changelog, require confirmation; applies any pending migrations |
 | **MAJOR** | Breaking changes (incompatible) | `0.x → 1.x` | Strong warning; requires `--force` clean re-init (skips migrations, baselines instead) |
+| **PRERELEASE** | Iteration on the same upcoming stable version | `1.0.0-alpha.1 → 1.0.0-alpha.2` | Show changelog and require confirmation; compatibility may still change |
+
+Pre-release identifiers follow normal SemVer precedence. For example:
+
+```text
+0.8.2 < 1.0.0-alpha.1 < 1.0.0-alpha.2 < 1.0.0-beta.1 < 1.0.0-rc.1 < 1.0.0
+```
+
+`VERSION`, target `.godotmaker/version` stamps, changelog headings, release-note
+filenames, and Git tags all preserve the identifier exactly. Build metadata is
+preserved when present but does not affect precedence. Published tags are
+immutable; a corrected pre-release receives a new identifier.
 
 ### What "backward-compatible" means in this project
 
@@ -81,6 +94,7 @@ The publish script compares the source `VERSION` against the target's
 | **PATCH** | Proceeds automatically. Applies pending migrations (if any). |
 | **MINOR** | Shows changelog, asks confirmation. Applies pending migrations (if any). |
 | **MAJOR** | Blocks incremental migration. Requires `--force` for clean re-init. |
+| **PRERELEASE** | Shows the changelog and asks for confirmation. Applies pending migrations. |
 
 ### Version Migrations
 
@@ -133,6 +147,13 @@ MAJOR version bumps indicate breaking changes that cannot be handled
 by incremental migration. `publish.py` refuses to upgrade across MAJOR
 boundaries without `--force`, which performs a clean re-initialization.
 
+Before cleaning anything, a MAJOR `--force` publish validates preserved
+project documents that the new runtime must still consume. In particular, the
+1.0 direct asset-registration contract cannot infer native resource types and
+paths from the legacy `ASSETS.md` `File Path` table. Such a project is blocked
+before modification and must use a fresh workspace or explicitly update its
+asset table to the current runtime schema.
+
 Full rebuild cleans all framework-managed content:
 - The selected runner's `skills/`, `agents/`, `config/`, and `templates/`
 - `.godotmaker/hooks/`, `.godotmaker/stage_schemas.json`
@@ -176,24 +197,25 @@ picking up local changes during development.
 
 When a supported coding-agent session starts in a published project, the
 `session_start.py` hook reads `.godotmaker/version` and injects
-`[GodotMaker vX.Y.Z]` into the session context where the runtime supports that
+`[GodotMaker v<VERSION>]` into the session context where the runtime supports that
 hook context. This helps the active role skill know which framework version is
 deployed.
 
 ## Workflow for Releasing a New Version
 
 1. Make your changes in the GodotMaker repo
-2. Decide the bump level using the decision tree above (PATCH / MINOR / MAJOR)
+2. Decide the bump level using the decision tree above and whether the release
+   is a pre-release
 3. If your changes require rewriting something in an existing target project,
    scaffold a migration with `python tools/migrate.py --new <slug>` — see
    `migrations/README.md` for details. This applies to any bump level.
-4. Update `CHANGELOG.md` — add a new `## [X.Y.Z]` section at the top
+4. Update `CHANGELOG.md` — add a new `## [<VERSION>]` section at the top
 5. Update `VERSION` — change to the new version number
 6. Commit and (optionally) tag:
    ```bash
    git add VERSION CHANGELOG.md migrations/
-   git commit -m "release: vX.Y.Z"
-   git tag vX.Y.Z
+   git commit -m "release: v<VERSION>"
+   git tag v<VERSION>
    ```
 7. Publish to target projects:
    ```bash
