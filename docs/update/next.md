@@ -49,6 +49,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- MAJOR upgrades now fail closed unless `--force` is present, and an authorized clean re-initialization resets incompatible current-pipeline gates and reports while preserving game content plus evaluation, gap, and asset-provenance history.
+
 - Generated assets now use `ASSETS.md` as the single runtime catalog: each
   logical asset row records its final Godot type and loadable path directly.
   Multi-output asset production registers all declared outputs atomically, and
