@@ -4,7 +4,7 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
-## [1.0.0] - 2026-08-27
+## [1.0.0] - 2026-08-31
 
 ### Added
 
@@ -19,6 +19,7 @@ Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
 ### Fixed
 
+- Enforced MAJOR `--force` clean re-initialization and reset incompatible current pipeline checkpoints and reports (#183).
 - Fixed Codex screen-reference finalization with generated-image claims and deterministic proportional cover cropping (#180).
 - Made compilation and registration fail atomically while retaining the previous stable artifact.
 - Restored real headless Godot validation for Theme, TileSet, atlas, texture, and font resources.
