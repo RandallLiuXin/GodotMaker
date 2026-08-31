@@ -2774,6 +2774,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
+<p>MAJOR upgrades now fail closed unless <code>--force</code> is present, and an authorized clean re-initialization resets incompatible current-pipeline gates and reports while preserving game content plus evaluation, gap, and asset-provenance history.</p>
+</li>
+<li>
 <p>Generated assets now use <code>ASSETS.md</code> as the single runtime catalog: each
   logical asset row records its final Godot type and loadable path directly.
   Multi-output asset production registers all declared outputs atomically, and

@@ -2885,10 +2885,10 @@ PATCH 和 MINOR 都会执行所有未应用的脚本。完整策略见
 <ol>
 <li>重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。</li>
 <li>即使你已自定义过所选 runner 的 hook config 或 adapter（<code>.claude/settings.json</code>、<code>.codex/hooks.json</code> 或 <code>.opencode/plugins/godotmaker-hooks.js</code>），也会强制覆盖。</li>
-<li>跳过 minor 和 major 升级的确认提示。</li>
+<li>跳过 minor 升级的确认提示，并显式授权 major 升级所需的干净重新初始化。</li>
 <li>允许降级。</li>
 </ol>
-<p>对于加了 <code>--force</code> 的 <strong>major</strong> 升级，清理范围更大：所选 agent 的 <code>skills/</code>、<code>agents/</code>、<code>config/</code>、<code>templates/</code>，<code>.godotmaker/hooks/</code>、<code>tools/</code> 以及运行时状态文件都会被清空并从头重建。</p>
+<p>对于加了 <code>--force</code> 的 <strong>major</strong> 升级，清理范围更大：所选 agent 的 <code>skills/</code>、<code>agents/</code>、<code>config/</code>、<code>templates/</code>，<code>.godotmaker/hooks/</code>、<code>tools/</code>，以及当前流水线状态（<code>state.json</code>、<code>pipeline_state.json</code>、<code>stage.jsonl</code>、<code>current_role</code>、<code>evaluation.json</code>、<code>verify_report.json</code>、<code>final_report.json</code>、metrics、schema 和迁移 tracker）都会被清空并从头重建。<code>.godotmaker/evaluation-runs/</code>、<code>.godotmaker/gaps/</code> 和 <code>.godotmaker/asset-generation/</code> 下的历史证据会被保留。</p>
 <h2 id="_5">升级时哪些内容会被保留<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
 <p>正常发布不会覆盖以下文件（只有 <code>--force</code> 才能改动所选 runner 的 hook config）：</p>
 <table>

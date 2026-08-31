@@ -2900,10 +2900,10 @@ for the full policy.</p>
 <ol>
 <li>Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.</li>
 <li>Overwrites the selected runner's hook config or adapter (<code>.claude/settings.json</code>, <code>.codex/hooks.json</code>, or <code>.opencode/plugins/godotmaker-hooks.js</code>) even if you've already customized it.</li>
-<li>Skips the confirmation prompts for minor and major upgrades.</li>
+<li>Skips the minor-upgrade confirmation and explicitly authorizes the clean re-initialization required for a major upgrade.</li>
 <li>Allows downgrades.</li>
 </ol>
-<p>For <strong>major</strong> upgrades with <code>--force</code>, the clean-up is more thorough: the selected agent's <code>skills/</code>, <code>agents/</code>, <code>config/</code>, and <code>templates/</code> folders, <code>.godotmaker/hooks/</code>, <code>tools/</code>, and the runtime state files are all wiped and rebuilt from scratch.</p>
+<p>For <strong>major</strong> upgrades with <code>--force</code>, the clean-up is more thorough: the selected agent's <code>skills/</code>, <code>agents/</code>, <code>config/</code>, and <code>templates/</code> folders, <code>.godotmaker/hooks/</code>, <code>tools/</code>, and current pipeline state (<code>state.json</code>, <code>pipeline_state.json</code>, <code>stage.jsonl</code>, <code>current_role</code>, <code>evaluation.json</code>, <code>verify_report.json</code>, <code>final_report.json</code>, metrics, schemas, and the migration tracker) are wiped and rebuilt from scratch. Historical evidence under <code>.godotmaker/evaluation-runs/</code>, <code>.godotmaker/gaps/</code>, and <code>.godotmaker/asset-generation/</code> is preserved.</p>
 <h2 id="what-is-preserved-on-upgrade">What is preserved on upgrade<a class="headerlink" href="#what-is-preserved-on-upgrade" title="Permanent link">&para;</a></h2>
 <p>These files are never overwritten by a normal publish (only <code>--force</code> can change the selected runner's hook config):</p>
 <table>

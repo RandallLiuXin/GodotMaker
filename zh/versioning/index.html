@@ -3117,15 +3117,20 @@
 见 <code>migrations/README.md</code>。</p>
 <h3 id="major">MAJOR 升级<a class="headerlink" href="#major" title="Permanent link">&para;</a></h3>
 <p>MAJOR 版本变更意味着无法通过增量迁移处理的破坏性变更。<code>publish.py</code> 拒绝跨 MAJOR 边界升级，除非使用 <code>--force</code>，该选项会执行干净的重新初始化。</p>
-<p>全量重建会清除所有框架管理的内容：
+<p>全量重建会重新部署框架代码，并清除不兼容的当前状态：
 - 所选 runner 的 <code>skills/</code>、<code>agents/</code>、<code>config/</code>、<code>templates/</code>
 - <code>.godotmaker/hooks/</code>、<code>.godotmaker/stage_schemas.json</code>
-- <code>.godotmaker/state.json</code>、<code>.godotmaker/metrics*.jsonl</code>
+- 当前流水线状态：<code>.godotmaker/state.json</code>、<code>pipeline_state.json</code>、
+  <code>stage.jsonl</code>、<code>current_role</code>、<code>evaluation.json</code>、<code>verify_report.json</code>、
+  <code>final_report.json</code>
+- <code>.godotmaker/metrics*.jsonl</code>
 - <code>.godotmaker/applied_migrations.json</code>（重新部署后会重建 baseline）
 - <code>tools/</code>
 - 所选 runner 的 hook config 或 plugin adapter（强制覆盖）</p>
 <p>保留（用户配置）：
-- <code>CLAUDE.md</code> / <code>AGENTS.md</code>、所选 runner 的 <code>godotmaker.yaml</code>、<code>.godotmaker/config.yaml</code></p>
+- <code>CLAUDE.md</code> / <code>AGENTS.md</code>、所选 runner 的 <code>godotmaker.yaml</code>、<code>.godotmaker/config.yaml</code>
+- 游戏代码、场景、素材、规划文档，以及 <code>.godotmaker/evaluation-runs/</code>、
+  <code>.godotmaker/gaps/</code>、<code>.godotmaker/asset-generation/</code> 等历史证据</p>
 <p>重新部署完后，<code>publish.py</code> 调用 <code>baseline_applied()</code> 把所有当前迁移
 标记为已应用而不执行——跟全新安装一样。迁移时间戳序列本身是单调全局的，
 旧脚本作为历史记录留在磁盘上。</p>

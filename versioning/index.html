@@ -3132,16 +3132,22 @@ pending migrations run through the normal path) — live in
 <p>MAJOR version bumps indicate breaking changes that cannot be handled
 by incremental migration. <code>publish.py</code> refuses to upgrade across MAJOR
 boundaries without <code>--force</code>, which performs a clean re-initialization.</p>
-<p>Full rebuild cleans all framework-managed content:
+<p>Full rebuild re-deploys framework code and removes incompatible current state:
 - The selected runner's <code>skills/</code>, <code>agents/</code>, <code>config/</code>, and <code>templates/</code>
 - <code>.godotmaker/hooks/</code>, <code>.godotmaker/stage_schemas.json</code>
-- <code>.godotmaker/state.json</code>, <code>.godotmaker/metrics*.jsonl</code>
+- Current pipeline state: <code>.godotmaker/state.json</code>, <code>pipeline_state.json</code>,
+  <code>stage.jsonl</code>, <code>current_role</code>, <code>evaluation.json</code>, <code>verify_report.json</code>,
+  and <code>final_report.json</code>
+- <code>.godotmaker/metrics*.jsonl</code>
 - <code>.godotmaker/applied_migrations.json</code> (re-baselined after re-deploy)
 - <code>tools/</code>
 - The selected runner's hook config or plugin adapter (force-overwritten)</p>
 <p>Preserved (user configuration):
 - <code>CLAUDE.md</code> / <code>AGENTS.md</code>, the selected runner's <code>godotmaker.yaml</code>,
-  <code>.godotmaker/config.yaml</code></p>
+  <code>.godotmaker/config.yaml</code>
+- Game code, scenes, assets, planning documents, and historical evidence such
+  as <code>.godotmaker/evaluation-runs/</code>, <code>.godotmaker/gaps/</code>, and
+  <code>.godotmaker/asset-generation/</code></p>
 <p>After re-deploy, <code>publish.py</code> calls <code>baseline_applied()</code> to mark every
 current migration as applied without running it — same as a fresh install.
 The migration timestamp series itself is monotonic and global; old
