@@ -116,16 +116,17 @@ Steps to follow when publishing a new version of GodotMaker.
 
 ## Publish
 
-7. **Create a git tag and push**
+7. **Create a git tag from the fetched `main` and push**
    ```bash
-   git switch main
-   git pull --ff-only origin main
-   git tag vX.Y.Z
+   git fetch origin
+   git tag vX.Y.Z origin/main
    git push origin vX.Y.Z
    ```
-   Verify the tag points at the merged release-preparation commit on
-   `origin/main`. Tagging and pushing happen only after the PR is merged and
-   require separate release authorization.
+   Before tagging, verify that the fetched `origin/main` points at the merged
+   release-preparation commit. Tagging `origin/main` explicitly prevents an
+   unpushed local `main` commit from entering the release. Tagging and pushing
+   happen only after the PR is merged and require separate release
+   authorization.
    This triggers the `release.yml` workflow, which automatically:
    - Reads release notes from `docs/update/vX.Y.Z.md`
    - Creates a GitHub Release (source code archives are attached by GitHub)
