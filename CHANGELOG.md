@@ -4,6 +4,30 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [1.0.0] - 2026-09-01
+
+### Added
+
+- Added first-class Asset Skills with typed contracts for supported 2D production families.
+- Added deterministic Godot-native compilers and fail-closed L0-L4 validation for generated runtime resources.
+- Added Pi runtime support, evaluator evidence handoff, and an optional Phantom Camera supporting Skill.
+
+### Changed
+
+- Made `ASSETS.md` the single runtime asset catalog with atomic multi-output registration and worker snapshots.
+- Published the shared asset compiler, schema, and validation runtime for every supported coding agent.
+
+### Fixed
+
+- Enforced MAJOR `--force` clean re-initialization and reset incompatible current pipeline checkpoints and reports (#183).
+- Fixed Codex screen-reference finalization with generated-image claims and deterministic proportional cover cropping (#180).
+- Made compilation and registration fail atomically while retaining the previous stable artifact.
+- Restored real headless Godot validation for Theme, TileSet, atlas, texture, and font resources.
+
+### Removed
+
+- Removed the legacy generated-asset runtime manifest, stable-entry layer, and duplicated production-unit documents.
+
 ## [0.8.2] - 2026-07-24
 
 ### Changed

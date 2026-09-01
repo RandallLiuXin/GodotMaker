@@ -1,6 +1,8 @@
 # Release Process
 
-GodotMaker uses semantic versioning. Each release follows a short checklist; this page summarises it. The canonical checklist is in `docs/contributing/release-checklist.md`.
+GodotMaker uses semantic versioning. Each release follows a short checklist;
+this page summarises it. The canonical checklist is
+[`docs/update/release-checklist.md`](../../update/release-checklist.md).
 
 For version scheme details and how `publish.py` handles upgrades in target projects, see [../../versioning.md](../../versioning.md).
 
@@ -44,7 +46,8 @@ At release time, `next.md` is archived and a fresh copy is created. Contributors
 
 ## Cutting a release
 
-High-level checklist. Follow the canonical steps in `docs/contributing/release-checklist.md`:
+High-level checklist. Follow the canonical steps in
+[`docs/update/release-checklist.md`](../../update/release-checklist.md):
 
 1. **Merge all pending PRs** that should be in this release. Confirm `next.md` has entries for all of them.
 
@@ -62,23 +65,43 @@ High-level checklist. Follow the canonical steps in `docs/contributing/release-c
    - ...
    ```
 
-4. **Bump VERSION.** Write the new version number to the `VERSION` file at the repo root. This is the single source of truth.
+4. **Update release metadata.** Keep `VERSION` and `pyproject.toml` in
+   lockstep, and set the `LICENSE` Change Date from the intended publication
+   date as described by the canonical checklist.
 
 5. **Add migration scripts** (if needed). If any change requires rewriting files inside an existing game project, scaffold a migration with `python tools/migrate.py --new <slug>` — this writes `migrations/<utc-timestamp>_<slug>.py`. The bump level does not gate migrations; PATCH and MINOR alike. See `migrations/README.md` for the script format and the applied-tracking model.
 
-6. **Commit and tag.**
+6. **Validate the release preparation.** Run the full local test and
+   documentation checks, then publish to an appropriate disposable test
+   project with the release-specific arguments before tagging.
+
+7. **Create a release-preparation PR.**
 
    ```bash
-   git add VERSION CHANGELOG.md docs/update/ migrations/
-   git commit -m "release: vX.Y.Z"
-   git tag vX.Y.Z
+   git switch -c release/vX.Y.Z
+   git add <reviewed-release-files>
+   git commit -m "chore: prepare release vX.Y.Z"
+   git push -u origin release/vX.Y.Z
+   gh pr create --base main --head release/vX.Y.Z
    ```
 
-7. **Publish to test projects** to confirm nothing broke:
+   A maintainer merges this PR only after CI and review. Creating the PR does
+   not authorize the release agent to merge it.
+
+8. **Tag the fetched `main` after separate release authorization.**
+
+   After the release-preparation PR is merged, fetch `main`, verify that
+   `origin/main` points at the merged release commit, and tag that remote
+   tracking ref explicitly:
 
    ```bash
-   python tools/publish.py /path/to/test-game
+   git fetch origin
+   git tag vX.Y.Z origin/main
+   git push origin vX.Y.Z
    ```
+
+9. **Verify the GitHub Release.** Confirm that the release exists and its
+   notes match `CHANGELOG.md`.
 
 ---
 
