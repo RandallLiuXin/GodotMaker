@@ -1793,6 +1793,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../update/v1.0.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v1.0.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../update/v0.8.2/" class="md-nav__link">
         
   
@@ -2701,7 +2729,8 @@
 
 
 <h1 id="_1">发版流程<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
-<p>GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；本页是该清单的摘要。完整清单在 <code>docs/contributing/release-checklist.md</code>。</p>
+<p>GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；本页是该清单的摘要。完整清单见
+<a href="../../../update/release-checklist/"><code>docs/update/release-checklist.md</code></a>。</p>
 <p>关于版本方案细节以及 <code>publish.py</code> 如何处理目标项目的升级，请参阅 <a href="../../../versioning/">../../versioning.md</a>。</p>
 <hr />
 <h2 id="_2">何时升级哪个版本号<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
@@ -2751,7 +2780,8 @@
 <p>发版时，<code>next.md</code> 会被归档，并从模板创建新的空 <code>next.md</code>。贡献者立即开始向新的 <code>next.md</code> 添加下一批变更记录。这意味着 <code>CHANGELOG.md</code> 每次发版只由负责发版的人修改一次。</p>
 <hr />
 <h2 id="_3">执行发版<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p>高层次清单。遵循 <code>docs/contributing/release-checklist.md</code> 中的完整步骤：</p>
+<p>高层次清单。请遵循
+<a href="../../../update/release-checklist/"><code>docs/update/release-checklist.md</code></a> 中的完整步骤：</p>
 <ol>
 <li>
 <p><strong>合并所有待发布的 PR。</strong> 确认 <code>next.md</code> 中包含所有 PR 的记录。</p>
@@ -2773,24 +2803,36 @@
 </code></pre></div>
 <ol>
 <li>
-<p><strong>升级 VERSION。</strong> 将新版本号写入仓库根目录的 <code>VERSION</code> 文件。这是唯一的真实来源。</p>
+<p><strong>更新发布元数据。</strong> 保持 <code>VERSION</code> 与 <code>pyproject.toml</code> 版本一致，并按正式清单根据计划发布日期设置 <code>LICENSE</code> Change Date。</p>
 </li>
 <li>
 <p><strong>添加迁移脚本</strong>（如有需要）。如果任何变更需要在现有游戏项目里改写文件，用 <code>python tools/migrate.py --new &lt;slug&gt;</code> 创建——会生成 <code>migrations/&lt;utc-时间戳&gt;_&lt;slug&gt;.py</code>。bump 级别不限制迁移，<strong>PATCH 和 MINOR 都适用</strong>。脚本格式与 applied-tracking 机制见 <code>migrations/README.md</code>。</p>
 </li>
 <li>
-<p><strong>提交并打标签。</strong></p>
+<p><strong>验证发布准备内容。</strong> 在打标签前运行完整的本地测试和文档检查，并使用符合本次发布要求的参数发布到一次性测试项目进行验证。</p>
+</li>
+<li>
+<p><strong>创建发布准备 PR。</strong></p>
 </li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>add<span class="w"> </span>VERSION<span class="w"> </span>CHANGELOG.md<span class="w"> </span>docs/update/<span class="w"> </span>migrations/
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"release: vX.Y.Z"</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>switch<span class="w"> </span>-c<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>add<span class="w"> </span>&lt;reviewed-release-files&gt;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: prepare release vX.Y.Z"</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>gh<span class="w"> </span>pr<span class="w"> </span>create<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>--head<span class="w"> </span>release/vX.Y.Z
+</code></pre></div>
+<p>维护者只在 CI 与 review 通过后合并该 PR。创建 PR 不代表发布 agent 获得了合并授权。</p>
+<ol>
+<li><strong>获得单独的发布授权后，为已 fetch 的 <code>main</code> 打标签。</strong></li>
+</ol>
+<p>发布准备 PR 合并后，fetch <code>main</code>，确认 <code>origin/main</code> 指向已合并的发布提交，然后明确为该远端跟踪引用打标签：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div>
 <ol>
-<li><strong>发布到测试项目</strong>，确认没有问题：</li>
+<li><strong>验证 GitHub Release。</strong> 确认 Release 已创建，且发布说明与 <code>CHANGELOG.md</code> 一致。</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/test-game
-</code></pre></div>
 <hr />
 <h2 id="_4">迁移脚本<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <p>发版时可以附带迁移脚本，自动修复现有游戏项目中的兼容性问题。脚本直接放在 <code>migrations/</code> 下，按 UTC 时间戳命名：</p>

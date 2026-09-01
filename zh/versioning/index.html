@@ -1702,6 +1702,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../update/v1.0.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v1.0.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../update/v0.8.2/" class="md-nav__link">
         
   
@@ -3148,21 +3176,19 @@ schema 变更，请从 VCS 快照恢复目标项目。</p>
 <h2 id="_11">会话中的版本显示<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h2>
 <p>在已发布的项目中启动受支持的 coding-agent 会话时，<code>session_start.py</code> Hook 会读取 <code>.godotmaker/version</code>，并在 runtime 支持注入上下文时写入 <code>[GodotMaker vX.Y.Z]</code>。这让当前角色技能知道部署的是哪个框架版本。</p>
 <h2 id="_12">发布新版本的工作流程<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
+<p>权威命令与发布门禁见
+<a href="../update/release-checklist/"><code>发布清单</code></a>。概要如下：</p>
 <ol>
-<li>在 GodotMaker 仓库中做出你的修改</li>
-<li>按上面的决策树确定 bump 级别（PATCH / MINOR / MAJOR）</li>
-<li>如果修改需要在已有目标项目里改写某些东西，用 <code>python tools/migrate.py --new &lt;slug&gt;</code>
-   生成一个新迁移脚本——详见 <code>migrations/README.md</code>。<strong>任意 bump 级别都可以</strong>。</li>
-<li>更新 <code>CHANGELOG.md</code>——在顶部添加新的 <code>## [X.Y.Z]</code> 分区</li>
-<li>更新 <code>VERSION</code>——改为新版本号</li>
-<li>提交并（可选）打标签：
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>add<span class="w"> </span>VERSION<span class="w"> </span>CHANGELOG.md<span class="w"> </span>migrations/
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"release: vX.Y.Z"</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z
+<li>在 GodotMaker 仓库中完成计划发布的修改，并按上面的决策树确定 bump 级别。</li>
+<li>添加所需的迁移脚本，归档 <code>docs/update/next.md</code>，并更新发布清单列出的所有版本与许可证字段。</li>
+<li>运行完整的本地验证，并在合适的一次性目标项目中测试本次发布。</li>
+<li>创建发布准备分支和 PR。维护者只在 CI 与 review 通过后合并；创建 PR 不代表发布 agent 获得了合并授权。</li>
+<li>PR 合并且获得单独的打标签授权后，fetch <code>main</code>，确认 <code>origin/main</code> 指向已合并的发布准备提交，并明确为该引用打标签：
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div></li>
-<li>发布到目标项目：
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-game
-</code></pre></div></li>
+<li>验证生成的 GitHub Release 与发布说明。</li>
 </ol>
 <h2 id="_13">升级时会覆盖什么<a class="headerlink" href="#_13" title="Permanent link">&para;</a></h2>
 <p>每次发布都会覆盖：</p>

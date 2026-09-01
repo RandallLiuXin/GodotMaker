@@ -1793,6 +1793,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../update/v1.0.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v1.0.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../update/v0.8.2/" class="md-nav__link">
         
   
@@ -2701,7 +2729,9 @@
 
 
 <h1 id="release-process">Release Process<a class="headerlink" href="#release-process" title="Permanent link">&para;</a></h1>
-<p>GodotMaker uses semantic versioning. Each release follows a short checklist; this page summarises it. The canonical checklist is in <code>docs/contributing/release-checklist.md</code>.</p>
+<p>GodotMaker uses semantic versioning. Each release follows a short checklist;
+this page summarises it. The canonical checklist is
+<a href="../../../update/release-checklist/"><code>docs/update/release-checklist.md</code></a>.</p>
 <p>For version scheme details and how <code>publish.py</code> handles upgrades in target projects, see <a href="../../../versioning/">../../versioning.md</a>.</p>
 <hr />
 <h2 id="when-to-bump-what">When to bump what<a class="headerlink" href="#when-to-bump-what" title="Permanent link">&para;</a></h2>
@@ -2751,7 +2781,8 @@
 <p>At release time, <code>next.md</code> is archived and a fresh copy is created. Contributors working on the next batch of changes immediately start adding to the new <code>next.md</code>. This means <code>CHANGELOG.md</code> is touched only once per release, by whoever cuts the release.</p>
 <hr />
 <h2 id="cutting-a-release">Cutting a release<a class="headerlink" href="#cutting-a-release" title="Permanent link">&para;</a></h2>
-<p>High-level checklist. Follow the canonical steps in <code>docs/contributing/release-checklist.md</code>:</p>
+<p>High-level checklist. Follow the canonical steps in
+<a href="../../../update/release-checklist/"><code>docs/update/release-checklist.md</code></a>:</p>
 <ol>
 <li>
 <p><strong>Merge all pending PRs</strong> that should be in this release. Confirm <code>next.md</code> has entries for all of them.</p>
@@ -2773,24 +2804,44 @@
 </code></pre></div>
 <ol>
 <li>
-<p><strong>Bump VERSION.</strong> Write the new version number to the <code>VERSION</code> file at the repo root. This is the single source of truth.</p>
+<p><strong>Update release metadata.</strong> Keep <code>VERSION</code> and <code>pyproject.toml</code> in
+   lockstep, and set the <code>LICENSE</code> Change Date from the intended publication
+   date as described by the canonical checklist.</p>
 </li>
 <li>
 <p><strong>Add migration scripts</strong> (if needed). If any change requires rewriting files inside an existing game project, scaffold a migration with <code>python tools/migrate.py --new &lt;slug&gt;</code> — this writes <code>migrations/&lt;utc-timestamp&gt;_&lt;slug&gt;.py</code>. The bump level does not gate migrations; PATCH and MINOR alike. See <code>migrations/README.md</code> for the script format and the applied-tracking model.</p>
 </li>
 <li>
-<p><strong>Commit and tag.</strong></p>
+<p><strong>Validate the release preparation.</strong> Run the full local test and
+   documentation checks, then publish to an appropriate disposable test
+   project with the release-specific arguments before tagging.</p>
+</li>
+<li>
+<p><strong>Create a release-preparation PR.</strong></p>
 </li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>add<span class="w"> </span>VERSION<span class="w"> </span>CHANGELOG.md<span class="w"> </span>docs/update/<span class="w"> </span>migrations/
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"release: vX.Y.Z"</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>switch<span class="w"> </span>-c<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>add<span class="w"> </span>&lt;reviewed-release-files&gt;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: prepare release vX.Y.Z"</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>gh<span class="w"> </span>pr<span class="w"> </span>create<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>--head<span class="w"> </span>release/vX.Y.Z
+</code></pre></div>
+<p>A maintainer merges this PR only after CI and review. Creating the PR does
+   not authorize the release agent to merge it.</p>
+<ol>
+<li><strong>Tag the fetched <code>main</code> after separate release authorization.</strong></li>
+</ol>
+<p>After the release-preparation PR is merged, fetch <code>main</code>, verify that
+   <code>origin/main</code> points at the merged release commit, and tag that remote
+   tracking ref explicitly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div>
 <ol>
-<li><strong>Publish to test projects</strong> to confirm nothing broke:</li>
+<li><strong>Verify the GitHub Release.</strong> Confirm that the release exists and its
+   notes match <code>CHANGELOG.md</code>.</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/test-game
-</code></pre></div>
 <hr />
 <h2 id="migrations">Migrations<a class="headerlink" href="#migrations" title="Permanent link">&para;</a></h2>
 <p>Releases may ship migration scripts that automatically fix compatibility issues in existing game projects. Scripts live directly under <code>migrations/</code>, named by UTC timestamp:</p>

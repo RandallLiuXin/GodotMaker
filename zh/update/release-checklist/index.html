@@ -1702,6 +1702,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../v1.0.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v1.0.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../v0.8.2/" class="md-nav__link">
         
   
@@ -2378,10 +2406,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pre-release" class="md-nav__link">
+  <a href="#release-preparation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-release
+        Release preparation
       
     </span>
   </a>
@@ -2626,10 +2654,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pre-release" class="md-nav__link">
+  <a href="#release-preparation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-release
+        Release preparation
       
     </span>
   </a>
@@ -2680,7 +2708,7 @@
 
 <h1 id="release-checklist">Release Checklist<a class="headerlink" href="#release-checklist" title="Permanent link">&para;</a></h1>
 <p>Steps to follow when publishing a new version of GodotMaker.</p>
-<h2 id="pre-release">Pre-release<a class="headerlink" href="#pre-release" title="Permanent link">&para;</a></h2>
+<h2 id="release-preparation">Release preparation<a class="headerlink" href="#release-preparation" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Finalize <code>docs/update/next.md</code></strong></li>
 <li>Review all entries, fix typos, group by category</li>
@@ -2727,7 +2755,7 @@
 <li>
 <p><strong>Update version numbers</strong> — these MUST stay in lockstep. Skipping any one ships a half-bumped release.</p>
 </li>
-<li><strong><code>VERSION</code></strong> — single-line file at the repo root, content is the bare <code>X.Y.Z</code> (no leading <code>v</code>, no trailing newline issues). This is the <strong>source-of-truth</strong> <code>tools/publish.py</code> reads (<code>read_source_version()</code> at <code>tools/publish.py:43</code>) and writes into target projects' <code>.godotmaker/version</code>. Forgetting this bump causes downstream consumers (<code>godotmaker-cli</code>, <code>publish.py</code> upgrade detection) to see <code>installed_version != target_version</code> on every run, triggering an infinite "framework upgrade X.Y.Z-1 → X.Y.Z" loop that never converges.</li>
+<li><strong><code>VERSION</code></strong> — single-line file at the repo root, content is the bare <code>X.Y.Z</code> (no leading <code>v</code>, no trailing newline issues). This is the <strong>source-of-truth</strong> <code>tools/publish.py</code> reads (<code>read_source_version()</code> in <code>tools/publish.py</code>) and writes into target projects' <code>.godotmaker/version</code>. Forgetting this bump causes downstream consumers (<code>godotmaker-cli</code>, <code>publish.py</code> upgrade detection) to see <code>installed_version != target_version</code> on every run, triggering an infinite "framework upgrade X.Y.Z-1 → X.Y.Z" loop that never converges.</li>
 <li><code>pyproject.toml</code> — update <code>version = "X.Y.Z"</code>. Python package metadata only; not consumed by the publish pipeline, but kept in sync so PyPI/SDK consumers see the same number.</li>
 <li><code>CHANGELOG.md</code> — add a new <code>## [X.Y.Z] — YYYY-MM-DD</code> section with entries from the archived <code>next.md</code></li>
 <li>
@@ -2787,19 +2815,30 @@
      and update this checklist.</p>
 </li>
 <li>
-<p><strong>Commit and push</strong>
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>add<span class="w"> </span>-A
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: prepare release vX.Y.Z"</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>main
-</code></pre></div></p>
+<p><strong>Create the release-preparation PR</strong>
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>switch<span class="w"> </span>-c<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>add<span class="w"> </span>&lt;reviewed-release-files&gt;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: prepare release vX.Y.Z"</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>gh<span class="w"> </span>pr<span class="w"> </span>create<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>--head<span class="w"> </span>release/vX.Y.Z
+</code></pre></div>
+   Review the exact staged paths before committing. A maintainer merges the PR
+   after CI and review; creating the PR does not authorize the release agent to
+   merge it.</p>
 </li>
 </ol>
 <h2 id="publish">Publish<a class="headerlink" href="#publish" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Create a git tag and push</strong>
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
+<li><strong>Create a git tag from the fetched <code>main</code> and push</strong>
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div>
+   Before tagging, verify that the fetched <code>origin/main</code> points at the merged
+   release-preparation commit. Tagging <code>origin/main</code> explicitly prevents an
+   unpushed local <code>main</code> commit from entering the release. Tagging and pushing
+   happen only after the PR is merged and require separate release
+   authorization.
    This triggers the <code>release.yml</code> workflow, which automatically:</li>
 <li>Reads release notes from <code>docs/update/vX.Y.Z.md</code></li>
 <li>

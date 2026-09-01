@@ -1702,6 +1702,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../update/v1.0.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v1.0.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../update/v0.8.2/" class="md-nav__link">
         
   
@@ -3174,22 +3202,26 @@ picking up local changes during development.</p>
 hook context. This helps the active role skill know which framework version is
 deployed.</p>
 <h2 id="workflow-for-releasing-a-new-version">Workflow for Releasing a New Version<a class="headerlink" href="#workflow-for-releasing-a-new-version" title="Permanent link">&para;</a></h2>
+<p>The authoritative commands and release gates are in the
+<a href="../update/release-checklist/"><code>release checklist</code></a>. In summary:</p>
 <ol>
-<li>Make your changes in the GodotMaker repo</li>
-<li>Decide the bump level using the decision tree above (PATCH / MINOR / MAJOR)</li>
-<li>If your changes require rewriting something in an existing target project,
-   scaffold a migration with <code>python tools/migrate.py --new &lt;slug&gt;</code> — see
-   <code>migrations/README.md</code> for details. This applies to any bump level.</li>
-<li>Update <code>CHANGELOG.md</code> — add a new <code>## [X.Y.Z]</code> section at the top</li>
-<li>Update <code>VERSION</code> — change to the new version number</li>
-<li>Commit and (optionally) tag:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>add<span class="w"> </span>VERSION<span class="w"> </span>CHANGELOG.md<span class="w"> </span>migrations/
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"release: vX.Y.Z"</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z
+<li>Make the intended changes in the GodotMaker repository and decide the bump
+   level using the decision tree above.</li>
+<li>Add any required migration scripts, archive <code>docs/update/next.md</code>, and
+   update every version and license field listed in the release checklist.</li>
+<li>Run the complete local validation suite and test the release against an
+   appropriate disposable target project.</li>
+<li>Create a release-preparation branch and PR. A maintainer merges it only
+   after CI and review; PR creation does not authorize the release agent to
+   merge it.</li>
+<li>After the PR is merged and tagging is separately authorized, fetch <code>main</code>,
+   verify that <code>origin/main</code> points at the merged release-preparation commit,
+   and tag that fetched ref explicitly:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div></li>
-<li>Publish to target projects:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-game
-</code></pre></div></li>
+<li>Verify the generated GitHub Release and release notes.</li>
 </ol>
 <h2 id="what-gets-overwritten-on-upgrade">What Gets Overwritten on Upgrade<a class="headerlink" href="#what-gets-overwritten-on-upgrade" title="Permanent link">&para;</a></h2>
 <p>Every publish overwrites:</p>
