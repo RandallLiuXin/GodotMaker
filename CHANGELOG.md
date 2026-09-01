@@ -4,7 +4,7 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
-## [1.0.0] - 2026-08-31
+## [1.0.0] - 2026-09-01
 
 ### Added
 
