@@ -346,6 +346,22 @@ def test_wan_download_requires_https(tmp_path):
         source_generate._download_wan_png("https://result.example:abc/image.png", tmp_path / "output.png")
 
 
+def test_wan_download_allows_signed_https_query(tmp_path, monkeypatch):
+    signed_url = "https://result.example/image.png?Expires=123&Signature=signed-value"
+    seen = []
+
+    def fake_urlopen(url, timeout):
+        seen.append((url, timeout))
+        return FakeHTTPResponse(png_bytes())
+
+    monkeypatch.setattr(source_generate, "urlopen", fake_urlopen)
+    output = tmp_path / "output.png"
+    source_generate._download_wan_png(signed_url, output)
+
+    assert seen == [(signed_url, source_generate.WAN_TIMEOUT_SECONDS)]
+    assert output.is_file()
+
+
 def test_wan_rejects_missing_key_and_region_base_mismatch(tmp_path, monkeypatch):
     spec = source_generate.load_spec(make_spec(tmp_path, model="wan"))
     monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)

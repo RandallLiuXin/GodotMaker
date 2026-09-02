@@ -478,7 +478,7 @@ def _validate_wan_reference(path: Path) -> int:
     return 4 * ((file_bytes + 2) // 3)
 
 
-def _validated_https_url(value: str, error_message: str):
+def _validated_https_url(value: str, error_message: str, *, allow_query: bool = False):
     """Parse an HTTPS URL without allowing malformed or nonstandard authority."""
     parsed = urlparse(value)
     try:
@@ -490,7 +490,7 @@ def _validated_https_url(value: str, error_message: str):
         parsed.scheme != "https"
         or not hostname
         or parsed.params
-        or parsed.query
+        or (parsed.query and not allow_query)
         or parsed.fragment
         or parsed.username
         or parsed.password
@@ -600,7 +600,7 @@ def _wan_request(endpoint: str, payload: dict[str, object], api_key: str) -> dic
 
 
 def _download_wan_png(url: str, output: Path) -> None:
-    _validated_https_url(url, "Wan returned an invalid image URL")
+    _validated_https_url(url, "Wan returned an invalid image URL", allow_query=True)
     try:
         with urlopen(url, timeout=WAN_TIMEOUT_SECONDS) as response:
             raw = response.read(WAN_MAX_DOWNLOAD_BYTES + 1)
