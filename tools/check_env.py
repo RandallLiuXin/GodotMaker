@@ -517,7 +517,7 @@ def check_api_keys(
                 f"Unsupported Wan image model {selected_wan_model!r}; "
                 f"use {WAN_MODEL} or {WAN_PRO_MODEL}"
             )
-        if not os.environ.get("DASHSCOPE_API_KEY"):
+        if not os.environ.get("DASHSCOPE_API_KEY", "").strip():
             r.fail("DASHSCOPE_API_KEY not set but asset_image_model uses a Wan model")
         else:
             r.ok("DASHSCOPE_API_KEY set")
