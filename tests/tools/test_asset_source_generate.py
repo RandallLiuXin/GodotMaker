@@ -270,6 +270,11 @@ def test_wan_endpoint_rejects_invalid_authorities(base_url):
         source_generate.wan_endpoint_from_config("beijing", base_url)
 
 
+def test_wan_endpoint_rejects_unparseable_authority():
+    with pytest.raises(source_generate.SourceGenerateError, match="HTTPS"):
+        source_generate.wan_endpoint_from_config("beijing", "https://[broken")
+
+
 def test_wan_endpoint_normalizes_explicit_default_port():
     assert source_generate.wan_endpoint_from_config(
         "beijing", "https://dashscope.aliyuncs.com:443"
@@ -344,6 +349,9 @@ def test_wan_download_requires_https(tmp_path):
 
     with pytest.raises(source_generate.SourceGenerateError, match="invalid image URL"):
         source_generate._download_wan_png("https://result.example:abc/image.png", tmp_path / "output.png")
+
+    with pytest.raises(source_generate.SourceGenerateError, match="invalid image URL"):
+        source_generate._download_wan_png("https://[broken", tmp_path / "output.png")
 
 
 def test_wan_download_allows_signed_https_query(tmp_path, monkeypatch):

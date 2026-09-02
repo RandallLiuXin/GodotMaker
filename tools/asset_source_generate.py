@@ -480,8 +480,8 @@ def _validate_wan_reference(path: Path) -> int:
 
 def _validated_https_url(value: str, error_message: str, *, allow_query: bool = False):
     """Parse an HTTPS URL without allowing malformed or nonstandard authority."""
-    parsed = urlparse(value)
     try:
+        parsed = urlparse(value)
         port = parsed.port
     except ValueError as exc:
         raise SourceGenerateError(error_message) from exc
