@@ -118,16 +118,21 @@ python tools/migrate.py --new fix-state-path
 
 MAJOR 版本变更意味着无法通过增量迁移处理的破坏性变更。`publish.py` 拒绝跨 MAJOR 边界升级，除非使用 `--force`，该选项会执行干净的重新初始化。
 
-全量重建会清除所有框架管理的内容：
+全量重建会重新部署框架代码，并清除不兼容的当前状态：
 - 所选 runner 的 `skills/`、`agents/`、`config/`、`templates/`
 - `.godotmaker/hooks/`、`.godotmaker/stage_schemas.json`
-- `.godotmaker/state.json`、`.godotmaker/metrics*.jsonl`
+- 当前流水线状态：`.godotmaker/state.json`、`pipeline_state.json`、
+  `stage.jsonl`、`current_role`、`evaluation.json`、`verify_report.json`、
+  `final_report.json`
+- `.godotmaker/metrics*.jsonl`
 - `.godotmaker/applied_migrations.json`（重新部署后会重建 baseline）
 - `tools/`
 - 所选 runner 的 hook config 或 plugin adapter（强制覆盖）
 
 保留（用户配置）：
 - `CLAUDE.md` / `AGENTS.md`、所选 runner 的 `godotmaker.yaml`、`.godotmaker/config.yaml`
+- 游戏代码、场景、素材、规划文档，以及 `.godotmaker/evaluation-runs/`、
+  `.godotmaker/gaps/`、`.godotmaker/asset-generation/` 等历史证据
 
 重新部署完后，`publish.py` 调用 `baseline_applied()` 把所有当前迁移
 标记为已应用而不执行——跟全新安装一样。迁移时间戳序列本身是单调全局的，
@@ -157,22 +162,20 @@ schema 变更，请从 VCS 快照恢复目标项目。
 
 ## 发布新版本的工作流程
 
-1. 在 GodotMaker 仓库中做出你的修改
-2. 按上面的决策树确定 bump 级别（PATCH / MINOR / MAJOR）
-3. 如果修改需要在已有目标项目里改写某些东西，用 `python tools/migrate.py --new <slug>`
-   生成一个新迁移脚本——详见 `migrations/README.md`。**任意 bump 级别都可以**。
-4. 更新 `CHANGELOG.md`——在顶部添加新的 `## [X.Y.Z]` 分区
-5. 更新 `VERSION`——改为新版本号
-6. 提交并（可选）打标签：
+权威命令与发布门禁见
+[`发布清单`](../update/release-checklist.md)。概要如下：
+
+1. 在 GodotMaker 仓库中完成计划发布的修改，并按上面的决策树确定 bump 级别。
+2. 添加所需的迁移脚本，归档 `docs/update/next.md`，并更新发布清单列出的所有版本与许可证字段。
+3. 运行完整的本地验证，并在合适的一次性目标项目中测试本次发布。
+4. 创建发布准备分支和 PR。维护者只在 CI 与 review 通过后合并；创建 PR 不代表发布 agent 获得了合并授权。
+5. PR 合并且获得单独的打标签授权后，fetch `main`，确认 `origin/main` 指向已合并的发布准备提交，并明确为该引用打标签：
    ```bash
-   git add VERSION CHANGELOG.md migrations/
-   git commit -m "release: vX.Y.Z"
-   git tag vX.Y.Z
+   git fetch origin
+   git tag vX.Y.Z origin/main
+   git push origin vX.Y.Z
    ```
-7. 发布到目标项目：
-   ```bash
-   python tools/publish.py /path/to/my-game
-   ```
+6. 验证生成的 GitHub Release 与发布说明。
 
 ## 升级时会覆盖什么
 

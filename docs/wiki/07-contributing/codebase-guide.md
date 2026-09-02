@@ -229,8 +229,8 @@ Human-readable documentation that lives in the repo alongside the code.
 | `docs/hooks.md` | Accurate per-hook reference (post-rewrite) |
 | `docs/versioning.md` | Version scheme and upgrade behaviour |
 | `docs/wiki/` | The user-facing and contributor wiki |
-| `docs/contributing/` | Shared-refs schema, release checklist |
-| `docs/update/` | `next.md` (pending changes) and archived `vX.Y.Z.md` files |
+| `docs/contributing/` | Shared-refs schema |
+| `docs/update/` | Release checklist, `next.md` (pending changes), and archived `vX.Y.Z.md` files |
 | `docs/reference/` | API and config reference stubs |
 
 ---

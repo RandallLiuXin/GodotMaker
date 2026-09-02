@@ -51,6 +51,13 @@ camera/viewpoint, visible gameplay objects, approximate layout, HUD or UI safe
 regions, style language, target aspect/orientation, and each supplied reference
 role. Do not add labels, callouts, debug overlays, or unrequested objects.
 
+Treat object positions and sizes in the provider image as approximate visual
+direction. The raw provider source is not required to satisfy the final canvas
+or object pixel dimensions. Once the provider returns a readable image, claim
+it to the deterministic raw-source path before applying final canvas checks.
+Pixel-exact runtime sprite dimensions remain the responsibility of runtime
+Asset Skills such as `compact-prop-pack` and `fx-bundle`, not this reference.
+
 For every accepted image, retain these deterministic paths:
 
 1. prompt: `.godotmaker/asset-generation/prompts/<asset_id>.txt`;
@@ -87,12 +94,17 @@ python tools/asset_image_finalize.py \
   --label <asset_id> \
   --require-aspect <WIDTH:HEIGHT> \
   --resize <WIDTHxHEIGHT> \
+  --fit cover \
   > .godotmaker/asset-generation/reports/<asset_id>_finalize.json
 ```
 
-If aspect validation or finalization fails, STOP. Keep the captured finalize
-report as result evidence; the reference result has no runtime artifact and is
-registered as `source_ready` by the manager.
+The explicit `cover` fit proportionally scales and center-crops the raw image
+to fill the final canvas without transparent padding. After finalization,
+require the report dimensions to equal `spec.size` and validate the finalized
+reference. If aspect validation, finalization, or finalized-output validation
+fails, STOP. Keep the captured finalize report as result evidence; the
+reference result has no runtime artifact and is registered as `source_ready`
+by the manager.
 
 ## Result
 

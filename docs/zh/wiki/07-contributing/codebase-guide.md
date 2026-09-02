@@ -229,8 +229,8 @@ tests/
 | `docs/hooks.md` | 每个 hook 的精确参考（重写后版本） |
 | `docs/versioning.md` | 版本方案与升级行为 |
 | `docs/wiki/` | 面向用户和贡献者的 Wiki |
-| `docs/contributing/` | 共享引用 schema、发版清单 |
-| `docs/update/` | `next.md`（待发布变更）及归档的 `vX.Y.Z.md` 文件 |
+| `docs/contributing/` | 共享引用 schema |
+| `docs/update/` | 发版清单、`next.md`（待发布变更）及归档的 `vX.Y.Z.md` 文件 |
 | `docs/reference/` | API 和配置参考存根 |
 
 ---

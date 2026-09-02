@@ -109,10 +109,10 @@ python tools/publish.py --agent opencode --force /path/to/my-game
 
 1. 重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。
 2. 即使你已自定义过所选 runner 的 hook config 或 adapter（`.claude/settings.json`、`.codex/hooks.json` 或 `.opencode/plugins/godotmaker-hooks.js`），也会强制覆盖。
-3. 跳过 minor 和 major 升级的确认提示。
+3. 跳过 minor 升级的确认提示，并显式授权 major 升级所需的干净重新初始化。
 4. 允许降级。
 
-对于加了 `--force` 的 **major** 升级，清理范围更大：所选 agent 的 `skills/`、`agents/`、`config/`、`templates/`，`.godotmaker/hooks/`、`tools/` 以及运行时状态文件都会被清空并从头重建。
+对于加了 `--force` 的 **major** 升级，清理范围更大：所选 agent 的 `skills/`、`agents/`、`config/`、`templates/`，`.godotmaker/hooks/`、`tools/`，以及当前流水线状态（`state.json`、`pipeline_state.json`、`stage.jsonl`、`current_role`、`evaluation.json`、`verify_report.json`、`final_report.json`、metrics、schema 和迁移 tracker）都会被清空并从头重建。`.godotmaker/evaluation-runs/`、`.godotmaker/gaps/` 和 `.godotmaker/asset-generation/` 下的历史证据会被保留。
 
 ## 升级时哪些内容会被保留
 

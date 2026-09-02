@@ -1,6 +1,7 @@
 # 发版流程
 
-GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；本页是该清单的摘要。完整清单在 `docs/contributing/release-checklist.md`。
+GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；本页是该清单的摘要。完整清单见
+[`docs/update/release-checklist.md`](../../../update/release-checklist.md)。
 
 关于版本方案细节以及 `publish.py` 如何处理目标项目的升级，请参阅 [../../versioning.md](../../versioning.md)。
 
@@ -44,7 +45,8 @@ GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；
 
 ## 执行发版
 
-高层次清单。遵循 `docs/contributing/release-checklist.md` 中的完整步骤：
+高层次清单。请遵循
+[`docs/update/release-checklist.md`](../../../update/release-checklist.md) 中的完整步骤：
 
 1. **合并所有待发布的 PR。** 确认 `next.md` 中包含所有 PR 的记录。
 
@@ -62,23 +64,35 @@ GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；
    - ...
    ```
 
-4. **升级 VERSION。** 将新版本号写入仓库根目录的 `VERSION` 文件。这是唯一的真实来源。
+4. **更新发布元数据。** 保持 `VERSION` 与 `pyproject.toml` 版本一致，并按正式清单根据计划发布日期设置 `LICENSE` Change Date。
 
 5. **添加迁移脚本**（如有需要）。如果任何变更需要在现有游戏项目里改写文件，用 `python tools/migrate.py --new <slug>` 创建——会生成 `migrations/<utc-时间戳>_<slug>.py`。bump 级别不限制迁移，**PATCH 和 MINOR 都适用**。脚本格式与 applied-tracking 机制见 `migrations/README.md`。
 
-6. **提交并打标签。**
+6. **验证发布准备内容。** 在打标签前运行完整的本地测试和文档检查，并使用符合本次发布要求的参数发布到一次性测试项目进行验证。
+
+7. **创建发布准备 PR。**
 
    ```bash
-   git add VERSION CHANGELOG.md docs/update/ migrations/
-   git commit -m "release: vX.Y.Z"
-   git tag vX.Y.Z
+   git switch -c release/vX.Y.Z
+   git add <reviewed-release-files>
+   git commit -m "chore: prepare release vX.Y.Z"
+   git push -u origin release/vX.Y.Z
+   gh pr create --base main --head release/vX.Y.Z
    ```
 
-7. **发布到测试项目**，确认没有问题：
+   维护者只在 CI 与 review 通过后合并该 PR。创建 PR 不代表发布 agent 获得了合并授权。
+
+8. **获得单独的发布授权后，为已 fetch 的 `main` 打标签。**
+
+   发布准备 PR 合并后，fetch `main`，确认 `origin/main` 指向已合并的发布提交，然后明确为该远端跟踪引用打标签：
 
    ```bash
-   python tools/publish.py /path/to/test-game
+   git fetch origin
+   git tag vX.Y.Z origin/main
+   git push origin vX.Y.Z
    ```
+
+9. **验证 GitHub Release。** 确认 Release 已创建，且发布说明与 `CHANGELOG.md` 一致。
 
 ---
 

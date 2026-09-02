@@ -133,10 +133,13 @@ MAJOR version bumps indicate breaking changes that cannot be handled
 by incremental migration. `publish.py` refuses to upgrade across MAJOR
 boundaries without `--force`, which performs a clean re-initialization.
 
-Full rebuild cleans all framework-managed content:
+Full rebuild re-deploys framework code and removes incompatible current state:
 - The selected runner's `skills/`, `agents/`, `config/`, and `templates/`
 - `.godotmaker/hooks/`, `.godotmaker/stage_schemas.json`
-- `.godotmaker/state.json`, `.godotmaker/metrics*.jsonl`
+- Current pipeline state: `.godotmaker/state.json`, `pipeline_state.json`,
+  `stage.jsonl`, `current_role`, `evaluation.json`, `verify_report.json`,
+  and `final_report.json`
+- `.godotmaker/metrics*.jsonl`
 - `.godotmaker/applied_migrations.json` (re-baselined after re-deploy)
 - `tools/`
 - The selected runner's hook config or plugin adapter (force-overwritten)
@@ -144,6 +147,9 @@ Full rebuild cleans all framework-managed content:
 Preserved (user configuration):
 - `CLAUDE.md` / `AGENTS.md`, the selected runner's `godotmaker.yaml`,
   `.godotmaker/config.yaml`
+- Game code, scenes, assets, planning documents, and historical evidence such
+  as `.godotmaker/evaluation-runs/`, `.godotmaker/gaps/`, and
+  `.godotmaker/asset-generation/`
 
 After re-deploy, `publish.py` calls `baseline_applied()` to mark every
 current migration as applied without running it — same as a fresh install.
@@ -182,23 +188,27 @@ deployed.
 
 ## Workflow for Releasing a New Version
 
-1. Make your changes in the GodotMaker repo
-2. Decide the bump level using the decision tree above (PATCH / MINOR / MAJOR)
-3. If your changes require rewriting something in an existing target project,
-   scaffold a migration with `python tools/migrate.py --new <slug>` — see
-   `migrations/README.md` for details. This applies to any bump level.
-4. Update `CHANGELOG.md` — add a new `## [X.Y.Z]` section at the top
-5. Update `VERSION` — change to the new version number
-6. Commit and (optionally) tag:
+The authoritative commands and release gates are in the
+[`release checklist`](update/release-checklist.md). In summary:
+
+1. Make the intended changes in the GodotMaker repository and decide the bump
+   level using the decision tree above.
+2. Add any required migration scripts, archive `docs/update/next.md`, and
+   update every version and license field listed in the release checklist.
+3. Run the complete local validation suite and test the release against an
+   appropriate disposable target project.
+4. Create a release-preparation branch and PR. A maintainer merges it only
+   after CI and review; PR creation does not authorize the release agent to
+   merge it.
+5. After the PR is merged and tagging is separately authorized, fetch `main`,
+   verify that `origin/main` points at the merged release-preparation commit,
+   and tag that fetched ref explicitly:
    ```bash
-   git add VERSION CHANGELOG.md migrations/
-   git commit -m "release: vX.Y.Z"
-   git tag vX.Y.Z
+   git fetch origin
+   git tag vX.Y.Z origin/main
+   git push origin vX.Y.Z
    ```
-7. Publish to target projects:
-   ```bash
-   python tools/publish.py /path/to/my-game
-   ```
+6. Verify the generated GitHub Release and release notes.
 
 ## What Gets Overwritten on Upgrade
 
