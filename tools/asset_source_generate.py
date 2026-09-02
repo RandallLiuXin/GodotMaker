@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 from contextlib import ExitStack
+from http.client import HTTPException
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -584,6 +585,8 @@ def _wan_request(endpoint: str, payload: dict[str, object], api_key: str) -> dic
         raise _wan_error("Wan API request failed", status=exc.code, body=body) from exc
     except TimeoutError as exc:
         raise SourceGenerateError("Wan API request timed out") from exc
+    except HTTPException as exc:
+        raise SourceGenerateError("Wan API response was interrupted; retry later") from exc
     except URLError as exc:
         if isinstance(exc.reason, TimeoutError) or "timed out" in str(exc.reason).lower():
             raise SourceGenerateError("Wan API request timed out") from exc

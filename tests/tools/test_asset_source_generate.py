@@ -2,6 +2,7 @@ import io
 import json
 import subprocess
 import sys
+from http.client import IncompleteRead
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -421,6 +422,17 @@ def test_wan_classifies_timeout_empty_choices_and_bad_download_url(tmp_path, mon
     monkeypatch.setattr(source_generate, "_wan_request", lambda *_args: wan_success_response("not-a-url"))
     with pytest.raises(source_generate.SourceGenerateError, match="invalid image URL"):
         source_generate._generate_wan(spec, Path(spec["source_path"]), "wan2.7-image")
+
+
+def test_wan_request_converts_truncated_response_to_structured_error(monkeypatch):
+    class TruncatedResponse(FakeHTTPResponse):
+        def read(self, *_args):
+            raise IncompleteRead(b'{"output":', 128)
+
+    monkeypatch.setattr(source_generate, "urlopen", lambda *_args, **_kwargs: TruncatedResponse(b""))
+
+    with pytest.raises(source_generate.SourceGenerateError, match="response was interrupted"):
+        source_generate._wan_request("https://dashscope.aliyuncs.com/api/v1", {}, "test-key")
 
 
 def test_wan_rejects_more_than_nine_or_transparent_references(tmp_path, monkeypatch):
