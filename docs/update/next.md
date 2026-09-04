@@ -17,6 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- Added a bilingual, agent-assisted guide for safely re-initializing a 0.x workspace on 1.0 and migrating its project-specific documents and runtime asset bindings — @RandallLiuXin.
+
 ## Changed
 
 ## Fixed

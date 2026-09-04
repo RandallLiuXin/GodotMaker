@@ -156,6 +156,11 @@ current migration as applied without running it — same as a fresh install.
 The migration timestamp series itself is monotonic and global; old
 scripts stay on disk as historical record.
 
+The clean re-initialization does not convert project-owned documents or Godot
+resource bindings. For a 0.x workspace, follow the
+[1.0 agent-assisted upgrade guide](wiki/01-getting-started/upgrade-to-v1.md)
+before resuming the pipeline.
+
 ### Downgrade
 
 Downgrading (e.g., `0.4.0 → 0.3.0`) is blocked by default. Use `--force` to override:

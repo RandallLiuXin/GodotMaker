@@ -41,6 +41,7 @@ nav:
   - Wiki Home: wiki/Home.md
   - Getting Started:
       - Installation: wiki/01-getting-started/installation.md
+      - Upgrade to 1.0: wiki/01-getting-started/upgrade-to-v1.md
       - Your First Game: wiki/01-getting-started/first-game.md
       - Project Layout: wiki/01-getting-started/project-layout.md
   - Concepts:
@@ -143,6 +144,7 @@ plugins:
             Wiki Home: Wiki 首页
             Getting Started: 快速开始
             Installation: 安装
+            Upgrade to 1.0: 升级到 1.0
             Your First Game: 第一款游戏
             Project Layout: 项目结构
             Concepts: 核心概念
