@@ -430,6 +430,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../01-getting-started/upgrade-to-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade to 1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../01-getting-started/first-game/" class="md-nav__link">
         
   
@@ -2919,15 +2947,20 @@ apply any pending scripts. See <a href="../../../versioning/"><code>../../versio
 for the full policy.</p>
 </blockquote>
 <p>For the full upgrade policy and migration script details, see <a href="../../../versioning/"><code>../../versioning.md</code></a>. For what changed in each release, see the <a href="../../08-reference/changelog/">changelog</a>.</p>
+<p>If the target is a 0.x workspace, use the
+<a href="../../01-getting-started/upgrade-to-v1/">1.0 agent-assisted upgrade guide</a> to
+audit and migrate project-owned documents and resource bindings around the
+clean re-initialization.</p>
 <h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>codex<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>opencode<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>pi<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 </code></pre></div>
 <p><code>--force</code> does four things at once:</p>
 <ol>
 <li>Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.</li>
-<li>Overwrites the selected runner's hook config or adapter (<code>.claude/settings.json</code>, <code>.codex/hooks.json</code>, or <code>.opencode/plugins/godotmaker-hooks.js</code>) even if you've already customized it.</li>
+<li>Overwrites the selected runner's hook config or adapter (<code>.claude/settings.json</code>, <code>.codex/hooks.json</code>, <code>.opencode/plugins/godotmaker-hooks.js</code>, or <code>.pi/extensions/godotmaker-runtime.ts</code>) even if you've already customized it.</li>
 <li>Skips the minor-upgrade confirmation and explicitly authorizes the clean re-initialization required for a major upgrade.</li>
 <li>Allows downgrades.</li>
 </ol>
@@ -2947,11 +2980,11 @@ for the full policy.</p>
 <td>You may have added project-specific instructions</td>
 </tr>
 <tr>
-<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code> / <code>.opencode/plugins/godotmaker-hooks.js</code></td>
+<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code> / <code>.opencode/plugins/godotmaker-hooks.js</code> / <code>.pi/extensions/godotmaker-runtime.ts</code></td>
 <td>You may have adjusted hook behavior</td>
 </tr>
 <tr>
-<td><code>.claude/godotmaker.yaml</code> / <code>.agents/godotmaker.yaml</code> / <code>.opencode/godotmaker.yaml</code></td>
+<td><code>.claude/godotmaker.yaml</code> / <code>.agents/godotmaker.yaml</code> / <code>.opencode/godotmaker.yaml</code> / <code>.pi/godotmaker.yaml</code></td>
 <td>Contains your machine-specific Godot path</td>
 </tr>
 <tr>

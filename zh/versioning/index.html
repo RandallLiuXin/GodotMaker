@@ -430,6 +430,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../wiki/01-getting-started/upgrade-to-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    升级到 1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../wiki/01-getting-started/first-game/" class="md-nav__link">
         
   
@@ -3162,6 +3190,8 @@
 <p>重新部署完后，<code>publish.py</code> 调用 <code>baseline_applied()</code> 把所有当前迁移
 标记为已应用而不执行——跟全新安装一样。迁移时间戳序列本身是单调全局的，
 旧脚本作为历史记录留在磁盘上。</p>
+<p>干净重新初始化不会转换项目自有文档或 Godot 资源绑定。0.x 工作区在恢复流水线前，
+请按 <a href="../wiki/01-getting-started/upgrade-to-v1/">1.0 Agent 辅助升级指南</a> 操作。</p>
 <h3 id="_9">降级<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h3>
 <p>降级（如 <code>0.4.0 → 0.3.0</code>）默认被阻止。使用 <code>--force</code> 可以绕过限制：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game

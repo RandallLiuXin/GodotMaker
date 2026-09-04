@@ -12,19 +12,19 @@
         <meta name="author" content="RandallLiuXin">
       
       
-        <link rel="canonical" href="https://RandallLiuXin.github.io/GodotMaker/wiki/06-configuration/project-config/">
+        <link rel="canonical" href="https://RandallLiuXin.github.io/GodotMaker/wiki/01-getting-started/upgrade-to-v1/">
       
       
-        <link rel="prev" href="../../05-tools/asset-tools/">
+        <link rel="prev" href="../installation/">
       
       
-        <link rel="next" href="../godotmaker-yaml/">
+        <link rel="next" href="../first-game/">
       
       
         
           <link rel="alternate" href="./" hreflang="en">
         
-          <link rel="alternate" href="../../../zh/wiki/06-configuration/project-config/" hreflang="zh">
+          <link rel="alternate" href="../../../zh/wiki/01-getting-started/upgrade-to-v1/" hreflang="zh">
         
       
       
@@ -33,7 +33,7 @@
     
     
       
-        <title>Project Config - GodotMaker</title>
+        <title>Upgrade to 1.0 - GodotMaker</title>
       
     
     
@@ -84,7 +84,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#project-config" class="md-skip">
+        <a href="#upgrade-a-0x-workspace-to-10" class="md-skip">
           Skip to content
         </a>
       
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Project Config
+              Upgrade to 1.0
             
           </span>
         </div>
@@ -173,7 +173,7 @@
           </li>
         
           <li class="md-select__item">
-            <a href="../../../zh/wiki/06-configuration/project-config/" hreflang="zh" class="md-select__link">
+            <a href="../../../zh/wiki/01-getting-started/upgrade-to-v1/" hreflang="zh" class="md-select__link">
               中文
             </a>
           </li>
@@ -345,8 +345,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -357,13 +359,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
@@ -384,7 +384,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -402,7 +402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../01-getting-started/installation/" class="md-nav__link">
+      <a href="../installation/" class="md-nav__link">
         
   
   
@@ -427,10 +427,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../01-getting-started/upgrade-to-v1/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade to 1.0
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -446,6 +473,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-clean-re-initialization-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the clean re-initialization does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-contracts-that-need-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project contracts that need review
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#copyable-agent-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copyable agent prompt
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-handoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected handoff
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -458,7 +549,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../01-getting-started/first-game/" class="md-nav__link">
+      <a href="../first-game/" class="md-nav__link">
         
   
   
@@ -486,7 +577,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../01-getting-started/project-layout/" class="md-nav__link">
+      <a href="../project-layout/" class="md-nav__link">
         
   
   
@@ -1126,8 +1217,6 @@
       
   
   
-    
-  
   
   
     
@@ -1140,11 +1229,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
@@ -1165,7 +1256,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1180,37 +1271,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Project Config
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../06-configuration/project-config/" class="md-nav__link">
         
   
   
@@ -1226,103 +1290,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-gets-created" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How it gets created
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common fields
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#runtime-native-image-generation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Runtime-native image generation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#provider-setup-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider setup pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#api-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        API keys
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-change-a-setting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How to change a setting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#about-hook-config-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        About hook config files
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1335,7 +1302,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../godotmaker-yaml/" class="md-nav__link">
+      <a href="../../06-configuration/godotmaker-yaml/" class="md-nav__link">
         
   
   
@@ -1363,7 +1330,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../addon-versions/" class="md-nav__link">
+      <a href="../../06-configuration/addon-versions/" class="md-nav__link">
         
   
   
@@ -2726,10 +2693,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-it-gets-created" class="md-nav__link">
+  <a href="#what-the-clean-re-initialization-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How it gets created
+        What the clean re-initialization does
       
     </span>
   </a>
@@ -2737,10 +2704,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#common-fields" class="md-nav__link">
+  <a href="#project-contracts-that-need-review" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Common fields
+        Project contracts that need review
       
     </span>
   </a>
@@ -2748,10 +2715,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#runtime-native-image-generation" class="md-nav__link">
+  <a href="#copyable-agent-prompt" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Runtime-native image generation
+        Copyable agent prompt
       
     </span>
   </a>
@@ -2759,43 +2726,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#provider-setup-pages" class="md-nav__link">
+  <a href="#expected-handoff" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Provider setup pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#api-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        API keys
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-change-a-setting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How to change a setting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#about-hook-config-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        About hook config files
+        Expected handoff
       
     </span>
   </a>
@@ -2822,127 +2756,203 @@
   
 
 
-<h1 id="project-config">Project config<a class="headerlink" href="#project-config" title="Permanent link">&para;</a></h1>
-<p><code>.godotmaker/config.yaml</code> is per-project: it selects the agent runtime, role models, visual QA model, and asset generation model for a game project. It lives inside the project folder, so different games can use different settings.</p>
-<h2 id="how-it-gets-created">How it gets created<a class="headerlink" href="#how-it-gets-created" title="Permanent link">&para;</a></h2>
-<p>For normal users, <code>godotmaker-cli</code> creates <code>.godotmaker/config.yaml</code> during the first project publish. The preflight panel points to the file so you can edit model and provider settings before continuing.</p>
-<p>Framework developers and manual-mode users can still create the same file with <code>python tools/publish.py &lt;project&gt;</code>. On subsequent publishes the file is left untouched except for the <code>agent</code> field, which is updated to the selected runtime.</p>
-<h2 id="common-fields">Common fields<a class="headerlink" href="#common-fields" title="Permanent link">&para;</a></h2>
-<p><strong><code>pipeline.model</code></strong> - optional <code>godotmaker-cli</code> model override for automated build/evaluate stages. The GodotMaker framework preserves this value in <code>.godotmaker/config.yaml</code> but does not consume it directly; use a model ID supported by the selected agent runtime, as documented by <code>godotmaker-cli</code> / GodotMakerApp.</p>
-<p><strong><code>agent</code></strong> — selected coding-agent runtime, such as <code>claude-code</code>, <code>codex</code>, or <code>opencode</code>.</p>
-<p><strong><code>worker_model</code></strong> — which Claude model writes game code. Defaults to <code>sonnet</code>; set it to <code>opus</code> for games that need heavier implementation reasoning.</p>
-<p><strong><code>verifier_model</code></strong>, <strong><code>reviewer_model</code></strong>, <strong><code>analyst_model</code></strong>, <strong><code>auditor_model</code></strong>, <strong><code>decomposer_model</code></strong> — role model defaults for validation, review, image analysis, audit, and GDD decomposition.</p>
-<p><strong><code>vqa_model</code></strong> — primary visual QA selector. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, and <code>openai:&lt;model&gt;</code>. <code>native</code> means the active agent runtime inspects the images directly. <code>codex</code> means Codex supplies the image inspection. API-backed selectors run <code>visual_qa.py</code>.</p>
-<p><strong><code>vqa_fallback_model</code></strong> — fallback when the primary VQA backend is unavailable. Supported values are <code>native</code>, <code>codex</code>, and <code>none</code>.</p>
-<p><strong><code>asset_image_model</code></strong> — image generation selector for <code>/gm-asset</code>. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, <code>openai:&lt;model&gt;</code>, and <code>grok:&lt;model&gt;</code>. <code>native</code> is handled by the active agent runtime. <code>codex</code> is handled by Codex native image generation. API-backed selectors run <code>tools/asset_source_generate.py --spec &lt;spec.json&gt;</code>; the script rejects runtime providers.</p>
-<p><strong><code>asset_producer_model</code></strong> — model used by generated-art producer subagents. Defaults to <code>sonnet</code>.</p>
-<p>The default config looks like this:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># GodotMaker project configuration</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># Edit these values to customize behavior</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Deployed to .godotmaker/config.yaml by publish script</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claude-code</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Optional godotmaker-cli pipeline model override.</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># pipeline:</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1">#   model: &lt;agent-model-id&gt;</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nt">vqa_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nt">vqa_fallback_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="nt">asset_producer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="nt">worker_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="nt">verifier_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="nt">reviewer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="nt">analyst_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="nt">auditor_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="nt">decomposer_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sonnet</span>
+<h1 id="upgrade-a-0x-workspace-to-10">Upgrade a 0.x Workspace to 1.0<a class="headerlink" href="#upgrade-a-0x-workspace-to-10" title="Permanent link">&para;</a></h1>
+<p>GodotMaker 1.0 is a breaking framework release. An existing 0.x workspace
+cannot run its old migrations incrementally into 1.0. It can, however, stay in
+the same directory: <code>publish.py --force</code> cleanly re-initializes the managed
+framework layer while preserving the game and its durable project history.</p>
+<p>The command does not understand the design intent of an existing game. It does
+not convert <code>GDD.md</code>, <code>PLAN.md</code>, or <code>ASSETS.md</code>, repair Godot scenes, or decide
+whether an old generated asset still satisfies the 1.0 runtime contract. Use a
+local coding agent to inspect those project-specific parts before resuming the
+pipeline.</p>
+<h2 id="what-the-clean-re-initialization-does">What the clean re-initialization does<a class="headerlink" href="#what-the-clean-re-initialization-does" title="Permanent link">&para;</a></h2>
+<p>Run the command from a GodotMaker <code>v1.0.0</code> checkout:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>&lt;current-agent&gt;<span class="w"> </span>--force<span class="w"> </span><span class="s2">"&lt;target&gt;"</span>
 </code></pre></div>
-<h2 id="runtime-native-image-generation">Runtime-native image generation<a class="headerlink" href="#runtime-native-image-generation" title="Permanent link">&para;</a></h2>
-<p><code>native</code> is not an API provider. It means the active agent runtime supplies image inspection or image generation.</p>
-<p>The template uses native image inspection and native image generation by default.</p>
-<p>For Codex projects, <code>asset_image_model: native</code> maps to Codex native image generation when the host exposes that capability. For Claude Code projects, <code>native</code> requires a Claude-side native image tool. If no native path is available, <code>/gm-asset</code> must stop and ask you to configure a supported provider or switch to an API-backed selector.</p>
-<p>For OpenCode projects, <code>native</code> image generation and <code>native</code> VQA are not used.
-Set <code>asset_image_model</code> and <code>vqa_model</code> to <code>codex</code> or an API-backed
-selector before running the full pipeline.</p>
-<p>For a Claude Code project that should use Codex image generation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
-</code></pre></div>
-<p>This selects Codex as the image-generation provider. It requires Codex CLI on
-PATH and does not require an image API key.</p>
-<h2 id="provider-setup-pages">Provider setup pages<a class="headerlink" href="#provider-setup-pages" title="Permanent link">&para;</a></h2>
-<p>Coding-agent runtimes:</p>
+<p><code>&lt;current-agent&gt;</code> must remain the workspace's existing <code>claude-code</code>, <code>codex</code>,
+<code>opencode</code>, or <code>pi</code> selection unless you are deliberately performing a separate
+runtime migration.</p>
+<p>The command:</p>
 <ul>
-<li><a href="../providers/agent-runtimes/claude-code/">Claude Code</a></li>
-<li><a href="../providers/agent-runtimes/codex/">Codex</a></li>
-<li><a href="../providers/agent-runtimes/opencode/">OpenCode</a></li>
-<li><a href="../providers/agent-runtimes/pi/">Pi</a></li>
+<li>re-deploys the selected runtime's Skills, agents, templates, hooks or adapter,
+  shared asset runtime, and tools;</li>
+<li>clears incompatible current pipeline state and reports;</li>
+<li>re-baselines the 1.0 migration tracker without executing old incremental
+  migrations; and</li>
+<li>updates repository metadata in <code>.gitignore</code> and <code>.gitattributes</code>, plus
+  <code>.worktreeinclude</code> for Claude Code targets; and</li>
+<li>preserves root agent instructions, the selected runner's <code>godotmaker.yaml</code>,
+  <code>.godotmaker/config.yaml</code>, game code, scenes, assets, planning documents, and
+  historical evaluation, gap, and asset-generation evidence.</li>
 </ul>
-<p>Image and VQA providers:</p>
+<p>Custom files inside managed Skills, agents, config, templates, hooks, plugins,
+extensions, runtime references, asset runtime, or <code>tools/</code> are not preserved.
+Some of those paths are normally ignored by Git, so a clean working tree alone
+is not proof that they can be recovered.</p>
+<p>For Claude Code, Codex, and OpenCode, publish also updates the <code>godot</code> MCP
+registration through the agent CLI. That state may live outside the repository;
+the target's Git history cannot restore it.</p>
+<p>See <a href="../../../versioning/">Versioning</a> for the exact managed and preserved paths,
+and <a href="../../05-tools/publish/">Publish</a> for command options.</p>
+<h2 id="project-contracts-that-need-review">Project contracts that need review<a class="headerlink" href="#project-contracts-that-need-review" title="Permanent link">&para;</a></h2>
+<p>The largest 0.8.2-to-1.0 project-document change is the asset handoff:</p>
 <ul>
-<li><a href="../providers/image-vqa/native/">native</a></li>
-<li><a href="../providers/image-vqa/codex/">codex</a></li>
-<li><a href="../providers/image-vqa/gemini/">gemini</a></li>
-<li><a href="../providers/image-vqa/openai/">openai</a></li>
-<li><a href="../providers/image-vqa/grok/">grok</a></li>
+<li><code>ASSETS.md</code> is now the only worker-facing runtime asset catalog.</li>
+<li>Each logical runtime output has one row with a final Godot <code>Runtime Type</code> and
+  loadable <code>res://</code> <code>Runtime Path</code>.</li>
+<li>Character animation is produced as a <code>character-bundle</code> <code>SpriteFrames</code>
+  resource. Canonical images and action sheets remain production evidence, not
+  separate worker-facing runtime rows.</li>
+<li>Multi-output families such as <code>ui-kit</code>, <code>card-kit</code>, and
+  <code>compact-prop-pack</code> register every declared runtime output atomically.</li>
+<li>Reference-only assets finish at <code>source_ready</code>; they must not be presented to
+  workers as loadable runtime resources.</li>
+<li>Generated assets normally live below
+  <code>assets/generated/&lt;asset-family&gt;/&lt;asset-id&gt;/</code> and must pass the corresponding
+  Asset Skill validation before a row is marked <code>generated</code>.</li>
+<li><code>generated</code> and <code>source_ready</code> are written through the 1.0 validated
+  request/result and atomic registration chain. They must not be restored by
+  hand from old paths or old evidence.</li>
 </ul>
-<h2 id="api-keys">API keys<a class="headerlink" href="#api-keys" title="Permanent link">&para;</a></h2>
-<p>Provider-prefixed selectors require the matching API key:</p>
-<table>
-<thead>
-<tr>
-<th>Selector</th>
-<th>Required key</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>gemini:&lt;model&gt;</code></td>
-<td><code>GOOGLE_API_KEY</code> or <code>GEMINI_API_KEY</code></td>
-</tr>
-<tr>
-<td><code>openai:&lt;model&gt;</code></td>
-<td><code>OPENAI_API_KEY</code></td>
-</tr>
-<tr>
-<td><code>grok:&lt;model&gt;</code></td>
-<td><code>XAI_API_KEY</code></td>
-</tr>
-</tbody>
-</table>
-<p>Asset generation does not silently fall back when a key is missing. VQA can fall back only through the explicit <code>vqa_fallback_model</code> setting.</p>
-<h2 id="how-to-change-a-setting">How to change a setting<a class="headerlink" href="#how-to-change-a-setting" title="Permanent link">&para;</a></h2>
-<p>Open <code>.godotmaker/config.yaml</code> and change the value after the colon. For example, to switch the project runner:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
+<p>The local agent should also reconcile <code>GDD.md</code>, the current-tag <code>PLAN.md</code>,
+<code>STRUCTURE.md</code>, <code>SCENES.md</code>, <code>STYLE.md</code>, <code>MEMORY.md</code>, <code>ROADMAP.md</code>, existing
+Godot resource bindings, addons, and custom runtime configuration. Not every
+workspace needs every change: the on-disk game is the authority.</p>
+<h2 id="copyable-agent-prompt">Copyable agent prompt<a class="headerlink" href="#copyable-agent-prompt" title="Permanent link">&para;</a></h2>
+<p>Paste the following prompt into the coding agent that already works with the
+game repository. Replace the two placeholders before starting.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Upgrade this existing GodotMaker workspace from 0.x to GodotMaker v1.0.0.
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Inputs:
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>- GodotMaker v1.0.0 checkout: &lt;absolute-framework-path&gt;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>- Target game workspace: &lt;absolute-target-path&gt;
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>Goal:
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>Keep the game in its current directory, cleanly re-initialize the managed
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>GodotMaker framework layer, then adapt project-owned documents and runtime
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>bindings only where the real 1.0 contracts require it.
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>Hard gates:
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>1. Start with a read-only audit. Do not modify files or run publish until you
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>   have shown me the audit and I explicitly approve execution.
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>2. Confirm the target has a valid 0.x `.godotmaker/version`. If it is missing,
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>   stop: that would be a fresh install, not a proven 0.x upgrade.
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>3. Prove that every path and external runtime registration which v1.0.0 publish
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>   will delete or overwrite either contains no customization, is tracked in a
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>   recoverable Git checkpoint, or has a verified backup and restoration
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>   procedure. A clean worktree or an upgrade branch is not sufficient for
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>   ignored, untracked, or agent-global state. Do not create commits, backups,
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>   or discard changes without my authorization.
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>4. Determine the current agent from the deployed workspace and preserve that
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>   choice. It must be one of `claude-code`, `codex`, `opencode`, or `pi`.
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>5. Confirm the framework worktree is clean and that `git rev-parse HEAD`
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>   equals `git rev-list -n 1 v1.0.0`. Do not publish from an arbitrary moving
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>   branch or a dirty release checkout.
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>6. Never overwrite project documents from templates wholesale. Compare and
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>   migrate their meaning. Never claim an asset is ready without matching files
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>   and validation evidence.
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>Phase A - read-only audit:
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>- Record Git status, `.godotmaker/version`, selected agent, Godot path/config,
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>  and any custom edits under framework-managed runtime directories.
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>- Enumerate the exact at-risk paths for the selected runtime: its Skills,
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>  agents, config, templates, plugins/extensions, and runtime references;
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>  `.godotmaker/hooks/`, `.godotmaker/asset-runtime/`, and `tools/`; current
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>  state/report files; and the hook config or adapter that publish overwrites.
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>  For each customization, prove the recovery source or stop.
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>- Inspect `.gitignore`, `.gitattributes`, and, for Claude Code,
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>  `.worktreeinclude`; record their content or hashes and the repository's
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>  current Git initialization state without changing them. Publish appends
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>  required metadata and removes legacy blanket `.godotmaker/` rules plus
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>  `.agents/` rules for Codex; report which previously ignored files would
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>  become visible and request backup authorization when no recovery source
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>  already covers them.
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>- For Claude Code, Codex, or OpenCode, use that runtime's CLI to record the
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>  complete current `godot` MCP entry and an exact command that can restore it.
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>  Do not rely only on `.mcp.json` or `check_project.py`: the effective MCP state
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>  may be stored outside the repository. Note that Claude Code and Codex publish
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>  remove the old entry before adding the replacement, so an add failure can
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>  leave no registration.
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>- Read `GDD.md`, `PLAN.md`, `ASSETS.md`, `STRUCTURE.md`, `SCENES.md`, `STYLE.md`,
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>  `MEMORY.md`, and `ROADMAP.md` when present.
+<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>- Inspect `project.godot`, addons, scenes, scripts, resource paths, generated
+<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>  assets, and retained evidence under `.godotmaker/`.
+<a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a>- Compare the existing project documents with the v1.0.0 templates without
+<a id="__codelineno-1-58" name="__codelineno-1-58" href="#__codelineno-1-58"></a>  changing either side.
+<a id="__codelineno-1-59" name="__codelineno-1-59" href="#__codelineno-1-59"></a>- Pay special attention to the 1.0 asset contract:
+<a id="__codelineno-1-60" name="__codelineno-1-60" href="#__codelineno-1-60"></a>  * `ASSETS.md` is the sole worker-facing runtime catalog.
+<a id="__codelineno-1-61" name="__codelineno-1-61" href="#__codelineno-1-61"></a>  * One logical runtime output maps to one row.
+<a id="__codelineno-1-62" name="__codelineno-1-62" href="#__codelineno-1-62"></a>  * Runtime rows need a final Godot Runtime Type and loadable `res://` Runtime
+<a id="__codelineno-1-63" name="__codelineno-1-63" href="#__codelineno-1-63"></a>    Path, normally below `assets/generated/&lt;asset-family&gt;/&lt;asset-id&gt;/`.
+<a id="__codelineno-1-64" name="__codelineno-1-64" href="#__codelineno-1-64"></a>  * Character gameplay animation should resolve through `character-bundle` to
+<a id="__codelineno-1-65" name="__codelineno-1-65" href="#__codelineno-1-65"></a>    `SpriteFrames`; canonical references and action source sheets are evidence,
+<a id="__codelineno-1-66" name="__codelineno-1-66" href="#__codelineno-1-66"></a>    not additional runtime rows.
+<a id="__codelineno-1-67" name="__codelineno-1-67" href="#__codelineno-1-67"></a>  * Reference-only outputs use `source_ready` and are not runtime resources.
+<a id="__codelineno-1-68" name="__codelineno-1-68" href="#__codelineno-1-68"></a>  * Do not retain legacy manifest/stable-entry pointers as a compatibility
+<a id="__codelineno-1-69" name="__codelineno-1-69" href="#__codelineno-1-69"></a>    layer; identify the actual 1.0 resource that scenes and workers load.
+<a id="__codelineno-1-70" name="__codelineno-1-70" href="#__codelineno-1-70"></a>- Present an audit table with: item, current state, required change, evidence,
+<a id="__codelineno-1-71" name="__codelineno-1-71" href="#__codelineno-1-71"></a>  risk, and proposed action. Separate deterministic framework re-initialization
+<a id="__codelineno-1-72" name="__codelineno-1-72" href="#__codelineno-1-72"></a>  from project-semantic migration. Then stop for my approval.
+<a id="__codelineno-1-73" name="__codelineno-1-73" href="#__codelineno-1-73"></a>
+<a id="__codelineno-1-74" name="__codelineno-1-74" href="#__codelineno-1-74"></a>Phase B - framework re-initialization, only after approval:
+<a id="__codelineno-1-75" name="__codelineno-1-75" href="#__codelineno-1-75"></a>- Before publish, create and verify every backup explicitly approved from the
+<a id="__codelineno-1-76" name="__codelineno-1-76" href="#__codelineno-1-76"></a>  Phase A report. Stop if any required backup or restoration check fails.
+<a id="__codelineno-1-77" name="__codelineno-1-77" href="#__codelineno-1-77"></a>- From `&lt;absolute-framework-path&gt;`, run:
+<a id="__codelineno-1-78" name="__codelineno-1-78" href="#__codelineno-1-78"></a>  `python tools/publish.py --agent &lt;current-agent&gt; --force "&lt;absolute-target-path&gt;"`
+<a id="__codelineno-1-79" name="__codelineno-1-79" href="#__codelineno-1-79"></a>- Capture the full command and result. Stop on any error; do not hide a partial
+<a id="__codelineno-1-80" name="__codelineno-1-80" href="#__codelineno-1-80"></a>  publish or retry with a different agent. If MCP registration fails after the
+<a id="__codelineno-1-81" name="__codelineno-1-81" href="#__codelineno-1-81"></a>  old entry was removed, restore the recorded entry before doing anything else.
+<a id="__codelineno-1-82" name="__codelineno-1-82" href="#__codelineno-1-82"></a>- Verify `.godotmaker/version` is `1.0.0`, the selected runtime files and
+<a id="__codelineno-1-83" name="__codelineno-1-83" href="#__codelineno-1-83"></a>  `.godotmaker/asset-runtime/` exist, current incompatible pipeline state was
+<a id="__codelineno-1-84" name="__codelineno-1-84" href="#__codelineno-1-84"></a>  cleared, and `.godotmaker/applied_migrations.json` was re-baselined.
+<a id="__codelineno-1-85" name="__codelineno-1-85" href="#__codelineno-1-85"></a>- Prove that game code, scenes, assets, project documents, project config, and
+<a id="__codelineno-1-86" name="__codelineno-1-86" href="#__codelineno-1-86"></a>  retained historical evidence were preserved.
+<a id="__codelineno-1-87" name="__codelineno-1-87" href="#__codelineno-1-87"></a>
+<a id="__codelineno-1-88" name="__codelineno-1-88" href="#__codelineno-1-88"></a>Phase C - project-semantic migration:
+<a id="__codelineno-1-89" name="__codelineno-1-89" href="#__codelineno-1-89"></a>- Make the smallest reviewable edits supported by Phase A evidence.
+<a id="__codelineno-1-90" name="__codelineno-1-90" href="#__codelineno-1-90"></a>- Reconcile the structure of `ASSETS.md` with the v1.0 Runtime Type / Runtime
+<a id="__codelineno-1-91" name="__codelineno-1-91" href="#__codelineno-1-91"></a>  Path table. Preserve useful provenance, but remove obsolete worker-facing
+<a id="__codelineno-1-92" name="__codelineno-1-92" href="#__codelineno-1-92"></a>  rows or pointers rather than adding a compatibility reader. Leave an output
+<a id="__codelineno-1-93" name="__codelineno-1-93" href="#__codelineno-1-93"></a>  `MISSING` or `deferred` when no valid 1.0 evidence chain can prove it.
+<a id="__codelineno-1-94" name="__codelineno-1-94" href="#__codelineno-1-94"></a>- Never hand-edit Runtime Type, Runtime Path, or Status to bypass registration.
+<a id="__codelineno-1-95" name="__codelineno-1-95" href="#__codelineno-1-95"></a>  A `generated` or `source_ready` result requires a validated v1.0 request and
+<a id="__codelineno-1-96" name="__codelineno-1-96" href="#__codelineno-1-96"></a>  matching result. Use `tools/asset_result_registration.py` to validate the
+<a id="__codelineno-1-97" name="__codelineno-1-97" href="#__codelineno-1-97"></a>  declared Godot types and resources and register the entire production unit
+<a id="__codelineno-1-98" name="__codelineno-1-98" href="#__codelineno-1-98"></a>  atomically; a multi-output family must succeed or fail as a group. If old
+<a id="__codelineno-1-99" name="__codelineno-1-99" href="#__codelineno-1-99"></a>  evidence cannot be reconstructed into that chain, report a blocker or ask to
+<a id="__codelineno-1-100" name="__codelineno-1-100" href="#__codelineno-1-100"></a>  re-run the relevant Asset Skill.
+<a id="__codelineno-1-101" name="__codelineno-1-101" href="#__codelineno-1-101"></a>- Update scene/script resource bindings when they still point at superseded
+<a id="__codelineno-1-102" name="__codelineno-1-102" href="#__codelineno-1-102"></a>  asset outputs. Do not regenerate accepted art merely to change a path when a
+<a id="__codelineno-1-103" name="__codelineno-1-103" href="#__codelineno-1-103"></a>  validated deterministic conversion is sufficient.
+<a id="__codelineno-1-104" name="__codelineno-1-104" href="#__codelineno-1-104"></a>- Reconcile GDD, current-tag plan, structure, scene, style, roadmap, and memory
+<a id="__codelineno-1-105" name="__codelineno-1-105" href="#__codelineno-1-105"></a>  documents with the actual game. If regeneration through `/gm-gdd` or another
+<a id="__codelineno-1-106" name="__codelineno-1-106" href="#__codelineno-1-106"></a>  pipeline stage would change product intent, propose it and wait for approval.
+<a id="__codelineno-1-107" name="__codelineno-1-107" href="#__codelineno-1-107"></a>- Treat missing provider credentials or unavailable models as blockers, not as
+<a id="__codelineno-1-108" name="__codelineno-1-108" href="#__codelineno-1-108"></a>  permission to fabricate generated assets or validation evidence.
+<a id="__codelineno-1-109" name="__codelineno-1-109" href="#__codelineno-1-109"></a>
+<a id="__codelineno-1-110" name="__codelineno-1-110" href="#__codelineno-1-110"></a>Phase D - verification and handoff:
+<a id="__codelineno-1-111" name="__codelineno-1-111" href="#__codelineno-1-111"></a>- Run `python tools/check_env.py` from the upgraded workspace.
+<a id="__codelineno-1-112" name="__codelineno-1-112" href="#__codelineno-1-112"></a>- For Claude Code, Codex, or OpenCode, query the selected agent CLI directly
+<a id="__codelineno-1-113" name="__codelineno-1-113" href="#__codelineno-1-113"></a>  and verify that its effective `godot` MCP entry uses the intended command and
+<a id="__codelineno-1-114" name="__codelineno-1-114" href="#__codelineno-1-114"></a>  `GODOT_PATH`. A project-local file check alone is insufficient.
+<a id="__codelineno-1-115" name="__codelineno-1-115" href="#__codelineno-1-115"></a>- From the v1.0.0 framework checkout, run
+<a id="__codelineno-1-116" name="__codelineno-1-116" href="#__codelineno-1-116"></a>  `python tools/check_project.py "&lt;absolute-target-path&gt;" --all`.
+<a id="__codelineno-1-117" name="__codelineno-1-117" href="#__codelineno-1-117"></a>- Run the project's existing unit, Godot/headless, and E2E checks that are
+<a id="__codelineno-1-118" name="__codelineno-1-118" href="#__codelineno-1-118"></a>  available locally. Report unavailable checks separately.
+<a id="__codelineno-1-119" name="__codelineno-1-119" href="#__codelineno-1-119"></a>- Inspect changed Godot resources and at least one real scene path that consumes
+<a id="__codelineno-1-120" name="__codelineno-1-120" href="#__codelineno-1-120"></a>  each migrated runtime-asset family.
+<a id="__codelineno-1-121" name="__codelineno-1-121" href="#__codelineno-1-121"></a>- Do not resume the normal pipeline beyond any Asset Skill revalidation that I
+<a id="__codelineno-1-122" name="__codelineno-1-122" href="#__codelineno-1-122"></a>  explicitly approved for Phase C until I approve the migration report.
+<a id="__codelineno-1-123" name="__codelineno-1-123" href="#__codelineno-1-123"></a>- Finish with: original and final versions; exact command; preserved paths;
+<a id="__codelineno-1-124" name="__codelineno-1-124" href="#__codelineno-1-124"></a>  changed files; migrated asset rows and bindings; automated results; manual
+<a id="__codelineno-1-125" name="__codelineno-1-125" href="#__codelineno-1-125"></a>  checks still required; blockers; and rollback instructions.
 </code></pre></div>
-<p>Launch-time <code>--agent</code> still wins for that run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>opencode
-</code></pre></div>
-<p>To use Codex image generation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
-</code></pre></div>
-<p>To use OpenAI for API-backed image generation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai:gpt-image-2</span>
-</code></pre></div>
-<p>To override the selected agent model used for automated pipeline stages, use a
-concrete model ID from the current <code>godotmaker-cli</code> / GodotMakerApp
-documentation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">pipeline</span><span class="p">:</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;agent-model-id&gt;</span>
-</code></pre></div>
-<p>The next <code>/gm-*</code> command picks up the new value. A command already running will not see changes until the next session or stage invocation.</p>
-<h2 id="about-hook-config-files">About hook config files<a class="headerlink" href="#about-hook-config-files" title="Permanent link">&para;</a></h2>
-<p>GodotMaker registers hook scripts through the selected runner surface:
-<code>.claude/settings.json</code> for Claude Code, <code>.codex/hooks.json</code> for Codex, and
-<code>.opencode/plugins/godotmaker-hooks.js</code> for OpenCode. These files are
-framework-managed; running <code>python tools/publish.py --force &lt;project&gt;</code>
-republishes the selected runner's hook surface if hooks stop firing after an
-upgrade.</p>
+<h2 id="expected-handoff">Expected handoff<a class="headerlink" href="#expected-handoff" title="Permanent link">&para;</a></h2>
+<p>A successful clean re-initialization proves only that the 1.0 framework was
+deployed safely. The upgrade is complete when the local agent has also shown
+that project-owned contracts match the existing game and that the game still
+builds and runs. Keep those two conclusions separate in the final report.</p>
 
 
 

@@ -430,6 +430,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../01-getting-started/upgrade-to-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    升级到 1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../01-getting-started/first-game/" class="md-nav__link">
         
   
@@ -2908,11 +2936,15 @@ PATCH 和 MINOR 都会执行所有未应用的脚本。完整策略见
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>codex<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>opencode<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>pi<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 </code></pre></div>
+<p>如果目标是 0.x 工作区，请按
+<a href="../../01-getting-started/upgrade-to-v1/">1.0 Agent 辅助升级指南</a> 在干净重新初始化前后
+审计并迁移项目自有文档与资源绑定。</p>
 <p><code>--force</code> 同时做四件事：</p>
 <ol>
 <li>重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。</li>
-<li>即使你已自定义过所选 runner 的 hook config 或 adapter（<code>.claude/settings.json</code>、<code>.codex/hooks.json</code> 或 <code>.opencode/plugins/godotmaker-hooks.js</code>），也会强制覆盖。</li>
+<li>即使你已自定义过所选 runner 的 hook config 或 adapter（<code>.claude/settings.json</code>、<code>.codex/hooks.json</code>、<code>.opencode/plugins/godotmaker-hooks.js</code> 或 <code>.pi/extensions/godotmaker-runtime.ts</code>），也会强制覆盖。</li>
 <li>跳过 minor 升级的确认提示，并显式授权 major 升级所需的干净重新初始化。</li>
 <li>允许降级。</li>
 </ol>
@@ -2932,11 +2964,11 @@ PATCH 和 MINOR 都会执行所有未应用的脚本。完整策略见
 <td>你可能添加了项目专属指令</td>
 </tr>
 <tr>
-<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code> / <code>.opencode/plugins/godotmaker-hooks.js</code></td>
+<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code> / <code>.opencode/plugins/godotmaker-hooks.js</code> / <code>.pi/extensions/godotmaker-runtime.ts</code></td>
 <td>你可能调整过 hook 行为</td>
 </tr>
 <tr>
-<td><code>.claude/godotmaker.yaml</code> / <code>.agents/godotmaker.yaml</code> / <code>.opencode/godotmaker.yaml</code></td>
+<td><code>.claude/godotmaker.yaml</code> / <code>.agents/godotmaker.yaml</code> / <code>.opencode/godotmaker.yaml</code> / <code>.pi/godotmaker.yaml</code></td>
 <td>包含本机专属的 Godot 路径</td>
 </tr>
 <tr>

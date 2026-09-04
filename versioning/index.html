@@ -430,6 +430,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../wiki/01-getting-started/upgrade-to-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade to 1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../wiki/01-getting-started/first-game/" class="md-nav__link">
         
   
@@ -3180,6 +3208,10 @@ boundaries without <code>--force</code>, which performs a clean re-initializatio
 current migration as applied without running it — same as a fresh install.
 The migration timestamp series itself is monotonic and global; old
 scripts stay on disk as historical record.</p>
+<p>The clean re-initialization does not convert project-owned documents or Godot
+resource bindings. For a 0.x workspace, follow the
+<a href="../wiki/01-getting-started/upgrade-to-v1/">1.0 agent-assisted upgrade guide</a>
+before resuming the pipeline.</p>
 <h3 id="downgrade">Downgrade<a class="headerlink" href="#downgrade" title="Permanent link">&para;</a></h3>
 <p>Downgrading (e.g., <code>0.4.0 → 0.3.0</code>) is blocked by default. Use <code>--force</code> to override:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
