@@ -30,6 +30,8 @@ The command:
 - clears incompatible current pipeline state and reports;
 - re-baselines the 1.0 migration tracker without executing old incremental
   migrations; and
+- updates repository metadata in `.gitignore` and `.gitattributes`, plus
+  `.worktreeinclude` for Claude Code targets; and
 - preserves root agent instructions, the selected runner's `godotmaker.yaml`,
   `.godotmaker/config.yaml`, game code, scenes, assets, planning documents, and
   historical evaluation, gap, and asset-generation evidence.
@@ -117,6 +119,13 @@ Phase A - read-only audit:
   `.godotmaker/hooks/`, `.godotmaker/asset-runtime/`, and `tools/`; current
   state/report files; and the hook config or adapter that publish overwrites.
   For each customization, prove the recovery source or stop.
+- Inspect `.gitignore`, `.gitattributes`, and, for Claude Code,
+  `.worktreeinclude`; record their content or hashes and the repository's
+  current Git initialization state without changing them. Publish appends
+  required metadata and removes legacy blanket `.godotmaker/` rules plus
+  `.agents/` rules for Codex; report which previously ignored files would
+  become visible and request backup authorization when no recovery source
+  already covers them.
 - For Claude Code, Codex, or OpenCode, use that runtime's CLI to record the
   complete current `godot` MCP entry and an exact command that can restore it.
   Do not rely only on `.mcp.json` or `check_project.py`: the effective MCP state
@@ -145,6 +154,8 @@ Phase A - read-only audit:
   from project-semantic migration. Then stop for my approval.
 
 Phase B - framework re-initialization, only after approval:
+- Before publish, create and verify every backup explicitly approved from the
+  Phase A report. Stop if any required backup or restoration check fails.
 - From `<absolute-framework-path>`, run:
   `python tools/publish.py --agent <current-agent> --force "<absolute-target-path>"`
 - Capture the full command and result. Stop on any error; do not hide a partial

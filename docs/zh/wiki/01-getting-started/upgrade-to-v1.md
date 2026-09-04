@@ -25,6 +25,8 @@ python tools/publish.py --agent <current-agent> --force "<target>"
   runtime 和工具；
 - 清除不兼容的当前流水线状态和报告；
 - 不执行旧增量迁移，直接为 1.0 重建 migration baseline；
+- 更新 `.gitignore`、`.gitattributes`，并为 Claude Code 目标更新
+  `.worktreeinclude`；
 - 保留根目录 Agent 指令、所选 runner 的 `godotmaker.yaml`、
   `.godotmaker/config.yaml`、游戏代码、场景、素材、规划文档，以及历史 evaluation、
   gap 和 asset-generation 证据。
@@ -100,6 +102,11 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
   plugins/extensions、runtime references、`.godotmaker/hooks/`、
   `.godotmaker/asset-runtime/`、`tools/`、当前状态/报告文件，以及 publish 会覆盖的
   hook config 或 adapter。逐项证明自定义内容的恢复来源，否则停止。
+- 检查 `.gitignore`、`.gitattributes`，以及 Claude Code 使用的
+  `.worktreeinclude`；在不修改它们的前提下记录内容或 hash 与仓库当前的 Git 初始化
+  状态。Publish 会追加必要元数据，并移除旧的 `.godotmaker/` blanket rule 和 Codex
+  的 `.agents/` rule；批准前应列出哪些原本被忽略的文件会因此变为可见，并在现有
+  恢复来源无法覆盖时请求备份授权。
 - 对 Claude Code、Codex 或 OpenCode，使用对应 runtime 的 CLI 记录当前完整的
   `godot` MCP entry 和精确恢复命令。不能只依赖 `.mcp.json` 或
   `check_project.py`：有效 MCP 状态可能存于仓库之外。还要注明 Claude Code 与 Codex
@@ -123,6 +130,8 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
   确定性的框架重新初始化和需要理解项目语义的迁移，然后停下来等待批准。
 
 阶段 B——框架重新初始化，仅在批准后执行：
+- Publish 前，创建并验证阶段 A 报告中已明确获批的每份备份。任一必要备份或恢复
+  检查失败都必须停止。
 - 在 `<absolute-framework-path>` 中运行：
   `python tools/publish.py --agent <current-agent> --force "<absolute-target-path>"`
 - 记录完整命令和结果。出现任何错误就停止，不得掩盖部分 publish，也不得改用其他
