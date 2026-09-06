@@ -53,6 +53,16 @@ docs/tags/
 重新运行 `archive` 就是既定的恢复路径，不需要任何额外参数。`--force` 只用于
 明确要求重新封存的场景。
 
+这条保证之所以成立，是因为 `sealed: true` 是**最后**才提交的：`index` 先写
+`SUMMARY.md`、该 tag 的 `README.md` 和父级 `docs/tags/README.md`，之后才用一次
+原子替换写入 manifest。磁盘写满或 I/O 出错发生在这之前时，该 tag 保持未封存、
+可以直接重跑，而不会变成「已封存但索引缺失」的死状态。所有生成文件都先写到同目录
+的临时文件再 rename 就位，因此写入中断不会把上一版文件截断。
+
+`/gm-finalize` 的完成门禁校验同一个标记：归档必须有可解析的
+`evidence/manifest.json` 且 `"sealed"` 严格为 `true`，父级索引必须已收录该 tag。
+仅仅文件存在但未封存不算通过。
+
 ## 子命令
 
 | 命令 | 作用 |

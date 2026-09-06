@@ -39,6 +39,8 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 | manifest absent, or `"sealed": false` | a previous run died mid-finalize | re-run Steps 4→6b; both commands overwrite a partial archive |
 | `"sealed": true` | the tag is already sealed | do NOT re-archive — `archive` / `index` exit 3 on purpose |
 
+`"sealed": true` is written last, after every other archive file and the parent `docs/tags/README.md`, so an interrupted finalize always lands in the resumable row — there is no state where the tag reads as sealed but the archive is incomplete.
+
 Never pass `--force` to work around exit 3. A sealed archive is immutable; if the user genuinely wants to reseal, say so explicitly and get their confirmation first.
 
 ## Resolve `godot` binary
@@ -216,6 +218,8 @@ This is the step that marks the tag **sealed**. It writes, deterministically:
 Run it **after** Step 5 and Step 6 — `SUMMARY.md` is generated from the archived `CHANGELOG.md`, `evaluation-final.json`, `PLAN.md` and this tag's `final_report.json`. It deliberately does not read `.godotmaker/traces/`, worker output or unconfirmed MEMORY learnings: `SUMMARY.md` is a retrieval index over confirmed deliverables, not a second source of truth.
 
 Exit codes: 2 if the archive or `CHANGELOG.md` is missing, or if the archived `MEMORY.md` still has unresolvable links; 3 if the tag is already sealed; 1 on an fs failure.
+
+`"sealed": true` is committed last, in a single atomic manifest write, after every other file including `docs/tags/README.md`. So an exit 1 here always leaves the tag **unsealed** — fix the underlying problem and re-run `index <Tag>`; you never need `--force` to recover from a failed seal.
 
 Do not Edit/Write `SUMMARY.md`, either `README.md`, or the manifest yourself. If the generated summary is wrong, the CHANGELOG or evaluation it was generated from is wrong — fix that and re-run.
 

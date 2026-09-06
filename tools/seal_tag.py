@@ -40,6 +40,13 @@ partially archived tag (manifest absent or `sealed: false`) is resumable
 — re-running `archive` is the documented recovery path. Resealing a
 sealed tag requires an explicit `--force`.
 
+Seal ordering: `sealed: true` is committed by ONE atomic manifest write,
+after SUMMARY.md, the tag README and the parent docs/tags/README.md are
+already on disk. A failure anywhere earlier therefore leaves the tag
+unsealed and re-runnable, instead of sealed-but-incomplete with no way
+back in. Every generated file goes through `_atomic_write_text`, so an
+interrupted write never truncates the previous version.
+
 Exit codes:
     0   succeeded
     1   runtime failure — missing project state (.godotmaker/ absent) OR
@@ -53,6 +60,7 @@ Exit codes:
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -81,6 +89,10 @@ MEMORY_DIR = "memory"
 MANIFEST_RELPATH = f"{EVIDENCE_DIR}/manifest.json"
 
 MANIFEST_SCHEMA_VERSION = 1
+
+# Suffix used by `_atomic_write_text`. A crash can leave one behind, and it
+# must never be mistaken for archived content.
+TMP_SUFFIX = ".seal-tmp"
 
 # Temporary files, caches and editor droppings never enter the archive, so
 # the manifest can list everything that is actually there.
@@ -211,7 +223,7 @@ def _scan_archive_files(dest_dir: Path) -> list[dict]:
         if not path.is_file():
             continue
         rel = path.relative_to(dest_dir).as_posix()
-        if rel == MANIFEST_RELPATH:
+        if rel == MANIFEST_RELPATH or rel.endswith(TMP_SUFFIX):
             continue
         entries.append({
             "path": rel,
@@ -260,12 +272,36 @@ def _build_manifest(
     }
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write `text` to `path` through a same-directory temp file + os.replace.
+
+    `os.replace` is atomic on POSIX and Windows, so a crash or a full disk
+    mid-write leaves the previous file intact rather than a truncated one —
+    which matters most for the manifest, since a half-written manifest is
+    what decides whether a tag counts as sealed.
+
+    Newlines are pinned to LF: these files are hashed into the manifest, and
+    the platform default would make identical inputs hash differently on
+    Windows and Linux.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + TMP_SUFFIX)
+    try:
+        with tmp.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def _write_manifest(dest_dir: Path, manifest: dict) -> None:
-    target = dest_dir / MANIFEST_RELPATH
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(
+    """The seal commit — a single atomic write, always the caller's last step."""
+    _atomic_write_text(
+        dest_dir / MANIFEST_RELPATH,
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
     )
 
 
@@ -696,14 +732,25 @@ def _version_key(tag: str) -> tuple:
     return (0, numbers, tag) if numbers else (1, [], tag)
 
 
-def _sealed_tag_dirs(tags_root: Path) -> list[Path]:
+def _sealed_tag_dirs(tags_root: Path, pending: dict[str, dict] | None = None) -> list[Path]:
+    """Sealed tag directories, version-ordered.
+
+    `pending` names tags whose seal has not been committed yet — the parent
+    index is written *before* the seal commit so that a failure there cannot
+    strand a sealed-but-unlisted tag, and those tags still belong in the
+    table it renders.
+    """
     if not tags_root.is_dir():
         return []
-    sealed = [child for child in tags_root.iterdir() if child.is_dir() and _is_sealed(child)]
+    pending = pending or {}
+    sealed = [
+        child for child in tags_root.iterdir()
+        if child.is_dir() and (child.name in pending or _is_sealed(child))
+    ]
     return sorted(sealed, key=lambda p: _version_key(p.name))
 
 
-def _render_parent_readme(tags_root: Path) -> str:
+def _render_parent_readme(tags_root: Path, pending: dict[str, dict] | None = None) -> str:
     lines = [
         "# Tag archives",
         "",
@@ -715,8 +762,8 @@ def _render_parent_readme(tags_root: Path) -> str:
         "| --- | --- | --- | --- | --- |",
     ]
     rows = 0
-    for tag_dir in _sealed_tag_dirs(tags_root):
-        manifest = _read_manifest(tag_dir) or {}
+    for tag_dir in _sealed_tag_dirs(tags_root, pending):
+        manifest = (pending or {}).get(tag_dir.name) or _read_manifest(tag_dir) or {}
         changelog = _parse_changelog(tag_dir / "CHANGELOG.md")
         revision = manifest.get("source_revision")
         lines.append(
@@ -752,15 +799,14 @@ def _render_parent_readme(tags_root: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _write_parent_readme(tags_root: Path) -> None:
-    tags_root.mkdir(parents=True, exist_ok=True)
-    (tags_root / "README.md").write_text(_render_parent_readme(tags_root), encoding="utf-8")
+def _write_parent_readme(tags_root: Path, pending: dict[str, dict] | None = None) -> None:
+    _atomic_write_text(tags_root / "README.md", _render_parent_readme(tags_root, pending))
 
 
 # --------------------------------------------------------------------- index
 
 
-def _seal_archive(
+def _write_index_files(
     project_path: Path,
     tag: str,
     dest_dir: Path,
@@ -770,9 +816,16 @@ def _seal_archive(
     carried_warnings: list[str],
     source_revision: str | None = None,
 ) -> dict:
-    """Write SUMMARY.md, README.md and the sealed manifest, in that order.
+    """Write SUMMARY.md and README.md; return the manifest that would seal them.
 
-    The manifest is written last so it hashes the index files it describes.
+    The manifest is deliberately NOT written here. `"sealed": true` is the
+    single marker every other command keys off, so committing it is the
+    caller's last action, after every other artifact — including the parent
+    index — is on disk. Anything that fails before that leaves the tag
+    unsealed and re-runnable instead of sealed-but-incomplete.
+
+    The returned manifest is built after the two files are written, so it
+    hashes the index files it describes.
     """
     def build() -> dict:
         return _build_manifest(
@@ -783,15 +836,15 @@ def _seal_archive(
         )
 
     provisional = build()
-    (dest_dir / "SUMMARY.md").write_text(
-        _render_summary(project_path, tag, dest_dir, provisional), encoding="utf-8"
+    _atomic_write_text(
+        dest_dir / "SUMMARY.md",
+        _render_summary(project_path, tag, dest_dir, provisional),
     )
-    (dest_dir / "README.md").write_text(
-        _render_tag_readme(tag, provisional, link_warnings), encoding="utf-8"
+    _atomic_write_text(
+        dest_dir / "README.md",
+        _render_tag_readme(tag, provisional, link_warnings),
     )
-    manifest = build()
-    _write_manifest(dest_dir, manifest)
-    return manifest
+    return build()
 
 
 def cmd_index(project_path: Path, tag: str, force: bool = False) -> int:
@@ -827,15 +880,23 @@ def cmd_index(project_path: Path, tag: str, force: bool = False) -> int:
 
     previous = _read_manifest(dest_dir) or {}
     try:
-        manifest = _seal_archive(
+        manifest = _write_index_files(
             project_path, tag, dest_dir,
             backfilled=False,
             link_warnings=link_warnings,
             carried_warnings=list(previous.get("warnings", [])),
         )
-        _write_parent_readme(dest_dir.parent)
+        # Parent index first, seal commit last: if the index write fails, the
+        # tag stays unsealed and `index` can simply be re-run.
+        _write_parent_readme(dest_dir.parent, pending={tag: manifest})
+        _write_manifest(dest_dir, manifest)
     except OSError as exc:
-        print(f"error: index failed ({exc.__class__.__name__}: {exc})", file=sys.stderr)
+        print(
+            f"error: index failed ({exc.__class__.__name__}: {exc}). "
+            f"docs/tags/{tag}/ is left UNSEALED - fix the underlying fs issue and "
+            f"re-run `seal_tag.py index {tag}`.",
+            file=sys.stderr,
+        )
         return 1
 
     print(
@@ -887,6 +948,7 @@ def cmd_backfill(
         return 0
 
     canonical = [dst for _, dst in ARCHIVE_MAP] + ["CHANGELOG.md"]
+    pending: dict[str, dict] = {}
     try:
         for dest_dir in targets:
             if _is_sealed(dest_dir) and not force:
@@ -908,7 +970,7 @@ def cmd_backfill(
             # links cannot resolve. Backfill records that instead of blocking:
             # copying today's memory/ into a historical tag would rewrite it.
             carried += link_errors
-            manifest = _seal_archive(
+            manifest = _write_index_files(
                 project_path, dest_dir.name, dest_dir,
                 backfilled=True,
                 link_warnings=link_warnings,
@@ -927,13 +989,24 @@ def cmd_backfill(
                     file=sys.stderr,
                 )
                 return 1
+            pending[dest_dir.name] = manifest
+
+        # Same ordering guarantee as `index`: refresh the parent index while
+        # every target is still unsealed, then commit the seals.
+        _write_parent_readme(tags_root, pending=pending)
+        for name, manifest in pending.items():
+            _write_manifest(tags_root / name, manifest)
             print(
-                f"backfilled docs/tags/{dest_dir.name}/ "
+                f"backfilled docs/tags/{name}/ "
                 f"({len(manifest['files'])} file(s) in manifest)"
             )
-        _write_parent_readme(tags_root)
     except OSError as exc:
-        print(f"error: backfill failed ({exc.__class__.__name__}: {exc})", file=sys.stderr)
+        print(
+            f"error: backfill failed ({exc.__class__.__name__}: {exc}). "
+            f"Archives not yet committed stay unsealed - re-run backfill after "
+            f"fixing the underlying fs issue.",
+            file=sys.stderr,
+        )
         return 1
 
     print(f"backfill complete: docs/tags/README.md lists {len(_sealed_tag_dirs(tags_root))} sealed tag(s).")

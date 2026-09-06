@@ -25,6 +25,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Changed
 
 - `/gm-finalize` now archives the `memory/` subtree with `MEMORY.md`, link-checks the archived index, and refuses to overwrite an already-sealed tag archive.
+- The finalize completion gate now requires a parseable `evidence/manifest.json` with `"sealed": true` and a parent index that lists the tag, instead of only checking that the archive files exist.
 
 ## Fixed
 

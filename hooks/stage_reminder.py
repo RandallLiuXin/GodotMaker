@@ -89,10 +89,19 @@ _TAG_ARCHIVE_FILES = (
 )
 
 
+_SEAL_HINT = "run `python tools/seal_tag.py index {tag}` to seal the archive"
+
+
 def check_tag_archived() -> str | None:
-    """Finalize role: docs/tags/<Tag>/ must contain a full archive of the
-    just-finalized tag. The current tag is read from PLAN.md's `**Tag:**`
+    """Finalize role: docs/tags/<Tag>/ must contain a full, SEALED archive of
+    the just-finalized tag. The current tag is read from PLAN.md's `**Tag:**`
     header (still scoped to the tag being finalized at this point).
+
+    File presence alone is not enough. `evidence/manifest.json` with
+    `"sealed": true` is the single seal marker `tools/seal_tag.py` commits
+    last, and the parent index is refreshed before that commit — so checking
+    both is what distinguishes a finished seal from a half-written archive
+    that happens to have leftover README/SUMMARY files.
     """
     tag = get_current_tag()
     if not tag:
@@ -104,6 +113,33 @@ def check_tag_archived() -> str | None:
     missing = [f for f in _TAG_ARCHIVE_FILES if not os.path.isfile(os.path.join(archive, f))]
     if missing:
         return (f"docs/tags/{tag}/ missing required files: {', '.join(missing)}")
+
+    manifest_path = os.path.join(archive, "evidence", "manifest.json")
+    if not os.path.isfile(manifest_path):
+        return (f"docs/tags/{tag}/evidence/manifest.json not found — the archive was "
+                f"never sealed; {_SEAL_HINT.format(tag=tag)}.")
+    try:
+        with open(manifest_path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    except (OSError, ValueError) as exc:
+        return (f"docs/tags/{tag}/evidence/manifest.json is unreadable or not valid "
+                f"JSON ({exc}) — {_SEAL_HINT.format(tag=tag)}.")
+    if not isinstance(manifest, dict) or manifest.get("sealed") is not True:
+        return (f"docs/tags/{tag}/evidence/manifest.json does not say `\"sealed\": true` — "
+                f"the archive is a partial finalize; {_SEAL_HINT.format(tag=tag)}.")
+
+    parent_index = os.path.join("docs", "tags", "README.md")
+    if not os.path.isfile(parent_index):
+        return (f"docs/tags/README.md not found — the parent tag index is written as "
+                f"part of sealing; {_SEAL_HINT.format(tag=tag)}.")
+    try:
+        with open(parent_index, encoding="utf-8", errors="replace") as handle:
+            parent_text = handle.read()
+    except OSError as exc:
+        return f"docs/tags/README.md is unreadable ({exc})."
+    if f"({tag}/)" not in parent_text:
+        return (f"docs/tags/README.md does not list {tag} — the parent index is stale; "
+                f"{_SEAL_HINT.format(tag=tag)}.")
     return None
 
 

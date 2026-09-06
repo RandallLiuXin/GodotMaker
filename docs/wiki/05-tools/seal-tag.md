@@ -60,6 +60,18 @@ An archive whose manifest is missing or says `"sealed": false` is a
 half-finished finalize — re-running `archive` is the documented recovery path,
 and no flag is needed. `--force` exists for a deliberate reseal only.
 
+That guarantee holds because `sealed: true` is committed **last**: `index`
+writes `SUMMARY.md`, the tag `README.md` and the parent `docs/tags/README.md`
+first, and only then writes the manifest, in a single atomic replace. A full
+disk or an I/O error anywhere earlier leaves the tag unsealed and re-runnable
+rather than sealed with a missing index. Every generated file is written to a
+same-directory temp file and renamed into place, so an interrupted write never
+truncates the previous version.
+
+`/gm-finalize`'s completion gate checks the same marker: the archive must have
+a parseable `evidence/manifest.json` with `"sealed": true`, and the parent
+index must list the tag. Present-but-unsealed files do not pass.
+
 ## Subcommands
 
 | Command | What it does |
