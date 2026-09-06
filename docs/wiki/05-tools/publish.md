@@ -112,18 +112,24 @@ Run the same command again inside an already-published project. GodotMaker compa
 
 For the full upgrade policy and migration script details, see [`../../versioning.md`](../../versioning.md). For what changed in each release, see the [changelog](../08-reference/changelog.md).
 
+If the target is a 0.x workspace, use the
+[1.0 agent-assisted upgrade guide](../01-getting-started/upgrade-to-v1.md) to
+audit and migrate project-owned documents and resource bindings around the
+clean re-initialization.
+
 ## Options
 
 ```bash
 python tools/publish.py --force /path/to/my-game
 python tools/publish.py --agent codex --force /path/to/my-game
 python tools/publish.py --agent opencode --force /path/to/my-game
+python tools/publish.py --agent pi --force /path/to/my-game
 ```
 
 `--force` does four things at once:
 
 1. Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.
-2. Overwrites the selected runner's hook config or adapter (`.claude/settings.json`, `.codex/hooks.json`, or `.opencode/plugins/godotmaker-hooks.js`) even if you've already customized it.
+2. Overwrites the selected runner's hook config or adapter (`.claude/settings.json`, `.codex/hooks.json`, `.opencode/plugins/godotmaker-hooks.js`, or `.pi/extensions/godotmaker-runtime.ts`) even if you've already customized it.
 3. Skips the minor-upgrade confirmation and explicitly authorizes the clean re-initialization required for a major upgrade.
 4. Allows downgrades.
 
@@ -136,8 +142,8 @@ These files are never overwritten by a normal publish (only `--force` can change
 | File | Why it is kept |
 |------|---------------|
 | `CLAUDE.md` / `AGENTS.md` | You may have added project-specific instructions |
-| `.claude/settings.json` / `.codex/hooks.json` / `.opencode/plugins/godotmaker-hooks.js` | You may have adjusted hook behavior |
-| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` | Contains your machine-specific Godot path |
+| `.claude/settings.json` / `.codex/hooks.json` / `.opencode/plugins/godotmaker-hooks.js` / `.pi/extensions/godotmaker-runtime.ts` | You may have adjusted hook behavior |
+| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` / `.pi/godotmaker.yaml` | Contains your machine-specific Godot path |
 | `.godotmaker/config.yaml` | Contains your project-specific preferences |
 
 Your game code, scenes, assets, and planning documents (`GDD.md`, `PLAN.md`, etc.) are not touched by publish — it only manages the framework layer.

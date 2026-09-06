@@ -103,12 +103,17 @@ codex.cmd remote-control -c sandbox_mode='"danger-full-access"' -c approval_poli
 python tools/publish.py --force /path/to/my-game
 python tools/publish.py --agent codex --force /path/to/my-game
 python tools/publish.py --agent opencode --force /path/to/my-game
+python tools/publish.py --agent pi --force /path/to/my-game
 ```
+
+如果目标是 0.x 工作区，请按
+[1.0 Agent 辅助升级指南](../01-getting-started/upgrade-to-v1.md) 在干净重新初始化前后
+审计并迁移项目自有文档与资源绑定。
 
 `--force` 同时做四件事：
 
 1. 重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。
-2. 即使你已自定义过所选 runner 的 hook config 或 adapter（`.claude/settings.json`、`.codex/hooks.json` 或 `.opencode/plugins/godotmaker-hooks.js`），也会强制覆盖。
+2. 即使你已自定义过所选 runner 的 hook config 或 adapter（`.claude/settings.json`、`.codex/hooks.json`、`.opencode/plugins/godotmaker-hooks.js` 或 `.pi/extensions/godotmaker-runtime.ts`），也会强制覆盖。
 3. 跳过 minor 升级的确认提示，并显式授权 major 升级所需的干净重新初始化。
 4. 允许降级。
 
@@ -121,8 +126,8 @@ python tools/publish.py --agent opencode --force /path/to/my-game
 | 文件 | 保留原因 |
 |------|---------------|
 | `CLAUDE.md` / `AGENTS.md` | 你可能添加了项目专属指令 |
-| `.claude/settings.json` / `.codex/hooks.json` / `.opencode/plugins/godotmaker-hooks.js` | 你可能调整过 hook 行为 |
-| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` | 包含本机专属的 Godot 路径 |
+| `.claude/settings.json` / `.codex/hooks.json` / `.opencode/plugins/godotmaker-hooks.js` / `.pi/extensions/godotmaker-runtime.ts` | 你可能调整过 hook 行为 |
+| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` / `.pi/godotmaker.yaml` | 包含本机专属的 Godot 路径 |
 | `.godotmaker/config.yaml` | 包含项目专属的偏好设置 |
 
 你的游戏代码、场景、素材以及规划文档（`GDD.md`、`PLAN.md` 等）不受 publish 影响——它只管理框架层。
