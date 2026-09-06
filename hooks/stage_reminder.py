@@ -82,6 +82,10 @@ _TAG_ARCHIVE_FILES = (
     "MEMORY.md",
     "evaluation-final.json",
     "CHANGELOG.md",
+    # Written by `tools/seal_tag.py index`, which is also what marks the
+    # archive sealed. Their absence means finalize never ran the seal step.
+    "README.md",
+    "SUMMARY.md",
 )
 
 

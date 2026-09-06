@@ -324,6 +324,7 @@ class TestTagArchived:
     REQUIRED_FILES = [
         "GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "SCENES.md",
         "MEMORY.md", "evaluation-final.json", "CHANGELOG.md",
+        "README.md", "SUMMARY.md",
     ]
 
     def _write_finalize_event(self) -> dict:

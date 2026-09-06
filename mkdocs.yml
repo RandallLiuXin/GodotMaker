@@ -61,6 +61,7 @@ nav:
       - Check Env: wiki/05-tools/check-env.md
       - Check Project: wiki/05-tools/check-project.md
       - Asset Tools: wiki/05-tools/asset-tools.md
+      - Tag Archives: wiki/05-tools/seal-tag.md
   - Configuration:
       - Project Config: wiki/06-configuration/project-config.md
       - godotmaker.yaml: wiki/06-configuration/godotmaker-yaml.md

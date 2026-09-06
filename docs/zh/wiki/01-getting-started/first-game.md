@@ -82,7 +82,7 @@ GodotMaker 会：
 - `e2e/` 玩法测试和截图
 - `GDD.md`、`PLAN.md`、`STRUCTURE.md`、`SCENES.md`、`ASSETS.md`
 - `.godotmaker/` 运行状态和报告
-- `docs/tags/<Tag>/` 归档后的规划文档
+- `docs/tags/<Tag>/` 归档后的规划文档（从 `SUMMARY.md` 读起；`docs/tags/README.md` 是所有已封存 tag 的索引）
 
 ## 验收结果
 
