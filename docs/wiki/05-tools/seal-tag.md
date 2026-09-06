@@ -60,17 +60,49 @@ An archive whose manifest is missing or says `"sealed": false` is a
 half-finished finalize — re-running `archive` is the documented recovery path,
 and no flag is needed. `--force` exists for a deliberate reseal only.
 
-That guarantee holds because `sealed: true` is committed **last**: `index`
-writes `SUMMARY.md`, the tag `README.md` and the parent `docs/tags/README.md`
-first, and only then writes the manifest, in a single atomic replace. A full
-disk or an I/O error anywhere earlier leaves the tag unsealed and re-runnable
-rather than sealed with a missing index. Every generated file is written to a
-same-directory temp file and renamed into place, so an interrupted write never
-truncates the previous version.
+## Write order under failure
 
-`/gm-finalize`'s completion gate checks the same marker: the archive must have
+Two rules pull in opposite directions:
+
+- **A.** `docs/tags/README.md` must never list a tag that is not sealed. It is
+  the retrieval entry point, and an unsealed archive is still an overwritable
+  partial snapshot.
+- **B.** A failed run must never leave a tag sealed-but-incomplete, because
+  `archive` and `index` refuse to touch a sealed tag.
+
+`index` writes in this order: `SUMMARY.md` and the tag `README.md`, then one
+atomic manifest write committing `"sealed": true`, then the parent index —
+which is pure derived state, rendered only from manifests already on disk.
+
+| Where it fails | Result |
+|---|---|
+| before or at the seal commit | tag unsealed, parent index untouched. Re-run `index <Tag>`. |
+| at the parent index | tag sealed and correct; the index merely omits it. Run `reindex`. |
+
+Neither branch can produce an index entry for an unsealed tag, and neither
+strands a sealed archive with no way back in. `backfill` follows the same
+order: it seals target by target and writes the derived index once at the end,
+so a mid-run failure leaves the earlier targets sealed, the rest untouched, and
+the index listing only what genuinely sealed — a plain re-run finishes the job
+because sealed targets are skipped.
+
+Every generated file is written to a same-directory temp file and renamed into
+place, so an interrupted write never truncates the previous version.
+
+`/gm-finalize`'s completion gate checks the same markers: the archive must have
 a parseable `evidence/manifest.json` with `"sealed": true`, and the parent
 index must list the tag. Present-but-unsealed files do not pass.
+
+## Repairing a stale parent index
+
+```bash
+python tools/seal_tag.py reindex
+```
+
+Regenerates `docs/tags/README.md` from the sealed archives on disk and touches
+nothing else. This is the repair for the one failure `index` cannot finish
+itself — the seal landed, the index refresh after it did not. Re-running
+`index` there is the wrong move: the tag is legitimately sealed, so it exits 3.
 
 ## Subcommands
 
@@ -79,6 +111,7 @@ index must list the tag. Present-but-unsealed files do not pass.
 | `python tools/seal_tag.py archive <Tag>` | Copies the working docs, the `memory/` subtree and `e2e/` evidence into `docs/tags/<Tag>/`, then link-checks the archived `MEMORY.md`. Writes an unsealed manifest. |
 | `python tools/seal_tag.py index <Tag>` | Generates `SUMMARY.md`, the tag `README.md`, the sealed manifest and the parent `docs/tags/README.md`. This is the step that seals the tag. |
 | `python tools/seal_tag.py backfill <Tag>` / `--all` | Retrofits `README.md`, `SUMMARY.md` and a manifest onto archives sealed by an older release. Already-sealed archives are skipped unless `--force`. |
+| `python tools/seal_tag.py reindex` | Regenerates `docs/tags/README.md` from the sealed archives on disk. Touches no archive. |
 | `python tools/seal_tag.py bundle <Tag>` | Emits the JSON `/gm-finalize` uses to write the CHANGELOG. |
 | `python tools/seal_tag.py reset` | Truncates `.godotmaker/stage.jsonl` and deletes `metrics_current.jsonl`. |
 

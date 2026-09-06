@@ -53,15 +53,43 @@ docs/tags/
 重新运行 `archive` 就是既定的恢复路径，不需要任何额外参数。`--force` 只用于
 明确要求重新封存的场景。
 
-这条保证之所以成立，是因为 `sealed: true` 是**最后**才提交的：`index` 先写
-`SUMMARY.md`、该 tag 的 `README.md` 和父级 `docs/tags/README.md`，之后才用一次
-原子替换写入 manifest。磁盘写满或 I/O 出错发生在这之前时，该 tag 保持未封存、
-可以直接重跑，而不会变成「已封存但索引缺失」的死状态。所有生成文件都先写到同目录
-的临时文件再 rename 就位，因此写入中断不会把上一版文件截断。
+## 失败时的写入顺序
 
-`/gm-finalize` 的完成门禁校验同一个标记：归档必须有可解析的
+有两条互相拉扯的规则：
+
+- **A.** `docs/tags/README.md` 绝不能列出未封存的 tag。它是检索入口，而未封存的
+  归档仍然是随时可被覆盖的 partial snapshot。
+- **B.** 失败的运行绝不能留下「已封存但内容不完整」的 tag，因为 `archive` 和
+  `index` 都会拒绝改动已封存的 tag。
+
+`index` 的写入顺序是：先写 `SUMMARY.md` 和该 tag 的 `README.md`，再用一次原子写入
+提交 `"sealed": true`，最后才写父级索引——父级索引是纯派生状态，只根据磁盘上**已经
+提交**的 manifest 渲染。
+
+| 失败位置 | 结果 |
+|---|---|
+| seal 提交之前或提交本身 | tag 未封存，父级索引没被动过。重跑 `index <Tag>` 即可。 |
+| 父级索引写入 | tag 已正确封存，索引只是漏了它。运行 `reindex`。 |
+
+两条分支都不会让索引出现未封存的 tag，也都不会把已封存的归档锁死。`backfill` 用
+同样的顺序：逐个目标封存，最后统一写派生索引；中途失败时先前的目标已封存、其余保持
+未封存、索引只列实际封存的内容，直接重跑即可完成（已封存的目标会被跳过）。
+
+所有生成文件都先写到同目录的临时文件再 rename 就位，因此写入中断不会把上一版文件截断。
+
+`/gm-finalize` 的完成门禁校验同一组标记：归档必须有可解析的
 `evidence/manifest.json` 且 `"sealed"` 严格为 `true`，父级索引必须已收录该 tag。
 仅仅文件存在但未封存不算通过。
+
+## 修复过期的父级索引
+
+```bash
+python tools/seal_tag.py reindex
+```
+
+根据磁盘上已封存的归档重新生成 `docs/tags/README.md`，不改动任何归档。这是
+`index` 自己无法收尾的那唯一一种失败的修复手段——seal 已经落盘、之后的索引刷新
+没有成功。此时重跑 `index` 是错的：该 tag 确实已封存，只会返回 3。
 
 ## 子命令
 
@@ -70,6 +98,7 @@ docs/tags/
 | `python tools/seal_tag.py archive <Tag>` | 把工作文档、`memory/` 子目录和 `e2e/` 证据复制到 `docs/tags/<Tag>/`，然后校验归档内 `MEMORY.md` 的链接。写入未封存的 manifest。 |
 | `python tools/seal_tag.py index <Tag>` | 生成 `SUMMARY.md`、该 tag 的 `README.md`、已封存的 manifest 和父级 `docs/tags/README.md`。这一步才算封存。 |
 | `python tools/seal_tag.py backfill <Tag>` / `--all` | 给旧版本封存的归档补上 `README.md`、`SUMMARY.md` 和 manifest；已封存的归档默认跳过，需要 `--force` 才会重新索引。 |
+| `python tools/seal_tag.py reindex` | 根据磁盘上已封存的归档重新生成 `docs/tags/README.md`，不改动任何归档。 |
 | `python tools/seal_tag.py bundle <Tag>` | 输出 `/gm-finalize` 写 CHANGELOG 所需的 JSON。 |
 | `python tools/seal_tag.py reset` | 清空 `.godotmaker/stage.jsonl` 并删除 `metrics_current.jsonl`。 |
 

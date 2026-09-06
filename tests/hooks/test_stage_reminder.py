@@ -428,7 +428,10 @@ class TestTagArchived:
         self._sealed_archive(parent_index=None)
         _, _, parsed = run_hook(HOOK, self._write_finalize_event())
         assert is_blocked(parsed)
-        assert "docs/tags/README.md" in parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "docs/tags/README.md" in reason
+        # The tag is sealed here, so `index` would exit 3 — point at reindex.
+        assert "seal_tag.py reindex" in reason
 
     def test_blocks_when_parent_index_does_not_list_the_tag(self, project_dir):
         self._sealed_archive(parent_index="# Tag archives\n\n| [v0.0.9](v0.0.9/) | ... |\n")
@@ -436,6 +439,7 @@ class TestTagArchived:
         assert is_blocked(parsed)
         reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
         assert "does not list v0.1.0" in reason
+        assert "seal_tag.py reindex" in reason
 
     def test_real_seal_tag_output_satisfies_the_gate(self, project_dir):
         """End-to-end: what `seal_tag.py archive|index` actually writes must

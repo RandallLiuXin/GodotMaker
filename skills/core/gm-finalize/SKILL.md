@@ -39,7 +39,7 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 | manifest absent, or `"sealed": false` | a previous run died mid-finalize | re-run Steps 4→6b; both commands overwrite a partial archive |
 | `"sealed": true` | the tag is already sealed | do NOT re-archive — `archive` / `index` exit 3 on purpose |
 
-`"sealed": true` is written last, after every other archive file and the parent `docs/tags/README.md`, so an interrupted finalize always lands in the resumable row — there is no state where the tag reads as sealed but the archive is incomplete.
+`"sealed": true` is written after every other file inside the archive, so an interrupted finalize always lands in the resumable row — there is no state where the tag reads as sealed but the archive is incomplete. If the tag is sealed but `docs/tags/README.md` does not list it, the seal succeeded and only the index write failed: run `python tools/seal_tag.py reindex`, not `archive` or `index`.
 
 Never pass `--force` to work around exit 3. A sealed archive is immutable; if the user genuinely wants to reseal, say so explicitly and get their confirmation first.
 
@@ -219,7 +219,12 @@ Run it **after** Step 5 and Step 6 — `SUMMARY.md` is generated from the archiv
 
 Exit codes: 2 if the archive or `CHANGELOG.md` is missing, or if the archived `MEMORY.md` still has unresolvable links; 3 if the tag is already sealed; 1 on an fs failure.
 
-`"sealed": true` is committed last, in a single atomic manifest write, after every other file including `docs/tags/README.md`. So an exit 1 here always leaves the tag **unsealed** — fix the underlying problem and re-run `index <Tag>`; you never need `--force` to recover from a failed seal.
+`"sealed": true` is committed by a single atomic manifest write, after `SUMMARY.md` and the tag `README.md` and *before* the parent `docs/tags/README.md`, which is derived purely from the manifests already on disk. Read the stderr message to know which recovery applies:
+
+- **"is left UNSEALED"** — the failure landed at or before the seal commit. The parent index was not touched. Re-run `index <Tag>`; never `--force`.
+- **"sealed, but refreshing docs/tags/README.md failed"** — the tag IS sealed and correct; only the index is stale. Run `python tools/seal_tag.py reindex`. Do NOT re-run `index` — the tag is sealed, so it exits 3.
+
+Neither branch can leave `docs/tags/README.md` listing a tag that is not sealed.
 
 Do not Edit/Write `SUMMARY.md`, either `README.md`, or the manifest yourself. If the generated summary is wrong, the CHANGELOG or evaluation it was generated from is wrong — fix that and re-run.
 

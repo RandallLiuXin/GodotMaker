@@ -90,6 +90,7 @@ _TAG_ARCHIVE_FILES = (
 
 
 _SEAL_HINT = "run `python tools/seal_tag.py index {tag}` to seal the archive"
+_REINDEX_HINT = "run `python tools/seal_tag.py reindex` to rebuild it"
 
 
 def check_tag_archived() -> str | None:
@@ -128,10 +129,12 @@ def check_tag_archived() -> str | None:
         return (f"docs/tags/{tag}/evidence/manifest.json does not say `\"sealed\": true` — "
                 f"the archive is a partial finalize; {_SEAL_HINT.format(tag=tag)}.")
 
+    # Past this point the tag IS sealed, so the fix for a stale parent index is
+    # `reindex`, not `index` — the latter would just exit 3 on a sealed tag.
     parent_index = os.path.join("docs", "tags", "README.md")
     if not os.path.isfile(parent_index):
-        return (f"docs/tags/README.md not found — the parent tag index is written as "
-                f"part of sealing; {_SEAL_HINT.format(tag=tag)}.")
+        return (f"docs/tags/README.md not found — {tag} is sealed but the parent tag "
+                f"index was never written; {_REINDEX_HINT}.")
     try:
         with open(parent_index, encoding="utf-8", errors="replace") as handle:
             parent_text = handle.read()
@@ -139,7 +142,7 @@ def check_tag_archived() -> str | None:
         return f"docs/tags/README.md is unreadable ({exc})."
     if f"({tag}/)" not in parent_text:
         return (f"docs/tags/README.md does not list {tag} — the parent index is stale; "
-                f"{_SEAL_HINT.format(tag=tag)}.")
+                f"{_REINDEX_HINT}.")
     return None
 
 

@@ -499,6 +499,17 @@ def seal(project_dir: Path, tag: str = "v0.1.0") -> subprocess.CompletedProcess:
     return run(project_dir, "index", tag)
 
 
+def _stage_extra_tag(project_dir: Path, tag: str, theme: str) -> None:
+    """Archive another tag and write its CHANGELOG, stopping short of `index`."""
+    (project_dir / "PLAN.md").write_text(f"# PLAN\n**Tag:** {tag}\n\n- [{tag}-M1] thing\n")
+    assert run(project_dir, "archive", tag).returncode == 0
+    write_changelog(
+        project_dir, tag,
+        f"# Changelog\n\n**Released:** 2026-06-01\n**Theme:** {theme}\n\n"
+        f"## Delivered mechanics\n\n- [{tag}-M1] thing\n",
+    )
+
+
 def test_archive_freezes_memory_subtree_next_to_memory_md(project_dir: Path):
     (project_dir / "memory" / "collision.md").write_text("# collision\n", encoding="utf-8")
     r = run(project_dir, "archive", "v0.1.0")
@@ -778,35 +789,118 @@ def test_index_fs_failure_returns_exit_1(
     assert seal_tag.cmd_index(project_dir, "v0.1.0") == 1
 
 
-def test_index_leaves_the_tag_unsealed_when_the_parent_index_write_fails(
-    project_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+def test_index_leaves_the_tag_unsealed_when_the_seal_commit_fails(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """The seal commit is the last step on purpose. If anything before it
-    fails — here the parent index — the tag must stay unsealed and re-runnable,
-    not become a sealed archive that no command will touch again."""
+    """The seal commit comes before the parent index. If it fails, the tag
+    stays unsealed AND the index was never touched — so the index cannot end
+    up advertising a tag that is still an overwritable partial snapshot."""
     seal_tag = _load_seal_tag_module()
     assert run(project_dir, "archive", "v0.1.0").returncode == 0
     write_changelog(project_dir)
 
-    def boom(tags_root, pending=None):
+    def boom(dest_dir, manifest):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(seal_tag, "_write_manifest", boom)
+    assert seal_tag.cmd_index(project_dir, "v0.1.0") == 1
+
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert not seal_tag._is_sealed(dest)
+    assert json.loads(
+        (dest / "evidence" / "manifest.json").read_text(encoding="utf-8")
+    )["sealed"] is False
+    assert not (project_dir / "docs" / "tags" / "README.md").exists(), (
+        "the parent index must not exist yet — nothing is sealed"
+    )
+
+    # Recovery is the documented partial-resume path: no --force needed.
+    monkeypatch.undo()
+    r = run(project_dir, "index", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    assert seal_tag._is_sealed(dest)
+    assert "[v0.1.0](v0.1.0/)" in (
+        project_dir / "docs" / "tags" / "README.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_index_never_lists_an_unsealed_tag_when_the_seal_commit_fails_later(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Same failure with a pre-existing parent index: the stale index keeps
+    listing only what is genuinely sealed, and never gains the failed tag."""
+    seal_tag = _load_seal_tag_module()
+    assert seal(project_dir).returncode == 0            # v0.1.0 sealed for real
+    parent_path = project_dir / "docs" / "tags" / "README.md"
+    before = parent_path.read_bytes()
+
+    _stage_extra_tag(project_dir, "v0.2.0", "Combat")
+
+    def boom(dest_dir, manifest):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(seal_tag, "_write_manifest", boom)
+    assert seal_tag.cmd_index(project_dir, "v0.2.0") == 1
+
+    assert not seal_tag._is_sealed(project_dir / "docs" / "tags" / "v0.2.0")
+    assert parent_path.read_bytes() == before
+    assert "v0.2.0" not in parent_path.read_text(encoding="utf-8")
+
+    monkeypatch.undo()
+    assert run(project_dir, "index", "v0.2.0").returncode == 0
+    assert "[v0.2.0](v0.2.0/)" in parent_path.read_text(encoding="utf-8")
+
+
+def test_index_reports_a_stale_parent_index_and_reindex_repairs_it(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The one failure `index` cannot finish itself: the seal landed but the
+    index refresh after it did not. The tag is sealed and correct, the index
+    merely omits it — never the other way round — and `reindex` repairs it
+    without touching any archive."""
+    seal_tag = _load_seal_tag_module()
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    write_changelog(project_dir)
+
+    def boom(tags_root):
         raise OSError(28, "No space left on device")
 
     monkeypatch.setattr(seal_tag, "_write_parent_readme", boom)
     assert seal_tag.cmd_index(project_dir, "v0.1.0") == 1
 
     dest = project_dir / "docs" / "tags" / "v0.1.0"
-    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["sealed"] is False
-    assert not seal_tag._is_sealed(dest)
+    assert seal_tag._is_sealed(dest), "the seal itself succeeded"
+    assert not (project_dir / "docs" / "tags" / "README.md").exists()
 
-    # Recovery is the documented partial-resume path: no --force needed.
     monkeypatch.undo()
-    assert run(project_dir, "archive", "v0.1.0").returncode == 0
-    r = run(project_dir, "index", "v0.1.0")
+    # Re-running `index` is the wrong move here and says so with exit 3.
+    assert run(project_dir, "index", "v0.1.0").returncode == 3
+
+    archive_before = {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()}
+    r = run(project_dir, "reindex")
     assert r.returncode == 0, r.stderr
-    assert seal_tag._is_sealed(dest)
+    assert "[v0.1.0](v0.1.0/)" in (
+        project_dir / "docs" / "tags" / "README.md"
+    ).read_text(encoding="utf-8")
+    assert {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()} == archive_before
+
+
+def test_reindex_rebuilds_the_parent_index_from_sealed_archives_only(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    _stage_extra_tag(project_dir, "v0.2.0", "Combat")   # archived, never indexed
+    (project_dir / "docs" / "tags" / "README.md").unlink()
+
+    r = run(project_dir, "reindex")
+    assert r.returncode == 0, r.stderr
     parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
     assert "[v0.1.0](v0.1.0/)" in parent
+    assert "v0.2.0" not in parent
+
+
+def test_reindex_without_a_tags_directory_exits_2(project_dir: Path):
+    r = run(project_dir, "reindex")
+    assert r.returncode == 2
+    assert "does not exist" in r.stderr
 
 
 def test_index_leaves_no_temp_files_behind(project_dir: Path):
@@ -824,27 +918,98 @@ def test_index_leaves_no_temp_files_behind(project_dir: Path):
     )
 
 
-def test_backfill_commits_no_seal_when_the_parent_index_write_fails(
+def test_backfill_parent_index_never_lists_a_tag_whose_seal_failed(
     project_dir: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """Same ordering guarantee for backfill: a failed parent index must leave
-    every target unsealed rather than half of them sealed and unlisted."""
+    """Backfill seals target-by-target and writes the derived index last. A
+    seal that fails mid-run must leave the index listing only what actually
+    sealed — never the target that failed — and a plain re-run must recover."""
+    seal_tag = _load_seal_tag_module()
+    _legacy_archive(project_dir, "v0.0.8")
+    _legacy_archive(project_dir, "v0.0.9")
+    tags_root = project_dir / "docs" / "tags"
+
+    original = seal_tag._write_manifest
+
+    def fail_on_second(dest_dir, manifest):
+        if dest_dir.name == "v0.0.9":
+            raise OSError(28, "No space left on device")
+        return original(dest_dir, manifest)
+
+    monkeypatch.setattr(seal_tag, "_write_manifest", fail_on_second)
+    assert seal_tag.cmd_backfill(project_dir, None, True) == 1
+
+    assert seal_tag._is_sealed(tags_root / "v0.0.8")
+    assert not seal_tag._is_sealed(tags_root / "v0.0.9")
+    # The index write never ran, so it cannot advertise the failed tag.
+    assert not (tags_root / "README.md").exists()
+
+    monkeypatch.undo()
+    r = run(project_dir, "backfill", "--all")
+    assert r.returncode == 0, r.stderr
+    assert "skipped" in r.stdout, "the already-sealed target is skipped on re-run"
+    parent = (tags_root / "README.md").read_text(encoding="utf-8")
+    for tag in ("v0.0.8", "v0.0.9"):
+        assert seal_tag._is_sealed(tags_root / tag)
+        assert f"[{tag}]({tag}/)" in parent
+
+
+def test_backfill_reports_a_stale_parent_index_when_only_that_write_fails(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+):
     seal_tag = _load_seal_tag_module()
     _legacy_archive(project_dir, "v0.0.9")
-    _legacy_archive(project_dir, "v0.0.8")
 
-    def boom(tags_root, pending=None):
+    def boom(tags_root):
         raise OSError(28, "No space left on device")
 
     monkeypatch.setattr(seal_tag, "_write_parent_readme", boom)
     assert seal_tag.cmd_backfill(project_dir, None, True) == 1
-    for tag in ("v0.0.8", "v0.0.9"):
-        assert not seal_tag._is_sealed(project_dir / "docs" / "tags" / tag)
+    assert "reindex" in capsys.readouterr().err
 
     monkeypatch.undo()
-    assert run(project_dir, "backfill", "--all").returncode == 0
-    for tag in ("v0.0.8", "v0.0.9"):
-        assert seal_tag._is_sealed(project_dir / "docs" / "tags" / tag)
+    assert seal_tag._is_sealed(project_dir / "docs" / "tags" / "v0.0.9")
+    assert run(project_dir, "reindex").returncode == 0
+    assert "[v0.0.9](v0.0.9/)" in (
+        project_dir / "docs" / "tags" / "README.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_no_parent_index_ever_lists_an_unsealed_tag_across_failure_points(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Acceptance invariant, checked after every single write in a seal.
+
+    Injects a failure at each successive `_atomic_write_text` call of an
+    `index` run and asserts the resulting parent index never names a tag that
+    is not sealed on disk.
+    """
+    seal_tag = _load_seal_tag_module()
+    tags_root = project_dir / "docs" / "tags"
+
+    for failing_call in range(1, 6):
+        assert run(project_dir, "archive", "v0.1.0", "--force").returncode == 0
+        write_changelog(project_dir)
+        calls = {"n": 0}
+        original = seal_tag._atomic_write_text
+
+        def counted(path, text):
+            calls["n"] += 1
+            if calls["n"] == failing_call:
+                raise OSError(28, "No space left on device")
+            return original(path, text)
+
+        monkeypatch.setattr(seal_tag, "_atomic_write_text", counted)
+        seal_tag.cmd_index(project_dir, "v0.1.0", force=True)
+        monkeypatch.undo()
+
+        if (tags_root / "README.md").is_file():
+            parent = (tags_root / "README.md").read_text(encoding="utf-8")
+            for child in tags_root.iterdir():
+                if child.is_dir() and not seal_tag._is_sealed(child):
+                    assert f"[{child.name}]({child.name}/)" not in parent, (
+                        f"unsealed {child.name} listed after failure #{failing_call}"
+                    )
 
 
 # ---------- immutability and resume ----------
@@ -909,13 +1074,7 @@ def test_reindexing_a_sealed_tag_leaves_it_byte_identical(project_dir: Path):
 # ---------- parent index ----------
 
 def _seal_extra_tag(project_dir: Path, tag: str, theme: str) -> None:
-    (project_dir / "PLAN.md").write_text(f"# PLAN\n**Tag:** {tag}\n\n- [{tag}-M1] thing\n")
-    assert run(project_dir, "archive", tag).returncode == 0
-    write_changelog(
-        project_dir, tag,
-        f"# Changelog\n\n**Released:** 2026-06-01\n**Theme:** {theme}\n\n"
-        f"## Delivered mechanics\n\n- [{tag}-M1] thing\n",
-    )
+    _stage_extra_tag(project_dir, tag, theme)
     assert run(project_dir, "index", tag).returncode == 0
 
 

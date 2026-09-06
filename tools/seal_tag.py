@@ -20,6 +20,9 @@ Subcommands:
     backfill        Retrofit README / SUMMARY / manifest onto tag archives
                     that were sealed by an older finalize. Never runs as
                     part of a normal finalize.
+    reindex         Regenerate docs/tags/README.md from the sealed archives
+                    on disk. Repair path when a seal landed but the index
+                    refresh after it did not.
     reset           Step 7 — truncate stage.jsonl + delete metrics_current.jsonl
     bundle <Tag>    Step 5+8 — emit JSON bundle (roadmap entry, git log slice,
                     plan tag mechanics, test counts, previous tag) to stdout
@@ -28,6 +31,7 @@ Usage:
     python tools/seal_tag.py archive v0.1.0
     python tools/seal_tag.py index v0.1.0
     python tools/seal_tag.py backfill --all
+    python tools/seal_tag.py reindex
     python tools/seal_tag.py reset
     python tools/seal_tag.py bundle v0.1.0
 
@@ -40,12 +44,26 @@ partially archived tag (manifest absent or `sealed: false`) is resumable
 — re-running `archive` is the documented recovery path. Resealing a
 sealed tag requires an explicit `--force`.
 
-Seal ordering: `sealed: true` is committed by ONE atomic manifest write,
-after SUMMARY.md, the tag README and the parent docs/tags/README.md are
-already on disk. A failure anywhere earlier therefore leaves the tag
-unsealed and re-runnable, instead of sealed-but-incomplete with no way
-back in. Every generated file goes through `_atomic_write_text`, so an
-interrupted write never truncates the previous version.
+Seal ordering, and why it is this way. Two invariants are in tension:
+
+  (A) docs/tags/README.md must never list a tag that is not sealed — it is
+      the retrieval entry point, and an unsealed archive is still an
+      overwritable partial snapshot.
+  (B) a failed run must never leave a tag sealed-but-incomplete, because
+      `archive` / `index` refuse to touch a sealed tag (exit 3).
+
+The order is: SUMMARY.md and the tag README, then ONE atomic manifest
+write committing `sealed: true`, then the parent index — which is pure
+derived state, rendered only from manifests already on disk.
+
+  - fail before or at the seal commit → tag unsealed, parent index
+    untouched. (A) holds, (B) holds, `index` re-runs cleanly.
+  - fail at the parent index → the tag is sealed and correct; the index
+    merely omits it. (A) still holds — an omission misleads no one toward
+    a partial snapshot. `reindex` repairs it without touching any archive.
+
+Every generated file goes through `_atomic_write_text`, so an interrupted
+write never truncates the previous version.
 
 Exit codes:
     0   succeeded
@@ -732,25 +750,21 @@ def _version_key(tag: str) -> tuple:
     return (0, numbers, tag) if numbers else (1, [], tag)
 
 
-def _sealed_tag_dirs(tags_root: Path, pending: dict[str, dict] | None = None) -> list[Path]:
+def _sealed_tag_dirs(tags_root: Path) -> list[Path]:
     """Sealed tag directories, version-ordered.
 
-    `pending` names tags whose seal has not been committed yet — the parent
-    index is written *before* the seal commit so that a failure there cannot
-    strand a sealed-but-unlisted tag, and those tags still belong in the
-    table it renders.
+    Sealed means the manifest on disk says so. The parent index is rendered
+    purely from that, never from a seal this run intends to commit later —
+    otherwise a failed seal commit would leave the index advertising a tag
+    that is still an overwritable partial snapshot.
     """
     if not tags_root.is_dir():
         return []
-    pending = pending or {}
-    sealed = [
-        child for child in tags_root.iterdir()
-        if child.is_dir() and (child.name in pending or _is_sealed(child))
-    ]
+    sealed = [child for child in tags_root.iterdir() if child.is_dir() and _is_sealed(child)]
     return sorted(sealed, key=lambda p: _version_key(p.name))
 
 
-def _render_parent_readme(tags_root: Path, pending: dict[str, dict] | None = None) -> str:
+def _render_parent_readme(tags_root: Path) -> str:
     lines = [
         "# Tag archives",
         "",
@@ -762,8 +776,8 @@ def _render_parent_readme(tags_root: Path, pending: dict[str, dict] | None = Non
         "| --- | --- | --- | --- | --- |",
     ]
     rows = 0
-    for tag_dir in _sealed_tag_dirs(tags_root, pending):
-        manifest = (pending or {}).get(tag_dir.name) or _read_manifest(tag_dir) or {}
+    for tag_dir in _sealed_tag_dirs(tags_root):
+        manifest = _read_manifest(tag_dir) or {}
         changelog = _parse_changelog(tag_dir / "CHANGELOG.md")
         revision = manifest.get("source_revision")
         lines.append(
@@ -799,8 +813,8 @@ def _render_parent_readme(tags_root: Path, pending: dict[str, dict] | None = Non
     return "\n".join(lines) + "\n"
 
 
-def _write_parent_readme(tags_root: Path, pending: dict[str, dict] | None = None) -> None:
-    _atomic_write_text(tags_root / "README.md", _render_parent_readme(tags_root, pending))
+def _write_parent_readme(tags_root: Path) -> None:
+    _atomic_write_text(tags_root / "README.md", _render_parent_readme(tags_root))
 
 
 # --------------------------------------------------------------------- index
@@ -886,15 +900,28 @@ def cmd_index(project_path: Path, tag: str, force: bool = False) -> int:
             link_warnings=link_warnings,
             carried_warnings=list(previous.get("warnings", [])),
         )
-        # Parent index first, seal commit last: if the index write fails, the
-        # tag stays unsealed and `index` can simply be re-run.
-        _write_parent_readme(dest_dir.parent, pending={tag: manifest})
         _write_manifest(dest_dir, manifest)
     except OSError as exc:
         print(
             f"error: index failed ({exc.__class__.__name__}: {exc}). "
-            f"docs/tags/{tag}/ is left UNSEALED - fix the underlying fs issue and "
-            f"re-run `seal_tag.py index {tag}`.",
+            f"docs/tags/{tag}/ is left UNSEALED and docs/tags/README.md was not "
+            f"touched - fix the underlying fs issue and re-run `seal_tag.py index {tag}`.",
+            file=sys.stderr,
+        )
+        return 1
+
+    # The parent index is derived state, rendered only from manifests already
+    # committed on disk. Writing it after the seal is what keeps it from ever
+    # advertising a tag whose seal did not land.
+    try:
+        _write_parent_readme(dest_dir.parent)
+    except OSError as exc:
+        print(
+            f"error: docs/tags/{tag}/ sealed, but refreshing docs/tags/README.md failed "
+            f"({exc.__class__.__name__}: {exc}). The index still lists only sealed tags, "
+            f"so nothing is misadvertised - it is just missing {tag}. "
+            f"Fix the fs issue and run `seal_tag.py reindex` (do NOT re-run `index`; "
+            f"the tag is already sealed and it will exit 3).",
             file=sys.stderr,
         )
         return 1
@@ -948,7 +975,7 @@ def cmd_backfill(
         return 0
 
     canonical = [dst for _, dst in ARCHIVE_MAP] + ["CHANGELOG.md"]
-    pending: dict[str, dict] = {}
+    sealed_now: list[str] = []
     try:
         for dest_dir in targets:
             if _is_sealed(dest_dir) and not force:
@@ -989,27 +1016,70 @@ def cmd_backfill(
                     file=sys.stderr,
                 )
                 return 1
-            pending[dest_dir.name] = manifest
-
-        # Same ordering guarantee as `index`: refresh the parent index while
-        # every target is still unsealed, then commit the seals.
-        _write_parent_readme(tags_root, pending=pending)
-        for name, manifest in pending.items():
-            _write_manifest(tags_root / name, manifest)
+            # Same ordering as `index`: seal this target before moving on, and
+            # leave the derived parent index for after the loop. A failure here
+            # leaves this tag unsealed and the index untouched, so the index
+            # never lists a tag whose seal did not land.
+            _write_manifest(dest_dir, manifest)
+            sealed_now.append(dest_dir.name)
             print(
-                f"backfilled docs/tags/{name}/ "
+                f"backfilled docs/tags/{dest_dir.name}/ "
                 f"({len(manifest['files'])} file(s) in manifest)"
             )
     except OSError as exc:
         print(
             f"error: backfill failed ({exc.__class__.__name__}: {exc}). "
-            f"Archives not yet committed stay unsealed - re-run backfill after "
-            f"fixing the underlying fs issue.",
+            f"{len(sealed_now)} archive(s) sealed before the failure; the rest stay "
+            f"unsealed and docs/tags/README.md was not touched. Re-run backfill after "
+            f"fixing the underlying fs issue - already-sealed archives are skipped.",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        _write_parent_readme(tags_root)
+    except OSError as exc:
+        print(
+            f"error: archives sealed, but refreshing docs/tags/README.md failed "
+            f"({exc.__class__.__name__}: {exc}). The index still lists only sealed tags. "
+            f"Fix the fs issue and run `seal_tag.py reindex`.",
             file=sys.stderr,
         )
         return 1
 
     print(f"backfill complete: docs/tags/README.md lists {len(_sealed_tag_dirs(tags_root))} sealed tag(s).")
+    return 0
+
+
+# ------------------------------------------------------------------- reindex
+
+
+def cmd_reindex(project_path: Path) -> int:
+    """Regenerate `docs/tags/README.md` from the sealed archives on disk.
+
+    The parent index is pure derived state, so rebuilding it is always safe
+    and never touches an archive. This is the repair path for the one failure
+    `index` / `backfill` cannot finish themselves: the seal committed, but the
+    index refresh that follows it did not. Re-running `index` there would only
+    exit 3, because the tag is legitimately sealed already.
+    """
+    tags_root = project_path / "docs" / "tags"
+    if not tags_root.is_dir():
+        print(f"error: {tags_root} does not exist", file=sys.stderr)
+        return 2
+    try:
+        _write_parent_readme(tags_root)
+    except OSError as exc:
+        print(
+            f"error: reindex failed ({exc.__class__.__name__}: {exc})",
+            file=sys.stderr,
+        )
+        return 1
+    sealed = _sealed_tag_dirs(tags_root)
+    print(
+        f"reindexed docs/tags/README.md: {len(sealed)} sealed tag(s)"
+        + (f" ({', '.join(p.name for p in sealed)})" if sealed else "")
+    )
     return 0
 
 
@@ -1191,7 +1261,7 @@ def cmd_bundle(project_path: Path, tag: str) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="gm-finalize mechanical helpers (archive / index / backfill / reset / bundle)",
+        description="gm-finalize mechanical helpers (archive / index / backfill / reindex / reset / bundle)",
     )
     parser.add_argument(
         "--project-path",
@@ -1217,6 +1287,7 @@ def main(argv: list[str] | None = None) -> int:
     backfill.add_argument("--force", action="store_true",
                           help="re-index archives that already carry a sealed manifest")
 
+    sub.add_parser("reindex")
     sub.add_parser("reset")
     sub.add_parser("bundle").add_argument("tag")
 
@@ -1232,6 +1303,8 @@ def main(argv: list[str] | None = None) -> int:
             print("error: backfill takes exactly one of <Tag> or --all", file=sys.stderr)
             return 2
         return cmd_backfill(project_path, args.tag, args.all, args.force)
+    if args.cmd == "reindex":
+        return cmd_reindex(project_path)
     if args.cmd == "reset":
         return cmd_reset(project_path)
     if args.cmd == "bundle":
