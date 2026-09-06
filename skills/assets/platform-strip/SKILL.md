@@ -30,7 +30,7 @@ The fixed grid dimensions are positive integers. This v1 family is one closed ho
 
 `references` is optional. With references, validate every path is readable, preserve each declared role, and pass the actual images to the selected provider. Do not replace image attachments with prompt text. If the pinned provider cannot accept the supplied images, return STOP. Without references, generate from the written brief.
 
-Honor the requested provider exactly. `native`, `codex`, `gemini`, and `openai` never fall back to another provider. For Codex, call the image provider with `referenced_image_paths` containing each readable local reference image. If that attachment cannot be made, STOP. Record the provider, model, prompt, reference paths and roles, provider payload or trace, raw source path, and processing reports under `.godotmaker/asset-generation/` using the provider's controlled report or claim tool; never hand-write provenance JSON.
+Honor the requested provider exactly. `native`, `codex`, `gemini`, `openai`, and `wan` never fall back to another provider. For Codex, call the image provider with `referenced_image_paths` containing each readable local reference image. If that attachment cannot be made, STOP. Record the provider, model, prompt, reference paths and roles, provider payload or trace, raw source path, and processing reports under `.godotmaker/asset-generation/` using the provider's controlled report or claim tool; never hand-write provenance JSON.
 
 ## Produce
 

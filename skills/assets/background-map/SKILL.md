@@ -39,7 +39,7 @@ dispatch, while retaining the request path and role in provenance. Providers
 receive the resulting local image path as an attachment, never the literal
 `res://` text.
 
-Use exactly the declared `provider` (`native`, `codex`, `gemini`, or `openai`).
+Use exactly the declared `provider` (`native`, `codex`, `gemini`, `openai`, or `wan`).
 Do not substitute another provider. Read its provider document before source
 generation. If it cannot execute its declared image-attachment path for every
 reference, STOP with `validation.passed: false` and create no final runtime

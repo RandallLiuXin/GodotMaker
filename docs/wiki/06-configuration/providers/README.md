@@ -22,3 +22,4 @@ provider. Configure both layers in `.godotmaker/config.yaml`.
 - [gemini](image-vqa/gemini.md)
 - [openai](image-vqa/openai.md)
 - [grok](image-vqa/grok.md)
+- [wan](image-vqa/wan.md)

@@ -321,6 +321,137 @@ class TestCheckFunctions:
         assert not any("GOOGLE_API_KEY" in f for f in r.failed)
 
     @patch.dict(os.environ, {}, clear=True)
+    def test_wan_image_model_requires_key_and_explicit_region(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("DASHSCOPE_API_KEY" in failure for failure in r.failed)
+        assert any("DASHSCOPE_REGION" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {"DASHSCOPE_API_KEY": "  \t ", "DASHSCOPE_REGION": "beijing"},
+        clear=True,
+    )
+    def test_wan_image_model_rejects_whitespace_only_api_key(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("DASHSCOPE_API_KEY not set" in failure for failure in r.failed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_check_api_keys_rejects_wan_as_a_vqa_provider(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "native", "vqa_model": "wan"}, agent="codex")
+
+        assert any("vqa_model provider 'wan' is unsupported" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "singapore",
+            "DASHSCOPE_BASE_URL": "https://space.ap-southeast-1.maas.aliyuncs.com/api/v1/",
+        },
+        clear=True,
+    )
+    def test_wan_image_model_accepts_matching_singapore_business_space(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan:wan2.7-image-pro", "vqa_model": "native"}, agent="codex")
+
+        assert not any("DASHSCOPE" in failure for failure in r.failed)
+        assert any("DASHSCOPE_BASE_URL matches" in passed for passed in r.passed)
+
+    @patch.dict(
+        os.environ,
+        {"DASHSCOPE_API_KEY": "test-key", "DASHSCOPE_REGION": "beijing"},
+        clear=True,
+    )
+    def test_wan_image_model_rejects_unsupported_model_during_preflight(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {"asset_image_model": "wan:not-a-model", "vqa_model": "native"},
+            agent="codex",
+        )
+
+        assert any("Unsupported Wan image model 'not-a-model'" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {"DASHSCOPE_API_KEY": "test-key", "DASHSCOPE_REGION": "beijing"},
+        clear=True,
+    )
+    def test_wan_image_model_does_not_treat_explicit_wan_as_the_bare_alias(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan:wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("Unsupported Wan image model 'wan'" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "beijing",
+            "DASHSCOPE_BASE_URL": "https://dashscope-intl.aliyuncs.com",
+        },
+        clear=True,
+    )
+    def test_wan_image_model_rejects_region_base_url_mismatch(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("DASHSCOPE_BASE_URL" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "beijing",
+            "DASHSCOPE_BASE_URL": "https://dashscope.aliyuncs.com/not-api-v1",
+        },
+        clear=True,
+    )
+    def test_wan_preflight_rejects_the_same_invalid_base_url_path_as_runtime(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("may be the regional host" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "beijing",
+            "DASHSCOPE_BASE_URL": "https://dashscope.aliyuncs.com:abc",
+        },
+        clear=True,
+    )
+    def test_wan_preflight_rejects_invalid_base_url_authority(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("standard HTTPS authority" in failure for failure in r.failed)
+
+    @patch.dict(os.environ, {}, clear=True)
     def test_native_image_model_still_requires_configured_gemini_vqa_key(self):
         from check_env import check_api_keys
 

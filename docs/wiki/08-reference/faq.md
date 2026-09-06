@@ -10,7 +10,7 @@ No. GodotMaker is designed for people who have a game idea but are not game deve
 
 ### Do I need a paid API key?
 
-Only if your project config selects an API-backed provider. Runtime-native image generation or VQA depends on the selected agent runtime; OpenCode projects should configure `codex` or API-backed image/VQA providers. `GOOGLE_API_KEY` or `GEMINI_API_KEY` is required for `gemini:<model>`, `OPENAI_API_KEY` for `openai:<model>`, and `XAI_API_KEY` for `grok:<model>`.
+Only if your project config selects an API-backed provider. Runtime-native image generation or VQA depends on the selected agent runtime; OpenCode projects should configure `codex` or API-backed image/VQA providers. `GOOGLE_API_KEY` or `GEMINI_API_KEY` is required for `gemini:<model>`, `OPENAI_API_KEY` for `openai:<model>`, `XAI_API_KEY` for `grok:<model>`, and `DASHSCOPE_API_KEY` plus `DASHSCOPE_REGION` for `wan:<model>`.
 
 Claude Code itself requires an Anthropic account with API access (or a Claude Pro / Team subscription with Claude Code enabled).
 
@@ -95,7 +95,7 @@ After `/gm-verify` completes, it prints a per-check pass/fail report and — on 
 
 ### Where does my game data go?
 
-All game files live locally on your machine. AI calls go to whatever model provider your selected agent runtime uses. API-backed image generation calls go to the provider selected by `asset_image_model` (Gemini, OpenAI, or xAI); `native` generation is handled by the active runtime, and `codex` generation is handled by Codex. No game content is stored on GodotMaker's servers because GodotMaker has no servers — it is a local framework.
+All game files live locally on your machine. AI calls go to whatever model provider your selected agent runtime uses. API-backed image generation calls go to the provider selected by `asset_image_model` (Gemini, OpenAI, xAI, or Alibaba Cloud Model Studio Wan); `native` generation is handled by the active runtime, and `codex` generation is handled by Codex. No game content is stored on GodotMaker's servers because GodotMaker has no servers — it is a local framework.
 
 ### Is my game project mine?
 

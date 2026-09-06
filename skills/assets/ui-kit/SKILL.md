@@ -24,8 +24,8 @@ contract.
 
 Accept the shared Asset Skill request schema at
 `.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`; require
-`asset_type: ui-kit`, a pinned `provider` (`native`, `codex`, `gemini`, or
-`openai`), and at least one readable image in `references`. Preserve every
+`asset_type: ui-kit`, a pinned `provider` (`native`, `codex`, `gemini`,
+`openai`, or `wan`), and at least one readable image in `references`. Preserve every
 reference `role`. Missing or unreadable references and pixel-art requests are
 input-gate STOP conditions.
 

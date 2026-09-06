@@ -1069,7 +1069,7 @@ class TestPublishedAssetRuntime:
             assert references, f"{skill_name} must reference the published asset runtime"
             for reference in references:
                 if "<provider>" in reference:
-                    providers = ("native", "codex", "gemini", "openai")
+                    providers = ("native", "codex", "gemini", "openai", "wan")
                     assert all(
                         (target / reference.replace("<provider>", provider)).exists()
                         for provider in providers

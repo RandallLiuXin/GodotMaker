@@ -22,6 +22,14 @@ from agent_runtime import (
     detect_agent,
     read_godot_path,
 )
+from asset_source_generate import (
+    SourceGenerateError,
+    WAN_MODEL,
+    WAN_PRO_MODEL,
+    wan_endpoint_from_config,
+)
+
+VQA_PROVIDERS = {"native", "codex", "gemini", "openai"}
 
 
 class EnvCheck:
@@ -88,7 +96,7 @@ def split_model_selector(selector: str, default_provider: str) -> tuple[str, str
     if ":" in raw:
         provider, model = raw.split(":", 1)
         return provider.strip(), model.strip()
-    if raw in {"native", "codex", "gemini", "openai", "grok", "none"}:
+    if raw in {"native", "codex", "gemini", "openai", "grok", "wan", "none"}:
         return raw, raw
     if raw:
         return default_provider, raw
@@ -104,10 +112,14 @@ def image_model_from_config(config: dict[str, str]) -> str:
         return f"gemini:{model}"
     if provider == "grok":
         return f"grok:{config.get('grok_image_model') or 'grok-imagine-image'}"
+    if provider == "wan":
+        return f"wan:{config.get('wan_image_model') or 'wan2.7-image'}"
     if config.get("gemini_image_model"):
         return f"gemini:{config['gemini_image_model']}"
     if config.get("grok_image_model"):
         return f"grok:{config['grok_image_model']}"
+    if config.get("wan_image_model"):
+        return f"wan:{config['wan_image_model']}"
     return provider or "native"
 
 
@@ -436,11 +448,19 @@ def check_api_keys(
 ):
     print("\n--- API Keys ---")
     config = config or {}
-    image_provider, _ = split_model_selector(image_model_from_config(config), "gemini")
+    image_selector = image_model_from_config(config)
+    image_provider, image_model = split_model_selector(image_selector, "gemini")
     vqa_provider, _ = split_model_selector(
         config.get("vqa_model") or "native", "gemini"
     )
     required = {image_provider, vqa_provider}
+
+    if vqa_provider not in VQA_PROVIDERS:
+        r.fail(
+            f"vqa_model provider {vqa_provider!r} is unsupported; "
+            "use native, codex, gemini:<model>, or openai:<model>"
+        )
+        required.discard(vqa_provider)
 
     if image_provider in {"native", "codex"}:
         required.discard("native")
@@ -489,6 +509,37 @@ def check_api_keys(
         r.ok("XAI_API_KEY set (optional)")
     else:
         r.warn("XAI_API_KEY not set (optional)")
+
+    if image_provider == "wan":
+        selected_wan_model = WAN_MODEL if image_selector.strip() == "wan" else image_model
+        if selected_wan_model not in {WAN_MODEL, WAN_PRO_MODEL}:
+            r.fail(
+                f"Unsupported Wan image model {selected_wan_model!r}; "
+                f"use {WAN_MODEL} or {WAN_PRO_MODEL}"
+            )
+        if not os.environ.get("DASHSCOPE_API_KEY", "").strip():
+            r.fail("DASHSCOPE_API_KEY not set but asset_image_model uses a Wan model")
+        else:
+            r.ok("DASHSCOPE_API_KEY set")
+        region = os.environ.get("DASHSCOPE_REGION", "").strip().lower()
+        if region not in {"beijing", "singapore"}:
+            r.fail("DASHSCOPE_REGION must be set to beijing or singapore for a Wan model")
+        else:
+            r.ok(f"DASHSCOPE_REGION set to {region}")
+        base_url = os.environ.get("DASHSCOPE_BASE_URL", "").strip()
+        if region in {"beijing", "singapore"}:
+            try:
+                wan_endpoint_from_config(region, base_url)
+            except SourceGenerateError as exc:
+                r.fail(str(exc))
+            else:
+                r.ok("DASHSCOPE_BASE_URL matches DASHSCOPE_REGION")
+        if not base_url:
+            r.ok("DASHSCOPE_BASE_URL not set; using the official regional endpoint")
+    elif os.environ.get("DASHSCOPE_API_KEY"):
+        r.ok("DASHSCOPE_API_KEY set (optional)")
+    else:
+        r.warn("DASHSCOPE_API_KEY not set (optional)")
 
 
 

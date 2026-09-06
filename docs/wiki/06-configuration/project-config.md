@@ -22,7 +22,7 @@ Framework developers and manual-mode users can still create the same file with `
 
 **`vqa_fallback_model`** — fallback when the primary VQA backend is unavailable. Supported values are `native`, `codex`, and `none`.
 
-**`asset_image_model`** — image generation selector for `/gm-asset`. Supported values are `native`, `codex`, `gemini:<model>`, `openai:<model>`, and `grok:<model>`. `native` is handled by the active agent runtime. `codex` is handled by Codex native image generation. API-backed selectors run `tools/asset_source_generate.py --spec <spec.json>`; the script rejects runtime providers.
+**`asset_image_model`** — image generation selector for `/gm-asset`. Supported values are `native`, `codex`, `gemini:<model>`, `openai:<model>`, `grok:<model>`, and `wan:<model>`. `wan` defaults to `wan2.7-image`; use `wan:wan2.7-image-pro` explicitly for the Pro model. `native` is handled by the active agent runtime. `codex` is handled by Codex native image generation. API-backed selectors run `tools/asset_source_generate.py --spec <spec.json>`; the script rejects runtime providers.
 
 **`asset_producer_model`** — model used by generated-art producer subagents. Defaults to `sonnet`.
 
@@ -90,6 +90,7 @@ Image and VQA providers:
 - [gemini](providers/image-vqa/gemini.md)
 - [openai](providers/image-vqa/openai.md)
 - [grok](providers/image-vqa/grok.md)
+- [wan](providers/image-vqa/wan.md)
 
 ## API keys
 
@@ -100,6 +101,7 @@ Provider-prefixed selectors require the matching API key:
 | `gemini:<model>` | `GOOGLE_API_KEY` or `GEMINI_API_KEY` |
 | `openai:<model>` | `OPENAI_API_KEY` |
 | `grok:<model>` | `XAI_API_KEY` |
+| `wan:<model>` | `DASHSCOPE_API_KEY`, `DASHSCOPE_REGION` (`beijing` or `singapore`) |
 
 Asset generation does not silently fall back when a key is missing. VQA can fall back only through the explicit `vqa_fallback_model` setting.
 
@@ -130,6 +132,17 @@ To use OpenAI for API-backed image generation:
 ```yaml
 asset_image_model: openai:gpt-image-2
 ```
+
+To use Alibaba Cloud Model Studio Wan 2.7:
+
+```yaml
+asset_image_model: wan
+```
+
+Set `DASHSCOPE_API_KEY` and `DASHSCOPE_REGION` (`beijing` or `singapore`).
+Optional `DASHSCOPE_BASE_URL` must match that region; business-space URLs are
+supported. See [Wan](providers/image-vqa/wan.md) for model limits and reference
+image rules.
 
 To override the selected agent model used for automated pipeline stages, use a
 concrete model ID from the current `godotmaker-cli` / GodotMakerApp

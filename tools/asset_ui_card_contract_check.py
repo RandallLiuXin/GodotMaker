@@ -29,7 +29,7 @@ _FAMILIES = {
         "states": {"normal", "hover", "pressed", "disabled", "selected", "locked"}
     },
 }
-_UI_PROVIDERS = {"native", "codex", "gemini", "openai"}
+_UI_PROVIDERS = {"native", "codex", "gemini", "openai", "wan"}
 _UI_REQUIRED_STATES = {"normal", "hover", "pressed", "disabled", "focus"}
 
 _PIXEL_ART_REQUEST = re.compile(r"\bpixel(?:[-\s]?art)\b", re.IGNORECASE)
@@ -326,7 +326,7 @@ def _ui_input_gate(request: Mapping[str, Any], issues: list[str]) -> None:
         issues.append("ui-kit requires at least one binding image reference")
     provider = request.get("provider")
     if provider not in _UI_PROVIDERS:
-        issues.append("ui-kit provider must be one of native, codex, gemini, openai")
+        issues.append("ui-kit provider must be one of native, codex, gemini, openai, wan")
 
 
 def validate_ui_reference_inputs(request: Mapping[str, Any], project_root: Path) -> None:

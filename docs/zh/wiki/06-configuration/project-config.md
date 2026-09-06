@@ -20,7 +20,7 @@
 
 **`vqa_fallback_model`** — 主 VQA 后端不可用时的回退模型。支持 `native`、`codex` 和 `none`。
 
-**`asset_image_model`** — `/gm-asset` 使用的图片生成选择器。支持 `native`、`codex`、`gemini:<model>`、`openai:<model>` 和 `grok:<model>`。`native` 由当前运行时处理；`codex` 由 Codex 原生图片生成处理；API 后端会运行 `tools/asset_source_generate.py --spec <spec.json>`，脚本会拒绝运行时提供方。
+**`asset_image_model`** — `/gm-asset` 使用的图片生成选择器。支持 `native`、`codex`、`gemini:<model>`、`openai:<model>`、`grok:<model>` 和 `wan:<model>`。`wan` 默认使用 `wan2.7-image`；高质量模型请显式使用 `wan:wan2.7-image-pro`。`native` 由当前运行时处理；`codex` 由 Codex 原生图片生成处理；API 后端会运行 `tools/asset_source_generate.py --spec <spec.json>`，脚本会拒绝运行时提供方。
 
 **`asset_producer_model`** — `/gm-asset` 中负责单个素材生产单元的子 Agent 模型。Claude Code 项目通常可以设为 `sonnet`，需要更强视觉推理时再提高。
 
@@ -82,6 +82,7 @@ Coding-agent runtime：
 - [gemini](providers/image-vqa/gemini.md)
 - [openai](providers/image-vqa/openai.md)
 - [grok](providers/image-vqa/grok.md)
+- [wan](providers/image-vqa/wan.md)
 
 ## API Key
 
@@ -92,6 +93,7 @@ Coding-agent runtime：
 | `gemini:<model>` | `GOOGLE_API_KEY` 或 `GEMINI_API_KEY` |
 | `openai:<model>` | `OPENAI_API_KEY` |
 | `grok:<model>` | `XAI_API_KEY` |
+| `wan:<model>` | `DASHSCOPE_API_KEY` 与 `DASHSCOPE_REGION`（`beijing` 或 `singapore`） |
 
 资源生成不会在 key 缺失时静默切换提供方。VQA 只有在显式配置 `vqa_fallback_model` 时才会回退。
 
@@ -108,6 +110,15 @@ asset_image_model: codex
 ```yaml
 asset_image_model: openai:gpt-image-2
 ```
+
+使用阿里云百炼 Wan 2.7：
+
+```yaml
+asset_image_model: wan
+```
+
+请设置 `DASHSCOPE_API_KEY` 和 `DASHSCOPE_REGION`（`beijing` 或
+`singapore`）。可选的 `DASHSCOPE_BASE_URL` 必须与该地域匹配，并支持业务空间专属域名。模型限制和参考图规则见 [Wan](providers/image-vqa/wan.md)。
 
 切换项目默认 Agent runtime：
 
