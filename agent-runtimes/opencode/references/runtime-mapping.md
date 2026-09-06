@@ -90,7 +90,8 @@ work. Otherwise stop and report the missing capability before editing files.
   `permission` frontmatter, not by Claude-style `agent_id` hook payloads. The
   one exception is project memory: the plugin runs `check_file_permissions.py`
   on the `memory` scope for every child-session write, so no delegated role can
-  write root `MEMORY.md` or a `memory/*.md` sub-file. That rule needs no role
+  write root `MEMORY.md` or any file under the project-root `memory/`. That
+  rule needs no role
   identity, which is why it reaches parity with Claude Code and the ownership
   rules do not.
 - OpenCode child sessions do not provide the `agent_id` payload required by

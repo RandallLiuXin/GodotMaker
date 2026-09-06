@@ -73,11 +73,17 @@ and from planning docs (`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` /
 
 **Project memory is never a subagent's to write.** Every subagent type —
 worker, decomposer, asset-producer, any other delegated role — is blocked from
-root `MEMORY.md` and from `memory/*.md` sub-files. Workers report execution
+root `MEMORY.md` and from every file under the project-root `memory/`,
+regardless of extension: a learning saved as `memory/learning.txt` is project
+memory exactly as much as `memory/movement.md` is. Workers report execution
 results and failure evidence; the dispatching role decides what becomes durable
-project knowledge. The rule matches on the basename plus a `memory/` path
-segment, so it holds from inside a worktree and leaves a game's own
-`src/memory/*.gd` writable.
+project knowledge.
+
+The `memory/` rule anchors on the project root rather than matching a `memory/`
+path segment anywhere, so a game's own `src/memory/` source directory stays
+writable. Anchoring resolves a `.claude/worktrees/<agent>/` prefix (a worker
+writes from inside its worktree) and an absolute path (against the hook's cwd).
+`MEMORY.md` itself is a basename match, like the planning docs.
 
 Runner note: the role-ownership part of this gate requires a runtime-provided
 `agent_id`. OpenCode child sessions do not expose that payload, so the OpenCode

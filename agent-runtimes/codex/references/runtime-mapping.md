@@ -106,7 +106,7 @@ workers. If running a sequential fallback, say so in the report and preserve the
 same task state transitions.
 
 No delegated role may write the project memory notebook — root `MEMORY.md` or
-any `memory/*.md` sub-file. Codex has no PreToolUse write gate, so this is a
+any file under the project-root `memory/`. Codex has no PreToolUse write gate, so this is a
 prompt-level boundary: every `spawn_agent` message must carry the role
 definition that states it, and a delegate report claiming a memory write is
 rejected, not accepted. Delegates report execution results and failure

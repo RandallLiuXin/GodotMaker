@@ -162,8 +162,15 @@ console.log('allowed');
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required")
-def test_child_session_memory_write_is_blocked(tmp_path: Path):
-    """The memory denial reaches the caller as a thrown block, not a warning."""
+@pytest.mark.parametrize("memory_path", [
+    "MEMORY.md", "memory/movement.md", "memory/learning.txt", "memory/rules.json",
+])
+def test_child_session_memory_write_is_blocked(tmp_path: Path, memory_path: str):
+    """The memory denial reaches the caller as a thrown block, not a warning.
+
+    Non-Markdown memory files travel the same path: the notebook is a
+    directory, not a file type.
+    """
     write_hook(
         tmp_path,
         "check_file_permissions.py",
@@ -191,7 +198,7 @@ await hooks.event({{
 try {{
   await hooks['tool.execute.before'](
     {{ tool: 'write', callID: 'call-1', sessionID: 'child' }},
-    {{ args: {{ filePath: 'MEMORY.md', content: 'x' }} }}
+    {{ args: {{ filePath: {json.dumps(memory_path)}, content: 'x' }} }}
   );
 }} catch (error) {{
   console.log(error.message);

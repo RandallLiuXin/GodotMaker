@@ -580,12 +580,20 @@ class TestSubagentInRole:
 class TestProjectMemoryIsNotSubagentWritable:
     """Workers report results and failure evidence; memory stays with the lead."""
 
+    # The notebook is a directory, not a file type — a learning saved as
+    # `memory/learning.txt` is project memory exactly as much as a `.md` one.
     MEMORY_PATHS = [
         "MEMORY.md",
         "memory/movement.md",
+        "memory/learning.txt",
+        "memory/rules.json",
+        "memory/entry.yaml",
         "memory/ui/hud.md",
+        "memory/ui/notes.txt",
         ".claude/worktrees/agent-1/MEMORY.md",
         ".claude/worktrees/agent-1/memory/movement.md",
+        ".claude/worktrees/agent-1/memory/learning.txt",
+        ".claude/worktrees/agent-1/memory/rules.json",
     ]
 
     @pytest.mark.parametrize("role", ["build", "fixgap"])
@@ -622,9 +630,29 @@ class TestProjectMemoryIsNotSubagentWritable:
         })
         assert not is_blocked(parsed), "the lead role owns MEMORY.md"
 
-    @pytest.mark.parametrize("path", ["src/memory/s_memory.gd", "src/memory/pool.tscn"])
-    def test_game_code_under_a_memory_directory_is_untouched(self, project_dir, path):
-        """The rule is the markdown notebook, not any directory named memory."""
+    def test_absolute_path_into_the_project_memory_is_blocked(self, project_dir):
+        absolute = os.path.join(project_dir, "memory", "learning.txt")
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": absolute},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed)
+
+    @pytest.mark.parametrize("path", [
+        "src/memory/s_memory.gd",
+        "src/memory/pool.tscn",
+        "src/memory/notes.md",
+        "docs/memory/design.txt",
+    ])
+    def test_a_nested_memory_directory_is_not_the_notebook(self, project_dir, path):
+        """The rule anchors on the project root, not on any `memory/` segment.
+
+        A game that keeps a memory/pooling subsystem under `src/memory/` still
+        owns those files; only the root notebook is the lead's.
+        """
         write_current_role("build")
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
@@ -637,17 +665,30 @@ class TestProjectMemoryIsNotSubagentWritable:
             "permissionDecisionReason", "")
         assert "project memory" not in reason
 
-    def test_delegated_session_without_an_agent_id_is_blocked(self, project_dir):
+    @pytest.mark.parametrize("path", MEMORY_PATHS)
+    def test_delegated_session_without_an_agent_id_is_blocked(self, project_dir, path):
         """OpenCode child sessions: `is_subagent` + `memory` scope, no agent_id."""
         write_current_role("build")
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
-            "tool_input": {"file_path": "memory/movement.md"},
+            "tool_input": {"file_path": path},
             "agent_id": "",
             "is_subagent": True,
             "permission_scope": "memory",
         })
-        assert is_blocked(parsed)
+        assert is_blocked(parsed), f"memory scope should block {path}"
+
+    @pytest.mark.parametrize("path", ["src/memory/s_memory.gd", "src/memory/notes.md"])
+    def test_memory_scope_leaves_a_nested_memory_directory_alone(self, project_dir, path):
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "",
+            "is_subagent": True,
+            "permission_scope": "memory",
+        })
+        assert not is_blocked(parsed)
 
     def test_memory_scope_leaves_the_ownership_rules_alone(self, project_dir):
         """That scope is the identity-free subset — it must not guess a role."""

@@ -63,10 +63,15 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 在流水线角色活跃期间，通用子代理会被阻止写入 `e2e/` 和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）。`asset-producer` 可以写入 `assets/`、`references/` 和 `.godotmaker/asset-generation/`。
 
 **项目记忆永远不归子代理写。** 所有子代理类型——worker、decomposer、
-asset-producer 以及任何其他被派发的角色——都被阻止写入根 `MEMORY.md` 和
-`memory/*.md` 子文件。Worker 只上报执行结果与失败证据；什么内容值得沉淀为项目
-知识由派发角色决定。规则按 basename 加 `memory/` 路径段匹配，因此在 worktree 里
-同样生效，而游戏自身的 `src/memory/*.gd` 仍然可写。
+asset-producer 以及任何其他被派发的角色——都被阻止写入根 `MEMORY.md`，以及项目根
+`memory/` 下的**全部文件**，不限扩展名：存成 `memory/learning.txt` 的经验和
+`memory/movement.md` 一样是项目记忆。Worker 只上报执行结果与失败证据；什么内容
+值得沉淀为项目知识由派发角色决定。
+
+`memory/` 规则锚定在项目根，而不是匹配路径中任意位置的 `memory/` 段，因此游戏
+自身的 `src/memory/` 源码目录仍然可写。锚定时会解析 `.claude/worktrees/<agent>/`
+前缀（Worker 从自己的 worktree 里写文件）和绝对路径（相对 Hook 的 cwd）。
+`MEMORY.md` 本身按 basename 匹配，与规划文档一致。
 
 Runner 说明：这个 gate 中按角色划分归属的部分需要 runtime 提供 `agent_id`。
 OpenCode child session 不暴露该 payload，因此 OpenCode adapter 在那部分依赖

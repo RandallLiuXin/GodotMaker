@@ -55,19 +55,55 @@ RESCUE_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/current_role"}
 
 
-def _is_memory_path(path_lower: str, file_name: str, ext: str) -> bool:
-    """True for the root MEMORY.md or a `memory/<name>.md` sub-file.
+def _project_relative_segments(path_lower: str) -> list[str] | None:
+    """Path segments relative to the project root this write belongs to.
 
-    Basename matching, like PLANNING_DOCS: a worker writes from inside its own
-    worktree, so the hook cannot anchor these to its own cwd. The `.md`
-    restriction keeps a game's own `src/memory/*.gd` out of the rule — only the
-    markdown notebook is off limits.
+    Returns None when the path is outside the project entirely. Three cases:
+
+    1. A worker writes from inside a linked worktree, so everything after
+       `.claude/worktrees/<agent>/` is project-root-relative again.
+    2. An absolute path is anchored against the hook's cwd, which is the
+       project root. `realpath` on both sides so macOS's
+       `/var/folders` → `/private/var/folders` symlink cannot skew the
+       comparison — the same reason `_is_project_root_assets_md` uses it.
+       Both sides are lowercased too: the caller has already lost the original
+       case, so a mixed-case project root would otherwise fail to match on a
+       case-sensitive filesystem and silently skip the rule.
+    3. Anything else is already relative to the project root.
+    """
+    norm = path_lower.replace("\\", "/")
+    segments = [s for s in norm.split("/") if s not in ("", ".")]
+
+    for i in range(len(segments) - 3, -1, -1):
+        if segments[i] == ".claude" and segments[i + 1] == "worktrees":
+            return segments[i + 3:]
+
+    if norm.startswith("/") or (len(norm) > 1 and norm[1] == ":"):
+        root = os.path.realpath(os.getcwd()).replace("\\", "/").lower().rstrip("/")
+        target = os.path.realpath(norm).replace("\\", "/").lower()
+        if not target.startswith(f"{root}/"):
+            return None  # another drive or outside the project
+        return [s for s in target[len(root) + 1:].split("/") if s not in ("", ".")]
+
+    return segments
+
+
+def _is_memory_path(path_lower: str, file_name: str) -> bool:
+    """True for MEMORY.md or ANY file under the project-root `memory/`.
+
+    The notebook is a directory, not a file type: `memory/learning.txt` and
+    `memory/rules.json` are project memory exactly as much as
+    `memory/movement.md` is. Anchoring on the project root — rather than
+    matching a `memory/` segment anywhere — is what keeps a game's own
+    `src/memory/` source directory writable.
+
+    MEMORY.md stays a basename match, like PLANNING_DOCS: no subagent has a
+    reason to write a file by that name anywhere in the tree.
     """
     if file_name == MEMORY_INDEX:
         return True
-    if ext != ".md":
-        return False
-    return path_lower.startswith("memory/") or "/memory/" in path_lower
+    segments = _project_relative_segments(path_lower)
+    return bool(segments) and segments[0] == "memory" and len(segments) > 1
 
 
 def _is_e2e_path(path_lower: str) -> bool:
@@ -223,7 +259,7 @@ def _check_subagent(path_lower: str, file_name: str, agent_id: str,
     apply without that identity; the ownership rules below are not.
     """
     _, ext = os.path.splitext(path_lower)
-    if _is_memory_path(path_lower, file_name, ext):
+    if _is_memory_path(path_lower, file_name):
         _block(f"Subagents cannot write project memory ({file_name}). "
                "Report execution results and failure evidence in your report; "
                "the dispatching role owns MEMORY.md and memory/.",
