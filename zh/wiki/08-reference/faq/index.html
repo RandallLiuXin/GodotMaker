@@ -3350,7 +3350,7 @@
 <h3 id="_3">我需要懂游戏开发吗？<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
 <p>不需要。GodotMaker 专为有游戏想法但不是游戏开发者的人设计。你用白话描述自己想要什么，在设计展示给你时确认感觉对不对，然后让 AI 去实现。不过，你需要阅读生成的 <code>GDD.md</code>，并确认它是否准确表达了你的意图——AI 来写，但你来拍板。</p>
 <h3 id="api-key">我需要付费 API key 吗？<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h3>
-<p>只有当项目配置选择 API 后端时才需要对应 key。runtime-native 图片生成或 VQA 取决于你选择的 Agent runtime；OpenCode 项目应配置为 <code>codex</code> 或 API 后端图片/VQA provider。<code>gemini:&lt;model&gt;</code> 需要 <code>GOOGLE_API_KEY</code> 或 <code>GEMINI_API_KEY</code>，<code>openai:&lt;model&gt;</code> 需要 <code>OPENAI_API_KEY</code>，<code>grok:&lt;model&gt;</code> 需要 <code>XAI_API_KEY</code>。</p>
+<p>只有当项目配置选择 API 后端时才需要对应 key。runtime-native 图片生成或 VQA 取决于你选择的 Agent runtime；OpenCode 项目应配置为 <code>codex</code> 或 API 后端图片/VQA provider。<code>gemini:&lt;model&gt;</code> 需要 <code>GOOGLE_API_KEY</code> 或 <code>GEMINI_API_KEY</code>，<code>openai:&lt;model&gt;</code> 需要 <code>OPENAI_API_KEY</code>，<code>grok:&lt;model&gt;</code> 需要 <code>XAI_API_KEY</code>，<code>wan:&lt;model&gt;</code> 需要 <code>DASHSCOPE_API_KEY</code> 与 <code>DASHSCOPE_REGION</code>。</p>
 <p>Claude Code 本身需要 Anthropic 账号并开通 API 访问（或已开通 Claude Code 的 Claude Pro / Team 订阅）。</p>
 <p>详细配置步骤见安装页面。</p>
 <h3 id="godot">我需要哪个版本的 Godot？<a class="headerlink" href="#godot" title="Permanent link">&para;</a></h3>
@@ -3397,7 +3397,7 @@
 <hr />
 <h2 id="_13">费用与隐私<a class="headerlink" href="#_13" title="Permanent link">&para;</a></h2>
 <h3 id="_14">我的游戏数据去哪了？<a class="headerlink" href="#_14" title="Permanent link">&para;</a></h3>
-<p>所有游戏文件都在你自己的机器上。AI 调用会发送给当前智能体运行时使用的模型服务商。API 后端图片生成会发送给 <code>asset_image_model</code> 选择的提供方（Gemini、OpenAI 或 xAI）；<code>native</code> 图片生成由当前运行时处理，<code>codex</code> 图片生成由 Codex 处理。GodotMaker 没有自己的服务器，因此不会把游戏内容存储到 GodotMaker 服务器上。</p>
+<p>所有游戏文件都在你自己的机器上。AI 调用会发送给当前智能体运行时使用的模型服务商。API 后端图片生成会发送给 <code>asset_image_model</code> 选择的提供方（Gemini、OpenAI、xAI 或阿里云百炼 Wan）；<code>native</code> 图片生成由当前运行时处理，<code>codex</code> 图片生成由 Codex 处理。GodotMaker 没有自己的服务器，因此不会把游戏内容存储到 GodotMaker 服务器上。</p>
 <h3 id="_15">我的游戏项目属于我吗？<a class="headerlink" href="#_15" title="Permanent link">&para;</a></h3>
 <p>是的。GodotMaker 只是把文件部署到你的文件夹里，然后由 AI 填充内容。用 GodotMaker 创建的游戏、项目源码、素材、截图、报告、导出产物和其他输出都不是 GodotMaker，本身归你所有。GodotMaker 框架本身以自己的源码可见许可证发布，但你的游戏内容和代码属于你；你仍需遵守第三方引擎、素材、模型 provider、runtime 或依赖项可能适用的条款。</p>
 <hr />

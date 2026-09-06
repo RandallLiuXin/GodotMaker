@@ -2834,7 +2834,7 @@
 <p><strong><code>verifier_model</code></strong>, <strong><code>reviewer_model</code></strong>, <strong><code>analyst_model</code></strong>, <strong><code>auditor_model</code></strong>, <strong><code>decomposer_model</code></strong> — role model defaults for validation, review, image analysis, audit, and GDD decomposition.</p>
 <p><strong><code>vqa_model</code></strong> — primary visual QA selector. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, and <code>openai:&lt;model&gt;</code>. <code>native</code> means the active agent runtime inspects the images directly. <code>codex</code> means Codex supplies the image inspection. API-backed selectors run <code>visual_qa.py</code>.</p>
 <p><strong><code>vqa_fallback_model</code></strong> — fallback when the primary VQA backend is unavailable. Supported values are <code>native</code>, <code>codex</code>, and <code>none</code>.</p>
-<p><strong><code>asset_image_model</code></strong> — image generation selector for <code>/gm-asset</code>. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, <code>openai:&lt;model&gt;</code>, and <code>grok:&lt;model&gt;</code>. <code>native</code> is handled by the active agent runtime. <code>codex</code> is handled by Codex native image generation. API-backed selectors run <code>tools/asset_source_generate.py --spec &lt;spec.json&gt;</code>; the script rejects runtime providers.</p>
+<p><strong><code>asset_image_model</code></strong> — image generation selector for <code>/gm-asset</code>. Supported values are <code>native</code>, <code>codex</code>, <code>gemini:&lt;model&gt;</code>, <code>openai:&lt;model&gt;</code>, <code>grok:&lt;model&gt;</code>, and <code>wan:&lt;model&gt;</code>. <code>wan</code> defaults to <code>wan2.7-image</code>; use <code>wan:wan2.7-image-pro</code> explicitly for the Pro model. <code>native</code> is handled by the active agent runtime. <code>codex</code> is handled by Codex native image generation. API-backed selectors run <code>tools/asset_source_generate.py --spec &lt;spec.json&gt;</code>; the script rejects runtime providers.</p>
 <p><strong><code>asset_producer_model</code></strong> — model used by generated-art producer subagents. Defaults to <code>sonnet</code>.</p>
 <p>The default config looks like this:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># GodotMaker project configuration</span>
@@ -2887,6 +2887,7 @@ PATH and does not require an image API key.</p>
 <li><a href="../providers/image-vqa/gemini/">gemini</a></li>
 <li><a href="../providers/image-vqa/openai/">openai</a></li>
 <li><a href="../providers/image-vqa/grok/">grok</a></li>
+<li><a href="../providers/image-vqa/wan/">wan</a></li>
 </ul>
 <h2 id="api-keys">API keys<a class="headerlink" href="#api-keys" title="Permanent link">&para;</a></h2>
 <p>Provider-prefixed selectors require the matching API key:</p>
@@ -2910,6 +2911,10 @@ PATH and does not require an image API key.</p>
 <td><code>grok:&lt;model&gt;</code></td>
 <td><code>XAI_API_KEY</code></td>
 </tr>
+<tr>
+<td><code>wan:&lt;model&gt;</code></td>
+<td><code>DASHSCOPE_API_KEY</code>, <code>DASHSCOPE_REGION</code> (<code>beijing</code> or <code>singapore</code>)</td>
+</tr>
 </tbody>
 </table>
 <p>Asset generation does not silently fall back when a key is missing. VQA can fall back only through the explicit <code>vqa_fallback_model</code> setting.</p>
@@ -2928,12 +2933,19 @@ PATH and does not require an image API key.</p>
 <p>To use OpenAI for API-backed image generation:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai:gpt-image-2</span>
 </code></pre></div>
+<p>To use Alibaba Cloud Model Studio Wan 2.7:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wan</span>
+</code></pre></div>
+<p>Set <code>DASHSCOPE_API_KEY</code> and <code>DASHSCOPE_REGION</code> (<code>beijing</code> or <code>singapore</code>).
+Optional <code>DASHSCOPE_BASE_URL</code> must match that region; business-space URLs are
+supported. See <a href="../providers/image-vqa/wan/">Wan</a> for model limits and reference
+image rules.</p>
 <p>To override the selected agent model used for automated pipeline stages, use a
 concrete model ID from the current <code>godotmaker-cli</code> / GodotMakerApp
 documentation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">pipeline</span><span class="p">:</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;agent-model-id&gt;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nt">pipeline</span><span class="p">:</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;agent-model-id&gt;</span>
 </code></pre></div>
 <p>The next <code>/gm-*</code> command picks up the new value. A command already running will not see changes until the next session or stage invocation.</p>
 <h2 id="about-hook-config-files">About hook config files<a class="headerlink" href="#about-hook-config-files" title="Permanent link">&para;</a></h2>

@@ -2833,7 +2833,7 @@
 <p><strong><code>verifier_model</code></strong>、<strong><code>reviewer_model</code></strong>、<strong><code>analyst_model</code></strong>、<strong><code>auditor_model</code></strong>、<strong><code>decomposer_model</code></strong> — 验证、审查、图片分析、审计和 GDD 拆分等角色的默认模型。</p>
 <p><strong><code>vqa_model</code></strong> — 视觉 QA 的主模型选择器。支持 <code>native</code>、<code>codex</code>、<code>gemini:&lt;model&gt;</code> 和 <code>openai:&lt;model&gt;</code>。<code>native</code> 表示由当前智能体运行时直接检查图片；<code>codex</code> 表示由 Codex 提供图片检查能力；API 后端会运行 <code>visual_qa.py</code>。</p>
 <p><strong><code>vqa_fallback_model</code></strong> — 主 VQA 后端不可用时的回退模型。支持 <code>native</code>、<code>codex</code> 和 <code>none</code>。</p>
-<p><strong><code>asset_image_model</code></strong> — <code>/gm-asset</code> 使用的图片生成选择器。支持 <code>native</code>、<code>codex</code>、<code>gemini:&lt;model&gt;</code>、<code>openai:&lt;model&gt;</code> 和 <code>grok:&lt;model&gt;</code>。<code>native</code> 由当前运行时处理；<code>codex</code> 由 Codex 原生图片生成处理；API 后端会运行 <code>tools/asset_source_generate.py --spec &lt;spec.json&gt;</code>，脚本会拒绝运行时提供方。</p>
+<p><strong><code>asset_image_model</code></strong> — <code>/gm-asset</code> 使用的图片生成选择器。支持 <code>native</code>、<code>codex</code>、<code>gemini:&lt;model&gt;</code>、<code>openai:&lt;model&gt;</code>、<code>grok:&lt;model&gt;</code> 和 <code>wan:&lt;model&gt;</code>。<code>wan</code> 默认使用 <code>wan2.7-image</code>；高质量模型请显式使用 <code>wan:wan2.7-image-pro</code>。<code>native</code> 由当前运行时处理；<code>codex</code> 由 Codex 原生图片生成处理；API 后端会运行 <code>tools/asset_source_generate.py --spec &lt;spec.json&gt;</code>，脚本会拒绝运行时提供方。</p>
 <p><strong><code>asset_producer_model</code></strong> — <code>/gm-asset</code> 中负责单个素材生产单元的子 Agent 模型。Claude Code 项目通常可以设为 <code>sonnet</code>，需要更强视觉推理时再提高。</p>
 <p>默认配置大致如下：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claude-code</span>
@@ -2879,6 +2879,7 @@
 <li><a href="../providers/image-vqa/gemini/">gemini</a></li>
 <li><a href="../providers/image-vqa/openai/">openai</a></li>
 <li><a href="../providers/image-vqa/grok/">grok</a></li>
+<li><a href="../providers/image-vqa/wan/">wan</a></li>
 </ul>
 <h2 id="api-key">API Key<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h2>
 <p>带提供方前缀的选择器需要对应 API key：</p>
@@ -2902,6 +2903,10 @@
 <td><code>grok:&lt;model&gt;</code></td>
 <td><code>XAI_API_KEY</code></td>
 </tr>
+<tr>
+<td><code>wan:&lt;model&gt;</code></td>
+<td><code>DASHSCOPE_API_KEY</code> 与 <code>DASHSCOPE_REGION</code>（<code>beijing</code> 或 <code>singapore</code>）</td>
+</tr>
 </tbody>
 </table>
 <p>资源生成不会在 key 缺失时静默切换提供方。VQA 只有在显式配置 <code>vqa_fallback_model</code> 时才会回退。</p>
@@ -2912,19 +2917,24 @@
 <p>使用 OpenAI API 生成图片：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai:gpt-image-2</span>
 </code></pre></div>
+<p>使用阿里云百炼 Wan 2.7：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">asset_image_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wan</span>
+</code></pre></div>
+<p>请设置 <code>DASHSCOPE_API_KEY</code> 和 <code>DASHSCOPE_REGION</code>（<code>beijing</code> 或
+<code>singapore</code>）。可选的 <code>DASHSCOPE_BASE_URL</code> 必须与该地域匹配，并支持业务空间专属域名。模型限制和参考图规则见 <a href="../providers/image-vqa/wan/">Wan</a>。</p>
 <p>切换项目默认 Agent runtime：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
 </code></pre></div>
 <p>如果启动时传了 <code>--agent</code>，本次运行会优先使用启动参数：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>opencode
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>claude-code
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>codex
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>godotmaker-cli<span class="w"> </span>--agent<span class="w"> </span>opencode
 </code></pre></div>
 <p>覆盖自动 pipeline 阶段使用的所选 agent 模型时，请使用当前 <code>godotmaker-cli</code> /
 GodotMakerApp 文档中的具体模型 ID：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">pipeline</span><span class="p">:</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;agent-model-id&gt;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codex</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nt">pipeline</span><span class="p">:</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;agent-model-id&gt;</span>
 </code></pre></div>
 <p>下一次运行 <code>/gm-*</code> 命令时会读取新配置。已经运行中的命令不会自动感知修改，需要下一次会话或阶段调用才会生效。</p>
 <h2 id="hook-config">关于 hook config 文件<a class="headerlink" href="#hook-config" title="Permanent link">&para;</a></h2>
