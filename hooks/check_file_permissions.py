@@ -24,6 +24,11 @@ PLANNING_DOCS = {"plan.md", "structure.md", "style.md", "assets.md", "gap.md",
 # project.godot is the engine config and changes the whole game. Subagents
 # may not edit it unless their agent_type is in PLANNING_WRITER_AGENT_TYPES.
 PROJECT_GODOT = "project.godot"
+# The cross-tag memory notebook: the root index plus its `memory/*.md`
+# sub-files. Subagents never write it — a worker reports execution results and
+# failure evidence, and the dispatching role decides what, if anything, becomes
+# durable project knowledge.
+MEMORY_INDEX = "memory.md"
 E2E_DIR_PREFIX = "e2e/"
 ASSETS_DIR_PREFIX = "assets/"
 REFERENCES_DIR_PREFIX = "references/"
@@ -31,6 +36,10 @@ GODOTMAKER_DIR = ".godotmaker/"
 # Subagent types whose entire purpose is writing planning docs — exempt
 # from the general subagent block on PLANNING_DOCS and PROJECT_GODOT.
 PLANNING_WRITER_AGENT_TYPES = {"decomposer"}
+# How much of the subagent rule set a payload asks for. `memory` is the subset
+# that needs no role identity — see `_check_subagent`.
+SCOPE_FULL = "full"
+SCOPE_MEMORY = "memory"
 # Per-role narrow write allow-lists under .godotmaker/. Each role needs
 # current_role + stage.jsonl for bookkeeping; evaluate / verify also write
 # their structured verdict; rescue is diagnostic-only (chat output only),
@@ -44,6 +53,21 @@ VERIFY_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/verify_report.json"}
 RESCUE_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/current_role"}
+
+
+def _is_memory_path(path_lower: str, file_name: str, ext: str) -> bool:
+    """True for the root MEMORY.md or a `memory/<name>.md` sub-file.
+
+    Basename matching, like PLANNING_DOCS: a worker writes from inside its own
+    worktree, so the hook cannot anchor these to its own cwd. The `.md`
+    restriction keeps a game's own `src/memory/*.gd` out of the rule — only the
+    markdown notebook is off limits.
+    """
+    if file_name == MEMORY_INDEX:
+        return True
+    if ext != ".md":
+        return False
+    return path_lower.startswith("memory/") or "/memory/" in path_lower
 
 
 def _is_e2e_path(path_lower: str) -> bool:
@@ -190,8 +214,23 @@ def _lookup_agent_type(agent_id: str) -> str:
 
 
 def _check_subagent(path_lower: str, file_name: str, agent_id: str,
-                    agent_type: str) -> None:
-    """Apply subagent rules. Calls _block on violation."""
+                    agent_type: str, scope: str = SCOPE_FULL) -> None:
+    """Apply subagent rules. Calls _block on violation.
+
+    `scope` is `SCOPE_MEMORY` for a runtime that knows a write comes from a
+    delegated session but cannot tell which role it is running (OpenCode child
+    sessions). The memory rule holds for every subagent type, so it is safe to
+    apply without that identity; the ownership rules below are not.
+    """
+    _, ext = os.path.splitext(path_lower)
+    if _is_memory_path(path_lower, file_name, ext):
+        _block(f"Subagents cannot write project memory ({file_name}). "
+               "Report execution results and failure evidence in your report; "
+               "the dispatching role owns MEMORY.md and memory/.",
+               file_name, agent_id)
+    if scope == SCOPE_MEMORY:
+        return
+
     if agent_type == "asset-producer":
         if (_is_asset_generation_path(path_lower)
                 or _is_assets_path(path_lower)
@@ -203,7 +242,6 @@ def _check_subagent(path_lower: str, file_name: str, agent_id: str,
         if _is_e2e_path(path_lower):
             _block(f"Asset producers cannot write to e2e/ ({file_name}).",
                    file_name, agent_id)
-        _, ext = os.path.splitext(path_lower)
         if ext in GAME_CODE_EXTENSIONS:
             _block(f"Asset producers cannot modify game code ({file_name}).",
                    file_name, agent_id)
@@ -255,7 +293,9 @@ def main():
     _, ext = os.path.splitext(path_lower)
 
     agent_id = data.get("agent_id", "")
-    is_subagent = bool(agent_id)
+    # A runtime without Claude-style agent ids states delegation explicitly.
+    is_subagent = bool(agent_id) or bool(data.get("is_subagent"))
+    scope = data.get("permission_scope") or SCOPE_FULL
     agent_type = data.get("agent_type", "") or _lookup_agent_type(agent_id)
 
     record_event(
@@ -272,7 +312,7 @@ def main():
                      file=file_name, agent_id=agent_id or "main", role=role)
         sys.exit(0)
     elif is_subagent:
-        _check_subagent(path_lower, file_name, agent_id, agent_type)
+        _check_subagent(path_lower, file_name, agent_id, agent_type, scope)
     else:
         _check_main(role, path_lower, file_name, ext)
 

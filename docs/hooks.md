@@ -71,10 +71,20 @@ and from planning docs (`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` /
 `GAP.md`). `asset-producer` may write `assets/`, `references/`, and
 `.godotmaker/asset-generation/`.
 
-Runner note: this subagent write gate requires a runtime-provided `agent_id`.
-OpenCode child sessions do not expose that payload, so the OpenCode adapter
-does not run this Python subagent write gate for child sessions; it relies on
-OpenCode-native agent edit permissions for that boundary.
+**Project memory is never a subagent's to write.** Every subagent type —
+worker, decomposer, asset-producer, any other delegated role — is blocked from
+root `MEMORY.md` and from `memory/*.md` sub-files. Workers report execution
+results and failure evidence; the dispatching role decides what becomes durable
+project knowledge. The rule matches on the basename plus a `memory/` path
+segment, so it holds from inside a worktree and leaves a game's own
+`src/memory/*.gd` writable.
+
+Runner note: the role-ownership part of this gate requires a runtime-provided
+`agent_id`. OpenCode child sessions do not expose that payload, so the OpenCode
+adapter relies on OpenCode-native agent edit permissions there. The memory rule
+needs no role identity, so the adapter does run it for child sessions, passing
+`is_subagent: true` with `permission_scope: "memory"` — the payload keys that
+select the identity-free subset of the subagent rules.
 
 When no role is set, no `/gm-*` pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
@@ -196,6 +206,48 @@ status. `unverified` covers the two ways an agent is released without its
 report being accepted: the anti-deadloop force-allow below, and a role that
 must carry a machine outcome block reaching this point without a valid one.
 
+#### Failure diagnostics (`worker_error`)
+
+A stop that did not go cleanly also writes one `worker_error` event through
+`metrics/diagnostics.py`. This is the whole of what a run leaves behind when it
+fails — workers produce no memory or learning entries.
+
+| Field | Value |
+|---|---|
+| `task_id` | The PLAN/GAP task id the report's heading starts with (`M01`, `R2`), else a bounded slug of the task name |
+| `attempt` | 1 + prior `worker_error` events for the same `task_id` + `stage` this session |
+| `stage` | Active pipeline role (`build`, `fixgap`, …) |
+| `runtime` | Selected coding agent, read from `.godotmaker/config.yaml` |
+| `role` | Dispatched role (`worker`, `verifier`, …) |
+| `agent_id` / `run_id` | Subagent id and session id, when the runtime supplies them |
+| `error_type` | `report_rejected`, `timeout`, `forced_handoff`, `tool_or_environment_error`, `unverified_handoff`, `task_failed`, `task_partial` |
+| `classification` | The report's suggested `repair-attempt-accounting.md` classification, when it names a known one |
+| `summary` | One line, ≤200 chars |
+| `exit_code` | The first exit code the report names, else `null` |
+| `error_fingerprint` | 16 hex chars over task/stage/type/summary, digit runs collapsed |
+| `evidence_paths` | ≤5 paths under `.godotmaker/`, `reports/`, `e2e/`, `docs/tags/` |
+| `retryable` | Whether re-dispatching the same brief can plausibly succeed |
+| `repeat_count` | Prior events this session carrying the same fingerprint |
+
+`error_type` resolution: a blocked report is `report_rejected` first; otherwise
+an explicit `Handoff condition` from the report's Repair Attempt Evidence wins
+over status, because a timeout or tool fault explains a `FAILED` that the status
+alone does not.
+
+Three properties this record holds to:
+
+- **A clean run writes nothing.** No success ever produces an error event, and
+  no empty event is written to "record" a success.
+- **Bounded and deduplicated.** Every field above has a hard cap. When a report
+  pastes a large command output into its `Tests` or `Build` section, the event
+  carries an `output_digest` of `{sha256, bytes, tail}` instead of a copy. The
+  same `(agent_id, error_fingerprint)` pair is recorded once, so a SubagentStop
+  that fires repeatedly cannot inflate the log.
+- **Diagnostic only.** Nothing here is injected into a later worker or agent
+  prompt, and nothing here becomes a project rule on its own. Turning a
+  recurring failure into a framework fix is a separate, human-confirmed trace
+  analysis.
+
 ### on_subagent_stop.py
 
 **Event:** SubagentStop
@@ -274,7 +326,7 @@ the same equality, which covers the paths where the hook validated nothing
 
 | Role | Required Sections |
 |------|------------------|
-| worker | Status, Files Changed, Tests, Build, Memory Entry |
+| worker | Status, Files Changed, Tests, Build |
 | verifier | Overall, Results, Adversarial Probes |
 | reviewer | Reviewers Matched, ECS Review, Issues Found, Summary |
 | analyst | Status, Asset Summary, Art Style Summary, Files Generated |
@@ -286,7 +338,12 @@ the same equality, which covers the paths where the hook validated nothing
 - `check_classname_conflicts()` — `class_name` declarations must not conflict with Godot built-ins
 
 **Progress reminder:** On successful validation, injects a progress summary
-(workers done, verifiers done, reviewers done) as additional context.
+(workers done, verifiers done, reviewers done) as additional context. It
+carries counts only — no failure diagnostics are injected into a later prompt.
+
+**Legacy `Memory Entry`:** workers no longer produce one and it is no longer
+required. A report written before it was dropped still validates; the section
+is ignored, and nothing reads it back into `MEMORY.md` or `memory/`.
 
 **Reviewer substance check:** ECS Review and Issues Found sections must each
 have ≥50 characters of content. Prevents empty/trivial reviews.

@@ -13,7 +13,7 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 - **Don't bypass the role lock.** `.godotmaker/current_role` decides who may write what. If a hook denies a write, dispatch the right subagent or switch to the right `/gm-*` skill — don't try to `--force` past it.
 - **Don't write `e2e/` outside the Evaluator role.** Workers expose `simulate_*()` interfaces and write unit tests for them. The Evaluator (`/gm-evaluate`) maintains the single `e2e/` suite that always reflects the current game.
 - **Don't manually edit `.godotmaker/stage.jsonl`.** Each `/gm-*` skill appends its own role timestamp on completion. `/gm-finalize` truncates it between tags.
-- **Read `MEMORY.md` before dispatching a worker.** Past mistakes are indexed there — workers will repeat them otherwise. `MEMORY.md` accumulates across tags.
+- **Read `MEMORY.md` before dispatching a worker.** Past mistakes are indexed there — workers will repeat them otherwise. `MEMORY.md` accumulates across tags, and only the dispatching role writes it: workers report results and failure evidence, never learnings, and the permission hook blocks them from `MEMORY.md` and `memory/`.
 
 ### Tag scope
 

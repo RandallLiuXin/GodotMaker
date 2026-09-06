@@ -575,3 +575,97 @@ class TestSubagentInRole:
             "agent_type": "asset-producer",
         })
         assert is_blocked(parsed), f"asset-producer should block {path}"
+
+
+class TestProjectMemoryIsNotSubagentWritable:
+    """Workers report results and failure evidence; memory stays with the lead."""
+
+    MEMORY_PATHS = [
+        "MEMORY.md",
+        "memory/movement.md",
+        "memory/ui/hud.md",
+        ".claude/worktrees/agent-1/MEMORY.md",
+        ".claude/worktrees/agent-1/memory/movement.md",
+    ]
+
+    @pytest.mark.parametrize("role", ["build", "fixgap"])
+    @pytest.mark.parametrize("path", MEMORY_PATHS)
+    def test_worker_blocked(self, project_dir, role, path):
+        write_current_role(role)
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed), f"worker should be blocked from {path}"
+
+    @pytest.mark.parametrize("agent_type", [
+        "worker", "decomposer", "asset-producer", "verifier", "",
+    ])
+    def test_every_subagent_type_blocked(self, project_dir, agent_type):
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "MEMORY.md"},
+            "agent_id": "s1",
+            "agent_type": agent_type,
+        })
+        assert is_blocked(parsed), f"{agent_type or 'generic'} subagent should be blocked"
+
+    def test_dispatching_role_still_writes_memory(self, project_dir):
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "MEMORY.md"},
+            "agent_id": "",
+        })
+        assert not is_blocked(parsed), "the lead role owns MEMORY.md"
+
+    @pytest.mark.parametrize("path", ["src/memory/s_memory.gd", "src/memory/pool.tscn"])
+    def test_game_code_under_a_memory_directory_is_untouched(self, project_dir, path):
+        """The rule is the markdown notebook, not any directory named memory."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        # Game code is blocked for its own reason, so assert on the message.
+        reason = (parsed or {}).get("hookSpecificOutput", {}).get(
+            "permissionDecisionReason", "")
+        assert "project memory" not in reason
+
+    def test_delegated_session_without_an_agent_id_is_blocked(self, project_dir):
+        """OpenCode child sessions: `is_subagent` + `memory` scope, no agent_id."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "memory/movement.md"},
+            "agent_id": "",
+            "is_subagent": True,
+            "permission_scope": "memory",
+        })
+        assert is_blocked(parsed)
+
+    def test_memory_scope_leaves_the_ownership_rules_alone(self, project_dir):
+        """That scope is the identity-free subset — it must not guess a role."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "PLAN.md"},
+            "agent_id": "",
+            "is_subagent": True,
+            "permission_scope": "memory",
+        })
+        assert not is_blocked(parsed)
+
+    def test_no_active_role_leaves_ordinary_conversations_alone(self, project_dir):
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "MEMORY.md"},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert not is_blocked(parsed)

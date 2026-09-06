@@ -62,6 +62,6 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **Visual QA** / **VQA** — 将运行中的游戏截图与参考图像或一组书面标准进行比对的过程。`/gm-evaluate` 使用 `visual-qa` 技能，并根据 `vqa_model` 配置选择 `native`、Gemini 或 OpenAI，对照 GDD 描述和 `/gm-asset` 生成的每个场景参考图为场景打分。另见：*Evaluation*。
 
-**Worker** — 实现一个游戏任务的子代理：编写 GDScript 代码、单元测试和端到端测试，然后返回一份结构化报告。Worker 在隔离的 git worktree 中运行。Worker 完成后，必须由 Verifier 和 Reviewer 先后完成验收，才会开始下一个任务。另见：*Sub-agent*、*Verifier*、*Reviewer*、*Worktree*。
+**Worker** — 实现一个游戏任务的子代理：编写 GDScript 代码、单元测试和端到端测试，然后返回一份结构化报告。Worker 的产出只有执行结果和失败证据——它不写任何 memory 或 learning 条目，权限 Hook 也会阻止它写 `MEMORY.md` 和 `memory/`。Worker 在隔离的 git worktree 中运行。Worker 完成后，必须由 Verifier 和 Reviewer 先后完成验收，才会开始下一个任务。另见：*Sub-agent*、*Verifier*、*Reviewer*、*Worktree*。
 
 **Worktree** — 允许多个工作目录共享同一个仓库的 git 功能。GodotMaker 用 worktree 让并行子代理各自拥有独立的文件夹来写文件，互不冲突。Worktree 要求仓库至少有一个提交，这也是 `/gm-scaffold` 总是创建初始提交的原因。另见：*Sub-agent*。
