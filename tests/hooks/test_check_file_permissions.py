@@ -1,5 +1,8 @@
 """Tests for check_file_permissions.py hook."""
 import os
+import shutil
+import subprocess
+import sys
 import tempfile
 import pytest
 from .helpers import run_hook, is_blocked, cleanup_metrics, write_current_role
@@ -383,6 +386,28 @@ class TestRoleBased:
                 f"asset role must allow project-root ASSETS.md: {path}"
             )
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    @pytest.mark.parametrize("spelling", ["backslash", "forward"],
+                             ids=["\\\\?\\", "//?/"])
+    def test_asset_root_assets_md_survives_an_extended_length_prefix(
+            self, project_dir, spelling):
+        r"""`\\?\<proj>\ASSETS.md` is the project-root ASSETS.md.
+
+        This rule anchors on the project root the same way the memory rule
+        does, so it had the same blind spot: the prefix made the two sides
+        compare unequal and the asset role's own file read as out of scope.
+        """
+        write_current_role("asset")
+        tail = os.path.join(project_dir, "ASSETS.md")
+        path = ("\\\\?\\" + tail if spelling == "backslash"
+                else "//?/" + tail.replace("\\", "/"))
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "",
+        })
+        assert not is_blocked(parsed), path
+
     def test_asset_blocked_from_non_root_assets_md(self, project_dir):
         """Project-root ASSETS.md only — a sibling/nested ASSETS.md must
         be blocked even though the basename matches. The hook's deny
@@ -575,3 +600,367 @@ class TestSubagentInRole:
             "agent_type": "asset-producer",
         })
         assert is_blocked(parsed), f"asset-producer should block {path}"
+
+
+class TestProjectMemoryIsNotSubagentWritable:
+    """Workers report results and failure evidence; memory stays with the lead."""
+
+    # The notebook is a directory, not a file type — a learning saved as
+    # `memory/learning.txt` is project memory exactly as much as a `.md` one.
+    MEMORY_PATHS = [
+        "MEMORY.md",
+        "memory/movement.md",
+        "memory/learning.txt",
+        "memory/rules.json",
+        "memory/entry.yaml",
+        "memory/ui/hud.md",
+        "memory/ui/notes.txt",
+        ".claude/worktrees/agent-1/MEMORY.md",
+        ".claude/worktrees/agent-1/memory/movement.md",
+        ".claude/worktrees/agent-1/memory/learning.txt",
+        ".claude/worktrees/agent-1/memory/rules.json",
+        # `..` lands in the same notebook while reading as if it started
+        # somewhere else — the rule folds it before looking at the first segment.
+        "src/../memory/learning.txt",
+        "./memory/../memory/rules.json",
+        "assets/sprites/../../memory/entry.yaml",
+        ".claude/worktrees/agent-1/src/../memory/learning.txt",
+        ".claude/worktrees/agent-1/../../../memory/learning.txt",
+    ]
+
+    @pytest.mark.parametrize("role", ["build", "fixgap"])
+    @pytest.mark.parametrize("path", MEMORY_PATHS)
+    def test_worker_blocked(self, project_dir, role, path):
+        write_current_role(role)
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed), f"worker should be blocked from {path}"
+
+    @pytest.mark.parametrize("agent_type", [
+        "worker", "decomposer", "asset-producer", "verifier", "",
+    ])
+    def test_every_subagent_type_blocked(self, project_dir, agent_type):
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "MEMORY.md"},
+            "agent_id": "s1",
+            "agent_type": agent_type,
+        })
+        assert is_blocked(parsed), f"{agent_type or 'generic'} subagent should be blocked"
+
+    def test_dispatching_role_still_writes_memory(self, project_dir):
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "MEMORY.md"},
+            "agent_id": "",
+        })
+        assert not is_blocked(parsed), "the lead role owns MEMORY.md"
+
+    @pytest.mark.parametrize("parts", [
+        ("memory", "learning.txt"),
+        ("src", "..", "memory", "learning.txt"),
+        (".claude", "worktrees", "agent-1", "src", "..", "memory", "rules.json"),
+    ])
+    def test_absolute_path_into_the_project_memory_is_blocked(self, project_dir, parts):
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": os.path.join(project_dir, *parts)},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed)
+
+    @staticmethod
+    def _link(target: str, link: str) -> None:
+        """Link one directory to another, however this OS lets us.
+
+        Windows refuses `os.symlink` without SeCreateSymbolicLinkPrivilege,
+        but a directory junction needs no elevation and `realpath` follows it
+        the same way — so these cases run there instead of silently skipping.
+        """
+        try:
+            os.symlink(target, link, target_is_directory=True)
+            return
+        except (OSError, NotImplementedError, AttributeError) as exc:
+            symlink_error = exc
+        if sys.platform != "win32":
+            pytest.skip(f"symlinks unavailable here: {symlink_error}")
+        result = subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            pytest.skip(f"no symlink ({symlink_error}) and no junction: "
+                        f"{(result.stderr or result.stdout).strip()}")
+
+    # `MEMORY_LINK` and `Notes` carry upper case on purpose: the hook must
+    # resolve the path it was handed, not a lower-cased copy of it. On a
+    # case-sensitive filesystem, `realpath("notes/...")` finds nothing, misses
+    # the link, and lets the write through while the tool still follows it.
+    @pytest.mark.parametrize("link_name", ["notes", "Notes", "MEMORY_LINK"])
+    @pytest.mark.parametrize("subagent", [
+        {"agent_id": "w1", "agent_type": "worker"},
+        {"agent_id": "", "is_subagent": True, "permission_scope": "memory"},
+    ], ids=["claude-code", "opencode-memory-scope"])
+    def test_a_link_into_the_notebook_is_blocked(self, project_dir, link_name,
+                                                 subagent):
+        os.makedirs(os.path.join(project_dir, "memory"), exist_ok=True)
+        self._link(os.path.join(project_dir, "memory"),
+                   os.path.join(project_dir, link_name))
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": f"{link_name}/learning.txt"},
+            **subagent,
+        })
+        assert is_blocked(parsed), f"{link_name}/ resolves into the notebook"
+
+    @pytest.mark.parametrize("link_name", ["notes.md", "Notes.md", "scratch.md"])
+    @pytest.mark.parametrize("subagent", [
+        {"agent_id": "w1", "agent_type": "worker"},
+        {"agent_id": "", "is_subagent": True, "permission_scope": "memory"},
+    ], ids=["claude-code", "opencode-memory-scope"])
+    def test_a_link_to_the_index_is_blocked_under_any_name(
+            self, project_dir, link_name, subagent):
+        """`notes.md -> MEMORY.md`: the name that arrives is not the name written.
+
+        The basename rule alone cannot see this — only the resolved reading
+        can, and it has to recognise the index and not just the directory.
+        """
+        with open(os.path.join(project_dir, "MEMORY.md"), "w") as fh:
+            fh.write("x")
+        try:
+            os.symlink(os.path.join(project_dir, "MEMORY.md"),
+                       os.path.join(project_dir, link_name))
+        except (OSError, NotImplementedError, AttributeError) as exc:
+            # No junction fallback here: junctions are directories only, and
+            # this case needs a link to a file.
+            pytest.skip(f"file symlinks unavailable here: {exc}")
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": link_name},
+            **subagent,
+        })
+        assert is_blocked(parsed), f"{link_name} resolves to the root index"
+
+    def test_an_ordinary_file_named_notes_is_not_the_index(self, project_dir):
+        """The rule follows a link; it does not block every `*.md` name."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "notes.md"},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert not is_blocked(parsed)
+
+    @pytest.mark.parametrize("subagent", [
+        {"agent_id": "w1", "agent_type": "worker"},
+        {"agent_id": "", "is_subagent": True, "permission_scope": "memory"},
+    ], ids=["claude-code", "opencode-memory-scope"])
+    def test_a_notebook_linked_out_of_the_project_is_still_the_notebook(
+            self, project_dir, subagent):
+        """`memory/` is the project path, not wherever it happens to point.
+
+        Resolving alone would report this write as landing outside the project
+        and wave it through; the lexical reading is what still sees it.
+        """
+        outside = tempfile.mkdtemp()
+        try:
+            self._link(outside, os.path.join(project_dir, "memory"))
+            write_current_role("build")
+            _, _, parsed = run_hook(HOOK, {
+                "tool_name": "Write",
+                "tool_input": {"file_path": "memory/learning.txt"},
+                **subagent,
+            })
+            assert is_blocked(parsed)
+        finally:
+            shutil.rmtree(outside, ignore_errors=True)
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    @pytest.mark.parametrize("spelling", ["backslash", "forward", "mixed"],
+                             ids=["\\\\?\\", "//?/", "//?/-mixed"])
+    @pytest.mark.parametrize("parts", [
+        ("memory", "learning.txt"),
+        ("memory", "ui", "notes.txt"),
+        ("src", "..", "memory", "learning.txt"),
+    ])
+    def test_windows_extended_length_prefix_is_blocked(self, project_dir, parts,
+                                                       spelling):
+        r"""`\\?\C:\proj\memory\x` names the same file as `C:\proj\memory\x`.
+
+        Neither `abspath` nor `realpath` strips the prefix, so without an
+        explicit strip the anchored comparison places it outside the project.
+        Both spellings must be covered: `abspath` and `realpath` rewrite
+        `//?/C:/…` into `\\?\C:\…`, so a strip that ran first would miss the
+        forward-slash form and then be handed a freshly-normalized prefix.
+        """
+        tail = os.path.join(project_dir, *parts)
+        path = {
+            "backslash": "\\\\?\\" + tail,
+            "forward": "//?/" + tail.replace("\\", "/"),
+            "mixed": "//?/" + tail,
+        }[spelling]
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed), path
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    @pytest.mark.parametrize("spelling", ["backslash", "forward"])
+    def test_extended_length_prefix_does_not_widen_the_rule(self, project_dir,
+                                                            spelling):
+        """Stripping the prefix must not pull a nested `memory/` in with it."""
+        tail = os.path.join(project_dir, "src", "memory", "s_memory.gd")
+        path = ("\\\\?\\" + tail if spelling == "backslash"
+                else "//?/" + tail.replace("\\", "/"))
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        reason = (parsed or {}).get("hookSpecificOutput", {}).get(
+            "permissionDecisionReason", "")
+        assert "project memory" not in reason
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    def test_an_unreachable_unc_path_neither_crashes_nor_matches(self, project_dir):
+        """`realpath` raises on an unreachable share; the hook must not."""
+        write_current_role("build")
+        stdout, code, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "\\\\?\\UNC\\server\\share\\memory\\x.txt"},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert code == 0, stdout
+        assert not is_blocked(parsed)
+
+    def test_the_rule_anchors_on_the_hook_cwd(self, project_dir):
+        """Pin the precondition the whole hook is written against.
+
+        Every rule here assumes it runs from the project root — Claude Code's
+        hook and the OpenCode plugin (`spawnSync` with `cwd: projectRoot`)
+        both do. The memory rule is the one that would go quiet rather than
+        loud if that ever stopped holding, so assert the assumption instead of
+        leaving it implicit.
+        """
+        nested = os.path.join(project_dir, "src")
+        os.makedirs(nested, exist_ok=True)
+        os.makedirs(os.path.join(project_dir, "memory"), exist_ok=True)
+        original = os.getcwd()
+        os.chdir(nested)
+        try:
+            write_current_role("build")  # writes <nested>/.godotmaker
+            _, _, parsed = run_hook(HOOK, {
+                "tool_name": "Write",
+                "tool_input": {"file_path": "memory/learning.txt"},
+                "agent_id": "w1",
+                "agent_type": "worker",
+            })
+            assert is_blocked(parsed), (
+                "the anchor is the hook's cwd — if this ever changes, the "
+                "rule's project-root assumption has to be revisited"
+            )
+        finally:
+            os.chdir(original)
+
+    @pytest.mark.parametrize("path", [
+        "../outside/memory/learning.txt",
+        "../../memory/learning.txt",
+    ])
+    def test_a_path_that_walks_out_of_the_project_is_not_the_notebook(
+            self, project_dir, path):
+        """Folding `..` must not turn an escape into a root-memory match."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert not is_blocked(parsed)
+
+    @pytest.mark.parametrize("path", [
+        "src/memory/s_memory.gd",
+        "src/memory/pool.tscn",
+        "src/memory/notes.md",
+        "docs/memory/design.txt",
+        "src/memory/../notes.md",
+    ])
+    def test_a_nested_memory_directory_is_not_the_notebook(self, project_dir, path):
+        """The rule anchors on the project root, not on any `memory/` segment.
+
+        A game that keeps a memory/pooling subsystem under `src/memory/` still
+        owns those files; only the root notebook is the lead's.
+        """
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        # Game code is blocked for its own reason, so assert on the message.
+        reason = (parsed or {}).get("hookSpecificOutput", {}).get(
+            "permissionDecisionReason", "")
+        assert "project memory" not in reason
+
+    @pytest.mark.parametrize("path", MEMORY_PATHS)
+    def test_delegated_session_without_an_agent_id_is_blocked(self, project_dir, path):
+        """OpenCode child sessions: `is_subagent` + `memory` scope, no agent_id."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "",
+            "is_subagent": True,
+            "permission_scope": "memory",
+        })
+        assert is_blocked(parsed), f"memory scope should block {path}"
+
+    @pytest.mark.parametrize("path", ["src/memory/s_memory.gd", "src/memory/notes.md"])
+    def test_memory_scope_leaves_a_nested_memory_directory_alone(self, project_dir, path):
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "",
+            "is_subagent": True,
+            "permission_scope": "memory",
+        })
+        assert not is_blocked(parsed)
+
+    def test_memory_scope_leaves_the_ownership_rules_alone(self, project_dir):
+        """That scope is the identity-free subset — it must not guess a role."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "PLAN.md"},
+            "agent_id": "",
+            "is_subagent": True,
+            "permission_scope": "memory",
+        })
+        assert not is_blocked(parsed)
+
+    def test_no_active_role_leaves_ordinary_conversations_alone(self, project_dir):
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "MEMORY.md"},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert not is_blocked(parsed)

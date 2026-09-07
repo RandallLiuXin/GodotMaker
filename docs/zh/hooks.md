@@ -62,9 +62,47 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 
 在流水线角色活跃期间，通用子代理会被阻止写入 `e2e/` 和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）。`asset-producer` 可以写入 `assets/`、`references/` 和 `.godotmaker/asset-generation/`。
 
-Runner 说明：这个子代理写入 gate 需要 runtime 提供 `agent_id`。OpenCode child
-session 不暴露该 payload，因此 OpenCode adapter 不会对 child session 运行这个
-Python 子代理写入 gate；该边界依赖 OpenCode 原生 agent edit permission。
+**项目记忆永远不归子代理写。** 所有子代理类型——worker、decomposer、
+asset-producer 以及任何其他被派发的角色——都被阻止写入根 `MEMORY.md`，以及项目根
+`memory/` 下的**全部文件**，不限扩展名：存成 `memory/learning.txt` 的经验和
+`memory/movement.md` 一样是项目记忆。Worker 只上报执行结果与失败证据；什么内容
+值得沉淀为项目知识由派发角色决定。
+
+`memory/` 规则锚定在项目根，而不是匹配路径中任意位置的 `memory/` 段，因此游戏
+自身的 `src/memory/` 源码目录仍然可写。两种锚点都以 Hook 的 cwd（即项目根）构造，
+因此相对路径与绝对路径走同一套处理。
+
+读取任何路径段之前会先做归一化，且是**两种**读法；只要其中一种判定命中，这次写入
+就算记忆本：
+
+| 读法 | 构造方式 | 能看见 |
+|---|---|---|
+| 调用方声明的位置 | `abspath`——折叠 `..`，不跟随软链 | 根 `memory/` 本身就是指向项目外的软链 |
+| 写入实际落点 | `realpath`——折叠 `..` 且跟随软链 | `Notes -> memory/` 这类软链 |
+
+两者缺一不可。因此 `src/../memory/learning.txt` 和 `Notes/learning.txt` 都会被拒，
+而 `src/memory/../notes.md` 不会；两种读法都没落在根 `memory/` 下的路径也不算记忆本。
+
+整个过程保留路径的原始大小写：在 `realpath` 之前小写化，会在大小写敏感的文件系统上
+查找一个并不存在的名字，从而无法跟随本规则正要拦截的那个软链。只有比较环节是大小写
+无关的。Windows 的扩展长度前缀在归一化**之后**才剥离，而不是之前——`abspath` 与
+`realpath` 会把 `//?/C:/proj/x` 改写成反斜杠拼法，若提前剥离就会漏掉正斜杠拼法，
+随后还被重新加上一个刚归一化出来的前缀。asset 角色的项目根 `ASSETS.md` 判定基于同样
+的理由共用这套归一化。`.claude/worktrees/<agent>/` 前缀在归一化之后剥离，因为 Worker 是从自己的
+worktree 里写文件的。`MEMORY.md` 本身按 basename 匹配，与规划文档一致；此外解析读法还会认出软链指向的
+目标：`notes.md -> MEMORY.md` 传进来的名字是 basename 规则认不出的。
+
+**这个 gate 覆盖什么、不覆盖什么。** 它是挂在 `Write|Edit` 上的 `PreToolUse`
+Hook，因此只管这两个工具。子代理若走 shell——`sed -i`、heredoc、`python -c`——
+写入不经过这里，四个 runtime 都一样。这与规划文档和 `e2e/` 规则一直以来的边界相同，
+并非项目记忆特有：工具闸是强制层，角色定义负责补齐其余部分。它还只在 `/gm-*` 角色
+活跃期间生效；没有 `.godotmaker/current_role` 时，Hook 只记录写入并放行。
+
+Runner 说明：这个 gate 中按角色划分归属的部分需要 runtime 提供 `agent_id`。
+OpenCode child session 不暴露该 payload，因此 OpenCode adapter 在那部分依赖
+OpenCode 原生 agent edit permission。记忆规则不需要角色身份，因此 adapter 会对
+child session 运行它：payload 带 `is_subagent: true` 和
+`permission_scope: "memory"`，这两个键用于选择子代理规则中与身份无关的子集。
 
 未设置角色时，表示当前没有活跃的 `/gm-*` 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。
 
@@ -160,6 +198,53 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
 抢先覆盖重试的真实终态。`unverified` 覆盖两种「放行但未接受报告」的情况：下文的
 防死锁 force-allow，以及必须携带 machine outcome 块的角色在没有合法块时走到这一步。
 
+#### 失败诊断（`worker_error`）
+
+如果这次 stop 不是干净收尾，还会通过 `metrics/diagnostics.py` 写入一条
+`worker_error` 事件。运行失败时留下的全部记录就是它——Worker 不再产出任何
+memory 或 learning 条目。
+
+| 字段 | 取值 |
+|---|---|
+| `task_id` | 报告标题开头的 PLAN/GAP 任务 ID（`M01`、`R2`），否则取任务名的有界 slug |
+| `attempt` | 本会话内同一 `task_id` + `stage` 的既有 `worker_error` 数量 + 1 |
+| `stage` | 当前流水线角色（`build`、`fixgap` 等） |
+| `runtime` | 所选 coding agent，与 `tools/agent_runtime.detect_agent` 同一套判定：先读 `.godotmaker/config.yaml` 的 `agent:` 键并归一化别名（`claude` → `claude-code`），再按已发布目录回退，最后默认 `claude-code` |
+| `role` | 被派发的角色（`worker`、`verifier` 等） |
+| `agent_id` / `run_id` | runtime 提供时记录的子代理 ID 与会话 ID |
+| `error_type` | `report_rejected`、`timeout`、`forced_handoff`、`tool_or_environment_error`、`unverified_handoff`、`task_failed`、`task_partial` |
+| `classification` | 报告给出的 `repair-attempt-accounting.md` 分类，仅当取值合法时记录 |
+| — | 上述每个字段都只从归属它的段落读取，绝不扫描整篇报告：装粘贴输出的段落排在前面，整篇扫描会让日志行盖过报告的自述——而 `summary` 又是指纹的输入，于是两个不同的故障还会被折叠成同一个 |
+| `summary` | 单行，≤200 字符，取自 `Repair Attempt Evidence` / `Notes`——报告自述失败的段落 |
+| `exit_code` | 只从真正跑过命令的 `Tests` / `Build` 段读取；非零优先于零，都没有则为 `null` |
+| `error_fingerprint` | 对 task/stage/type/summary 取 16 位十六进制，数字串统一折叠 |
+| `evidence_paths` | ≤5 条路径，限 `.godotmaker/`、`reports/`、`e2e/`、`docs/tags/` |
+| `retryable` | 用同一份 brief 重新派发是否还有可能成功 |
+| `repeat_count` | 本会话中指纹相同的既有事件数量 |
+
+`error_type` 先判定运行级故障，且对所有角色一律生效：被拦截的报告记为
+`report_rejected`，其次是报告 Repair Attempt Evidence 中显式的
+`Handoff condition`，再次是未经校验即被放行。显式的 handoff condition 优先于
+status——超时或工具故障能解释 status 本身解释不了的 `FAILED`。
+
+`Status` 最后才读，且只对「status 词表描述自身运行」的角色生效，即用
+`DONE` / `PARTIAL` / `FAILED` 的 worker、asset-producer、analyst。Verifier 的
+`Overall: PASS | FAIL | PARTIAL` 是对项目的判定而非对本次运行的判定：Verifier 报
+`FAIL` 说明它把活干成了，该结果已经以 `verifier_fail` 事件记录。因此 Verifier 的
+任何 status 都不产生 `worker_error`——但它超时、报告被拦截、或未经校验被放行时
+仍然会记录。
+
+这条记录守三个性质：
+
+- **成功运行不写任何东西。** 成功永远不产生错误事件，也不会为「记录一次成功」写空日志。
+- **有界且可去重。** 上表每个字段都有硬上限。当报告把大段命令输出贴进
+  `Tests` 或 `Build` 章节时，事件改为携带 `output_digest` 的
+  `{sha256, bytes, tail}`，而不是复制原文。同一
+  `(agent_id, error_fingerprint)` 只记录一次，因此 SubagentStop 反复触发也不会
+  把日志撑大。
+- **只做诊断。** 这里的内容不会被注入后续 Worker/Agent prompt，也不会自动变成项目
+  规则。把反复出现的失败转化为框架级修复，属于独立的、需要人工确认的 Trace 分析。
+
 ### on_subagent_stop.py
 
 **事件：** SubagentStop
@@ -222,7 +307,7 @@ hook 完全没有校验的路径（force-allow，或没有活跃的流水线角�
 
 | 角色 | 必需章节 |
 |------|----------|
-| worker | Status, Files Changed, Tests, Build, Memory Entry |
+| worker | Status, Files Changed, Tests, Build |
 | verifier | Overall, Results, Adversarial Probes |
 | reviewer | Reviewers Matched, ECS Review, Issues Found, Summary |
 | analyst | Status, Asset Summary, Art Style Summary, Files Generated |
@@ -233,7 +318,11 @@ hook 完全没有校验的路径（force-allow，或没有活跃的流水线角�
 - `check_resource_paths()` — .gd 文件中的 `res://` 路径必须存在
 - `check_classname_conflicts()` — `class_name` 声明不得与 Godot 内置名称冲突
 
-**进度提示：** 验证成功后，注入一条进度摘要（已完成的 Worker、Verifier、Reviewer 数量）作为附加上下文。
+**进度提示：** 验证成功后，注入一条进度摘要（已完成的 Worker、Verifier、Reviewer 数量）作为附加上下文。只包含计数，不会把任何失败诊断注入后续 prompt。
+
+**历史 `Memory Entry`：** Worker 不再产出该章节，它也不再是必需项。在移除该要求
+之前写成的报告仍然可以通过校验；该章节会被忽略，不会有任何逻辑把它读回
+`MEMORY.md` 或 `memory/`。
 
 **Reviewer 内容检查：** ECS Review 和 Issues Found 章节各自必须有至少 50 个字符的内容，防止空洞或走过场的审查。
 

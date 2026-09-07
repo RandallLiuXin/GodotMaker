@@ -22,6 +22,10 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Workers no longer produce a Memory Entry: a failed, partial, rejected, or unverified run now writes one bounded, deduplicated `worker_error` diagnostic to the metrics stream instead, and a clean run writes nothing.
+
 ## Fixed
 
 ## Removed
+
+- Removed subagent write access to `MEMORY.md` and `memory/**` across the Claude Code, Codex, OpenCode, and Pi permission paths.

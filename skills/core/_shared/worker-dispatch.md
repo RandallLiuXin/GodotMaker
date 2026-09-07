@@ -48,7 +48,6 @@ Agent({
 - [ ] Run unit tests and include pass/fail output
 - [ ] If `Visual Self-Check` is present: capture screenshot(s), run visual-qa, include output
 - [ ] Summary of what was implemented (<200 words)
-- [ ] MEMORY entry: discoveries, gotchas, decisions (<100 words)
 - [ ] Repair Attempt Evidence: production diff, focused verification command
   and result, failure fingerprint (if any), handoff condition, and suggested
   classification as defined in `references/repair-attempt-accounting.md`
@@ -67,6 +66,7 @@ Agent({
 ### Prohibited Actions                                   [REQUIRED]
 - DO NOT ask for approval, wait for user input, or pause for confirmation. Execute the task directly. If required information or external state is missing, report `PARTIAL` or `FAILED` with the blocker.
 - DO NOT fabricate resource paths — only use paths listed in ASSETS.md or verified to exist in the project. If you need an asset that doesn't exist, report it in your summary; do NOT invent a path.
+- DO NOT write `MEMORY.md` or any file under `memory/`. Report results and failure evidence; the dispatching role owns project memory.
 - DO NOT modify files outside your Deliverables list — read-only access to all other files. Exception: runtime asset integration repair (worker agent, File Ownership) overrides this line for the bound artifact and the project-local scene or script that binds it; report every such file in Notes.
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
 - DO NOT introduce E2E-only gameplay changes.
@@ -132,7 +132,11 @@ Runtime Snapshot` above.
 3. **Workers write their own tests.** Minimum 2 unit tests per changed system.
 4. **Workers must not spawn sub-workers.**
 5. **Include game context.** Add the relevant Playable Unit fields to the brief.
-6. **MEMORY entry is mandatory.** Every worker reports what they learned.
+6. **Workers do not write memory.** They report execution results and failure
+evidence; `MEMORY.md` and `memory/` stay yours. Do not ask a worker for
+learnings, and do not copy a report's prose into memory — a legacy report may
+still carry a `Memory Entry` section, and that section is ignored, not
+consumed.
 7. **Test file naming**: `test_{source_file_stem}.gd` — e.g., system file `s_movement.gd` → test file `test_s_movement.gd`. check_project.py enforces this pattern.
 8. **gdUnit4 version compatibility**: Godot 4.4 → gdUnit4 v5.x, Godot 4.5+ → gdUnit4 v6.x. Headless mode requires `--ignoreHeadlessMode`.
 9. **E2E input handling**: do NOT use `Input.is_action_just_pressed()` in ECS systems. Use `_input()` callback + flag variable pattern, expose `simulate_*()` methods so the Evaluator's e2e tests can drive the mechanic function.
@@ -193,7 +197,7 @@ Workers may create shared utility functions. Follow these rules:
 
 1. **Location**: All utility/helper functions go in `src/utils/` directory.
 2. **One file per domain**: e.g., `src/utils/math_utils.gd`, `src/utils/spawn_utils.gd`.
-3. **After creating utilities**: Report them in your MEMORY entry so the dispatching role can update the utils API doc.
+3. **After creating utilities**: List them in the report's Notes so the dispatching role can update the utils API doc.
 4. **Before creating utilities**: Check `.godotmaker/utils_api.md` (if it exists) for existing utilities. Do NOT duplicate.
 5. **Dispatching-role responsibility**: After each worker completes, the dispatching role updates `.godotmaker/utils_api.md` with new utility function signatures and descriptions. Include this doc path in subsequent worker briefs under "Input Files".
 

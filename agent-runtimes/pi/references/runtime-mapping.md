@@ -52,6 +52,13 @@ prohibit mutation, but that is not a hard sandbox boundary when `bash` is
 available. Treat their result as independent model judgment, not OS-enforced
 read-only execution.
 
+The same applies to the project memory notebook: no delegated role may write
+root `MEMORY.md` or any file under the project-root `memory/`. The
+prohibition travels in the
+role definition and in the Pi runtime contract the extension appends, and a
+delegate report claiming a memory write is rejected. Delegates return execution
+results and failure evidence; the lead session owns project memory.
+
 If the extension, trust, `pi` binary, `git HEAD`, or configured Godot executable
 is unavailable, stop before the dependent stage and state the missing setup.
 Pi's `--approve` trusts project resources only; it does not bypass an OS

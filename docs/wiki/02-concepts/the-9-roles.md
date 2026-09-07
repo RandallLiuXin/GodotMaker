@@ -70,7 +70,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 **What happens behind the scenes:**
 - On resume, reads `.godotmaker/verify_report.json` if a fresh failure report exists from the previous `/gm-verify`, and translates each per-check failure into a `pending` task in the current tag's `PLAN.md` before continuing
 - Reads the current tag's `PLAN.md` to find pending tasks, starting with the riskiest ones
-- Dispatches Workers (up to 3 in parallel) — each Worker implements one game system and its unit tests, then reports back
+- Dispatches Workers (up to 3 in parallel) — each Worker implements one game system and its unit tests, then reports back with results and, when something went wrong, failure evidence. Workers write no memory or learning entries; a failed or partial run is recorded as a bounded `worker_error` diagnostic in `.godotmaker/metrics.jsonl` and is never fed into a later worker's prompt
 - Once every task in `PLAN.md` is `completed`, dispatches a Verifier (compiles headlessly, runs unit tests) and then a Reviewer (domain knowledge about Godot pitfalls — physics, UI, animation, etc.) — one verify+review pass per cycle iteration, not per worker
 - For each reviewer finding the main agent picks one of three options: ACCEPT (add a new fix task to `PLAN.md`), REJECT (the finding is wrong — record in `MEMORY.md`'s **Reviewer Triage Log**), or SKIP (the finding is real but not worth fixing now — same MEMORY.md section). Defaults: critical/major → ACCEPT; minor → SKIP. REJECT/SKIP for critical/major requires a mandatory citation (gotcha entry, API doc, prior decision, or task ID)
 - If any findings were ACCEPTED, the cycle loops back to dispatching Workers
@@ -78,7 +78,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 
 **What you get:** Game code in `src/`, scenes in `scenes/`, unit tests in `test/` — all scoped to this tag's additions / refactors.
 
-**Things to know:** You cannot write game code yourself while in this step — the permission system blocks it. The main agent coordinates; Workers do the actual writing. Workers may touch files outside the current tag's scope only when `PLAN.md` has an explicit refactor task naming those files; "cleanup detours" are not allowed. If the same task fails three times, the build stops and asks you what to do.
+**Things to know:** You cannot write game code yourself while in this step — the permission system blocks it. The main agent coordinates; Workers do the actual writing. `MEMORY.md` and `memory/` stay with the main agent — the same permission system blocks Workers from writing them. Workers may touch files outside the current tag's scope only when `PLAN.md` has an explicit refactor task naming those files; "cleanup detours" are not allowed. If the same task fails three times, the build stops and asks you what to do.
 
 ---
 

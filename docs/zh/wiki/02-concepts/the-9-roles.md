@@ -70,7 +70,7 @@
 **背后发生了什么：**
 - 恢复阶段：如果 `.godotmaker/verify_report.json` 中存在上一次 `/gm-verify` 留下的新鲜失败报告，把每个 check 的失败翻译成 `pending` 任务追加到当前 tag 的 `PLAN.md`，再继续后续流程
 - 读取当前 tag 的 `PLAN.md`，找出待处理的任务，从风险最高的开始
-- 派遣 Worker（最多同时 3 个）——每个 Worker 实现一个游戏系统及其单元测试，完成后汇报
+- 派遣 Worker（最多同时 3 个）——每个 Worker 实现一个游戏系统及其单元测试，完成后汇报结果；出问题时附上失败证据。Worker 不写任何 memory 或 learning 条目；失败或部分完成会以有界的 `worker_error` 诊断事件记入 `.godotmaker/metrics.jsonl`，且不会进入后续 Worker 的 prompt
 - `PLAN.md` 中所有任务都达到 `completed` 后，派遣一个 Verifier（无界面编译并跑单元测试），然后派遣一个 Reviewer（拥有 Godot 特有的领域知识——物理、UI、动画等）——每个循环迭代一次 verify+review pass，不再按 Worker 数量触发
 - 对每个评审 finding，主 Agent 在三个选项中选一个：ACCEPT（在 `PLAN.md` 追加新的修复任务）、REJECT（finding 是误报——记录到 `MEMORY.md` 的 **Reviewer Triage Log** 段）、SKIP（finding 是对的但暂时不修——同段记录）。默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT/SKIP 需附强制引证（gotcha 条目、API 文档、过往决策或任务 ID）
 - 只要本轮有任何 finding 被 ACCEPT，循环就回到派遣 Worker 阶段
@@ -78,7 +78,7 @@
 
 **你得到什么：** `src/` 里的游戏代码、`scenes/` 里的场景、`test/` 里的单元测试——全部限定在本 tag 的新增 / refactor 范围内。
 
-**需要知道的：** 在这个步骤里你无法自己写游戏代码——权限系统会阻止。主 Agent 负责协调，Worker 负责实际写代码。Worker 触动当前 tag 范围之外的文件，必须 `PLAN.md` 中有显式 refactor 任务点名那些文件；不允许"顺手清理"。如果同一个任务失败三次，构建会暂停并询问你下一步怎么做。
+**需要知道的：** 在这个步骤里你无法自己写游戏代码——权限系统会阻止。主 Agent 负责协调，Worker 负责实际写代码。`MEMORY.md` 和 `memory/` 归主 Agent——同一套权限系统会阻止 Worker 写它们。Worker 触动当前 tag 范围之外的文件，必须 `PLAN.md` 中有显式 refactor 任务点名那些文件；不允许"顺手清理"。如果同一个任务失败三次，构建会暂停并询问你下一步怎么做。
 
 ---
 

@@ -55,6 +55,8 @@ Codex 使用 `agent-runtimes/<agent>/config/` 下的配置文件；OpenCode 使�
 
 一个用于记录会话期间发生事件的小型子系统。Hook 通过调用 `record_event()` 将 JSON 行追加到 `.godotmaker/metrics_current.jsonl`（当前会话）和 `.godotmaker/metrics_total.jsonl`（全量生命周期日志）。`state.py` 模块负责在 `.godotmaker/state.json` 中管理可变的会话内计数器（拦截次数等）。`session_start.py` 在每次新会话开始时重置两者。
 
+`diagnostics.py` 把失败的子代理交接归一化为同一条流上的一条有界 `worker_error` 事件——由于 Worker 不写任何 memory 或 learning 条目，这是运行出错时留下的全部记录。
+
 关于编写 hook 和使用 metrics API 的详细说明，请参阅 [编写 Hook](writing-a-hook.md)。
 
 ### 权限契约的三层划分

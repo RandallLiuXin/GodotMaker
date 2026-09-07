@@ -59,7 +59,7 @@ These Markdown files are the "source of truth" the AI reads before making decisi
 
 **`TOC.md`** — Table of contents for all the documents above. Generated automatically. Useful as a quick index if you're not sure which document to look at.
 
-**`MEMORY.md`** — A log of discoveries, past mistakes, and important decisions that the AI wants to remember across sessions. Written and updated automatically. Reading it is useful if you want to understand why the AI made a particular choice in an earlier session.
+**`MEMORY.md`** — A log of discoveries, past mistakes, and important decisions that the AI wants to remember across sessions. Only the main agent writes it, from verified outcomes; Workers cannot, and their reports never become memory entries. Reading it is useful if you want to understand why the AI made a particular choice in an earlier session.
 
 ---
 

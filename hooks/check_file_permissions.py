@@ -24,6 +24,11 @@ PLANNING_DOCS = {"plan.md", "structure.md", "style.md", "assets.md", "gap.md",
 # project.godot is the engine config and changes the whole game. Subagents
 # may not edit it unless their agent_type is in PLANNING_WRITER_AGENT_TYPES.
 PROJECT_GODOT = "project.godot"
+# The cross-tag memory notebook: the root index plus everything under the
+# project-root `memory/`. Subagents never write it — a worker reports execution
+# results and failure evidence, and the dispatching role decides what, if
+# anything, becomes durable project knowledge. See `_is_memory_path`.
+MEMORY_INDEX = "memory.md"
 E2E_DIR_PREFIX = "e2e/"
 ASSETS_DIR_PREFIX = "assets/"
 REFERENCES_DIR_PREFIX = "references/"
@@ -31,6 +36,10 @@ GODOTMAKER_DIR = ".godotmaker/"
 # Subagent types whose entire purpose is writing planning docs — exempt
 # from the general subagent block on PLANNING_DOCS and PROJECT_GODOT.
 PLANNING_WRITER_AGENT_TYPES = {"decomposer"}
+# How much of the subagent rule set a payload asks for. `memory` is the subset
+# that needs no role identity — see `_check_subagent`.
+SCOPE_FULL = "full"
+SCOPE_MEMORY = "memory"
 # Per-role narrow write allow-lists under .godotmaker/. Each role needs
 # current_role + stage.jsonl for bookkeeping; evaluate / verify also write
 # their structured verdict; rescue is diagnostic-only (chat output only),
@@ -44,6 +53,112 @@ VERIFY_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/verify_report.json"}
 RESCUE_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/current_role"}
+
+
+def _anchor_form(normalize, path: str) -> str:
+    r"""One comparable spelling of a path: absolute, `/`-separated, lower-case.
+
+    Windows' extended-length prefix is dropped here, and dropping it *after*
+    `normalize` is the whole point: `\\?\C:\proj\x` and `//?/C:/proj/x` name
+    the same file, and `abspath` / `realpath` rewrite the second into the
+    first. Stripping beforehand would miss the forward-slash spelling and then
+    hand it a freshly-normalized prefix — which is exactly how it slipped past
+    the anchored comparison and read as outside the project.
+
+    `normalize` is `os.path.abspath` or `os.path.realpath`; both can raise on
+    an unreachable UNC path, and callers are expected to catch that.
+    """
+    normalized = normalize(path).replace("\\", "/").lower()
+    for prefix, replacement in (("//?/unc/", "//"), ("//?/", "")):
+        if normalized.startswith(prefix):
+            return replacement + normalized[len(prefix):]
+    return normalized
+
+
+def _project_relative_segments(file_path: str, resolve: bool) -> list[str] | None:
+    """Path segments relative to the project root this write belongs to.
+
+    Returns None when the write lands outside the project entirely.
+
+    Normalization happens before any segment is read, so a rule that anchors
+    on the first segment cannot be stepped around by a path that names one
+    place and lands in another. Both anchors are absolute paths built from the
+    hook's cwd, which IS the project root, so one call covers relative and
+    absolute input alike.
+
+    `resolve` picks which of the two readings this is:
+
+    - `False` — `abspath`: `..` folded lexically, symlinks left alone. This is
+      the path the caller *named*. It is the only reading that still sees the
+      notebook when the root `memory/` is itself a link out of the project.
+    - `True` — `realpath`: `..` folded and symlinks followed. This is where
+      the write actually *lands*. It is the only reading that sees the
+      notebook behind a `Notes -> memory` link.
+
+    Neither is sufficient alone, so `_is_memory_path` asks for both.
+
+    `file_path` must carry its original case: lower-casing it first would make
+    `realpath` look up a name that does not exist on a case-sensitive
+    filesystem, silently failing to follow the very link this is meant to
+    catch. Only the comparison is case-insensitive, which also keeps a
+    mixed-case project root matching.
+
+    A worker writes from inside a linked worktree, so everything after
+    `.claude/worktrees/<agent>/` is project-root-relative again. That check
+    runs on the normalized segments, because `..` can cross the marker.
+    """
+    normalize = os.path.realpath if resolve else os.path.abspath
+    try:
+        root = _anchor_form(normalize, os.getcwd()).rstrip("/")
+        target = _anchor_form(normalize, file_path)
+    except (OSError, ValueError):
+        # `realpath` raises on an unreachable UNC path. A hook must never
+        # crash, and this reading simply has nothing to say — the lexical
+        # reading, which touches no filesystem, still gets its vote.
+        return None
+    if not target.startswith(f"{root}/"):
+        return None  # another drive, or outside the project
+    segments = [s for s in target[len(root) + 1:].split("/") if s]
+
+    for i in range(len(segments) - 3, -1, -1):
+        if segments[i] == ".claude" and segments[i + 1] == "worktrees":
+            return segments[i + 3:]
+
+    return segments
+
+
+def _is_memory_path(file_path: str, file_name: str) -> bool:
+    """True for MEMORY.md or ANY file under the project-root `memory/`.
+
+    The notebook is a directory, not a file type: `memory/learning.txt` and
+    `memory/rules.json` are project memory exactly as much as
+    `memory/movement.md` is. Anchoring on the project root — rather than
+    matching a `memory/` segment anywhere — is what keeps a game's own
+    `src/memory/` source directory writable.
+
+    A write is the notebook if EITHER reading of its path says so: the one the
+    caller named, or the one the filesystem resolves it to. A link named
+    `Notes` pointing at `memory/` is only visible to the second; a root
+    `memory/` that is itself a link out of the project is only visible to the
+    first.
+
+    Both the index and the directory are checked per reading. `MEMORY.md` is a
+    basename match first, like PLANNING_DOCS — no subagent has a reason to
+    write a file by that name anywhere in the tree — but a basename alone
+    cannot see `notes.md -> MEMORY.md`, where the name that arrives is not the
+    name that gets written. The resolved reading is what catches that.
+    """
+    if file_name == MEMORY_INDEX:
+        return True
+    for resolve in (False, True):
+        segments = _project_relative_segments(file_path, resolve)
+        if not segments:
+            continue
+        if segments[-1] == MEMORY_INDEX:
+            return True  # an alias for the index, under whatever name
+        if segments[0] == "memory" and len(segments) > 1:
+            return True
+    return False
 
 
 def _is_e2e_path(path_lower: str) -> bool:
@@ -89,12 +204,19 @@ def _is_project_root_assets_md(path_lower: str) -> bool:
     input untouched but cwd-derived paths often arrive already resolved,
     so the two sides drift and a legitimately-rooted ASSETS.md gets
     rejected. realpath collapses symlinks on both sides identically.
+
+    Shares `_anchor_form` with the memory rule so both sides spell an
+    extended-length path the same way: without it, `\\?\<proj>\ASSETS.md`
+    compares unequal to the project root's own ASSETS.md and the asset
+    role's project-root limit reads as unmet.
     """
     if path_lower == "assets.md":
         return True
-    abs_input = os.path.realpath(path_lower).replace("\\", "/").lower()
-    abs_root = os.path.realpath("assets.md").replace("\\", "/").lower()
-    return abs_input == abs_root
+    try:
+        return (_anchor_form(os.path.realpath, path_lower)
+                == _anchor_form(os.path.realpath, "assets.md"))
+    except (OSError, ValueError):
+        return False  # unresolvable — not the project-root ASSETS.md
 
 
 def _block(reason: str, file_name: str, agent_id: str = "") -> None:
@@ -189,9 +311,29 @@ def _lookup_agent_type(agent_id: str) -> str:
     return ""
 
 
-def _check_subagent(path_lower: str, file_name: str, agent_id: str,
-                    agent_type: str) -> None:
-    """Apply subagent rules. Calls _block on violation."""
+def _check_subagent(file_path: str, path_lower: str, file_name: str,
+                    agent_id: str, agent_type: str,
+                    scope: str = SCOPE_FULL) -> None:
+    """Apply subagent rules. Calls _block on violation.
+
+    `file_path` is the write's original, un-lowercased path — the memory rule
+    resolves it against the filesystem and needs the real case to follow a
+    link. Every other rule here matches on text, so it reads `path_lower`.
+
+    `scope` is `SCOPE_MEMORY` for a runtime that knows a write comes from a
+    delegated session but cannot tell which role it is running (OpenCode child
+    sessions). The memory rule holds for every subagent type, so it is safe to
+    apply without that identity; the ownership rules below are not.
+    """
+    _, ext = os.path.splitext(path_lower)
+    if _is_memory_path(file_path, file_name):
+        _block(f"Subagents cannot write project memory ({file_name}). "
+               "Report execution results and failure evidence in your report; "
+               "the dispatching role owns MEMORY.md and memory/.",
+               file_name, agent_id)
+    if scope == SCOPE_MEMORY:
+        return
+
     if agent_type == "asset-producer":
         if (_is_asset_generation_path(path_lower)
                 or _is_assets_path(path_lower)
@@ -203,7 +345,6 @@ def _check_subagent(path_lower: str, file_name: str, agent_id: str,
         if _is_e2e_path(path_lower):
             _block(f"Asset producers cannot write to e2e/ ({file_name}).",
                    file_name, agent_id)
-        _, ext = os.path.splitext(path_lower)
         if ext in GAME_CODE_EXTENSIONS:
             _block(f"Asset producers cannot modify game code ({file_name}).",
                    file_name, agent_id)
@@ -255,7 +396,9 @@ def main():
     _, ext = os.path.splitext(path_lower)
 
     agent_id = data.get("agent_id", "")
-    is_subagent = bool(agent_id)
+    # A runtime without Claude-style agent ids states delegation explicitly.
+    is_subagent = bool(agent_id) or bool(data.get("is_subagent"))
+    scope = data.get("permission_scope") or SCOPE_FULL
     agent_type = data.get("agent_type", "") or _lookup_agent_type(agent_id)
 
     record_event(
@@ -272,7 +415,8 @@ def main():
                      file=file_name, agent_id=agent_id or "main", role=role)
         sys.exit(0)
     elif is_subagent:
-        _check_subagent(path_lower, file_name, agent_id, agent_type)
+        _check_subagent(file_path, path_lower, file_name, agent_id,
+                        agent_type, scope)
     else:
         _check_main(role, path_lower, file_name, ext)
 

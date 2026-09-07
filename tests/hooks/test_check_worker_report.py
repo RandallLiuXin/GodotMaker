@@ -13,8 +13,13 @@ COMPLETE_WORKER = (
     "### Files Changed\n- player_system.gd: created\n\n"
     "### Tests\n#### Unit Tests\n- test/test_player.gd: 3 tests, 3 passed\n"
     "- Commands run: godot --headless\n\n"
-    "### Build\n- Status: PASS\n\n"
-    "### Memory Entry\nLearned about movement"
+    "### Build\n- Status: PASS"
+)
+
+# Reports written before `Memory Entry` was dropped must still validate,
+# and their memory text must stay inert.
+LEGACY_WORKER_WITH_MEMORY_ENTRY = (
+    COMPLETE_WORKER + "\n\n### Memory Entry\nLearned about movement"
 )
 
 COMPLETE_VERIFIER = (
@@ -82,11 +87,42 @@ class TestWorkerReport:
         })
         assert not is_blocked(parsed)
 
+    def test_report_without_a_memory_entry_is_complete(self):
+        """Workers no longer produce learnings; the section is not required."""
+        assert "Memory Entry" not in COMPLETE_WORKER
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "w1",
+            "last_assistant_message": COMPLETE_WORKER,
+        })
+        assert not is_blocked(parsed)
+        assert "Memory Entry" not in (
+            (parsed or {}).get("hookSpecificOutput", {}).get("additionalContext", "")
+        )
+
+    def test_legacy_report_with_a_memory_entry_still_validates(self):
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "w1",
+            "last_assistant_message": LEGACY_WORKER_WITH_MEMORY_ENTRY,
+        })
+        assert not is_blocked(parsed)
+
+    def test_worker_format_hint_no_longer_demands_a_memory_entry(self):
+        """The hint a blocked worker is re-prompted with is the new contract."""
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "w-nohint",
+            "agent_type": "worker",
+            "last_assistant_message": "I finished the task, no report.",
+        })
+        assert is_blocked(parsed)
+        assert "Memory Entry" not in parsed["reason"]
+
     @pytest.mark.parametrize("missing_section,remove", [
         ("Status", "### Status: DONE"),
         ("Tests", "### Tests"),
         ("Build", "### Build"),
-        ("Memory Entry", "### Memory Entry"),
     ])
     def test_missing_section_blocked(self, missing_section, remove):
         msg = COMPLETE_WORKER.replace(remove, "### REMOVED")

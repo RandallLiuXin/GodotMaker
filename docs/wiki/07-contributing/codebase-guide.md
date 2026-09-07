@@ -56,6 +56,8 @@ plugin adapter.
 
 A small subsystem for recording what happened during a session. Hooks call `record_event()` to append a JSON line to `.godotmaker/metrics_current.jsonl` (current session) and `.godotmaker/metrics_total.jsonl` (lifetime). The `state.py` module manages mutable per-session counters (block counts, etc.) in `.godotmaker/state.json`. `session_start.py` resets both on every new session.
 
+`diagnostics.py` normalizes a failed subagent handoff into one bounded `worker_error` event on that same stream — the only thing a run leaves behind when it goes wrong, since workers write no memory or learning entries.
+
 For details on writing hooks and using the metrics API, see [Writing a hook](writing-a-hook.md).
 
 ### Permission contract layers

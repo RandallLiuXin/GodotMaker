@@ -188,7 +188,13 @@ memory/
 ```
 
 - Read MEMORY.md before dispatching workers
-- Update after every verification round (you write, not workers/reviewers)
+- Update after every verification round from verified outcomes. You write it —
+  no subagent may, and the file-permission hook blocks them.
+- Never transcribe a worker report into memory. A legacy report may still carry
+  a `Memory Entry` section; it is not read and never becomes a memory file.
+- Worker failures land in `.godotmaker/metrics.jsonl` as `worker_error` events,
+  not in memory. Those events are diagnostics for trace analysis; do not paste
+  them into a worker brief and do not promote one into a project rule.
 
 ## Available Skills & Tools
 

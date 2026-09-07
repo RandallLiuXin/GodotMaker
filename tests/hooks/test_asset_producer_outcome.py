@@ -55,7 +55,6 @@ def worker_report(status="DONE", report_type="worker", unit_id="player_movement"
         "### Tests\n- test/test_player.gd: 3 tests, 3 passed\n"
         "- Commands run: godot --headless\n\n"
         "### Build\n- Status: PASS\n\n"
-        "### Memory Entry\nLearned about movement\n\n"
         + asset_producer_outcome(status=status, unit_id=unit_id,
                                  report_type=report_type)
     )
@@ -248,7 +247,6 @@ class TestHookGate:
             "### Tests\n- test/test_player.gd: 3 tests, 3 passed\n"
             "- Commands run: godot --headless\n\n"
             "### Build\n- Status: PASS\n\n"
-            "### Memory Entry\nLearned about movement"
         )
         _, _, parsed = run_hook(DISPATCHER, {
             "hook_event_name": "SubagentStop",

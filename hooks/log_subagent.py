@@ -20,8 +20,9 @@ from metrics import (
     OUTCOME_REQUIRED_ROLES,
     ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST,
     ROLE_ASSET_PRODUCER, ROLE_UNKNOWN,
-    KNOWN_ROLES,
+    KNOWN_ROLES, get_current_role,
 )
+from metrics.diagnostics import build_error_event, record_error_event
 from check_worker_report import extract_files_changed
 
 # How a stop relates to the run's terminal status. Only `terminal` writes an
@@ -257,6 +258,18 @@ def handle_stop(data: dict, verdict=None) -> None:
         blockers=outcome.get("blockers", []),
         outcome_error=report.outcome_error,
     )
+
+    # Failure diagnostics, not learnings: a clean run writes nothing here, and
+    # nothing written here is fed back into a later prompt.
+    record_error_event(build_error_event(
+        message=message,
+        role=effective_role,
+        status=status,
+        outcome_kind=kind,
+        agent_id=agent_id,
+        run_id=data.get("session_id") or "",
+        stage=get_current_role(),
+    ))
 
     if kind != OUTCOME_TERMINAL:
         return

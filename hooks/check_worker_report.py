@@ -2,7 +2,9 @@
 """SubagentStop hook: validate worker/verifier report completeness.
 
 Worker reports MUST have: Status, Files Changed, Tests (with unittest
-results), Build, Memory Entry.
+results), Build. A `Memory Entry` section is no longer required or read —
+reports written before it was dropped still validate, and their memory text
+is ignored rather than consumed.
 
 Verifier reports MUST have: Overall, Results, Adversarial Probes.
 
