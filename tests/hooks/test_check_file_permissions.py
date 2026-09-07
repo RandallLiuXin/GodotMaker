@@ -1,5 +1,8 @@
 """Tests for check_file_permissions.py hook."""
 import os
+import shutil
+import subprocess
+import sys
 import tempfile
 import pytest
 from .helpers import run_hook, is_blocked, cleanup_metrics, write_current_role
@@ -652,23 +655,72 @@ class TestProjectMemoryIsNotSubagentWritable:
         })
         assert is_blocked(parsed)
 
-    def test_a_symlink_into_the_notebook_is_blocked(self, project_dir):
-        """Resolution is `realpath`, so a link is not a way around the rule."""
-        os.makedirs(os.path.join(project_dir, "memory"), exist_ok=True)
+    @staticmethod
+    def _link(target: str, link: str) -> None:
+        """Link one directory to another, however this OS lets us.
+
+        Windows refuses `os.symlink` without SeCreateSymbolicLinkPrivilege,
+        but a directory junction needs no elevation and `realpath` follows it
+        the same way — so these cases run there instead of silently skipping.
+        """
         try:
-            os.symlink(os.path.join(project_dir, "memory"),
-                       os.path.join(project_dir, "notes"),
-                       target_is_directory=True)
+            os.symlink(target, link, target_is_directory=True)
+            return
         except (OSError, NotImplementedError, AttributeError) as exc:
-            pytest.skip(f"symlinks unavailable here: {exc}")
+            symlink_error = exc
+        if sys.platform != "win32":
+            pytest.skip(f"symlinks unavailable here: {symlink_error}")
+        result = subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            pytest.skip(f"no symlink ({symlink_error}) and no junction: "
+                        f"{(result.stderr or result.stdout).strip()}")
+
+    # `MEMORY_LINK` and `Notes` carry upper case on purpose: the hook must
+    # resolve the path it was handed, not a lower-cased copy of it. On a
+    # case-sensitive filesystem, `realpath("notes/...")` finds nothing, misses
+    # the link, and lets the write through while the tool still follows it.
+    @pytest.mark.parametrize("link_name", ["notes", "Notes", "MEMORY_LINK"])
+    @pytest.mark.parametrize("subagent", [
+        {"agent_id": "w1", "agent_type": "worker"},
+        {"agent_id": "", "is_subagent": True, "permission_scope": "memory"},
+    ], ids=["claude-code", "opencode-memory-scope"])
+    def test_a_link_into_the_notebook_is_blocked(self, project_dir, link_name,
+                                                 subagent):
+        os.makedirs(os.path.join(project_dir, "memory"), exist_ok=True)
+        self._link(os.path.join(project_dir, "memory"),
+                   os.path.join(project_dir, link_name))
         write_current_role("build")
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
-            "tool_input": {"file_path": "notes/learning.txt"},
-            "agent_id": "w1",
-            "agent_type": "worker",
+            "tool_input": {"file_path": f"{link_name}/learning.txt"},
+            **subagent,
         })
-        assert is_blocked(parsed)
+        assert is_blocked(parsed), f"{link_name}/ resolves into the notebook"
+
+    @pytest.mark.parametrize("subagent", [
+        {"agent_id": "w1", "agent_type": "worker"},
+        {"agent_id": "", "is_subagent": True, "permission_scope": "memory"},
+    ], ids=["claude-code", "opencode-memory-scope"])
+    def test_a_notebook_linked_out_of_the_project_is_still_the_notebook(
+            self, project_dir, subagent):
+        """`memory/` is the project path, not wherever it happens to point.
+
+        Resolving alone would report this write as landing outside the project
+        and wave it through; the lexical reading is what still sees it.
+        """
+        outside = tempfile.mkdtemp()
+        try:
+            self._link(outside, os.path.join(project_dir, "memory"))
+            write_current_role("build")
+            _, _, parsed = run_hook(HOOK, {
+                "tool_name": "Write",
+                "tool_input": {"file_path": "memory/learning.txt"},
+                **subagent,
+            })
+            assert is_blocked(parsed)
+        finally:
+            shutil.rmtree(outside, ignore_errors=True)
 
     @pytest.mark.parametrize("path", [
         "../outside/memory/learning.txt",

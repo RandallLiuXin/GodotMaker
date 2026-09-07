@@ -24,10 +24,10 @@ PLANNING_DOCS = {"plan.md", "structure.md", "style.md", "assets.md", "gap.md",
 # project.godot is the engine config and changes the whole game. Subagents
 # may not edit it unless their agent_type is in PLANNING_WRITER_AGENT_TYPES.
 PROJECT_GODOT = "project.godot"
-# The cross-tag memory notebook: the root index plus its `memory/*.md`
-# sub-files. Subagents never write it — a worker reports execution results and
-# failure evidence, and the dispatching role decides what, if anything, becomes
-# durable project knowledge.
+# The cross-tag memory notebook: the root index plus everything under the
+# project-root `memory/`. Subagents never write it — a worker reports execution
+# results and failure evidence, and the dispatching role decides what, if
+# anything, becomes durable project knowledge. See `_is_memory_path`.
 MEMORY_INDEX = "memory.md"
 E2E_DIR_PREFIX = "e2e/"
 ASSETS_DIR_PREFIX = "assets/"
@@ -55,29 +55,41 @@ RESCUE_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/current_role"}
 
 
-def _project_relative_segments(path_lower: str) -> list[str] | None:
+def _project_relative_segments(file_path: str, resolve: bool) -> list[str] | None:
     """Path segments relative to the project root this write belongs to.
 
     Returns None when the write lands outside the project entirely.
 
-    Resolution happens before any segment is read, so a rule that anchors on
-    the first segment cannot be stepped around: `src/../memory/learning.txt`
-    lands in the project-root notebook while reading as if it started in
-    `src/`. `realpath` folds `..` and symlinks and resolves a relative path
-    against the cwd exactly as the filesystem will, which is also how an
-    absolute path gets anchored — the hook's cwd IS the project root. It runs
-    on both sides so macOS's `/var/folders` → `/private/var/folders` symlink
-    cannot skew the comparison, the same reason `_is_project_root_assets_md`
-    uses it. Both sides are lowercased too: the caller has already lost the
-    original case, so a mixed-case project root would otherwise fail to match
-    on a case-sensitive filesystem and silently skip the rule.
+    Normalization happens before any segment is read, so a rule that anchors
+    on the first segment cannot be stepped around by a path that names one
+    place and lands in another. Both anchors are absolute paths built from the
+    hook's cwd, which IS the project root, so one call covers relative and
+    absolute input alike.
+
+    `resolve` picks which of the two readings this is:
+
+    - `False` — `abspath`: `..` folded lexically, symlinks left alone. This is
+      the path the caller *named*. It is the only reading that still sees the
+      notebook when the root `memory/` is itself a link out of the project.
+    - `True` — `realpath`: `..` folded and symlinks followed. This is where
+      the write actually *lands*. It is the only reading that sees the
+      notebook behind a `Notes -> memory` link.
+
+    Neither is sufficient alone, so `_is_memory_path` asks for both.
+
+    `file_path` must carry its original case: lower-casing it first would make
+    `realpath` look up a name that does not exist on a case-sensitive
+    filesystem, silently failing to follow the very link this is meant to
+    catch. Only the comparison is case-insensitive, which also keeps a
+    mixed-case project root matching.
 
     A worker writes from inside a linked worktree, so everything after
     `.claude/worktrees/<agent>/` is project-root-relative again. That check
-    runs on the resolved segments, because `..` can cross the marker.
+    runs on the normalized segments, because `..` can cross the marker.
     """
-    root = os.path.realpath(os.getcwd()).replace("\\", "/").lower().rstrip("/")
-    target = os.path.realpath(path_lower).replace("\\", "/").lower()
+    normalize = os.path.realpath if resolve else os.path.abspath
+    root = normalize(os.getcwd()).replace("\\", "/").rstrip("/").lower()
+    target = normalize(file_path).replace("\\", "/").lower()
     if not target.startswith(f"{root}/"):
         return None  # another drive, or outside the project
     segments = [s for s in target[len(root) + 1:].split("/") if s]
@@ -89,7 +101,7 @@ def _project_relative_segments(path_lower: str) -> list[str] | None:
     return segments
 
 
-def _is_memory_path(path_lower: str, file_name: str) -> bool:
+def _is_memory_path(file_path: str, file_name: str) -> bool:
     """True for MEMORY.md or ANY file under the project-root `memory/`.
 
     The notebook is a directory, not a file type: `memory/learning.txt` and
@@ -98,13 +110,22 @@ def _is_memory_path(path_lower: str, file_name: str) -> bool:
     matching a `memory/` segment anywhere — is what keeps a game's own
     `src/memory/` source directory writable.
 
+    A write is the notebook if EITHER reading of its path says so: the one the
+    caller named, or the one the filesystem resolves it to. A link named
+    `Notes` pointing at `memory/` is only visible to the second; a root
+    `memory/` that is itself a link out of the project is only visible to the
+    first.
+
     MEMORY.md stays a basename match, like PLANNING_DOCS: no subagent has a
     reason to write a file by that name anywhere in the tree.
     """
     if file_name == MEMORY_INDEX:
         return True
-    segments = _project_relative_segments(path_lower)
-    return bool(segments) and segments[0] == "memory" and len(segments) > 1
+    for resolve in (False, True):
+        segments = _project_relative_segments(file_path, resolve)
+        if segments and segments[0] == "memory" and len(segments) > 1:
+            return True
+    return False
 
 
 def _is_e2e_path(path_lower: str) -> bool:
@@ -250,9 +271,14 @@ def _lookup_agent_type(agent_id: str) -> str:
     return ""
 
 
-def _check_subagent(path_lower: str, file_name: str, agent_id: str,
-                    agent_type: str, scope: str = SCOPE_FULL) -> None:
+def _check_subagent(file_path: str, path_lower: str, file_name: str,
+                    agent_id: str, agent_type: str,
+                    scope: str = SCOPE_FULL) -> None:
     """Apply subagent rules. Calls _block on violation.
+
+    `file_path` is the write's original, un-lowercased path — the memory rule
+    resolves it against the filesystem and needs the real case to follow a
+    link. Every other rule here matches on text, so it reads `path_lower`.
 
     `scope` is `SCOPE_MEMORY` for a runtime that knows a write comes from a
     delegated session but cannot tell which role it is running (OpenCode child
@@ -260,7 +286,7 @@ def _check_subagent(path_lower: str, file_name: str, agent_id: str,
     apply without that identity; the ownership rules below are not.
     """
     _, ext = os.path.splitext(path_lower)
-    if _is_memory_path(path_lower, file_name):
+    if _is_memory_path(file_path, file_name):
         _block(f"Subagents cannot write project memory ({file_name}). "
                "Report execution results and failure evidence in your report; "
                "the dispatching role owns MEMORY.md and memory/.",
@@ -349,7 +375,8 @@ def main():
                      file=file_name, agent_id=agent_id or "main", role=role)
         sys.exit(0)
     elif is_subagent:
-        _check_subagent(path_lower, file_name, agent_id, agent_type, scope)
+        _check_subagent(file_path, path_lower, file_name, agent_id,
+                        agent_type, scope)
     else:
         _check_main(role, path_lower, file_name, ext)
 

@@ -81,13 +81,29 @@ project knowledge.
 
 The `memory/` rule anchors on the project root rather than matching a `memory/`
 path segment anywhere, so a game's own `src/memory/` source directory stays
-writable. Anchoring resolves the path first — `realpath` against the hook's
-cwd, which is the project root — so `..` and symlinks cannot smuggle a write
-past it: `src/../memory/learning.txt` is the notebook and is blocked, while
-`src/memory/../notes.md` is not. A path that resolves outside the project is
-not the notebook either. The `.claude/worktrees/<agent>/` prefix is stripped
-after resolution, since a worker writes from inside its worktree.
-`MEMORY.md` itself is a basename match, like the planning docs.
+writable. Both anchors are built from the hook's cwd, which is the project
+root, so relative and absolute input are handled alike.
+
+The path is normalized before any segment is read, in **two** readings, and a
+write is the notebook if either one says so:
+
+| Reading | Built with | Sees |
+|---|---|---|
+| what the caller named | `abspath` — `..` folded, symlinks left alone | a root `memory/` that is itself a link out of the project |
+| where the write lands | `realpath` — `..` folded, symlinks followed | a link such as `Notes -> memory/` |
+
+Neither is sufficient alone. So `src/../memory/learning.txt` and
+`Notes/learning.txt` are both blocked, while `src/memory/../notes.md` is not,
+and a path that neither reading places under the root `memory/` is not the
+notebook either.
+
+The path keeps its original case through this: lower-casing it before
+`realpath` would look up a name that does not exist on a case-sensitive
+filesystem and silently fail to follow the very link the rule is meant to
+catch. Only the comparison is case-insensitive. The
+`.claude/worktrees/<agent>/` prefix is stripped after normalization, since a
+worker writes from inside its worktree. `MEMORY.md` itself is a basename
+match, like the planning docs.
 
 Runner note: the role-ownership part of this gate requires a runtime-provided
 `agent_id`. OpenCode child sessions do not expose that payload, so the OpenCode
