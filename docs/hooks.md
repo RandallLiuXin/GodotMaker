@@ -100,7 +100,12 @@ notebook either.
 The path keeps its original case through this: lower-casing it before
 `realpath` would look up a name that does not exist on a case-sensitive
 filesystem and silently fail to follow the very link the rule is meant to
-catch. Only the comparison is case-insensitive. The
+catch. Only the comparison is case-insensitive. Windows' extended-length
+prefix is dropped *after* normalization, not before — `abspath` and
+`realpath` rewrite `//?/C:/proj/x` into the backslash spelling, so an earlier
+strip would miss the forward-slash form and then be handed a freshly
+normalized prefix. The asset role's project-root `ASSETS.md` check shares
+this normalization for the same reason. The
 `.claude/worktrees/<agent>/` prefix is stripped after normalization, since a
 worker writes from inside its worktree. `MEMORY.md` itself is a basename
 match, like the planning docs.

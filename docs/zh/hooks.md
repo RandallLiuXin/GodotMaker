@@ -85,7 +85,10 @@ asset-producer 以及任何其他被派发的角色——都被阻止写入根 `
 
 整个过程保留路径的原始大小写：在 `realpath` 之前小写化，会在大小写敏感的文件系统上
 查找一个并不存在的名字，从而无法跟随本规则正要拦截的那个软链。只有比较环节是大小写
-无关的。`.claude/worktrees/<agent>/` 前缀在归一化之后剥离，因为 Worker 是从自己的
+无关的。Windows 的扩展长度前缀在归一化**之后**才剥离，而不是之前——`abspath` 与
+`realpath` 会把 `//?/C:/proj/x` 改写成反斜杠拼法，若提前剥离就会漏掉正斜杠拼法，
+随后还被重新加上一个刚归一化出来的前缀。asset 角色的项目根 `ASSETS.md` 判定基于同样
+的理由共用这套归一化。`.claude/worktrees/<agent>/` 前缀在归一化之后剥离，因为 Worker 是从自己的
 worktree 里写文件的。`MEMORY.md` 本身按 basename 匹配，与规划文档一致。
 
 **这个 gate 覆盖什么、不覆盖什么。** 它是挂在 `Write|Edit` 上的 `PreToolUse`

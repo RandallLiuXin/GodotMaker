@@ -55,17 +55,24 @@ RESCUE_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/current_role"}
 
 
-def _strip_extended_prefix(path: str) -> str:
-    r"""Drop Windows' extended-length prefix so the path anchors normally.
+def _anchor_form(normalize, path: str) -> str:
+    r"""One comparable spelling of a path: absolute, `/`-separated, lower-case.
 
-    `\\?\C:\proj\memory\x` names the same file as `C:\proj\memory\x`, but
-    neither `abspath` nor `realpath` removes the prefix, so the anchored
-    comparison would place it outside the project and wave it through.
+    Windows' extended-length prefix is dropped here, and dropping it *after*
+    `normalize` is the whole point: `\\?\C:\proj\x` and `//?/C:/proj/x` name
+    the same file, and `abspath` / `realpath` rewrite the second into the
+    first. Stripping beforehand would miss the forward-slash spelling and then
+    hand it a freshly-normalized prefix — which is exactly how it slipped past
+    the anchored comparison and read as outside the project.
+
+    `normalize` is `os.path.abspath` or `os.path.realpath`; both can raise on
+    an unreachable UNC path, and callers are expected to catch that.
     """
-    for prefix, replacement in ((r"\\?\UNC" + "\\", "\\\\"), (r"\\?" + "\\", "")):
-        if path.startswith(prefix):
-            return replacement + path[len(prefix):]
-    return path
+    normalized = normalize(path).replace("\\", "/").lower()
+    for prefix, replacement in (("//?/unc/", "//"), ("//?/", "")):
+        if normalized.startswith(prefix):
+            return replacement + normalized[len(prefix):]
+    return normalized
 
 
 def _project_relative_segments(file_path: str, resolve: bool) -> list[str] | None:
@@ -102,14 +109,13 @@ def _project_relative_segments(file_path: str, resolve: bool) -> list[str] | Non
     """
     normalize = os.path.realpath if resolve else os.path.abspath
     try:
-        root = normalize(os.getcwd()).replace("\\", "/").rstrip("/").lower()
-        target = normalize(_strip_extended_prefix(file_path))
+        root = _anchor_form(normalize, os.getcwd()).rstrip("/")
+        target = _anchor_form(normalize, file_path)
     except (OSError, ValueError):
         # `realpath` raises on an unreachable UNC path. A hook must never
         # crash, and this reading simply has nothing to say — the lexical
         # reading, which touches no filesystem, still gets its vote.
         return None
-    target = target.replace("\\", "/").lower()
     if not target.startswith(f"{root}/"):
         return None  # another drive, or outside the project
     segments = [s for s in target[len(root) + 1:].split("/") if s]
@@ -191,12 +197,19 @@ def _is_project_root_assets_md(path_lower: str) -> bool:
     input untouched but cwd-derived paths often arrive already resolved,
     so the two sides drift and a legitimately-rooted ASSETS.md gets
     rejected. realpath collapses symlinks on both sides identically.
+
+    Shares `_anchor_form` with the memory rule so both sides spell an
+    extended-length path the same way: without it, `\\?\<proj>\ASSETS.md`
+    compares unequal to the project root's own ASSETS.md and the asset
+    role's project-root limit reads as unmet.
     """
     if path_lower == "assets.md":
         return True
-    abs_input = os.path.realpath(path_lower).replace("\\", "/").lower()
-    abs_root = os.path.realpath("assets.md").replace("\\", "/").lower()
-    return abs_input == abs_root
+    try:
+        return (_anchor_form(os.path.realpath, path_lower)
+                == _anchor_form(os.path.realpath, "assets.md"))
+    except (OSError, ValueError):
+        return False  # unresolvable — not the project-root ASSETS.md
 
 
 def _block(reason: str, file_name: str, agent_id: str = "") -> None:

@@ -386,6 +386,28 @@ class TestRoleBased:
                 f"asset role must allow project-root ASSETS.md: {path}"
             )
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    @pytest.mark.parametrize("spelling", ["backslash", "forward"],
+                             ids=["\\\\?\\", "//?/"])
+    def test_asset_root_assets_md_survives_an_extended_length_prefix(
+            self, project_dir, spelling):
+        r"""`\\?\<proj>\ASSETS.md` is the project-root ASSETS.md.
+
+        This rule anchors on the project root the same way the memory rule
+        does, so it had the same blind spot: the prefix made the two sides
+        compare unequal and the asset role's own file read as out of scope.
+        """
+        write_current_role("asset")
+        tail = os.path.join(project_dir, "ASSETS.md")
+        path = ("\\\\?\\" + tail if spelling == "backslash"
+                else "//?/" + tail.replace("\\", "/"))
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "",
+        })
+        assert not is_blocked(parsed), path
+
     def test_asset_blocked_from_non_root_assets_md(self, project_dir):
         """Project-root ASSETS.md only — a sibling/nested ASSETS.md must
         be blocked even though the basename matches. The hook's deny
@@ -723,25 +745,56 @@ class TestProjectMemoryIsNotSubagentWritable:
             shutil.rmtree(outside, ignore_errors=True)
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    @pytest.mark.parametrize("spelling", ["backslash", "forward", "mixed"],
+                             ids=["\\\\?\\", "//?/", "//?/-mixed"])
     @pytest.mark.parametrize("parts", [
         ("memory", "learning.txt"),
         ("memory", "ui", "notes.txt"),
         ("src", "..", "memory", "learning.txt"),
     ])
-    def test_windows_extended_length_prefix_is_blocked(self, project_dir, parts):
+    def test_windows_extended_length_prefix_is_blocked(self, project_dir, parts,
+                                                       spelling):
         r"""`\\?\C:\proj\memory\x` names the same file as `C:\proj\memory\x`.
 
         Neither `abspath` nor `realpath` strips the prefix, so without an
         explicit strip the anchored comparison places it outside the project.
+        Both spellings must be covered: `abspath` and `realpath` rewrite
+        `//?/C:/…` into `\\?\C:\…`, so a strip that ran first would miss the
+        forward-slash form and then be handed a freshly-normalized prefix.
         """
+        tail = os.path.join(project_dir, *parts)
+        path = {
+            "backslash": "\\\\?\\" + tail,
+            "forward": "//?/" + tail.replace("\\", "/"),
+            "mixed": "//?/" + tail,
+        }[spelling]
         write_current_role("build")
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
-            "tool_input": {"file_path": "\\\\?\\" + os.path.join(project_dir, *parts)},
+            "tool_input": {"file_path": path},
             "agent_id": "w1",
             "agent_type": "worker",
         })
-        assert is_blocked(parsed)
+        assert is_blocked(parsed), path
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    @pytest.mark.parametrize("spelling", ["backslash", "forward"])
+    def test_extended_length_prefix_does_not_widen_the_rule(self, project_dir,
+                                                            spelling):
+        """Stripping the prefix must not pull a nested `memory/` in with it."""
+        tail = os.path.join(project_dir, "src", "memory", "s_memory.gd")
+        path = ("\\\\?\\" + tail if spelling == "backslash"
+                else "//?/" + tail.replace("\\", "/"))
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        reason = (parsed or {}).get("hookSpecificOutput", {}).get(
+            "permissionDecisionReason", "")
+        assert "project memory" not in reason
 
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
     def test_an_unreachable_unc_path_neither_crashes_nor_matches(self, project_dir):
