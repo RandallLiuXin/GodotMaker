@@ -712,6 +712,22 @@ class TestThroughTheStopHook:
         assert event["retryable"] is True
         assert ".godotmaker/traces/build_m01.log" in event["evidence_paths"]
 
+    @pytest.mark.parametrize("message", ["", "   ", "\n", "  \n\t \n "],
+                             ids=["empty", "spaces", "newline", "mixed"])
+    def test_whitespace_only_output_counts_as_silent(self, project_dir, message):
+        """A run that returned `"  \\n "` said no more than one that returned ""."""
+        write_current_role("build")
+        run_hook(DISPATCHER, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "w1",
+            "agent_type": "worker",
+            "last_assistant_message": message,
+        })
+        events = read_metrics("worker_error")
+        assert len(events) == 1
+        assert events[0]["error_type"] == "unverified_handoff"
+        assert events[0]["summary"] == "stopped without producing a report"
+
     @pytest.mark.parametrize("agent_type", ["worker", "verifier", "asset-producer"])
     def test_a_silent_stop_is_recorded_as_an_unverified_handoff(
             self, project_dir, agent_type):

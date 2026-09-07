@@ -278,10 +278,11 @@ condition` from the report's Repair Attempt Evidence, then an unverified
 release. An explicit handoff condition outranks status because a timeout or
 tool fault explains a `FAILED` that the status alone does not.
 
-A stop that emitted no report at all is recorded too: nothing validated it,
-so it counts as `unverified` rather than terminal, and the event says
-`stopped without producing a report`. That is the crash-or-timeout case, and
-it applies only inside an active pipeline role.
+A stop that emitted no report at all — empty or whitespace-only — is
+recorded too: nothing validated it, so it counts as `unverified` rather than
+terminal, and the event says `stopped without producing a report`. That is
+the crash-or-timeout case, and it applies only inside an active pipeline
+role.
 
 `Status` is read last, and only for the roles whose status vocabulary
 describes their own run in `DONE` / `PARTIAL` / `FAILED` terms — worker,

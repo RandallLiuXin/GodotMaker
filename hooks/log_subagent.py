@@ -247,9 +247,10 @@ def handle_stop(data: dict, verdict=None) -> None:
     # A dispatched role that stopped without emitting anything never had a
     # report to validate, so the hook skipped it and the stop read as
     # terminal — leaving the crash/timeout case the diagnostics exist for with
-    # no record at all. Only inside an active pipeline: elsewhere a silent
-    # subagent is just a subagent.
-    silent = bool(stage) and not message and effective_role in KNOWN_ROLES
+    # no record at all. Whitespace counts as nothing: a run that returned
+    # `"  \n "` said no more than one that returned "". Only inside an active
+    # pipeline: elsewhere a silent subagent is just a subagent.
+    silent = bool(stage) and not message.strip() and effective_role in KNOWN_ROLES
     kind = OUTCOME_UNVERIFIED if silent else classify_stop(
         verdict, report, effective_role)
 

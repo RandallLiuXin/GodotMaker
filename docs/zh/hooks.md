@@ -227,9 +227,10 @@ memory 或 learning 条目。
 `Handoff condition`，再次是未经校验即被放行。显式的 handoff condition 优先于
 status——超时或工具故障能解释 status 本身解释不了的 `FAILED`。
 
-完全没有产出报告就结束的 stop 同样会被记录：既然没有任何东西校验过它，它算
-`unverified` 而不是终态，事件的 summary 为 `stopped without producing a report`。
-这正是崩溃或超时的情形，且只在流水线角色活跃时生效。
+完全没有产出报告就结束的 stop 同样会被记录（空字符串和纯空白一视同仁）：既然没有
+任何东西校验过它，它算 `unverified` 而不是终态，事件的 summary 为
+`stopped without producing a report`。这正是崩溃或超时的情形，且只在流水线角色活跃
+时生效。
 
 `Status` 最后才读，且只对「status 词表描述自身运行」的角色生效，即用
 `DONE` / `PARTIAL` / `FAILED` 的 worker、asset-producer、analyst。Verifier 的
