@@ -55,6 +55,10 @@ and nothing else — worker traces, exploration notes and unverified MEMORY
 learnings never reach it. When the summary and a canonical document disagree,
 the canonical document wins.
 
+It links only what the archive actually holds. A project with no `memory/`
+directory, or a backfilled archive missing a canonical document, gets a summary
+without that pointer rather than one advertising a link that 404s.
+
 ## Immutability
 
 `evidence/manifest.json` carries `"sealed": true` once a tag is fully sealed.
@@ -84,11 +88,14 @@ which is pure derived state, rendered only from manifests already on disk.
 | before or at the seal commit | tag unsealed, parent index untouched. Re-run `index <Tag>`. |
 | at the parent index | tag sealed and correct; the index merely omits it. Run `reindex`. |
 
-`archive` is the mirror image: a `--force` rewrite retires the existing seal
-*before* it overwrites anything — it drops the tag from the parent index, then
-deletes the manifest, then copies. A copy that fails partway therefore leaves an
-archive that plainly reads as unsealed and unlisted, rather than one still
-carrying `sealed: true` over hashes that no longer describe its files.
+Every path that rewrites an already-sealed archive — `archive --force`,
+`index --force`, `backfill --force` — retires the existing seal *before* it
+replaces anything: it drops the tag from the parent index, then deletes the
+manifest, then writes. A write that fails partway therefore leaves an archive
+that plainly reads as unsealed and unlisted, rather than one still carrying
+`sealed: true` over hashes that no longer describe its files. If retiring the
+seal is itself what fails, nothing has been rewritten and the archive is
+untouched.
 
 Neither branch can produce an index entry for an unsealed tag, and neither
 strands a sealed archive with no way back in. `backfill` follows the same

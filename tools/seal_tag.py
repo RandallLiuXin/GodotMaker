@@ -346,6 +346,28 @@ def _is_sealed(dest_dir: Path) -> bool:
     return bool(manifest and manifest.get("sealed") is True)
 
 
+def _retire_seal(dest_dir: Path, tag: str) -> None:
+    """Drop a sealed tag's marker and index entry before rewriting it.
+
+    Every path that mutates an already-sealed archive must call this first —
+    `archive --force`, `index --force`, `backfill --force`. The moment a
+    rewrite replaces one file, the old manifest's hashes describe a snapshot
+    that no longer exists, while its `sealed: true` would still let the
+    finalize gate accept the half-rewritten archive and lock `archive` /
+    `index` out of it at exit 3.
+
+    Index first, marker second: dropping a tag from the parent index can only
+    make it name fewer tags, whereas dropping the marker first would leave the
+    index naming a tag that is no longer sealed.
+
+    A no-op on an unsealed archive, which has no seal to retire.
+    """
+    if not _is_sealed(dest_dir):
+        return
+    _write_parent_readme(dest_dir.parent, exclude={tag})
+    (dest_dir / MANIFEST_RELPATH).unlink(missing_ok=True)
+
+
 # --------------------------------------------------------------- link checks
 
 
@@ -485,18 +507,10 @@ def cmd_archive(project_path: Path, tag: str, force: bool = False) -> int:
         )
         return 3
 
-    # Retire any existing seal BEFORE touching a single file. The moment the
-    # first copy lands, the old manifest's hashes describe a snapshot that no
-    # longer exists — and on a --force rewrite it still says `sealed: true`,
-    # which would let the finalize gate accept a half-rewritten archive and
-    # lock `archive` / `index` out of it at exit 3.
-    #
-    # Index first, marker second. Dropping a tag from the index can only make
-    # it name fewer tags; dropping the marker first would leave the index
-    # naming a tag that is no longer sealed.
     try:
-        if _is_sealed(dest_dir):
-            _write_parent_readme(dest_dir.parent, exclude={tag})
+        _retire_seal(dest_dir, tag)
+        # A full rewrite also invalidates any surviving unsealed manifest: its
+        # hashes describe the previous attempt's content, not this one's.
         (dest_dir / MANIFEST_RELPATH).unlink(missing_ok=True)
     except OSError as exc:
         print(
@@ -622,6 +636,44 @@ def _bullets(items: list[str], empty: str) -> list[str]:
     return [f"- {item}" for item in _clip(items)] or [f"- {empty}"]
 
 
+def _canonical_pointers(manifest: dict) -> list[str]:
+    """The "Canonical documents" bullets, gated on what was actually archived.
+
+    SUMMARY.md is the advertised retrieval entry point, so every link in it
+    must resolve. `backfill` deliberately never copies a `memory/` subtree into
+    a historical tag and tolerates missing canonical documents, and a project
+    without `memory/` archives none — so nothing here can be assumed present.
+    """
+    present = {entry["path"] for entry in manifest.get("files", [])}
+    lines: list[str] = []
+    for name, label in (
+        ("CHANGELOG.md", "what shipped in this tag"),
+        ("PLAN.md", "playable units and the task table"),
+        ("GDD-snapshot.md", "design as of this tag"),
+    ):
+        if name in present:
+            lines.append(f"- [{name}]({name}) — {label}")
+
+    architecture = [f"[{n}]({n})" for n in ("STRUCTURE.md", "SCENES.md", "STYLE.md")
+                    if n in present]
+    if architecture:
+        lines.append(f"- {' · '.join(architecture)} — architecture, scenes, style")
+
+    if "MEMORY.md" in present:
+        if manifest.get("memory_files"):
+            lines.append("- [MEMORY.md](MEMORY.md) + [memory/](memory/) — "
+                         "frozen notebook and sub-system files")
+        else:
+            lines.append("- [MEMORY.md](MEMORY.md) — frozen notebook "
+                         "(no `memory/` subtree archived for this tag)")
+
+    if "evaluation-final.json" in present:
+        lines.append("- [evaluation-final.json](evaluation-final.json) — evaluator verdict")
+    lines.append(f"- [{MANIFEST_RELPATH}]({MANIFEST_RELPATH}) — "
+                 "full archive inventory with hashes")
+    return lines
+
+
 def _render_summary(project_path: Path, tag: str, dest_dir: Path, manifest: dict) -> str:
     """Render SUMMARY.md from confirmed, canonical inputs only.
 
@@ -665,13 +717,7 @@ def _render_summary(project_path: Path, tag: str, dest_dir: Path, manifest: dict
         "",
         "## Canonical documents",
         "",
-        "- [CHANGELOG.md](CHANGELOG.md) — what shipped in this tag",
-        "- [PLAN.md](PLAN.md) — playable units and the task table",
-        "- [GDD-snapshot.md](GDD-snapshot.md) — design as of this tag",
-        "- [STRUCTURE.md](STRUCTURE.md) · [SCENES.md](SCENES.md) · [STYLE.md](STYLE.md) — architecture, scenes, style",
-        "- [MEMORY.md](MEMORY.md) + [memory/](memory/) — frozen notebook and sub-system files",
-        "- [evaluation-final.json](evaluation-final.json) — evaluator verdict",
-        "- [evidence/manifest.json](evidence/manifest.json) — full archive inventory with hashes",
+        *_canonical_pointers(manifest),
         "",
         "## Verification",
         "",
@@ -930,7 +976,20 @@ def cmd_index(project_path: Path, tag: str, force: bool = False) -> int:
         )
         return 2
 
+    # Read the carried warnings before the seal is retired — a --force reseal
+    # deletes the manifest they live in.
     previous = _read_manifest(dest_dir) or {}
+    try:
+        _retire_seal(dest_dir, tag)
+    except OSError as exc:
+        print(
+            f"error: could not retire the existing seal on docs/tags/{tag}/ "
+            f"({exc.__class__.__name__}: {exc}). Nothing was rewritten - fix the "
+            f"underlying fs issue and re-run.",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         manifest = _write_index_files(
             project_path, tag, dest_dir,
@@ -1022,6 +1081,9 @@ def cmd_backfill(
                     f"pass --force to re-index it)"
                 )
                 continue
+            # --force re-indexes a sealed archive; retire that seal before
+            # `_write_index_files` replaces SUMMARY.md and README.md.
+            _retire_seal(dest_dir, dest_dir.name)
             before = {
                 name: _sha256(dest_dir / name)
                 for name in canonical if (dest_dir / name).is_file()
@@ -1068,8 +1130,9 @@ def cmd_backfill(
         print(
             f"error: backfill failed ({exc.__class__.__name__}: {exc}). "
             f"{len(sealed_now)} archive(s) sealed before the failure; the rest stay "
-            f"unsealed and docs/tags/README.md was not touched. Re-run backfill after "
-            f"fixing the underlying fs issue - already-sealed archives are skipped.",
+            f"unsealed, and docs/tags/README.md names only archives that are still "
+            f"sealed. Re-run backfill after fixing the underlying fs issue - "
+            f"already-sealed archives are skipped.",
             file=sys.stderr,
         )
         return 1
