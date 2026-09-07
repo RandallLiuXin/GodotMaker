@@ -3,9 +3,11 @@
 Each subcommand has its own block. archive/reset assertions look at the
 filesystem after the run; bundle assertions parse the stdout JSON.
 """
+import hashlib
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -47,7 +49,13 @@ def project_dir(tmp_path: Path) -> Path:
     (tmp_path / "STRUCTURE.md").write_text("# STRUCTURE\n")
     (tmp_path / "STYLE.md").write_text("# STYLE\n")
     (tmp_path / "SCENES.md").write_text("# SCENES\n")
-    (tmp_path / "MEMORY.md").write_text("# MEMORY\n")
+    (tmp_path / "MEMORY.md").write_text(
+        "# MEMORY\n\n## System Index\n\n"
+        "- [movement](memory/movement.md) - PlayerMovementSystem notes\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "memory").mkdir()
+    (tmp_path / "memory" / "movement.md").write_text("# movement\n", encoding="utf-8")
     (tmp_path / ".godotmaker" / "evaluation.json").write_text(
         json.dumps({"result": "approve", "minor_issues": ["small note"]})
     )
@@ -74,13 +82,15 @@ def test_archive_copies_docs_and_evidence(project_dir: Path):
     assert (dest / "evidence" / "e2e" / "test_v0_1_0_M1_jump.py").exists()
     assert not (dest / "evidence" / "e2e" / "screenshots").exists()
     assert (dest / "evidence" / "screenshots" / "scene_main.png").exists()
-    manifest = json.loads((dest / "evidence" / "manifest.json").read_text())
-    assert manifest == {
-        "archive_path": "docs/tags/v0.1.0/evidence/",
-        "e2e_files": 1,
-        "screenshots": 1,
-        "warnings": [],
-    }
+    assert (dest / "memory" / "movement.md").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["archive_path"] == "docs/tags/v0.1.0/evidence/"
+    assert manifest["e2e_files"] == 1
+    assert manifest["screenshots"] == 1
+    assert manifest["memory_files"] == 1
+    assert manifest["warnings"] == []
+    # `archive` alone never seals — that is `index`'s job.
+    assert manifest["sealed"] is False
 
 
 def test_archive_overwrites_partial_existing_archive(project_dir: Path):
@@ -457,3 +467,1122 @@ def test_bundle_oserror_returns_exit_1(
 
     rc = seal_tag.cmd_bundle(project_dir, "v0.1.0")
     assert rc == 1
+
+
+# ---------- archive: memory subtree + link integrity ----------
+
+CHANGELOG_BODY = (
+    "# Changelog - v0.1.0\n\n"
+    "**Released:** 2026-05-12\n"
+    "**Theme:** Foundation\n\n"
+    "## Delivered mechanics\n\n"
+    "- [v0.1.0-M1] jump\n"
+    "- [v0.1.0-M2] dash\n\n"
+    "## Added systems / scenes / assets\n\n"
+    "- MovementSystem\n"
+    "- Main.tscn\n\n"
+    "## Known limitations\n\n"
+    "- camera jitter ships as-is\n"
+)
+
+
+def write_changelog(project_dir: Path, tag: str = "v0.1.0", body: str = CHANGELOG_BODY) -> None:
+    dest = project_dir / "docs" / "tags" / tag
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "CHANGELOG.md").write_text(body, encoding="utf-8")
+
+
+def seal(project_dir: Path, tag: str = "v0.1.0") -> subprocess.CompletedProcess:
+    """archive -> CHANGELOG -> index, the full /gm-finalize archive path."""
+    r = run(project_dir, "archive", tag)
+    assert r.returncode == 0, r.stderr
+    write_changelog(project_dir, tag)
+    return run(project_dir, "index", tag)
+
+
+def _stage_extra_tag(project_dir: Path, tag: str, theme: str) -> None:
+    """Archive another tag and write its CHANGELOG, stopping short of `index`."""
+    (project_dir / "PLAN.md").write_text(f"# PLAN\n**Tag:** {tag}\n\n- [{tag}-M1] thing\n")
+    assert run(project_dir, "archive", tag).returncode == 0
+    write_changelog(
+        project_dir, tag,
+        f"# Changelog\n\n**Released:** 2026-06-01\n**Theme:** {theme}\n\n"
+        f"## Delivered mechanics\n\n- [{tag}-M1] thing\n",
+    )
+
+
+def test_archive_freezes_memory_subtree_next_to_memory_md(project_dir: Path):
+    (project_dir / "memory" / "collision.md").write_text("# collision\n", encoding="utf-8")
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert (dest / "memory" / "movement.md").read_text(encoding="utf-8") == "# movement\n"
+    assert (dest / "memory" / "collision.md").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["memory_files"] == 2
+    assert {"memory/movement.md", "memory/collision.md"} <= {
+        entry["path"] for entry in manifest["files"]
+    }
+
+
+def test_archive_blocks_when_memory_link_has_no_archived_target(project_dir: Path):
+    (project_dir / "MEMORY.md").write_text(
+        "# MEMORY\n\n- [ghost](memory/ghost.md) - never written\n", encoding="utf-8"
+    )
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 2
+    assert "memory/ghost.md" in r.stderr
+
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["sealed"] is False, "a broken index must never seal"
+
+
+def test_archive_ignores_links_inside_html_comments_and_code_fences(project_dir: Path):
+    """templates/MEMORY.md ships its example `memory/*.md` entries inside an
+    HTML comment. Treating those as real links would block every first
+    finalize on a fresh project."""
+    (project_dir / "MEMORY.md").write_text(
+        "# MEMORY\n\n"
+        "<!-- Example entries (delete when starting):\n"
+        "- [movement_system](memory/movement_system.md) - example\n"
+        "-->\n\n"
+        "```markdown\n- [fenced](memory/fenced.md)\n```\n\n"
+        "- [movement](memory/movement.md) - real entry\n",
+        encoding="utf-8",
+    )
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+
+
+def test_archive_warns_but_does_not_block_on_links_outside_the_archive(project_dir: Path):
+    """MEMORY.md legitimately cites source files that are not archived."""
+    (project_dir / "MEMORY.md").write_text(
+        "# MEMORY\n\n- [movement](memory/movement.md)\n- see [player](src/player.gd)\n",
+        encoding="utf-8",
+    )
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    manifest = json.loads(
+        (project_dir / "docs" / "tags" / "v0.1.0" / "evidence" / "manifest.json")
+        .read_text(encoding="utf-8")
+    )
+    assert any("src/player.gd" in w for w in manifest["link_warnings"])
+
+
+def test_archive_blocks_links_that_escape_the_archive_boundary(project_dir: Path):
+    (project_dir / "MEMORY.md").write_text(
+        "# MEMORY\n\n- [escape](../../../secrets.md)\n", encoding="utf-8"
+    )
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 2
+    assert "escapes the archive boundary" in r.stderr
+
+
+def test_archive_blocks_absolute_links(project_dir: Path):
+    (project_dir / "MEMORY.md").write_text(
+        "# MEMORY\n\n- [abs](/etc/passwd)\n", encoding="utf-8"
+    )
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 2
+    assert "absolute path" in r.stderr
+
+
+def test_archive_excludes_caches_and_temp_files(project_dir: Path):
+    (project_dir / "e2e" / "__pycache__").mkdir()
+    (project_dir / "e2e" / "__pycache__" / "test_x.pyc").write_text("junk")
+    (project_dir / "e2e" / "scratch.tmp").write_text("junk")
+    (project_dir / "memory" / "notes.bak").write_text("junk")
+
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert not (dest / "evidence" / "e2e" / "__pycache__").exists()
+    assert not (dest / "evidence" / "e2e" / "scratch.tmp").exists()
+    assert not (dest / "memory" / "notes.bak").exists()
+
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    paths = [entry["path"] for entry in manifest["files"]]
+    assert not any(p.endswith((".pyc", ".tmp", ".bak")) for p in paths)
+    assert "evidence/manifest.json" not in paths, "the manifest never lists itself"
+
+
+def test_archive_preserves_utf8_document_content(project_dir: Path):
+    (project_dir / "SCENES.md").write_text(
+        "# 场景\n\n- 主场景 — Main.tscn\n", encoding="utf-8"
+    )
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    archived = (project_dir / "docs" / "tags" / "v0.1.0" / "SCENES.md").read_text(
+        encoding="utf-8"
+    )
+    assert "主场景 — Main.tscn" in archived
+
+
+# ---------- index (seal) ----------
+
+def test_index_writes_summary_readme_and_parent_index(project_dir: Path):
+    r = seal(project_dir)
+    assert r.returncode == 0, r.stderr
+
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    summary = (dest / "SUMMARY.md").read_text(encoding="utf-8")
+    assert "# Summary — v0.1.0" in summary
+    assert "2026-05-12" in summary
+    assert "Foundation" in summary
+    assert "[v0.1.0-M1] jump" in summary
+    assert "MovementSystem" in summary
+    assert "camera jitter ships as-is" in summary
+    assert "**approve**" in summary
+
+    readme = (dest / "README.md").read_text(encoding="utf-8")
+    assert "sealed archive" in readme
+    assert "[SUMMARY.md](SUMMARY.md)" in readme
+    assert "Completeness:** complete" in readme
+
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "[v0.1.0](v0.1.0/)" in parent
+    assert "[SUMMARY](v0.1.0/SUMMARY.md)" in parent
+
+
+def test_index_manifest_carries_full_provenance(project_dir: Path):
+    (project_dir / ".godotmaker" / "version").write_text("1.2.3", encoding="utf-8")
+    assert seal(project_dir).returncode == 0
+
+    manifest = json.loads(
+        (project_dir / "docs" / "tags" / "v0.1.0" / "evidence" / "manifest.json")
+        .read_text(encoding="utf-8")
+    )
+    assert manifest["schema_version"] == 1
+    assert manifest["generator"] == "tools/seal_tag.py"
+    assert manifest["generator_version"] == "1.2.3"
+    assert manifest["sealed"] is True
+    assert manifest["stage"] == "sealed"
+    assert "source_revision" in manifest
+
+    by_path = {entry["path"]: entry for entry in manifest["files"]}
+    for required in ("PLAN.md", "SUMMARY.md", "README.md", "memory/movement.md",
+                     "evidence/e2e/test_v0_1_0_M1_jump.py",
+                     "evidence/screenshots/scene_main.png"):
+        assert required in by_path, required
+        entry = by_path[required]
+        assert entry["bytes"] > 0
+        assert len(entry["sha256"]) == 64
+
+    assert by_path["PLAN.md"]["category"] == "document"
+    assert by_path["SUMMARY.md"]["category"] == "index"
+    assert by_path["memory/movement.md"]["category"] == "memory"
+    assert by_path["evidence/e2e/test_v0_1_0_M1_jump.py"]["category"] == "e2e"
+    assert by_path["evidence/screenshots/scene_main.png"]["category"] == "screenshot"
+
+    # Hashes must match the bytes actually on disk.
+    plan = project_dir / "docs" / "tags" / "v0.1.0" / "PLAN.md"
+    assert by_path["PLAN.md"]["sha256"] == hashlib.sha256(plan.read_bytes()).hexdigest()
+
+
+def test_index_manifest_paths_are_posix_on_every_platform(project_dir: Path):
+    """A manifest written on Windows must compare byte-for-byte with one
+    written on Linux, so nested paths never use backslashes."""
+    assert seal(project_dir).returncode == 0
+    manifest = json.loads(
+        (project_dir / "docs" / "tags" / "v0.1.0" / "evidence" / "manifest.json")
+        .read_text(encoding="utf-8")
+    )
+    paths = [entry["path"] for entry in manifest["files"]]
+    assert all("\\" not in p for p in paths)
+    assert paths == sorted(paths), "manifest order must be stable"
+
+
+def test_index_refuses_when_changelog_missing(project_dir: Path):
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    r = run(project_dir, "index", "v0.1.0")
+    assert r.returncode == 2
+    assert "CHANGELOG.md" in r.stderr
+
+
+def test_index_regenerates_identical_content(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    first_summary = (dest / "SUMMARY.md").read_bytes()
+    first_readme = (dest / "README.md").read_bytes()
+    first_manifest = (dest / "evidence" / "manifest.json").read_bytes()
+
+    r = run(project_dir, "index", "v0.1.0", "--force")
+    assert r.returncode == 0, r.stderr
+    assert (dest / "SUMMARY.md").read_bytes() == first_summary
+    assert (dest / "README.md").read_bytes() == first_readme
+    assert (dest / "evidence" / "manifest.json").read_bytes() == first_manifest
+
+
+def test_summary_stays_within_its_length_bound(project_dir: Path):
+    seal_tag = _load_seal_tag_module()
+    filler = "x" * 400
+    body = (
+        "# Changelog\n\n**Released:** 2026-05-12\n**Theme:** Big\n\n"
+        "## Delivered mechanics\n\n"
+        + "".join(f"- [v0.1.0-M{i}] mechanic {i} {filler}\n" for i in range(50))
+        + "\n## Added systems / scenes / assets\n\n"
+        + "".join(f"- system {i}\n" for i in range(50))
+        + "\n## Known limitations\n\n"
+        + "".join(f"- limitation {i}\n" for i in range(50))
+    )
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    write_changelog(project_dir, body=body)
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+
+    summary = (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").read_text(
+        encoding="utf-8"
+    )
+    lines = summary.splitlines()
+    assert len(lines) <= seal_tag.SUMMARY_MAX_LINES
+    assert all(len(line) <= seal_tag.SUMMARY_MAX_ITEM_CHARS + 8 for line in lines)
+    assert "and 38 more" in summary, "clipped lists must say what was dropped"
+    assert "CHANGELOG.md" in summary, "and where the full list lives"
+
+
+def test_summary_does_not_absorb_worker_exploration_notes(project_dir: Path):
+    """SUMMARY is an index over confirmed deliverables. Worker discoveries and
+    unverified learnings stay in MEMORY.md."""
+    (project_dir / "MEMORY.md").write_text(
+        "# MEMORY\n\n- [movement](memory/movement.md)\n\n"
+        "## Discoveries\n\n- tried a raycast approach that half worked\n",
+        encoding="utf-8",
+    )
+    assert seal(project_dir).returncode == 0
+    summary = (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").read_text(
+        encoding="utf-8"
+    )
+    assert "raycast approach" not in summary
+    assert "[MEMORY.md](MEMORY.md)" in summary, "but it must still point at it"
+
+
+def test_summary_ignores_a_final_report_belonging_to_another_tag(project_dir: Path):
+    """final_report.json is per-tag overwritten - reading it blindly would
+    stamp the next tag's test counts onto this archive."""
+    (project_dir / ".godotmaker" / "final_report.json").write_text(
+        json.dumps({"tag": "v0.2.0", "summary": {"test_count": {"unit": 99}}}),
+        encoding="utf-8",
+    )
+    assert seal(project_dir).returncode == 0
+    summary = (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").read_text(
+        encoding="utf-8"
+    )
+    assert "99" not in summary
+    assert "Tests: not recorded" in summary
+
+
+def test_index_fs_failure_returns_exit_1(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    seal_tag = _load_seal_tag_module()
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    write_changelog(project_dir)
+
+    original = seal_tag._atomic_write_text
+
+    def fake_write(path, text):
+        if path.name == "SUMMARY.md":
+            raise OSError(28, "No space left on device")
+        return original(path, text)
+
+    monkeypatch.setattr(seal_tag, "_atomic_write_text", fake_write)
+    assert seal_tag.cmd_index(project_dir, "v0.1.0") == 1
+
+
+def test_index_leaves_the_tag_unsealed_when_the_seal_commit_fails(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The seal commit comes before the parent index. If it fails, the tag
+    stays unsealed AND the index was never touched — so the index cannot end
+    up advertising a tag that is still an overwritable partial snapshot."""
+    seal_tag = _load_seal_tag_module()
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    write_changelog(project_dir)
+
+    def boom(dest_dir, manifest):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(seal_tag, "_write_manifest", boom)
+    assert seal_tag.cmd_index(project_dir, "v0.1.0") == 1
+
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert not seal_tag._is_sealed(dest)
+    assert json.loads(
+        (dest / "evidence" / "manifest.json").read_text(encoding="utf-8")
+    )["sealed"] is False
+    assert not (project_dir / "docs" / "tags" / "README.md").exists(), (
+        "the parent index must not exist yet — nothing is sealed"
+    )
+
+    # Recovery is the documented partial-resume path: no --force needed.
+    monkeypatch.undo()
+    r = run(project_dir, "index", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    assert seal_tag._is_sealed(dest)
+    assert "[v0.1.0](v0.1.0/)" in (
+        project_dir / "docs" / "tags" / "README.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_index_never_lists_an_unsealed_tag_when_the_seal_commit_fails_later(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Same failure with a pre-existing parent index: the stale index keeps
+    listing only what is genuinely sealed, and never gains the failed tag."""
+    seal_tag = _load_seal_tag_module()
+    assert seal(project_dir).returncode == 0            # v0.1.0 sealed for real
+    parent_path = project_dir / "docs" / "tags" / "README.md"
+    before = parent_path.read_bytes()
+
+    _stage_extra_tag(project_dir, "v0.2.0", "Combat")
+
+    def boom(dest_dir, manifest):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(seal_tag, "_write_manifest", boom)
+    assert seal_tag.cmd_index(project_dir, "v0.2.0") == 1
+
+    assert not seal_tag._is_sealed(project_dir / "docs" / "tags" / "v0.2.0")
+    assert parent_path.read_bytes() == before
+    assert "v0.2.0" not in parent_path.read_text(encoding="utf-8")
+
+    monkeypatch.undo()
+    assert run(project_dir, "index", "v0.2.0").returncode == 0
+    assert "[v0.2.0](v0.2.0/)" in parent_path.read_text(encoding="utf-8")
+
+
+def test_index_reports_a_stale_parent_index_and_reindex_repairs_it(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The one failure `index` cannot finish itself: the seal landed but the
+    index refresh after it did not. The tag is sealed and correct, the index
+    merely omits it — never the other way round — and `reindex` repairs it
+    without touching any archive."""
+    seal_tag = _load_seal_tag_module()
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    write_changelog(project_dir)
+
+    def boom(tags_root):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(seal_tag, "_write_parent_readme", boom)
+    assert seal_tag.cmd_index(project_dir, "v0.1.0") == 1
+
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert seal_tag._is_sealed(dest), "the seal itself succeeded"
+    assert not (project_dir / "docs" / "tags" / "README.md").exists()
+
+    monkeypatch.undo()
+    # Re-running `index` is the wrong move here and says so with exit 3.
+    assert run(project_dir, "index", "v0.1.0").returncode == 3
+
+    archive_before = {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()}
+    r = run(project_dir, "reindex")
+    assert r.returncode == 0, r.stderr
+    assert "[v0.1.0](v0.1.0/)" in (
+        project_dir / "docs" / "tags" / "README.md"
+    ).read_text(encoding="utf-8")
+    assert {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()} == archive_before
+
+
+def test_reindex_rebuilds_the_parent_index_from_sealed_archives_only(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    _stage_extra_tag(project_dir, "v0.2.0", "Combat")   # archived, never indexed
+    (project_dir / "docs" / "tags" / "README.md").unlink()
+
+    r = run(project_dir, "reindex")
+    assert r.returncode == 0, r.stderr
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "[v0.1.0](v0.1.0/)" in parent
+    assert "v0.2.0" not in parent
+
+
+def test_reindex_without_a_tags_directory_exits_2(project_dir: Path):
+    r = run(project_dir, "reindex")
+    assert r.returncode == 2
+    assert "does not exist" in r.stderr
+
+
+def test_index_leaves_no_temp_files_behind(project_dir: Path):
+    """Index files are written atomically via a same-directory temp file; a
+    successful run must not leave one in the archive or the manifest."""
+    assert seal(project_dir).returncode == 0
+    seal_tag = _load_seal_tag_module()
+    tags_root = project_dir / "docs" / "tags"
+    assert not list(tags_root.rglob(f"*{seal_tag.TMP_SUFFIX}"))
+    manifest = json.loads(
+        (tags_root / "v0.1.0" / "evidence" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert not any(
+        e["path"].endswith(seal_tag.TMP_SUFFIX) for e in manifest["files"]
+    )
+
+
+def test_backfill_parent_index_never_lists_a_tag_whose_seal_failed(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Backfill seals target-by-target and writes the derived index last. A
+    seal that fails mid-run must leave the index listing only what actually
+    sealed — never the target that failed — and a plain re-run must recover."""
+    seal_tag = _load_seal_tag_module()
+    _legacy_archive(project_dir, "v0.0.8")
+    _legacy_archive(project_dir, "v0.0.9")
+    tags_root = project_dir / "docs" / "tags"
+
+    original = seal_tag._write_manifest
+
+    def fail_on_second(dest_dir, manifest):
+        if dest_dir.name == "v0.0.9":
+            raise OSError(28, "No space left on device")
+        return original(dest_dir, manifest)
+
+    monkeypatch.setattr(seal_tag, "_write_manifest", fail_on_second)
+    assert seal_tag.cmd_backfill(project_dir, None, True) == 1
+
+    assert seal_tag._is_sealed(tags_root / "v0.0.8")
+    assert not seal_tag._is_sealed(tags_root / "v0.0.9")
+    # The index write never ran, so it cannot advertise the failed tag.
+    assert not (tags_root / "README.md").exists()
+
+    monkeypatch.undo()
+    r = run(project_dir, "backfill", "--all")
+    assert r.returncode == 0, r.stderr
+    assert "skipped" in r.stdout, "the already-sealed target is skipped on re-run"
+    parent = (tags_root / "README.md").read_text(encoding="utf-8")
+    for tag in ("v0.0.8", "v0.0.9"):
+        assert seal_tag._is_sealed(tags_root / tag)
+        assert f"[{tag}]({tag}/)" in parent
+
+
+def test_backfill_reports_a_stale_parent_index_when_only_that_write_fails(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+):
+    seal_tag = _load_seal_tag_module()
+    _legacy_archive(project_dir, "v0.0.9")
+
+    def boom(tags_root):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(seal_tag, "_write_parent_readme", boom)
+    assert seal_tag.cmd_backfill(project_dir, None, True) == 1
+    assert "reindex" in capsys.readouterr().err
+
+    monkeypatch.undo()
+    assert seal_tag._is_sealed(project_dir / "docs" / "tags" / "v0.0.9")
+    assert run(project_dir, "reindex").returncode == 0
+    assert "[v0.0.9](v0.0.9/)" in (
+        project_dir / "docs" / "tags" / "README.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_no_parent_index_ever_lists_an_unsealed_tag_across_failure_points(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Acceptance invariant, checked after every single write in a seal.
+
+    Injects a failure at each successive `_atomic_write_text` call of an
+    `index` run and asserts the resulting parent index never names a tag that
+    is not sealed on disk.
+    """
+    seal_tag = _load_seal_tag_module()
+    tags_root = project_dir / "docs" / "tags"
+
+    for failing_call in range(1, 6):
+        assert run(project_dir, "archive", "v0.1.0", "--force").returncode == 0
+        write_changelog(project_dir)
+        calls = {"n": 0}
+        original = seal_tag._atomic_write_text
+
+        def counted(path, text):
+            calls["n"] += 1
+            if calls["n"] == failing_call:
+                raise OSError(28, "No space left on device")
+            return original(path, text)
+
+        monkeypatch.setattr(seal_tag, "_atomic_write_text", counted)
+        seal_tag.cmd_index(project_dir, "v0.1.0", force=True)
+        monkeypatch.undo()
+
+        if (tags_root / "README.md").is_file():
+            parent = (tags_root / "README.md").read_text(encoding="utf-8")
+            for child in tags_root.iterdir():
+                if child.is_dir() and not seal_tag._is_sealed(child):
+                    assert f"[{child.name}]({child.name}/)" not in parent, (
+                        f"unsealed {child.name} listed after failure #{failing_call}"
+                    )
+
+
+# ---------- immutability and resume ----------
+
+def test_sealed_archive_is_not_silently_overwritten(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\nrewritten\n")
+
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 3
+    assert "already sealed" in r.stderr
+    archived = (project_dir / "docs" / "tags" / "v0.1.0" / "PLAN.md").read_text()
+    assert "rewritten" not in archived
+
+    r = run(project_dir, "index", "v0.1.0")
+    assert r.returncode == 3
+    assert "already sealed" in r.stderr
+
+
+def test_force_reseals_an_already_sealed_archive(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\nrewritten\n")
+
+    r = run(project_dir, "archive", "v0.1.0", "--force")
+    assert r.returncode == 0, r.stderr
+    archived = (project_dir / "docs" / "tags" / "v0.1.0" / "PLAN.md").read_text()
+    assert "rewritten" in archived
+
+
+def test_partial_archive_is_resumable_without_force(project_dir: Path):
+    """Documented resume condition: an archive whose manifest is absent or
+    says `sealed: false` is a half-finished finalize, and re-running
+    `archive` is the recovery path."""
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    (dest / "STRUCTURE.md").unlink()            # simulate a crash mid-copy
+    (dest / "GDD-snapshot.md").write_text("stale half-run content")
+
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    assert (dest / "STRUCTURE.md").exists()
+    assert (dest / "GDD-snapshot.md").read_text() == "# GDD\n"
+    assert run(project_dir, "index", "v0.1.0").returncode == 2  # still needs CHANGELOG
+    write_changelog(project_dir)
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+
+
+def test_reindexing_a_sealed_tag_leaves_it_byte_identical(project_dir: Path):
+    """Repeated finalize runs on a completed tag must be a no-op, not a
+    silent rewrite."""
+    assert seal(project_dir).returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    before = {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()}
+
+    assert run(project_dir, "archive", "v0.1.0").returncode == 3
+    assert run(project_dir, "index", "v0.1.0").returncode == 3
+
+    after = {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()}
+    assert before == after
+
+
+# ---------- parent index ----------
+
+def _seal_extra_tag(project_dir: Path, tag: str, theme: str) -> None:
+    _stage_extra_tag(project_dir, tag, theme)
+    assert run(project_dir, "index", tag).returncode == 0
+
+
+def test_parent_readme_lists_every_sealed_tag_in_version_order(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    _seal_extra_tag(project_dir, "v0.2.0", "Combat")
+    _seal_extra_tag(project_dir, "v0.10.0", "Polish")
+
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    order = [parent.index(f"[{t}]({t}/)") for t in ("v0.1.0", "v0.2.0", "v0.10.0")]
+    assert order == sorted(order), "v0.2.0 must sort before v0.10.0"
+    assert "Combat" in parent and "Polish" in parent
+
+
+def test_parent_readme_omits_unsealed_and_nonexistent_tags(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    # v0.2.0 archived but never indexed - an in-progress finalize.
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.2.0\n")
+    assert run(project_dir, "archive", "v0.2.0").returncode == 0
+    # A stray directory that is not an archive at all.
+    (project_dir / "docs" / "tags" / "scratch").mkdir()
+
+    assert run(project_dir, "index", "v0.1.0", "--force").returncode == 0
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "[v0.1.0](v0.1.0/)" in parent
+    assert "v0.2.0" not in parent
+    assert "scratch" not in parent
+
+
+def test_generated_index_links_all_resolve(project_dir: Path):
+    """Markdown link check over everything seal_tag generates."""
+    seal_tag = _load_seal_tag_module()
+    assert seal(project_dir).returncode == 0
+    tags_root = project_dir / "docs" / "tags"
+
+    for doc in (tags_root / "README.md",
+                tags_root / "v0.1.0" / "README.md",
+                tags_root / "v0.1.0" / "SUMMARY.md"):
+        text = doc.read_text(encoding="utf-8")
+        targets = seal_tag._local_markdown_links(text)
+        assert targets, f"{doc.name} should link somewhere"
+        for target in targets:
+            assert (doc.parent / target).exists(), f"{doc.name} -> {target}"
+
+
+# ---------- backfill ----------
+
+def _legacy_archive(project_dir: Path, tag: str = "v0.0.9") -> Path:
+    """An archive in the pre-index layout: flat docs, no README/SUMMARY/memory."""
+    dest = project_dir / "docs" / "tags" / tag
+    dest.mkdir(parents=True)
+    for name in ("GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "SCENES.md"):
+        (dest / name).write_text(f"# legacy {name}\n", encoding="utf-8")
+    (dest / "MEMORY.md").write_text(
+        "# MEMORY\n\n- [movement](memory/movement.md) - not archived back then\n",
+        encoding="utf-8",
+    )
+    (dest / "evaluation-final.json").write_text(
+        json.dumps({"result": "approve", "minor_issues": ["legacy jitter"]}),
+        encoding="utf-8",
+    )
+    (dest / "CHANGELOG.md").write_text(
+        "# Changelog\n\n**Released:** 2025-01-01\n**Theme:** Legacy\n\n"
+        f"## Delivered mechanics\n\n- [{tag}-M1] walk\n",
+        encoding="utf-8",
+    )
+    return dest
+
+
+def test_backfill_adds_index_files_without_touching_canonical_documents(project_dir: Path):
+    dest = _legacy_archive(project_dir)
+    canonical = {p.name: p.read_bytes() for p in dest.iterdir() if p.is_file()}
+
+    r = run(project_dir, "backfill", "v0.0.9")
+    assert r.returncode == 0, r.stderr
+
+    assert (dest / "README.md").is_file()
+    assert (dest / "SUMMARY.md").is_file()
+    assert (dest / "evidence" / "manifest.json").is_file()
+    for name, blob in canonical.items():
+        assert (dest / name).read_bytes() == blob, f"{name} must not be rewritten"
+
+    summary = (dest / "SUMMARY.md").read_text(encoding="utf-8")
+    assert "Legacy" in summary and "[v0.0.9-M1] walk" in summary
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "[v0.0.9](v0.0.9/)" in parent
+
+
+def test_backfill_records_the_missing_memory_subtree_instead_of_inventing_one(
+    project_dir: Path,
+):
+    """Copying today's memory/ into a historical tag would inject present-day
+    content into a past snapshot, so backfill reports the gap instead."""
+    dest = _legacy_archive(project_dir)
+    assert run(project_dir, "backfill", "v0.0.9").returncode == 0
+
+    assert not (dest / "memory").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["backfilled"] is True
+    assert manifest["sealed"] is True
+    assert any("memory/movement.md" in w for w in manifest["warnings"])
+    assert "partial" in (dest / "README.md").read_text(encoding="utf-8")
+
+
+def test_backfill_all_covers_every_archive_on_disk(project_dir: Path):
+    _legacy_archive(project_dir, "v0.0.9")
+    _legacy_archive(project_dir, "v0.0.8")
+
+    r = run(project_dir, "backfill", "--all")
+    assert r.returncode == 0, r.stderr
+    for tag in ("v0.0.8", "v0.0.9"):
+        assert (project_dir / "docs" / "tags" / tag / "SUMMARY.md").is_file()
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "[v0.0.8](v0.0.8/)" in parent and "[v0.0.9](v0.0.9/)" in parent
+
+
+def test_backfill_requires_exactly_one_target(project_dir: Path):
+    assert run(project_dir, "backfill").returncode == 2
+    assert run(project_dir, "backfill", "v0.0.9", "--all").returncode == 2
+
+
+def test_backfill_rejects_a_directory_that_is_not_an_archive(project_dir: Path):
+    (project_dir / "docs" / "tags" / "scratch").mkdir(parents=True)
+    r = run(project_dir, "backfill", "scratch")
+    assert r.returncode == 2
+    assert "not a tag archive" in r.stderr
+
+
+def test_backfill_on_an_empty_tags_root_is_a_noop(project_dir: Path):
+    r = run(project_dir, "backfill", "--all")
+    assert r.returncode == 0, r.stderr
+    assert "no tag archives" in r.stdout
+
+
+def test_backfill_skips_an_already_sealed_archive(project_dir: Path):
+    """Re-indexing a properly sealed tag would replace its recorded seal
+    revision with whatever this run resolves — so it is skipped by default."""
+    assert seal(project_dir).returncode == 0
+    manifest_path = (
+        project_dir / "docs" / "tags" / "v0.1.0" / "evidence" / "manifest.json"
+    )
+    before = manifest_path.read_bytes()
+
+    r = run(project_dir, "backfill", "--all")
+    assert r.returncode == 0, r.stderr
+    assert "skipped" in r.stdout
+    assert manifest_path.read_bytes() == before
+
+    r = run(project_dir, "backfill", "v0.1.0", "--force")
+    assert r.returncode == 0, r.stderr
+    assert json.loads(manifest_path.read_text(encoding="utf-8"))["backfilled"] is True
+
+
+def test_backfill_records_the_tag_revision_not_todays_head(project_dir: Path):
+    """A historical archive was sealed long ago; HEAD says nothing about it.
+    `git tag <Tag>` does, and an untagged archive gets null rather than a
+    fabricated revision."""
+    import shutil as _shutil
+    if not _shutil.which("git"):
+        pytest.skip("git not available")
+
+    def _git(*args: str) -> str:
+        return subprocess.run(
+            ["git", "-C", str(project_dir), *args],
+            capture_output=True, text=True, check=True,
+        ).stdout
+
+    _git("init", "-q")
+    _git("config", "user.email", "test@example.com")
+    _git("config", "user.name", "Test")
+    _legacy_archive(project_dir, "v0.0.9")
+    _git("add", "-A")
+    _git("commit", "-q", "-m", "seal v0.0.9")
+    _git("tag", "v0.0.9")
+    seal_commit = _git("rev-parse", "v0.0.9^{commit}").strip()
+
+    _legacy_archive(project_dir, "v0.0.8")  # never tagged
+    (project_dir / "later.txt").write_text("later")
+    _git("add", "-A")
+    _git("commit", "-q", "-m", "much later work")
+    assert _git("rev-parse", "HEAD").strip() != seal_commit
+
+    assert run(project_dir, "backfill", "--all").returncode == 0
+
+    tagged = json.loads(
+        (project_dir / "docs" / "tags" / "v0.0.9" / "evidence" / "manifest.json")
+        .read_text(encoding="utf-8")
+    )
+    assert tagged["source_revision"] == seal_commit
+
+    untagged = json.loads(
+        (project_dir / "docs" / "tags" / "v0.0.8" / "evidence" / "manifest.json")
+        .read_text(encoding="utf-8")
+    )
+    assert untagged["source_revision"] is None
+
+
+# ---------- forced rewrite retires the seal first ----------
+
+def test_force_archive_retires_the_seal_before_touching_any_file(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A --force rewrite invalidates the manifest the moment the first copy
+    lands: its hashes describe the old snapshot, and `sealed: true` would let
+    the finalize gate accept a half-rewritten archive (and lock archive/index
+    out at exit 3). The seal must be retired before any file is mutated."""
+    seal_tag = _load_seal_tag_module()
+    assert seal(project_dir).returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    parent_path = project_dir / "docs" / "tags" / "README.md"
+    assert seal_tag._is_sealed(dest)
+
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\nrewritten\n")
+
+    def fake_copy2(src, dst, **kwargs):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(seal_tag.shutil, "copy2", fake_copy2)
+    assert seal_tag.cmd_archive(project_dir, "v0.1.0", force=True) == 1
+
+    assert not seal_tag._is_sealed(dest), "a half-rewritten archive must not read as sealed"
+    assert not (dest / "evidence" / "manifest.json").exists()
+    assert "v0.1.0" not in parent_path.read_text(encoding="utf-8"), (
+        "the parent index must not advertise the archive being rewritten"
+    )
+
+    # And the whole thing is recoverable by the documented partial-resume path.
+    monkeypatch.undo()
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    assert "rewritten" in (dest / "PLAN.md").read_text()
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+    assert seal_tag._is_sealed(dest)
+    assert "[v0.1.0](v0.1.0/)" in parent_path.read_text(encoding="utf-8")
+
+
+def test_force_archive_leaves_other_sealed_tags_in_the_parent_index(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    _seal_extra_tag(project_dir, "v0.2.0", "Combat")
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\n")
+
+    assert run(project_dir, "archive", "v0.1.0", "--force").returncode == 0
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "[v0.2.0](v0.2.0/)" in parent, "unrelated sealed tags stay listed"
+    assert "[v0.1.0](v0.1.0/)" not in parent, "the tag under rewrite is dropped"
+
+
+def test_archive_of_an_unsealed_tag_does_not_rewrite_the_parent_index(
+    project_dir: Path
+):
+    """Only a sealed tag can be in the index, so a plain re-archive has no
+    index work to do and must not disturb it."""
+    assert seal(project_dir).returncode == 0
+    _stage_extra_tag(project_dir, "v0.2.0", "Combat")   # archived, unsealed
+    parent_path = project_dir / "docs" / "tags" / "README.md"
+    before = parent_path.read_bytes()
+
+    assert run(project_dir, "archive", "v0.2.0").returncode == 0
+    assert parent_path.read_bytes() == before
+
+
+# ---------- an archive mirrors the source, including deletions ----------
+
+def test_archive_drops_a_memory_snapshot_whose_source_disappeared(project_dir: Path):
+    """On the documented retry path the root memory/ may be gone. Keeping the
+    previous run's copy would hash stale content into the new manifest and
+    seal it as part of this tag's snapshot."""
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert (dest / "memory" / "movement.md").exists()
+
+    shutil.rmtree(project_dir / "memory")
+    # MEMORY.md must stop linking there too, or the link check blocks the seal.
+    (project_dir / "MEMORY.md").write_text("# MEMORY\n\nno subsystem files\n",
+                                           encoding="utf-8")
+
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    assert not (dest / "memory").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["memory_files"] == 0
+    assert not any(e["path"].startswith("memory/") for e in manifest["files"])
+
+
+def test_archive_drops_evidence_whose_source_disappeared(project_dir: Path):
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert (dest / "evidence" / "e2e" / "test_v0_1_0_M1_jump.py").exists()
+    assert (dest / "evidence" / "screenshots" / "scene_main.png").exists()
+
+    shutil.rmtree(project_dir / "e2e")
+
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    assert not (dest / "evidence" / "e2e").exists()
+    assert not (dest / "evidence" / "screenshots").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["e2e_files"] == 0
+    assert manifest["screenshots"] == 0
+    assert not any(e["path"].startswith("evidence/") for e in manifest["files"])
+
+
+def test_sealed_manifest_hashes_match_the_files_on_disk_after_a_rewrite(
+    project_dir: Path
+):
+    """The end-to-end property both fixes protect: whatever the archive went
+    through, a sealed manifest describes exactly what is there."""
+    assert seal(project_dir).returncode == 0
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\nsecond pass\n")
+    shutil.rmtree(project_dir / "memory")
+    (project_dir / "MEMORY.md").write_text("# MEMORY\n\nnothing linked\n", encoding="utf-8")
+
+    assert run(project_dir, "archive", "v0.1.0", "--force").returncode == 0
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["sealed"] is True
+    recorded = {e["path"]: e for e in manifest["files"]}
+    on_disk = {
+        p.relative_to(dest).as_posix()
+        for p in dest.rglob("*") if p.is_file()
+    } - {"evidence/manifest.json"}
+    assert set(recorded) == on_disk, "manifest and archive contents must agree"
+    for rel, entry in recorded.items():
+        blob = (dest / rel).read_bytes()
+        assert entry["sha256"] == hashlib.sha256(blob).hexdigest(), rel
+        assert entry["bytes"] == len(blob), rel
+    assert "second pass" in (dest / "PLAN.md").read_text()
+    # Agreeing with itself is not enough — it must also agree with the source.
+    assert not (dest / "memory").exists(), "the deleted source must not survive the reseal"
+
+
+# ---------- every forced rewrite retires the seal first ----------
+
+def _fail_writing(seal_tag, filename: str, parent: str | None = None):
+    """Make `_atomic_write_text` blow up on one generated file.
+
+    `parent` disambiguates the tag README from the parent index — both are
+    called README.md, and matching on the name alone would fire inside
+    `_retire_seal` instead of the rewrite it is meant to interrupt.
+    """
+    original = seal_tag._atomic_write_text
+
+    def guarded(path, text):
+        if path.name == filename and (parent is None or path.parent.name == parent):
+            raise OSError(28, "No space left on device")
+        return original(path, text)
+
+    return guarded
+
+
+def test_force_index_retires_the_seal_before_rewriting(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """`index --force` rewrites SUMMARY.md and README.md in place. If the
+    second write fails, the old manifest must not still claim `sealed: true`
+    over hashes that no longer match — that would pass the finalize gate and
+    lock an ordinary retry out at exit 3."""
+    seal_tag = _load_seal_tag_module()
+    assert seal(project_dir).returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    parent_path = project_dir / "docs" / "tags" / "README.md"
+    assert seal_tag._is_sealed(dest)
+
+    monkeypatch.setattr(
+        seal_tag, "_atomic_write_text",
+        _fail_writing(seal_tag, "README.md", parent="v0.1.0"),
+    )
+    assert seal_tag.cmd_index(project_dir, "v0.1.0", force=True) == 1
+
+    assert not seal_tag._is_sealed(dest)
+    assert not (dest / "evidence" / "manifest.json").exists()
+    assert "v0.1.0" not in parent_path.read_text(encoding="utf-8")
+
+    monkeypatch.undo()
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+    assert seal_tag._is_sealed(dest)
+    assert "[v0.1.0](v0.1.0/)" in parent_path.read_text(encoding="utf-8")
+
+
+def test_force_backfill_retires_the_seal_before_rewriting(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Same for the forced backfill path, which also replaces the two
+    generated index files inside an already-sealed archive."""
+    seal_tag = _load_seal_tag_module()
+    dest = _legacy_archive(project_dir, "v0.0.9")
+    tags_root = project_dir / "docs" / "tags"
+    assert run(project_dir, "backfill", "v0.0.9").returncode == 0
+    assert seal_tag._is_sealed(dest)
+    assert "[v0.0.9](v0.0.9/)" in (tags_root / "README.md").read_text(encoding="utf-8")
+
+    monkeypatch.setattr(
+        seal_tag, "_atomic_write_text",
+        _fail_writing(seal_tag, "README.md", parent="v0.0.9"),
+    )
+    assert seal_tag.cmd_backfill(project_dir, "v0.0.9", False, force=True) == 1
+
+    assert not seal_tag._is_sealed(dest)
+    assert not (dest / "evidence" / "manifest.json").exists()
+    assert "v0.0.9" not in (tags_root / "README.md").read_text(encoding="utf-8")
+
+    # Now unsealed, so a plain re-run (no --force) picks it up again.
+    monkeypatch.undo()
+    r = run(project_dir, "backfill", "v0.0.9")
+    assert r.returncode == 0, r.stderr
+    assert seal_tag._is_sealed(dest)
+    assert "[v0.0.9](v0.0.9/)" in (tags_root / "README.md").read_text(encoding="utf-8")
+
+
+def test_force_index_keeps_other_sealed_tags_listed(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    _seal_extra_tag(project_dir, "v0.2.0", "Combat")
+
+    assert run(project_dir, "index", "v0.1.0", "--force").returncode == 0
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "[v0.1.0](v0.1.0/)" in parent
+    assert "[v0.2.0](v0.2.0/)" in parent
+
+
+# ---------- SUMMARY only links what was archived ----------
+
+def _drop_memory(project_dir: Path) -> None:
+    shutil.rmtree(project_dir / "memory")
+    (project_dir / "MEMORY.md").write_text(
+        "# MEMORY\n\nNo sub-system files for this project.\n", encoding="utf-8"
+    )
+
+
+def test_summary_omits_the_memory_link_when_no_subtree_was_archived(project_dir: Path):
+    """SUMMARY.md is the advertised entry point, so a link it always emits is a
+    guaranteed 404 for any project without a `memory/` directory."""
+    _drop_memory(project_dir)
+    assert seal(project_dir).returncode == 0
+
+    summary = (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").read_text(
+        encoding="utf-8"
+    )
+    assert "(memory/)" not in summary
+    assert "[MEMORY.md](MEMORY.md)" in summary, "the notebook itself is still linked"
+    assert "no `memory/` subtree archived" in summary
+
+
+def test_summary_links_the_memory_subtree_when_it_exists(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    summary = (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").read_text(
+        encoding="utf-8"
+    )
+    assert "[memory/](memory/)" in summary
+
+
+def test_generated_index_links_resolve_without_a_memory_subtree(project_dir: Path):
+    seal_tag = _load_seal_tag_module()
+    _drop_memory(project_dir)
+    assert seal(project_dir).returncode == 0
+    tags_root = project_dir / "docs" / "tags"
+
+    for doc in (tags_root / "README.md",
+                tags_root / "v0.1.0" / "README.md",
+                tags_root / "v0.1.0" / "SUMMARY.md"):
+        text = doc.read_text(encoding="utf-8")
+        for target in seal_tag._local_markdown_links(text):
+            assert (doc.parent / target).exists(), f"{doc.name} -> {target}"
+
+
+def test_backfilled_summary_links_all_resolve(project_dir: Path):
+    """The legacy-backfill path never copies a memory subtree and tolerates
+    missing canonical documents, so SUMMARY must link only what is there."""
+    seal_tag = _load_seal_tag_module()
+    dest = _legacy_archive(project_dir, "v0.0.9")
+    (dest / "STYLE.md").unlink()          # a gap the backfill must tolerate
+    (dest / "CHANGELOG.md").unlink()
+
+    assert run(project_dir, "backfill", "v0.0.9").returncode == 0
+    summary = (dest / "SUMMARY.md").read_text(encoding="utf-8")
+    assert "(memory/)" not in summary
+    assert "STYLE.md" not in summary
+    assert "CHANGELOG.md" not in summary
+
+    for doc in (dest / "README.md", dest / "SUMMARY.md",
+                project_dir / "docs" / "tags" / "README.md"):
+        text = doc.read_text(encoding="utf-8")
+        for target in seal_tag._local_markdown_links(text):
+            assert (doc.parent / target).exists(), f"{doc.name} -> {target}"
+
+
+def test_a_failed_seal_retirement_mutates_nothing(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Retiring the seal is itself two writes. If the first one — dropping the
+    tag from the parent index — fails, the archive must be exactly as it was:
+    still sealed, still listed, still readable."""
+    seal_tag = _load_seal_tag_module()
+    assert seal(project_dir).returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    parent_path = project_dir / "docs" / "tags" / "README.md"
+    before = {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()}
+    parent_before = parent_path.read_bytes()
+
+    monkeypatch.setattr(
+        seal_tag, "_atomic_write_text",
+        _fail_writing(seal_tag, "README.md", parent="tags"),
+    )
+    assert seal_tag.cmd_index(project_dir, "v0.1.0", force=True) == 1
+    assert seal_tag.cmd_archive(project_dir, "v0.1.0", force=True) == 1
+
+    assert seal_tag._is_sealed(dest)
+    assert {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()} == before
+    assert parent_path.read_bytes() == parent_before

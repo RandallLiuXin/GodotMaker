@@ -2,14 +2,15 @@
 import json
 import os
 import shutil
+import subprocess
+import sys
 import pytest
 import tempfile
 from .helpers import run_hook, is_blocked, cleanup_metrics
 
-SCHEMA_SRC = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "config", "stage_schemas.json"
-)
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SCHEMA_SRC = os.path.join(REPO_ROOT, "config", "stage_schemas.json")
+SEAL_TAG = os.path.join(REPO_ROOT, "tools", "seal_tag.py")
 
 HOOK = "stage_reminder.py"
 
@@ -324,6 +325,7 @@ class TestTagArchived:
     REQUIRED_FILES = [
         "GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "SCENES.md",
         "MEMORY.md", "evaluation-final.json", "CHANGELOG.md",
+        "README.md", "SUMMARY.md",
     ]
 
     def _write_finalize_event(self) -> dict:
@@ -371,19 +373,113 @@ class TestTagArchived:
         # Should list missing files
         assert "STRUCTURE.md" in reason or "evaluation-final.json" in reason
 
-    def test_passes_when_archive_complete(self, project_dir):
+    def _sealed_archive(self, tag="v0.1.0", manifest='{"sealed": true}',
+                        parent_index="| [v0.1.0](v0.1.0/) | ... |\n"):
+        """Lay out a sealed archive the way `seal_tag.py index` leaves it."""
         with open("PLAN.md", "w", encoding="utf-8") as f:
-            f.write("# Plan\n\n**Tag:** v0.1.0\n")
-        archive = os.path.join("docs", "tags", "v0.1.0")
-        os.makedirs(archive, exist_ok=True)
-        for f in self.REQUIRED_FILES:
-            open(os.path.join(archive, f), "w").close()
+            f.write(f"# Plan\n\n**Tag:** {tag}\n")
+        archive = os.path.join("docs", "tags", tag)
+        os.makedirs(os.path.join(archive, "evidence"), exist_ok=True)
+        for name in self.REQUIRED_FILES:
+            open(os.path.join(archive, name), "w").close()
+        if manifest is not None:
+            with open(os.path.join(archive, "evidence", "manifest.json"), "w",
+                      encoding="utf-8") as f:
+                f.write(manifest)
+        if parent_index is not None:
+            with open(os.path.join("docs", "tags", "README.md"), "w",
+                      encoding="utf-8") as f:
+                f.write(parent_index)
         # finalize schema also requires final_report.json
         with open(".godotmaker/final_report.json", "w") as f:
             f.write('{"status": "tag_sealed"}')
+        return archive
+
+    def test_passes_when_archive_complete(self, project_dir):
+        self._sealed_archive()
         _, code, parsed = run_hook(HOOK, self._write_finalize_event())
         assert code == 0
         assert not is_blocked(parsed)
+
+    def test_blocks_when_manifest_missing(self, project_dir):
+        """File presence is not a seal. Without evidence/manifest.json the
+        archive is a partial finalize that never ran `seal_tag.py index`."""
+        self._sealed_archive(manifest=None)
+        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
+        assert is_blocked(parsed)
+        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "manifest.json" in reason
+        assert "seal_tag.py index" in reason
+
+    def test_blocks_when_manifest_is_not_sealed(self, project_dir):
+        self._sealed_archive(manifest='{"sealed": false}')
+        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
+        assert is_blocked(parsed)
+        assert "sealed" in parsed["hookSpecificOutput"]["permissionDecisionReason"]
+
+    def test_blocks_when_manifest_is_corrupt(self, project_dir):
+        self._sealed_archive(manifest="{not json")
+        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
+        assert is_blocked(parsed)
+        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "manifest.json" in reason
+
+    def test_blocks_when_parent_index_missing(self, project_dir):
+        self._sealed_archive(parent_index=None)
+        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
+        assert is_blocked(parsed)
+        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "docs/tags/README.md" in reason
+        # The tag is sealed here, so `index` would exit 3 — point at reindex.
+        assert "seal_tag.py reindex" in reason
+
+    def test_blocks_when_parent_index_does_not_list_the_tag(self, project_dir):
+        self._sealed_archive(parent_index="# Tag archives\n\n| [v0.0.9](v0.0.9/) | ... |\n")
+        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
+        assert is_blocked(parsed)
+        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "does not list v0.1.0" in reason
+        assert "seal_tag.py reindex" in reason
+
+    def test_real_seal_tag_output_satisfies_the_gate(self, project_dir):
+        """End-to-end: what `seal_tag.py archive|index` actually writes must
+        pass this gate, and the same archive before `index` must not. Without
+        this the two sides can drift apart silently."""
+        for name, body in (
+            ("GDD.md", "# GDD\n"),
+            ("PLAN.md", "# Plan\n\n**Tag:** v0.1.0\n"),
+            ("STRUCTURE.md", "# Structure\n"),
+            ("STYLE.md", "# Style\n"),
+            ("SCENES.md", "# Scenes\n"),
+            ("MEMORY.md", "# Memory\n"),
+        ):
+            with open(name, "w", encoding="utf-8") as f:
+                f.write(body)
+        with open(os.path.join(".godotmaker", "evaluation.json"), "w", encoding="utf-8") as f:
+            f.write('{"result": "approve", "minor_issues": []}')
+        with open(os.path.join(".godotmaker", "final_report.json"), "w", encoding="utf-8") as f:
+            f.write('{"status": "tag_sealed"}')
+
+        assert subprocess.run(
+            [sys.executable, SEAL_TAG, "--project-path", ".", "archive", "v0.1.0"],
+            capture_output=True, text=True, timeout=30,
+        ).returncode == 0
+        with open(os.path.join("docs", "tags", "v0.1.0", "CHANGELOG.md"), "w",
+                  encoding="utf-8") as f:
+            f.write("# Changelog\n\n**Released:** 2026-01-01\n**Theme:** Foundation\n")
+
+        # Archived but not yet indexed - the gate must still block.
+        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
+        assert is_blocked(parsed)
+
+        r = subprocess.run(
+            [sys.executable, SEAL_TAG, "--project-path", ".", "index", "v0.1.0"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert r.returncode == 0, r.stderr
+        _, code, parsed = run_hook(HOOK, self._write_finalize_event())
+        assert code == 0
+        assert not is_blocked(parsed), parsed
 
 
 class TestEdgeCases:

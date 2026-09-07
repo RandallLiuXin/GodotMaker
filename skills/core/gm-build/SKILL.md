@@ -46,7 +46,7 @@ Then read context:
 - `STRUCTURE.md` → architecture and build order (current tag scope: previous tags' systems already exist on disk and may be touched only when PLAN.md explicitly lists a refactor task for them)
 - `ASSETS.md` → the generated-runtime authority; for a visual task, derive each asset with `tools/asset_result_registration.py --snapshot`
 - `MEMORY.md` index + sub-files (cross-tag accumulating notebook) → avoid repeating known mistakes
-- `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring
+- `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring. Read `docs/tags/<prev_tag>/SUMMARY.md` first — it is one screen and often answers the question without opening the full archive; `docs/tags/README.md` lists every sealed tag if you are not sure which one to open.
 
 ## Hard Rules
 
