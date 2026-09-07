@@ -101,26 +101,37 @@ _REPORT_HEADING_RE = re.compile(
     r"\s*[:：]\s*(.+)$",
     re.IGNORECASE | re.MULTILINE,
 )
-# The report's own handoff statement, up to the next same-or-shallower
-# heading. `#{1,3}\s` cannot match a `####` sub-heading, so a nested one stays
-# inside the captured section.
-_REPAIR_SECTION_RE = re.compile(
-    r"^#{1,3}\s*Repair\s+Attempt\s+Evidence\s*$\n(.*?)(?=\n#{1,3}\s|\Z)",
-    re.IGNORECASE | re.MULTILINE | re.DOTALL,
-)
+def _section_re(*names: str) -> re.Pattern:
+    r"""Match named report sections, each up to the next same-or-shallower heading.
+
+    Every field below is read from the section that owns it, never from the
+    whole report: the sections carrying pasted command output come first in
+    the template, so a whole-message scan lets a log line outrank the
+    report's own statement about itself.
+
+    `#{1,3}\s` cannot match a `####` sub-heading, so a nested one such as
+    `#### Unit Tests` stays inside its parent section.
+    """
+    return re.compile(
+        r"^#{1,3}\s*(?:" + "|".join(names) + r")\s*$\n(.*?)(?=\n#{1,3}\s|\Z)",
+        re.IGNORECASE | re.MULTILINE | re.DOTALL,
+    )
+
+
+# Where the run pasted command output, and so where an exit code is evidence.
+_OUTPUT_SECTION_RE = _section_re("Tests", "Build")
+# The report's own handoff statement.
+_REPAIR_SECTION_RE = _section_re(r"Repair\s+Attempt\s+Evidence")
+# Where the report describes its own failure in prose.
+_SELF_REPORT_SECTION_RE = _section_re(r"Repair\s+Attempt\s+Evidence", "Notes")
+_NOTES_SECTION_RE = _section_re("Notes")
+
 _EVIDENCE_FIELD_RE = re.compile(
     r"^[-*\s]*(Handoff condition|Suggested classification)\s*[:：]\s*(.+)$",
     re.IGNORECASE | re.MULTILINE,
 )
 _EXIT_CODE_RE = re.compile(
     r"exit(?:ed with|ed|\s*code)?\s*[:=]?\s*(-?\d{1,3})\b", re.IGNORECASE
-)
-# The `Tests` and `Build` sections, each up to the next same-or-shallower
-# heading. `#{1,3}\s` cannot match the `#### Unit Tests` sub-heading inside
-# Tests, so the sub-section stays part of the captured output.
-_OUTPUT_SECTION_RE = re.compile(
-    r"^#{1,3}\s*(?:Tests|Build)\s*$\n(.*?)(?=\n#{1,3}\s|\Z)",
-    re.IGNORECASE | re.MULTILINE | re.DOTALL,
 )
 _PATH_RE = re.compile(r"[\w./\\-]+")
 _DIGIT_RUN_RE = re.compile(r"\d+")
@@ -245,14 +256,25 @@ def extract_repair_fields(message: str) -> dict:
 
 
 def extract_exit_code(message: str) -> int | None:
-    """First explicit exit code in the report, or None when it names none."""
-    match = _EXIT_CODE_RE.search(message or "")
-    if not match:
+    """The failure's exit code, or None when the report names none.
+
+    Read from the `Tests` and `Build` sections only — those are where a run
+    pastes command output, and an exit code anywhere else is prose. A failing
+    run routinely reports several: a non-zero one wins over a zero, because
+    the zero belongs to a command that passed and this record exists to
+    describe the one that did not.
+    """
+    codes: list[int] = []
+    for section in _OUTPUT_SECTION_RE.finditer(message or ""):
+        for raw in _EXIT_CODE_RE.findall(section.group(1)):
+            try:
+                codes.append(int(raw))
+            except ValueError:
+                continue
+    if not codes:
         return None
-    try:
-        return int(match.group(1))
-    except ValueError:
-        return None
+    non_zero = [code for code in codes if code != 0]
+    return non_zero[0] if non_zero else codes[0]
 
 
 def extract_evidence_paths(message: str) -> list[str]:
@@ -363,15 +385,28 @@ _BLOCKER_RE = re.compile(
 def _summary_for(message: str, error_type: str) -> str:
     """One short line naming the failure, taken from the report when it says.
 
+    Read from `Repair Attempt Evidence` and `Notes` — the sections where the
+    report describes itself. Scanning the whole message let a pasted log line
+    (`Error: deprecated shader warning …`) outrank the real blocker below it,
+    and because the summary seeds `error_fingerprint`, two genuinely
+    different failures that happened to paste the same warning collapsed into
+    one fingerprint and read as a repeat of each other.
+
     Never the raw output: a summary is a label, and the evidence paths and
     output digest are how a reader reaches the full text.
     """
-    match = _BLOCKER_RE.search(message or "")
+    self_reported = "\n".join(
+        section.group(1)
+        for section in _SELF_REPORT_SECTION_RE.finditer(message or "")
+    )
+    match = _BLOCKER_RE.search(self_reported)
     if match:
         return match.group(1)
-    notes = re.search(r"###\s*Notes\s*\n(.+)", message or "")
-    if notes and notes.group(1).strip():
-        return notes.group(1)
+    notes = _NOTES_SECTION_RE.search(message or "")
+    if notes:
+        for line in notes.group(1).splitlines():
+            if line.strip():
+                return line
     return error_type.replace("_", " ")
 
 

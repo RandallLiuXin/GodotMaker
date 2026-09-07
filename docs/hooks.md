@@ -264,9 +264,9 @@ fails — workers produce no memory or learning entries.
 | `agent_id` / `run_id` | Subagent id and session id, when the runtime supplies them |
 | `error_type` | `report_rejected`, `timeout`, `forced_handoff`, `tool_or_environment_error`, `unverified_handoff`, `task_failed`, `task_partial` |
 | `classification` | The report's suggested `repair-attempt-accounting.md` classification, when it names a known one |
-| — | `Handoff condition` and `classification` are read only from inside `### Repair Attempt Evidence`; a log line pasted into `Tests` or `Build` cannot claim them |
-| `summary` | One line, ≤200 chars |
-| `exit_code` | The first exit code the report names, else `null` |
+| — | Every field above is read from the section that owns it, never from the whole report: the sections carrying pasted command output come first, so a whole-message scan lets a log line outrank the report's own statement — and since `summary` seeds the fingerprint, that also collapses two different failures into one |
+| `summary` | One line, ≤200 chars, from `Repair Attempt Evidence` / `Notes` — the sections where the report describes itself |
+| `exit_code` | From `Tests` / `Build` only, where commands actually ran; a non-zero code outranks a zero, else `null` |
 | `error_fingerprint` | 16 hex chars over task/stage/type/summary, digit runs collapsed |
 | `evidence_paths` | ≤5 paths under `.godotmaker/`, `reports/`, `e2e/`, `docs/tags/` |
 | `retryable` | Whether re-dispatching the same brief can plausibly succeed |

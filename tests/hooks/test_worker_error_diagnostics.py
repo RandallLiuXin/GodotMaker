@@ -103,8 +103,10 @@ class TestNormalization:
             "DONE", "terminal", "", "worker") is None
 
     def test_exit_code_read_when_named(self):
-        assert diagnostics.extract_exit_code("godot exited 1") == 1
-        assert diagnostics.extract_exit_code("no code here") is None
+        assert diagnostics.extract_exit_code(
+            "### Build\n- Status: FAIL\n- godot exited 1\n") == 1
+        assert diagnostics.extract_exit_code(
+            "### Build\n- Status: FAIL\n- no code here\n") is None
 
     def test_unknown_classification_is_dropped(self, project_dir):
         event = diagnostics.build_error_event(
@@ -166,6 +168,85 @@ class TestRepairFieldScope:
         assert fields["handoff_condition"] == "tool_or_environment_error"
 
 
+class TestExitCodeScope:
+    """An exit code is evidence only where commands actually ran."""
+
+    MIXED = (
+        "## Report: M01 Move\n\n"
+        "### Status: FAILED\n\n"
+        "### Tests\n#### Unit Tests\n- test/test_s.gd: all passed, exit code 0\n\n"
+        "### Build\n- Status: FAIL\n- Output: build failed with exit code 1\n\n"
+        "### Notes\ngdUnit4 v6 missing\n"
+    )
+
+    def test_a_failing_code_outranks_a_passing_one(self):
+        """The zero belongs to a command that worked; the record is about the
+        one that did not."""
+        assert diagnostics.extract_exit_code(self.MIXED) == 1
+
+    def test_zero_is_kept_when_it_is_all_the_report_names(self):
+        assert diagnostics.extract_exit_code(
+            "### Build\n- Status: PASS\n- exit code 0\n") == 0
+
+    def test_prose_outside_the_command_sections_is_not_an_exit_code(self):
+        assert diagnostics.extract_exit_code(
+            "### Notes\nthe tool exited 7 apparently\n") is None
+
+    def test_the_recorded_event_carries_the_failing_code(self, project_dir):
+        event = diagnostics.build_error_event(
+            message=self.MIXED, role="worker", status="FAILED",
+            outcome_kind="terminal", stage="build")
+        assert event["exit_code"] == 1
+
+
+class TestSummaryScope:
+    """The summary seeds the fingerprint, so noise here corrupts dedupe."""
+
+    @staticmethod
+    def _report(blocker):
+        return (
+            "## Report: M01 Move\n\n"
+            "### Status: FAILED\n\n"
+            "### Tests\n#### Unit Tests\n- test/test_s.gd: 3 tests, 1 failed\n"
+            "- Output:\n"
+            "  Error: deprecated shader warning in vendor lib\n\n"
+            "### Build\n- Status: FAIL\n\n"
+            f"### Notes\n- Blocker: {blocker}\n"
+        )
+
+    def test_pasted_output_does_not_become_the_summary(self):
+        assert diagnostics._summary_for(
+            self._report("gdUnit4 v6 missing"), "task_failed"
+        ) == "gdUnit4 v6 missing"
+
+    def test_two_different_failures_keep_different_fingerprints(self):
+        """Both reports paste the same warning; only the blockers differ."""
+        def fingerprint(blocker):
+            return diagnostics.error_fingerprint(
+                "M01", "build", "task_failed",
+                diagnostics._summary_for(self._report(blocker), "task_failed"))
+
+        assert fingerprint("gdUnit4 v6 missing") != fingerprint("player.gd:12 parse error")
+
+    def test_one_failure_keeps_one_fingerprint(self):
+        event = diagnostics.build_error_event(
+            message=self._report("gdUnit4 v6 missing"), role="worker",
+            status="FAILED", outcome_kind="terminal", stage="build")
+        again = diagnostics.build_error_event(
+            message=self._report("gdUnit4 v6 missing"), role="worker",
+            status="FAILED", outcome_kind="terminal", stage="build")
+        assert event["error_fingerprint"] == again["error_fingerprint"]
+
+    def test_plain_notes_prose_still_works(self):
+        assert diagnostics._summary_for(
+            "### Notes\nHeadless Godot load failed\n", "task_failed"
+        ) == "Headless Godot load failed"
+
+    def test_falls_back_to_the_error_type_without_a_self_report(self):
+        assert diagnostics._summary_for(
+            "### Build\n- Status: FAIL\n", "task_failed") == "task failed"
+
+
 class TestVerifierVocabulary:
     """`PASS | FAIL | PARTIAL` is a verdict about the project, not the run.
 
@@ -215,8 +296,10 @@ class TestVerifierVocabulary:
 class TestBounds:
     def test_summary_is_clipped(self, project_dir):
         event = diagnostics.build_error_event(
-            message=worker_report(extra="- Blocker: " + "x" * 900 + "\n"),
+            message=worker_report(
+                extra="### Notes\n- Blocker: " + "x" * 900 + "\n"),
             role="worker", status="FAILED", outcome_kind="terminal", stage="build")
+        assert event["summary"].startswith("x")
         assert len(event["summary"]) <= diagnostics.MAX_SUMMARY_CHARS
 
     def test_evidence_paths_are_bounded_and_scoped(self, project_dir):
@@ -262,10 +345,12 @@ class TestBounds:
         assert "### Status: FAILED" not in captured
 
     def test_no_event_carries_the_report_body(self, project_dir):
-        message = worker_report(extra="- Blocker: headless load failed\n")
+        message = worker_report(
+            extra="### Notes\n- Blocker: headless load failed\n")
         event = diagnostics.build_error_event(
             message=message, role="worker", status="FAILED",
             outcome_kind="terminal", stage="build")
+        assert event["summary"] == "headless load failed"
         assert message not in json.dumps(event)
 
 
