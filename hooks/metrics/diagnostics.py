@@ -129,7 +129,16 @@ _OUTPUT_SECTION_RE = _section_re("Tests", "Build", "Tools")
 _REPAIR_SECTION_RE = _section_re(r"Repair\s+Attempt\s+Evidence")
 # Where the report describes its own failure in prose.
 _SELF_REPORT_SECTION_RE = _section_re(r"Repair\s+Attempt\s+Evidence", "Notes")
-_NOTES_SECTION_RE = _section_re("Notes")
+# Last-resort prose, in order of how directly a section names a reason. A
+# worker puts one in `Notes`; an analyst report has no `Notes` and no outcome
+# block, and its per-file reasons live in `Uncertain Files`, with `Manifest`
+# carrying a written/failed status. Ordered explicitly rather than by document
+# position, which would pick `Manifest`'s path line over a real reason.
+_SUMMARY_FALLBACK_SECTION_RES = (
+    _section_re("Notes"),
+    _section_re(r"Uncertain\s+Files"),
+    _section_re("Manifest"),
+)
 
 _EVIDENCE_FIELD_RE = re.compile(
     r"^[-*\s]*(Handoff condition|Suggested classification)\s*[:：]\s*(.+)$",
@@ -293,16 +302,42 @@ def extract_exit_code(message: str) -> int | None:
     return non_zero[0] if non_zero else codes[0]
 
 
+def _contained_evidence_path(candidate: str) -> str | None:
+    """The path a token denotes, if that still sits under an evidence root.
+
+    `..` is folded first: `reports/../../outside.log` and
+    `.godotmaker/../MEMORY.md` both start with a permitted prefix as text
+    while denoting something outside it, and a prefix test is not a
+    containment test. Folded lexically on purpose — this is arbitrary text
+    from a report naming paths that need not exist, so the filesystem has no
+    say in what it means.
+    """
+    segments: list[str] = []
+    for part in candidate.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if not segments:
+                return None  # walks out of whatever it started in
+            segments.pop()
+            continue
+        segments.append(part)
+    resolved = "/".join(segments)
+    return resolved if resolved.startswith(EVIDENCE_PREFIXES) else None
+
+
 def extract_evidence_paths(message: str) -> list[str]:
     """Bounded list of artifact paths the report points at.
 
-    Only paths under a known evidence root are kept — a diagnostic record
-    references where the output lives, it never carries the output.
+    Only paths that resolve under a known evidence root are kept — a
+    diagnostic record references where the output lives, it never carries the
+    output, and it must not point a later reader somewhere else.
     """
     paths: list[str] = []
     for token in _PATH_RE.findall(message or ""):
-        candidate = token.replace("\\", "/").rstrip(".,;:)]}")
-        if not candidate.startswith(EVIDENCE_PREFIXES):
+        candidate = _contained_evidence_path(
+            token.replace("\\", "/").rstrip(".,;:)]}"))
+        if candidate is None:
             continue
         if len(candidate) > MAX_EVIDENCE_PATH_CHARS:
             continue
@@ -403,10 +438,11 @@ def _summary_for(message: str, error_type: str, blockers=(),
     """One short line naming the failure, from the most specific source there is.
 
     In order: an out-of-band explanation the report cannot carry (`detail` —
-    the report hook's rejection reason, which is *why this stop failed* while
-    the report's prose is only about the task); the sections where the report
-    describes itself; the validated `blockers` of a machine outcome block; the
-    first line of Notes; and finally the error type.
+    the report hook's rejection reason, or the fact that it produced no report
+    at all, which is *why this stop failed* while the report's prose is only
+    about the task); the sections where the report describes itself; the
+    validated `blockers` of a machine outcome block; the first line of the
+    role's remaining failure-describing sections; and finally the error type.
 
     `blockers` matters for roles whose template has no prose section to read:
     an asset-producer report has neither `Notes` nor `Repair Attempt
@@ -430,9 +466,11 @@ def _summary_for(message: str, error_type: str, blockers=(),
     for blocker in blockers or ():
         if blocker and blocker.strip():
             return blocker
-    notes = _NOTES_SECTION_RE.search(message or "")
-    if notes:
-        for line in notes.group(1).splitlines():
+    for section_re in _SUMMARY_FALLBACK_SECTION_RES:
+        section = section_re.search(message or "")
+        if not section:
+            continue
+        for line in section.group(1).splitlines():
             if line.strip():
                 return line
     return error_type.replace("_", " ")

@@ -332,6 +332,54 @@ class TestSummaryScope:
         assert len(read_metrics("worker_error")) == 1
 
 
+class TestAnalystSummary:
+    """That template has no Notes, no evidence section and no outcome block."""
+
+    @staticmethod
+    def _report(uncertain):
+        return (
+            "## Analyst Report:\n\n"
+            "### Status: FAILED\n\n"
+            "### Candidate Summary\n- Images: 4\n- Audio: 0\n\n"
+            "### Manifest\n- Path: assets/manifest.json\n- Status: failed\n\n"
+            "### Row Matches\n- player: none (low)\n\n"
+            "### Processing Sources\n- a.png: sprite; crop\n\n"
+            f"### Uncertain Files\n- {uncertain}\n"
+        )
+
+    def _event(self, uncertain, agent_id):
+        return diagnostics.build_error_event(
+            message=self._report(uncertain), role="analyst", status="FAILED",
+            outcome_kind="terminal", agent_id=agent_id, stage="asset")
+
+    def test_the_reason_reaches_the_summary(self, project_dir):
+        event = self._event("hero.png: unreadable, truncated PNG", "a1")
+        assert "unreadable, truncated PNG" in event["summary"]
+
+    def test_two_failures_keep_different_fingerprints(self, project_dir):
+        first = self._event("hero.png: unreadable, truncated PNG", "a1")
+        second = self._event("theme.wav: unsupported codec", "a2")
+        assert first["error_fingerprint"] != second["error_fingerprint"]
+
+    def test_the_same_failure_still_reads_as_a_repeat(self, project_dir):
+        first = self._event("hero.png: unreadable, truncated PNG", "a1")
+        again = self._event("hero.png: unreadable, truncated PNG", "a2")
+        assert first["error_fingerprint"] == again["error_fingerprint"]
+
+    def test_manifest_is_only_the_last_resort(self, project_dir):
+        """`Uncertain Files` names a reason; `Manifest` opens with a path."""
+        event = self._event("hero.png: unreadable", "a1")
+        assert "assets/manifest.json" not in event["summary"]
+
+    def test_a_worker_notes_section_still_wins(self, project_dir):
+        """Adding analyst sections must not disturb the worker path."""
+        event = diagnostics.build_error_event(
+            message=worker_report(extra="### Notes\n- Blocker: gdUnit4 missing\n"),
+            role="worker", status="FAILED", outcome_kind="terminal",
+            stage="build")
+        assert event["summary"] == "gdUnit4 missing"
+
+
 class TestAssetProducerSummary:
     """That template has no prose section, so its outcome block is the source."""
 
@@ -449,6 +497,29 @@ class TestBounds:
         assert all(p.startswith(diagnostics.EVIDENCE_PREFIXES)
                    for p in event["evidence_paths"])
         assert "src/player.gd" not in event["evidence_paths"]
+
+    @pytest.mark.parametrize("named", [
+        "reports/../../outside.log",
+        ".godotmaker/../MEMORY.md",
+        ".godotmaker/traces/../../../etc/passwd",
+        "e2e/../../..",
+    ])
+    def test_a_path_that_walks_out_of_its_root_is_not_evidence(self, named):
+        """A prefix test is not a containment test: each of these starts with
+        a permitted root as text while denoting something outside it."""
+        report = f"### Notes\n- see {named}\n"
+        assert diagnostics.extract_evidence_paths(report) == []
+
+    def test_traversal_inside_a_root_is_kept_and_folded(self):
+        report = "### Notes\n- see .godotmaker/traces/../traces/real.log\n"
+        assert diagnostics.extract_evidence_paths(report) == [
+            ".godotmaker/traces/real.log"]
+
+    def test_a_traversing_path_does_not_crowd_out_a_real_one(self):
+        report = ("### Notes\n- see reports/../../outside.log\n"
+                  "- and .godotmaker/traces/real.log\n")
+        assert diagnostics.extract_evidence_paths(report) == [
+            ".godotmaker/traces/real.log"]
 
     def test_large_output_travels_as_a_digest_not_a_copy(self, project_dir):
         pasted_log = "\n".join(f"  ERROR line {i}: boom" for i in range(5000))
@@ -640,6 +711,46 @@ class TestThroughTheStopHook:
         assert event["classification"] == "orchestration_failure"
         assert event["retryable"] is True
         assert ".godotmaker/traces/build_m01.log" in event["evidence_paths"]
+
+    @pytest.mark.parametrize("agent_type", ["worker", "verifier", "asset-producer"])
+    def test_a_silent_stop_is_recorded_as_an_unverified_handoff(
+            self, project_dir, agent_type):
+        """A crash or timeout emits no report, so nothing validated it — and
+        the stop used to read as terminal and leave no record at all."""
+        write_current_role("build")
+        run_hook(DISPATCHER, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": f"{agent_type}-1",
+            "agent_type": agent_type,
+            "last_assistant_message": "",
+        })
+        stops = read_metrics("subagent_stop")
+        assert stops[0]["outcome_kind"] == "unverified"
+        events = read_metrics("worker_error")
+        assert len(events) == 1
+        assert events[0]["error_type"] == "unverified_handoff"
+        assert events[0]["summary"] == "stopped without producing a report"
+        assert events[0]["retryable"] is True
+
+    def test_a_silent_stop_outside_the_pipeline_is_ignored(self, project_dir):
+        """With no active role a quiet subagent is just a quiet subagent."""
+        run_hook(DISPATCHER, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "w1",
+            "agent_type": "worker",
+            "last_assistant_message": "",
+        })
+        assert read_metrics("worker_error") == []
+
+    def test_a_silent_stop_from_an_unknown_role_is_ignored(self, project_dir):
+        write_current_role("build")
+        run_hook(DISPATCHER, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "misc-1",
+            "agent_type": "",
+            "last_assistant_message": "",
+        })
+        assert read_metrics("worker_error") == []
 
     def test_successful_worker_writes_no_diagnostic(self, project_dir):
         write_current_role("build")

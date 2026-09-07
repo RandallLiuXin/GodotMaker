@@ -192,7 +192,7 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
 |---|---|
 | `terminal` | 报告通过校验，写入唯一的结果特定事件 |
 | `rejected_attempt` | 报告 Hook 拦截了这次 stop，不写结果事件 |
-| `unverified` | 未通过校验即被放行，不写结果事件 |
+| `unverified` | 未通过校验即被放行，或根本没有产出报告就结束，不写结果事件 |
 
 只有 `terminal` 才写结果特定事件，因此未通过校验的报告既不会被读成结果，也不会
 抢先覆盖重试的真实终态。`unverified` 覆盖两种「放行但未接受报告」的情况：下文的
@@ -218,7 +218,7 @@ memory 或 learning 条目。
 | `summary` | 单行，≤200 字符。依次取：报告 Hook 的拦截原因（报告自己说不出它为何被拦）、`Repair Attempt Evidence` / `Notes` 段、machine outcome 块中已校验的 `blockers`，最后才是 error type |
 | `exit_code` | 只从真正跑过命令的段落读取——worker 是 `Tests` / `Build`，asset-producer 是 `Tools`；非零优先于零，都没有则为 `null` |
 | `error_fingerprint` | 对 task/stage/type/summary 取 16 位十六进制，数字串统一折叠 |
-| `evidence_paths` | ≤5 条路径，限 `.godotmaker/`、`reports/`、`e2e/`、`docs/tags/` |
+| `evidence_paths` | ≤5 条路径，且**解析后**仍位于 `.godotmaker/`、`reports/`、`e2e/`、`docs/tags/` 之下；先折叠 `..`,走出根目录的路径直接丢弃而不是记录 |
 | `retryable` | 用同一份 brief 重新派发是否还有可能成功 |
 | `repeat_count` | 本会话中指纹相同的既有事件数量 |
 
@@ -226,6 +226,10 @@ memory 或 learning 条目。
 `report_rejected`，其次是报告 Repair Attempt Evidence 中显式的
 `Handoff condition`，再次是未经校验即被放行。显式的 handoff condition 优先于
 status——超时或工具故障能解释 status 本身解释不了的 `FAILED`。
+
+完全没有产出报告就结束的 stop 同样会被记录：既然没有任何东西校验过它，它算
+`unverified` 而不是终态，事件的 summary 为 `stopped without producing a report`。
+这正是崩溃或超时的情形，且只在流水线角色活跃时生效。
 
 `Status` 最后才读，且只对「status 词表描述自身运行」的角色生效，即用
 `DONE` / `PARTIAL` / `FAILED` 的 worker、asset-producer、analyst。Verifier 的

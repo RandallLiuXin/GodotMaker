@@ -243,7 +243,15 @@ def handle_stop(data: dict, verdict=None) -> None:
     # Role for outcome purposes: the dispatched role first, report type second.
     effective_role = role if role != ROLE_UNKNOWN else report_type
     outcome = report.outcome or {}
-    kind = classify_stop(verdict, report, effective_role)
+    stage = get_current_role()
+    # A dispatched role that stopped without emitting anything never had a
+    # report to validate, so the hook skipped it and the stop read as
+    # terminal — leaving the crash/timeout case the diagnostics exist for with
+    # no record at all. Only inside an active pipeline: elsewhere a silent
+    # subagent is just a subagent.
+    silent = bool(stage) and not message and effective_role in KNOWN_ROLES
+    kind = OUTCOME_UNVERIFIED if silent else classify_stop(
+        verdict, report, effective_role)
 
     record_event(
         EventType.SUBAGENT_STOP,
@@ -268,11 +276,13 @@ def handle_stop(data: dict, verdict=None) -> None:
         outcome_kind=kind,
         agent_id=agent_id,
         run_id=data.get("session_id") or "",
-        stage=get_current_role(),
-        # Why the hook rejected this stop. The report itself cannot say, so
-        # without it two rejections of one agent for different reasons carry
-        # the same fingerprint and the second is dropped as a duplicate.
-        detail=getattr(verdict, "reason", "") or "",
+        stage=stage,
+        # Why this stop failed, when the report cannot say. Without it two
+        # rejections of one agent for different reasons carry the same
+        # fingerprint and the second is dropped as a duplicate; and a silent
+        # stop has no report to describe itself at all.
+        detail=("stopped without producing a report" if silent
+                else getattr(verdict, "reason", "") or ""),
     ))
 
     if kind != OUTCOME_TERMINAL:

@@ -240,7 +240,7 @@ Every `SUBAGENT_STOP` carries `outcome_kind`:
 |---|---|
 | `terminal` | The report passed validation. Writes the one outcome-specific event. |
 | `rejected_attempt` | The report hook blocked this stop. Writes no outcome event. |
-| `unverified` | Released without passing validation. Writes no outcome event. |
+| `unverified` | Released without passing validation, or stopped without emitting a report at all. Writes no outcome event. |
 
 Only a `terminal` stop writes an outcome-specific event, so a report that never
 passed validation can neither read as a result nor pre-empt the retry's real
@@ -268,7 +268,7 @@ fails — workers produce no memory or learning entries.
 | `summary` | One line, ≤200 chars. In order: the report hook's rejection reason (the report cannot say why it was rejected), the `Repair Attempt Evidence` / `Notes` sections, a machine outcome block's validated `blockers`, then the error type |
 | `exit_code` | From the sections where commands actually ran — `Tests` / `Build` for a worker, `Tools` for an asset-producer; a non-zero code outranks a zero, else `null` |
 | `error_fingerprint` | 16 hex chars over task/stage/type/summary, digit runs collapsed |
-| `evidence_paths` | ≤5 paths under `.godotmaker/`, `reports/`, `e2e/`, `docs/tags/` |
+| `evidence_paths` | ≤5 paths that *resolve* under `.godotmaker/`, `reports/`, `e2e/`, `docs/tags/`; `..` is folded first, so a path that walks out of its root is dropped rather than recorded |
 | `retryable` | Whether re-dispatching the same brief can plausibly succeed |
 | `repeat_count` | Prior events this session carrying the same fingerprint |
 
@@ -277,6 +277,11 @@ role: a blocked report is `report_rejected`, then an explicit `Handoff
 condition` from the report's Repair Attempt Evidence, then an unverified
 release. An explicit handoff condition outranks status because a timeout or
 tool fault explains a `FAILED` that the status alone does not.
+
+A stop that emitted no report at all is recorded too: nothing validated it,
+so it counts as `unverified` rather than terminal, and the event says
+`stopped without producing a report`. That is the crash-or-timeout case, and
+it applies only inside an active pipeline role.
 
 `Status` is read last, and only for the roles whose status vocabulary
 describes their own run in `DONE` / `PARTIAL` / `FAILED` terms — worker,
