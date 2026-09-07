@@ -171,10 +171,19 @@ warning instead, and the tag README reports completeness as `partial`.
 
 Archives that already carry a sealed manifest are skipped — re-indexing one
 would replace its recorded seal revision with whatever this run resolves. Pass
-`--force` to re-index them anyway. For the archives it does index, the source
-revision comes from `git tag <Tag>` (the commit `/gm-finalize` tagged), not
-today's `HEAD`; an untagged archive records `null` rather than a fabricated
-revision.
+`--force` to re-index them anyway.
+
+An archive belonging to a finalize that is still in flight — written by
+`archive` but not yet sealed by `index` — is skipped too, and `--force` does
+not override that. It has the same shape as a legacy archive (`PLAN.md`
+present, unsealed, no `CHANGELOG.md`), but sealing it from those incomplete
+inputs would lock the real finalize out at exit 3. Finish it with
+`seal_tag.py index <Tag>` instead. Naming such a tag explicitly is an error
+rather than a silent skip.
+
+For the archives it does index, the source revision comes from `git tag <Tag>`
+(the commit `/gm-finalize` tagged), not today's `HEAD`; an untagged archive
+records `null` rather than a fabricated revision.
 
 `/gm-finalize` never runs `backfill` on its own. Rewriting history is always an
 explicit, user-invoked action.

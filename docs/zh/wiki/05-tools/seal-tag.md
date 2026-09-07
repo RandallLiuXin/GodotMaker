@@ -146,8 +146,16 @@ python tools/seal_tag.py backfill --all
 README 中完整性显示为 `partial`。
 
 已经带有 sealed manifest 的归档会被跳过——重新索引会用本次运行解析出的 revision
-覆盖它原本记录的封存 revision。确实需要重新索引时加 `--force`。对于实际被索引的
-归档，来源 revision 取自 `git tag <Tag>`（`/gm-finalize` 打的那个 commit），
-而不是今天的 `HEAD`；没有对应 git tag 的归档记录为 `null`，不会编造一个 revision。
+覆盖它原本记录的封存 revision。确实需要重新索引时加 `--force`。
+
+属于「正在进行中的 finalize」的归档同样会被跳过，且 `--force` 也不能覆盖这条：
+它由 `archive` 写出但还没被 `index` 封存，外形和旧归档一模一样（有 `PLAN.md`、
+未封存、没有 `CHANGELOG.md`），但用这些不完整的输入把它封存会让真正的 finalize
+在 exit 3 上被锁死。正确做法是用 `seal_tag.py index <Tag>` 把它收尾。显式点名这样
+的 tag 会直接报错，而不是静默跳过。
+
+对于实际被索引的归档，来源 revision 取自 `git tag <Tag>`（`/gm-finalize` 打的那个
+commit），而不是今天的 `HEAD`；没有对应 git tag 的归档记录为 `null`，不会编造一个
+revision。
 
 `/gm-finalize` 永远不会自动执行 `backfill`。改写历史始终是用户明确发起的操作。

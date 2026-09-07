@@ -1037,6 +1037,29 @@ def _looks_like_archive(path: Path) -> bool:
     return path.is_dir() and (path / "PLAN.md").is_file()
 
 
+def _is_provisional(dest_dir: Path) -> bool:
+    """True for an archive this release wrote but has not sealed yet.
+
+    Between `archive` and `index` a normal finalize leaves exactly the shape
+    backfill would otherwise mistake for a legacy archive: `PLAN.md` present,
+    not sealed, no `CHANGELOG.md`. Backfilling it would seal a half-finished
+    tag from incomplete inputs and lock the real finalize out at exit 3.
+
+    The manifest is the discriminator. A legacy archive predates
+    `schema_version` (its manifest only ever held the four evidence counters,
+    or there is none at all); a provisional one carries the current schema and
+    says it is not sealed.
+
+    Boundary: when there is no manifest at all the directory is treated as
+    legacy. That is also the state a failed `archive --force` leaves behind,
+    whose documented recovery is re-running `archive`, not `backfill`.
+    """
+    manifest = _read_manifest(dest_dir)
+    if not isinstance(manifest, dict):
+        return False
+    return "schema_version" in manifest and manifest.get("sealed") is not True
+
+
 def cmd_backfill(
     project_path: Path, tag: str | None, all_tags: bool, force: bool = False
 ) -> int:
@@ -1065,6 +1088,15 @@ def cmd_backfill(
         if not _looks_like_archive(dest_dir):
             print(f"error: docs/tags/{tag}/ is not a tag archive", file=sys.stderr)
             return 2
+        if _is_provisional(dest_dir):
+            # An explicit target gets an error, not a silent skip.
+            print(
+                f"error: docs/tags/{tag}/ is an unsealed archive from an in-progress "
+                f"finalize, not a legacy one. Finish it with `seal_tag.py index {tag}` "
+                f"(after its CHANGELOG.md exists) instead of backfilling it.",
+                file=sys.stderr,
+            )
+            return 2
         targets = [dest_dir]
 
     if not targets:
@@ -1075,6 +1107,15 @@ def cmd_backfill(
     sealed_now: list[str] = []
     try:
         for dest_dir in targets:
+            # Not overridable by --force: hijacking a finalize that is still
+            # running is never the right answer, `index` is.
+            if _is_provisional(dest_dir):
+                print(
+                    f"skipped docs/tags/{dest_dir.name}/ (unsealed archive from an "
+                    f"in-progress finalize; finish it with "
+                    f"`seal_tag.py index {dest_dir.name}`)"
+                )
+                continue
             if _is_sealed(dest_dir) and not force:
                 print(
                     f"skipped docs/tags/{dest_dir.name}/ (already sealed; "

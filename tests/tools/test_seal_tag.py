@@ -1586,3 +1586,82 @@ def test_a_failed_seal_retirement_mutates_nothing(
     assert seal_tag._is_sealed(dest)
     assert {p: p.read_bytes() for p in sorted(dest.rglob("*")) if p.is_file()} == before
     assert parent_path.read_bytes() == parent_before
+
+
+# ---------- backfill keeps its hands off an in-progress finalize ----------
+
+def test_backfill_all_skips_an_archive_from_an_interrupted_finalize(project_dir: Path):
+    """Between `archive` and `index` a finalize leaves exactly the shape a
+    legacy archive has: PLAN.md present, not sealed, no CHANGELOG.md. Sealing
+    it from those incomplete inputs would lock the real finalize out at exit 3.
+    """
+    seal_tag = _load_seal_tag_module()
+    _legacy_archive(project_dir, "v0.0.9")
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0   # finalize in flight
+    in_flight = project_dir / "docs" / "tags" / "v0.1.0"
+
+    r = run(project_dir, "backfill", "--all")
+    assert r.returncode == 0, r.stderr
+    assert "skipped docs/tags/v0.1.0/" in r.stdout
+    assert "in-progress finalize" in r.stdout
+
+    assert not seal_tag._is_sealed(in_flight)
+    assert not (in_flight / "SUMMARY.md").exists()
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "v0.1.0" not in parent
+    assert "[v0.0.9](v0.0.9/)" in parent, "the genuine legacy archive is still indexed"
+
+    # And the finalize it interrupted can still finish normally.
+    write_changelog(project_dir, "v0.1.0")
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+    assert seal_tag._is_sealed(in_flight)
+    assert "[v0.1.0](v0.1.0/)" in (
+        project_dir / "docs" / "tags" / "README.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_backfill_rejects_a_named_provisional_archive(project_dir: Path):
+    """An explicit target gets an error, not a silent skip."""
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    r = run(project_dir, "backfill", "v0.1.0")
+    assert r.returncode == 2
+    assert "in-progress finalize" in r.stderr
+    assert "seal_tag.py index v0.1.0" in r.stderr
+    assert not (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").exists()
+
+
+def test_backfill_force_does_not_override_a_provisional_archive(project_dir: Path):
+    """--force means "re-index an already-sealed archive". It is not a licence
+    to seal a tag whose finalize is still running."""
+    seal_tag = _load_seal_tag_module()
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+
+    r = run(project_dir, "backfill", "--all", "--force")
+    assert r.returncode == 0, r.stderr
+    assert "skipped docs/tags/v0.1.0/" in r.stdout
+    assert not seal_tag._is_sealed(project_dir / "docs" / "tags" / "v0.1.0")
+
+    r = run(project_dir, "backfill", "v0.1.0", "--force")
+    assert r.returncode == 2
+
+
+def test_backfill_still_treats_a_pre_schema_manifest_as_legacy(project_dir: Path):
+    """Archives sealed by an older release carry a manifest too — the four
+    evidence counters, with no schema_version. Those are the real backfill
+    targets and must not be mistaken for a provisional archive."""
+    seal_tag = _load_seal_tag_module()
+    dest = _legacy_archive(project_dir, "v0.0.9")
+    (dest / "evidence").mkdir(parents=True, exist_ok=True)
+    (dest / "evidence" / "manifest.json").write_text(
+        json.dumps({
+            "archive_path": "docs/tags/v0.0.9/evidence/",
+            "e2e_files": 2, "screenshots": 1, "warnings": [],
+        }),
+        encoding="utf-8",
+    )
+    assert not seal_tag._is_provisional(dest)
+
+    r = run(project_dir, "backfill", "v0.0.9")
+    assert r.returncode == 0, r.stderr
+    assert seal_tag._is_sealed(dest)
+    assert (dest / "SUMMARY.md").is_file()

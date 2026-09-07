@@ -29,6 +29,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `docs/tags/README.md` is now written after the seal it describes and rendered only from manifests already on disk, so an interrupted seal can never leave the index advertising an unsealed tag.
 - Every forced tag-archive rewrite (`archive`, `index`, `backfill`) retires the existing seal and index entry before overwriting any file, so a failed rewrite cannot leave `"sealed": true` over hashes that no longer match the archive.
 - An archived `SUMMARY.md` links only the documents and subtrees the archive actually holds, instead of always pointing at `memory/` and every canonical document.
+- `tools/seal_tag.py backfill` no longer treats an unsealed archive from an in-progress finalize as a legacy one, so it cannot seal a half-finished tag and lock the real finalize out.
 - A tag archive now mirrors deletions: a `memory/` or `e2e/` subtree that no longer exists in the project is dropped from the archive instead of being carried into the next snapshot.
 
 ## Fixed
