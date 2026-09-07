@@ -108,7 +108,9 @@ normalized prefix. The asset role's project-root `ASSETS.md` check shares
 this normalization for the same reason. The
 `.claude/worktrees/<agent>/` prefix is stripped after normalization, since a
 worker writes from inside its worktree. `MEMORY.md` itself is a basename
-match, like the planning docs.
+match, like the planning docs — plus, in the resolved reading, whatever a link
+points at: `notes.md -> MEMORY.md` arrives under a name the basename rule
+cannot recognise.
 
 **What this gate does and does not cover.** It is a `PreToolUse` hook on
 `Write|Edit`, so it governs those tools and nothing else. A subagent that
@@ -262,6 +264,7 @@ fails — workers produce no memory or learning entries.
 | `agent_id` / `run_id` | Subagent id and session id, when the runtime supplies them |
 | `error_type` | `report_rejected`, `timeout`, `forced_handoff`, `tool_or_environment_error`, `unverified_handoff`, `task_failed`, `task_partial` |
 | `classification` | The report's suggested `repair-attempt-accounting.md` classification, when it names a known one |
+| — | `Handoff condition` and `classification` are read only from inside `### Repair Attempt Evidence`; a log line pasted into `Tests` or `Build` cannot claim them |
 | `summary` | One line, ≤200 chars |
 | `exit_code` | The first exit code the report names, else `null` |
 | `error_fingerprint` | 16 hex chars over task/stage/type/summary, digit runs collapsed |

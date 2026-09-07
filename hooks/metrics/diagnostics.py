@@ -101,6 +101,13 @@ _REPORT_HEADING_RE = re.compile(
     r"\s*[:：]\s*(.+)$",
     re.IGNORECASE | re.MULTILINE,
 )
+# The report's own handoff statement, up to the next same-or-shallower
+# heading. `#{1,3}\s` cannot match a `####` sub-heading, so a nested one stays
+# inside the captured section.
+_REPAIR_SECTION_RE = re.compile(
+    r"^#{1,3}\s*Repair\s+Attempt\s+Evidence\s*$\n(.*?)(?=\n#{1,3}\s|\Z)",
+    re.IGNORECASE | re.MULTILINE | re.DOTALL,
+)
 _EVIDENCE_FIELD_RE = re.compile(
     r"^[-*\s]*(Handoff condition|Suggested classification)\s*[:：]\s*(.+)$",
     re.IGNORECASE | re.MULTILINE,
@@ -212,9 +219,24 @@ def extract_task_id(message: str) -> str:
 
 
 def extract_repair_fields(message: str) -> dict:
-    """Read `Handoff condition` and `Suggested classification` off a report."""
+    """Read `Handoff condition` and `Suggested classification` off a report.
+
+    Only from inside `### Repair Attempt Evidence`. Scanning the whole message
+    let a pasted test or build log claim the field: those sections come first
+    in the report, so a log line reading `Handoff condition: timeout` would
+    win over the real one below it and file a partial task as a retryable
+    timeout. The section is the report's own statement about its handoff;
+    nothing outside it is.
+
+    A report without that section yields nothing, and the caller falls back to
+    status — which is what `repair-attempt-accounting.md` already prescribes
+    for a handoff whose evidence fields are missing.
+    """
+    section = _REPAIR_SECTION_RE.search(message or "")
+    if not section:
+        return {}
     fields: dict[str, str] = {}
-    for label, value in _EVIDENCE_FIELD_RE.findall(message or ""):
+    for label, value in _EVIDENCE_FIELD_RE.findall(section.group(1)):
         key = label.strip().lower().replace(" ", "_")
         cleaned = value.strip().strip("*_`{}").strip().lower().replace(" ", "_")
         if cleaned and key not in fields:

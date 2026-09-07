@@ -720,6 +720,46 @@ class TestProjectMemoryIsNotSubagentWritable:
         })
         assert is_blocked(parsed), f"{link_name}/ resolves into the notebook"
 
+    @pytest.mark.parametrize("link_name", ["notes.md", "Notes.md", "scratch.md"])
+    @pytest.mark.parametrize("subagent", [
+        {"agent_id": "w1", "agent_type": "worker"},
+        {"agent_id": "", "is_subagent": True, "permission_scope": "memory"},
+    ], ids=["claude-code", "opencode-memory-scope"])
+    def test_a_link_to_the_index_is_blocked_under_any_name(
+            self, project_dir, link_name, subagent):
+        """`notes.md -> MEMORY.md`: the name that arrives is not the name written.
+
+        The basename rule alone cannot see this — only the resolved reading
+        can, and it has to recognise the index and not just the directory.
+        """
+        with open(os.path.join(project_dir, "MEMORY.md"), "w") as fh:
+            fh.write("x")
+        try:
+            os.symlink(os.path.join(project_dir, "MEMORY.md"),
+                       os.path.join(project_dir, link_name))
+        except (OSError, NotImplementedError, AttributeError) as exc:
+            # No junction fallback here: junctions are directories only, and
+            # this case needs a link to a file.
+            pytest.skip(f"file symlinks unavailable here: {exc}")
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": link_name},
+            **subagent,
+        })
+        assert is_blocked(parsed), f"{link_name} resolves to the root index"
+
+    def test_an_ordinary_file_named_notes_is_not_the_index(self, project_dir):
+        """The rule follows a link; it does not block every `*.md` name."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "notes.md"},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert not is_blocked(parsed)
+
     @pytest.mark.parametrize("subagent", [
         {"agent_id": "w1", "agent_type": "worker"},
         {"agent_id": "", "is_subagent": True, "permission_scope": "memory"},

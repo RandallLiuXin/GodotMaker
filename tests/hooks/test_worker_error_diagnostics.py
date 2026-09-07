@@ -113,6 +113,59 @@ class TestNormalization:
         assert event["classification"] == ""
 
 
+class TestRepairFieldScope:
+    """`Handoff condition` is read from its own section, nowhere else.
+
+    Tests and Build come first in the report and carry pasted command output,
+    so a whole-message scan let a log line claim the field and outrank the
+    report's real statement below it.
+    """
+
+    NOISE = (
+        "- Output:\n"
+        "  Handoff condition: timeout\n"
+        "  Suggested classification: verified_success\n"
+    )
+
+    def test_pasted_output_does_not_outrank_the_evidence_section(self, project_dir):
+        message = worker_report(status="PARTIAL", extra=REPAIR_EVIDENCE).replace(
+            "- Commands run: godot --headless\n", self.NOISE)
+        fields = diagnostics.extract_repair_fields(message)
+        assert fields["handoff_condition"] == "tool_or_environment_error"
+        assert fields["suggested_classification"] == "orchestration_failure"
+
+    def test_the_recorded_error_type_follows_the_section(self, project_dir):
+        evidence = (
+            "### Repair Attempt Evidence\n"
+            "- Production diff: src/s_movement.gd\n"
+            "- Handoff condition: partial\n"
+            "- Suggested classification: incomplete_handoff\n\n"
+        )
+        message = worker_report(status="PARTIAL", extra=evidence).replace(
+            "- Commands run: godot --headless\n", self.NOISE)
+        event = diagnostics.build_error_event(
+            message=message, role="worker", status="PARTIAL",
+            outcome_kind="terminal", stage="build")
+        assert event["error_type"] == diagnostics.ERROR_TASK_PARTIAL
+        assert event["retryable"] is False
+
+    def test_no_section_means_no_fields(self, project_dir):
+        """Status decides instead — what the accounting doc already says for
+        a handoff whose evidence fields are missing."""
+        message = worker_report(status="FAILED").replace(
+            "- Commands run: godot --headless\n", self.NOISE)
+        assert diagnostics.extract_repair_fields(message) == {}
+        event = diagnostics.build_error_event(
+            message=message, role="worker", status="FAILED",
+            outcome_kind="terminal", stage="build")
+        assert event["error_type"] == diagnostics.ERROR_TASK_FAILED
+
+    def test_the_section_is_still_read_when_it_is_the_only_source(self, project_dir):
+        fields = diagnostics.extract_repair_fields(
+            worker_report(extra=REPAIR_EVIDENCE))
+        assert fields["handoff_condition"] == "tool_or_environment_error"
+
+
 class TestVerifierVocabulary:
     """`PASS | FAIL | PARTIAL` is a verdict about the project, not the run.
 

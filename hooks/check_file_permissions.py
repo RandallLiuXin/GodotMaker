@@ -142,14 +142,21 @@ def _is_memory_path(file_path: str, file_name: str) -> bool:
     `memory/` that is itself a link out of the project is only visible to the
     first.
 
-    MEMORY.md stays a basename match, like PLANNING_DOCS: no subagent has a
-    reason to write a file by that name anywhere in the tree.
+    Both the index and the directory are checked per reading. `MEMORY.md` is a
+    basename match first, like PLANNING_DOCS — no subagent has a reason to
+    write a file by that name anywhere in the tree — but a basename alone
+    cannot see `notes.md -> MEMORY.md`, where the name that arrives is not the
+    name that gets written. The resolved reading is what catches that.
     """
     if file_name == MEMORY_INDEX:
         return True
     for resolve in (False, True):
         segments = _project_relative_segments(file_path, resolve)
-        if segments and segments[0] == "memory" and len(segments) > 1:
+        if not segments:
+            continue
+        if segments[-1] == MEMORY_INDEX:
+            return True  # an alias for the index, under whatever name
+        if segments[0] == "memory" and len(segments) > 1:
             return True
     return False
 

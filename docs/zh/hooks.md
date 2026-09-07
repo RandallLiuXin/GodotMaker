@@ -89,7 +89,8 @@ asset-producer 以及任何其他被派发的角色——都被阻止写入根 `
 `realpath` 会把 `//?/C:/proj/x` 改写成反斜杠拼法，若提前剥离就会漏掉正斜杠拼法，
 随后还被重新加上一个刚归一化出来的前缀。asset 角色的项目根 `ASSETS.md` 判定基于同样
 的理由共用这套归一化。`.claude/worktrees/<agent>/` 前缀在归一化之后剥离，因为 Worker 是从自己的
-worktree 里写文件的。`MEMORY.md` 本身按 basename 匹配，与规划文档一致。
+worktree 里写文件的。`MEMORY.md` 本身按 basename 匹配，与规划文档一致；此外解析读法还会认出软链指向的
+目标：`notes.md -> MEMORY.md` 传进来的名字是 basename 规则认不出的。
 
 **这个 gate 覆盖什么、不覆盖什么。** 它是挂在 `Write|Edit` 上的 `PreToolUse`
 Hook，因此只管这两个工具。子代理若走 shell——`sed -i`、heredoc、`python -c`——
@@ -213,6 +214,7 @@ memory 或 learning 条目。
 | `agent_id` / `run_id` | runtime 提供时记录的子代理 ID 与会话 ID |
 | `error_type` | `report_rejected`、`timeout`、`forced_handoff`、`tool_or_environment_error`、`unverified_handoff`、`task_failed`、`task_partial` |
 | `classification` | 报告给出的 `repair-attempt-accounting.md` 分类，仅当取值合法时记录 |
+| — | `Handoff condition` 与 `classification` 只从 `### Repair Attempt Evidence` 段内读取；贴进 `Tests` 或 `Build` 的日志行抢不到这两个字段 |
 | `summary` | 单行，≤200 字符 |
 | `exit_code` | 报告中出现的第一个 exit code，没有则为 `null` |
 | `error_fingerprint` | 对 task/stage/type/summary 取 16 位十六进制，数字串统一折叠 |
