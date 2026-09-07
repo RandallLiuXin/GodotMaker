@@ -200,6 +200,27 @@ class TestExitCodeScope:
         assert diagnostics.extract_exit_code(
             "### Build\n- Status: PASS\n- exit code 0\n") == 0
 
+    @pytest.mark.parametrize("phrase,expected", [
+        # `exited with code N` is how tools/run_verify.py words it, so a run
+        # that pastes verify output uses exactly this phrasing.
+        ("gdUnit exited with code 100", 100),
+        ("check_project.py exited with code 2", 2),
+        ("process exited with code -1", -1),
+        ("exit code 1", 1),
+        ("exited 1", 1),
+        ("exit: 2", 2),
+        ("exited with 3", 3),
+        ("no code here", None),
+    ])
+    def test_the_wordings_a_run_actually_emits(self, phrase, expected):
+        assert diagnostics.extract_exit_code(
+            f"### Build\n- Status: FAIL\n- {phrase}\n") == expected
+
+    def test_a_failing_code_outranks_a_passing_one_across_wordings(self):
+        mixed = ("### Tests\n#### Unit Tests\n- all passed, exit code 0\n\n"
+                 "### Build\n- Status: FAIL\n- gdUnit exited with code 100\n")
+        assert diagnostics.extract_exit_code(mixed) == 100
+
     def test_prose_outside_the_command_sections_is_not_an_exit_code(self):
         assert diagnostics.extract_exit_code(
             "### Notes\nthe tool exited 7 apparently\n") is None
@@ -509,6 +530,23 @@ class TestBounds:
         a permitted root as text while denoting something outside it."""
         report = f"### Notes\n- see {named}\n"
         assert diagnostics.extract_evidence_paths(report) == []
+
+    @pytest.mark.parametrize("named", [
+        "/reports/external.log",
+        "/.godotmaker/secrets.log",
+        "C:\\reports\\external.log",
+        "//server/share/reports/x.log",
+    ])
+    def test_an_absolute_path_is_not_project_local_evidence(self, named):
+        """Dropping the leading segment would file an unrelated file as the
+        project's own and send a reader to the wrong artifact."""
+        report = f"### Notes\n- see {named}\n"
+        assert diagnostics.extract_evidence_paths(report) == []
+
+    def test_an_absolute_path_does_not_crowd_out_a_real_one(self):
+        report = ("### Notes\n- see /reports/external.log\n"
+                  "- and reports/legit.log\n")
+        assert diagnostics.extract_evidence_paths(report) == ["reports/legit.log"]
 
     def test_traversal_inside_a_root_is_kept_and_folded(self):
         report = "### Notes\n- see .godotmaker/traces/../traces/real.log\n"

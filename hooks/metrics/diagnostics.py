@@ -144,8 +144,12 @@ _EVIDENCE_FIELD_RE = re.compile(
     r"^[-*\s]*(Handoff condition|Suggested classification)\s*[:：]\s*(.+)$",
     re.IGNORECASE | re.MULTILINE,
 )
+# `exited with code 100` is how `tools/run_verify.py` words it, so a run that
+# pastes verify output uses that phrasing; `exit code 1`, `exited 1` and
+# `exit: 2` all still match.
 _EXIT_CODE_RE = re.compile(
-    r"exit(?:ed with|ed|\s*code)?\s*[:=]?\s*(-?\d{1,3})\b", re.IGNORECASE
+    r"exit(?:ed\s+with(?:\s+code)?|ed|\s*code)?\s*[:=]?\s*(-?\d{1,3})\b",
+    re.IGNORECASE,
 )
 _PATH_RE = re.compile(r"[\w./\\-]+")
 _DIGIT_RUN_RE = re.compile(r"\d+")
@@ -303,15 +307,24 @@ def extract_exit_code(message: str) -> int | None:
 
 
 def _contained_evidence_path(candidate: str) -> str | None:
-    """The path a token denotes, if that still sits under an evidence root.
+    r"""The path a token denotes, if that still sits under an evidence root.
 
-    `..` is folded first: `reports/../../outside.log` and
+    An absolute path is rejected outright rather than folded. `/reports/x.log`
+    and `C:\reports\x.log` are not the project's `reports/` — dropping their
+    empty or drive-qualified leading segment would file an unrelated file as
+    project-local evidence and send a later reader to the wrong artifact.
+    (`_PATH_RE` excludes `:`, so a drive-qualified path reaches here already
+    split into a bare `C` and a leading-slash remainder; both are refused.)
+
+    `..` is folded next: `reports/../../outside.log` and
     `.godotmaker/../MEMORY.md` both start with a permitted prefix as text
     while denoting something outside it, and a prefix test is not a
     containment test. Folded lexically on purpose — this is arbitrary text
     from a report naming paths that need not exist, so the filesystem has no
     say in what it means.
     """
+    if candidate.startswith("/"):
+        return None
     segments: list[str] = []
     for part in candidate.split("/"):
         if part in ("", "."):

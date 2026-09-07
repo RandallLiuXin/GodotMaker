@@ -266,9 +266,9 @@ fails — workers produce no memory or learning entries.
 | `classification` | The report's suggested `repair-attempt-accounting.md` classification, when it names a known one |
 | — | Every field above is read from the section that owns it, never from the whole report: the sections carrying pasted command output come first, so a whole-message scan lets a log line outrank the report's own statement — and since `summary` seeds the fingerprint, that also collapses two different failures into one |
 | `summary` | One line, ≤200 chars. In order: the report hook's rejection reason (the report cannot say why it was rejected), the `Repair Attempt Evidence` / `Notes` sections, a machine outcome block's validated `blockers`, then the error type |
-| `exit_code` | From the sections where commands actually ran — `Tests` / `Build` for a worker, `Tools` for an asset-producer; a non-zero code outranks a zero, else `null` |
+| `exit_code` | From the sections where commands actually ran — `Tests` / `Build` for a worker, `Tools` for an asset-producer. Reads the wordings a run emits (`exit code 1`, `exited 1`, `exited with code 100`); a non-zero code outranks a zero, else `null` |
 | `error_fingerprint` | 16 hex chars over task/stage/type/summary, digit runs collapsed |
-| `evidence_paths` | ≤5 paths that *resolve* under `.godotmaker/`, `reports/`, `e2e/`, `docs/tags/`; `..` is folded first, so a path that walks out of its root is dropped rather than recorded |
+| `evidence_paths` | ≤5 paths that *resolve* under `.godotmaker/`, `reports/`, `e2e/`, `docs/tags/`. Absolute and drive-qualified paths are refused outright — `/reports/x.log` is not the project's `reports/` — and `..` is folded before the check, so a path that walks out of its root is dropped rather than recorded |
 | `retryable` | Whether re-dispatching the same brief can plausibly succeed |
 | `repeat_count` | Prior events this session carrying the same fingerprint |
 

@@ -216,9 +216,9 @@ memory 或 learning 条目。
 | `classification` | 报告给出的 `repair-attempt-accounting.md` 分类，仅当取值合法时记录 |
 | — | 上述每个字段都只从归属它的段落读取，绝不扫描整篇报告：装粘贴输出的段落排在前面，整篇扫描会让日志行盖过报告的自述——而 `summary` 又是指纹的输入，于是两个不同的故障还会被折叠成同一个 |
 | `summary` | 单行，≤200 字符。依次取：报告 Hook 的拦截原因（报告自己说不出它为何被拦）、`Repair Attempt Evidence` / `Notes` 段、machine outcome 块中已校验的 `blockers`，最后才是 error type |
-| `exit_code` | 只从真正跑过命令的段落读取——worker 是 `Tests` / `Build`，asset-producer 是 `Tools`；非零优先于零，都没有则为 `null` |
+| `exit_code` | 只从真正跑过命令的段落读取——worker 是 `Tests` / `Build`，asset-producer 是 `Tools`。识别运行实际输出的几种措辞（`exit code 1`、`exited 1`、`exited with code 100`）；非零优先于零，都没有则为 `null` |
 | `error_fingerprint` | 对 task/stage/type/summary 取 16 位十六进制，数字串统一折叠 |
-| `evidence_paths` | ≤5 条路径，且**解析后**仍位于 `.godotmaker/`、`reports/`、`e2e/`、`docs/tags/` 之下；先折叠 `..`,走出根目录的路径直接丢弃而不是记录 |
+| `evidence_paths` | ≤5 条路径，且**解析后**仍位于 `.godotmaker/`、`reports/`、`e2e/`、`docs/tags/` 之下。绝对路径与带盘符的路径直接拒收——`/reports/x.log` 不是本项目的 `reports/`;`..` 在校验前折叠，走出根目录的路径直接丢弃而不是记录 |
 | `retryable` | 用同一份 brief 重新派发是否还有可能成功 |
 | `repeat_count` | 本会话中指纹相同的既有事件数量 |
 
