@@ -1283,6 +1283,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/seal-tag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tag Archives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3014,11 +3042,13 @@
 <p><strong>What happens behind the scenes:</strong>
 - Verifies the project still builds clean and <code>evaluation.json</code> says <code>approve</code>
 - Reconciles <code>PLAN.md</code>, <code>STRUCTURE.md</code>, and scene docs against the final code so archived names match the systems and components that actually shipped
-- Copies the current <code>GDD.md</code>/<code>PLAN.md</code>/<code>STRUCTURE.md</code>/<code>SCENES.md</code>/<code>MEMORY.md</code> (full snapshots) and <code>evaluation.json</code> into <code>docs/tags/&lt;Tag&gt;/</code>
+- Copies the current <code>GDD.md</code>/<code>PLAN.md</code>/<code>STRUCTURE.md</code>/<code>SCENES.md</code>/<code>MEMORY.md</code> (full snapshots), the <code>memory/</code> subtree and <code>evaluation.json</code> into <code>docs/tags/&lt;Tag&gt;/</code>
 - Generates <code>docs/tags/&lt;Tag&gt;/CHANGELOG.md</code> summarising delivered mechanics, added systems, and any cross-tag refactors
+- Seals the archive: writes <code>SUMMARY.md</code>, the tag <code>README.md</code>, the parent <code>docs/tags/README.md</code> index, and an <code>evidence/manifest.json</code> listing every archived file with its size, SHA-256 and source revision
 - Runs <code>git tag &lt;Tag&gt;</code> locally (does not push)
 - Truncates <code>.godotmaker/stage.jsonl</code> and resets per-tag runtime state so the next <code>/gm-gdd</code> starts on a clean slate</p>
 <p><strong>What you get:</strong> An immutable archive at <code>docs/tags/&lt;Tag&gt;/</code>, a local git tag, and a clean per-tag state for the next round.</p>
+<p><strong>Reading an archive later:</strong> start at <code>docs/tags/README.md</code> to find the tag, then that tag's <code>SUMMARY.md</code> — one bounded screen covering theme, delivered mechanics, verification verdict and known limitations. Open the canonical documents (<code>PLAN.md</code>, <code>STRUCTURE.md</code>, …) or <code>evidence/</code> only when the summary is not enough. Once sealed, an archive is immutable: <code>/gm-finalize</code> refuses to rewrite it, and corrections belong in the live root documents.</p>
 <p><strong>Things to know:</strong> This skill does NOT package a release zip; release packaging is a separate concern (a future skill). <code>/gm-finalize</code> does not push the git tag — that decision is yours.</p>
 <hr />
 <h2 id="gm-rescue-out-of-pipeline"><code>/gm-rescue</code> (out-of-pipeline)<a class="headerlink" href="#gm-rescue-out-of-pipeline" title="Permanent link">&para;</a></h2>

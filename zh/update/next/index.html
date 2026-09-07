@@ -1115,6 +1115,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../wiki/05-tools/seal-tag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tag Archives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2793,8 +2821,20 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <ul>
 <li>Added Alibaba Cloud Model Studio Wan 2.7 as an API-backed <code>/gm-asset</code> image provider with regional endpoint validation, ordered reference-image editing, and sanitized provenance reports.</li>
 <li>Added a bilingual, agent-assisted guide for safely re-initializing a 0.x workspace on 1.0 and migrating its project-specific documents and runtime asset bindings (#184) — @RandallLiuXin.</li>
+<li>Added a layered index to tag archives: a parent <code>docs/tags/README.md</code>, a per-tag <code>README.md</code> and <code>SUMMARY.md</code>, the frozen <code>memory/</code> subtree, and an <code>evidence/manifest.json</code> listing every archived file with size, SHA-256 and source revision.</li>
+<li>Added <code>tools/seal_tag.py index</code>, <code>backfill</code> and <code>reindex</code> for sealing a new tag archive, retrofitting index files onto archives sealed by an older release, and rebuilding <code>docs/tags/README.md</code> from the sealed archives on disk.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>/gm-finalize</code> now archives the <code>memory/</code> subtree with <code>MEMORY.md</code>, link-checks the archived index, and refuses to overwrite an already-sealed tag archive.</li>
+<li>The finalize completion gate now requires a parseable <code>evidence/manifest.json</code> with <code>"sealed": true</code> and a parent index that lists the tag, instead of only checking that the archive files exist.</li>
+<li><code>docs/tags/README.md</code> is now written after the seal it describes and rendered only from manifests already on disk, so an interrupted seal can never leave the index advertising an unsealed tag.</li>
+<li>Every forced tag-archive rewrite (<code>archive</code>, <code>index</code>, <code>backfill</code>) retires the existing seal and index entry before overwriting any file, so a failed rewrite cannot leave <code>"sealed": true</code> over hashes that no longer match the archive.</li>
+<li>An archived <code>SUMMARY.md</code> links only the documents and subtrees the archive actually holds, instead of always pointing at <code>memory/</code> and every canonical document.</li>
+<li><code>tools/seal_tag.py backfill</code> no longer treats an unsealed archive from an in-progress finalize as a legacy one, so it cannot seal a half-finished tag and lock the real finalize out. Every mutating command now claims the archive with an in-flight marker before its first write, so even a run interrupted mid-copy stays identifiable.</li>
+<li><code>tools/seal_tag.py backfill</code> carries the warnings already recorded on an archive into the manifest it writes, instead of dropping them and relabelling a partial archive as complete.</li>
+<li>A tag archive now mirrors deletions: a <code>memory/</code> or <code>e2e/</code> subtree that no longer exists in the project is dropped from the archive instead of being carried into the next snapshot.</li>
+</ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 

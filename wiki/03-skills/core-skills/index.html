@@ -1245,6 +1245,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/seal-tag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tag Archives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2898,9 +2926,9 @@
 </tr>
 <tr>
 <td><code>/gm-finalize</code></td>
-<td>Archives the tag's working docs to <code>docs/tags/&lt;Tag&gt;/</code>, runs <code>git tag &lt;Tag&gt;</code> locally, resets per-tag runtime state</td>
+<td>Archives the tag's working docs to <code>docs/tags/&lt;Tag&gt;/</code>, seals them behind a SUMMARY / README / hash manifest, runs <code>git tag &lt;Tag&gt;</code> locally, resets per-tag runtime state</td>
 <td>An accepted build</td>
-<td><code>docs/tags/&lt;Tag&gt;/</code> archive, <code>.godotmaker/final_report.json</code>, local git tag</td>
+<td><code>docs/tags/&lt;Tag&gt;/</code> sealed archive, <code>docs/tags/README.md</code> index, <code>.godotmaker/final_report.json</code>, local git tag</td>
 </tr>
 </tbody>
 </table>

@@ -1283,6 +1283,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tools/seal-tag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tag Archives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3014,11 +3042,13 @@
 <p><strong>背后发生了什么：</strong>
 - 验证项目仍能干净编译，<code>evaluation.json</code> 显示 <code>approve</code>
 - 对照最终代码核对 <code>PLAN.md</code>、<code>STRUCTURE.md</code> 和场景文档，确保归档里的名称对应实际交付的系统和组件
-- 把当前的 <code>GDD.md</code> / <code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>SCENES.md</code> / <code>MEMORY.md</code>（完整快照）和 <code>evaluation.json</code> 复制到 <code>docs/tags/&lt;Tag&gt;/</code>
+- 把当前的 <code>GDD.md</code> / <code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>SCENES.md</code> / <code>MEMORY.md</code>（完整快照）、<code>memory/</code> 子目录和 <code>evaluation.json</code> 复制到 <code>docs/tags/&lt;Tag&gt;/</code>
 - 生成 <code>docs/tags/&lt;Tag&gt;/CHANGELOG.md</code>，总结交付的 mechanic、新增系统、跨 tag refactor
+- 封存归档：写入 <code>SUMMARY.md</code>、该 tag 的 <code>README.md</code>、父级索引 <code>docs/tags/README.md</code>，以及列出每个归档文件路径、字节数、SHA-256 和来源 revision 的 <code>evidence/manifest.json</code>
 - 在本地执行 <code>git tag &lt;Tag&gt;</code>（不 push）
 - 截断 <code>.godotmaker/stage.jsonl</code> 并重置每 tag 的运行时状态，让下一个 <code>/gm-gdd</code> 在干净状态下开始</p>
 <p><strong>你得到什么：</strong> <code>docs/tags/&lt;Tag&gt;/</code> 下的不可变归档、一个本地 git tag、为下一轮准备好的干净每 tag 状态。</p>
+<p><strong>以后怎么读归档：</strong> 先看 <code>docs/tags/README.md</code> 找到目标 tag，再读该 tag 的 <code>SUMMARY.md</code>——一屏之内讲清主题、交付的 mechanic、验证结论和已知限制。只有摘要不够用时，才去打开 <code>PLAN.md</code>、<code>STRUCTURE.md</code> 等 canonical 文档或 <code>evidence/</code>。归档一旦封存就不可变：<code>/gm-finalize</code> 会拒绝改写它，修正应该写进根目录的活文档。</p>
 <p><strong>需要知道的：</strong> 这个 skill 不打 release zip；release 打包是单独的事（未来一个独立 skill）。<code>/gm-finalize</code> 不会 push git tag——这个决定是你的。</p>
 <hr />
 <h2 id="gm-rescue"><code>/gm-rescue</code>（主流程外）<a class="headerlink" href="#gm-rescue" title="Permanent link">&para;</a></h2>
