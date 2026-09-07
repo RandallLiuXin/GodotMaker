@@ -105,6 +105,15 @@ catch. Only the comparison is case-insensitive. The
 worker writes from inside its worktree. `MEMORY.md` itself is a basename
 match, like the planning docs.
 
+**What this gate does and does not cover.** It is a `PreToolUse` hook on
+`Write|Edit`, so it governs those tools and nothing else. A subagent that
+shells out — `sed -i`, a heredoc, `python -c` — writes without passing through
+here, on every runtime. That is the same boundary the planning-doc and
+`e2e/` rules have always had, not something specific to project memory: the
+tool gate is the enforcement layer, the role definition is what closes the
+rest. It also only applies while a `/gm-*` role is active; with no
+`.godotmaker/current_role` the hook records the write and allows it.
+
 Runner note: the role-ownership part of this gate requires a runtime-provided
 `agent_id`. OpenCode child sessions do not expose that payload, so the OpenCode
 adapter relies on OpenCode-native agent edit permissions there. The memory rule
@@ -243,7 +252,7 @@ fails — workers produce no memory or learning entries.
 | `task_id` | The PLAN/GAP task id the report's heading starts with (`M01`, `R2`), else a bounded slug of the task name |
 | `attempt` | 1 + prior `worker_error` events for the same `task_id` + `stage` this session |
 | `stage` | Active pipeline role (`build`, `fixgap`, …) |
-| `runtime` | Selected coding agent, read from `.godotmaker/config.yaml` |
+| `runtime` | Selected coding agent, resolved exactly as `tools/agent_runtime.detect_agent` resolves it — the `agent:` key in `.godotmaker/config.yaml` with aliases normalized (`claude` → `claude-code`), then the published-directory fallback, then `claude-code` |
 | `role` | Dispatched role (`worker`, `verifier`, …) |
 | `agent_id` / `run_id` | Subagent id and session id, when the runtime supplies them |
 | `error_type` | `report_rejected`, `timeout`, `forced_handoff`, `tool_or_environment_error`, `unverified_handoff`, `task_failed`, `task_partial` |
@@ -255,10 +264,19 @@ fails — workers produce no memory or learning entries.
 | `retryable` | Whether re-dispatching the same brief can plausibly succeed |
 | `repeat_count` | Prior events this session carrying the same fingerprint |
 
-`error_type` resolution: a blocked report is `report_rejected` first; otherwise
-an explicit `Handoff condition` from the report's Repair Attempt Evidence wins
-over status, because a timeout or tool fault explains a `FAILED` that the status
-alone does not.
+`error_type` resolution runs run-level faults first, and those hold for every
+role: a blocked report is `report_rejected`, then an explicit `Handoff
+condition` from the report's Repair Attempt Evidence, then an unverified
+release. An explicit handoff condition outranks status because a timeout or
+tool fault explains a `FAILED` that the status alone does not.
+
+`Status` is read last, and only for the roles whose status vocabulary
+describes their own run in `DONE` / `PARTIAL` / `FAILED` terms — worker,
+asset-producer, analyst. A verifier's `Overall: PASS | FAIL | PARTIAL` is a
+verdict about the project, not about the run: a verifier reporting `FAIL` did
+its job, and that outcome already travels as `verifier_fail`. So no verifier
+status produces a `worker_error` — but a verifier that times out, has its
+report rejected, or is released unverified still does.
 
 Three properties this record holds to:
 

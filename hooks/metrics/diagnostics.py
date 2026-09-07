@@ -31,7 +31,9 @@ import os
 import re
 
 from .collector import read_current_events, record_event
-from .schema import EventType
+from .schema import (
+    EventType, ROLE_ANALYST, ROLE_ASSET_PRODUCER, ROLE_WORKER,
+)
 
 
 ERROR_EVENT_VERSION = 1
@@ -68,6 +70,18 @@ HANDOFF_ERROR_TYPES = {
 RETRYABLE_ERROR_TYPES = frozenset({
     ERROR_TIMEOUT, ERROR_FORCED_HANDOFF, ERROR_TOOL_OR_ENV,
     ERROR_REPORT_REJECTED, ERROR_UNVERIFIED,
+})
+
+# Roles whose report `Status` is a statement about their own run, in
+# DONE / PARTIAL / FAILED terms — for these a non-DONE status IS a failed
+# handoff. A verifier's `Overall: PASS | FAIL | PARTIAL` is a verdict about
+# the project instead: a verifier that reports FAIL did its job, and that
+# result already travels as a `verifier_fail` event. So status never derives
+# an error type for it; only the run-level faults above that — a rejected
+# report, a timeout, a tool fault, an unverified release — do, and those
+# apply to every role.
+STATUS_IS_RUN_OUTCOME_ROLES = frozenset({
+    ROLE_WORKER, ROLE_ASSET_PRODUCER, ROLE_ANALYST,
 })
 
 # Classifications defined by `repair-attempt-accounting.md`. Carried through
@@ -114,28 +128,67 @@ def _clip(text: str, limit: int) -> str:
     return text[: limit - 1].rstrip() + "…"
 
 
-def read_runtime(project_dir: str = ".") -> str:
-    """The selected coding agent, read from `.godotmaker/config.yaml`.
+# Canonical runtime ids and their accepted spellings, and the project-local
+# directory each runtime publishes into. Both mirror
+# `tools/agent_runtime.py` — `normalize_agent` and `detect_agent`'s fallback.
+# A hook must never crash, and `tools/` is not on its import path, so this is
+# a deliberate copy rather than a cross-tree import;
+# `tests/hooks/test_worker_error_diagnostics.py` pins the two together so
+# they cannot drift apart silently.
+RUNTIME_ALIASES = {
+    "codex": "codex", "openai-codex": "codex",
+    "opencode": "opencode", "open-code": "opencode",
+    "pi": "pi", "pi-coding-agent": "pi", "pi-coding": "pi",
+    "claude": "claude-code", "claude-code": "claude-code",
+    "anthropic-claude-code": "claude-code",
+}
+RUNTIME_CONFIG_DIRS = (
+    (".agents", "codex"),
+    (".opencode", "opencode"),
+    (".pi", "pi"),
+)
+RUNTIME_DEFAULT = "claude-code"
 
-    Mirrors `tools/agent_runtime.detect_agent`'s config key. Hooks run from
-    the project root without `tools/` on the import path, so the key is read
-    directly rather than reaching across the tree for one scalar.
+
+def normalize_runtime(value: str | None) -> str | None:
+    """Canonical runtime id for a configured spelling, or None if unknown."""
+    if not value:
+        return None
+    return RUNTIME_ALIASES.get(value.strip().lower().replace("_", "-"))
+
+
+def read_runtime(project_dir: str = ".") -> str:
+    """The selected coding agent, resolved the way `detect_agent` resolves it.
+
+    The `agent:` key in `.godotmaker/config.yaml` first, then the same
+    published-directory fallback `detect_agent` uses for projects that predate
+    that key, then its same `claude-code` default. Aliases are normalized, so
+    `agent: claude` is recorded as `claude-code` and correlates with the other
+    runtimes rather than becoming a fourth spelling of one of them.
+
+    Only top-level keys count: an indented `agent:` belongs to some nested
+    block, not to the project's runtime selection.
     """
     path = os.path.join(project_dir, ".godotmaker", "config.yaml")
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
-                stripped = line.strip()
-                if stripped.startswith("#") or ":" not in stripped:
+                if not line.strip() or line[:1] in (" ", "\t", "#"):
                     continue
-                key, value = stripped.split(":", 1)
+                if ":" not in line:
+                    continue
+                key, value = line.split(":", 1)
                 if key.strip() in ("agent", "agent_runtime"):
-                    value = value.strip().strip('"').strip("'")
-                    if value:
-                        return value
+                    runtime = normalize_runtime(value.strip().strip("\"'"))
+                    if runtime:
+                        return runtime
     except OSError:
         pass
-    return "unknown"
+
+    for directory, runtime in RUNTIME_CONFIG_DIRS:
+        if os.path.isdir(os.path.join(project_dir, directory)):
+            return runtime
+    return RUNTIME_DEFAULT
 
 
 def extract_task_id(message: str) -> str:
@@ -236,13 +289,18 @@ def error_fingerprint(task_id: str, stage: str, error_type: str,
 
 
 def resolve_error_type(status: str, outcome_kind: str,
-                       handoff_condition: str) -> str | None:
+                       handoff_condition: str, role: str) -> str | None:
     """The one error type for this stop, or None when the run is clean.
 
-    A rejected report is an orchestration fault regardless of what the report
-    claims; otherwise an explicit handoff condition wins over status, because
-    a timeout or a tool fault explains a `FAILED` that the status alone does
-    not.
+    Run-level faults come first and hold for every role: a rejected report is
+    an orchestration fault regardless of what the report claims, and an
+    explicit handoff condition outranks status because a timeout or a tool
+    fault explains a `FAILED` that the status alone does not.
+
+    Status is read last, and only for the roles whose status vocabulary
+    describes their own run — see `STATUS_IS_RUN_OUTCOME_ROLES`. `role` is
+    required rather than defaulted, so a caller cannot silently skip that
+    branch by omitting it.
     """
     if outcome_kind == "rejected_attempt":
         return ERROR_REPORT_REJECTED
@@ -251,6 +309,8 @@ def resolve_error_type(status: str, outcome_kind: str,
         return mapped
     if outcome_kind == "unverified":
         return ERROR_UNVERIFIED
+    if role not in STATUS_IS_RUN_OUTCOME_ROLES:
+        return None
     status = (status or "").upper()
     if status == "FAILED":
         return ERROR_TASK_FAILED
@@ -299,7 +359,7 @@ def build_error_event(*, message: str, role: str, status: str,
     """Normalize one stop into a diagnostic event, or None if it is clean."""
     repair = extract_repair_fields(message)
     error_type = resolve_error_type(status, outcome_kind,
-                                    repair.get("handoff_condition", ""))
+                                    repair.get("handoff_condition", ""), role)
     if error_type is None:
         return None
 

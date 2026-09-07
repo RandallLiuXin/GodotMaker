@@ -722,6 +722,69 @@ class TestProjectMemoryIsNotSubagentWritable:
         finally:
             shutil.rmtree(outside, ignore_errors=True)
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    @pytest.mark.parametrize("parts", [
+        ("memory", "learning.txt"),
+        ("memory", "ui", "notes.txt"),
+        ("src", "..", "memory", "learning.txt"),
+    ])
+    def test_windows_extended_length_prefix_is_blocked(self, project_dir, parts):
+        r"""`\\?\C:\proj\memory\x` names the same file as `C:\proj\memory\x`.
+
+        Neither `abspath` nor `realpath` strips the prefix, so without an
+        explicit strip the anchored comparison places it outside the project.
+        """
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "\\\\?\\" + os.path.join(project_dir, *parts)},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed)
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only syntax")
+    def test_an_unreachable_unc_path_neither_crashes_nor_matches(self, project_dir):
+        """`realpath` raises on an unreachable share; the hook must not."""
+        write_current_role("build")
+        stdout, code, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "\\\\?\\UNC\\server\\share\\memory\\x.txt"},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert code == 0, stdout
+        assert not is_blocked(parsed)
+
+    def test_the_rule_anchors_on_the_hook_cwd(self, project_dir):
+        """Pin the precondition the whole hook is written against.
+
+        Every rule here assumes it runs from the project root — Claude Code's
+        hook and the OpenCode plugin (`spawnSync` with `cwd: projectRoot`)
+        both do. The memory rule is the one that would go quiet rather than
+        loud if that ever stopped holding, so assert the assumption instead of
+        leaving it implicit.
+        """
+        nested = os.path.join(project_dir, "src")
+        os.makedirs(nested, exist_ok=True)
+        os.makedirs(os.path.join(project_dir, "memory"), exist_ok=True)
+        original = os.getcwd()
+        os.chdir(nested)
+        try:
+            write_current_role("build")  # writes <nested>/.godotmaker
+            _, _, parsed = run_hook(HOOK, {
+                "tool_name": "Write",
+                "tool_input": {"file_path": "memory/learning.txt"},
+                "agent_id": "w1",
+                "agent_type": "worker",
+            })
+            assert is_blocked(parsed), (
+                "the anchor is the hook's cwd — if this ever changes, the "
+                "rule's project-root assumption has to be revisited"
+            )
+        finally:
+            os.chdir(original)
+
     @pytest.mark.parametrize("path", [
         "../outside/memory/learning.txt",
         "../../memory/learning.txt",

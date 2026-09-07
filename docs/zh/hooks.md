@@ -88,6 +88,12 @@ asset-producer 以及任何其他被派发的角色——都被阻止写入根 `
 无关的。`.claude/worktrees/<agent>/` 前缀在归一化之后剥离，因为 Worker 是从自己的
 worktree 里写文件的。`MEMORY.md` 本身按 basename 匹配，与规划文档一致。
 
+**这个 gate 覆盖什么、不覆盖什么。** 它是挂在 `Write|Edit` 上的 `PreToolUse`
+Hook，因此只管这两个工具。子代理若走 shell——`sed -i`、heredoc、`python -c`——
+写入不经过这里，四个 runtime 都一样。这与规划文档和 `e2e/` 规则一直以来的边界相同，
+并非项目记忆特有：工具闸是强制层，角色定义负责补齐其余部分。它还只在 `/gm-*` 角色
+活跃期间生效；没有 `.godotmaker/current_role` 时，Hook 只记录写入并放行。
+
 Runner 说明：这个 gate 中按角色划分归属的部分需要 runtime 提供 `agent_id`。
 OpenCode child session 不暴露该 payload，因此 OpenCode adapter 在那部分依赖
 OpenCode 原生 agent edit permission。记忆规则不需要角色身份，因此 adapter 会对
@@ -199,7 +205,7 @@ memory 或 learning 条目。
 | `task_id` | 报告标题开头的 PLAN/GAP 任务 ID（`M01`、`R2`），否则取任务名的有界 slug |
 | `attempt` | 本会话内同一 `task_id` + `stage` 的既有 `worker_error` 数量 + 1 |
 | `stage` | 当前流水线角色（`build`、`fixgap` 等） |
-| `runtime` | 所选 coding agent，读自 `.godotmaker/config.yaml` |
+| `runtime` | 所选 coding agent，与 `tools/agent_runtime.detect_agent` 同一套判定：先读 `.godotmaker/config.yaml` 的 `agent:` 键并归一化别名（`claude` → `claude-code`），再按已发布目录回退，最后默认 `claude-code` |
 | `role` | 被派发的角色（`worker`、`verifier` 等） |
 | `agent_id` / `run_id` | runtime 提供时记录的子代理 ID 与会话 ID |
 | `error_type` | `report_rejected`、`timeout`、`forced_handoff`、`tool_or_environment_error`、`unverified_handoff`、`task_failed`、`task_partial` |
@@ -211,9 +217,17 @@ memory 或 learning 条目。
 | `retryable` | 用同一份 brief 重新派发是否还有可能成功 |
 | `repeat_count` | 本会话中指纹相同的既有事件数量 |
 
-`error_type` 判定顺序：被拦截的报告先记为 `report_rejected`；否则报告 Repair
-Attempt Evidence 中显式的 `Handoff condition` 优先于 status——超时或工具故障能
-解释 status 本身解释不了的 `FAILED`。
+`error_type` 先判定运行级故障，且对所有角色一律生效：被拦截的报告记为
+`report_rejected`，其次是报告 Repair Attempt Evidence 中显式的
+`Handoff condition`，再次是未经校验即被放行。显式的 handoff condition 优先于
+status——超时或工具故障能解释 status 本身解释不了的 `FAILED`。
+
+`Status` 最后才读，且只对「status 词表描述自身运行」的角色生效，即用
+`DONE` / `PARTIAL` / `FAILED` 的 worker、asset-producer、analyst。Verifier 的
+`Overall: PASS | FAIL | PARTIAL` 是对项目的判定而非对本次运行的判定：Verifier 报
+`FAIL` 说明它把活干成了，该结果已经以 `verifier_fail` 事件记录。因此 Verifier 的
+任何 status 都不产生 `worker_error`——但它超时、报告被拦截、或未经校验被放行时
+仍然会记录。
 
 这条记录守三个性质：
 

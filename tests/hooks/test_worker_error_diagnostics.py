@@ -1,8 +1,10 @@
 """Tests for the structured failure diagnostics that replaced worker memory."""
 import json
 import os
+import shutil
 import sys
 import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -10,14 +12,22 @@ from .helpers import (
     run_hook, cleanup_metrics, write_current_role, read_metrics, write_metrics,
 )
 
-HOOKS_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "hooks",
-)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+HOOKS_DIR = str(REPO_ROOT / "hooks")
 if HOOKS_DIR not in sys.path:
     sys.path.insert(0, HOOKS_DIR)
 
 from metrics import diagnostics  # noqa: E402
+
+
+def _import_agent_runtime():
+    """`tools/agent_runtime.py`, which hooks deliberately cannot import."""
+    tools_dir = str(REPO_ROOT / "tools")
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    import agent_runtime
+    return agent_runtime
+
 
 DISPATCHER = "on_subagent_stop.py"
 
@@ -71,23 +81,26 @@ class TestNormalization:
         assert diagnostics.extract_task_id("no heading here") == "unknown"
 
     def test_handoff_condition_outranks_status(self):
-        assert diagnostics.resolve_error_type("FAILED", "terminal", "timeout") \
-            == diagnostics.ERROR_TIMEOUT
+        assert diagnostics.resolve_error_type(
+            "FAILED", "terminal", "timeout", "worker") == diagnostics.ERROR_TIMEOUT
 
     def test_rejected_report_outranks_everything(self):
         assert diagnostics.resolve_error_type(
-            "DONE", "rejected_attempt", "timeout") == diagnostics.ERROR_REPORT_REJECTED
+            "DONE", "rejected_attempt", "timeout",
+            "worker") == diagnostics.ERROR_REPORT_REJECTED
 
     @pytest.mark.parametrize("status,expected", [
         ("FAILED", diagnostics.ERROR_TASK_FAILED),
         ("PARTIAL", diagnostics.ERROR_TASK_PARTIAL),
     ])
-    def test_status_maps_when_no_handoff_condition(self, status, expected):
-        assert diagnostics.resolve_error_type(status, "terminal", "") == expected
+    @pytest.mark.parametrize("role", ["worker", "asset-producer", "analyst"])
+    def test_status_maps_when_no_handoff_condition(self, role, status, expected):
+        assert diagnostics.resolve_error_type(
+            status, "terminal", "", role) == expected
 
     def test_clean_run_has_no_error_type(self):
-        assert diagnostics.resolve_error_type("DONE", "terminal", "") is None
-        assert diagnostics.resolve_error_type("PASS", "terminal", "") is None
+        assert diagnostics.resolve_error_type(
+            "DONE", "terminal", "", "worker") is None
 
     def test_exit_code_read_when_named(self):
         assert diagnostics.extract_exit_code("godot exited 1") == 1
@@ -98,6 +111,52 @@ class TestNormalization:
             message=worker_report(extra="- Suggested classification: vibes\n"),
             role="worker", status="FAILED", outcome_kind="terminal", stage="build")
         assert event["classification"] == ""
+
+
+class TestVerifierVocabulary:
+    """`PASS | FAIL | PARTIAL` is a verdict about the project, not the run.
+
+    A verifier that reports FAIL did its job — that outcome already travels as
+    `verifier_fail`. Deriving an error type from any of its three words would
+    file a working run as a failure; deriving one from only some of them would
+    file the pipeline's clearest failure signal as nothing while its weaker
+    sibling got a record. Neither is right, so status is not read at all for
+    this role — but every run-level fault still is.
+    """
+
+    @pytest.mark.parametrize("status", ["PASS", "FAIL", "PARTIAL"])
+    def test_no_status_derives_an_error_type(self, status):
+        assert diagnostics.resolve_error_type(
+            status, "terminal", "", "verifier") is None
+
+    @pytest.mark.parametrize("outcome_kind,expected", [
+        ("rejected_attempt", diagnostics.ERROR_REPORT_REJECTED),
+        ("unverified", diagnostics.ERROR_UNVERIFIED),
+    ])
+    def test_run_level_faults_still_recorded(self, outcome_kind, expected):
+        assert diagnostics.resolve_error_type(
+            "FAIL", outcome_kind, "", "verifier") == expected
+
+    def test_a_timeout_is_still_recorded(self):
+        assert diagnostics.resolve_error_type(
+            "FAIL", "terminal", "timeout", "verifier") == diagnostics.ERROR_TIMEOUT
+
+    @pytest.mark.parametrize("status", ["PASS", "FAIL", "PARTIAL"])
+    def test_verifier_report_writes_no_event(self, project_dir, status):
+        report = (
+            "## Verification Report: Integration\n\n"
+            f"### Overall: {status}\n\n"
+            "### Results\n### Check: build\n**Command run:** godot --headless\n\n"
+            "### Adversarial Probes\n### Check: boundary\n**Command run:** edge\n"
+        )
+        assert diagnostics.build_error_event(
+            message=report, role="verifier", status=status,
+            outcome_kind="terminal", stage="verify") is None
+
+    def test_an_unknown_role_derives_nothing_from_status(self):
+        """A generic subagent is not on the diagnostics contract."""
+        assert diagnostics.resolve_error_type(
+            "FAILED", "terminal", "", "unknown") is None
 
 
 class TestBounds:
@@ -190,22 +249,79 @@ class TestFingerprintAndDedupe:
         assert len({e["error_fingerprint"] for e in events}) == 1
 
 
+def _write_config(agent_line: str) -> None:
+    os.makedirs(".godotmaker", exist_ok=True)
+    with open(".godotmaker/config.yaml", "w", encoding="utf-8") as f:
+        f.write(f"{agent_line}godot_path: godot\n")
+
+
 class TestRuntimeField:
     @pytest.mark.parametrize("agent", ["claude-code", "codex", "opencode", "pi"])
     def test_runtime_read_from_project_config(self, project_dir, agent):
-        os.makedirs(".godotmaker", exist_ok=True)
-        with open(".godotmaker/config.yaml", "w", encoding="utf-8") as f:
-            f.write(f"agent: {agent}\ngodot_path: godot\n")
+        _write_config(f"agent: {agent}\n")
         event = diagnostics.build_error_event(
             message=worker_report(), role="worker", status="FAILED",
             outcome_kind="terminal", stage="build")
         assert event["runtime"] == agent
 
-    def test_runtime_unknown_without_config(self, project_dir):
-        event = diagnostics.build_error_event(
-            message=worker_report(), role="worker", status="FAILED",
-            outcome_kind="terminal", stage="build")
-        assert event["runtime"] == "unknown"
+    @pytest.mark.parametrize("configured,expected", [
+        ("claude", "claude-code"),
+        ("anthropic-claude-code", "claude-code"),
+        ("openai-codex", "codex"),
+        ("open-code", "opencode"),
+        ("pi-coding-agent", "pi"),
+        ("Codex", "codex"),
+        ("pi_coding", "pi"),
+    ])
+    def test_aliases_are_normalized(self, project_dir, configured, expected):
+        """`agent: claude` must correlate with `claude-code`, not become a
+        fourth spelling of it."""
+        _write_config(f"agent: {configured}\n")
+        assert diagnostics.read_runtime() == expected
+
+    @pytest.mark.parametrize("directory,expected", [
+        (".agents", "codex"),
+        (".opencode", "opencode"),
+        (".pi", "pi"),
+    ])
+    def test_directory_fallback_for_projects_predating_the_agent_key(
+            self, project_dir, directory, expected):
+        _write_config("")
+        os.makedirs(directory, exist_ok=True)
+        assert diagnostics.read_runtime() == expected
+
+    def test_an_indented_agent_key_is_not_the_runtime(self, project_dir):
+        """Only a top-level `agent:` selects the runtime."""
+        _write_config("models:\n  agent: codex\n")
+        assert diagnostics.read_runtime() == "claude-code"
+
+    def test_matches_the_tool_that_actually_picks_the_runtime(self, project_dir):
+        """`read_runtime` is a copy of `tools/agent_runtime.detect_agent`.
+
+        The hook cannot import `tools/`, so this pins the copy to its source:
+        if one grows a spelling or a fallback the other lacks, this fails.
+        """
+        agent_runtime = _import_agent_runtime()
+        scenarios = [
+            ("agent: claude\n", None),
+            ("agent: openai-codex\n", None),
+            ("agent: opencode\n", None),
+            ("agent: pi-coding-agent\n", None),
+            ("agent: nonsense\n", None),
+            ("", ".agents"),
+            ("", ".opencode"),
+            ("", ".pi"),
+            ("", None),
+        ]
+        for agent_line, directory in scenarios:
+            shutil.rmtree(".godotmaker", ignore_errors=True)
+            for existing in (".agents", ".opencode", ".pi"):
+                shutil.rmtree(existing, ignore_errors=True)
+            _write_config(agent_line)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            assert diagnostics.read_runtime() == agent_runtime.detect_agent(
+                Path(os.getcwd())), f"drift for {agent_line!r} / {directory}"
 
 
 class TestThroughTheStopHook:

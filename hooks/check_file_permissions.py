@@ -55,6 +55,19 @@ RESCUE_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/current_role"}
 
 
+def _strip_extended_prefix(path: str) -> str:
+    r"""Drop Windows' extended-length prefix so the path anchors normally.
+
+    `\\?\C:\proj\memory\x` names the same file as `C:\proj\memory\x`, but
+    neither `abspath` nor `realpath` removes the prefix, so the anchored
+    comparison would place it outside the project and wave it through.
+    """
+    for prefix, replacement in ((r"\\?\UNC" + "\\", "\\\\"), (r"\\?" + "\\", "")):
+        if path.startswith(prefix):
+            return replacement + path[len(prefix):]
+    return path
+
+
 def _project_relative_segments(file_path: str, resolve: bool) -> list[str] | None:
     """Path segments relative to the project root this write belongs to.
 
@@ -88,8 +101,15 @@ def _project_relative_segments(file_path: str, resolve: bool) -> list[str] | Non
     runs on the normalized segments, because `..` can cross the marker.
     """
     normalize = os.path.realpath if resolve else os.path.abspath
-    root = normalize(os.getcwd()).replace("\\", "/").rstrip("/").lower()
-    target = normalize(file_path).replace("\\", "/").lower()
+    try:
+        root = normalize(os.getcwd()).replace("\\", "/").rstrip("/").lower()
+        target = normalize(_strip_extended_prefix(file_path))
+    except (OSError, ValueError):
+        # `realpath` raises on an unreachable UNC path. A hook must never
+        # crash, and this reading simply has nothing to say — the lexical
+        # reading, which touches no filesystem, still gets its vote.
+        return None
+    target = target.replace("\\", "/").lower()
     if not target.startswith(f"{root}/"):
         return None  # another drive, or outside the project
     segments = [s for s in target[len(root) + 1:].split("/") if s]
