@@ -16,7 +16,7 @@ Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十三
 | `/gm-evaluate` | 独立运行游戏，截图并对照 GDD 给结果评分 | 已通过验证的项目 | `.godotmaker/evaluation.json`，`e2e/screenshots/` 下的截图 |
 | `/gm-fixgap` | 读取评估报告，生成问题列表，并派发 Worker 逐一修复 | `/gm-evaluate` 产出的评估结果 | 更新后的游戏代码，`GAP.md` 归档到 `.godotmaker/gaps/<n>/` |
 | `/gm-accept` | 展示当前状态，询问你是接受结果、继续修复，还是停止 | 完整的构建周期 | 接受事件记录到 `.godotmaker/stage.jsonl` |
-| `/gm-finalize` | 把当前 tag 的工作文档归档到 `docs/tags/<Tag>/`、本地执行 `git tag <Tag>`、重置每 tag 的运行时状态 | 已接受的构建 | `docs/tags/<Tag>/` 归档、`.godotmaker/final_report.json`、本地 git tag |
+| `/gm-finalize` | 把当前 tag 的工作文档归档到 `docs/tags/<Tag>/`、生成 SUMMARY / README / 哈希清单完成封存、本地执行 `git tag <Tag>`、重置每 tag 的运行时状态 | 已接受的构建 | `docs/tags/<Tag>/` 封存归档、`docs/tags/README.md` 索引、`.godotmaker/final_report.json`、本地 git tag |
 
 `/gm-finalize` 完成后，你可以通过 CLI 开启下一个 tag，也可以手动再次运行 `/gm-gdd`（例如添加新功能）。`/gm-scaffold` 是每个项目只需执行一次的 setup 步骤。
 

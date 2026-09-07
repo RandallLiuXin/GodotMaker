@@ -16,7 +16,7 @@ There are nine role skills, each responsible for one part of game creation. In t
 | `/gm-evaluate` | Runs the game independently, takes screenshots, and scores the result against the GDD | A verified project | `.godotmaker/evaluation.json`, screenshots in `e2e/screenshots/` |
 | `/gm-fixgap` | Reads the evaluation report, generates a list of issues, and dispatches workers to fix them | An evaluation from `/gm-evaluate` | Updated game code, `GAP.md` archived to `.godotmaker/gaps/<n>/` |
 | `/gm-accept` | Shows you the current state and asks whether to accept it, go back for more fixes, or stop | A complete build cycle | Acceptance event recorded in `.godotmaker/stage.jsonl` |
-| `/gm-finalize` | Archives the tag's working docs to `docs/tags/<Tag>/`, runs `git tag <Tag>` locally, resets per-tag runtime state | An accepted build | `docs/tags/<Tag>/` archive, `.godotmaker/final_report.json`, local git tag |
+| `/gm-finalize` | Archives the tag's working docs to `docs/tags/<Tag>/`, seals them behind a SUMMARY / README / hash manifest, runs `git tag <Tag>` locally, resets per-tag runtime state | An accepted build | `docs/tags/<Tag>/` sealed archive, `docs/tags/README.md` index, `.godotmaker/final_report.json`, local git tag |
 
 After `/gm-finalize` you can begin the next tag through the CLI, or manually by running `/gm-gdd` again (for example, to add a new feature). `/gm-scaffold` is a one-time setup step per project.
 

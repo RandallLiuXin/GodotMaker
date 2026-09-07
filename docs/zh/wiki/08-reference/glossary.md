@@ -54,7 +54,9 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **System**（ECS）— 每帧遍历所有拥有特定组件组合的实体的函数（或 GDScript 类）。例如，`MovementSystem` 可能遍历所有同时拥有 `Velocity` 组件和 `Position` 组件的实体，每帧更新其位置。System 包含所有游戏逻辑。另见：*ECS*、*Entity*、*Component*。
 
-**Tag** — 一次完整的 `/gm-gdd` → `/gm-finalize` 流水线运行交付一个 **Tag**（采用 SemVer 命名：`v0.1.0`、`v0.2.0`、……）。`/gm-finalize` 完成后会把当前 tag 的工作文档归档到 `docs/tags/<Tag>/` 并在本地执行 `git tag <Tag>`。之后你可以用下一个 `/gm-gdd` 开启下一个 tag，或者就此停在这里。每个 tag 都交付一个最小可玩单元。另见：*ROADMAP.md*。
+**Tag** — 一次完整的 `/gm-gdd` → `/gm-finalize` 流水线运行交付一个 **Tag**（采用 SemVer 命名：`v0.1.0`、`v0.2.0`、……）。`/gm-finalize` 完成后会把当前 tag 的工作文档归档到 `docs/tags/<Tag>/` 并在本地执行 `git tag <Tag>`。之后你可以用下一个 `/gm-gdd` 开启下一个 tag，或者就此停在这里。每个 tag 都交付一个最小可玩单元。另见：*ROADMAP.md*、*Tag 归档*。
+
+**Tag 归档** — 已封存的 `docs/tags/<Tag>/` 目录：该 tag 冻结的工作文档、`memory/` 子目录和 E2E 证据，外加自动生成的 `SUMMARY.md`、每 tag 的 `README.md`，以及记录每个归档文件字节数、SHA-256 和来源 revision 的 `evidence/manifest.json`。`docs/tags/README.md` 是所有已封存 tag 的索引。读归档要自上而下：先父级索引，再 `SUMMARY.md`，最后才是 canonical 文档。一旦封存即不可变，`/gm-finalize` 会拒绝改写。另见：*Tag*。
 
 **TOC.md** — 由 `/gm-gdd` 生成的目录文档，列出所有规划文档及其位置。它提供每个 tag 开始时项目内容的快速概览。
 

@@ -164,12 +164,15 @@
 **背后发生了什么：**
 - 验证项目仍能干净编译，`evaluation.json` 显示 `approve`
 - 对照最终代码核对 `PLAN.md`、`STRUCTURE.md` 和场景文档，确保归档里的名称对应实际交付的系统和组件
-- 把当前的 `GDD.md` / `PLAN.md` / `STRUCTURE.md` / `SCENES.md` / `MEMORY.md`（完整快照）和 `evaluation.json` 复制到 `docs/tags/<Tag>/`
+- 把当前的 `GDD.md` / `PLAN.md` / `STRUCTURE.md` / `SCENES.md` / `MEMORY.md`（完整快照）、`memory/` 子目录和 `evaluation.json` 复制到 `docs/tags/<Tag>/`
 - 生成 `docs/tags/<Tag>/CHANGELOG.md`，总结交付的 mechanic、新增系统、跨 tag refactor
+- 封存归档：写入 `SUMMARY.md`、该 tag 的 `README.md`、父级索引 `docs/tags/README.md`，以及列出每个归档文件路径、字节数、SHA-256 和来源 revision 的 `evidence/manifest.json`
 - 在本地执行 `git tag <Tag>`（不 push）
 - 截断 `.godotmaker/stage.jsonl` 并重置每 tag 的运行时状态，让下一个 `/gm-gdd` 在干净状态下开始
 
 **你得到什么：** `docs/tags/<Tag>/` 下的不可变归档、一个本地 git tag、为下一轮准备好的干净每 tag 状态。
+
+**以后怎么读归档：** 先看 `docs/tags/README.md` 找到目标 tag，再读该 tag 的 `SUMMARY.md`——一屏之内讲清主题、交付的 mechanic、验证结论和已知限制。只有摘要不够用时，才去打开 `PLAN.md`、`STRUCTURE.md` 等 canonical 文档或 `evidence/`。归档一旦封存就不可变：`/gm-finalize` 会拒绝改写它，修正应该写进根目录的活文档。
 
 **需要知道的：** 这个 skill 不打 release zip；release 打包是单独的事（未来一个独立 skill）。`/gm-finalize` 不会 push git tag——这个决定是你的。
 

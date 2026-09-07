@@ -164,12 +164,15 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 **What happens behind the scenes:**
 - Verifies the project still builds clean and `evaluation.json` says `approve`
 - Reconciles `PLAN.md`, `STRUCTURE.md`, and scene docs against the final code so archived names match the systems and components that actually shipped
-- Copies the current `GDD.md`/`PLAN.md`/`STRUCTURE.md`/`SCENES.md`/`MEMORY.md` (full snapshots) and `evaluation.json` into `docs/tags/<Tag>/`
+- Copies the current `GDD.md`/`PLAN.md`/`STRUCTURE.md`/`SCENES.md`/`MEMORY.md` (full snapshots), the `memory/` subtree and `evaluation.json` into `docs/tags/<Tag>/`
 - Generates `docs/tags/<Tag>/CHANGELOG.md` summarising delivered mechanics, added systems, and any cross-tag refactors
+- Seals the archive: writes `SUMMARY.md`, the tag `README.md`, the parent `docs/tags/README.md` index, and an `evidence/manifest.json` listing every archived file with its size, SHA-256 and source revision
 - Runs `git tag <Tag>` locally (does not push)
 - Truncates `.godotmaker/stage.jsonl` and resets per-tag runtime state so the next `/gm-gdd` starts on a clean slate
 
 **What you get:** An immutable archive at `docs/tags/<Tag>/`, a local git tag, and a clean per-tag state for the next round.
+
+**Reading an archive later:** start at `docs/tags/README.md` to find the tag, then that tag's `SUMMARY.md` — one bounded screen covering theme, delivered mechanics, verification verdict and known limitations. Open the canonical documents (`PLAN.md`, `STRUCTURE.md`, …) or `evidence/` only when the summary is not enough. Once sealed, an archive is immutable: `/gm-finalize` refuses to rewrite it, and corrections belong in the live root documents.
 
 **Things to know:** This skill does NOT package a release zip; release packaging is a separate concern (a future skill). `/gm-finalize` does not push the git tag — that decision is yours.
 

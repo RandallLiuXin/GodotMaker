@@ -80,7 +80,7 @@ After a successful run, expect:
 - `e2e/` gameplay tests and screenshots
 - `GDD.md`, `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`
 - `.godotmaker/` run state and reports
-- `docs/tags/<Tag>/` archived planning docs
+- `docs/tags/<Tag>/` archived planning docs (start at `SUMMARY.md`; `docs/tags/README.md` indexes every sealed tag)
 
 ## Review the Result
 
