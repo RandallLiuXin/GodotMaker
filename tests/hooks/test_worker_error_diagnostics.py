@@ -593,10 +593,14 @@ class TestRuntimeField:
             ("agent: pi-coding-agent\n", None),
             ("agent: nonsense\n", None),
             ("agent_runtime: pi\n", None),
-            # Both keys present, in either order — the case that first slipped
-            # past this test while the two implementations disagreed.
+            # Shapes that each slipped past this test once, while the two
+            # implementations quietly disagreed about them: both keys present
+            # in either order, and keys indented under a nested block.
             ("agent_runtime: pi\nagent: codex\n", None),
             ("agent: codex\nagent_runtime: pi\n", None),
+            ("pipeline:\n  agent: codex\n", None),
+            ("pipeline:\n  agent: codex\nagent_runtime: pi\n", None),
+            ("pipeline:\n  agent: codex\nagent: opencode\n", None),
             ("", ".agents"),
             ("", ".opencode"),
             ("", ".pi"),

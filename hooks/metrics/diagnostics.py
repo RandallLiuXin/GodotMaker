@@ -192,7 +192,9 @@ def read_runtime(project_dir: str = ".") -> str:
     runtimes rather than becoming a fourth spelling of one of them.
 
     Only top-level keys count: an indented `agent:` belongs to some nested
-    block, not to the project's runtime selection.
+    block — the template documents a `pipeline:` one — not to the project's
+    runtime selection. `_read_yaml_scalar` skips indented lines for the same
+    reason, so the parity this docstring claims holds for that shape too.
     """
     path = os.path.join(project_dir, ".godotmaker", "config.yaml")
     configured: dict[str, str] = {}

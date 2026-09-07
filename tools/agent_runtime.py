@@ -14,9 +14,17 @@ AGENT_PI = "pi"
 
 
 def _read_yaml_scalar(path: Path, key: str) -> str | None:
+    """Read a TOP-LEVEL scalar. Indented keys belong to a nested block.
+
+    The config template documents a `pipeline:` block with its own keys, so
+    without the indentation check a nested `godot_path:` shadowed the real
+    top-level one and a nested `agent:` decided the project's runtime.
+    """
     if not path.exists():
         return None
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line[:1] in (" ", "\t"):
+            continue
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or ":" not in stripped:
             continue
