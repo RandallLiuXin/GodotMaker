@@ -256,16 +256,16 @@ fails — workers produce no memory or learning entries.
 
 | Field | Value |
 |---|---|
-| `task_id` | The PLAN/GAP task id the report's heading starts with (`M01`, `R2`), else a bounded slug of the task name |
+| `task_id` | The PLAN/GAP task id the report's heading starts with (`M01`, `R2`), else a bounded slug of the task name. Every role's report heading is recognised, reviewer included |
 | `attempt` | 1 + prior `worker_error` events for the same `task_id` + `stage` this session |
 | `stage` | Active pipeline role (`build`, `fixgap`, …) |
-| `runtime` | Selected coding agent, resolved exactly as `tools/agent_runtime.detect_agent` resolves it — the `agent:` key in `.godotmaker/config.yaml` with aliases normalized (`claude` → `claude-code`), then the published-directory fallback, then `claude-code` |
+| `runtime` | Selected coding agent, resolved exactly as `tools/agent_runtime.detect_agent` resolves it — `agent:` in `.godotmaker/config.yaml` first and `agent_runtime:` second regardless of file order, aliases normalized (`claude` → `claude-code`), then the published-directory fallback, then `claude-code` |
 | `role` | Dispatched role (`worker`, `verifier`, …) |
 | `agent_id` / `run_id` | Subagent id and session id, when the runtime supplies them |
 | `error_type` | `report_rejected`, `timeout`, `forced_handoff`, `tool_or_environment_error`, `unverified_handoff`, `task_failed`, `task_partial` |
 | `classification` | The report's suggested `repair-attempt-accounting.md` classification, when it names a known one |
 | — | Every field above is read from the section that owns it, never from the whole report: the sections carrying pasted command output come first, so a whole-message scan lets a log line outrank the report's own statement — and since `summary` seeds the fingerprint, that also collapses two different failures into one |
-| `summary` | One line, ≤200 chars, from `Repair Attempt Evidence` / `Notes` — the sections where the report describes itself |
+| `summary` | One line, ≤200 chars. In order: the report hook's rejection reason (the report cannot say why it was rejected), the `Repair Attempt Evidence` / `Notes` sections, a machine outcome block's validated `blockers`, then the error type |
 | `exit_code` | From the sections where commands actually ran — `Tests` / `Build` for a worker, `Tools` for an asset-producer; a non-zero code outranks a zero, else `null` |
 | `error_fingerprint` | 16 hex chars over task/stage/type/summary, digit runs collapsed |
 | `evidence_paths` | ≤5 paths under `.godotmaker/`, `reports/`, `e2e/`, `docs/tags/` |

@@ -206,16 +206,16 @@ memory 或 learning 条目。
 
 | 字段 | 取值 |
 |---|---|
-| `task_id` | 报告标题开头的 PLAN/GAP 任务 ID（`M01`、`R2`），否则取任务名的有界 slug |
+| `task_id` | 报告标题开头的 PLAN/GAP 任务 ID（`M01`、`R2`），否则取任务名的有界 slug。各角色的报告标题都能识别，含 reviewer |
 | `attempt` | 本会话内同一 `task_id` + `stage` 的既有 `worker_error` 数量 + 1 |
 | `stage` | 当前流水线角色（`build`、`fixgap` 等） |
-| `runtime` | 所选 coding agent，与 `tools/agent_runtime.detect_agent` 同一套判定：先读 `.godotmaker/config.yaml` 的 `agent:` 键并归一化别名（`claude` → `claude-code`），再按已发布目录回退，最后默认 `claude-code` |
+| `runtime` | 所选 coding agent，与 `tools/agent_runtime.detect_agent` 同一套判定：`.godotmaker/config.yaml` 里 `agent:` 优先于 `agent_runtime:`（与两者在文件中的先后无关），别名归一化（`claude` → `claude-code`），再按已发布目录回退，最后默认 `claude-code` |
 | `role` | 被派发的角色（`worker`、`verifier` 等） |
 | `agent_id` / `run_id` | runtime 提供时记录的子代理 ID 与会话 ID |
 | `error_type` | `report_rejected`、`timeout`、`forced_handoff`、`tool_or_environment_error`、`unverified_handoff`、`task_failed`、`task_partial` |
 | `classification` | 报告给出的 `repair-attempt-accounting.md` 分类，仅当取值合法时记录 |
 | — | 上述每个字段都只从归属它的段落读取，绝不扫描整篇报告：装粘贴输出的段落排在前面，整篇扫描会让日志行盖过报告的自述——而 `summary` 又是指纹的输入，于是两个不同的故障还会被折叠成同一个 |
-| `summary` | 单行，≤200 字符，取自 `Repair Attempt Evidence` / `Notes`——报告自述失败的段落 |
+| `summary` | 单行，≤200 字符。依次取：报告 Hook 的拦截原因（报告自己说不出它为何被拦）、`Repair Attempt Evidence` / `Notes` 段、machine outcome 块中已校验的 `blockers`，最后才是 error type |
 | `exit_code` | 只从真正跑过命令的段落读取——worker 是 `Tests` / `Build`，asset-producer 是 `Tools`；非零优先于零，都没有则为 `null` |
 | `error_fingerprint` | 对 task/stage/type/summary 取 16 位十六进制，数字串统一折叠 |
 | `evidence_paths` | ≤5 条路径，限 `.godotmaker/`、`reports/`、`e2e/`、`docs/tags/` |

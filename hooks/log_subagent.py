@@ -269,6 +269,10 @@ def handle_stop(data: dict, verdict=None) -> None:
         agent_id=agent_id,
         run_id=data.get("session_id") or "",
         stage=get_current_role(),
+        # Why the hook rejected this stop. The report itself cannot say, so
+        # without it two rejections of one agent for different reasons carry
+        # the same fingerprint and the second is dropped as a duplicate.
+        detail=getattr(verdict, "reason", "") or "",
     ))
 
     if kind != OUTCOME_TERMINAL:

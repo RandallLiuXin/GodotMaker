@@ -31,6 +31,7 @@ import os
 import re
 
 from .collector import read_current_events, record_event
+from .outcome import normalize_report
 from .schema import (
     EventType, ROLE_ANALYST, ROLE_ASSET_PRODUCER, ROLE_WORKER,
 )
@@ -97,7 +98,8 @@ EVIDENCE_PREFIXES = (".godotmaker/", "reports/", "e2e/", "docs/tags/")
 
 _TASK_ID_RE = re.compile(r"^[\[\(]?\s*([A-Z]{1,3}\d{1,3})\b")
 _REPORT_HEADING_RE = re.compile(
-    r"^#{1,4}\s*(?:Report|Verification Report|Asset Producer Report|Analyst Report)"
+    r"^#{1,4}\s*(?:Report|Verification Report|Review Report"
+    r"|Asset Producer Report|Analyst Report)"
     r"\s*[:：]\s*(.+)$",
     re.IGNORECASE | re.MULTILINE,
 )
@@ -163,6 +165,8 @@ RUNTIME_ALIASES = {
     "claude": "claude-code", "claude-code": "claude-code",
     "anthropic-claude-code": "claude-code",
 }
+# Checked in this order, matching `detect_agent`'s own key precedence.
+RUNTIME_CONFIG_KEYS = ("agent", "agent_runtime")
 RUNTIME_CONFIG_DIRS = (
     (".agents", "codex"),
     (".opencode", "opencode"),
@@ -191,6 +195,7 @@ def read_runtime(project_dir: str = ".") -> str:
     block, not to the project's runtime selection.
     """
     path = os.path.join(project_dir, ".godotmaker", "config.yaml")
+    configured: dict[str, str] = {}
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
@@ -199,12 +204,18 @@ def read_runtime(project_dir: str = ".") -> str:
                 if ":" not in line:
                     continue
                 key, value = line.split(":", 1)
-                if key.strip() in ("agent", "agent_runtime"):
-                    runtime = normalize_runtime(value.strip().strip("\"'"))
-                    if runtime:
-                        return runtime
+                key = key.strip()
+                if key in RUNTIME_CONFIG_KEYS and key not in configured:
+                    configured[key] = value.strip().strip("\"'")
     except OSError:
         pass
+
+    # Key precedence, not file order. A migrated config can carry both, and
+    # `detect_agent` resolves `agent` first wherever the two happen to sit.
+    for key in RUNTIME_CONFIG_KEYS:
+        runtime = normalize_runtime(configured.get(key))
+        if runtime:
+            return runtime
 
     for directory, runtime in RUNTIME_CONFIG_DIRS:
         if os.path.isdir(os.path.join(project_dir, directory)):
@@ -385,19 +396,28 @@ _BLOCKER_RE = re.compile(
 )
 
 
-def _summary_for(message: str, error_type: str) -> str:
-    """One short line naming the failure, taken from the report when it says.
+def _summary_for(message: str, error_type: str, blockers=(),
+                 detail: str = "") -> str:
+    """One short line naming the failure, from the most specific source there is.
 
-    Read from `Repair Attempt Evidence` and `Notes` — the sections where the
-    report describes itself. Scanning the whole message let a pasted log line
-    (`Error: deprecated shader warning …`) outrank the real blocker below it,
-    and because the summary seeds `error_fingerprint`, two genuinely
-    different failures that happened to paste the same warning collapsed into
-    one fingerprint and read as a repeat of each other.
+    In order: an out-of-band explanation the report cannot carry (`detail` —
+    the report hook's rejection reason, which is *why this stop failed* while
+    the report's prose is only about the task); the sections where the report
+    describes itself; the validated `blockers` of a machine outcome block; the
+    first line of Notes; and finally the error type.
+
+    `blockers` matters for roles whose template has no prose section to read:
+    an asset-producer report has neither `Notes` nor `Repair Attempt
+    Evidence`, so without it every failure of one production unit fell back to
+    the same `task failed` string. Since the summary seeds
+    `error_fingerprint`, that made distinct failures read as repeats of each
+    other — the same collapse a whole-message scan used to cause for workers.
 
     Never the raw output: a summary is a label, and the evidence paths and
     output digest are how a reader reaches the full text.
     """
+    if detail:
+        return detail
     self_reported = "\n".join(
         section.group(1)
         for section in _SELF_REPORT_SECTION_RE.finditer(message or "")
@@ -405,6 +425,9 @@ def _summary_for(message: str, error_type: str) -> str:
     match = _BLOCKER_RE.search(self_reported)
     if match:
         return match.group(1)
+    for blocker in blockers or ():
+        if blocker and blocker.strip():
+            return blocker
     notes = _NOTES_SECTION_RE.search(message or "")
     if notes:
         for line in notes.group(1).splitlines():
@@ -415,8 +438,16 @@ def _summary_for(message: str, error_type: str) -> str:
 
 def build_error_event(*, message: str, role: str, status: str,
                       outcome_kind: str, agent_id: str = "",
-                      run_id: str = "", stage: str = "") -> dict | None:
-    """Normalize one stop into a diagnostic event, or None if it is clean."""
+                      run_id: str = "", stage: str = "",
+                      detail: str = "") -> dict | None:
+    """Normalize one stop into a diagnostic event, or None if it is clean.
+
+    `detail` is an explanation that lives outside the report — in practice the
+    report hook's rejection reason. A rejected report says nothing about why
+    it was rejected, so without this every rejection of one agent produced the
+    same summary and fingerprint and the second was dropped as a duplicate of
+    the first.
+    """
     repair = extract_repair_fields(message)
     error_type = resolve_error_type(status, outcome_kind,
                                     repair.get("handoff_condition", ""), role)
@@ -424,7 +455,11 @@ def build_error_event(*, message: str, role: str, status: str,
         return None
 
     task_id = extract_task_id(message)
-    summary = _clip(_summary_for(message, error_type), MAX_SUMMARY_CHARS)
+    outcome = normalize_report(message).outcome or {}
+    summary = _clip(
+        _summary_for(message, error_type, outcome.get("blockers", ()), detail),
+        MAX_SUMMARY_CHARS,
+    )
     fingerprint = error_fingerprint(task_id, stage, error_type, summary)
     prior = _prior_events(task_id, stage)
 

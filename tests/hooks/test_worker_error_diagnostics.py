@@ -80,6 +80,18 @@ class TestNormalization:
     def test_task_id_unknown_without_a_report_heading(self):
         assert diagnostics.extract_task_id("no heading here") == "unknown"
 
+    @pytest.mark.parametrize("heading,expected", [
+        ("## Report: M01 Move", "M01"),
+        ("## Verification Report: Integration", "integration"),
+        ("## Review Report: PlayerSystem", "playersystem"),
+        ("## Asset Producer Report: ui_kit", "ui-kit"),
+        ("## Analyst Report: assets", "assets"),
+    ])
+    def test_every_role_heading_yields_a_task_id(self, heading, expected):
+        """A reviewer run can still be rejected or released unverified, and
+        those events need a task id like any other."""
+        assert diagnostics.extract_task_id(heading) == expected
+
     def test_handoff_condition_outranks_status(self):
         assert diagnostics.resolve_error_type(
             "FAILED", "terminal", "timeout", "worker") == diagnostics.ERROR_TIMEOUT
@@ -285,6 +297,91 @@ class TestSummaryScope:
         assert diagnostics._summary_for(
             "### Build\n- Status: FAIL\n", "task_failed") == "task failed"
 
+    def test_a_rejection_reason_outranks_the_report(self, project_dir):
+        """A rejected report cannot say why it was rejected; the hook can."""
+        event = diagnostics.build_error_event(
+            message=self._report("gdUnit4 v6 missing"), role="worker",
+            status="DONE", outcome_kind="rejected_attempt", agent_id="w1",
+            stage="build", detail="Worker report missing sections: Build.")
+        assert event["summary"] == "Worker report missing sections: Build."
+
+    def test_two_rejections_of_one_agent_are_both_recorded(self, project_dir):
+        """Same agent, same task, different reasons — not one duplicate."""
+        stub = ("## Report: M01 Move\n\n### Status: DONE\n\n"
+                "### Files Changed\n- s.gd: created\n")
+        reasons = [
+            "Worker report missing required sections: Build.",
+            "Tests section lacks substance - needs test file paths.",
+        ]
+        for reason in reasons:
+            diagnostics.record_error_event(diagnostics.build_error_event(
+                message=stub, role="worker", status="DONE",
+                outcome_kind="rejected_attempt", agent_id="w1", stage="build",
+                detail=reason))
+        events = read_metrics("worker_error")
+        assert [e["summary"] for e in events] == reasons
+        assert len({e["error_fingerprint"] for e in events}) == 2
+
+    def test_a_repeated_identical_rejection_is_still_deduped(self, project_dir):
+        stub = "## Report: M01 Move\n\n### Status: DONE\n"
+        for _ in range(2):
+            diagnostics.record_error_event(diagnostics.build_error_event(
+                message=stub, role="worker", status="DONE",
+                outcome_kind="rejected_attempt", agent_id="w1", stage="build",
+                detail="Worker report missing required sections: Build."))
+        assert len(read_metrics("worker_error")) == 1
+
+
+class TestAssetProducerSummary:
+    """That template has no prose section, so its outcome block is the source."""
+
+    @staticmethod
+    def _report(blocker):
+        outcome = {
+            "gm_outcome_version": 1, "report_type": "asset-producer",
+            "status": "FAILED", "unit_id": "ui_kit",
+            "outputs": {"sources": [], "runtime": [], "prompts": [],
+                        "reports": [], "request": [], "result": []},
+            "validation": {"passed": False, "notes": "nothing usable"},
+            "blockers": [blocker],
+        }
+        return (
+            "## Asset Producer Report: ui_kit\n\n"
+            "### Status: FAILED\n\n"
+            "### Production Unit\n- First-class Asset Skill: ui-kit\n\n"
+            "### Tools\n- python tools/asset_source_generate.py — exit code 1\n\n"
+            "### Handoff\nnothing to register\n\n"
+            "### Machine Outcome\n```json\n" + json.dumps(outcome) + "\n```\n"
+        )
+
+    def _event(self, blocker, agent_id):
+        return diagnostics.build_error_event(
+            message=self._report(blocker), role="asset-producer",
+            status="FAILED", outcome_kind="terminal", agent_id=agent_id,
+            stage="asset")
+
+    def test_the_blocker_becomes_the_summary(self, project_dir):
+        event = self._event("provider returned no usable surface sheet", "p1")
+        assert event["summary"] == "provider returned no usable surface sheet"
+
+    def test_two_failures_of_one_unit_keep_different_fingerprints(self, project_dir):
+        first = self._event("provider returned no usable surface sheet", "p1")
+        second = self._event("atlas regions failed validation", "p2")
+        assert first["error_fingerprint"] != second["error_fingerprint"]
+
+    def test_the_same_failure_still_reads_as_a_repeat(self, project_dir):
+        first = self._event("provider returned no usable surface sheet", "p1")
+        again = self._event("provider returned no usable surface sheet", "p2")
+        assert first["error_fingerprint"] == again["error_fingerprint"]
+
+    def test_a_worker_report_has_no_outcome_block_to_read(self, project_dir):
+        """The worker path must be untouched by this."""
+        event = diagnostics.build_error_event(
+            message=worker_report(extra="### Notes\n- Blocker: gdUnit4 missing\n"),
+            role="worker", status="FAILED", outcome_kind="terminal",
+            stage="build")
+        assert event["summary"] == "gdUnit4 missing"
+
 
 class TestVerifierVocabulary:
     """`PASS | FAIL | PARTIAL` is a verdict about the project, not the run.
@@ -472,6 +569,16 @@ class TestRuntimeField:
         _write_config("models:\n  agent: codex\n")
         assert diagnostics.read_runtime() == "claude-code"
 
+    @pytest.mark.parametrize("body", [
+        "agent_runtime: pi\nagent: codex\n",
+        "agent: codex\nagent_runtime: pi\n",
+    ], ids=["agent-second", "agent-first"])
+    def test_agent_wins_over_agent_runtime_whatever_the_file_order(
+            self, project_dir, body):
+        """A migrated config can carry both; precedence is by key, not line."""
+        _write_config(body)
+        assert diagnostics.read_runtime() == "codex"
+
     def test_matches_the_tool_that_actually_picks_the_runtime(self, project_dir):
         """`read_runtime` is a copy of `tools/agent_runtime.detect_agent`.
 
@@ -485,6 +592,11 @@ class TestRuntimeField:
             ("agent: opencode\n", None),
             ("agent: pi-coding-agent\n", None),
             ("agent: nonsense\n", None),
+            ("agent_runtime: pi\n", None),
+            # Both keys present, in either order — the case that first slipped
+            # past this test while the two implementations disagreed.
+            ("agent_runtime: pi\nagent: codex\n", None),
+            ("agent: codex\nagent_runtime: pi\n", None),
             ("", ".agents"),
             ("", ".opencode"),
             ("", ".pi"),
