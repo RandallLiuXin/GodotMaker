@@ -81,8 +81,12 @@ project knowledge.
 
 The `memory/` rule anchors on the project root rather than matching a `memory/`
 path segment anywhere, so a game's own `src/memory/` source directory stays
-writable. Anchoring resolves a `.claude/worktrees/<agent>/` prefix (a worker
-writes from inside its worktree) and an absolute path (against the hook's cwd).
+writable. Anchoring resolves the path first — `realpath` against the hook's
+cwd, which is the project root — so `..` and symlinks cannot smuggle a write
+past it: `src/../memory/learning.txt` is the notebook and is blocked, while
+`src/memory/../notes.md` is not. A path that resolves outside the project is
+not the notebook either. The `.claude/worktrees/<agent>/` prefix is stripped
+after resolution, since a worker writes from inside its worktree.
 `MEMORY.md` itself is a basename match, like the planning docs.
 
 Runner note: the role-ownership part of this gate requires a runtime-provided

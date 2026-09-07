@@ -58,32 +58,33 @@ RESCUE_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
 def _project_relative_segments(path_lower: str) -> list[str] | None:
     """Path segments relative to the project root this write belongs to.
 
-    Returns None when the path is outside the project entirely. Three cases:
+    Returns None when the write lands outside the project entirely.
 
-    1. A worker writes from inside a linked worktree, so everything after
-       `.claude/worktrees/<agent>/` is project-root-relative again.
-    2. An absolute path is anchored against the hook's cwd, which is the
-       project root. `realpath` on both sides so macOS's
-       `/var/folders` → `/private/var/folders` symlink cannot skew the
-       comparison — the same reason `_is_project_root_assets_md` uses it.
-       Both sides are lowercased too: the caller has already lost the original
-       case, so a mixed-case project root would otherwise fail to match on a
-       case-sensitive filesystem and silently skip the rule.
-    3. Anything else is already relative to the project root.
+    Resolution happens before any segment is read, so a rule that anchors on
+    the first segment cannot be stepped around: `src/../memory/learning.txt`
+    lands in the project-root notebook while reading as if it started in
+    `src/`. `realpath` folds `..` and symlinks and resolves a relative path
+    against the cwd exactly as the filesystem will, which is also how an
+    absolute path gets anchored — the hook's cwd IS the project root. It runs
+    on both sides so macOS's `/var/folders` → `/private/var/folders` symlink
+    cannot skew the comparison, the same reason `_is_project_root_assets_md`
+    uses it. Both sides are lowercased too: the caller has already lost the
+    original case, so a mixed-case project root would otherwise fail to match
+    on a case-sensitive filesystem and silently skip the rule.
+
+    A worker writes from inside a linked worktree, so everything after
+    `.claude/worktrees/<agent>/` is project-root-relative again. That check
+    runs on the resolved segments, because `..` can cross the marker.
     """
-    norm = path_lower.replace("\\", "/")
-    segments = [s for s in norm.split("/") if s not in ("", ".")]
+    root = os.path.realpath(os.getcwd()).replace("\\", "/").lower().rstrip("/")
+    target = os.path.realpath(path_lower).replace("\\", "/").lower()
+    if not target.startswith(f"{root}/"):
+        return None  # another drive, or outside the project
+    segments = [s for s in target[len(root) + 1:].split("/") if s]
 
     for i in range(len(segments) - 3, -1, -1):
         if segments[i] == ".claude" and segments[i + 1] == "worktrees":
             return segments[i + 3:]
-
-    if norm.startswith("/") or (len(norm) > 1 and norm[1] == ":"):
-        root = os.path.realpath(os.getcwd()).replace("\\", "/").lower().rstrip("/")
-        target = os.path.realpath(norm).replace("\\", "/").lower()
-        if not target.startswith(f"{root}/"):
-            return None  # another drive or outside the project
-        return [s for s in target[len(root) + 1:].split("/") if s not in ("", ".")]
 
     return segments
 

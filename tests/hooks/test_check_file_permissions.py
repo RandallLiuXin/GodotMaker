@@ -594,6 +594,13 @@ class TestProjectMemoryIsNotSubagentWritable:
         ".claude/worktrees/agent-1/memory/movement.md",
         ".claude/worktrees/agent-1/memory/learning.txt",
         ".claude/worktrees/agent-1/memory/rules.json",
+        # `..` lands in the same notebook while reading as if it started
+        # somewhere else — the rule folds it before looking at the first segment.
+        "src/../memory/learning.txt",
+        "./memory/../memory/rules.json",
+        "assets/sprites/../../memory/entry.yaml",
+        ".claude/worktrees/agent-1/src/../memory/learning.txt",
+        ".claude/worktrees/agent-1/../../../memory/learning.txt",
     ]
 
     @pytest.mark.parametrize("role", ["build", "fixgap"])
@@ -630,22 +637,61 @@ class TestProjectMemoryIsNotSubagentWritable:
         })
         assert not is_blocked(parsed), "the lead role owns MEMORY.md"
 
-    def test_absolute_path_into_the_project_memory_is_blocked(self, project_dir):
-        absolute = os.path.join(project_dir, "memory", "learning.txt")
+    @pytest.mark.parametrize("parts", [
+        ("memory", "learning.txt"),
+        ("src", "..", "memory", "learning.txt"),
+        (".claude", "worktrees", "agent-1", "src", "..", "memory", "rules.json"),
+    ])
+    def test_absolute_path_into_the_project_memory_is_blocked(self, project_dir, parts):
         write_current_role("build")
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
-            "tool_input": {"file_path": absolute},
+            "tool_input": {"file_path": os.path.join(project_dir, *parts)},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed)
+
+    def test_a_symlink_into_the_notebook_is_blocked(self, project_dir):
+        """Resolution is `realpath`, so a link is not a way around the rule."""
+        os.makedirs(os.path.join(project_dir, "memory"), exist_ok=True)
+        try:
+            os.symlink(os.path.join(project_dir, "memory"),
+                       os.path.join(project_dir, "notes"),
+                       target_is_directory=True)
+        except (OSError, NotImplementedError, AttributeError) as exc:
+            pytest.skip(f"symlinks unavailable here: {exc}")
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "notes/learning.txt"},
             "agent_id": "w1",
             "agent_type": "worker",
         })
         assert is_blocked(parsed)
 
     @pytest.mark.parametrize("path", [
+        "../outside/memory/learning.txt",
+        "../../memory/learning.txt",
+    ])
+    def test_a_path_that_walks_out_of_the_project_is_not_the_notebook(
+            self, project_dir, path):
+        """Folding `..` must not turn an escape into a root-memory match."""
+        write_current_role("build")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "w1",
+            "agent_type": "worker",
+        })
+        assert not is_blocked(parsed)
+
+    @pytest.mark.parametrize("path", [
         "src/memory/s_memory.gd",
         "src/memory/pool.tscn",
         "src/memory/notes.md",
         "docs/memory/design.txt",
+        "src/memory/../notes.md",
     ])
     def test_a_nested_memory_directory_is_not_the_notebook(self, project_dir, path):
         """The rule anchors on the project root, not on any `memory/` segment.

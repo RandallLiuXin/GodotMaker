@@ -69,9 +69,11 @@ asset-producer 以及任何其他被派发的角色——都被阻止写入根 `
 值得沉淀为项目知识由派发角色决定。
 
 `memory/` 规则锚定在项目根，而不是匹配路径中任意位置的 `memory/` 段，因此游戏
-自身的 `src/memory/` 源码目录仍然可写。锚定时会解析 `.claude/worktrees/<agent>/`
-前缀（Worker 从自己的 worktree 里写文件）和绝对路径（相对 Hook 的 cwd）。
-`MEMORY.md` 本身按 basename 匹配，与规划文档一致。
+自身的 `src/memory/` 源码目录仍然可写。锚定前会先解析路径——以 Hook 的 cwd（即项目
+根）做 `realpath`——因此 `..` 与符号链接都无法绕过：`src/../memory/learning.txt`
+就是记忆本，会被拒；而 `src/memory/../notes.md` 不是。解析后落在项目之外的路径同样
+不算记忆本。`.claude/worktrees/<agent>/` 前缀在解析之后剥离，因为 Worker 是从自己的
+worktree 里写文件的。`MEMORY.md` 本身按 basename 匹配，与规划文档一致。
 
 Runner 说明：这个 gate 中按角色划分归属的部分需要 runtime 提供 `agent_id`。
 OpenCode child session 不暴露该 payload，因此 OpenCode adapter 在那部分依赖

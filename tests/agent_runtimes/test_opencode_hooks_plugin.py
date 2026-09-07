@@ -164,12 +164,14 @@ console.log('allowed');
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required")
 @pytest.mark.parametrize("memory_path", [
     "MEMORY.md", "memory/movement.md", "memory/learning.txt", "memory/rules.json",
+    "src/../memory/learning.txt",
+    ".claude/worktrees/agent-1/src/../memory/learning.txt",
 ])
 def test_child_session_memory_write_is_blocked(tmp_path: Path, memory_path: str):
     """The memory denial reaches the caller as a thrown block, not a warning.
 
-    Non-Markdown memory files travel the same path: the notebook is a
-    directory, not a file type.
+    Non-Markdown memory files and `..` traversals travel the same path: the
+    notebook is a directory, not a file type, and not a literal prefix.
     """
     write_hook(
         tmp_path,
