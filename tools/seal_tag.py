@@ -151,10 +151,17 @@ def _ignore_junk(*extra: str):
 
 
 def _copy_tree_optional(src: Path, dst: Path, ignore=None) -> int:
-    if not src.is_dir():
-        return 0
+    """Mirror an optional source subtree into the archive.
+
+    The destination is cleared first even when the source is gone. An archive
+    is a snapshot of the project as it stands now; leaving a previous run's
+    copy behind because `memory/` or `e2e/` was since deleted would let the
+    next manifest hash that stale content and seal it as part of this tag.
+    """
     if dst.exists():
         shutil.rmtree(dst)
+    if not src.is_dir():
+        return 0
     shutil.copytree(src, dst, ignore=ignore)
     return _count_files(dst, "*")
 
@@ -478,6 +485,28 @@ def cmd_archive(project_path: Path, tag: str, force: bool = False) -> int:
         )
         return 3
 
+    # Retire any existing seal BEFORE touching a single file. The moment the
+    # first copy lands, the old manifest's hashes describe a snapshot that no
+    # longer exists — and on a --force rewrite it still says `sealed: true`,
+    # which would let the finalize gate accept a half-rewritten archive and
+    # lock `archive` / `index` out of it at exit 3.
+    #
+    # Index first, marker second. Dropping a tag from the index can only make
+    # it name fewer tags; dropping the marker first would leave the index
+    # naming a tag that is no longer sealed.
+    try:
+        if _is_sealed(dest_dir):
+            _write_parent_readme(dest_dir.parent, exclude={tag})
+        (dest_dir / MANIFEST_RELPATH).unlink(missing_ok=True)
+    except OSError as exc:
+        print(
+            f"error: could not retire the existing seal on docs/tags/{tag}/ "
+            f"({exc.__class__.__name__}: {exc}). Nothing was overwritten - fix the "
+            f"underlying fs issue and re-run.",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         dest_dir.mkdir(parents=True, exist_ok=True)
         for src_rel, dst_name in ARCHIVE_MAP:
@@ -750,21 +779,30 @@ def _version_key(tag: str) -> tuple:
     return (0, numbers, tag) if numbers else (1, [], tag)
 
 
-def _sealed_tag_dirs(tags_root: Path) -> list[Path]:
+def _sealed_tag_dirs(tags_root: Path, exclude: set[str] | None = None) -> list[Path]:
     """Sealed tag directories, version-ordered.
 
     Sealed means the manifest on disk says so. The parent index is rendered
     purely from that, never from a seal this run intends to commit later —
     otherwise a failed seal commit would leave the index advertising a tag
     that is still an overwritable partial snapshot.
+
+    `exclude` drops a tag that is still sealed on disk but is about to be
+    rewritten. Note the direction: excluding can only ever make the index
+    name fewer tags, which is the safe failure mode. Including a not-yet
+    sealed tag is the unsafe one, and there is deliberately no way to do it.
     """
     if not tags_root.is_dir():
         return []
-    sealed = [child for child in tags_root.iterdir() if child.is_dir() and _is_sealed(child)]
+    exclude = exclude or set()
+    sealed = [
+        child for child in tags_root.iterdir()
+        if child.is_dir() and child.name not in exclude and _is_sealed(child)
+    ]
     return sorted(sealed, key=lambda p: _version_key(p.name))
 
 
-def _render_parent_readme(tags_root: Path) -> str:
+def _render_parent_readme(tags_root: Path, exclude: set[str] | None = None) -> str:
     lines = [
         "# Tag archives",
         "",
@@ -776,7 +814,7 @@ def _render_parent_readme(tags_root: Path) -> str:
         "| --- | --- | --- | --- | --- |",
     ]
     rows = 0
-    for tag_dir in _sealed_tag_dirs(tags_root):
+    for tag_dir in _sealed_tag_dirs(tags_root, exclude):
         manifest = _read_manifest(tag_dir) or {}
         changelog = _parse_changelog(tag_dir / "CHANGELOG.md")
         revision = manifest.get("source_revision")
@@ -813,8 +851,8 @@ def _render_parent_readme(tags_root: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _write_parent_readme(tags_root: Path) -> None:
-    _atomic_write_text(tags_root / "README.md", _render_parent_readme(tags_root))
+def _write_parent_readme(tags_root: Path, exclude: set[str] | None = None) -> None:
+    _atomic_write_text(tags_root / "README.md", _render_parent_readme(tags_root, exclude))
 
 
 # --------------------------------------------------------------------- index

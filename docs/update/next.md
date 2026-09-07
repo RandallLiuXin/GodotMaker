@@ -27,6 +27,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 - `/gm-finalize` now archives the `memory/` subtree with `MEMORY.md`, link-checks the archived index, and refuses to overwrite an already-sealed tag archive.
 - The finalize completion gate now requires a parseable `evidence/manifest.json` with `"sealed": true` and a parent index that lists the tag, instead of only checking that the archive files exist.
 - `docs/tags/README.md` is now written after the seal it describes and rendered only from manifests already on disk, so an interrupted seal can never leave the index advertising an unsealed tag.
+- A forced tag-archive rewrite retires the existing seal and index entry before overwriting any file, so a failed rewrite cannot leave `"sealed": true` over hashes that no longer match the archive.
+- A tag archive now mirrors deletions: a `memory/` or `e2e/` subtree that no longer exists in the project is dropped from the archive instead of being carried into the next snapshot.
 
 ## Fixed
 

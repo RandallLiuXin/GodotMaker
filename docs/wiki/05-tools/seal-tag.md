@@ -32,6 +32,11 @@ The flat document paths (`PLAN.md`, `STRUCTURE.md`, `SCENES.md`, …) are
 unchanged from earlier releases, so anything that already reads
 `docs/tags/<Tag>/PLAN.md` keeps working.
 
+An archive mirrors the project as it stands when `archive` runs, deletions
+included: if `memory/` or `e2e/` is gone by the time the command runs, the
+previous run's copy is removed rather than carried forward into the new
+snapshot.
+
 ## Reading an archive
 
 1. **`docs/tags/README.md`** — which tags exist, in version order, with their
@@ -78,6 +83,12 @@ which is pure derived state, rendered only from manifests already on disk.
 |---|---|
 | before or at the seal commit | tag unsealed, parent index untouched. Re-run `index <Tag>`. |
 | at the parent index | tag sealed and correct; the index merely omits it. Run `reindex`. |
+
+`archive` is the mirror image: a `--force` rewrite retires the existing seal
+*before* it overwrites anything — it drops the tag from the parent index, then
+deletes the manifest, then copies. A copy that fails partway therefore leaves an
+archive that plainly reads as unsealed and unlisted, rather than one still
+carrying `sealed: true` over hashes that no longer describe its files.
 
 Neither branch can produce an index entry for an unsealed tag, and neither
 strands a sealed archive with no way back in. `backfill` follows the same

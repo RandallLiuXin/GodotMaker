@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -1270,3 +1271,138 @@ def test_backfill_records_the_tag_revision_not_todays_head(project_dir: Path):
         .read_text(encoding="utf-8")
     )
     assert untagged["source_revision"] is None
+
+
+# ---------- forced rewrite retires the seal first ----------
+
+def test_force_archive_retires_the_seal_before_touching_any_file(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A --force rewrite invalidates the manifest the moment the first copy
+    lands: its hashes describe the old snapshot, and `sealed: true` would let
+    the finalize gate accept a half-rewritten archive (and lock archive/index
+    out at exit 3). The seal must be retired before any file is mutated."""
+    seal_tag = _load_seal_tag_module()
+    assert seal(project_dir).returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    parent_path = project_dir / "docs" / "tags" / "README.md"
+    assert seal_tag._is_sealed(dest)
+
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\nrewritten\n")
+
+    def fake_copy2(src, dst, **kwargs):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(seal_tag.shutil, "copy2", fake_copy2)
+    assert seal_tag.cmd_archive(project_dir, "v0.1.0", force=True) == 1
+
+    assert not seal_tag._is_sealed(dest), "a half-rewritten archive must not read as sealed"
+    assert not (dest / "evidence" / "manifest.json").exists()
+    assert "v0.1.0" not in parent_path.read_text(encoding="utf-8"), (
+        "the parent index must not advertise the archive being rewritten"
+    )
+
+    # And the whole thing is recoverable by the documented partial-resume path.
+    monkeypatch.undo()
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    assert "rewritten" in (dest / "PLAN.md").read_text()
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+    assert seal_tag._is_sealed(dest)
+    assert "[v0.1.0](v0.1.0/)" in parent_path.read_text(encoding="utf-8")
+
+
+def test_force_archive_leaves_other_sealed_tags_in_the_parent_index(project_dir: Path):
+    assert seal(project_dir).returncode == 0
+    _seal_extra_tag(project_dir, "v0.2.0", "Combat")
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\n")
+
+    assert run(project_dir, "archive", "v0.1.0", "--force").returncode == 0
+    parent = (project_dir / "docs" / "tags" / "README.md").read_text(encoding="utf-8")
+    assert "[v0.2.0](v0.2.0/)" in parent, "unrelated sealed tags stay listed"
+    assert "[v0.1.0](v0.1.0/)" not in parent, "the tag under rewrite is dropped"
+
+
+def test_archive_of_an_unsealed_tag_does_not_rewrite_the_parent_index(
+    project_dir: Path
+):
+    """Only a sealed tag can be in the index, so a plain re-archive has no
+    index work to do and must not disturb it."""
+    assert seal(project_dir).returncode == 0
+    _stage_extra_tag(project_dir, "v0.2.0", "Combat")   # archived, unsealed
+    parent_path = project_dir / "docs" / "tags" / "README.md"
+    before = parent_path.read_bytes()
+
+    assert run(project_dir, "archive", "v0.2.0").returncode == 0
+    assert parent_path.read_bytes() == before
+
+
+# ---------- an archive mirrors the source, including deletions ----------
+
+def test_archive_drops_a_memory_snapshot_whose_source_disappeared(project_dir: Path):
+    """On the documented retry path the root memory/ may be gone. Keeping the
+    previous run's copy would hash stale content into the new manifest and
+    seal it as part of this tag's snapshot."""
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert (dest / "memory" / "movement.md").exists()
+
+    shutil.rmtree(project_dir / "memory")
+    # MEMORY.md must stop linking there too, or the link check blocks the seal.
+    (project_dir / "MEMORY.md").write_text("# MEMORY\n\nno subsystem files\n",
+                                           encoding="utf-8")
+
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    assert not (dest / "memory").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["memory_files"] == 0
+    assert not any(e["path"].startswith("memory/") for e in manifest["files"])
+
+
+def test_archive_drops_evidence_whose_source_disappeared(project_dir: Path):
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    assert (dest / "evidence" / "e2e" / "test_v0_1_0_M1_jump.py").exists()
+    assert (dest / "evidence" / "screenshots" / "scene_main.png").exists()
+
+    shutil.rmtree(project_dir / "e2e")
+
+    r = run(project_dir, "archive", "v0.1.0")
+    assert r.returncode == 0, r.stderr
+    assert not (dest / "evidence" / "e2e").exists()
+    assert not (dest / "evidence" / "screenshots").exists()
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["e2e_files"] == 0
+    assert manifest["screenshots"] == 0
+    assert not any(e["path"].startswith("evidence/") for e in manifest["files"])
+
+
+def test_sealed_manifest_hashes_match_the_files_on_disk_after_a_rewrite(
+    project_dir: Path
+):
+    """The end-to-end property both fixes protect: whatever the archive went
+    through, a sealed manifest describes exactly what is there."""
+    assert seal(project_dir).returncode == 0
+    (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\nsecond pass\n")
+    shutil.rmtree(project_dir / "memory")
+    (project_dir / "MEMORY.md").write_text("# MEMORY\n\nnothing linked\n", encoding="utf-8")
+
+    assert run(project_dir, "archive", "v0.1.0", "--force").returncode == 0
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["sealed"] is True
+    recorded = {e["path"]: e for e in manifest["files"]}
+    on_disk = {
+        p.relative_to(dest).as_posix()
+        for p in dest.rglob("*") if p.is_file()
+    } - {"evidence/manifest.json"}
+    assert set(recorded) == on_disk, "manifest and archive contents must agree"
+    for rel, entry in recorded.items():
+        blob = (dest / rel).read_bytes()
+        assert entry["sha256"] == hashlib.sha256(blob).hexdigest(), rel
+        assert entry["bytes"] == len(blob), rel
+    assert "second pass" in (dest / "PLAN.md").read_text()
+    # Agreeing with itself is not enough — it must also agree with the source.
+    assert not (dest / "memory").exists(), "the deleted source must not survive the reseal"
