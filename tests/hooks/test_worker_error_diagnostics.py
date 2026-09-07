@@ -198,6 +198,45 @@ class TestExitCodeScope:
             outcome_kind="terminal", stage="build")
         assert event["exit_code"] == 1
 
+    # An asset-producer report has no Tests or Build section; `Tools` is
+    # where it lists the exact commands it ran. Scoping to a worker's two
+    # section names alone made this role's exit_code permanently null.
+    ASSET_PRODUCER = (
+        "## Asset Producer Report: ui_kit\n\n"
+        "### Status: FAILED\n\n"
+        "### Production Unit\n- First-class Asset Skill: ui-kit\n\n"
+        "### Outputs\n- Sources: none\n\n"
+        "### Tools\n"
+        "- python tools/asset_source_generate.py --unit ui_kit — exit code 1\n\n"
+        "### Validation\n- File existence: FAIL\n- Notes: provider returned nothing\n\n"
+        "### Handoff\nnothing to register\n"
+    )
+
+    def test_an_asset_producer_reports_its_exit_code(self, project_dir):
+        assert diagnostics.extract_exit_code(self.ASSET_PRODUCER) == 1
+        event = diagnostics.build_error_event(
+            message=self.ASSET_PRODUCER, role="asset-producer", status="FAILED",
+            outcome_kind="terminal", stage="asset")
+        assert event["exit_code"] == 1
+
+    def test_tools_does_not_become_a_new_preemption_surface(self, project_dir):
+        """`Tools` carries commands, not the report's handoff statement."""
+        noisy = self.ASSET_PRODUCER.replace(
+            "### Validation\n",
+            "  Handoff condition: timeout\n\n"
+            "### Repair Attempt Evidence\n- Handoff condition: partial\n\n"
+            "### Validation\n")
+        assert diagnostics.extract_repair_fields(noisy) == {
+            "handoff_condition": "partial"}
+
+    def test_an_analyst_names_no_exit_code(self, project_dir):
+        """Its template has no command section at all — nothing to widen for."""
+        analyst = (
+            "## Analyst Report: assets\n\n### Status: FAILED\n\n"
+            "### Candidate Summary\nnone\n\n### Manifest\nnone\n"
+        )
+        assert diagnostics.extract_exit_code(analyst) is None
+
 
 class TestSummaryScope:
     """The summary seeds the fingerprint, so noise here corrupts dedupe."""

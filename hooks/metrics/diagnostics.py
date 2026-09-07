@@ -119,7 +119,10 @@ def _section_re(*names: str) -> re.Pattern:
 
 
 # Where the run pasted command output, and so where an exit code is evidence.
-_OUTPUT_SECTION_RE = _section_re("Tests", "Build")
+# `Tests` / `Build` for a worker, `Tools` for an asset-producer — that role's
+# report has no Tests or Build section, and `Tools` is where it lists the
+# exact commands it ran.
+_OUTPUT_SECTION_RE = _section_re("Tests", "Build", "Tools")
 # The report's own handoff statement.
 _REPAIR_SECTION_RE = _section_re(r"Repair\s+Attempt\s+Evidence")
 # Where the report describes its own failure in prose.
