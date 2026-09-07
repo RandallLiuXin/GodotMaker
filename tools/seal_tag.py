@@ -65,6 +65,13 @@ derived state, rendered only from manifests already on disk.
 Every generated file goes through `_atomic_write_text`, so an interrupted
 write never truncates the previous version.
 
+Ownership: before its first write, every mutating command claims the
+archive by replacing the manifest with an in-flight marker naming its
+`stage`. That is what stops a run that dies mid-copy from degrading into
+the shape of a legacy archive, which `backfill` would otherwise adopt and
+seal from incomplete inputs. `backfill` resumes its own interrupted work
+(`stage: backfilling`) and keeps away from a finalize's.
+
 Exit codes:
     0   succeeded
     1   runtime failure — missing project state (.godotmaker/ absent) OR
@@ -107,6 +114,17 @@ MEMORY_DIR = "memory"
 MANIFEST_RELPATH = f"{EVIDENCE_DIR}/manifest.json"
 
 MANIFEST_SCHEMA_VERSION = 1
+
+# `stage` records who is holding the archive and how far they got. It is what
+# lets `backfill` tell a finalize's unfinished work (hands off — `index` owns
+# it) from its own interrupted retrofit (safe to resume) and from a legacy
+# archive (no schema_version at all).
+STAGE_ARCHIVING = "archiving"      # `archive` is mid-run
+STAGE_ARCHIVED = "archived"        # `archive` finished; awaiting `index`
+STAGE_INDEXING = "indexing"        # `index` is mid-run
+STAGE_BACKFILLING = "backfilling"  # `backfill` is mid-run
+STAGE_SEALED = "sealed"
+IN_FLIGHT_STAGES = (STAGE_ARCHIVING, STAGE_INDEXING, STAGE_BACKFILLING)
 
 # Suffix used by `_atomic_write_text`. A crash can leave one behind, and it
 # must never be mistaken for archived content.
@@ -270,8 +288,12 @@ def _build_manifest(
     warnings: list[str] | None = None,
     link_warnings: list[str] | None = None,
     source_revision: str | None = None,
+    stage: str | None = None,
 ) -> dict:
-    files = _scan_archive_files(dest_dir)
+    # An in-flight marker describes an archive that is being rewritten right
+    # now, so it deliberately carries no file list: hashing content that is
+    # about to change would record claims nothing should act on.
+    files = [] if stage in IN_FLIGHT_STAGES else _scan_archive_files(dest_dir)
     by_category: dict[str, int] = {}
     for entry in files:
         by_category[entry["category"]] = by_category.get(entry["category"], 0) + 1
@@ -281,7 +303,7 @@ def _build_manifest(
         "generator_version": _generator_version(project_path),
         "tag": tag,
         "sealed": sealed,
-        "stage": "sealed" if sealed else "archived",
+        "stage": stage or (STAGE_SEALED if sealed else STAGE_ARCHIVED),
         "backfilled": backfilled,
         "source_revision": source_revision if backfilled else _source_revision(project_path),
         "archive_root": f"docs/tags/{tag}/",
@@ -346,26 +368,39 @@ def _is_sealed(dest_dir: Path) -> bool:
     return bool(manifest and manifest.get("sealed") is True)
 
 
-def _retire_seal(dest_dir: Path, tag: str) -> None:
-    """Drop a sealed tag's marker and index entry before rewriting it.
+def _claim_archive(project_path: Path, dest_dir: Path, tag: str, *, stage: str) -> None:
+    """Retire any existing seal and mark the archive as being rewritten now.
 
-    Every path that mutates an already-sealed archive must call this first —
-    `archive --force`, `index --force`, `backfill --force`. The moment a
-    rewrite replaces one file, the old manifest's hashes describe a snapshot
-    that no longer exists, while its `sealed: true` would still let the
-    finalize gate accept the half-rewritten archive and lock `archive` /
-    `index` out of it at exit 3.
+    Every path that mutates an archive calls this first — `archive`, `index`,
+    `backfill`. It does two things:
 
-    Index first, marker second: dropping a tag from the parent index can only
-    make it name fewer tags, whereas dropping the marker first would leave the
-    index naming a tag that is no longer sealed.
+    1. If the tag is sealed, drop it from the parent index. Index first,
+       marker second: dropping a tag from the index can only make it name
+       fewer tags, whereas clearing the marker first would leave the index
+       naming a tag that is no longer sealed.
+    2. Replace the manifest with an in-flight marker naming `stage`.
 
-    A no-op on an unsealed archive, which has no seal to retire.
+    Step 2 matters even when nothing was sealed. Without it, a run that dies
+    mid-rewrite leaves a directory with `PLAN.md` and no manifest — exactly
+    the shape of a legacy archive, which `backfill` would then adopt and seal
+    from incomplete inputs, locking the real finalize out at exit 3. The
+    marker says who is holding the archive, so `backfill` can skip a
+    finalize's unfinished work while still resuming its own.
+
+    Warnings from the manifest being replaced are carried into the marker, so
+    an interrupted run does not silently drop them.
     """
-    if not _is_sealed(dest_dir):
-        return
-    _write_parent_readme(dest_dir.parent, exclude={tag})
-    (dest_dir / MANIFEST_RELPATH).unlink(missing_ok=True)
+    previous = _read_manifest(dest_dir) or {}
+    if _is_sealed(dest_dir):
+        _write_parent_readme(dest_dir.parent, exclude={tag})
+    _write_manifest(dest_dir, _build_manifest(
+        project_path, tag, dest_dir,
+        sealed=False,
+        backfilled=stage == STAGE_BACKFILLING,
+        warnings=list(previous.get("warnings", [])),
+        link_warnings=list(previous.get("link_warnings", [])),
+        stage=stage,
+    ))
 
 
 # --------------------------------------------------------------- link checks
@@ -508,13 +543,10 @@ def cmd_archive(project_path: Path, tag: str, force: bool = False) -> int:
         return 3
 
     try:
-        _retire_seal(dest_dir, tag)
-        # A full rewrite also invalidates any surviving unsealed manifest: its
-        # hashes describe the previous attempt's content, not this one's.
-        (dest_dir / MANIFEST_RELPATH).unlink(missing_ok=True)
+        _claim_archive(project_path, dest_dir, tag, stage=STAGE_ARCHIVING)
     except OSError as exc:
         print(
-            f"error: could not retire the existing seal on docs/tags/{tag}/ "
+            f"error: could not claim docs/tags/{tag}/ for rewriting "
             f"({exc.__class__.__name__}: {exc}). Nothing was overwritten - fix the "
             f"underlying fs issue and re-run.",
             file=sys.stderr,
@@ -980,10 +1012,10 @@ def cmd_index(project_path: Path, tag: str, force: bool = False) -> int:
     # deletes the manifest they live in.
     previous = _read_manifest(dest_dir) or {}
     try:
-        _retire_seal(dest_dir, tag)
+        _claim_archive(project_path, dest_dir, tag, stage=STAGE_INDEXING)
     except OSError as exc:
         print(
-            f"error: could not retire the existing seal on docs/tags/{tag}/ "
+            f"error: could not claim docs/tags/{tag}/ for rewriting "
             f"({exc.__class__.__name__}: {exc}). Nothing was rewritten - fix the "
             f"underlying fs issue and re-run.",
             file=sys.stderr,
@@ -1050,14 +1082,18 @@ def _is_provisional(dest_dir: Path) -> bool:
     or there is none at all); a provisional one carries the current schema and
     says it is not sealed.
 
-    Boundary: when there is no manifest at all the directory is treated as
-    legacy. That is also the state a failed `archive --force` leaves behind,
-    whose documented recovery is re-running `archive`, not `backfill`.
+    Every mutating command claims the archive with an in-flight marker before
+    its first write, so a run that dies mid-copy is still recognisable here
+    rather than degrading into the legacy shape. `backfill` may resume its own
+    interrupted work (`stage: backfilling`); everything else belongs to a
+    finalize and is off limits.
     """
     manifest = _read_manifest(dest_dir)
-    if not isinstance(manifest, dict):
+    if not isinstance(manifest, dict) or "schema_version" not in manifest:
+        return False        # legacy manifest, or none at all
+    if manifest.get("sealed") is True:
         return False
-    return "schema_version" in manifest and manifest.get("sealed") is not True
+    return manifest.get("stage") != STAGE_BACKFILLING
 
 
 def cmd_backfill(
@@ -1122,22 +1158,29 @@ def cmd_backfill(
                     f"pass --force to re-index it)"
                 )
                 continue
-            # --force re-indexes a sealed archive; retire that seal before
-            # `_write_index_files` replaces SUMMARY.md and README.md.
-            _retire_seal(dest_dir, dest_dir.name)
+            # Read the warnings before claiming: a failed evidence copy
+            # recorded by an earlier `archive` (or by an older release) is a
+            # property of the archive, not of this run, and replacing the
+            # manifest must not quietly relabel a partial archive complete.
+            previous = _read_manifest(dest_dir) or {}
+            _claim_archive(project_path, dest_dir, dest_dir.name,
+                           stage=STAGE_BACKFILLING)
             before = {
                 name: _sha256(dest_dir / name)
                 for name in canonical if (dest_dir / name).is_file()
             }
             link_errors, link_warnings = _check_memory_links(dest_dir)
             gaps = [n for n in canonical if n not in before]
-            carried = (
-                [f"missing canonical document(s): {', '.join(gaps)}"] if gaps else []
-            )
+            carried = list(previous.get("warnings", []))
+            if gaps:
+                carried.append(f"missing canonical document(s): {', '.join(gaps)}")
             # A legacy archive has no memory/ subtree, so MEMORY.md's index
             # links cannot resolve. Backfill records that instead of blocking:
             # copying today's memory/ into a historical tag would rewrite it.
             carried += link_errors
+            # Repeated `--force` runs re-derive the same notes; keep one each,
+            # in order, so the list does not grow on every pass.
+            carried = list(dict.fromkeys(carried))
             manifest = _write_index_files(
                 project_path, dest_dir.name, dest_dir,
                 backfilled=True,

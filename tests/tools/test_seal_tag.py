@@ -1297,7 +1297,9 @@ def test_force_archive_retires_the_seal_before_touching_any_file(
     assert seal_tag.cmd_archive(project_dir, "v0.1.0", force=True) == 1
 
     assert not seal_tag._is_sealed(dest), "a half-rewritten archive must not read as sealed"
-    assert not (dest / "evidence" / "manifest.json").exists()
+    marker = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert marker["stage"] == "archiving", "the interrupted run must be identifiable"
+    assert seal_tag._is_provisional(dest), "so backfill cannot adopt it as legacy"
     assert "v0.1.0" not in parent_path.read_text(encoding="utf-8"), (
         "the parent index must not advertise the archive being rewritten"
     )
@@ -1447,7 +1449,9 @@ def test_force_index_retires_the_seal_before_rewriting(
     assert seal_tag.cmd_index(project_dir, "v0.1.0", force=True) == 1
 
     assert not seal_tag._is_sealed(dest)
-    assert not (dest / "evidence" / "manifest.json").exists()
+    marker = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert marker["stage"] == "indexing"
+    assert seal_tag._is_provisional(dest)
     assert "v0.1.0" not in parent_path.read_text(encoding="utf-8")
 
     monkeypatch.undo()
@@ -1476,7 +1480,11 @@ def test_force_backfill_retires_the_seal_before_rewriting(
     assert seal_tag.cmd_backfill(project_dir, "v0.0.9", False, force=True) == 1
 
     assert not seal_tag._is_sealed(dest)
-    assert not (dest / "evidence" / "manifest.json").exists()
+    marker = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert marker["stage"] == "backfilling"
+    assert not seal_tag._is_provisional(dest), (
+        "backfill's own interrupted work stays resumable by backfill"
+    )
     assert "v0.0.9" not in (tags_root / "README.md").read_text(encoding="utf-8")
 
     # Now unsealed, so a plain re-run (no --force) picks it up again.
@@ -1665,3 +1673,156 @@ def test_backfill_still_treats_a_pre_schema_manifest_as_legacy(project_dir: Path
     assert r.returncode == 0, r.stderr
     assert seal_tag._is_sealed(dest)
     assert (dest / "SUMMARY.md").is_file()
+
+
+# ---------- an interrupted archive is never mistaken for a legacy one ----------
+
+def test_backfill_skips_an_archive_interrupted_mid_copy(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """`archive` dying after the first copy but before its manifest lands used
+    to leave the exact shape of a legacy archive: PLAN.md present, no manifest.
+    The in-flight marker is written before the first copy so that state stays
+    identifiable."""
+    seal_tag = _load_seal_tag_module()
+    _legacy_archive(project_dir, "v0.0.9")
+    tags_root = project_dir / "docs" / "tags"
+
+    original_copy2 = seal_tag.shutil.copy2
+
+    def fail_after_plan(src, dst, **kwargs):
+        if Path(dst).name == "STRUCTURE.md":
+            raise OSError(28, "No space left on device")
+        return original_copy2(src, dst, **kwargs)
+
+    monkeypatch.setattr(seal_tag.shutil, "copy2", fail_after_plan)
+    assert seal_tag.cmd_archive(project_dir, "v0.1.0") == 1
+    monkeypatch.undo()
+
+    in_flight = tags_root / "v0.1.0"
+    assert (in_flight / "PLAN.md").is_file(), "the partial copy is on disk"
+    assert seal_tag._is_provisional(in_flight)
+    assert json.loads(
+        (in_flight / "evidence" / "manifest.json").read_text(encoding="utf-8")
+    )["stage"] == "archiving"
+
+    r = run(project_dir, "backfill", "--all")
+    assert r.returncode == 0, r.stderr
+    assert "skipped docs/tags/v0.1.0/" in r.stdout
+    assert not seal_tag._is_sealed(in_flight)
+    assert not (in_flight / "SUMMARY.md").exists()
+    assert "[v0.0.9](v0.0.9/)" in (tags_root / "README.md").read_text(encoding="utf-8")
+
+    # The finalize it interrupted still completes normally.
+    assert run(project_dir, "archive", "v0.1.0").returncode == 0
+    write_changelog(project_dir, "v0.1.0")
+    assert run(project_dir, "index", "v0.1.0").returncode == 0
+    assert seal_tag._is_sealed(in_flight)
+
+
+def test_archive_marks_the_archive_in_flight_before_copying(project_dir: Path):
+    """The marker has to precede the first mutation, otherwise the window it
+    exists to cover is exactly the window it misses."""
+    seal_tag = _load_seal_tag_module()
+    dest = project_dir / "docs" / "tags" / "v0.1.0"
+    seen: list[str | None] = []
+
+    original_copy2 = seal_tag.shutil.copy2
+
+    def record(src, dst, **kwargs):
+        manifest = seal_tag._read_manifest(dest)
+        seen.append(manifest.get("stage") if manifest else None)
+        return original_copy2(src, dst, **kwargs)
+
+    seal_tag.shutil.copy2 = record
+    try:
+        assert seal_tag.cmd_archive(project_dir, "v0.1.0") == 0
+    finally:
+        seal_tag.shutil.copy2 = original_copy2
+
+    assert seen and all(stage == "archiving" for stage in seen)
+    assert seal_tag._read_manifest(dest)["stage"] == "archived"
+
+
+# ---------- backfill preserves warnings it did not produce ----------
+
+def _seal_with_an_evidence_warning(project_dir: Path) -> tuple:
+    """Seal v0.1.0 with a recorded e2e-copy failure in its manifest."""
+    seal_tag = _load_seal_tag_module()
+    original = seal_tag._copy_tree_optional
+
+    def fail_on_e2e(src, dst, ignore=None):
+        if src.name == "e2e":
+            raise OSError(13, "Permission denied")
+        return original(src, dst, ignore=ignore)
+
+    seal_tag._copy_tree_optional = fail_on_e2e
+    try:
+        assert seal_tag.cmd_archive(project_dir, "v0.1.0") == 0
+    finally:
+        seal_tag._copy_tree_optional = original
+    write_changelog(project_dir, "v0.1.0")
+    assert seal_tag.cmd_index(project_dir, "v0.1.0") == 0
+    return seal_tag, project_dir / "docs" / "tags" / "v0.1.0"
+
+
+def test_backfill_preserves_warnings_recorded_by_an_earlier_run(project_dir: Path):
+    """A failed evidence copy is a property of the archive, not of the run that
+    happens to rewrite its manifest. Dropping it would relabel a partial
+    archive as complete."""
+    seal_tag, dest = _seal_with_an_evidence_warning(project_dir)
+    before = json.loads(
+        (dest / "evidence" / "manifest.json").read_text(encoding="utf-8")
+    )["warnings"]
+    assert any("e2e archive skipped" in w for w in before)
+    assert "partial" in (dest / "README.md").read_text(encoding="utf-8")
+
+    r = run(project_dir, "backfill", "v0.1.0", "--force")
+    assert r.returncode == 0, r.stderr
+
+    after = json.loads(
+        (dest / "evidence" / "manifest.json").read_text(encoding="utf-8")
+    )["warnings"]
+    assert any("e2e archive skipped" in w for w in after), before
+    assert "partial" in (dest / "README.md").read_text(encoding="utf-8")
+    assert seal_tag._is_sealed(dest)
+
+
+def test_backfill_does_not_duplicate_carried_warnings(project_dir: Path):
+    """Each `--force` pass re-derives the same notes; they must not stack up."""
+    dest = _legacy_archive(project_dir, "v0.0.9")
+    (dest / "STYLE.md").unlink()      # a gap re-derived on every pass
+
+    for _ in range(3):
+        assert run(project_dir, "backfill", "v0.0.9", "--force").returncode == 0
+
+    warnings = json.loads(
+        (dest / "evidence" / "manifest.json").read_text(encoding="utf-8")
+    )["warnings"]
+    assert len(warnings) == len(set(warnings)), warnings
+    assert sum("STYLE.md" in w for w in warnings) == 1
+    assert sum("memory/movement.md" in w for w in warnings) == 1
+
+
+def test_an_interrupted_backfill_keeps_the_warnings_it_inherited(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The in-flight marker replaces the manifest, so it has to carry the
+    warnings forward or an interrupted run silently loses them."""
+    seal_tag, dest = _seal_with_an_evidence_warning(project_dir)
+
+    monkeypatch.setattr(
+        seal_tag, "_atomic_write_text",
+        _fail_writing(seal_tag, "README.md", parent="v0.1.0"),
+    )
+    assert seal_tag.cmd_backfill(project_dir, "v0.1.0", False, force=True) == 1
+    monkeypatch.undo()
+
+    marker = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert any("e2e archive skipped" in w for w in marker["warnings"])
+
+    assert run(project_dir, "backfill", "v0.1.0").returncode == 0
+    after = json.loads(
+        (dest / "evidence" / "manifest.json").read_text(encoding="utf-8")
+    )["warnings"]
+    assert any("e2e archive skipped" in w for w in after)

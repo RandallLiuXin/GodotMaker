@@ -88,14 +88,14 @@ which is pure derived state, rendered only from manifests already on disk.
 | before or at the seal commit | tag unsealed, parent index untouched. Re-run `index <Tag>`. |
 | at the parent index | tag sealed and correct; the index merely omits it. Run `reindex`. |
 
-Every path that rewrites an already-sealed archive — `archive --force`,
-`index --force`, `backfill --force` — retires the existing seal *before* it
-replaces anything: it drops the tag from the parent index, then deletes the
-manifest, then writes. A write that fails partway therefore leaves an archive
-that plainly reads as unsealed and unlisted, rather than one still carrying
-`sealed: true` over hashes that no longer describe its files. If retiring the
-seal is itself what fails, nothing has been rewritten and the archive is
-untouched.
+Every path that rewrites an archive — `archive`, `index --force`,
+`backfill --force` — claims it *before* replacing anything: it drops the tag
+from the parent index if it was sealed, then replaces the manifest with an
+in-flight marker, then writes. A write that fails partway therefore leaves an
+archive that plainly reads as unsealed and unlisted, rather than one still
+carrying `sealed: true` over hashes that no longer describe its files. If
+claiming the archive is itself what fails, nothing has been rewritten and the
+archive is untouched.
 
 Neither branch can produce an index entry for an unsealed tag, and neither
 strands a sealed archive with no way back in. `backfill` follows the same
@@ -180,6 +180,17 @@ present, unsealed, no `CHANGELOG.md`), but sealing it from those incomplete
 inputs would lock the real finalize out at exit 3. Finish it with
 `seal_tag.py index <Tag>` instead. Naming such a tag explicitly is an error
 rather than a silent skip.
+
+That holds even for a run that died mid-copy. Before its first write every
+command replaces the manifest with an in-flight marker naming its `stage`
+(`archiving`, `indexing`, `backfilling`), so an interrupted archive stays
+identifiable instead of decaying into the legacy shape. `backfill` resumes its
+own interrupted work and keeps away from a finalize's.
+
+Warnings already on the archive — a failed E2E or screenshot copy, say — are
+carried into the manifest backfill writes, so a rewrite cannot quietly relabel
+a partial archive as complete. Re-running `--force` re-derives the same notes
+without stacking duplicates.
 
 For the archives it does index, the source revision comes from `git tag <Tag>`
 (the commit `/gm-finalize` tagged), not today's `HEAD`; an untagged archive
