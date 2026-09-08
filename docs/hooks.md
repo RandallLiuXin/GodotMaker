@@ -254,6 +254,14 @@ A stop that did not go cleanly also writes one `worker_error` event through
 `metrics/diagnostics.py`. This is the whole of what a run leaves behind when it
 fails — workers produce no memory or learning entries.
 
+**Runner support: Claude Code and Codex only**, inherited from the hook this
+runs in. Those two register `SubagentStop`; OpenCode emits no Claude-style
+subagent lifecycle hook, and Pi's delegation returns inside its extension
+without one. On those two runtimes a failed delegate still leaves its trace
+files, but no `worker_error` is written. The `runtime` field is what tells the
+two supported runtimes apart in the stream — it is not a claim that all four
+are covered.
+
 | Field | Value |
 |---|---|
 | `task_id` | The PLAN/GAP task id the report's heading starts with (`M01`, `R2`), else a bounded slug of the task name. Every role's report heading is recognised, reviewer included |

@@ -92,6 +92,30 @@ class TestNormalization:
         those events need a task id like any other."""
         assert diagnostics.extract_task_id(heading) == expected
 
+    @pytest.mark.parametrize("status", ["FAILED", "PARTIAL"])
+    def test_an_empty_heading_suffix_does_not_swallow_the_next_line(self, status):
+        """The analyst template's heading is a bare `## Analyst Report:`.
+
+        Whitespace around the colon must not cross the newline, or the capture
+        runs on and makes `### Status: FAILED` the task name — an id that then
+        flips with the status and resets the task's attempt history.
+        """
+        message = (
+            "## Analyst Report:\n\n"
+            f"### Status: {status}\n\n"
+            "### Candidate Summary\n- Images: 4\n"
+        )
+        assert diagnostics.extract_task_id(message) == "unknown"
+
+    @pytest.mark.parametrize("bare", [
+        "## Report:",
+        "## Report:   ",
+        "## Analyst Report:",
+    ])
+    def test_a_heading_with_no_name_is_unknown(self, bare):
+        assert diagnostics.extract_task_id(f"{bare}\n\n### Status: FAILED\n") \
+            == "unknown"
+
     def test_handoff_condition_outranks_status(self):
         assert diagnostics.resolve_error_type(
             "FAILED", "terminal", "timeout", "worker") == diagnostics.ERROR_TIMEOUT
@@ -542,6 +566,27 @@ class TestBounds:
         project's own and send a reader to the wrong artifact."""
         report = f"### Notes\n- see {named}\n"
         assert diagnostics.extract_evidence_paths(report) == []
+
+    def test_a_legacy_memory_entry_contributes_no_evidence(self):
+        """Its text is ignored by contract; a path there is an old lesson."""
+        legacy = (
+            "## Report: M01 Move\n\n### Status: FAILED\n\n"
+            "### Build\n- Status: FAIL\n- see .godotmaker/traces/real.log\n\n"
+            "### Memory Entry\n"
+            "Last time the fix was documented in reports/unrelated.log\n\n"
+            "### Notes\n- Blocker: gdUnit4 missing\n"
+        )
+        assert diagnostics.extract_evidence_paths(legacy) == [
+            ".godotmaker/traces/real.log"]
+
+    @pytest.mark.parametrize("section", [
+        "Tests", "Build", "Tools", "Repair Attempt Evidence", "Notes",
+        "Visual Self-Check",
+    ])
+    def test_the_sections_that_may_name_an_artifact(self, section):
+        report = f"### {section}\n- see .godotmaker/traces/real.log\n"
+        assert diagnostics.extract_evidence_paths(report) == [
+            ".godotmaker/traces/real.log"]
 
     def test_an_absolute_path_does_not_crowd_out_a_real_one(self):
         report = ("### Notes\n- see /reports/external.log\n"

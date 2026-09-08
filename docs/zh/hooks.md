@@ -204,6 +204,12 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
 `worker_error` 事件。运行失败时留下的全部记录就是它——Worker 不再产出任何
 memory 或 learning 条目。
 
+**Runner 支持：仅 Claude Code 与 Codex**,这继承自它所在的 Hook。只有这两者注册了
+`SubagentStop`;OpenCode 不发出 Claude-style 的子代理生命周期 Hook,Pi 的委派在其
+extension 内部直接返回，同样没有。在这两个 runtime 上，失败的委派仍会留下 trace
+文件，但不会写出 `worker_error`。事件里的 `runtime` 字段用于区分这两个受支持的
+runtime,并不代表四个 runtime 都已覆盖。
+
 | 字段 | 取值 |
 |---|---|
 | `task_id` | 报告标题开头的 PLAN/GAP 任务 ID（`M01`、`R2`），否则取任务名的有界 slug。各角色的报告标题都能识别，含 reviewer |

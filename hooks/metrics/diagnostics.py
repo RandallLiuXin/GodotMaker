@@ -97,10 +97,15 @@ KNOWN_CLASSIFICATIONS = frozenset({
 EVIDENCE_PREFIXES = (".godotmaker/", "reports/", "e2e/", "docs/tags/")
 
 _TASK_ID_RE = re.compile(r"^[\[\(]?\s*([A-Z]{1,3}\d{1,3})\b")
+# The name must sit on the heading's own line. `\s*` around the colon crosses
+# newlines, and the analyst template's heading is a bare `## Analyst Report:`
+# — so the capture ran on and swallowed the next line, turning
+# `### Status: FAILED` into the task name. The id then flipped with the status
+# and reset that task's attempt history. `[^\S\n]` is horizontal space only.
 _REPORT_HEADING_RE = re.compile(
-    r"^#{1,4}\s*(?:Report|Verification Report|Review Report"
+    r"^#{1,4}[^\S\n]*(?:Report|Verification Report|Review Report"
     r"|Asset Producer Report|Analyst Report)"
-    r"\s*[:：]\s*(.+)$",
+    r"[^\S\n]*[:：][^\S\n]*(.+)$",
     re.IGNORECASE | re.MULTILINE,
 )
 def _section_re(*names: str) -> re.Pattern:
@@ -120,6 +125,14 @@ def _section_re(*names: str) -> re.Pattern:
     )
 
 
+# Where a report may name an artifact for this run: command output, the
+# handoff statement, prose about the failure, and visual check outputs.
+# Notably NOT `Memory Entry` — a legacy report's memory text is ignored, and a
+# path mentioned there is an old lesson, not evidence for the failure at hand.
+_EVIDENCE_SECTION_RE = _section_re(
+    "Tests", "Build", "Tools", r"Repair\s+Attempt\s+Evidence", "Notes",
+    r"Visual\s+Self-Check",
+)
 # Where the run pasted command output, and so where an exit code is evidence.
 # `Tests` / `Build` for a worker, `Tools` for an asset-producer — that role's
 # report has no Tests or Build section, and `Tools` is where it lists the
@@ -342,12 +355,21 @@ def _contained_evidence_path(candidate: str) -> str | None:
 def extract_evidence_paths(message: str) -> list[str]:
     """Bounded list of artifact paths the report points at.
 
+    Read from the sections that can name an artifact for *this* run, not the
+    whole report: a legacy `Memory Entry` naming `reports/old-lesson.log` would
+    otherwise be filed as evidence for the current failure, which both
+    consumes the field the compatibility contract says is ignored and sends a
+    post-mortem reader to the wrong artifact.
+
     Only paths that resolve under a known evidence root are kept — a
     diagnostic record references where the output lives, it never carries the
     output, and it must not point a later reader somewhere else.
     """
+    searchable = "\n".join(
+        section.group(1) for section in _EVIDENCE_SECTION_RE.finditer(message or "")
+    )
     paths: list[str] = []
-    for token in _PATH_RE.findall(message or ""):
+    for token in _PATH_RE.findall(searchable):
         candidate = _contained_evidence_path(
             token.replace("\\", "/").rstrip(".,;:)]}"))
         if candidate is None:
