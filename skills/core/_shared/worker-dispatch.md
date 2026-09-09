@@ -66,7 +66,7 @@ Agent({
 ### Prohibited Actions                                   [REQUIRED]
 - DO NOT ask for approval, wait for user input, or pause for confirmation. Execute the task directly. If required information or external state is missing, report `PARTIAL` or `FAILED` with the blocker.
 - DO NOT fabricate resource paths — only use paths listed in ASSETS.md or verified to exist in the project. If you need an asset that doesn't exist, report it in your summary; do NOT invent a path.
-- DO NOT write the root `MEMORY.md` or any file under the root `memory/` directory. Report execution results and failure evidence; the dispatching role owns project memory.
+- DO NOT write the root `MEMORY.md` or any file under the root `memory/` directory.
 - DO NOT modify files outside your Deliverables list — read-only access to all other files. Exception: runtime asset integration repair (worker agent, File Ownership) overrides this line for the bound artifact and the project-local scene or script that binds it; report every such file in Notes.
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
 - DO NOT introduce E2E-only gameplay changes.
@@ -132,16 +132,13 @@ Runtime Snapshot` above.
 3. **Workers write their own tests.** Minimum 2 unit tests per changed system.
 4. **Workers must not spawn sub-workers.**
 5. **Include game context.** Add the relevant Playable Unit fields to the brief.
-6. **Workers do not write memory.** Do not ask a worker for learnings or copy
-   a report's prose into memory. A legacy report may still contain a
-   `Memory Entry`; ignore that section.
-7. **Test file naming**: `test_{source_file_stem}.gd` — e.g., system file `s_movement.gd` → test file `test_s_movement.gd`. check_project.py enforces this pattern.
-8. **gdUnit4 version compatibility**: Godot 4.4 → gdUnit4 v5.x, Godot 4.5+ → gdUnit4 v6.x. Headless mode requires `--ignoreHeadlessMode`.
-9. **E2E input handling**: do NOT use `Input.is_action_just_pressed()` in ECS systems. Use `_input()` callback + flag variable pattern, expose `simulate_*()` methods so the Evaluator's e2e tests can drive the mechanic function.
-10. **E2E state setup**: when the brief asks for a test interface, implement a
+6. **Test file naming**: `test_{source_file_stem}.gd` — e.g., system file `s_movement.gd` → test file `test_s_movement.gd`. check_project.py enforces this pattern.
+7. **gdUnit4 version compatibility**: Godot 4.4 → gdUnit4 v5.x, Godot 4.5+ → gdUnit4 v6.x. Headless mode requires `--ignoreHeadlessMode`.
+8. **E2E input handling**: do NOT use `Input.is_action_just_pressed()` in ECS systems. Use `_input()` callback + flag variable pattern, expose `simulate_*()` methods so the Evaluator's e2e tests can drive the mechanic function.
+9. **E2E state setup**: when the brief asks for a test interface, implement a
 bounded setup helper or `simulate_*` method that calls the real runtime code
 path.
-11. **Production behavior changes**: change normal gameplay behavior, balance,
+10. **Production behavior changes**: change normal gameplay behavior, balance,
 progression, content, or timing only when the worker brief cites GDD.md,
 PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
 12. **UI scene root must be Control**: Any scene containing UI (menus, HUD, panels) must use a Control node as root, not Node2D. Control anchor/layout only works when the entire ancestor chain is Control nodes.

@@ -72,7 +72,7 @@
 - 读取当前 tag 的 `PLAN.md`，找出待处理的任务，从风险最高的开始
 - 派遣 Worker（最多同时 3 个）——每个 Worker 实现一个游戏系统及其单元测试，然后汇报执行结果和失败证据。Worker 不写 Memory/Learning 条目；在具备 SubagentStop 生命周期 Hook 的 Runtime（当前为 Claude Code 和 Codex）中，未成功的交接改为产生有界的 `worker_error` 诊断
 - `PLAN.md` 中所有任务都达到 `completed` 后，派遣一个 Verifier（无界面编译并跑单元测试），然后派遣一个 Reviewer（拥有 Godot 特有的领域知识——物理、UI、动画等）——每个循环迭代一次 verify+review pass，不再按 Worker 数量触发
-- 对每个评审 finding，主 Agent 在三个选项中选一个：ACCEPT（在 `PLAN.md` 追加新的修复任务）、REJECT（finding 是误报——记录到 `MEMORY.md` 的 **Reviewer Triage Log** 段）、SKIP（finding 是对的但暂时不修——同段记录）。默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT/SKIP 需附强制引证（gotcha 条目、API 文档、过往决策或任务 ID）
+- 对每个评审 finding，主 Agent 在三个选项中选一个：ACCEPT（在 `PLAN.md` 追加新的修复任务）、REJECT（finding 是误报）、SKIP（finding 是对的但暂时不修）。默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT/SKIP 需附强制引证（gotcha 条目、API 文档、架构决策、项目约束或任务 ID）。原始 finding 和 triage 决策不写入 `MEMORY.md`
 - 只要本轮有任何 finding 被 ACCEPT，循环就回到派遣 Worker 阶段
 - 只有当 `PLAN.md` 里所有任务都标记为 `verified`，且最后一轮评审 ACCEPT 数为零，构建才结束
 

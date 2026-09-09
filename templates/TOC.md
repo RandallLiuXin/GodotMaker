@@ -6,8 +6,8 @@
 - `GDD.md` — Game Design Document, the design "north star" updated each tag (produced by `/gm-gdd`)
 - `ROADMAP.md` — Tag-by-tag release plan (produced by `/gm-gdd` first run, edited by /gm-gdd subsequent runs)
 - `STYLE.md` — Initial visual seed for first reference and canonical image generation (produced by `/gm-gdd`)
-- `MEMORY.md` — Knowledge base index, append-only across tags
-- `memory/` — Per-system memory subsystem files
+- `MEMORY.md` — Stable architecture decisions and project constraints
+- `memory/` — Optional per-system architecture and constraint details
 - `ASSETS.md` — Asset manifest (produced by `/gm-asset`)
 
 ## Current-Tag (overwritten each /gm-gdd run)
@@ -21,7 +21,7 @@
 - `docs/tags/<Tag>/SUMMARY.md` — bounded summary of what the tag delivered; the cheap retrieval entry point
 - `docs/tags/<Tag>/GDD-snapshot.md` — GDD as it stood when this tag shipped
 - `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `STYLE.md`, `SCENES.md`, `MEMORY.md` — frozen working docs (ASSETS.md is cross-tag and stays at the root)
-- `docs/tags/<Tag>/memory/` — the sub-system memory files MEMORY.md indexes, frozen with it
+- `docs/tags/<Tag>/memory/` — the detailed architecture files MEMORY.md indexes, frozen with it
 - `docs/tags/<Tag>/evaluation-final.json` — final approved evaluator verdict for the tag
 - `docs/tags/<Tag>/CHANGELOG.md` — changelog entry for the tag (produced by `/gm-finalize`)
 - `docs/tags/<Tag>/evidence/manifest.json` — every archived file with size, SHA-256 and source revision

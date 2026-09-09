@@ -83,7 +83,7 @@ class TestNoRoleSubagentRegularConversation:
 
 
 class TestProjectMemoryOwnership:
-    """Active pipeline subagents cannot write the lead-owned notebook."""
+    """Active pipeline subagents cannot write architecture records."""
 
     @pytest.fixture(autouse=True)
     def active_build_role(self, project_dir):
@@ -91,10 +91,7 @@ class TestProjectMemoryOwnership:
 
     @pytest.mark.parametrize("path", [
         "MEMORY.md",
-        "memory/learning.md",
-        "memory/learning.txt",
-        "memory/data.json",
-        "memory/ui/notes.yaml",
+        "memory/system.md",
         "src/../memory/normalized.txt",
         ".claude/worktrees/worker-1/memory/worktree.txt",
     ])
@@ -122,7 +119,7 @@ class TestProjectMemoryOwnership:
         "docs/memory/design.md",
         "notes/MEMORY.md",
     ])
-    def test_nested_non_notebook_paths_are_allowed(self, path):
+    def test_nested_non_memory_paths_are_allowed(self, path):
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Edit",
             "tool_input": {"file_path": path},
@@ -142,7 +139,7 @@ class TestProjectMemoryOwnership:
     def test_opencode_child_memory_scope_blocks_without_agent_id(self):
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Edit",
-            "tool_input": {"file_path": "memory/learning.txt"},
+            "tool_input": {"file_path": "memory/system.md"},
             "is_subagent": True,
             "permission_scope": "memory",
         })

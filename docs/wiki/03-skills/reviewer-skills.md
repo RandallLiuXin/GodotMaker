@@ -29,8 +29,8 @@ The reviewer sub-agent reads all three files and produces a structured report th
 
 ## When reviewers find issues
 
-The main agent triages every finding into one of three options: ACCEPT (add a new task to `PLAN.md` for the next worker batch to fix), REJECT (the finding is wrong — record it in `MEMORY.md`'s **Reviewer Triage Log**), or SKIP (the finding is real but not worth fixing now — same MEMORY.md section). Defaults when uncertain: critical/major → ACCEPT; minor → SKIP. For critical/major a REJECT or SKIP requires a mandatory citation — a gotcha entry, an API doc reference, a prior MEMORY decision, or an existing task ID. Minor findings have no citation requirement.
+The main agent triages every finding into one of three options: ACCEPT (add a new task to `PLAN.md` for the next worker batch to fix), REJECT (the finding is wrong), or SKIP (the finding is real but not worth fixing now). Defaults when uncertain: critical/major → ACCEPT; minor → SKIP. For critical/major a REJECT or SKIP requires a mandatory citation — a gotcha entry, an API doc reference, a prior architecture decision or project constraint, or an existing task ID. Minor findings have no citation requirement. Raw findings and triage decisions are not persisted in `MEMORY.md`.
 
-The cycle loops until the reviewer's last pass added zero ACCEPTED tasks. Every REJECT and SKIP from this tag is shown to you in the `/gm-accept` summary so you are the final gate on whether the agent's triage was justified.
+The cycle loops until the reviewer's last pass added zero ACCEPTED tasks.
 
 Importantly, this step cannot be silently skipped. A hook script called `check_completion.py` runs when `/gm-build` or `/gm-fixgap` tries to finish its session. If workers ran but the verifier and reviewer did not, the hook blocks the session from ending. Quality checks are mandatory, not optional.

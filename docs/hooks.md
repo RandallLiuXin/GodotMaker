@@ -81,7 +81,8 @@ Runner note: this subagent write gate requires a runtime-provided `agent_id`.
 OpenCode child sessions do not expose that payload, so the OpenCode adapter
 runs only the identity-free `memory` scope for child writes and leaves all
 role-specific ownership rules to OpenCode-native edit permissions. Codex and
-Pi have no equivalent write hook; their memory boundary is prompt-level.
+Pi have no equivalent write hook; their architecture-record boundary is
+prompt-level.
 
 When no role is set, no `/gm-*` pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent

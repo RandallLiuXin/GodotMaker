@@ -52,7 +52,7 @@ No. Each role writes its name to `.godotmaker/current_role` when it starts, and 
 
 ### What happens inside `/gm-build`?
 
-`/gm-build` works through the task list in `PLAN.md` by dispatching **Workers** until every task is `completed`, then runs one verify+review pass — a **Verifier** builds the project headlessly and runs the tests, then a **Reviewer** checks for Godot-specific pitfalls. The main agent triages each finding into one of three options: ACCEPT (add as a new task in `PLAN.md`), REJECT (the finding is wrong — record in `MEMORY.md`'s **Reviewer Triage Log**), or SKIP (the finding is real but not worth fixing now — same MEMORY.md section). REJECT/SKIP for critical/major findings requires a citation; both are shown in `/gm-accept` or final review summaries. The cycle loops until no new findings are ACCEPTED. The `check_completion.py` hook refuses to let `/gm-build` end if workers ran but the verifier or reviewer never did.
+`/gm-build` works through the task list in `PLAN.md` by dispatching **Workers** until every task is `completed`, then runs one verify+review pass — a **Verifier** builds the project headlessly and runs the tests, then a **Reviewer** checks for Godot-specific pitfalls. The main agent triages each finding into one of three options: ACCEPT (add as a new task in `PLAN.md`), REJECT (the finding is wrong), or SKIP (the finding is real but not worth fixing now). REJECT/SKIP for critical/major findings requires a citation, but raw findings and triage decisions are not persisted in `MEMORY.md`. The cycle loops until no new findings are ACCEPTED. The `check_completion.py` hook refuses to let `/gm-build` end if workers ran but the verifier or reviewer never did.
 
 ### Why does the AI need git worktrees?
 
@@ -68,7 +68,7 @@ AI code generation is not deterministic, and complex interactions between game s
 
 ### Can I edit the generated code by hand?
 
-Yes, and your edits will be preserved. Be aware that if you run `/gm-build` again for a new tag, it may add new tasks that touch the same files — so your edits could be extended or partially overwritten by new worker output. Keep your hand-edits focused and document them in `MEMORY.md` so the AI knows they were intentional.
+Yes, and your edits will be preserved. Be aware that if you run `/gm-build` again for a new tag, it may add new tasks that touch the same files — so your edits could be extended or partially overwritten by new worker output. Keep hand-edits focused. Record only durable architecture decisions or project constraints in `MEMORY.md`; use the relevant design document for feature requirements.
 
 ### Where do I find screenshots and test results?
 

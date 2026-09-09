@@ -130,7 +130,7 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
     "\n\n# Pi runtime contract\n",
     "This is an isolated Pi role. Use only Pi built-in tools and project-local GodotMaker resources. ",
     "Do not delegate again. If working in a worktree, commit completed changes before reporting. ",
-    "Never write the root MEMORY.md or files under the root memory/ directory; report execution results and failure evidence instead. ",
+    "Never write the root MEMORY.md or files under the root memory/ directory. ",
     "Return an explicit PASS/FAIL summary with commands run and changed files.\n",
   ].join(""), "utf8");
 

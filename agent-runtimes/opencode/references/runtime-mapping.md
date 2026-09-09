@@ -88,7 +88,7 @@ work. Otherwise stop and report the missing capability before editing files.
 - Root-stage hooks remain active through `.opencode/plugins/godotmaker-hooks.js`.
 - Child-session edit boundaries are governed by `.opencode/agents/*.md`
   `permission` frontmatter, not by Claude-style `agent_id` hook payloads. For
-  project memory only, the plugin invokes the identity-free `memory` scope of
+  the architecture record, the plugin invokes the identity-free `memory` scope of
   `check_file_permissions.py`, blocking child writes to root `MEMORY.md` and
   the root `memory/` directory.
 - OpenCode child sessions do not provide the `agent_id` payload required by

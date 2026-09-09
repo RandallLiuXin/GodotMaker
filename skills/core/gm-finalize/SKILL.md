@@ -78,7 +78,7 @@ Run these fast gates before archiving. For passing gates, continue silently. For
 - **STRUCTURE.md**: `extends Component` and `extends System` filenames under `src/` appear in the component/system listings.
 - **ASSETS.md**: Asset paths for current-tag generated rows exist under `assets/` or `references/`.
 - **SCENES.md**: Scene paths referenced for this tag exist on disk.
-- **MEMORY.md**: If a current-tag discovery is now superseded by the final implementation, mark it `(superseded by …)`.
+- **MEMORY.md**: Confirm it contains only current architecture decisions and project constraints; update it only if the final implementation changed one.
 
 Apply documentation fixes only. Finalize does not change code.
 
@@ -167,7 +167,7 @@ Field sources for the schema below:
 - `summary.test_count.unit` — bundle `test_count.unit` (direct)
 - `summary.test_count.e2e_tag` + `e2e_regression` — split bundle `test_count.e2e` by which test files were added this tag (use PLAN's task table / git log to decide)
 - `summary.systems_added` + `components_added` — PLAN task table (already in context from step 3)
-- `known_limitations` — `evaluation.json` `minor_issues` + MEMORY.md's "Known limitations" entries
+- `known_limitations` — `evaluation.json` `minor_issues`
 - `doc_updates` — root docs you edited in step 3
 - `evidence` — bundle `evidence` object
 
@@ -192,7 +192,7 @@ Write `.godotmaker/final_report.json`:
     "screenshots": M
   },
   "doc_updates": ["list of root docs updated in step 3"],
-  "known_limitations": ["from MEMORY.md and evaluation minor_issues"]
+  "known_limitations": ["from evaluation minor_issues"]
 }
 ```
 
@@ -215,7 +215,7 @@ This is the step that marks the tag **sealed**. It writes, deterministically:
 | `docs/tags/<Tag>/evidence/manifest.json` | Every archived file with its archive-relative path, category, byte size and SHA-256, plus source revision and generator version, and `"sealed": true` |
 | `docs/tags/README.md` | Parent index of every sealed tag, in version order |
 
-Run it **after** Step 5 and Step 6 — `SUMMARY.md` is generated from the archived `CHANGELOG.md`, `evaluation-final.json`, `PLAN.md` and this tag's `final_report.json`. It deliberately does not read `.godotmaker/traces/`, worker output or unconfirmed MEMORY learnings: `SUMMARY.md` is a retrieval index over confirmed deliverables, not a second source of truth.
+Run it **after** Step 5 and Step 6 — `SUMMARY.md` is generated from the archived `CHANGELOG.md`, `evaluation-final.json`, `PLAN.md` and this tag's `final_report.json`. It deliberately does not read `.godotmaker/traces/`, worker output or `MEMORY.md`: `SUMMARY.md` is a retrieval index over confirmed deliverables, not a second source of truth.
 
 Exit codes: 2 if the archive or `CHANGELOG.md` is missing, or if the archived `MEMORY.md` still has unresolvable links; 3 if the tag is already sealed; 1 on an fs failure.
 

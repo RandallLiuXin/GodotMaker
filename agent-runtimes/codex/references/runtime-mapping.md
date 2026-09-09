@@ -107,8 +107,8 @@ same task state transitions.
 
 Delegated roles must not write the root `MEMORY.md` or files below the root
 `memory/` directory. Codex exposes no equivalent PreToolUse write gate here,
-so this is a prompt-level boundary carried by the role definition. Delegates
-return execution results and failure evidence; the lead session owns memory.
+so this is a prompt-level boundary carried by the role definition. Only the
+lead session may update stable architecture decisions and project constraints.
 
 ## Project Tool Status Overrides
 

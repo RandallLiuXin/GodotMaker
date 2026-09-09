@@ -105,14 +105,6 @@ class TestWorkerReport:
         })
         assert not is_blocked(parsed)
 
-    def test_legacy_memory_entry_is_accepted_but_not_required(self):
-        _, _, parsed = run_hook(HOOK, {
-            "hook_event_name": "SubagentStop",
-            "agent_id": "w1",
-            "last_assistant_message": COMPLETE_WORKER,
-        })
-        assert not is_blocked(parsed)
-
     def test_empty_tests_section_blocked(self):
         msg = COMPLETE_WORKER.replace(
             "#### Unit Tests\n- test/test_player.gd: 3 tests, 3 passed\n"

@@ -45,7 +45,7 @@ Then read context:
 - `PLAN.md` → current tag's `**Tag:**` header + Tag Mechanics + Inherited Mechanics + Playable Unit + pending/in_progress/completed tasks (anything not `verified`)
 - `STRUCTURE.md` → architecture and build order (current tag scope: previous tags' systems already exist on disk and may be touched only when PLAN.md explicitly lists a refactor task for them)
 - `ASSETS.md` → the generated-runtime authority; for a visual task, derive each asset with `tools/asset_result_registration.py --snapshot`
-- `MEMORY.md` index + sub-files (cross-tag accumulating notebook) → avoid repeating known mistakes
+- `MEMORY.md` index + sub-files → stable architecture decisions and project constraints
 - `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring. Read `docs/tags/<prev_tag>/SUMMARY.md` first — it is one screen and often answers the question without opening the full archive; `docs/tags/README.md` lists every sealed tag if you are not sure which one to open.
 
 ## Hard Rules
@@ -86,7 +86,7 @@ pending → in_progress → completed → verified
 - **Never** skip states
 - Update PLAN.md IMMEDIATELY when a task changes status
 
-**When you ACCEPT a reviewer finding against a verified task:** Do NOT change the existing task's state. Add a NEW task (status `pending`) describing the fix. The original task stays `verified`. The new task goes through the full lifecycle. (REJECT or SKIP findings go to MEMORY.md instead — see `references/reviewer-finding-triage.md`.)
+**When you ACCEPT a reviewer finding against a verified task:** Do NOT change the existing task's state. Add a NEW task (status `pending`) describing the fix. The original task stays `verified`. The new task goes through the full lifecycle. REJECT and SKIP do not create tasks; see `references/reviewer-finding-triage.md`.
 
 This way the state is always monotonic and the audit trail is preserved.
 
@@ -155,8 +155,8 @@ Run ONE verifier, then ONE reviewer, on the integrated state:
 - Include `Asset Runtime Snapshot` when reviewed files use visual assets.
 - Triage each finding per `references/reviewer-finding-triage.md` into one of three options:
   - **ACCEPT** → add NEW `pending` fix task to PLAN.md.
-  - **REJECT** → finding is wrong; append a record to MEMORY.md "Reviewer Triage Log" section (citation required for critical/major).
-  - **SKIP** → finding is real but not worth fixing now; same MEMORY.md section (citation required for critical/major).
+  - **REJECT** → finding is wrong; do not create a task (citation required for critical/major).
+  - **SKIP** → finding is real but not worth fixing now; do not create a task (citation required for critical/major).
 - Defaults when uncertain: critical/major → ACCEPT; minor → SKIP.
 - If you ACCEPTED any findings → go back to Step 1.
 - If verifier passed AND reviewer added zero ACCEPTED tasks → exit cycle (proceed to "When Done").
@@ -179,18 +179,19 @@ continuable, and do not consume the repair budget.
 - After parallel workers complete, merge branches and build-check
 - See `references/worker-dispatch.md` → Parallel Worker Dispatch for merge procedure
 
-## Memory System
+## Architecture and Constraints Record
 
 ```
-MEMORY.md              <- Index + cross-cutting knowledge
+MEMORY.md              <- Architecture and constraints index
 memory/
-  {system_name}.md     <- Per-system details (template: .claude/templates/memory_subsystem.md)
+  {system_name}.md     <- Detailed system architecture and constraints
 ```
 
-- Read MEMORY.md before dispatching workers
-- Update after every verification round from verified outcomes (you write,
-  not workers/reviewers).
-- Never copy a Worker report's legacy `Memory Entry` into project memory.
+- Read MEMORY.md before dispatching workers.
+- Write only stable architecture decisions or project constraints. Do not
+  record task history, failures, gotchas, workarounds, reviewer triage, or
+  other dynamic learning.
+- Do not update MEMORY.md when no durable architecture or constraint changed.
 - Where the runtime exposes SubagentStop lifecycle hooks (currently Claude
   Code and Codex), Worker failures become diagnostic `worker_error` events,
   not project rules or prompt context for the next dispatch.
@@ -216,7 +217,7 @@ Your context window is finite. Protect it:
 
 **Out of your context (delegate to workers):** Asset generation, system implementation code, test code, build/lint output, screenshot analysis.
 
-**When context gets large:** Summarize completed phases. Reference documents by path. Write decisions to MEMORY.md for recovery after compaction.
+**When context gets large:** Summarize completed phases and reference documents by path. Do not use MEMORY.md as a context-recovery log.
 
 ## When Done
 

@@ -70,7 +70,7 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 Runner 说明：这个子代理写入 gate 需要 runtime 提供 `agent_id`。OpenCode child
 session 不暴露该 payload，因此 OpenCode adapter 对 child 写入只运行无需身份的
 `memory` scope；其他角色所有权规则仍依赖 OpenCode 原生 edit permission。Codex
-和 Pi 没有等价的写入 Hook，其 memory 边界只在 prompt 层执行。
+和 Pi 没有等价的写入 Hook，其架构记录边界只在 prompt 层执行。
 
 未设置角色时，表示当前没有活跃的 `/gm-*` 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。
 

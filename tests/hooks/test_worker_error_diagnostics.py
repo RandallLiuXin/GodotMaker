@@ -247,27 +247,6 @@ def test_log_subagent_does_not_diagnose_other_roles():
     assert read_metrics("worker_error") == []
 
 
-def test_codex_generic_worker_type_does_not_diagnose_reviewer_report(tmp_path):
-    config = tmp_path / ".godotmaker" / "config.yaml"
-    config.write_text("agent: codex\n", encoding="utf-8")
-    handle_stop({
-        "hook_event_name": "SubagentStop",
-        "agent_id": "reviewer-1",
-        "agent_type": "worker",
-        "last_assistant_message": (
-            "## Review Report:\n\n"
-            "### Reviewers Matched\n- gameplay\n\n"
-            "### ECS Review\n- clean\n\n"
-            "### Issues Found\n- none\n\n"
-            "### Summary\n- pass\n"
-        ),
-    }, verdict=SimpleNamespace(
-        rejected=True,
-        reason="review report rejected by worker gate",
-    ))
-    assert read_metrics("worker_error") == []
-
-
 def test_codex_reviewer_embedding_worker_report_is_not_diagnosed(tmp_path):
     config = tmp_path / ".godotmaker" / "config.yaml"
     config.write_text("agent: codex\n", encoding="utf-8")

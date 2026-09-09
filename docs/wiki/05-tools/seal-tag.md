@@ -20,7 +20,7 @@ docs/tags/
     ├── STYLE.md
     ├── SCENES.md
     ├── MEMORY.md
-    ├── memory/               sub-system files MEMORY.md indexes
+    ├── memory/               architecture files MEMORY.md indexes
     ├── evaluation-final.json
     └── evidence/
         ├── manifest.json     every archived file: path, category, bytes, SHA-256
@@ -51,8 +51,8 @@ snapshot.
 
 `SUMMARY.md` is a retrieval index, not a source of truth. It restates facts
 from `CHANGELOG.md`, `PLAN.md`, `evaluation-final.json` and `final_report.json`
-and nothing else — worker traces, exploration notes and unverified MEMORY
-learnings never reach it. When the summary and a canonical document disagree,
+and nothing else — worker traces, exploration notes and `MEMORY.md` never
+reach it. When the summary and a canonical document disagree,
 the canonical document wins.
 
 It links only what the archive actually holds. A project with no `memory/`
@@ -139,7 +139,7 @@ sealed.
 
 ## Memory link checking
 
-`MEMORY.md` indexes per-system notes under `memory/`. Archiving the index
+`MEMORY.md` indexes detailed architecture and constraints under `memory/`. Archiving the index
 without those files would freeze a set of broken links, so `archive` copies
 `memory/` too and then verifies the archived `MEMORY.md`:
 

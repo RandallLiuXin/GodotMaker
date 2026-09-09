@@ -52,7 +52,7 @@ Godot 4.5 或更高版本。GodotMaker 不支持 Godot 3.x 或 Godot 4.3 及以�
 
 ### `/gm-build` 内部做了什么？
 
-`/gm-build` 推进 `PLAN.md` 中的任务列表：先派 **Worker** 把所有任务做到 `completed`，然后跑一次 verify+review pass——**Verifier** 无头编译项目并运行测试，**Reviewer** 检查 Godot 特有的坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务加到 `PLAN.md`）、REJECT（finding 是误报——记录到 `MEMORY.md` 的 **Reviewer Triage Log** 段）或 SKIP（finding 是对的但暂时不修——同段记录）。critical/major 的 REJECT/SKIP 必须附引证；这些决策都会在 `/gm-accept` 或 final review 摘要里展示。循环持续到没有任何 ACCEPT。如果 Worker 跑过了但 Verifier 或 Reviewer 没跑，`check_completion.py` Hook 会拒绝 `/gm-build` 结束。
+`/gm-build` 推进 `PLAN.md` 中的任务列表：先派 **Worker** 把所有任务做到 `completed`，然后跑一次 verify+review pass——**Verifier** 无头编译项目并运行测试，**Reviewer** 检查 Godot 特有的坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务加到 `PLAN.md`）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证，但原始 finding 和 triage 决策不写入 `MEMORY.md`。循环持续到没有任何 ACCEPT。如果 Worker 跑过了但 Verifier 或 Reviewer 没跑，`check_completion.py` Hook 会拒绝 `/gm-build` 结束。
 
 ### AI 为什么需要 git worktree？
 
@@ -68,7 +68,7 @@ AI 代码生成不是确定性的，游戏系统之间复杂的交互可能产�
 
 ### 我可以手动修改生成的代码吗？
 
-可以，你的修改会被保留。但要注意，如果你在新 tag 中再次运行 `/gm-build`，它可能会添加涉及同一文件的新任务——新的 Worker 输出可能会扩展或部分覆盖你的手动修改。建议手动修改保持在小范围内，并在 `MEMORY.md` 中记录下来，让 AI 知道这些改动是有意为之的。
+可以，你的修改会被保留。但要注意，如果你在新 tag 中再次运行 `/gm-build`，它可能会添加涉及同一文件的新任务——新的 Worker 输出可能会扩展或部分覆盖你的手动修改。建议手动修改保持在小范围内。只有长期架构决策或项目约束才记录到 `MEMORY.md`；功能需求应写入对应的设计文档。
 
 ### 截图和测试结果在哪里？
 

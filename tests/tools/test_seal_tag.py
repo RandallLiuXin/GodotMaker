@@ -743,10 +743,10 @@ def test_summary_stays_within_its_length_bound(project_dir: Path):
 
 def test_summary_does_not_absorb_worker_exploration_notes(project_dir: Path):
     """SUMMARY is an index over confirmed deliverables. Worker discoveries and
-    unverified learnings stay in MEMORY.md."""
+    architecture records stay in MEMORY.md."""
     (project_dir / "MEMORY.md").write_text(
         "# MEMORY\n\n- [movement](memory/movement.md)\n\n"
-        "## Discoveries\n\n- tried a raycast approach that half worked\n",
+        "## Architecture Decisions\n\n- movement uses ECS-owned velocity\n",
         encoding="utf-8",
     )
     assert seal(project_dir).returncode == 0
@@ -1524,7 +1524,7 @@ def test_summary_omits_the_memory_link_when_no_subtree_was_archived(project_dir:
         encoding="utf-8"
     )
     assert "(memory/)" not in summary
-    assert "[MEMORY.md](MEMORY.md)" in summary, "the notebook itself is still linked"
+    assert "[MEMORY.md](MEMORY.md)" in summary, "the architecture record is still linked"
     assert "no `memory/` subtree archived" in summary
 
 
