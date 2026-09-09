@@ -105,6 +105,11 @@ Do not claim parallel worker execution unless Codex actually spawned isolated
 workers. If running a sequential fallback, say so in the report and preserve the
 same task state transitions.
 
+Delegated roles must not write the root `MEMORY.md` or files below the root
+`memory/` directory. Codex exposes no equivalent PreToolUse write gate here,
+so this is a prompt-level boundary carried by the role definition. Delegates
+return execution results and failure evidence; the lead session owns memory.
+
 ## Project Tool Status Overrides
 
 Project docs override generic Codex skill triggers. `gdtoolkit` is currently

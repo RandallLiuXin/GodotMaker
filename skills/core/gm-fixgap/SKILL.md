@@ -256,7 +256,12 @@ memory/
 ```
 
 - Read MEMORY.md before dispatching workers
-- Update after every verification round (you write, not workers/reviewers)
+- Update after every verification round from verified outcomes (you write,
+  not workers/reviewers).
+- Never copy a Worker report's legacy `Memory Entry` into project memory.
+- Where the runtime exposes SubagentStop lifecycle hooks (currently Claude
+  Code and Codex), Worker failures become diagnostic `worker_error` events,
+  not project rules or prompt context for the next dispatch.
 
 ## Available Skills & Tools
 

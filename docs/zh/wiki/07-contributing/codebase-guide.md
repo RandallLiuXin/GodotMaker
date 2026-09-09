@@ -55,6 +55,9 @@ Codex 使用 `agent-runtimes/<agent>/config/` 下的配置文件；OpenCode 使�
 
 一个用于记录会话期间发生事件的小型子系统。Hook 通过调用 `record_event()` 将 JSON 行追加到 `.godotmaker/metrics_current.jsonl`（当前会话）和 `.godotmaker/metrics_total.jsonl`（全量生命周期日志）。`state.py` 模块负责在 `.godotmaker/state.json` 中管理可变的会话内计数器（拦截次数等）。`session_start.py` 在每次新会话开始时重置两者。
 
+在具备 SubagentStop 生命周期 Hook 的 Runtime（当前为 Claude Code 和 Codex）中，
+`diagnostics.py` 只为未成功的 Worker 交接记录有界的 `worker_error` 事件；它不会解释其他角色的报告。
+
 关于编写 hook 和使用 metrics API 的详细说明，请参阅 [编写 Hook](writing-a-hook.md)。
 
 ### 权限契约的三层划分

@@ -58,6 +58,9 @@ class EventType(str, Enum):
 
     WORKER_BRIEF = "worker_brief"
 
+    # Bounded diagnostics for unsuccessful Worker handoffs.
+    WORKER_ERROR = "worker_error"
+
 
 REPORT_MARKERS = {
     ROLE_WORKER: "## Report:",
@@ -89,7 +92,6 @@ REPORT_REQUIRED_SECTIONS = {
         ("Files Changed", r"### Files Changed"),
         ("Tests", r"### Tests"),
         ("Build", r"### Build"),
-        ("Memory Entry", r"### Memory Entry"),
     ],
     ROLE_VERIFIER: [
         ("Overall", r"### Overall:\s*(PASS|FAIL|PARTIAL)"),

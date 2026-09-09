@@ -62,9 +62,15 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 
 在流水线角色活跃期间，通用子代理会被阻止写入 `e2e/` 和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）。`asset-producer` 可以写入 `assets/`、`references/` 和 `.godotmaker/asset-generation/`。
 
+在 Runtime 支持的 Write/Edit Hook 路径上，所有子代理还会被阻止写入根
+`MEMORY.md` 和根 `memory/` 目录下的任何文件。相对路径、绝对路径、worktree
+路径和普通 `..` 写法会先规范化。这是工具 Hook 契约，不是文件系统沙箱；shell
+写入不在这个 Hook 的覆盖范围内。
+
 Runner 说明：这个子代理写入 gate 需要 runtime 提供 `agent_id`。OpenCode child
-session 不暴露该 payload，因此 OpenCode adapter 不会对 child session 运行这个
-Python 子代理写入 gate；该边界依赖 OpenCode 原生 agent edit permission。
+session 不暴露该 payload，因此 OpenCode adapter 对 child 写入只运行无需身份的
+`memory` scope；其他角色所有权规则仍依赖 OpenCode 原生 edit permission。Codex
+和 Pi 没有等价的写入 Hook，其 memory 边界只在 prompt 层执行。
 
 未设置角色时，表示当前没有活跃的 `/gm-*` 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。
 
@@ -148,6 +154,22 @@ Runner 支持：仅 Claude Code / Codex。OpenCode adapter 不发出 Claude-styl
 `SUBAGENT_STOP` 指标以及结果特定事件：`WORKER_DONE`、`VERIFIER_PASS`、
 `ASSET_PRODUCER_PARTIAL` 等。
 
+只有 Worker stop 会额外产生诊断：失败、部分完成、报告被拒绝或未验证交接写入
+一条有界的 `worker_error`。稳定字段包括 `task_id`、`attempt`、`stage`、
+`runtime`、`agent_id`、`run_id`、`trace_id`、`error_type`、可选的
+`classification`/`exit_code`、`summary`、`error_fingerprint`、有界的
+`evidence_paths`、`retryable` 和 `repeat_count`。大型 Tests/Build 输出会增加
+有界的 `output_digest`、`output_bytes` 和 `output_tail` 引用，但不会保存完整输出。
+字段只从拥有它的 Worker 章节
+读取；缺失值保持为空，不从其他角色或任意粘贴输出中猜测。相同的
+`(agent_id, error_fingerprint)` 只写一次。Worker 成功时不写诊断；诊断也不会
+注入后续 prompt 或自动提升为项目记忆。
+
+`worker_error` 的产生沿用现有 `on_subagent_stop.py` 支持范围：仅 Claude Code
+和 Codex。由于 Codex 对所有委派角色都暴露通用 `worker` agent type，其输出必须
+能被识别为 Worker 报告；silent 的通用 delegate 保持未分类。OpenCode 与 Pi
+保留 trace/报告证据，但不产生该事件；补齐 Runtime 生命周期 parity 属于独立工作。
+
 每条 `SUBAGENT_STOP` 都带 `outcome_kind`：
 
 | `outcome_kind` | 含义 |
@@ -222,7 +244,7 @@ hook 完全没有校验的路径（force-allow，或没有活跃的流水线角�
 
 | 角色 | 必需章节 |
 |------|----------|
-| worker | Status, Files Changed, Tests, Build, Memory Entry |
+| worker | Status, Files Changed, Tests, Build |
 | verifier | Overall, Results, Adversarial Probes |
 | reviewer | Reviewers Matched, ECS Review, Issues Found, Summary |
 | analyst | Status, Asset Summary, Art Style Summary, Files Generated |
