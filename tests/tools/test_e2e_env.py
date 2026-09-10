@@ -286,3 +286,78 @@ class TestReportedDict:
         assert data["available"] is False
         assert data["run_command"] is None
         assert data["diagnostics"]
+
+
+class TestNoRunner:
+    """Importable is not runnable — and callers gate the E2E run on this.
+
+    `-m godot_e2e.cli` or a console script inside the target environment
+    is what actually launches the suite. A partial install that imports
+    the package but supplies neither must not report success.
+    """
+
+    def _payload(self):
+        return probe_payload(cli_module=False)
+
+    def test_no_entry_point_at_all_is_not_ok(self):
+        info, _ = run_probe(self._payload(), cli=None)
+        assert info.status == e2e_env.STATUS_NO_RUNNER
+        assert info.available is False
+        assert info.run_command is None
+
+    def test_console_script_in_another_env_does_not_rescue_it(self):
+        info, _ = run_probe(self._payload(), cli=OTHER_CLI)
+        assert info.status == e2e_env.STATUS_NO_RUNNER
+        assert info.available is False
+        assert info.run_command is None
+
+    def test_summary_names_interpreter_and_the_missing_entry_point(self):
+        info, _ = run_probe(self._payload(), cli=None)
+        assert TARGET_PYTHON in info.summary()
+        assert "godot_e2e.cli" in info.summary()
+
+    def test_remediation_replaces_the_broken_install(self):
+        info, _ = run_probe(self._payload(), cli=None)
+        assert info.install_command == [
+            TARGET_PYTHON, "-m", "pip", "install", "--force-reinstall", "godot-e2e",
+        ]
+        lines = "\n".join(info.diagnostic_lines())
+        assert "--force-reinstall" in lines
+        assert "run the suite with:" not in lines
+
+    def test_cli_import_error_is_surfaced(self):
+        info, _ = run_probe(
+            probe_payload(
+                cli_module=False,
+                cli_module_error="ModuleNotFoundError: No module named 'godot_e2e.cli'",
+            ),
+            cli=None,
+        )
+        assert "godot_e2e.cli" in "\n".join(info.diagnostic_lines())
+
+    def test_cli_exits_non_zero(self):
+        with patch.object(e2e_env, "probe_e2e_python_env",
+                          return_value=run_probe(self._payload(), cli=None)[0]):
+            assert e2e_env.main([]) == 1
+
+    def test_broken_install_is_reinstalled_not_installed(self):
+        info, _ = run_probe(
+            probe_payload(installed=False, location=None, cli_module=False,
+                          import_error="ModuleNotFoundError: No module named 'pytest'"),
+            cli=None,
+        )
+        assert info.status == STATUS_IMPORT_ERROR
+        assert "--force-reinstall" in " ".join(info.install_command)
+
+
+class TestRunnableStatesExitZero:
+    def test_cli_module_present(self):
+        with patch.object(e2e_env, "probe_e2e_python_env",
+                          return_value=run_probe(probe_payload())[0]):
+            assert e2e_env.main([]) == 0
+
+    def test_console_script_inside_target_env(self):
+        cli = os.path.join(TARGET_SCRIPTS, "godot-e2e")
+        info, _ = run_probe(probe_payload(cli_module=False), cli=cli)
+        assert info.status == STATUS_OK
+        assert info.run_command == [cli]

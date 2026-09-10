@@ -30,6 +30,7 @@ All required checks passed! Ready to use GodotMaker.
 ### Godot E2E（Python 包）
 
 - `godot-e2e` Python 包可以被**运行本脚本的那个解释器**导入，而不仅仅是 PATH 上存在某个 `godot-e2e` 命令。
+- 该解释器确实能把它跑起来（`-m godot_e2e.cli`，或同一环境内的 `godot-e2e` 命令）。只能导入却没有可执行入口的安装会判为失败，而不是通过。
 
 这里只检查 Godot E2E 的 Python 一侧。项目内的 `addons/godot_e2e/` addon 是另一个依赖，由 [`check_project.py`](check-project.md) 负责——两者互不代表，缺少其中一个不能说明另一个的状态。
 

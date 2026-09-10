@@ -660,6 +660,23 @@ class TestE2eLayerBoundary:
         assert "-m pip install godot-e2e" in result.failed[0]
         assert "addons/" not in result.failed[0]
 
+    def test_importable_but_unrunnable_python_package_fails(self):
+        import check_project
+        from e2e_env import STATUS_NO_RUNNER, E2EPythonEnv
+
+        interpreter = os.path.join("/opt", "envs", "project", "bin", "python")
+        info = E2EPythonEnv(
+            interpreter=interpreter, status=STATUS_NO_RUNNER,
+            package_version="1.3.0",
+        )
+        result = check_project.CheckResult()
+        with patch.object(check_project, "probe_e2e_python_env", return_value=info):
+            check_project.check_e2e_python_package(result)
+
+        assert len(result.failed) == 1
+        assert interpreter in result.failed[0]
+        assert "--force-reinstall" in result.failed[0]
+
     def test_available_python_package_passes(self):
         import check_project
         from e2e_env import STATUS_OK, E2EPythonEnv

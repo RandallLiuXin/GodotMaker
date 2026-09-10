@@ -29,8 +29,9 @@ Usage:
     python tools/e2e_env.py --json     # machine-readable report
 
 Exit codes:
-    0   the package is importable by the target interpreter
-    1   it is not (missing, broken, or installed in another environment)
+    0   the target interpreter can import AND launch the package
+    1   it cannot (missing, broken, no runnable entry point, or installed
+        in another environment)
 """
 from __future__ import annotations
 
@@ -55,7 +56,8 @@ CLI_EXECUTABLES = ("godot-e2e", "godot-e2e.exe", "godot-e2e.cmd", "godot-e2e.bat
 PROBE_TIMEOUT = 60
 
 # Status values, ordered from healthy to broken.
-STATUS_OK = "ok"                                # importable by the target interpreter
+STATUS_OK = "ok"                                # importable AND runnable there
+STATUS_NO_RUNNER = "no_runner"                  # imports there, but nothing to launch
 STATUS_IMPORT_ERROR = "import_error"            # installed there but `import` raises
 STATUS_OTHER_ENVIRONMENT = "other_environment"  # missing here, CLI found elsewhere
 STATUS_MISSING = "missing"                      # not installed anywhere we can see
@@ -98,6 +100,7 @@ info = {
     "import_error": None,
     "dist_version": None,
     "cli_module": False,
+    "cli_module_error": None,
 }
 
 try:
@@ -114,11 +117,15 @@ except Exception as exc:
     info["import_error"] = "%s: %s" % (type(exc).__name__, exc)
 
 if info["installed"]:
+    # A real import, not find_spec: `-m godot_e2e.cli` executes the
+    # module, so only an import that actually succeeds proves the entry
+    # point is runnable.
     try:
-        import importlib.util
-        info["cli_module"] = importlib.util.find_spec("godot_e2e.cli") is not None
-    except Exception:
+        import godot_e2e.cli  # noqa: F401
+        info["cli_module"] = True
+    except Exception as exc:
         info["cli_module"] = False
+        info["cli_module_error"] = "%s: %s" % (type(exc).__name__, exc)
 
 print(json.dumps(info))
 """
@@ -161,11 +168,16 @@ class E2EPythonEnv:
     cli_path: str | None = None
     cli_in_target_env: bool = False
     cli_module: bool = False
+    cli_module_error: str | None = None
     scripts_dirs: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def available(self) -> bool:
-        """True when the target interpreter can import the package."""
+        """True when the target interpreter can both import AND launch it.
+
+        Callers gate the E2E run on this, so an importable package with no
+        runnable entry point must not read as available.
+        """
         return self.status == STATUS_OK
 
     @property
@@ -203,7 +215,17 @@ class E2EPythonEnv:
 
     @property
     def install_command(self) -> list[str]:
-        return [self.interpreter, "-m", "pip", "install", PACKAGE_NAME]
+        """The remediation command, always pinned to the target interpreter.
+
+        A distribution that is present but unusable needs the install
+        replaced, not added, so those states get `--force-reinstall`.
+        """
+        flags = (
+            ["--force-reinstall"]
+            if self.status in (STATUS_IMPORT_ERROR, STATUS_NO_RUNNER)
+            else []
+        )
+        return [self.interpreter, "-m", "pip", "install", *flags, PACKAGE_NAME]
 
     def summary(self) -> str:
         """One line, always naming the interpreter that was consulted."""
@@ -212,6 +234,13 @@ class E2EPythonEnv:
             return (
                 f"Python package '{PACKAGE_NAME}'{version} available to "
                 f"{self.interpreter}"
+            )
+        if self.status == STATUS_NO_RUNNER:
+            return (
+                f"Python package '{PACKAGE_NAME}'{version} imports for "
+                f"{self.interpreter} but has no runnable entry point "
+                f"({CLI_MODULE} is not importable and this environment has no "
+                "godot-e2e command)"
             )
         if self.status == STATUS_IMPORT_ERROR:
             return (
@@ -265,6 +294,15 @@ class E2EPythonEnv:
             )
         elif self.status == STATUS_IMPORT_ERROR:
             lines.append(f"import error: {self.import_error}")
+        elif self.status == STATUS_NO_RUNNER:
+            lines.append(
+                f"{CLI_MODULE} import error: "
+                f"{self.cli_module_error or 'module not importable'}"
+            )
+            lines.append(
+                "the install is incomplete — nothing in this environment can "
+                "launch the suite; reinstall it for this interpreter"
+            )
         elif self.status == STATUS_MISSING and self.cli_in_target_env:
             lines.append(
                 "a godot-e2e command exists in this interpreter's scripts "
@@ -294,6 +332,8 @@ class E2EPythonEnv:
             "probe_error": self.probe_error,
             "cli_path": self.cli_path,
             "cli_in_target_env": self.cli_in_target_env,
+            "cli_module": self.cli_module,
+            "cli_module_error": self.cli_module_error,
             "scripts_dirs": list(self.scripts_dirs),
             "run_command": self.run_command,
             "install_command": self.install_command,
@@ -383,8 +423,12 @@ def probe_e2e_python_env(
     )
 
     installed = bool(info.get("installed"))
+    runnable = bool(info.get("cli_module")) or (cli_path and cli_in_target_env)
     if installed:
-        status = STATUS_OK
+        # Importable is not the same as runnable: `/gm-evaluate` gates on
+        # this verdict and then needs a command to launch. Without one,
+        # "ok" would hand it a green light and no runner.
+        status = STATUS_OK if runnable else STATUS_NO_RUNNER
     elif info.get("dist_version"):
         # The distribution is registered for this interpreter, so this is a
         # broken install rather than an absent one.
@@ -407,6 +451,7 @@ def probe_e2e_python_env(
         cli_path=cli_path,
         cli_in_target_env=cli_in_target_env,
         cli_module=bool(info.get("cli_module")),
+        cli_module_error=info.get("cli_module_error"),
         scripts_dirs=scripts_dirs,
     )
 

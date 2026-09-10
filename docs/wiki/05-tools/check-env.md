@@ -30,6 +30,7 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 ### Godot E2E (Python package)
 
 - The `godot-e2e` Python package is importable **by the interpreter that ran this script**, not merely present somewhere on your PATH.
+- That interpreter can actually launch it (`-m godot_e2e.cli`, or a `godot-e2e` command belonging to the same environment). An install that imports but has no runnable entry point fails rather than passing.
 
 This is the Python half of Godot E2E only. The in-project `addons/godot_e2e/` addon is a separate dependency, checked by [`check_project.py`](check-project.md) — neither one being installed says anything about the other.
 

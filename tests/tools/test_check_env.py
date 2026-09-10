@@ -683,6 +683,17 @@ class TestGodotE2EPythonCheck:
         r = self._run(self._env(virtual_env=os.path.join("/opt", "envs", "other")))
         assert any("VIRTUAL_ENV" in w for w in r.warnings)
 
+    def test_importable_but_unrunnable_package_fails(self):
+        """Importable is not runnable — `check_env` must not green-light an
+        install that nothing in the environment can launch."""
+        from e2e_env import STATUS_NO_RUNNER
+
+        r = self._run(self._env(status=STATUS_NO_RUNNER, cli_module=False))
+        assert len(r.failed) == 1
+        assert self.TARGET in r.failed[0]
+        assert "reinstall it" in r.failed[0]
+        assert "--force-reinstall" in r.failed[0]
+
     def test_addon_layer_is_not_mentioned(self):
         """The addon is check_project.py's job; blurring the two layers is
         what sent users to fix the wrong dependency."""

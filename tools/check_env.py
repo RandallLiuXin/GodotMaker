@@ -30,6 +30,7 @@ from asset_source_generate import (
 )
 from e2e_env import (
     STATUS_IMPORT_ERROR,
+    STATUS_NO_RUNNER,
     STATUS_OK,
     STATUS_OTHER_ENVIRONMENT,
     STATUS_PROBE_FAILED,
@@ -218,7 +219,7 @@ def check_godot_e2e_python(r: EnvCheck):
             "install it into that interpreter"
             if info.status == STATUS_OTHER_ENVIRONMENT
             else "reinstall it"
-            if info.status == STATUS_IMPORT_ERROR
+            if info.status in (STATUS_IMPORT_ERROR, STATUS_NO_RUNNER)
             else "install it"
         )
         install = " ".join(info.install_command)
