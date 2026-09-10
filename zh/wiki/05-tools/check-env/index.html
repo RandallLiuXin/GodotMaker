@@ -1132,6 +1132,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#godot-e2epython" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Godot E2E（Python 包）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#nodejs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2827,6 +2838,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#godot-e2epython" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Godot E2E（Python 包）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#nodejs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2948,6 +2970,23 @@
 <li>已安装核心包：<code>requests</code>、<code>pillow</code>。</li>
 <li>根据 <code>.godotmaker/config.yaml</code> 检查提供方包：Gemini 需要 <code>google-genai</code>，OpenAI 需要 <code>openai</code>，Grok 图片生成需要 <code>xai-sdk</code>。Wan 使用标准库 HTTP 客户端；选中后还要求 <code>DASHSCOPE_API_KEY</code> 与显式 <code>DASHSCOPE_REGION</code>。</li>
 </ul>
+<h3 id="godot-e2epython">Godot E2E（Python 包）<a class="headerlink" href="#godot-e2epython" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>[FAIL]</code>：GodotMaker 使用的那个 Python 没有安装 <code>godot-e2e</code> 包。</li>
+<li><code>[WARN]</code>：包本身没问题，只是 PATH 上的 <code>godot-e2e</code> 命令来自另一个 Python。</li>
+</ul>
+<p>大多数电脑上装了不止一个 Python。<code>pip install godot-e2e</code> 会装进你终端当时用的那个 Python，而它未必就是 GodotMaker 运行时用的那个——这就是"明明装过了却被报成缺失"的原因。</p>
+<p><strong>这一项失败时</strong>，把它打印的那一整行复制到终端里执行即可。那行命令里已经写好了正确 Python 的完整路径，你不需要自己判断是哪一个：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>--- Godot E2E (Python package) ---
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  Python used by GodotMaker: /home/you/game/.venv/bin/python
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  VIRTUAL_ENV: not set
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  godot-e2e command on PATH: /usr/local/bin/godot-e2e
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  [FAIL] E2E test tool 'godot-e2e' is not installed for the Python that GodotMaker uses. It is installed for a different Python (/usr/local/bin/godot-e2e), so it can look present and still be unusable here. To fix it, copy this whole line into your terminal and run it: /home/you/game/.venv/bin/python -m pip install godot-e2e
+</code></pre></div>
+<p>在 Windows 上，如果那个 Python 的路径里带空格，检查会分别打印 PowerShell 和 Command Prompt（cmd.exe）两行——两种终端的引号规则不同，用与你当前窗口相符的那一行即可。</p>
+<p>装完再跑一次 <code>python tools/check_env.py</code>。这项检查每次都是重新判定，装好后立刻变绿，不会沿用上一次的失败结果。</p>
+<p><strong>这一项是警告时</strong>，说明目前没坏：包装在该在的地方，只是 PATH 上的命令来自别处——用 pyenv、asdf 或启动脚本时这很正常。只有当之后 e2e 测试报 <code>godot_e2e</code> 导入错误时才需要处理，警告里已经附上了同样的安装命令。</p>
+<p>这里检查的是 Python 包。游戏项目里的 <code>addons/godot_e2e/</code> addon 是另一个依赖。</p>
 <h3 id="nodejs">Node.js<a class="headerlink" href="#nodejs" title="Permanent link">&para;</a></h3>
 <ul>
 <li>已安装 Node.js 18 或更高版本（通过 <code>npx</code> 运行 <code>godot-mcp</code> 时需要）。</li>
@@ -2995,22 +3034,22 @@
 <p>检查工具还会验证被选中提供方的 Python 包能否正常导入，从而捕获单靠版本号检查无法发现的安装问题。</p>
 <h2 id="_3">读懂输出结果<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
 <p>每行以以下三种标记之一开头：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[PASS] Git 2.43.0 (&gt;= 2.30)
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>[FAIL] Package 'google-genai' missing. Run: pip install google-genai
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>[WARN] XAI_API_KEY not set (optional, cheaper image generation)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>[PASS] Git 2.43.0 (&gt;= 2.30)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>[FAIL] Package 'google-genai' missing. Run: pip install google-genai
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>[WARN] XAI_API_KEY not set (optional, cheaper image generation)
 </code></pre></div>
 <p><code>[WARN]</code> 表示可选项——不影响 GodotMaker 的使用。<code>[FAIL]</code> 表示阻断性问题。</p>
 <p>输出末尾会汇总所有失败项，方便你一次性全部修复：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>========================================
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Total: 14 checks
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  PASS: 12
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  FAIL: 1
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  WARN: 1
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>Failed checks:
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  - Package 'google-genai' missing. Run: pip install google-genai
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>Fix the above issues before using GodotMaker.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>========================================
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Total: 14 checks
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  PASS: 12
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  FAIL: 1
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  WARN: 1
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>Failed checks:
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>  - Package 'google-genai' missing. Run: pip install google-genai
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>Fix the above issues before using GodotMaker.
 </code></pre></div>
 <h2 id="_4">退出码<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <table>

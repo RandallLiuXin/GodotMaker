@@ -1132,6 +1132,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#godot-e2e-python-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Godot E2E (Python package)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#nodejs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2827,6 +2838,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#godot-e2e-python-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Godot E2E (Python package)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#nodejs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2948,6 +2970,23 @@
 <li>Core packages are installed: <code>requests</code>, <code>pillow</code>.</li>
 <li>Provider packages are checked based on <code>.godotmaker/config.yaml</code>: <code>google-genai</code> for Gemini, <code>openai</code> for OpenAI, and <code>xai-sdk</code> for Grok image generation. Wan uses the standard-library HTTP client; its selected configuration also requires <code>DASHSCOPE_API_KEY</code> and an explicit <code>DASHSCOPE_REGION</code>.</li>
 </ul>
+<h3 id="godot-e2e-python-package">Godot E2E (Python package)<a class="headerlink" href="#godot-e2e-python-package" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>[FAIL]</code> if the <code>godot-e2e</code> package is not installed for the Python that GodotMaker runs on.</li>
+<li><code>[WARN]</code> if the package is fine but the <code>godot-e2e</code> command on your PATH comes from a different Python.</li>
+</ul>
+<p>Most machines have more than one Python. <code>pip install godot-e2e</code> installs into whichever one your terminal happens to use, and that may not be the one GodotMaker runs on — which is how the package ends up installed and still reported as missing.</p>
+<p><strong>If this check fails,</strong> copy the whole line it prints and run it in your terminal. The line already contains the full path of the correct Python, so you do not have to work out which one it is:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>--- Godot E2E (Python package) ---
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  Python used by GodotMaker: /home/you/game/.venv/bin/python
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  VIRTUAL_ENV: not set
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  godot-e2e command on PATH: /usr/local/bin/godot-e2e
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  [FAIL] E2E test tool 'godot-e2e' is not installed for the Python that GodotMaker uses. It is installed for a different Python (/usr/local/bin/godot-e2e), so it can look present and still be unusable here. To fix it, copy this whole line into your terminal and run it: /home/you/game/.venv/bin/python -m pip install godot-e2e
+</code></pre></div>
+<p>On Windows, if the path of that Python contains a space, the check prints one line for PowerShell and one for Command Prompt (cmd.exe) — the two shells need different quoting, so use the one that matches the window you are in.</p>
+<p>Then run <code>python tools/check_env.py</code> again. The check is redone from scratch every run, so it turns green as soon as the install lands — an earlier failure is never carried over.</p>
+<p><strong>If this check warns,</strong> nothing is broken: the package is installed where it belongs, only the command on your PATH comes from somewhere else, which is normal with pyenv, asdf, or a launcher script. Act on it only if e2e tests later fail with a <code>godot_e2e</code> import error; the warning carries the same install line for that case.</p>
+<p>This check covers the Python package. The <code>addons/godot_e2e/</code> addon inside your game project is a separate dependency.</p>
 <h3 id="nodejs">Node.js<a class="headerlink" href="#nodejs" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Node.js 18 or later is installed (needed to run <code>godot-mcp</code> via <code>npx</code>).</li>
@@ -3003,22 +3042,22 @@ or OpenCode project passes when the Codex CLI is on PATH.</p>
 <p>The checker also verifies that the selected provider package can be imported, catching installation issues that version checks alone would miss.</p>
 <h2 id="reading-the-output">Reading the output<a class="headerlink" href="#reading-the-output" title="Permanent link">&para;</a></h2>
 <p>Each line starts with one of three markers:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[PASS] Git 2.43.0 (&gt;= 2.30)
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>[FAIL] Package 'google-genai' missing. Run: pip install google-genai
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>[WARN] XAI_API_KEY not set (optional, cheaper image generation)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>[PASS] Git 2.43.0 (&gt;= 2.30)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>[FAIL] Package 'google-genai' missing. Run: pip install google-genai
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>[WARN] XAI_API_KEY not set (optional, cheaper image generation)
 </code></pre></div>
 <p><code>[WARN]</code> lines are for optional items — they don't stop you from using GodotMaker. <code>[FAIL]</code> lines are blockers.</p>
 <p>At the end, any failed checks are listed together so you can fix them in one pass:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>========================================
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Total: 14 checks
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  PASS: 12
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  FAIL: 1
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  WARN: 1
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>Failed checks:
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  - Package 'google-genai' missing. Run: pip install google-genai
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>Fix the above issues before using GodotMaker.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>========================================
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Total: 14 checks
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  PASS: 12
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  FAIL: 1
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  WARN: 1
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>Failed checks:
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>  - Package 'google-genai' missing. Run: pip install google-genai
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>Fix the above issues before using GodotMaker.
 </code></pre></div>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
 <table>

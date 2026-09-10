@@ -2842,6 +2842,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>A tag archive now mirrors deletions: a <code>memory/</code> or <code>e2e/</code> subtree that no longer exists in the project is dropped from the archive instead of being carried into the next snapshot.</li>
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>tools/check_env.py</code> now checks the <code>godot-e2e</code> Python package against the interpreter GodotMaker runs on and fails with a paste-ready install line pinned to that interpreter, so a package installed into a different Python is no longer reported as simply missing. A <code>godot-e2e</code> command on PATH from another environment warns instead of blocking.</li>
+</ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Removed delegated Write/Edit access to the root <code>MEMORY.md</code> and <code>memory/**</code> paths where the selected runtime exposes an enforceable write hook.</li>
