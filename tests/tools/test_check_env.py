@@ -1,4 +1,5 @@
 """Tests for check_env.py."""
+import builtins
 import os
 import sys
 import subprocess
@@ -609,97 +610,89 @@ class TestCheckFunctions:
         assert "xai_sdk" in imported
 
 
-class TestGodotE2EPythonCheck:
-    """`check_env.py` must answer the Godot E2E question at the Python
-    layer only, and must name the interpreter it consulted — the
-    community report's "missing godot-e2e" warning was unfixable
-    precisely because it named neither the layer nor the environment.
+class TestGodotE2ECheck:
+    """The community report: `godot-e2e` reads as missing while it is
+    installed somewhere else. Every verdict here names the interpreter it
+    ran on and, when PATH answers for another environment, the command it
+    found — and it is re-evaluated on every run, never replayed.
     """
 
-    TARGET = os.path.join("/opt", "envs", "project", "bin", "python")
+    THIS_ENV = os.path.join("/opt", "envs", "project", "bin")
+    OTHER_ENV = os.path.join("/opt", "envs", "other", "bin")
 
-    def _env(self, **overrides):
-        from e2e_env import STATUS_OK, E2EPythonEnv
+    def _run(self, *, importable=True, command=None, scripts=None,
+             import_error=None):
+        from check_env import check_godot_e2e
 
-        fields = {
-            "interpreter": self.TARGET,
-            "status": STATUS_OK,
-            "prefix": os.path.join("/opt", "envs", "project"),
-            "base_prefix": "/usr",
-            "python_version": "3.11.5",
-            "package_version": "1.3.0",
-            "cli_module": True,
-        }
-        fields.update(overrides)
-        return E2EPythonEnv(**fields)
+        real_import = builtins.__import__
 
-    def _run(self, info):
-        from check_env import check_godot_e2e_python
+        def fake_import(name, *args, **kwargs):
+            if name == "godot_e2e":
+                if import_error is not None:
+                    raise import_error
+                if not importable:
+                    raise ImportError("No module named 'godot_e2e'")
+                return MagicMock()
+            return real_import(name, *args, **kwargs)
 
         r = EnvCheck()
-        with patch("check_env.probe_e2e_python_env", return_value=info):
-            check_godot_e2e_python(r)
+        with patch("builtins.__import__", side_effect=fake_import):
+            with patch("check_env._find_godot_e2e_command", return_value=command):
+                with patch("check_env._interpreter_scripts_dirs",
+                           return_value=scripts if scripts is not None
+                           else [self.THIS_ENV]):
+                    check_godot_e2e(r)
         return r
 
-    def test_available_package_passes(self):
-        r = self._run(self._env())
+    def test_installed_with_matching_command_passes(self):
+        r = self._run(command=os.path.join(self.THIS_ENV, "godot-e2e"))
         assert not r.failed
-        assert any(self.TARGET in p for p in r.passed)
+        assert sys.executable in r.passed[0]
 
-    def test_missing_package_fails_with_interpreter_and_next_step(self):
-        from e2e_env import STATUS_MISSING
-
-        r = self._run(self._env(
-            status=STATUS_MISSING, package_version=None, cli_module=False,
-        ))
+    def test_missing_names_the_interpreter_and_pins_pip(self):
+        r = self._run(importable=False)
         assert len(r.failed) == 1
-        message = r.failed[0]
-        assert self.TARGET in message
-        assert "-m pip install godot-e2e" in message
+        assert sys.executable in r.failed[0]
+        assert f'"{sys.executable}" -m pip install godot-e2e' in r.failed[0]
 
-    def test_package_in_another_environment_says_so(self):
-        from e2e_env import STATUS_OTHER_ENVIRONMENT
-
-        other = os.path.join("/opt", "envs", "other", "bin", "godot-e2e")
-        r = self._run(self._env(
-            status=STATUS_OTHER_ENVIRONMENT, package_version=None,
-            cli_module=False, cli_path=other,
-        ))
+    def test_installed_in_another_environment_is_not_a_plain_absence(self):
+        other = os.path.join(self.OTHER_ENV, "godot-e2e")
+        r = self._run(importable=False, command=other)
         assert len(r.failed) == 1
         assert other in r.failed[0]
-        assert "install it into that interpreter" in r.failed[0]
+        assert "another Python environment" in r.failed[0]
+        assert sys.executable in r.failed[0]
 
-    def test_unqueryable_interpreter_warns_instead_of_failing(self):
-        from e2e_env import STATUS_PROBE_FAILED
-
-        r = self._run(self._env(
-            status=STATUS_PROBE_FAILED, package_version=None,
-            cli_module=False, probe_error="interpreter not found",
-        ))
-        assert not r.failed
-        assert len(r.warnings) == 1
-
-    def test_activated_virtualenv_mismatch_is_warned(self):
-        r = self._run(self._env(virtual_env=os.path.join("/opt", "envs", "other")))
-        assert any("VIRTUAL_ENV" in w for w in r.warnings)
-
-    def test_importable_but_unrunnable_package_fails(self):
-        """Importable is not runnable — `check_env` must not green-light an
-        install that nothing in the environment can launch."""
-        from e2e_env import STATUS_NO_RUNNER
-
-        r = self._run(self._env(status=STATUS_NO_RUNNER, cli_module=False))
+    def test_command_from_a_different_environment_than_the_import(self):
+        """`--user` / multi-venv machines: the import and the launcher
+        resolve to different installs."""
+        other = os.path.join(self.OTHER_ENV, "godot-e2e")
+        r = self._run(command=other)
         assert len(r.failed) == 1
-        assert self.TARGET in r.failed[0]
-        assert "reinstall it" in r.failed[0]
+        assert other in r.failed[0]
+        assert sys.executable in r.failed[0]
+
+    def test_importable_but_no_command_on_path(self):
+        """The scripts directory is off PATH — installed, still unrunnable."""
+        r = self._run(command=None)
+        assert len(r.failed) == 1
+        assert "no godot-e2e command is on PATH" in r.failed[0]
+        assert self.THIS_ENV in r.failed[0]
+
+    def test_broken_install_asks_for_a_reinstall(self):
+        r = self._run(import_error=RuntimeError("boom"))
+        assert len(r.failed) == 1
         assert "--force-reinstall" in r.failed[0]
+        assert sys.executable in r.failed[0]
 
-    def test_addon_layer_is_not_mentioned(self):
-        """The addon is check_project.py's job; blurring the two layers is
-        what sent users to fix the wrong dependency."""
-        from e2e_env import STATUS_MISSING
+    def test_redetects_after_the_environment_is_fixed(self):
+        """No cached verdict: the same check run again on a corrected
+        environment passes."""
+        before = self._run(importable=False)
+        after = self._run(command=os.path.join(self.THIS_ENV, "godot-e2e"))
+        assert before.failed and not before.passed
+        assert after.passed and not after.failed
 
-        r = self._run(self._env(
-            status=STATUS_MISSING, package_version=None, cli_module=False,
-        ))
+    def test_does_not_speak_for_the_godot_addon(self):
+        r = self._run(importable=False)
         assert "addons/" not in r.failed[0]

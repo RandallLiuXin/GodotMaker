@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 from agent_runtime import (
@@ -27,14 +28,6 @@ from asset_source_generate import (
     WAN_MODEL,
     WAN_PRO_MODEL,
     wan_endpoint_from_config,
-)
-from e2e_env import (
-    STATUS_IMPORT_ERROR,
-    STATUS_NO_RUNNER,
-    STATUS_OK,
-    STATUS_OTHER_ENVIRONMENT,
-    STATUS_PROBE_FAILED,
-    probe_e2e_python_env,
 )
 
 VQA_PROVIDERS = {"native", "codex", "gemini", "openai"}
@@ -192,45 +185,104 @@ def check_python(r: EnvCheck, config: dict[str, str] | None = None):
             r.fail(f"Package '{pkg_name}' missing. Run: pip install {pkg_name}")
 
 
-def check_godot_e2e_python(r: EnvCheck):
-    """Check the Python half of Godot E2E, scoped to one interpreter.
+GODOT_E2E_PACKAGE = "godot-e2e"
+GODOT_E2E_COMMANDS = ("godot-e2e", "godot-e2e.exe", "godot-e2e.cmd")
 
-    Only the `godot-e2e` **Python package** is in question here; the
-    in-project `addons/godot_e2e/` addon is `check_project.py`'s job.
-    Keeping the two apart is deliberate — reporting one as the other is
-    what turns a PATH/interpreter mismatch into an unfixable
-    "godot-e2e is missing" loop.
 
-    Every message names the interpreter that was consulted, so a package
-    installed into some *other* environment is identifiable as such
-    instead of looking absent.
+def _interpreter_scripts_dirs() -> list[str]:
+    """Where this interpreter installs console scripts (normal + --user)."""
+    dirs: list[str] = []
+    for scheme in (None, "user"):
+        try:
+            if scheme is None:
+                path = sysconfig.get_path("scripts")
+            else:
+                path = sysconfig.get_path(
+                    "scripts", sysconfig.get_preferred_scheme(scheme)
+                )
+        except Exception:
+            continue
+        if path and path not in dirs:
+            dirs.append(path)
+    return dirs
+
+
+def _find_godot_e2e_command() -> str | None:
+    for name in GODOT_E2E_COMMANDS:
+        found = shutil.which(name)
+        if found:
+            return found
+    return None
+
+
+def _command_belongs_to_interpreter(command: str) -> bool:
+    parent = os.path.normcase(os.path.normpath(os.path.dirname(command)))
+    return any(
+        parent == os.path.normcase(os.path.normpath(d))
+        for d in _interpreter_scripts_dirs()
+    )
+
+
+def check_godot_e2e(r: EnvCheck):
+    """Check the godot-e2e Python package against this interpreter.
+
+    E2E tests import `godot_e2e` and are launched with the `godot-e2e`
+    console script, so both have to come from the environment running
+    this check. A console script that PATH resolves to some *other*
+    environment is the failure worth naming: the package looks installed
+    and the run still cannot use it. Every message therefore carries the
+    interpreter, and the command that was found.
     """
     print("\n--- Godot E2E (Python package) ---")
-    info = probe_e2e_python_env()
-    for line in info.diagnostic_lines():
-        print(f"  {line}")
+    interpreter = sys.executable
+    command = _find_godot_e2e_command()
+    print(f"  interpreter: {interpreter}")
+    print(f"  VIRTUAL_ENV: {os.environ.get('VIRTUAL_ENV') or 'not set'}")
+    print(f"  godot-e2e command on PATH: {command or 'not found'}")
 
-    if info.status == STATUS_OK:
-        r.ok(info.summary())
-    elif info.status == STATUS_PROBE_FAILED:
-        r.warn(info.summary())
-    else:
-        remediation = (
-            "install it into that interpreter"
-            if info.status == STATUS_OTHER_ENVIRONMENT
-            else "reinstall it"
-            if info.status in (STATUS_IMPORT_ERROR, STATUS_NO_RUNNER)
-            else "install it"
+    install = f'"{interpreter}" -m pip install {GODOT_E2E_PACKAGE}'
+    try:
+        import godot_e2e  # noqa: F401
+    except ImportError:
+        if command and not _command_belongs_to_interpreter(command):
+            r.fail(
+                f"Package '{GODOT_E2E_PACKAGE}' missing for {interpreter}; the "
+                f"godot-e2e command at {command} belongs to another Python "
+                f"environment. Run: {install}"
+            )
+        else:
+            r.fail(
+                f"Package '{GODOT_E2E_PACKAGE}' missing for {interpreter}. "
+                f"Run: {install}"
+            )
+        return
+    except Exception as exc:
+        r.fail(
+            f"Package '{GODOT_E2E_PACKAGE}' is installed for {interpreter} but "
+            f"fails to import: {exc}. Run: \"{interpreter}\" -m pip install "
+            f"--force-reinstall {GODOT_E2E_PACKAGE}"
         )
-        install = " ".join(info.install_command)
-        r.fail(f"{info.summary()} — {remediation}: {install}")
+        return
 
-    if info.virtual_env_mismatch:
-        r.warn(
-            f"VIRTUAL_ENV is {info.virtual_env} but this check ran on "
-            f"{info.interpreter}; run the pipeline with the activated "
-            "environment's interpreter to keep the two in sync"
+    if not command:
+        scripts = ", ".join(_interpreter_scripts_dirs())
+        r.fail(
+            f"Package '{GODOT_E2E_PACKAGE}' installed for {interpreter} but no "
+            f"godot-e2e command is on PATH; e2e tests cannot be launched. "
+            f"Add {scripts} to PATH"
         )
+        return
+
+    if not _command_belongs_to_interpreter(command):
+        r.fail(
+            f"godot-e2e command on PATH is {command}, from a different Python "
+            f"environment than {interpreter}; it would run against a different "
+            f"install than the tests import. Put this interpreter's scripts "
+            f"directory first on PATH, or run: {install}"
+        )
+        return
+
+    r.ok(f"Package '{GODOT_E2E_PACKAGE}' installed for {interpreter} ({command})")
 
 
 def check_node(r: EnvCheck):
@@ -604,7 +656,7 @@ def main():
 
     check_git(r)
     check_python(r, config)
-    check_godot_e2e_python(r)
+    check_godot_e2e(r)
     check_node(r)
     check_godot(r, project_dir)
     check_selected_agent(r, project_dir)

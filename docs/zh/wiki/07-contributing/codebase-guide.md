@@ -151,7 +151,6 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 | `publish.py` | 将 GodotMaker 部署到目标 Godot 项目 |
 | `check_env.py` | 验证 Godot、Python 和 API key 是否正确配置 |
 | `check_project.py` | 检验已生成项目中的缺失文件和损坏路径 |
-| `e2e_env.py` | 报告验证流程所用解释器能否使用 `godot-e2e` Python 包 |
 | `asset_source_generate.py` | 根据 `/gm-asset` spec 生成 API 后端 source 图片 |
 | `asset_layout_guide.py` | 为固定网格 source 图片创建 layout guide |
 | `asset_action_process.py` | 将角色动作 sheet 处理成规范化 frames 和 metadata |
@@ -214,7 +213,6 @@ tests/
 │   ├── test_check_classname.py
 │   ├── test_check_env.py
 │   ├── test_check_project.py
-│   ├── test_e2e_env.py
 │   ├── test_migrate.py
 │   ├── test_publish.py
 │   └── test_publish_shared.py

@@ -20,7 +20,7 @@ python tools/check_project.py /path/to/my-game --all
 | `--build` | `project.godot` 存在、必需插件已安装、git `HEAD` 可解析，且 Godot 无头解析没有阻断性诊断 |
 | `--ecs` | gecs 插件存在；游戏代码中有 Component 和 System 文件 |
 | `--tests` | gdUnit4 插件存在；每个 System 都有对应的单元测试文件 |
-| `--e2e` | godot-e2e addon 与插件已就位、`godot-e2e` Python 包可导入；`e2e/` 中有真实测试函数，而不是占位文件 |
+| `--e2e` | godot-e2e 插件已启用；`e2e/` 中有真实测试函数，而不是占位文件 |
 | `--plan` | `PLAN.md` 和 `STRUCTURE.md` 存在，且包含正确章节 |
 | `--mcp` | `godot-mcp` 服务已注册到 `.mcp.json` |
 | `--all` | 执行以上全部检查 |
@@ -34,11 +34,6 @@ python tools/check_project.py /path/to/my-game --all
 **单元测试覆盖率** — 检查每个 System 文件是否都有对应的测试文件。匹配规则包括 `test_movement_system.gd`、`movement_system_test.gd`、`testmovementsystem.gd` 等形式。没有测试文件的 System 会按名称列出。
 
 **端到端测试** — 检查 `e2e/conftest.py` 是否存在，`e2e/` 目录下是否有 `test_*.py` 文件，以及这些文件中是否包含真实的 `def test_` 函数，而不是空的桩代码。文件过短或含有 "todo" / "stub" 关键字的占位文件会触发警告。
-
-Godot E2E 由两个互相独立的部分组成，本检查会分别报告，因此失败信息总能指明该修哪一层：
-
-- 项目内的 **Godot addon** `addons/godot_e2e/` 及其在 `project.godot` 中的插件条目；
-- **Python 包** `godot-e2e`，以运行该脚本的解释器为准进行检查，并在结果中给出该解释器路径。完整环境报告见 [`check_env.py`](check-env.md)，也可以单独运行 `python tools/e2e_env.py`。
 
 **规划文档** — 确认 `PLAN.md` 存在且包含任务状态标记（`pending`、`in_progress`、`completed` 等），`STRUCTURE.md` 包含 Component Registry 和 System Schedule。这两份文档是 `/gm-build` 和 `/gm-fixgap` 的执行依据。
 

@@ -27,11 +27,6 @@ from agent_runtime import (
     prefer_console_godot_path,
     read_godot_path,
 )
-from e2e_env import (
-    STATUS_OK as E2E_STATUS_OK,
-    STATUS_PROBE_FAILED as E2E_STATUS_PROBE_FAILED,
-    probe_e2e_python_env,
-)
 from godot_output import classify_godot_headless_output
 
 PLACEHOLDER_KEYWORDS = ["placeholder", "todo", "stub", "not implemented"]
@@ -364,28 +359,6 @@ def check_tests(project_dir: Path, result: CheckResult):
         result.ok(f"All {len(system_files)} systems have corresponding test files")
 
 
-def check_e2e_python_package(result: CheckResult):
-    """Check the Python half of Godot E2E, scoped to one interpreter.
-
-    Split out from the addon checks on purpose: `addons/godot_e2e/` and
-    the `godot-e2e` Python package fail independently, and a report that
-    blurs them sends users to fix the wrong layer. Every message here
-    names the interpreter that was consulted, so a package installed into
-    another environment reads as a mismatch instead of an absence.
-    """
-    info = probe_e2e_python_env()
-    if info.status == E2E_STATUS_OK:
-        result.ok(info.summary())
-        return
-    if info.status == E2E_STATUS_PROBE_FAILED:
-        result.warn(info.summary())
-        return
-    install = " ".join(info.install_command)
-    result.fail(f"{info.summary()} — e2e tests cannot run; install: {install}")
-    for line in info.diagnostic_lines():
-        print(f"       {line}")
-
-
 def check_e2e(project_dir: Path, result: CheckResult):
     """Check that e2e tests exist."""
     print("\n--- E2E Tests (godot-e2e) ---")
@@ -406,14 +379,7 @@ def check_e2e(project_dir: Path, result: CheckResult):
         if e2e_dir.exists() or e2e_dir2.exists():
             result.warn("godot-e2e addon found but plugin not enabled in [editor_plugins]")
         else:
-            result.fail(
-                "godot-e2e Godot addon not found (no addons/godot_e2e "
-                "directory, plugin not enabled) — this is the in-project "
-                "addon, not the godot-e2e Python package"
-            )
-
-    # The Python package is a separate dependency from the addon above.
-    check_e2e_python_package(result)
+            result.fail("godot-e2e not found (no addon directory, plugin not enabled)")
 
     # Check for e2e test files in standard directory: e2e/
     e2e_dir = project_dir / "e2e"
@@ -560,10 +526,7 @@ def main():
                              "(project.godot, addons, plugin, conftest, git, headless)")
     parser.add_argument("--ecs", action="store_true", help="Check ECS (gecs) setup")
     parser.add_argument("--tests", action="store_true", help="Check unit test coverage")
-    parser.add_argument(
-        "--e2e", action="store_true",
-        help="Check e2e test setup (addon, tests, and the godot-e2e Python package)",
-    )
+    parser.add_argument("--e2e", action="store_true", help="Check e2e test setup")
     parser.add_argument("--plan", action="store_true", help="Check planning documents")
     parser.add_argument("--mcp", action="store_true", help="Check MCP registration")
     parser.add_argument("--all", action="store_true", help="Run all checks")

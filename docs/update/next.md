@@ -38,7 +38,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
-- Godot E2E verification now resolves the `godot-e2e` Python package against the interpreter it actually runs on, reports that interpreter in every diagnostic, and keeps the package separate from the in-project `addons/godot_e2e/` addon.
+- `tools/check_env.py` now checks the `godot-e2e` Python package against the interpreter it runs on and the `godot-e2e` command on PATH, naming both when they come from different Python environments.
 
 ## Removed
 

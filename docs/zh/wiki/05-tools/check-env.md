@@ -29,26 +29,20 @@ All required checks passed! Ready to use GodotMaker.
 
 ### Godot E2E（Python 包）
 
-- `godot-e2e` Python 包可以被**运行本脚本的那个解释器**导入，而不仅仅是 PATH 上存在某个 `godot-e2e` 命令。
-- 该解释器确实能把它跑起来（`-m godot_e2e.cli`，或同一环境内的 `godot-e2e` 命令）。只能导入却没有可执行入口的安装会判为失败，而不是通过。
+- 运行本脚本的解释器已安装 `godot-e2e` Python 包。
+- PATH 上有 `godot-e2e` 命令，且它来自同一个解释器所在的环境。
 
-这里只检查 Godot E2E 的 Python 一侧。项目内的 `addons/godot_e2e/` addon 是另一个依赖，由 [`check_project.py`](check-project.md) 负责——两者互不代表，缺少其中一个不能说明另一个的状态。
-
-由于 PATH 上的 `godot-e2e` 命令属于当初安装它的那个 Python 环境，检查会报告它实际使用的解释器、`sys.prefix`、`VIRTUAL_ENV`，以及 PATH 命令（如果存在）的位置：
+E2E 测试会导入这个包，并由该命令启动，因此两者必须来自同一个环境。不一致时，检查会给出它实际使用的解释器和找到的命令：
 
 ```
 --- Godot E2E (Python package) ---
   interpreter: /home/you/game/.venv/bin/python
-  python version: 3.11.5
-  sys.prefix: /home/you/game/.venv (virtualenv)
   VIRTUAL_ENV: not set
   godot-e2e command on PATH: /usr/local/bin/godot-e2e
-  the godot-e2e command at /usr/local/bin/godot-e2e is not part of /home/you/game/.venv/bin/python; ...
-  next: /home/you/game/.venv/bin/python -m pip install godot-e2e
-[FAIL] Python package 'godot-e2e' missing for /home/you/game/.venv/bin/python; a godot-e2e command exists at /usr/local/bin/godot-e2e but belongs to another Python environment — install it into that interpreter: /home/you/game/.venv/bin/python -m pip install godot-e2e
+  [FAIL] godot-e2e command on PATH is /usr/local/bin/godot-e2e, from a different Python environment than /home/you/game/.venv/bin/python; ...
 ```
 
-单独运行 `python tools/e2e_env.py` 可以得到同样的报告，并额外给出通过已验证解释器运行测试套件的确切命令。两者每次都会重新探测，因此修正解释器或虚拟环境后失败会立刻消失，不会复用此前的判定结果。
+这里检查的是 Python 包。游戏项目里的 `addons/godot_e2e/` addon 是另一个依赖。
 
 ### Node.js
 

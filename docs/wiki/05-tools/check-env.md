@@ -29,26 +29,20 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 
 ### Godot E2E (Python package)
 
-- The `godot-e2e` Python package is importable **by the interpreter that ran this script**, not merely present somewhere on your PATH.
-- That interpreter can actually launch it (`-m godot_e2e.cli`, or a `godot-e2e` command belonging to the same environment). An install that imports but has no runnable entry point fails rather than passing.
+- The `godot-e2e` Python package is installed for the interpreter running this script.
+- A `godot-e2e` command is on your PATH and comes from that same interpreter's environment.
 
-This is the Python half of Godot E2E only. The in-project `addons/godot_e2e/` addon is a separate dependency, checked by [`check_project.py`](check-project.md) — neither one being installed says anything about the other.
-
-Because a `godot-e2e` command on PATH belongs to whichever Python environment installed it, the check reports the interpreter it consulted, `sys.prefix`, `VIRTUAL_ENV`, and where the PATH command (if any) lives:
+E2E tests import the package and are started by the command, so both have to come from one environment. When they don't, the check names the interpreter it used and the command it found:
 
 ```
 --- Godot E2E (Python package) ---
   interpreter: /home/you/game/.venv/bin/python
-  python version: 3.11.5
-  sys.prefix: /home/you/game/.venv (virtualenv)
   VIRTUAL_ENV: not set
   godot-e2e command on PATH: /usr/local/bin/godot-e2e
-  the godot-e2e command at /usr/local/bin/godot-e2e is not part of /home/you/game/.venv/bin/python; ...
-  next: /home/you/game/.venv/bin/python -m pip install godot-e2e
-[FAIL] Python package 'godot-e2e' missing for /home/you/game/.venv/bin/python; a godot-e2e command exists at /usr/local/bin/godot-e2e but belongs to another Python environment — install it into that interpreter: /home/you/game/.venv/bin/python -m pip install godot-e2e
+  [FAIL] godot-e2e command on PATH is /usr/local/bin/godot-e2e, from a different Python environment than /home/you/game/.venv/bin/python; ...
 ```
 
-Run `python tools/e2e_env.py` for the same report on its own, plus the exact command to run the suite through the interpreter that was verified. Both re-probe on every run, so a corrected interpreter or virtualenv clears the failure immediately — no earlier verdict is reused.
+This covers the Python package. The `addons/godot_e2e/` addon inside your game project is a separate dependency.
 
 ### Node.js
 
