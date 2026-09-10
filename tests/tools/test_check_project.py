@@ -4,6 +4,7 @@ import subprocess
 import sys
 import pytest
 import tempfile
+from unittest.mock import patch
 
 # tests/tools/ → project_root/tools/
 CHECK_SCRIPT = os.path.join(
@@ -612,3 +613,64 @@ class TestAllCheck:
         assert "Total:" in stdout
         assert "PASS:" in stdout
         assert "FAIL:" in stdout
+
+
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "tools",
+))
+
+
+class TestE2eLayerBoundary:
+    """`--e2e` covers two independent dependencies: the in-project
+    `addons/godot_e2e/` Godot addon and the `godot-e2e` Python package.
+    Reporting one as the other is what made the community's
+    "godot-e2e is missing" warning unfixable, so each failure must say
+    which layer it is about.
+    """
+
+    def _seed_minimal_project(self, project_dir: str):
+        with open(os.path.join(project_dir, "project.godot"), "w", encoding="utf-8") as f:
+            f.write('config_version=5\n[application]\nconfig/name="Test"\n')
+
+    def test_missing_addon_is_labelled_as_the_addon(self, project_dir):
+        self._seed_minimal_project(project_dir)
+        stdout, _ = run_check(project_dir, "--e2e")
+        assert "godot-e2e Godot addon not found" in stdout
+        assert "not the godot-e2e Python package" in stdout
+
+    def test_python_package_is_reported_separately(self, project_dir):
+        """Present in the report whatever the local install state is."""
+        self._seed_minimal_project(project_dir)
+        stdout, _ = run_check(project_dir, "--e2e")
+        assert "Python package 'godot-e2e'" in stdout
+
+    def test_missing_python_package_names_the_interpreter(self):
+        import check_project
+        from e2e_env import STATUS_MISSING, E2EPythonEnv
+
+        interpreter = os.path.join("/opt", "envs", "project", "bin", "python")
+        info = E2EPythonEnv(interpreter=interpreter, status=STATUS_MISSING)
+        result = check_project.CheckResult()
+        with patch.object(check_project, "probe_e2e_python_env", return_value=info):
+            check_project.check_e2e_python_package(result)
+
+        assert len(result.failed) == 1
+        assert interpreter in result.failed[0]
+        assert "-m pip install godot-e2e" in result.failed[0]
+        assert "addons/" not in result.failed[0]
+
+    def test_available_python_package_passes(self):
+        import check_project
+        from e2e_env import STATUS_OK, E2EPythonEnv
+
+        interpreter = os.path.join("/opt", "envs", "project", "bin", "python")
+        info = E2EPythonEnv(
+            interpreter=interpreter, status=STATUS_OK, package_version="1.3.0",
+        )
+        result = check_project.CheckResult()
+        with patch.object(check_project, "probe_e2e_python_env", return_value=info):
+            check_project.check_e2e_python_package(result)
+
+        assert not result.failed
+        assert interpreter in result.passed[0]

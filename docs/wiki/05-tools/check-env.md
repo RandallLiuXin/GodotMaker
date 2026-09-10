@@ -27,6 +27,28 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 - Core packages are installed: `requests`, `pillow`.
 - Provider packages are checked based on `.godotmaker/config.yaml`: `google-genai` for Gemini, `openai` for OpenAI, and `xai-sdk` for Grok image generation. Wan uses the standard-library HTTP client; its selected configuration also requires `DASHSCOPE_API_KEY` and an explicit `DASHSCOPE_REGION`.
 
+### Godot E2E (Python package)
+
+- The `godot-e2e` Python package is importable **by the interpreter that ran this script**, not merely present somewhere on your PATH.
+
+This is the Python half of Godot E2E only. The in-project `addons/godot_e2e/` addon is a separate dependency, checked by [`check_project.py`](check-project.md) — neither one being installed says anything about the other.
+
+Because a `godot-e2e` command on PATH belongs to whichever Python environment installed it, the check reports the interpreter it consulted, `sys.prefix`, `VIRTUAL_ENV`, and where the PATH command (if any) lives:
+
+```
+--- Godot E2E (Python package) ---
+  interpreter: /home/you/game/.venv/bin/python
+  python version: 3.11.5
+  sys.prefix: /home/you/game/.venv (virtualenv)
+  VIRTUAL_ENV: not set
+  godot-e2e command on PATH: /usr/local/bin/godot-e2e
+  the godot-e2e command at /usr/local/bin/godot-e2e is not part of /home/you/game/.venv/bin/python; ...
+  next: /home/you/game/.venv/bin/python -m pip install godot-e2e
+[FAIL] Python package 'godot-e2e' missing for /home/you/game/.venv/bin/python; a godot-e2e command exists at /usr/local/bin/godot-e2e but belongs to another Python environment — install it into that interpreter: /home/you/game/.venv/bin/python -m pip install godot-e2e
+```
+
+Run `python tools/e2e_env.py` for the same report on its own, plus the exact command to run the suite through the interpreter that was verified. Both re-probe on every run, so a corrected interpreter or virtualenv clears the failure immediately — no earlier verdict is reused.
+
 ### Node.js
 
 - Node.js 18 or later is installed (needed to run `godot-mcp` via `npx`).

@@ -85,7 +85,22 @@ E2E tests live in a flat `e2e/` directory (no per-tag subdirectories). Each test
 5. **Verify Inherited Mechanic tests still exist:** for each `[<prev>-MN]` in PLAN.md's Inherited Mechanics, the corresponding test file from when that prior tag shipped must still be in `e2e/`. If a file is missing (e.g. accidentally deleted), restore it by reading `docs/tags/<prev>/PLAN.md` and re-implementing the test.
 6. **Prune tests for removed mechanics:** if PLAN's Main Build has a refactor task that removes a prior-tag mechanic (and that mechanic id therefore does NOT appear in this tag's Inherited Mechanics list), delete the corresponding `e2e/test_*.gd` file. Removal is intentional, refactor task is the audit trail.
 7. **Add scene-transition tests** for new scenes added in this tag.
-8. Run the full suite: `godot-e2e e2e/ -v`
+8. Resolve the runner, then run the full suite:
+   - `python tools/e2e_env.py` prints the Python interpreter this flow
+     uses, whether the `godot-e2e` **Python package** is installed for
+     it, and the exact `run the suite with:` command. Use that command —
+     it invokes the package through the interpreter that was verified
+     (`<interpreter> -m godot_e2e.cli e2e/ -v`) instead of trusting
+     whatever a bare `godot-e2e` on PATH resolves to.
+   - If it exits non-zero, STOP the E2E run and report its diagnostic
+     verbatim (interpreter, `VIRTUAL_ENV`, PATH command, next step). This
+     is an environment blocker, not a game finding: do NOT record it as a
+     `critical_issue` and do NOT hand it to `/gm-fixgap`. The `godot-e2e`
+     Python package is a separate dependency from the in-project
+     `addons/godot_e2e/` addon — never report one as the other.
+   - Re-run `python tools/e2e_env.py` after the user fixes the
+     environment; it re-probes every time and never replays an earlier
+     verdict.
 9. Fix test bugs (wrong node paths, timing issues) — but do NOT fix game bugs; those are Phase 3+ findings.
 
 **E2E repair boundary:**

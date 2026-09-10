@@ -153,6 +153,7 @@ Python CLI scripts that contributors and users run directly.
 | `publish.py` | Deploy GodotMaker into a target Godot project |
 | `check_env.py` | Verify Godot, Python, API keys are set up correctly |
 | `check_project.py` | Validate a generated project for missing files and broken paths |
+| `e2e_env.py` | Report whether the `godot-e2e` Python package is available to the interpreter the verification flow uses |
 | `asset_source_generate.py` | Generate API-backed source images from `/gm-asset` specs |
 | `asset_layout_guide.py` | Create layout-only guides for fixed-grid source images |
 | `asset_action_process.py` | Process character action sheets into normalized frames and metadata |
@@ -214,6 +215,7 @@ tests/
 │   ├── test_check_classname.py
 │   ├── test_check_env.py
 │   ├── test_check_project.py
+│   ├── test_e2e_env.py
 │   ├── test_migrate.py
 │   ├── test_publish.py
 │   └── test_publish_shared.py

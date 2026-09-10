@@ -38,6 +38,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- Godot E2E verification now resolves the `godot-e2e` Python package against the interpreter it actually runs on, reports that interpreter in every diagnostic, and keeps the package separate from the in-project `addons/godot_e2e/` addon.
+
 ## Removed
 
 - Removed delegated Write/Edit access to the root `MEMORY.md` and `memory/**` paths where the selected runtime exposes an enforceable write hook.

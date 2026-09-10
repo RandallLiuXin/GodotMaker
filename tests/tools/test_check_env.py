@@ -607,3 +607,88 @@ class TestCheckFunctions:
         )
 
         assert "xai_sdk" in imported
+
+
+class TestGodotE2EPythonCheck:
+    """`check_env.py` must answer the Godot E2E question at the Python
+    layer only, and must name the interpreter it consulted — the
+    community report's "missing godot-e2e" warning was unfixable
+    precisely because it named neither the layer nor the environment.
+    """
+
+    TARGET = os.path.join("/opt", "envs", "project", "bin", "python")
+
+    def _env(self, **overrides):
+        from e2e_env import STATUS_OK, E2EPythonEnv
+
+        fields = {
+            "interpreter": self.TARGET,
+            "status": STATUS_OK,
+            "prefix": os.path.join("/opt", "envs", "project"),
+            "base_prefix": "/usr",
+            "python_version": "3.11.5",
+            "package_version": "1.3.0",
+            "cli_module": True,
+        }
+        fields.update(overrides)
+        return E2EPythonEnv(**fields)
+
+    def _run(self, info):
+        from check_env import check_godot_e2e_python
+
+        r = EnvCheck()
+        with patch("check_env.probe_e2e_python_env", return_value=info):
+            check_godot_e2e_python(r)
+        return r
+
+    def test_available_package_passes(self):
+        r = self._run(self._env())
+        assert not r.failed
+        assert any(self.TARGET in p for p in r.passed)
+
+    def test_missing_package_fails_with_interpreter_and_next_step(self):
+        from e2e_env import STATUS_MISSING
+
+        r = self._run(self._env(
+            status=STATUS_MISSING, package_version=None, cli_module=False,
+        ))
+        assert len(r.failed) == 1
+        message = r.failed[0]
+        assert self.TARGET in message
+        assert "-m pip install godot-e2e" in message
+
+    def test_package_in_another_environment_says_so(self):
+        from e2e_env import STATUS_OTHER_ENVIRONMENT
+
+        other = os.path.join("/opt", "envs", "other", "bin", "godot-e2e")
+        r = self._run(self._env(
+            status=STATUS_OTHER_ENVIRONMENT, package_version=None,
+            cli_module=False, cli_path=other,
+        ))
+        assert len(r.failed) == 1
+        assert other in r.failed[0]
+        assert "install it into that interpreter" in r.failed[0]
+
+    def test_unqueryable_interpreter_warns_instead_of_failing(self):
+        from e2e_env import STATUS_PROBE_FAILED
+
+        r = self._run(self._env(
+            status=STATUS_PROBE_FAILED, package_version=None,
+            cli_module=False, probe_error="interpreter not found",
+        ))
+        assert not r.failed
+        assert len(r.warnings) == 1
+
+    def test_activated_virtualenv_mismatch_is_warned(self):
+        r = self._run(self._env(virtual_env=os.path.join("/opt", "envs", "other")))
+        assert any("VIRTUAL_ENV" in w for w in r.warnings)
+
+    def test_addon_layer_is_not_mentioned(self):
+        """The addon is check_project.py's job; blurring the two layers is
+        what sent users to fix the wrong dependency."""
+        from e2e_env import STATUS_MISSING
+
+        r = self._run(self._env(
+            status=STATUS_MISSING, package_version=None, cli_module=False,
+        ))
+        assert "addons/" not in r.failed[0]

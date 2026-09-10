@@ -20,7 +20,7 @@ python tools/check_project.py /path/to/my-game --all
 | `--build` | `project.godot` exists, required addons are installed, git `HEAD` resolves, and Godot headless parse has no blocking diagnostics |
 | `--ecs` | The gecs addon is present; game code has Component and System files |
 | `--tests` | The gdUnit4 addon is present; every System has a matching unit test file |
-| `--e2e` | The godot-e2e plugin is enabled; `e2e/` has real test functions, not placeholders |
+| `--e2e` | The godot-e2e addon and plugin are in place, the `godot-e2e` Python package is importable, and `e2e/` has real test functions, not placeholders |
 | `--plan` | `PLAN.md` and `STRUCTURE.md` exist with the right sections |
 | `--mcp` | The `godot-mcp` server is registered in `.mcp.json` |
 | `--all` | All of the above |
@@ -38,6 +38,11 @@ check.
 **Unit test coverage** — checks that every System file has a corresponding test file. It looks for matches like `test_movement_system.gd`, `movement_system_test.gd`, or `testmovementsystem.gd`. Systems without tests are listed by name.
 
 **End-to-end tests** — checks that `e2e/conftest.py` exists, that there are `test_*.py` files in the `e2e/` folder, and that those files contain real `def test_` functions and are not empty stubs. Placeholder files that are too short or contain "todo" / "stub" keywords trigger a warning.
+
+Godot E2E has two independent halves and this check reports them separately, so a failure always names the layer to fix:
+
+- the **Godot addon** `addons/godot_e2e/` and its plugin entry in `project.godot`;
+- the **Python package** `godot-e2e`, checked against the interpreter running the script and reported with that interpreter's path. See [`check_env.py`](check-env.md) for the full environment report, or run `python tools/e2e_env.py` on its own.
 
 **Planning documents** — confirms `PLAN.md` exists with task status markers (`pending`, `in_progress`, `completed`, etc.) and that `STRUCTURE.md` has a Component Registry and a System Schedule. These are the documents that guide `/gm-build` and `/gm-fixgap`.
 

@@ -27,6 +27,28 @@ All required checks passed! Ready to use GodotMaker.
 - 已安装核心包：`requests`、`pillow`。
 - 根据 `.godotmaker/config.yaml` 检查提供方包：Gemini 需要 `google-genai`，OpenAI 需要 `openai`，Grok 图片生成需要 `xai-sdk`。Wan 使用标准库 HTTP 客户端；选中后还要求 `DASHSCOPE_API_KEY` 与显式 `DASHSCOPE_REGION`。
 
+### Godot E2E（Python 包）
+
+- `godot-e2e` Python 包可以被**运行本脚本的那个解释器**导入，而不仅仅是 PATH 上存在某个 `godot-e2e` 命令。
+
+这里只检查 Godot E2E 的 Python 一侧。项目内的 `addons/godot_e2e/` addon 是另一个依赖，由 [`check_project.py`](check-project.md) 负责——两者互不代表，缺少其中一个不能说明另一个的状态。
+
+由于 PATH 上的 `godot-e2e` 命令属于当初安装它的那个 Python 环境，检查会报告它实际使用的解释器、`sys.prefix`、`VIRTUAL_ENV`，以及 PATH 命令（如果存在）的位置：
+
+```
+--- Godot E2E (Python package) ---
+  interpreter: /home/you/game/.venv/bin/python
+  python version: 3.11.5
+  sys.prefix: /home/you/game/.venv (virtualenv)
+  VIRTUAL_ENV: not set
+  godot-e2e command on PATH: /usr/local/bin/godot-e2e
+  the godot-e2e command at /usr/local/bin/godot-e2e is not part of /home/you/game/.venv/bin/python; ...
+  next: /home/you/game/.venv/bin/python -m pip install godot-e2e
+[FAIL] Python package 'godot-e2e' missing for /home/you/game/.venv/bin/python; a godot-e2e command exists at /usr/local/bin/godot-e2e but belongs to another Python environment — install it into that interpreter: /home/you/game/.venv/bin/python -m pip install godot-e2e
+```
+
+单独运行 `python tools/e2e_env.py` 可以得到同样的报告，并额外给出通过已验证解释器运行测试套件的确切命令。两者每次都会重新探测，因此修正解释器或虚拟环境后失败会立刻消失，不会复用此前的判定结果。
+
 ### Node.js
 
 - 已安装 Node.js 18 或更高版本（通过 `npx` 运行 `godot-mcp` 时需要）。

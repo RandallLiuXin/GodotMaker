@@ -254,17 +254,49 @@ entry and capture screenshots on failure to `test_output/`.
 
 ## Running & Debugging
 
+`godot-e2e` is a Python console script, so a bare `godot-e2e` on PATH
+answers for whichever Python environment happens to come first — not
+necessarily the one this project runs on. Resolve the runner first:
+
 ```bash
-godot-e2e e2e/ -v                                  # all tests
-godot-e2e e2e/test_player.py -v                    # single file
-godot-e2e --godot-path /path/to/godot tests/ -v    # specific binary
+python tools/e2e_env.py     # prints the interpreter + the exact run command
 ```
+
+It reports the interpreter it consulted, whether the `godot-e2e`
+**Python package** is installed for that interpreter, and a `run the
+suite with:` line. Use that command — it goes through the verified
+interpreter:
+
+```bash
+<interpreter> -m godot_e2e.cli e2e/ -v                                 # all tests
+<interpreter> -m godot_e2e.cli e2e/test_player.py -v                   # single file
+<interpreter> -m godot_e2e.cli --godot-path /path/to/godot tests/ -v   # specific binary
+```
+
+`godot-e2e e2e/ -v` is the same entry point and stays valid when PATH
+and the interpreter agree — `tools/e2e_env.py` is what tells you whether
+they do.
 
 - **Engine log verbosity at launch**: `GodotE2E.launch(path, log_verbosity="info")` or `--e2e-log-verbosity=info` flag
 - **Server-side wire log**: `extra_args=["--e2e-log"]` (separate from engine log capture — this logs request/response traffic on the Godot side)
 - **TimeoutError diagnosis**: exception has `.scene_tree`
 - **Locator actionability diagnosis**: `NotActionableError.reasons` lists failed checks (`"not_visible_in_tree"`, `"mouse_filter_ignore"`, `"outside_viewport"`, `"unclickable_node_type"`)
 - **expect() failure context**: `ExpectationFailedError.actual` (last observed value) + `.scene_tree` + `.last_error` (last swallowed CommandError)
+
+### "godot-e2e is missing" but you installed it
+
+The package (`pip install godot-e2e`, import name `godot_e2e`) and the
+in-project addon (`addons/godot_e2e/`, enabled in Project Settings) are
+two separate dependencies — neither one being present says anything
+about the other. For the Python half, run `python tools/e2e_env.py` and
+read the `interpreter:` line: the package must be installed for *that*
+interpreter. `pip install godot-e2e` in a shell with a different
+`VIRTUAL_ENV`, or a `--user` install whose scripts directory is off
+PATH, both produce a package that exists yet is invisible to the run.
+The fix is the tool's `next:` line — `<interpreter> -m pip install
+godot-e2e` — or running the pipeline with the interpreter that already
+owns the package. The check re-probes on every run, so it clears as soon
+as the environment is corrected.
 
 ## E2E Test Quality Standards
 
@@ -303,7 +335,7 @@ def test_player_moves_right(game):
 2. **Entity naming change** → if helpers used hardcoded paths, update; if they used Locators with `group=` / `type=` / `text=`, often no change needed
 3. **New game state** (e.g., menu before gameplay) → create a `game_playing` fixture that navigates past menus to gameplay state
 4. **Private → public methods** → E2E `game.call()` / `Locator.call()` cannot call `_private()` methods; any method called by E2E must be public
-5. **After ANY structural change** → run `godot-e2e e2e/ -v` to catch broken fixtures immediately
+5. **After ANY structural change** → re-run the suite (see "Running & Debugging" for resolving the runner) to catch broken fixtures immediately
 
 
 ## Extended References

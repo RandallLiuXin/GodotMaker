@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check that the GodotMaker development environment is correctly set up.
 
-Verifies: Git, Python, Node.js, Godot, selected coding agent, API keys, pip
-packages.
+Verifies: Git, Python, the godot-e2e Python package, Node.js, Godot,
+selected coding agent, API keys, pip packages.
 
 Usage:
     python tools/check_env.py
@@ -27,6 +27,13 @@ from asset_source_generate import (
     WAN_MODEL,
     WAN_PRO_MODEL,
     wan_endpoint_from_config,
+)
+from e2e_env import (
+    STATUS_IMPORT_ERROR,
+    STATUS_OK,
+    STATUS_OTHER_ENVIRONMENT,
+    STATUS_PROBE_FAILED,
+    probe_e2e_python_env,
 )
 
 VQA_PROVIDERS = {"native", "codex", "gemini", "openai"}
@@ -182,6 +189,47 @@ def check_python(r: EnvCheck, config: dict[str, str] | None = None):
             r.ok(f"Package '{pkg_name}' installed")
         except ImportError:
             r.fail(f"Package '{pkg_name}' missing. Run: pip install {pkg_name}")
+
+
+def check_godot_e2e_python(r: EnvCheck):
+    """Check the Python half of Godot E2E, scoped to one interpreter.
+
+    Only the `godot-e2e` **Python package** is in question here; the
+    in-project `addons/godot_e2e/` addon is `check_project.py`'s job.
+    Keeping the two apart is deliberate — reporting one as the other is
+    what turns a PATH/interpreter mismatch into an unfixable
+    "godot-e2e is missing" loop.
+
+    Every message names the interpreter that was consulted, so a package
+    installed into some *other* environment is identifiable as such
+    instead of looking absent.
+    """
+    print("\n--- Godot E2E (Python package) ---")
+    info = probe_e2e_python_env()
+    for line in info.diagnostic_lines():
+        print(f"  {line}")
+
+    if info.status == STATUS_OK:
+        r.ok(info.summary())
+    elif info.status == STATUS_PROBE_FAILED:
+        r.warn(info.summary())
+    else:
+        remediation = (
+            "install it into that interpreter"
+            if info.status == STATUS_OTHER_ENVIRONMENT
+            else "reinstall it"
+            if info.status == STATUS_IMPORT_ERROR
+            else "install it"
+        )
+        install = " ".join(info.install_command)
+        r.fail(f"{info.summary()} — {remediation}: {install}")
+
+    if info.virtual_env_mismatch:
+        r.warn(
+            f"VIRTUAL_ENV is {info.virtual_env} but this check ran on "
+            f"{info.interpreter}; run the pipeline with the activated "
+            "environment's interpreter to keep the two in sync"
+        )
 
 
 def check_node(r: EnvCheck):
@@ -555,6 +603,7 @@ def main():
 
     check_git(r)
     check_python(r, config)
+    check_godot_e2e_python(r)
     check_node(r)
     check_godot(r, project_dir)
     check_selected_agent(r, project_dir)
