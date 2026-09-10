@@ -26,8 +26,9 @@ from metrics.diagnostics import (  # noqa: E402
 from .helpers import read_metrics, write_current_role  # noqa: E402
 
 
-def worker_report(status="FAILED", blocker="gdUnit4 v6 missing"):
-    handoff = "none" if status == "DONE" else "tool_or_environment_error"
+def worker_report(status="FAILED", blocker="gdUnit4 v6 missing", handoff=None):
+    if handoff is None:
+        handoff = "none" if status == "DONE" else "tool_or_environment_error"
     classification = "verified_success" if status == "DONE" else "orchestration_failure"
     return (
         "## Report: M01 movement\n\n"
@@ -91,16 +92,17 @@ def test_failed_worker_event_uses_only_worker_owned_sections():
 
 
 @pytest.mark.parametrize(
-    ("status", "outcome_kind", "expected"),
+    ("status", "outcome_kind", "handoff", "expected"),
     [
-        ("PARTIAL", "terminal", "tool_or_environment_error"),
-        ("UNKNOWN", "rejected_attempt", "report_rejected"),
-        ("UNKNOWN", "unverified", "tool_or_environment_error"),
+        ("PARTIAL", "terminal", "none", "task_partial"),
+        ("UNKNOWN", "rejected_attempt", None, "report_rejected"),
+        ("UNKNOWN", "unverified", "none", "unverified_handoff"),
     ],
 )
-def test_unsuccessful_worker_states_are_recorded(status, outcome_kind, expected):
+def test_unsuccessful_worker_states_are_recorded(
+        status, outcome_kind, handoff, expected):
     event = build_worker_error_event(
-        message=worker_report(status=status),
+        message=worker_report(status=status, handoff=handoff),
         status=status,
         outcome_kind=outcome_kind,
         agent_id="worker-1",
@@ -146,6 +148,29 @@ def test_summary_and_evidence_are_bounded():
     )
     assert len(event["summary"]) == MAX_SUMMARY_CHARS
     assert len(event["evidence_paths"]) == MAX_EVIDENCE_PATHS
+
+
+def test_invalid_evidence_paths_are_rejected():
+    paths = (
+        "/etc/passwd C:/secrets/a.log ../../secret.log "
+        "reports/../../escape.log src/main.gd reports/ok.log"
+    )
+    message = worker_report().replace(
+        "- Evidence: reports/unit.log",
+        f"- Evidence: {paths}",
+    ).replace(
+        "- Evidence: .godotmaker/traces/build.log",
+        "- Evidence: none",
+    )
+    event = build_worker_error_event(
+        message=message,
+        status="FAILED",
+        outcome_kind="terminal",
+        agent_id="worker-1",
+        stage="build",
+    )
+
+    assert event["evidence_paths"] == ["reports/ok.log"]
 
 
 def test_large_command_output_is_not_copied_into_event():
@@ -245,6 +270,22 @@ def test_log_subagent_does_not_diagnose_other_roles():
         ),
     })
     assert read_metrics("worker_error") == []
+
+
+def test_failed_worker_stop_records_one_diagnostic_event():
+    handle_stop({
+        "hook_event_name": "SubagentStop",
+        "agent_id": "worker-1",
+        "agent_type": "worker",
+        "last_assistant_message": worker_report(),
+    })
+
+    events = read_metrics("worker_error")
+    assert len(events) == 1
+    assert events[0]["task_id"] == "M01"
+    assert events[0]["error_type"] == "tool_or_environment_error"
+    assert events[0]["role"] == "worker"
+    assert events[0]["stage"] == "build"
 
 
 def test_codex_reviewer_embedding_worker_report_is_not_diagnosed(tmp_path):

@@ -31,5 +31,8 @@ def test_triage_keeps_decisions_defaults_and_citation_gate():
 
 def test_triage_does_not_persist_dynamic_findings_in_memory():
     content = _content()
-    assert "Do not persist raw findings" in content
+    persistence_boundary = content.split("## Persistence boundary", maxsplit=1)
+    assert len(persistence_boundary) == 2
+    assert "`MEMORY.md`" in persistence_boundary[1]
+    assert "REJECT/SKIP" in persistence_boundary[1]
     assert "Reviewer Triage Log" not in content

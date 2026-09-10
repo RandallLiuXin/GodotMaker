@@ -141,37 +141,37 @@ path.
 10. **Production behavior changes**: change normal gameplay behavior, balance,
 progression, content, or timing only when the worker brief cites GDD.md,
 PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
-12. **UI scene root must be Control**: Any scene containing UI (menus, HUD, panels) must use a Control node as root, not Node2D. Control anchor/layout only works when the entire ancestor chain is Control nodes.
-13. **Entity.name must be set explicitly**: When creating Entity instances programmatically, set `entity.name = "MyEntity"` before `add_entity()`. Without this, Godot assigns unpredictable auto-names (`@Node@2`), breaking E2E test node paths.
-14. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
-15. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
-16. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
-17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
-18. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
-19. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
+11. **UI scene root must be Control**: Any scene containing UI (menus, HUD, panels) must use a Control node as root, not Node2D. Control anchor/layout only works when the entire ancestor chain is Control nodes.
+12. **Entity.name must be set explicitly**: When creating Entity instances programmatically, set `entity.name = "MyEntity"` before `add_entity()`. Without this, Godot assigns unpredictable auto-names (`@Node@2`), breaking E2E test node paths.
+13. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
+14. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
+15. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
+16. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
+17. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
+18. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
 `Visual Asset Contract` for visual tasks.
-20. **The resolver owns the snapshot.** Use `tools/asset_result_registration.py --snapshot`
+19. **The resolver owns the snapshot.** Use `tools/asset_result_registration.py --snapshot`
 output as the only `Asset Runtime Snapshot` content. Never hand-copy entry
 fields and never widen the four-field contract.
-21. **Bind the artifact, do not rebuild it.** The brief must ask the worker to
+20. **Bind the artifact, do not rebuild it.** The brief must ask the worker to
 load `godot_artifact.path` as `godot_artifact.type`. Never ask a worker to
 reconstruct a `SpriteFrames`, `AtlasTexture`, `StyleBoxTexture`, `Theme`, or
 `TileSet` from `source_layout`.
-22. **Animated artifacts are runtime behavior.** If the snapshot lists a
+21. **Animated artifacts are runtime behavior.** If the snapshot lists a
 `SpriteFrames` artifact, the worker brief must require animated runtime playback
 of the actions the mechanic needs. Do not collapse the task into "readable
 presentation" or static feedback.
-23. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
+22. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
 slash, aura, or feedback effects must state how the effect starts and how it
 disappears or clears.
-24. **Workers keep integration autonomy.** Let a worker edit or replace a
+23. **Workers keep integration autonomy.** Let a worker edit or replace a
 project-local Godot resource, scene, or script — including a generated
 artifact — to fix an integration problem it hits. Do not demand a repair
 record, a revalidation pass, or a worker-authored skill; accept a note in the
 report. Do not let a worker produce art. Never write a `Scope Boundaries` or
 `Prohibited Actions` line that cancels this exception.
-25. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
-26. **A `TileSet` artifact carries no map.** When the snapshot lists one, state
+24. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
+25. **A `TileSet` artifact carries no map.** When the snapshot lists one, state
 the map's gameplay requirement in `Game Mechanic Function` — what blocks the
 player, what is walkable, where they enter and leave, what must trigger — and
 leave layer count, cell placement, gameplay object placement, triggers, camera
@@ -179,7 +179,7 @@ limits, and scene structure to the worker. Do not paste a cell grid or a layer
 list, and never ask an asset skill to design the map: a tile library is art plus
 declared tile semantics, and the layout depends on the concrete game
 requirement.
-27. **A TileMap task is not done until it ran.** Require unit tests that drive
+26. **A TileMap task is not done until it ran.** Require unit tests that drive
 the real traversal path — blocked cells block, walkable cells are walkable, each
 placed trigger and exit fires — and fill `Visual Self-Check` when the map's
 appearance is part of the finding. Then require the worker to fix the concrete
