@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 from pathlib import Path
+import pytest
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.join(
@@ -628,23 +629,57 @@ class TestPinnedPipCommand:
             "/usr/bin/python3 -m pip install --force-reinstall godot-e2e"
         )
 
-    @patch("check_env.os.name", "nt")
-    def test_windows_path_with_spaces_runs_in_powershell(self):
-        """A bare quoted path is a string expression in PowerShell, not a
-        command — without `&` the paste silently does nothing."""
+    def test_path_with_spaces_is_quoted(self):
         from check_env import pinned_pip_command
 
         assert pinned_pip_command(r"C:\Program Files\Python312\python.exe") == (
-            r'& "C:\Program Files\Python312\python.exe" -m pip install godot-e2e'
+            r'"C:\Program Files\Python312\python.exe" -m pip install godot-e2e'
         )
+
+
+class TestPinnedPipInstruction:
+    """No single line runs in both Windows shells once the path needs
+    quotes: PowerShell reads a leading quoted path as a string and needs
+    `&`, which cmd.exe rejects outright. So the instruction only splits
+    per shell when it has to, and says which line is which."""
+
+    @patch("check_env.os.name", "nt")
+    def test_windows_spaced_path_labels_both_shells(self):
+        from check_env import pinned_pip_instruction
+
+        text = pinned_pip_instruction(r"C:\Program Files\Python312\python.exe")
+        assert r'PowerShell: & "C:\Program Files' in text
+        assert r'Command Prompt (cmd.exe): "C:\Program Files' in text
+
+    @patch("check_env.os.name", "nt")
+    def test_windows_plain_path_stays_one_line(self):
+        """No quotes needed, so the same line runs in both shells."""
+        from check_env import pinned_pip_instruction
+
+        text = pinned_pip_instruction(r"C:\Python310\python.exe")
+        assert text == (
+            "copy this whole line into your terminal and run it: "
+            r"C:\Python310\python.exe -m pip install godot-e2e"
+        )
+        assert "PowerShell" not in text
 
     @patch("check_env.os.name", "posix")
-    def test_posix_path_with_spaces_is_only_quoted(self):
-        from check_env import pinned_pip_command
+    def test_posix_spaced_path_stays_one_line(self):
+        from check_env import pinned_pip_instruction
 
-        assert pinned_pip_command("/opt/my python/bin/python") == (
+        text = pinned_pip_instruction("/opt/my python/bin/python")
+        assert text == (
+            "copy this whole line into your terminal and run it: "
             '"/opt/my python/bin/python" -m pip install godot-e2e'
         )
+
+    def test_instruction_is_ascii_only(self):
+        """Printed to a console whose code page may not be UTF-8."""
+        from check_env import pinned_pip_instruction
+
+        with patch("check_env.os.name", "nt"):
+            assert pinned_pip_instruction(r"C:\Program Files\py\python.exe").isascii()
+        assert pinned_pip_instruction("/usr/bin/python3").isascii()
 
 
 class TestGodotE2ECheck:
@@ -747,3 +782,61 @@ class TestGodotE2ECheck:
     def test_does_not_speak_for_the_godot_addon(self):
         r = self._run(importable=False)
         assert "addons/" not in r.failed[0]
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows shells only")
+class TestSpacedPathRunsInBothWindowsShells:
+    """Execute both printed forms in the real shells.
+
+    The crossed cases are the load-bearing half: they show the split is
+    necessary, not decorative. A stub stands in for the interpreter —
+    what is under test is how each shell parses a quoted path, not pip.
+    """
+
+    STUB_BODY = "@echo off\r\nexit /b 0\r\n"
+
+    def _forms(self, tmp_path):
+        from check_env import pinned_pip_command
+
+        target = tmp_path / "my dir"
+        target.mkdir()
+        stub = target / "python.bat"
+        stub.write_text(self.STUB_BODY, encoding="ascii")
+        assert " " in str(stub)
+        cmd_form = pinned_pip_command(str(stub))
+        return cmd_form, "& " + cmd_form
+
+    def _exit_code(self, script, body, argv):
+        script.write_text(body + "\r\n", encoding="ascii")
+        return subprocess.run(
+            argv, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=60,
+        ).returncode
+
+    def _in_cmd(self, tmp_path, line):
+        script = tmp_path / "run.bat"
+        return self._exit_code(script, "@echo off\r\n" + line,
+                               ["cmd", "/c", str(script)])
+
+    def _in_powershell(self, tmp_path, line):
+        script = tmp_path / "run.ps1"
+        return self._exit_code(
+            script, line,
+            ["powershell", "-NoProfile", "-File", str(script)],
+        )
+
+    def test_cmd_form_runs_in_cmd(self, tmp_path):
+        cmd_form, _ = self._forms(tmp_path)
+        assert self._in_cmd(tmp_path, cmd_form) == 0
+
+    def test_powershell_form_runs_in_powershell(self, tmp_path):
+        _, ps_form = self._forms(tmp_path)
+        assert self._in_powershell(tmp_path, ps_form) == 0
+
+    def test_powershell_form_is_rejected_by_cmd(self, tmp_path):
+        _, ps_form = self._forms(tmp_path)
+        assert self._in_cmd(tmp_path, ps_form) != 0
+
+    def test_cmd_form_is_rejected_by_powershell(self, tmp_path):
+        cmd_form, _ = self._forms(tmp_path)
+        assert self._in_powershell(tmp_path, cmd_form) != 0

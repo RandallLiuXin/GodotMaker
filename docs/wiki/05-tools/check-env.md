@@ -44,6 +44,8 @@ Most machines have more than one Python. `pip install godot-e2e` installs into w
   [FAIL] E2E test tool 'godot-e2e' is not installed for the Python that GodotMaker uses. It is installed for a different Python (/usr/local/bin/godot-e2e), so it can look present and still be unusable here. To fix it, copy this whole line into your terminal and run it: /home/you/game/.venv/bin/python -m pip install godot-e2e
 ```
 
+On Windows, if the path of that Python contains a space, the check prints one line for PowerShell and one for Command Prompt (cmd.exe) — the two shells need different quoting, so use the one that matches the window you are in.
+
 Then run `python tools/check_env.py` again. The check is redone from scratch every run, so it turns green as soon as the install lands — an earlier failure is never carried over.
 
 **If this check warns,** nothing is broken: the package is installed where it belongs, only the command on your PATH comes from somewhere else, which is normal with pyenv, asdf, or a launcher script. Act on it only if e2e tests later fail with a `godot_e2e` import error; the warning carries the same install line for that case.

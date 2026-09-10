@@ -44,6 +44,8 @@ All required checks passed! Ready to use GodotMaker.
   [FAIL] E2E test tool 'godot-e2e' is not installed for the Python that GodotMaker uses. It is installed for a different Python (/usr/local/bin/godot-e2e), so it can look present and still be unusable here. To fix it, copy this whole line into your terminal and run it: /home/you/game/.venv/bin/python -m pip install godot-e2e
 ```
 
+在 Windows 上，如果那个 Python 的路径里带空格，检查会分别打印 PowerShell 和 Command Prompt（cmd.exe）两行——两种终端的引号规则不同，用与你当前窗口相符的那一行即可。
+
 装完再跑一次 `python tools/check_env.py`。这项检查每次都是重新判定，装好后立刻变绿，不会沿用上一次的失败结果。
 
 **这一项是警告时**，说明目前没坏：包装在该在的地方，只是 PATH 上的命令来自别处——用 pyenv、asdf 或启动脚本时这很正常。只有当之后 e2e 测试报 `godot_e2e` 导入错误时才需要处理，警告里已经附上了同样的安装命令。

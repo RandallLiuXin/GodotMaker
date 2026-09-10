@@ -224,19 +224,35 @@ def _command_belongs_to_interpreter(command: str) -> bool:
 
 
 def pinned_pip_command(interpreter: str, *args: str) -> str:
-    """A pip line the reader can paste as-is, pinned to one interpreter.
+    """A pip line pinned to one interpreter, quoted only when needed.
 
     Naming the interpreter is the whole point — `pip install X` installs
     into whichever Python the shell picks, which is how the package ends
-    up somewhere the project cannot see it. The path only gets quoted
-    when it has to be, because a leading quoted string is a string
-    expression in PowerShell, not a command; `&` makes it run.
+    up somewhere the project cannot see it.
     """
     line = " ".join(["-m", "pip", "install", *args, GODOT_E2E_PACKAGE])
     if not any(c.isspace() for c in interpreter):
         return f"{interpreter} {line}"
-    quoted = f'"{interpreter}" {line}'
-    return f"& {quoted}" if os.name == "nt" else quoted
+    return f'"{interpreter}" {line}'
+
+
+def pinned_pip_instruction(interpreter: str, *args: str) -> str:
+    """The paste-ready fix, split per shell only when it has to be.
+
+    A quoted path at the start of a line is a string expression in
+    PowerShell and needs `&`; that same `&` is a syntax error in
+    cmd.exe. There is no single form that runs in both, and we cannot
+    tell which terminal the reader is in — so a spaced Windows path gets
+    one labelled line each. Everything else needs no quotes, and one
+    line serves every shell.
+    """
+    command = pinned_pip_command(interpreter, *args)
+    if os.name != "nt" or not any(c.isspace() for c in interpreter):
+        return f"copy this whole line into your terminal and run it: {command}"
+    return (
+        "copy the line that matches your terminal and run it. "
+        f"PowerShell: & {command} | Command Prompt (cmd.exe): {command}"
+    )
 
 
 def check_godot_e2e(r: EnvCheck):
@@ -257,7 +273,7 @@ def check_godot_e2e(r: EnvCheck):
     print("\n--- Godot E2E (Python package) ---")
     interpreter = sys.executable
     command = _find_godot_e2e_command()
-    install = pinned_pip_command(interpreter)
+    fix = pinned_pip_instruction(interpreter)
 
     def print_context():
         print(f"  Python used by GodotMaker: {interpreter}")
@@ -276,17 +292,15 @@ def check_godot_e2e(r: EnvCheck):
         )
         r.fail(
             f"E2E test tool '{GODOT_E2E_PACKAGE}' is not installed for the "
-            f"Python that GodotMaker uses.{elsewhere} To fix it, copy this "
-            f"whole line into your terminal and run it: {install}"
+            f"Python that GodotMaker uses.{elsewhere} To fix it, {fix}"
         )
         return
     except Exception as exc:
         print_context()
         r.fail(
             f"E2E test tool '{GODOT_E2E_PACKAGE}' is installed but cannot "
-            f"start ({exc}). To fix it, copy this whole line into your "
-            f"terminal and run it: "
-            f"{pinned_pip_command(interpreter, '--force-reinstall')}"
+            f"start ({exc}). To fix it, "
+            f"{pinned_pip_instruction(interpreter, '--force-reinstall')}"
         )
         return
 
@@ -296,8 +310,8 @@ def check_godot_e2e(r: EnvCheck):
         r.warn(
             f"'{GODOT_E2E_PACKAGE}' is installed for the Python GodotMaker "
             f"uses, but there is no godot-e2e command on your PATH. Nothing to "
-            f"do unless e2e tests fail to start; if they do, run this line: "
-            f"{install} — or add this folder to PATH: {scripts}"
+            f"do unless e2e tests fail to start; if they do, {fix}. Or add "
+            f"this folder to PATH: {scripts}"
         )
         return
 
@@ -307,8 +321,7 @@ def check_godot_e2e(r: EnvCheck):
             f"The godot-e2e command on your PATH ({command}) comes from a "
             f"different Python than GodotMaker uses. That is normal if you use "
             f"pyenv, asdf or a launcher script. Nothing to do unless e2e tests "
-            f"fail with a 'godot_e2e' import error; if they do, run this line: "
-            f"{install}"
+            f"fail with a 'godot_e2e' import error; if they do, {fix}"
         )
         return
 
