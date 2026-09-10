@@ -19,7 +19,7 @@ docs/tags/
     ├── STYLE.md
     ├── SCENES.md
     ├── MEMORY.md
-    ├── memory/               MEMORY.md 索引的各子系统笔记
+    ├── memory/               MEMORY.md 索引的架构与约束详情
     ├── evaluation-final.json
     └── evidence/
         ├── manifest.json     每个归档文件的路径、类别、字节数、SHA-256
@@ -43,7 +43,7 @@ docs/tags/
 
 `SUMMARY.md` 是检索入口，不是新的事实来源。它只复述 `CHANGELOG.md`、`PLAN.md`、
 `evaluation-final.json` 和 `final_report.json` 中已确认的内容；Worker 的探索过程、
-完整 Trace 和未经验证的 MEMORY learning 不会进入摘要。摘要与 canonical 文档冲突时，
+完整 Trace 和 `MEMORY.md` 不会进入摘要。摘要与 canonical 文档冲突时，
 以 canonical 文档为准。
 
 摘要只链接归档里真实存在的内容。项目没有 `memory/` 目录、或回填的归档缺少某份
@@ -119,7 +119,7 @@ python tools/seal_tag.py reindex
 
 ## MEMORY 链接校验
 
-`MEMORY.md` 通过 `memory/` 下的文件索引各子系统笔记。只归档索引而不归档这些文件，
+`MEMORY.md` 通过 `memory/` 下的文件索引详细架构与约束。只归档索引而不归档这些文件，
 等于冻结了一组失效链接，所以 `archive` 会一并复制 `memory/`，然后校验归档内的
 `MEMORY.md`：
 

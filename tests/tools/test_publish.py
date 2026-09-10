@@ -1722,6 +1722,13 @@ class TestCodexPublishParity:
         source = json.loads(source_file.read_text(encoding="utf-8"))
 
         assert deployed == source
+        write_hooks = [
+            hook["command"]
+            for entry in deployed["hooks"]["PreToolUse"]
+            if entry["matcher"] == "Write|Edit"
+            for hook in entry["hooks"]
+        ]
+        assert any("check_file_permissions.py" in hook for hook in write_hooks)
         assert not (target / ".claude" / "config" / "settings.json").exists()
 
     def test_codex_publish_does_not_copy_claude_settings_json(self, tmp_path, monkeypatch):
@@ -1834,6 +1841,9 @@ class TestOpenCodePublishParity:
         gdd_auditor = (
             target / ".opencode" / "agents" / "gdd-auditor.md"
         ).read_text(encoding="utf-8")
+
+        assert "Never write project memory" in worker
+        assert "### Memory Entry" not in worker
 
         worker_frontmatter = _parse_simple_frontmatter(worker)
         reviewer_frontmatter = _parse_simple_frontmatter(reviewer)

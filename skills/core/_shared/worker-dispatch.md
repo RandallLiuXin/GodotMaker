@@ -48,7 +48,6 @@ Agent({
 - [ ] Run unit tests and include pass/fail output
 - [ ] If `Visual Self-Check` is present: capture screenshot(s), run visual-qa, include output
 - [ ] Summary of what was implemented (<200 words)
-- [ ] MEMORY entry: discoveries, gotchas, decisions (<100 words)
 - [ ] Repair Attempt Evidence: production diff, focused verification command
   and result, failure fingerprint (if any), handoff condition, and suggested
   classification as defined in `references/repair-attempt-accounting.md`
@@ -67,6 +66,7 @@ Agent({
 ### Prohibited Actions                                   [REQUIRED]
 - DO NOT ask for approval, wait for user input, or pause for confirmation. Execute the task directly. If required information or external state is missing, report `PARTIAL` or `FAILED` with the blocker.
 - DO NOT fabricate resource paths — only use paths listed in ASSETS.md or verified to exist in the project. If you need an asset that doesn't exist, report it in your summary; do NOT invent a path.
+- DO NOT write the root `MEMORY.md` or any file under the root `memory/` directory.
 - DO NOT modify files outside your Deliverables list — read-only access to all other files. Exception: runtime asset integration repair (worker agent, File Ownership) overrides this line for the bound artifact and the project-local scene or script that binds it; report every such file in Notes.
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
 - DO NOT introduce E2E-only gameplay changes.
@@ -132,47 +132,46 @@ Runtime Snapshot` above.
 3. **Workers write their own tests.** Minimum 2 unit tests per changed system.
 4. **Workers must not spawn sub-workers.**
 5. **Include game context.** Add the relevant Playable Unit fields to the brief.
-6. **MEMORY entry is mandatory.** Every worker reports what they learned.
-7. **Test file naming**: `test_{source_file_stem}.gd` — e.g., system file `s_movement.gd` → test file `test_s_movement.gd`. check_project.py enforces this pattern.
-8. **gdUnit4 version compatibility**: Godot 4.4 → gdUnit4 v5.x, Godot 4.5+ → gdUnit4 v6.x. Headless mode requires `--ignoreHeadlessMode`.
-9. **E2E input handling**: do NOT use `Input.is_action_just_pressed()` in ECS systems. Use `_input()` callback + flag variable pattern, expose `simulate_*()` methods so the Evaluator's e2e tests can drive the mechanic function.
-10. **E2E state setup**: when the brief asks for a test interface, implement a
+6. **Test file naming**: `test_{source_file_stem}.gd` — e.g., system file `s_movement.gd` → test file `test_s_movement.gd`. check_project.py enforces this pattern.
+7. **gdUnit4 version compatibility**: Godot 4.4 → gdUnit4 v5.x, Godot 4.5+ → gdUnit4 v6.x. Headless mode requires `--ignoreHeadlessMode`.
+8. **E2E input handling**: do NOT use `Input.is_action_just_pressed()` in ECS systems. Use `_input()` callback + flag variable pattern, expose `simulate_*()` methods so the Evaluator's e2e tests can drive the mechanic function.
+9. **E2E state setup**: when the brief asks for a test interface, implement a
 bounded setup helper or `simulate_*` method that calls the real runtime code
 path.
-11. **Production behavior changes**: change normal gameplay behavior, balance,
+10. **Production behavior changes**: change normal gameplay behavior, balance,
 progression, content, or timing only when the worker brief cites GDD.md,
 PLAN.md, or evaluation evidence that cites GDD.md or PLAN.md.
-12. **UI scene root must be Control**: Any scene containing UI (menus, HUD, panels) must use a Control node as root, not Node2D. Control anchor/layout only works when the entire ancestor chain is Control nodes.
-13. **Entity.name must be set explicitly**: When creating Entity instances programmatically, set `entity.name = "MyEntity"` before `add_entity()`. Without this, Godot assigns unpredictable auto-names (`@Node@2`), breaking E2E test node paths.
-14. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
-15. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
-16. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
-17. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
-18. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
-19. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
+11. **UI scene root must be Control**: Any scene containing UI (menus, HUD, panels) must use a Control node as root, not Node2D. Control anchor/layout only works when the entire ancestor chain is Control nodes.
+12. **Entity.name must be set explicitly**: When creating Entity instances programmatically, set `entity.name = "MyEntity"` before `add_entity()`. Without this, Godot assigns unpredictable auto-names (`@Node@2`), breaking E2E test node paths.
+13. **Worker self-check is mandatory**: Workers must run the self-check protocol before submitting their report. If self-check is not mentioned in the report, reject it.
+14. **UI/scene tasks require SCENES.md reference.** When dispatching a worker for any UI screen, HUD, menu, or scene layout task, you MUST copy the relevant scene description from SCENES.md into the brief. Workers without layout specs will produce inconsistent UIs.
+15. **Worker model from config.** Read `worker_model` from `.godotmaker/config.yaml` (default: `sonnet`) and include it as `model:` in every Agent() call. See the Agent Call template at the top.
+16. **Cwd-relative paths in the brief.** Fill every `{path}` placeholder as cwd-relative (e.g. `src/systems/s_jump.gd`, not `D:/.../src/systems/s_jump.gd`). The one exception is `Asset Runtime Snapshot`: leave the resolver's `res://` paths exactly as emitted — that is what the worker passes to `load()`.
+17. **Non-interactive execution.** Every worker brief MUST prohibit approval requests, user-input waits, and confirmation pauses.
+18. **Visual tasks require runtime assets.** Fill `Asset Runtime Snapshot` and
 `Visual Asset Contract` for visual tasks.
-20. **The resolver owns the snapshot.** Use `tools/asset_result_registration.py --snapshot`
+19. **The resolver owns the snapshot.** Use `tools/asset_result_registration.py --snapshot`
 output as the only `Asset Runtime Snapshot` content. Never hand-copy entry
 fields and never widen the four-field contract.
-21. **Bind the artifact, do not rebuild it.** The brief must ask the worker to
+20. **Bind the artifact, do not rebuild it.** The brief must ask the worker to
 load `godot_artifact.path` as `godot_artifact.type`. Never ask a worker to
 reconstruct a `SpriteFrames`, `AtlasTexture`, `StyleBoxTexture`, `Theme`, or
 `TileSet` from `source_layout`.
-22. **Animated artifacts are runtime behavior.** If the snapshot lists a
+21. **Animated artifacts are runtime behavior.** If the snapshot lists a
 `SpriteFrames` artifact, the worker brief must require animated runtime playback
 of the actions the mechanic needs. Do not collapse the task into "readable
 presentation" or static feedback.
-23. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
+22. **Temporary FX need lifecycle.** Animated projectile, impact, pickup,
 slash, aura, or feedback effects must state how the effect starts and how it
 disappears or clears.
-24. **Workers keep integration autonomy.** Let a worker edit or replace a
+23. **Workers keep integration autonomy.** Let a worker edit or replace a
 project-local Godot resource, scene, or script — including a generated
 artifact — to fix an integration problem it hits. Do not demand a repair
 record, a revalidation pass, or a worker-authored skill; accept a note in the
 report. Do not let a worker produce art. Never write a `Scope Boundaries` or
 `Prohibited Actions` line that cancels this exception.
-25. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
-26. **A `TileSet` artifact carries no map.** When the snapshot lists one, state
+24. **Fixgap visual tasks require worker self-check output.** Fill `Visual Self-Check` for blocking findings from `evaluation.json.visual_checks` or visual critical/major issues. Use `reports/fixgap-visual/{task_id}/`, not `e2e/` or `.godotmaker/`.
+25. **A `TileSet` artifact carries no map.** When the snapshot lists one, state
 the map's gameplay requirement in `Game Mechanic Function` — what blocks the
 player, what is walkable, where they enter and leave, what must trigger — and
 leave layer count, cell placement, gameplay object placement, triggers, camera
@@ -180,7 +179,7 @@ limits, and scene structure to the worker. Do not paste a cell grid or a layer
 list, and never ask an asset skill to design the map: a tile library is art plus
 declared tile semantics, and the layout depends on the concrete game
 requirement.
-27. **A TileMap task is not done until it ran.** Require unit tests that drive
+26. **A TileMap task is not done until it ran.** Require unit tests that drive
 the real traversal path — blocked cells block, walkable cells are walkable, each
 placed trigger and exit fires — and fill `Visual Self-Check` when the map's
 appearance is part of the finding. Then require the worker to fix the concrete
@@ -193,7 +192,7 @@ Workers may create shared utility functions. Follow these rules:
 
 1. **Location**: All utility/helper functions go in `src/utils/` directory.
 2. **One file per domain**: e.g., `src/utils/math_utils.gd`, `src/utils/spawn_utils.gd`.
-3. **After creating utilities**: Report them in your MEMORY entry so the dispatching role can update the utils API doc.
+3. **After creating utilities**: Report them in Notes so the dispatching role can update the utils API doc.
 4. **Before creating utilities**: Check `.godotmaker/utils_api.md` (if it exists) for existing utilities. Do NOT duplicate.
 5. **Dispatching-role responsibility**: After each worker completes, the dispatching role updates `.godotmaker/utils_api.md` with new utility function signatures and descriptions. Include this doc path in subsequent worker briefs under "Input Files".
 

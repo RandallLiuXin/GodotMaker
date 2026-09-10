@@ -54,13 +54,12 @@ lifecycle in `Context`, not in the snapshot.}
 ## Handling the Reviewer's Report
 
 The dispatching role decides per finding what to do with it. See
-`references/reviewer-finding-triage.md` for the full rules and the
-triage record format.
+`references/reviewer-finding-triage.md` for the full rules.
 
 Quick summary — every finding gets one of:
 - **ACCEPT** → add a fix task to `PLAN.md` (gm-build) or `GAP.md` (gm-fixgap).
-- **REJECT** → finding is wrong; record in `MEMORY.md` "Reviewer Triage Log".
-- **SKIP** → finding is real but not worth fixing now; same MEMORY.md section.
+- **REJECT** → finding is wrong; do not create a task.
+- **SKIP** → finding is real but not worth fixing now; do not create a task.
 
 Defaults when uncertain: critical/major → ACCEPT; minor → SKIP.
 Citation is required for critical/major REJECT/SKIP; optional for minor.

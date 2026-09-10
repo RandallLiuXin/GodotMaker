@@ -52,6 +52,12 @@ prohibit mutation, but that is not a hard sandbox boundary when `bash` is
 available. Treat their result as independent model judgment, not OS-enforced
 read-only execution.
 
+Delegated roles must not write the root `MEMORY.md` or files below the root
+`memory/` directory. Pi has no equivalent write-time hook, so the role
+definition and the delegate contract enforce this at prompt level, not as an
+OS sandbox. Only the lead session may update stable architecture decisions and
+project constraints.
+
 If the extension, trust, `pi` binary, `git HEAD`, or configured Godot executable
 is unavailable, stop before the dependent stage and state the missing setup.
 Pi's `--approve` trusts project resources only; it does not bypass an OS

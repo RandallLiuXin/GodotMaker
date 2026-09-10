@@ -40,7 +40,7 @@ Then read context:
 - `PLAN.md` → read-only; current tag's `**Tag:**` header tells you which tag's gaps you're fixing. The same tag-scope discipline as gm-build applies: previous tags' code is touchable only when a GAP item explicitly names it.
 - `STRUCTURE.md` → architecture (fixes need to respect existing system boundaries)
 - `ASSETS.md` → the generated-runtime authority; for a visual task, derive each asset with `tools/asset_result_registration.py --snapshot`
-- `MEMORY.md` index + sub-files → past decisions and known gotchas
+- `MEMORY.md` index + sub-files → stable architecture decisions and project constraints
 
 ## Hard Rules
 
@@ -79,7 +79,7 @@ pending → in_progress → completed → verified
 - **Never** skip states
 - Update GAP.md IMMEDIATELY when a task changes status
 
-**When you ACCEPT a reviewer finding against a verified task:** Do NOT change the existing task's state. Add a NEW task (status `pending`) in GAP.md describing the fix. The original task stays `verified`. The new task goes through the full lifecycle. (REJECT or SKIP findings go to MEMORY.md instead — see `references/reviewer-finding-triage.md`.)
+**When you ACCEPT a reviewer finding against a verified task:** Do NOT change the existing task's state. Add a NEW task (status `pending`) in GAP.md describing the fix. The original task stays `verified`. The new task goes through the full lifecycle. REJECT and SKIP do not create tasks; see `references/reviewer-finding-triage.md`.
 
 This way the state is always monotonic and the audit trail is preserved.
 
@@ -219,8 +219,8 @@ decision.
 - Include `Asset Runtime Snapshot` when reviewed files use visual assets.
 - Triage each finding per `references/reviewer-finding-triage.md` into one of three options:
   - **ACCEPT** → add NEW `pending` task to GAP.md.
-  - **REJECT** → finding is wrong; append a record to MEMORY.md "Reviewer Triage Log" section (citation required for critical/major).
-  - **SKIP** → finding is real but not worth fixing now; same MEMORY.md section (citation required for critical/major).
+  - **REJECT** → finding is wrong; do not create a task (citation required for critical/major).
+  - **SKIP** → finding is real but not worth fixing now; do not create a task (citation required for critical/major).
 - Defaults when uncertain: critical/major → ACCEPT; minor → SKIP.
 - If you ACCEPTED any findings → loop back to Step 3.
 
@@ -247,16 +247,22 @@ continuable, and do not consume the repair budget.
 - After parallel workers complete, merge branches and build-check
 - See `references/worker-dispatch.md` → Parallel Worker Dispatch for merge procedure
 
-## Memory System
+## Architecture and Constraints Record
 
 ```
-MEMORY.md              <- Index + cross-cutting knowledge
+MEMORY.md              <- Architecture and constraints index
 memory/
-  {system_name}.md     <- Per-system details (template: .claude/templates/memory_subsystem.md)
+  {system_name}.md     <- Detailed system architecture and constraints
 ```
 
-- Read MEMORY.md before dispatching workers
-- Update after every verification round (you write, not workers/reviewers)
+- Read MEMORY.md before dispatching workers.
+- Write only stable architecture decisions or project constraints. Do not
+  record task history, failures, gotchas, workarounds, reviewer triage, or
+  other dynamic learning.
+- Do not update MEMORY.md when no durable architecture or constraint changed.
+- Where the runtime exposes SubagentStop lifecycle hooks (currently Claude
+  Code and Codex), Worker failures become diagnostic `worker_error` events,
+  not project rules or prompt context for the next dispatch.
 
 ## Available Skills & Tools
 
@@ -280,7 +286,7 @@ Your context window is finite. Protect it:
 
 **Out of your context (delegate to workers):** Fix code, test code, build/lint output, screenshot analysis.
 
-**When context gets large:** Summarize completed fixes. Reference documents by path. Write decisions to MEMORY.md for recovery after compaction.
+**When context gets large:** Summarize completed fixes and reference documents by path. Do not use MEMORY.md as a context-recovery log.
 
 ## When Done
 

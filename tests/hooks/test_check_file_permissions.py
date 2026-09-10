@@ -82,6 +82,70 @@ class TestNoRoleSubagentRegularConversation:
         assert not is_blocked(parsed), "Worker should be allowed to write test files"
 
 
+class TestProjectMemoryOwnership:
+    """Active pipeline subagents cannot write architecture records."""
+
+    @pytest.fixture(autouse=True)
+    def active_build_role(self, project_dir):
+        write_current_role("build")
+
+    @pytest.mark.parametrize("path", [
+        "MEMORY.md",
+        "memory/system.md",
+        "src/../memory/normalized.txt",
+        ".claude/worktrees/worker-1/memory/worktree.txt",
+    ])
+    def test_worker_write_is_blocked(self, path):
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": path},
+            "agent_id": "worker-1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed), path
+
+    def test_worker_absolute_memory_path_is_blocked(self):
+        path = os.path.abspath(os.path.join("memory", "absolute.txt"))
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "worker-1",
+            "agent_type": "worker",
+        })
+        assert is_blocked(parsed), path
+
+    @pytest.mark.parametrize("path", [
+        "src/memory/s_memory.gd",
+        "docs/memory/design.md",
+        "notes/MEMORY.md",
+    ])
+    def test_nested_non_memory_paths_are_allowed(self, path):
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": path},
+            "agent_id": "worker-1",
+            "agent_type": "worker",
+        })
+        assert not is_blocked(parsed), path
+
+    def test_main_agent_retains_memory_ownership(self):
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "MEMORY.md"},
+            "agent_id": "",
+        })
+        assert not is_blocked(parsed)
+
+    def test_opencode_child_memory_scope_blocks_without_agent_id(self):
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "memory/system.md"},
+            "is_subagent": True,
+            "permission_scope": "memory",
+        })
+        assert is_blocked(parsed)
+
+
 class TestDecomposerSubagent:
     """Decomposer subagent owns planning docs — must be exempt from the worker block."""
 

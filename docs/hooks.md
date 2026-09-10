@@ -71,10 +71,18 @@ and from planning docs (`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` /
 `GAP.md`). `asset-producer` may write `assets/`, `references/`, and
 `.godotmaker/asset-generation/`.
 
+All subagents are also blocked, on supported Write/Edit hook paths, from the
+root `MEMORY.md` and every file below the root `memory/` directory. Relative,
+absolute, worktree, and ordinary `..` path forms are normalized. This is a
+tool-hook contract rather than a filesystem sandbox; shell writes are outside
+the hook.
+
 Runner note: this subagent write gate requires a runtime-provided `agent_id`.
 OpenCode child sessions do not expose that payload, so the OpenCode adapter
-does not run this Python subagent write gate for child sessions; it relies on
-OpenCode-native agent edit permissions for that boundary.
+runs only the identity-free `memory` scope for child writes and leaves all
+role-specific ownership rules to OpenCode-native edit permissions. Codex and
+Pi have no equivalent write hook; their architecture-record boundary is
+prompt-level.
 
 When no role is set, no `/gm-*` pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
@@ -182,6 +190,26 @@ report hook uses. Looks up role from the matching start event. Records
 `SUBAGENT_STOP` metric plus outcome-specific events: `WORKER_DONE`,
 `VERIFIER_PASS`, `ASSET_PRODUCER_PARTIAL`, etc.
 
+For Worker stops only, a failed, partial, rejected, or unverified handoff also
+writes one bounded `worker_error`. Its stable fields are `task_id`, `attempt`,
+`stage`, `runtime`, `agent_id`, `run_id`, `trace_id`, `error_type`, optional
+`classification`/`exit_code`, `summary`, `error_fingerprint`, bounded
+`evidence_paths`, `retryable`, and `repeat_count`. Large Tests/Build output
+adds bounded `output_digest`, `output_bytes`, and `output_tail` references
+without storing the complete output. Fields are read only from
+the Worker sections that own them; missing data remains empty rather than
+being inferred from another role or arbitrary pasted output. Identical
+`(agent_id, error_fingerprint)` events are written once. A successful Worker
+writes no diagnostic, and diagnostics are never injected into later prompts
+or promoted automatically into project memory.
+
+`worker_error` emission follows the existing `on_subagent_stop.py` support:
+Claude Code and Codex only. Because Codex exposes the generic `worker` agent
+type for every delegated role, its output must be identifiable as a Worker
+report; a silent generic delegate remains unclassified. OpenCode and Pi retain
+trace/report evidence but do not emit this event; adding runtime lifecycle
+parity is separate work.
+
 Every `SUBAGENT_STOP` carries `outcome_kind`:
 
 | `outcome_kind` | Meaning |
@@ -274,7 +302,7 @@ the same equality, which covers the paths where the hook validated nothing
 
 | Role | Required Sections |
 |------|------------------|
-| worker | Status, Files Changed, Tests, Build, Memory Entry |
+| worker | Status, Files Changed, Tests, Build |
 | verifier | Overall, Results, Adversarial Probes |
 | reviewer | Reviewers Matched, ECS Review, Issues Found, Summary |
 | analyst | Status, Asset Summary, Art Style Summary, Files Generated |

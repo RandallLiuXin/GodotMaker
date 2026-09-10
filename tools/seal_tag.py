@@ -147,7 +147,7 @@ ARCHIVE_FILE_ROLES = {
     "STRUCTURE.md":          ("ECS component/system layout for this tag", "`STRUCTURE.md`"),
     "STYLE.md":              ("Visual style contract for this tag", "`STYLE.md`"),
     "SCENES.md":             ("Scene inventory for this tag", "`SCENES.md`"),
-    "MEMORY.md":             ("Cross-tag notebook frozen at seal time", "`MEMORY.md`"),
+    "MEMORY.md":             ("Architecture and constraints frozen at seal time", "`MEMORY.md`"),
     "evaluation-final.json": ("Final evaluator verdict for this tag", "`.godotmaker/evaluation.json`"),
 }
 
@@ -694,9 +694,9 @@ def _canonical_pointers(manifest: dict) -> list[str]:
     if "MEMORY.md" in present:
         if manifest.get("memory_files"):
             lines.append("- [MEMORY.md](MEMORY.md) + [memory/](memory/) — "
-                         "frozen notebook and sub-system files")
+                         "frozen architecture and constraint records")
         else:
-            lines.append("- [MEMORY.md](MEMORY.md) — frozen notebook "
+            lines.append("- [MEMORY.md](MEMORY.md) — frozen architecture and constraints "
                          "(no `memory/` subtree archived for this tag)")
 
     if "evaluation-final.json" in present:
@@ -712,8 +712,8 @@ def _render_summary(project_path: Path, tag: str, dest_dir: Path, manifest: dict
     Inputs: the archived CHANGELOG.md, evaluation-final.json, PLAN.md, the
     archive manifest and — only when it belongs to this tag —
     `.godotmaker/final_report.json`. Worker traces, exploration notes and
-    unverified MEMORY learnings are deliberately NOT read: SUMMARY is a
-    retrieval index over confirmed deliverables, not a second notebook.
+    MEMORY.md are deliberately NOT read: SUMMARY is a retrieval index over
+    confirmed deliverables, not a second source of truth.
     """
     changelog = _parse_changelog(dest_dir / "CHANGELOG.md")
     evaluation = _read_json(dest_dir / "evaluation-final.json") or {}
@@ -817,7 +817,7 @@ def _render_tag_readme(tag: str, manifest: dict, link_warnings: list[str]) -> st
         lines.append(f"| [{name}]({name}) | {role} | {source} |")
     if memory_count:
         lines.append(
-            f"| [memory/](memory/) | Sub-system memory files linked from MEMORY.md "
+            f"| [memory/](memory/) | Architecture files linked from MEMORY.md "
             f"({memory_count} file(s)) | `memory/` |"
         )
     if manifest.get("e2e_files") or manifest.get("screenshots"):
@@ -834,7 +834,7 @@ def _render_tag_readme(tag: str, manifest: dict, link_warnings: list[str]) -> st
         "1. `SUMMARY.md` — one-screen answer to \"what shipped in this tag\".",
         "2. `CHANGELOG.md` / `PLAN.md` — the delivered mechanics and their task trail.",
         "3. `STRUCTURE.md`, `SCENES.md`, `STYLE.md` — how it was built, if you need to touch it again.",
-        "4. `MEMORY.md` + `memory/` — the gotchas that were true at seal time.",
+        "4. `MEMORY.md` + `memory/` — architecture decisions and constraints at seal time.",
         "5. `evidence/` — the proof, only when a claim above is in doubt.",
         "",
         "## Immutability",

@@ -20,7 +20,11 @@ from metrics import (
     OUTCOME_REQUIRED_ROLES,
     ROLE_WORKER, ROLE_VERIFIER, ROLE_REVIEWER, ROLE_ANALYST,
     ROLE_ASSET_PRODUCER, ROLE_UNKNOWN,
-    KNOWN_ROLES,
+    KNOWN_ROLES, get_current_role,
+)
+from metrics.diagnostics import (
+    build_worker_error_event, is_worker_report, read_runtime,
+    record_worker_error,
 )
 from check_worker_report import extract_files_changed
 
@@ -242,7 +246,22 @@ def handle_stop(data: dict, verdict=None) -> None:
     # Role for outcome purposes: the dispatched role first, report type second.
     effective_role = role if role != ROLE_UNKNOWN else report_type
     outcome = report.outcome or {}
-    kind = classify_stop(verdict, report, effective_role)
+    stage = get_current_role()
+    runtime = read_runtime()
+    diagnostic_worker = (
+        runtime == "codex" and is_worker_report(message)
+    ) or (
+        runtime != "codex"
+        and role == ROLE_WORKER
+        and report_type in (ROLE_WORKER, ROLE_UNKNOWN)
+    )
+    silent_worker = (
+        diagnostic_worker
+        and bool(stage)
+        and not message.strip()
+    )
+    kind = OUTCOME_UNVERIFIED if silent_worker else classify_stop(
+        verdict, report, effective_role)
 
     record_event(
         EventType.SUBAGENT_STOP,
@@ -257,6 +276,22 @@ def handle_stop(data: dict, verdict=None) -> None:
         blockers=outcome.get("blockers", []),
         outcome_error=report.outcome_error,
     )
+
+    if diagnostic_worker:
+        record_worker_error(build_worker_error_event(
+            message=message,
+            status=status,
+            outcome_kind=kind,
+            agent_id=agent_id,
+            run_id=data.get("session_id") or "",
+            trace_id=data.get("trace_id") or "",
+            stage=stage,
+            detail=(
+                "stopped without producing a report"
+                if silent_worker
+                else getattr(verdict, "reason", "") or ""
+            ),
+        ))
 
     if kind != OUTCOME_TERMINAL:
         return

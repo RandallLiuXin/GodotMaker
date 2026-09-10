@@ -59,7 +59,7 @@ Read the runtime artifacts that describe the stuck state:
 - `.godotmaker/evaluation.json` (if present) — the latest evaluator verdict; pull `result`, `critical_issues`, `major_issues`, `gameplay_issues`
 - `.godotmaker/metrics.jsonl` — last 50–100 events for chronology
 - `.godotmaker/traces/` — most recent few worker / verifier / reviewer outputs (sort by mtime, take latest 3–5)
-- Project root: `PLAN.md` (current tag header + which tasks are not `verified`), `GAP.md` (if present), `MEMORY.md` (recent reviewer findings)
+- Project root: `PLAN.md` (current tag header + which tasks are not `verified`), `GAP.md` (if present), `MEMORY.md` (architecture decisions and constraints)
 
 Synthesize a one-paragraph "what is the pipeline trying to do, and what specifically blocks it?" before any further analysis. Do not skip this — it disciplines the rest of the diagnosis.
 

@@ -24,6 +24,9 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Workers now return execution results and bounded failure diagnostics instead of generating an automatic Memory Entry for every task.
+- `MEMORY.md` now records only stable architecture decisions and project constraints instead of runtime gotchas, task history, workarounds, or reviewer triage.
+
 - `/gm-finalize` now archives the `memory/` subtree with `MEMORY.md`, link-checks the archived index, and refuses to overwrite an already-sealed tag archive.
 - The finalize completion gate now requires a parseable `evidence/manifest.json` with `"sealed": true` and a parent index that lists the tag, instead of only checking that the archive files exist.
 - `docs/tags/README.md` is now written after the seal it describes and rendered only from manifests already on disk, so an interrupted seal can never leave the index advertising an unsealed tag.
@@ -36,3 +39,5 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 ## Removed
+
+- Removed delegated Write/Edit access to the root `MEMORY.md` and `memory/**` paths where the selected runtime exposes an enforceable write hook.

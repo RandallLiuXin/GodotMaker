@@ -110,17 +110,16 @@ process.exit(2);
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required")
-def test_child_session_write_skips_root_stage_file_gate(tmp_path: Path):
+def test_child_session_write_runs_only_the_memory_scope_gate(tmp_path: Path):
     marker = tmp_path / "stage-reminder-ran.txt"
+    payload_dump = tmp_path / "permissions-payload.json"
     write_hook(
         tmp_path,
         "check_file_permissions.py",
         (
-            "import json\n"
-            "print(json.dumps({'hookSpecificOutput': {"
-            "'permissionDecision': 'deny', "
-            "'permissionDecisionReason': 'root gate should not run'"
-            "}}))\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            f"Path({json.dumps(str(payload_dump))}).write_text(sys.stdin.read())\n"
         ),
     )
     write_hook(
@@ -150,6 +149,55 @@ console.log('allowed');
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "allowed"
     assert marker.read_text(encoding="utf-8") == "yes"
+    payload = json.loads(payload_dump.read_text(encoding="utf-8"))
+    assert payload["is_subagent"] is True
+    assert payload["permission_scope"] == "memory"
+    assert payload["tool_name"] == "Write"
+    assert payload["tool_input"]["file_path"] == "systems/player.gd"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is required")
+def test_child_session_memory_block_is_propagated(tmp_path: Path):
+    write_hook(
+        tmp_path,
+        "check_file_permissions.py",
+        (
+            "import json, sys\n"
+            "payload = json.load(sys.stdin)\n"
+            "assert payload['permission_scope'] == 'memory'\n"
+            "print(json.dumps({'hookSpecificOutput': {"
+            "'permissionDecision': 'deny', "
+            "'permissionDecisionReason': 'memory write denied'"
+            "}}))\n"
+        ),
+    )
+
+    source = f"""
+import {{ pathToFileURL }} from 'node:url';
+const {{ GodotMakerHooks }} = await import(pathToFileURL({json.dumps(str(PLUGIN))}).href);
+const hooks = await GodotMakerHooks({{ directory: {json.dumps(str(tmp_path))} }});
+await hooks.event({{
+  event: {{
+    type: 'session.created',
+    properties: {{ info: {{ id: 'child', parentID: 'root' }} }}
+  }}
+}});
+try {{
+  await hooks['tool.execute.before'](
+    {{ tool: 'write', callID: 'call-1', sessionID: 'child' }},
+    {{ args: {{ filePath: 'MEMORY.md', content: 'x' }} }}
+  );
+}} catch (error) {{
+  console.log(error.message);
+  process.exit(0);
+}}
+console.error('expected memory write to be blocked');
+process.exit(2);
+"""
+    result = run_node(source, tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "memory write denied"
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required")

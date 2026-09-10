@@ -13,7 +13,7 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 - **Don't bypass the role lock.** `.godotmaker/current_role` decides who may write what. If a hook denies a write, dispatch the right subagent or switch to the right `/gm-*` skill — don't try to `--force` past it.
 - **Don't write `e2e/` outside the Evaluator role.** Workers expose `simulate_*()` interfaces and write unit tests for them. The Evaluator (`/gm-evaluate`) maintains the single `e2e/` suite that always reflects the current game.
 - **Don't manually edit `.godotmaker/stage.jsonl`.** Each `/gm-*` skill appends its own role timestamp on completion. `/gm-finalize` truncates it between tags.
-- **Read `MEMORY.md` before dispatching a worker.** Past mistakes are indexed there — workers will repeat them otherwise. `MEMORY.md` accumulates across tags.
+- **Read `MEMORY.md` before dispatching a worker.** It records stable architecture and project constraints across tags. Workers never write it or the root `memory/` directory.
 
 ### Tag scope
 
@@ -39,7 +39,7 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 | Initial visual seed | `STYLE.md` |
 | Asset manifest (cross-tag, with introducing-tag column) | `ASSETS.md` |
 | What a previous tag shipped | `docs/tags/<prev_tag>/` |
-| Past discoveries + gotchas (cross-tag) | `MEMORY.md` (index) |
+| Architecture decisions + project constraints (cross-tag) | `MEMORY.md` (index) |
 | Each role's full contract | `.claude/skills/gm-*/SKILL.md` |
 | ECS API + the full gotcha list | `.claude/skills/gecs/` |
 | godot-e2e API | `.claude/skills/godot-e2e/SKILL.md` |

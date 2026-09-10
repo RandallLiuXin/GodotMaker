@@ -45,6 +45,9 @@ def test_pi_published_runtime_contains_skills_sidecar_and_bridge(tmp_path):
     assert "godotmaker_runtime" in extension
     assert ".pi/skills" in worker
     assert ".claude/skills" not in worker
+    assert "Never write project memory" in worker
+    assert "### Memory Entry" not in worker
+    assert "Never write the root MEMORY.md" in extension
 
 
 def test_pi_runtime_bridge_fails_closed_for_missing_dependencies():

@@ -70,15 +70,15 @@
 **背后发生了什么：**
 - 恢复阶段：如果 `.godotmaker/verify_report.json` 中存在上一次 `/gm-verify` 留下的新鲜失败报告，把每个 check 的失败翻译成 `pending` 任务追加到当前 tag 的 `PLAN.md`，再继续后续流程
 - 读取当前 tag 的 `PLAN.md`，找出待处理的任务，从风险最高的开始
-- 派遣 Worker（最多同时 3 个）——每个 Worker 实现一个游戏系统及其单元测试，完成后汇报
+- 派遣 Worker（最多同时 3 个）——每个 Worker 实现一个游戏系统及其单元测试，然后汇报执行结果和失败证据。Worker 不写 Memory/Learning 条目；在具备 SubagentStop 生命周期 Hook 的 Runtime（当前为 Claude Code 和 Codex）中，未成功的交接改为产生有界的 `worker_error` 诊断
 - `PLAN.md` 中所有任务都达到 `completed` 后，派遣一个 Verifier（无界面编译并跑单元测试），然后派遣一个 Reviewer（拥有 Godot 特有的领域知识——物理、UI、动画等）——每个循环迭代一次 verify+review pass，不再按 Worker 数量触发
-- 对每个评审 finding，主 Agent 在三个选项中选一个：ACCEPT（在 `PLAN.md` 追加新的修复任务）、REJECT（finding 是误报——记录到 `MEMORY.md` 的 **Reviewer Triage Log** 段）、SKIP（finding 是对的但暂时不修——同段记录）。默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT/SKIP 需附强制引证（gotcha 条目、API 文档、过往决策或任务 ID）
+- 对每个评审 finding，主 Agent 在三个选项中选一个：ACCEPT（在 `PLAN.md` 追加新的修复任务）、REJECT（finding 是误报）、SKIP（finding 是对的但暂时不修）。默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT/SKIP 需附强制引证（gotcha 条目、API 文档、架构决策、项目约束或任务 ID）。原始 finding 和 triage 决策不写入 `MEMORY.md`
 - 只要本轮有任何 finding 被 ACCEPT，循环就回到派遣 Worker 阶段
 - 只有当 `PLAN.md` 里所有任务都标记为 `verified`，且最后一轮评审 ACCEPT 数为零，构建才结束
 
 **你得到什么：** `src/` 里的游戏代码、`scenes/` 里的场景、`test/` 里的单元测试——全部限定在本 tag 的新增 / refactor 范围内。
 
-**需要知道的：** 在这个步骤里你无法自己写游戏代码——权限系统会阻止。主 Agent 负责协调，Worker 负责实际写代码。Worker 触动当前 tag 范围之外的文件，必须 `PLAN.md` 中有显式 refactor 任务点名那些文件；不允许"顺手清理"。如果同一个任务失败三次，构建会暂停并询问你下一步怎么做。
+**需要知道的：** 在这个步骤里你无法自己写游戏代码——权限系统会阻止。主 Agent 负责协调，Worker 负责实际写代码，而且不能写根 `MEMORY.md` 或 `memory/`。Worker 触动当前 tag 范围之外的文件，必须 `PLAN.md` 中有显式 refactor 任务点名那些文件；不允许"顺手清理"。如果同一个任务失败三次，构建会暂停并询问你下一步怎么做。
 
 ---
 

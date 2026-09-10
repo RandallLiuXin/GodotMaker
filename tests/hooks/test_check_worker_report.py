@@ -86,7 +86,6 @@ class TestWorkerReport:
         ("Status", "### Status: DONE"),
         ("Tests", "### Tests"),
         ("Build", "### Build"),
-        ("Memory Entry", "### Memory Entry"),
     ])
     def test_missing_section_blocked(self, missing_section, remove):
         msg = COMPLETE_WORKER.replace(remove, "### REMOVED")
@@ -96,6 +95,15 @@ class TestWorkerReport:
             "last_assistant_message": msg,
         })
         assert is_blocked(parsed), f"Should block when {missing_section} missing"
+
+    def test_new_report_without_memory_entry_allowed(self):
+        msg = COMPLETE_WORKER.split("\n### Memory Entry", 1)[0]
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "SubagentStop",
+            "agent_id": "w1",
+            "last_assistant_message": msg,
+        })
+        assert not is_blocked(parsed)
 
     def test_empty_tests_section_blocked(self):
         msg = COMPLETE_WORKER.replace(
@@ -266,8 +274,7 @@ class TestFlexibleMarkerDetection:
             "### Files Changed\n- player_system.gd: created\n\n"
             "### Tests\n#### Unit Tests\n- test/test_player.gd: 3 tests, 3 passed\n"
             "- Commands run: godot --headless\n\n"
-            "### Build\n- Status: PASS\n\n"
-            "### Memory Entry\nLearned about movement"
+            "### Build\n- Status: PASS"
         )
         _, _, parsed = run_hook(HOOK, {
             "hook_event_name": "SubagentStop",
