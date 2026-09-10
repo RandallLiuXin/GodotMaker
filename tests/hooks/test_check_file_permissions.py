@@ -104,8 +104,8 @@ class TestProjectMemoryOwnership:
         })
         assert is_blocked(parsed), path
 
-    def test_worker_absolute_memory_path_is_blocked(self, project_dir):
-        path = os.path.join(project_dir, "memory", "absolute.txt")
+    def test_worker_absolute_memory_path_is_blocked(self):
+        path = os.path.abspath(os.path.join("memory", "absolute.txt"))
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Write",
             "tool_input": {"file_path": path},
