@@ -38,6 +38,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- `tools/check_env.py` now checks the `godot-e2e` Python package against the interpreter GodotMaker runs on and fails with a paste-ready install line pinned to that interpreter, so a package installed into a different Python is no longer reported as simply missing. A `godot-e2e` command on PATH from another environment warns instead of blocking.
+
 ## Removed
 
 - Removed delegated Write/Edit access to the root `MEMORY.md` and `memory/**` paths where the selected runtime exposes an enforceable write hook.

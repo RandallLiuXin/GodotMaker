@@ -27,6 +27,31 @@ All required checks passed! Ready to use GodotMaker.
 - 已安装核心包：`requests`、`pillow`。
 - 根据 `.godotmaker/config.yaml` 检查提供方包：Gemini 需要 `google-genai`，OpenAI 需要 `openai`，Grok 图片生成需要 `xai-sdk`。Wan 使用标准库 HTTP 客户端；选中后还要求 `DASHSCOPE_API_KEY` 与显式 `DASHSCOPE_REGION`。
 
+### Godot E2E（Python 包）
+
+- `[FAIL]`：GodotMaker 使用的那个 Python 没有安装 `godot-e2e` 包。
+- `[WARN]`：包本身没问题，只是 PATH 上的 `godot-e2e` 命令来自另一个 Python。
+
+大多数电脑上装了不止一个 Python。`pip install godot-e2e` 会装进你终端当时用的那个 Python，而它未必就是 GodotMaker 运行时用的那个——这就是"明明装过了却被报成缺失"的原因。
+
+**这一项失败时**，把它打印的那一整行复制到终端里执行即可。那行命令里已经写好了正确 Python 的完整路径，你不需要自己判断是哪一个：
+
+```
+--- Godot E2E (Python package) ---
+  Python used by GodotMaker: /home/you/game/.venv/bin/python
+  VIRTUAL_ENV: not set
+  godot-e2e command on PATH: /usr/local/bin/godot-e2e
+  [FAIL] E2E test tool 'godot-e2e' is not installed for the Python that GodotMaker uses. It is installed for a different Python (/usr/local/bin/godot-e2e), so it can look present and still be unusable here. To fix it, copy this whole line into your terminal and run it: /home/you/game/.venv/bin/python -m pip install godot-e2e
+```
+
+在 Windows 上，如果那个 Python 的路径里带空格，检查会分别打印 PowerShell 和 Command Prompt（cmd.exe）两行——两种终端的引号规则不同，用与你当前窗口相符的那一行即可。
+
+装完再跑一次 `python tools/check_env.py`。这项检查每次都是重新判定，装好后立刻变绿，不会沿用上一次的失败结果。
+
+**这一项是警告时**，说明目前没坏：包装在该在的地方，只是 PATH 上的命令来自别处——用 pyenv、asdf 或启动脚本时这很正常。只有当之后 e2e 测试报 `godot_e2e` 导入错误时才需要处理，警告里已经附上了同样的安装命令。
+
+这里检查的是 Python 包。游戏项目里的 `addons/godot_e2e/` addon 是另一个依赖。
+
 ### Node.js
 
 - 已安装 Node.js 18 或更高版本（通过 `npx` 运行 `godot-mcp` 时需要）。

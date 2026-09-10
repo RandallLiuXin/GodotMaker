@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check that the GodotMaker development environment is correctly set up.
 
-Verifies: Git, Python, Node.js, Godot, selected coding agent, API keys, pip
-packages.
+Verifies: Git, Python, the godot-e2e Python package, Node.js, Godot,
+selected coding agent, API keys, pip packages.
 
 Usage:
     python tools/check_env.py
@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 from agent_runtime import (
@@ -182,6 +183,149 @@ def check_python(r: EnvCheck, config: dict[str, str] | None = None):
             r.ok(f"Package '{pkg_name}' installed")
         except ImportError:
             r.fail(f"Package '{pkg_name}' missing. Run: pip install {pkg_name}")
+
+
+GODOT_E2E_PACKAGE = "godot-e2e"
+GODOT_E2E_COMMANDS = ("godot-e2e", "godot-e2e.exe", "godot-e2e.cmd")
+
+
+def _interpreter_scripts_dirs() -> list[str]:
+    """Where this interpreter installs console scripts (normal + --user)."""
+    dirs: list[str] = []
+    for scheme in (None, "user"):
+        try:
+            if scheme is None:
+                path = sysconfig.get_path("scripts")
+            else:
+                path = sysconfig.get_path(
+                    "scripts", sysconfig.get_preferred_scheme(scheme)
+                )
+        except Exception:
+            continue
+        if path and path not in dirs:
+            dirs.append(path)
+    return dirs
+
+
+def _find_godot_e2e_command() -> str | None:
+    for name in GODOT_E2E_COMMANDS:
+        found = shutil.which(name)
+        if found:
+            return found
+    return None
+
+
+def _command_belongs_to_interpreter(command: str) -> bool:
+    parent = os.path.normcase(os.path.normpath(os.path.dirname(command)))
+    return any(
+        parent == os.path.normcase(os.path.normpath(d))
+        for d in _interpreter_scripts_dirs()
+    )
+
+
+def pinned_pip_command(interpreter: str, *args: str) -> str:
+    """A pip line pinned to one interpreter, quoted only when needed.
+
+    Naming the interpreter is the whole point — `pip install X` installs
+    into whichever Python the shell picks, which is how the package ends
+    up somewhere the project cannot see it.
+    """
+    line = " ".join(["-m", "pip", "install", *args, GODOT_E2E_PACKAGE])
+    if not any(c.isspace() for c in interpreter):
+        return f"{interpreter} {line}"
+    return f'"{interpreter}" {line}'
+
+
+def pinned_pip_instruction(interpreter: str, *args: str) -> str:
+    """The paste-ready fix, split per shell only when it has to be.
+
+    A quoted path at the start of a line is a string expression in
+    PowerShell and needs `&`; that same `&` is a syntax error in
+    cmd.exe. There is no single form that runs in both, and we cannot
+    tell which terminal the reader is in — so a spaced Windows path gets
+    one labelled line each. Everything else needs no quotes, and one
+    line serves every shell.
+    """
+    command = pinned_pip_command(interpreter, *args)
+    if os.name != "nt" or not any(c.isspace() for c in interpreter):
+        return f"copy this whole line into your terminal and run it: {command}"
+    return (
+        "copy the line that matches your terminal and run it. "
+        f"PowerShell: & {command} | Command Prompt (cmd.exe): {command}"
+    )
+
+
+def check_godot_e2e(r: EnvCheck):
+    """Check the godot-e2e Python package against this interpreter.
+
+    E2E tests import `godot_e2e`; the `godot-e2e` command starts them.
+    Both come from a Python environment, and a machine with several
+    Pythons can resolve them to different ones — which is what makes an
+    installed package look missing. So the report always names the
+    interpreter it used and hands back a paste-ready install line pinned
+    to it; the reader never has to work out which Python is which.
+
+    Only an unimportable package fails. A PATH mismatch warns: pyenv /
+    asdf shims and wrapper scripts legitimately sit outside the
+    interpreter's scripts directory, and a false blocker costs more than
+    the mismatch it would report.
+    """
+    print("\n--- Godot E2E (Python package) ---")
+    interpreter = sys.executable
+    command = _find_godot_e2e_command()
+    fix = pinned_pip_instruction(interpreter)
+
+    def print_context():
+        print(f"  Python used by GodotMaker: {interpreter}")
+        print(f"  VIRTUAL_ENV: {os.environ.get('VIRTUAL_ENV') or 'not set'}")
+        print(f"  godot-e2e command on PATH: {command or 'not found'}")
+
+    try:
+        import godot_e2e  # noqa: F401
+    except ImportError:
+        print_context()
+        elsewhere = (
+            f" It is installed for a different Python ({command}), so it can "
+            "look present and still be unusable here."
+            if command and not _command_belongs_to_interpreter(command)
+            else ""
+        )
+        r.fail(
+            f"E2E test tool '{GODOT_E2E_PACKAGE}' is not installed for the "
+            f"Python that GodotMaker uses.{elsewhere} To fix it, {fix}"
+        )
+        return
+    except Exception as exc:
+        print_context()
+        r.fail(
+            f"E2E test tool '{GODOT_E2E_PACKAGE}' is installed but cannot "
+            f"start ({exc}). To fix it, "
+            f"{pinned_pip_instruction(interpreter, '--force-reinstall')}"
+        )
+        return
+
+    if not command:
+        print_context()
+        scripts = ", ".join(_interpreter_scripts_dirs())
+        r.warn(
+            f"'{GODOT_E2E_PACKAGE}' is installed for the Python GodotMaker "
+            f"uses, but there is no godot-e2e command on your PATH. Nothing to "
+            f"do unless e2e tests fail to start; if they do, {fix}. Or add "
+            f"this folder to PATH: {scripts}"
+        )
+        return
+
+    if not _command_belongs_to_interpreter(command):
+        print_context()
+        r.warn(
+            f"The godot-e2e command on your PATH ({command}) comes from a "
+            f"different Python than GodotMaker uses. That is normal if you use "
+            f"pyenv, asdf or a launcher script. Nothing to do unless e2e tests "
+            f"fail with a 'godot_e2e' import error; if they do, {fix}"
+        )
+        return
+
+    r.ok(f"E2E test tool '{GODOT_E2E_PACKAGE}' installed for {interpreter}")
 
 
 def check_node(r: EnvCheck):
@@ -555,6 +699,7 @@ def main():
 
     check_git(r)
     check_python(r, config)
+    check_godot_e2e(r)
     check_node(r)
     check_godot(r, project_dir)
     check_selected_agent(r, project_dir)
