@@ -223,66 +223,96 @@ def _command_belongs_to_interpreter(command: str) -> bool:
     )
 
 
+def pinned_pip_command(interpreter: str, *args: str) -> str:
+    """A pip line the reader can paste as-is, pinned to one interpreter.
+
+    Naming the interpreter is the whole point — `pip install X` installs
+    into whichever Python the shell picks, which is how the package ends
+    up somewhere the project cannot see it. The path only gets quoted
+    when it has to be, because a leading quoted string is a string
+    expression in PowerShell, not a command; `&` makes it run.
+    """
+    line = " ".join(["-m", "pip", "install", *args, GODOT_E2E_PACKAGE])
+    if not any(c.isspace() for c in interpreter):
+        return f"{interpreter} {line}"
+    quoted = f'"{interpreter}" {line}'
+    return f"& {quoted}" if os.name == "nt" else quoted
+
+
 def check_godot_e2e(r: EnvCheck):
     """Check the godot-e2e Python package against this interpreter.
 
-    E2E tests import `godot_e2e` and are launched with the `godot-e2e`
-    console script, so both have to come from the environment running
-    this check. A console script that PATH resolves to some *other*
-    environment is the failure worth naming: the package looks installed
-    and the run still cannot use it. Every message therefore carries the
-    interpreter, and the command that was found.
+    E2E tests import `godot_e2e`; the `godot-e2e` command starts them.
+    Both come from a Python environment, and a machine with several
+    Pythons can resolve them to different ones — which is what makes an
+    installed package look missing. So the report always names the
+    interpreter it used and hands back a paste-ready install line pinned
+    to it; the reader never has to work out which Python is which.
+
+    Only an unimportable package fails. A PATH mismatch warns: pyenv /
+    asdf shims and wrapper scripts legitimately sit outside the
+    interpreter's scripts directory, and a false blocker costs more than
+    the mismatch it would report.
     """
     print("\n--- Godot E2E (Python package) ---")
     interpreter = sys.executable
     command = _find_godot_e2e_command()
-    print(f"  interpreter: {interpreter}")
-    print(f"  VIRTUAL_ENV: {os.environ.get('VIRTUAL_ENV') or 'not set'}")
-    print(f"  godot-e2e command on PATH: {command or 'not found'}")
+    install = pinned_pip_command(interpreter)
 
-    install = f'"{interpreter}" -m pip install {GODOT_E2E_PACKAGE}'
+    def print_context():
+        print(f"  Python used by GodotMaker: {interpreter}")
+        print(f"  VIRTUAL_ENV: {os.environ.get('VIRTUAL_ENV') or 'not set'}")
+        print(f"  godot-e2e command on PATH: {command or 'not found'}")
+
     try:
         import godot_e2e  # noqa: F401
     except ImportError:
-        if command and not _command_belongs_to_interpreter(command):
-            r.fail(
-                f"Package '{GODOT_E2E_PACKAGE}' missing for {interpreter}; the "
-                f"godot-e2e command at {command} belongs to another Python "
-                f"environment. Run: {install}"
-            )
-        else:
-            r.fail(
-                f"Package '{GODOT_E2E_PACKAGE}' missing for {interpreter}. "
-                f"Run: {install}"
-            )
+        print_context()
+        elsewhere = (
+            f" It is installed for a different Python ({command}), so it can "
+            "look present and still be unusable here."
+            if command and not _command_belongs_to_interpreter(command)
+            else ""
+        )
+        r.fail(
+            f"E2E test tool '{GODOT_E2E_PACKAGE}' is not installed for the "
+            f"Python that GodotMaker uses.{elsewhere} To fix it, copy this "
+            f"whole line into your terminal and run it: {install}"
+        )
         return
     except Exception as exc:
+        print_context()
         r.fail(
-            f"Package '{GODOT_E2E_PACKAGE}' is installed for {interpreter} but "
-            f"fails to import: {exc}. Run: \"{interpreter}\" -m pip install "
-            f"--force-reinstall {GODOT_E2E_PACKAGE}"
+            f"E2E test tool '{GODOT_E2E_PACKAGE}' is installed but cannot "
+            f"start ({exc}). To fix it, copy this whole line into your "
+            f"terminal and run it: "
+            f"{pinned_pip_command(interpreter, '--force-reinstall')}"
         )
         return
 
     if not command:
+        print_context()
         scripts = ", ".join(_interpreter_scripts_dirs())
-        r.fail(
-            f"Package '{GODOT_E2E_PACKAGE}' installed for {interpreter} but no "
-            f"godot-e2e command is on PATH; e2e tests cannot be launched. "
-            f"Add {scripts} to PATH"
+        r.warn(
+            f"'{GODOT_E2E_PACKAGE}' is installed for the Python GodotMaker "
+            f"uses, but there is no godot-e2e command on your PATH. Nothing to "
+            f"do unless e2e tests fail to start; if they do, run this line: "
+            f"{install} — or add this folder to PATH: {scripts}"
         )
         return
 
     if not _command_belongs_to_interpreter(command):
-        r.fail(
-            f"godot-e2e command on PATH is {command}, from a different Python "
-            f"environment than {interpreter}; it would run against a different "
-            f"install than the tests import. Put this interpreter's scripts "
-            f"directory first on PATH, or run: {install}"
+        print_context()
+        r.warn(
+            f"The godot-e2e command on your PATH ({command}) comes from a "
+            f"different Python than GodotMaker uses. That is normal if you use "
+            f"pyenv, asdf or a launcher script. Nothing to do unless e2e tests "
+            f"fail with a 'godot_e2e' import error; if they do, run this line: "
+            f"{install}"
         )
         return
 
-    r.ok(f"Package '{GODOT_E2E_PACKAGE}' installed for {interpreter} ({command})")
+    r.ok(f"E2E test tool '{GODOT_E2E_PACKAGE}' installed for {interpreter}")
 
 
 def check_node(r: EnvCheck):

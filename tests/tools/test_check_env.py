@@ -610,11 +610,50 @@ class TestCheckFunctions:
         assert "xai_sdk" in imported
 
 
+class TestPinnedPipCommand:
+    """The install line has to survive a copy-paste by someone who does
+    not know which Python is which — or which shell they are in."""
+
+    def test_plain_path_needs_no_quoting(self):
+        from check_env import pinned_pip_command
+
+        assert pinned_pip_command("/usr/bin/python3") == (
+            "/usr/bin/python3 -m pip install godot-e2e"
+        )
+
+    def test_extra_flags_precede_the_package(self):
+        from check_env import pinned_pip_command
+
+        assert pinned_pip_command("/usr/bin/python3", "--force-reinstall") == (
+            "/usr/bin/python3 -m pip install --force-reinstall godot-e2e"
+        )
+
+    @patch("check_env.os.name", "nt")
+    def test_windows_path_with_spaces_runs_in_powershell(self):
+        """A bare quoted path is a string expression in PowerShell, not a
+        command — without `&` the paste silently does nothing."""
+        from check_env import pinned_pip_command
+
+        assert pinned_pip_command(r"C:\Program Files\Python312\python.exe") == (
+            r'& "C:\Program Files\Python312\python.exe" -m pip install godot-e2e'
+        )
+
+    @patch("check_env.os.name", "posix")
+    def test_posix_path_with_spaces_is_only_quoted(self):
+        from check_env import pinned_pip_command
+
+        assert pinned_pip_command("/opt/my python/bin/python") == (
+            '"/opt/my python/bin/python" -m pip install godot-e2e'
+        )
+
+
 class TestGodotE2ECheck:
     """The community report: `godot-e2e` reads as missing while it is
-    installed somewhere else. Every verdict here names the interpreter it
-    ran on and, when PATH answers for another environment, the command it
-    found — and it is re-evaluated on every run, never replayed.
+    installed — into a different Python. Every verdict names the
+    interpreter it ran on and hands back a paste-ready fix. Only a package
+    this interpreter cannot import blocks; PATH mismatches warn, because
+    pyenv/asdf shims live outside the interpreter's scripts directory by
+    design and a false blocker would strand a non-technical user.
     """
 
     THIS_ENV = os.path.join("/opt", "envs", "project", "bin")
@@ -644,40 +683,54 @@ class TestGodotE2ECheck:
                     check_godot_e2e(r)
         return r
 
+    def _fix_line(self):
+        from check_env import pinned_pip_command
+
+        return pinned_pip_command(sys.executable)
+
     def test_installed_with_matching_command_passes(self):
         r = self._run(command=os.path.join(self.THIS_ENV, "godot-e2e"))
-        assert not r.failed
+        assert not r.failed and not r.warnings
         assert sys.executable in r.passed[0]
 
-    def test_missing_names_the_interpreter_and_pins_pip(self):
+    def test_missing_gives_a_paste_ready_fix(self):
         r = self._run(importable=False)
         assert len(r.failed) == 1
-        assert sys.executable in r.failed[0]
-        assert f'"{sys.executable}" -m pip install godot-e2e' in r.failed[0]
+        assert self._fix_line() in r.failed[0]
+        assert "copy this whole line" in r.failed[0]
 
     def test_installed_in_another_environment_is_not_a_plain_absence(self):
         other = os.path.join(self.OTHER_ENV, "godot-e2e")
         r = self._run(importable=False, command=other)
         assert len(r.failed) == 1
         assert other in r.failed[0]
-        assert "another Python environment" in r.failed[0]
-        assert sys.executable in r.failed[0]
+        assert "different Python" in r.failed[0]
+        assert self._fix_line() in r.failed[0]
 
-    def test_command_from_a_different_environment_than_the_import(self):
-        """`--user` / multi-venv machines: the import and the launcher
-        resolve to different installs."""
+    def test_command_from_another_environment_only_warns(self):
+        """pyenv/asdf shims resolve correctly from outside the scripts
+        directory — blocking on this heuristic would be a false alarm."""
         other = os.path.join(self.OTHER_ENV, "godot-e2e")
         r = self._run(command=other)
-        assert len(r.failed) == 1
-        assert other in r.failed[0]
-        assert sys.executable in r.failed[0]
+        assert not r.failed
+        assert len(r.warnings) == 1
+        assert other in r.warnings[0]
+        assert "pyenv" in r.warnings[0]
+        assert self._fix_line() in r.warnings[0]
 
-    def test_importable_but_no_command_on_path(self):
-        """The scripts directory is off PATH — installed, still unrunnable."""
+    def test_no_command_on_path_only_warns(self):
         r = self._run(command=None)
-        assert len(r.failed) == 1
-        assert "no godot-e2e command is on PATH" in r.failed[0]
-        assert self.THIS_ENV in r.failed[0]
+        assert not r.failed
+        assert len(r.warnings) == 1
+        assert self.THIS_ENV in r.warnings[0]
+        assert self._fix_line() in r.warnings[0]
+
+    def test_warnings_say_when_no_action_is_needed(self):
+        """A warning a non-technical user cannot act on is noise; each one
+        states the symptom that would make it matter."""
+        for r in (self._run(command=None),
+                  self._run(command=os.path.join(self.OTHER_ENV, "godot-e2e"))):
+            assert "Nothing to do unless" in r.warnings[0]
 
     def test_broken_install_asks_for_a_reinstall(self):
         r = self._run(import_error=RuntimeError("boom"))
@@ -686,8 +739,6 @@ class TestGodotE2ECheck:
         assert sys.executable in r.failed[0]
 
     def test_redetects_after_the_environment_is_fixed(self):
-        """No cached verdict: the same check run again on a corrected
-        environment passes."""
         before = self._run(importable=False)
         after = self._run(command=os.path.join(self.THIS_ENV, "godot-e2e"))
         assert before.failed and not before.passed

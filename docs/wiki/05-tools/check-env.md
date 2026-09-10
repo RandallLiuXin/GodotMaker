@@ -29,20 +29,26 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 
 ### Godot E2E (Python package)
 
-- The `godot-e2e` Python package is installed for the interpreter running this script.
-- A `godot-e2e` command is on your PATH and comes from that same interpreter's environment.
+- `[FAIL]` if the `godot-e2e` package is not installed for the Python that GodotMaker runs on.
+- `[WARN]` if the package is fine but the `godot-e2e` command on your PATH comes from a different Python.
 
-E2E tests import the package and are started by the command, so both have to come from one environment. When they don't, the check names the interpreter it used and the command it found:
+Most machines have more than one Python. `pip install godot-e2e` installs into whichever one your terminal happens to use, and that may not be the one GodotMaker runs on — which is how the package ends up installed and still reported as missing.
+
+**If this check fails,** copy the whole line it prints and run it in your terminal. The line already contains the full path of the correct Python, so you do not have to work out which one it is:
 
 ```
 --- Godot E2E (Python package) ---
-  interpreter: /home/you/game/.venv/bin/python
+  Python used by GodotMaker: /home/you/game/.venv/bin/python
   VIRTUAL_ENV: not set
   godot-e2e command on PATH: /usr/local/bin/godot-e2e
-  [FAIL] godot-e2e command on PATH is /usr/local/bin/godot-e2e, from a different Python environment than /home/you/game/.venv/bin/python; ...
+  [FAIL] E2E test tool 'godot-e2e' is not installed for the Python that GodotMaker uses. It is installed for a different Python (/usr/local/bin/godot-e2e), so it can look present and still be unusable here. To fix it, copy this whole line into your terminal and run it: /home/you/game/.venv/bin/python -m pip install godot-e2e
 ```
 
-This covers the Python package. The `addons/godot_e2e/` addon inside your game project is a separate dependency.
+Then run `python tools/check_env.py` again. The check is redone from scratch every run, so it turns green as soon as the install lands — an earlier failure is never carried over.
+
+**If this check warns,** nothing is broken: the package is installed where it belongs, only the command on your PATH comes from somewhere else, which is normal with pyenv, asdf, or a launcher script. Act on it only if e2e tests later fail with a `godot_e2e` import error; the warning carries the same install line for that case.
+
+This check covers the Python package. The `addons/godot_e2e/` addon inside your game project is a separate dependency.
 
 ### Node.js
 
