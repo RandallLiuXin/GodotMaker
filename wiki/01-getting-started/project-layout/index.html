@@ -2868,7 +2868,7 @@
 <p><strong><code>SCENES.md</code></strong> — A description of every scene: what it contains and how the game objects in it map to ECS entities. Written by <code>/gm-gdd</code>; the workflow uses it as a blueprint when generating <code>.tscn</code> files.</p>
 <p><strong><code>ASSETS.md</code></strong> — A list of every asset the game needs: the logical name, the file path, and the generation settings used. Written and updated by <code>/gm-asset</code>. If you add your own art files, the workflow updates this list to include them.</p>
 <p><strong><code>TOC.md</code></strong> — Table of contents for all the documents above. Generated automatically. Useful as a quick index if you're not sure which document to look at.</p>
-<p><strong><code>MEMORY.md</code></strong> — A log of discoveries, past mistakes, and important decisions that the AI wants to remember across sessions. Written and updated automatically. Reading it is useful if you want to understand why the AI made a particular choice in an earlier session.</p>
+<p><strong><code>MEMORY.md</code></strong> — The cross-tag record of stable architecture decisions and project constraints. It does not contain task history, runtime failures, gotchas, workarounds, reviewer triage, or other dynamic learning. Workers cannot write it.</p>
 <hr />
 <h2 id="where-the-tests-live">Where the tests live<a class="headerlink" href="#where-the-tests-live" title="Permanent link">&para;</a></h2>
 <p>GodotMaker generates tests alongside game code so problems can be caught early.</p>

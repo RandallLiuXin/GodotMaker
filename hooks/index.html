@@ -3139,10 +3139,17 @@ skill) and applies that role's write rules. Per-role summary:</p>
 and from planning docs (<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> /
 <code>GAP.md</code>). <code>asset-producer</code> may write <code>assets/</code>, <code>references/</code>, and
 <code>.godotmaker/asset-generation/</code>.</p>
+<p>All subagents are also blocked, on supported Write/Edit hook paths, from the
+root <code>MEMORY.md</code> and every file below the root <code>memory/</code> directory. Relative,
+absolute, worktree, and ordinary <code>..</code> path forms are normalized. This is a
+tool-hook contract rather than a filesystem sandbox; shell writes are outside
+the hook.</p>
 <p>Runner note: this subagent write gate requires a runtime-provided <code>agent_id</code>.
 OpenCode child sessions do not expose that payload, so the OpenCode adapter
-does not run this Python subagent write gate for child sessions; it relies on
-OpenCode-native agent edit permissions for that boundary.</p>
+runs only the identity-free <code>memory</code> scope for child writes and leaves all
+role-specific ownership rules to OpenCode-native edit permissions. Codex and
+Pi have no equivalent write hook; their architecture-record boundary is
+prompt-level.</p>
 <p>When no role is set, no <code>/gm-*</code> pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
 conversations in a GodotMaker project directory.</p>
@@ -3259,6 +3266,24 @@ status through <code>metrics.outcome.normalize_report</code> — the same entry 
 report hook uses. Looks up role from the matching start event. Records
 <code>SUBAGENT_STOP</code> metric plus outcome-specific events: <code>WORKER_DONE</code>,
 <code>VERIFIER_PASS</code>, <code>ASSET_PRODUCER_PARTIAL</code>, etc.</p>
+<p>For Worker stops only, a failed, partial, rejected, or unverified handoff also
+writes one bounded <code>worker_error</code>. Its stable fields are <code>task_id</code>, <code>attempt</code>,
+<code>stage</code>, <code>runtime</code>, <code>agent_id</code>, <code>run_id</code>, <code>trace_id</code>, <code>error_type</code>, optional
+<code>classification</code>/<code>exit_code</code>, <code>summary</code>, <code>error_fingerprint</code>, bounded
+<code>evidence_paths</code>, <code>retryable</code>, and <code>repeat_count</code>. Large Tests/Build output
+adds bounded <code>output_digest</code>, <code>output_bytes</code>, and <code>output_tail</code> references
+without storing the complete output. Fields are read only from
+the Worker sections that own them; missing data remains empty rather than
+being inferred from another role or arbitrary pasted output. Identical
+<code>(agent_id, error_fingerprint)</code> events are written once. A successful Worker
+writes no diagnostic, and diagnostics are never injected into later prompts
+or promoted automatically into project memory.</p>
+<p><code>worker_error</code> emission follows the existing <code>on_subagent_stop.py</code> support:
+Claude Code and Codex only. Because Codex exposes the generic <code>worker</code> agent
+type for every delegated role, its output must be identifiable as a Worker
+report; a silent generic delegate remains unclassified. OpenCode and Pi retain
+trace/report evidence but do not emit this event; adding runtime lifecycle
+parity is separate work.</p>
 <p>Every <code>SUBAGENT_STOP</code> carries <code>outcome_kind</code>:</p>
 <table>
 <thead>
@@ -3388,7 +3413,7 @@ the same equality, which covers the paths where the hook validated nothing
 <tbody>
 <tr>
 <td>worker</td>
-<td>Status, Files Changed, Tests, Build, Memory Entry</td>
+<td>Status, Files Changed, Tests, Build</td>
 </tr>
 <tr>
 <td>verifier</td>

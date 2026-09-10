@@ -2889,7 +2889,7 @@ GodotMaker 封存的归档补上索引文件。</p>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    ├── STYLE.md
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    ├── SCENES.md
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    ├── MEMORY.md
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    ├── memory/               MEMORY.md 索引的各子系统笔记
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    ├── memory/               MEMORY.md 索引的架构与约束详情
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    ├── evaluation-final.json
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    └── evidence/
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        ├── manifest.json     每个归档文件的路径、类别、字节数、SHA-256
@@ -2910,7 +2910,7 @@ GodotMaker 封存的归档补上索引文件。</p>
 </ol>
 <p><code>SUMMARY.md</code> 是检索入口，不是新的事实来源。它只复述 <code>CHANGELOG.md</code>、<code>PLAN.md</code>、
 <code>evaluation-final.json</code> 和 <code>final_report.json</code> 中已确认的内容；Worker 的探索过程、
-完整 Trace 和未经验证的 MEMORY learning 不会进入摘要。摘要与 canonical 文档冲突时，
+完整 Trace 和 <code>MEMORY.md</code> 不会进入摘要。摘要与 canonical 文档冲突时，
 以 canonical 文档为准。</p>
 <p>摘要只链接归档里真实存在的内容。项目没有 <code>memory/</code> 目录、或回填的归档缺少某份
 canonical 文档时，摘要里不会出现对应条目，而不是留下一个必定 404 的链接。</p>
@@ -3006,7 +3006,7 @@ canonical 文档时，摘要里不会出现对应条目，而不是留下一个�
 <p>退出码：<code>0</code> 成功 · <code>1</code> 文件系统或运行时失败 · <code>2</code> 缺少来源文件、归档内链接无法解析
 或用法错误 · <code>3</code> 该 tag 已封存。</p>
 <h2 id="memory">MEMORY 链接校验<a class="headerlink" href="#memory" title="Permanent link">&para;</a></h2>
-<p><code>MEMORY.md</code> 通过 <code>memory/</code> 下的文件索引各子系统笔记。只归档索引而不归档这些文件，
+<p><code>MEMORY.md</code> 通过 <code>memory/</code> 下的文件索引详细架构与约束。只归档索引而不归档这些文件，
 等于冻结了一组失效链接，所以 <code>archive</code> 会一并复制 <code>memory/</code>，然后校验归档内的
 <code>MEMORY.md</code>：</p>
 <ul>

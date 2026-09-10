@@ -3130,9 +3130,14 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 </tbody>
 </table>
 <p>在流水线角色活跃期间，通用子代理会被阻止写入 <code>e2e/</code> 和规划文档（<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> / <code>GAP.md</code>）。<code>asset-producer</code> 可以写入 <code>assets/</code>、<code>references/</code> 和 <code>.godotmaker/asset-generation/</code>。</p>
+<p>在 Runtime 支持的 Write/Edit Hook 路径上，所有子代理还会被阻止写入根
+<code>MEMORY.md</code> 和根 <code>memory/</code> 目录下的任何文件。相对路径、绝对路径、worktree
+路径和普通 <code>..</code> 写法会先规范化。这是工具 Hook 契约，不是文件系统沙箱；shell
+写入不在这个 Hook 的覆盖范围内。</p>
 <p>Runner 说明：这个子代理写入 gate 需要 runtime 提供 <code>agent_id</code>。OpenCode child
-session 不暴露该 payload，因此 OpenCode adapter 不会对 child session 运行这个
-Python 子代理写入 gate；该边界依赖 OpenCode 原生 agent edit permission。</p>
+session 不暴露该 payload，因此 OpenCode adapter 对 child 写入只运行无需身份的
+<code>memory</code> scope；其他角色所有权规则仍依赖 OpenCode 原生 edit permission。Codex
+和 Pi 没有等价的写入 Hook，其架构记录边界只在 prompt 层执行。</p>
 <p>未设置角色时，表示当前没有活跃的 <code>/gm-*</code> 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。</p>
 <p>同时为每次文件操作记录 <code>FILE_WRITE</code> / <code>FILE_EDIT</code> 指标事件。</p>
 <h3 id="stage_reminderpy">stage_reminder.py<a class="headerlink" href="#stage_reminderpy" title="Permanent link">&para;</a></h3>
@@ -3225,6 +3230,20 @@ root stage session 上保留这个 gate。非图片文件（.json、.ogg）被�
 读取报告类型与状态——与报告 Hook 完全相同的入口。从匹配的启动事件中查找角色。记录
 <code>SUBAGENT_STOP</code> 指标以及结果特定事件：<code>WORKER_DONE</code>、<code>VERIFIER_PASS</code>、
 <code>ASSET_PRODUCER_PARTIAL</code> 等。</p>
+<p>只有 Worker stop 会额外产生诊断：失败、部分完成、报告被拒绝或未验证交接写入
+一条有界的 <code>worker_error</code>。稳定字段包括 <code>task_id</code>、<code>attempt</code>、<code>stage</code>、
+<code>runtime</code>、<code>agent_id</code>、<code>run_id</code>、<code>trace_id</code>、<code>error_type</code>、可选的
+<code>classification</code>/<code>exit_code</code>、<code>summary</code>、<code>error_fingerprint</code>、有界的
+<code>evidence_paths</code>、<code>retryable</code> 和 <code>repeat_count</code>。大型 Tests/Build 输出会增加
+有界的 <code>output_digest</code>、<code>output_bytes</code> 和 <code>output_tail</code> 引用，但不会保存完整输出。
+字段只从拥有它的 Worker 章节
+读取；缺失值保持为空，不从其他角色或任意粘贴输出中猜测。相同的
+<code>(agent_id, error_fingerprint)</code> 只写一次。Worker 成功时不写诊断；诊断也不会
+注入后续 prompt 或自动提升为项目记忆。</p>
+<p><code>worker_error</code> 的产生沿用现有 <code>on_subagent_stop.py</code> 支持范围：仅 Claude Code
+和 Codex。由于 Codex 对所有委派角色都暴露通用 <code>worker</code> agent type，其输出必须
+能被识别为 Worker 报告；silent 的通用 delegate 保持未分类。OpenCode 与 Pi
+保留 trace/报告证据，但不产生该事件；补齐 Runtime 生命周期 parity 属于独立工作。</p>
 <p>每条 <code>SUBAGENT_STOP</code> 都带 <code>outcome_kind</code>：</p>
 <table>
 <thead>
@@ -3336,7 +3355,7 @@ hook 完全没有校验的路径（force-allow，或没有活跃的流水线角�
 <tbody>
 <tr>
 <td>worker</td>
-<td>Status, Files Changed, Tests, Build, Memory Entry</td>
+<td>Status, Files Changed, Tests, Build</td>
 </tr>
 <tr>
 <td>verifier</td>

@@ -2826,8 +2826,8 @@
 </ul>
 <p>Reviewer 子 Agent 读取这三个文件，并生成一份结构化报告，用坑点 ID 标注发现的每个问题（例如："physics G1：在 <code>body_entered</code> 中直接调用 <code>queue_free()</code>"）。</p>
 <h2 id="reviewer_3">Reviewer 发现问题后怎么办<a class="headerlink" href="#reviewer_3" title="Permanent link">&para;</a></h2>
-<p>主 Agent 对每个 finding 做 triage，三选一：ACCEPT（追加新任务到 <code>PLAN.md</code>，由下一批 Worker 修复）、REJECT（finding 是误报——记录到 <code>MEMORY.md</code> 的 <strong>Reviewer Triage Log</strong> 段）或 SKIP（finding 是对的但暂时不修——同段记录）。不确定时默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT 或 SKIP 必须附引证（gotcha 条目、API 文档、过往 MEMORY 决策或现有任务 ID）。minor 不需要引证。</p>
-<p>循环持续到上一次 review 没有任何 ACCEPT 为止。本 tag 内所有 REJECT 和 SKIP 决策都会在 <code>/gm-accept</code> 摘要里展示给你，由你作为最终把关人决定 triage 是否合理。</p>
+<p>主 Agent 对每个 finding 做 triage，三选一：ACCEPT（追加新任务到 <code>PLAN.md</code>，由下一批 Worker 修复）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。不确定时默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT 或 SKIP 必须附引证（gotcha 条目、API 文档、过往架构决策或项目约束、现有任务 ID）。minor 不需要引证。原始 finding 和 triage 决策不写入 <code>MEMORY.md</code>。</p>
+<p>循环持续到上一次 review 没有任何 ACCEPT 为止。</p>
 <p>值得注意的是，这一步不能被悄悄跳过。一个名为 <code>check_completion.py</code> 的钩子脚本会在 <code>/gm-build</code> 或 <code>/gm-fixgap</code> 尝试结束会话时运行。如果 Worker 跑过了但 Verifier（验证员）和 Reviewer 没有跑，钩子会阻止会话结束。质量检查是强制要求，不是可选项。</p>
 
 

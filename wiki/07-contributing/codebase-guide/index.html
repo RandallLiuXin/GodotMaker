@@ -3207,6 +3207,9 @@ OpenCode uses <code>agent-runtimes/opencode/plugins/godotmaker-hooks.js</code> a
 plugin adapter.</p>
 <h3 id="hooksmetrics">hooks/metrics/<a class="headerlink" href="#hooksmetrics" title="Permanent link">&para;</a></h3>
 <p>A small subsystem for recording what happened during a session. Hooks call <code>record_event()</code> to append a JSON line to <code>.godotmaker/metrics_current.jsonl</code> (current session) and <code>.godotmaker/metrics_total.jsonl</code> (lifetime). The <code>state.py</code> module manages mutable per-session counters (block counts, etc.) in <code>.godotmaker/state.json</code>. <code>session_start.py</code> resets both on every new session.</p>
+<p>On runtimes with SubagentStop lifecycle hooks (currently Claude Code and
+Codex), <code>diagnostics.py</code> records bounded <code>worker_error</code> events for unsuccessful
+Worker handoffs. It deliberately does not interpret reports from other roles.</p>
 <p>For details on writing hooks and using the metrics API, see <a href="../writing-a-hook/">Writing a hook</a>.</p>
 <h3 id="permission-contract-layers">Permission contract layers<a class="headerlink" href="#permission-contract-layers" title="Permanent link">&para;</a></h3>
 <p>Role permissions are expressed in three places. They overlap on purpose, but each layer has a distinct job — when you change one, check whether the others need to follow:</p>

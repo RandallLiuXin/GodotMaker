@@ -2826,7 +2826,13 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>/gm-finalize</code> now archives the <code>memory/</code> subtree with <code>MEMORY.md</code>, link-checks the archived index, and refuses to overwrite an already-sealed tag archive.</li>
+<li>Workers now return execution results and bounded failure diagnostics instead of generating an automatic Memory Entry for every task.</li>
+<li>
+<p><code>MEMORY.md</code> now records only stable architecture decisions and project constraints instead of runtime gotchas, task history, workarounds, or reviewer triage.</p>
+</li>
+<li>
+<p><code>/gm-finalize</code> now archives the <code>memory/</code> subtree with <code>MEMORY.md</code>, link-checks the archived index, and refuses to overwrite an already-sealed tag archive.</p>
+</li>
 <li>The finalize completion gate now requires a parseable <code>evidence/manifest.json</code> with <code>"sealed": true</code> and a parent index that lists the tag, instead of only checking that the archive files exist.</li>
 <li><code>docs/tags/README.md</code> is now written after the seal it describes and rendered only from manifests already on disk, so an interrupted seal can never leave the index advertising an unsealed tag.</li>
 <li>Every forced tag-archive rewrite (<code>archive</code>, <code>index</code>, <code>backfill</code>) retires the existing seal and index entry before overwriting any file, so a failed rewrite cannot leave <code>"sealed": true</code> over hashes that no longer match the archive.</li>
@@ -2837,6 +2843,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 </ul>
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Removed delegated Write/Edit access to the root <code>MEMORY.md</code> and <code>memory/**</code> paths where the selected runtime exposes an enforceable write hook.</li>
+</ul>
 
 
 

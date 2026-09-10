@@ -3206,6 +3206,8 @@ Codex 使用 <code>agent-runtimes/&lt;agent&gt;/config/</code> 下的配置文�
 <code>agent-runtimes/opencode/plugins/godotmaker-hooks.js</code> 作为 plugin adapter。</p>
 <h3 id="hooksmetrics">hooks/metrics/<a class="headerlink" href="#hooksmetrics" title="Permanent link">&para;</a></h3>
 <p>一个用于记录会话期间发生事件的小型子系统。Hook 通过调用 <code>record_event()</code> 将 JSON 行追加到 <code>.godotmaker/metrics_current.jsonl</code>（当前会话）和 <code>.godotmaker/metrics_total.jsonl</code>（全量生命周期日志）。<code>state.py</code> 模块负责在 <code>.godotmaker/state.json</code> 中管理可变的会话内计数器（拦截次数等）。<code>session_start.py</code> 在每次新会话开始时重置两者。</p>
+<p>在具备 SubagentStop 生命周期 Hook 的 Runtime（当前为 Claude Code 和 Codex）中，
+<code>diagnostics.py</code> 只为未成功的 Worker 交接记录有界的 <code>worker_error</code> 事件；它不会解释其他角色的报告。</p>
 <p>关于编写 hook 和使用 metrics API 的详细说明，请参阅 <a href="../writing-a-hook/">编写 Hook</a>。</p>
 <h3 id="_3">权限契约的三层划分<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
 <p>角色权限分布在三处，刻意有重叠，但每一层职责不同 — 改动其中一层时，要检查其他层是否要跟着动：</p>

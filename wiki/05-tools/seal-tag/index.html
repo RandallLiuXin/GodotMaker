@@ -2890,7 +2890,7 @@ by an older GodotMaker release.</p>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    ├── STYLE.md
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    ├── SCENES.md
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    ├── MEMORY.md
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    ├── memory/               sub-system files MEMORY.md indexes
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    ├── memory/               architecture files MEMORY.md indexes
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    ├── evaluation-final.json
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    └── evidence/
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        ├── manifest.json     every archived file: path, category, bytes, SHA-256
@@ -2918,8 +2918,8 @@ snapshot.</p>
 </ol>
 <p><code>SUMMARY.md</code> is a retrieval index, not a source of truth. It restates facts
 from <code>CHANGELOG.md</code>, <code>PLAN.md</code>, <code>evaluation-final.json</code> and <code>final_report.json</code>
-and nothing else — worker traces, exploration notes and unverified MEMORY
-learnings never reach it. When the summary and a canonical document disagree,
+and nothing else — worker traces, exploration notes and <code>MEMORY.md</code> never
+reach it. When the summary and a canonical document disagree,
 the canonical document wins.</p>
 <p>It links only what the archive actually holds. A project with no <code>memory/</code>
 directory, or a backfilled archive missing a canonical document, gets a summary
@@ -3026,7 +3026,7 @@ itself — the seal landed, the index refresh after it did not. Re-running
 sources, unresolvable memory links, or bad usage · <code>3</code> the tag is already
 sealed.</p>
 <h2 id="memory-link-checking">Memory link checking<a class="headerlink" href="#memory-link-checking" title="Permanent link">&para;</a></h2>
-<p><code>MEMORY.md</code> indexes per-system notes under <code>memory/</code>. Archiving the index
+<p><code>MEMORY.md</code> indexes detailed architecture and constraints under <code>memory/</code>. Archiving the index
 without those files would freeze a set of broken links, so <code>archive</code> copies
 <code>memory/</code> too and then verifies the archived <code>MEMORY.md</code>:</p>
 <ul>

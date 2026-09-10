@@ -3399,7 +3399,7 @@
 <h3 id="_8">为什么有些指令可以重复运行，有些不行？<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h3>
 <p><code>/gm-scaffold</code> 是每个项目只执行一次的命令——在已有项目上重跑会覆盖项目设置。<code>/gm-asset</code> 在 tag 内可以随时重跑，有新资源需求时使用。从 <code>/gm-build</code> 开始的命令遵循 per-tag 周期：应按顺序运行，重跑某个命令会重做当前 tag 的那个阶段。手动模式下，<code>/gm-gdd</code> 会开启一个新的 tag。</p>
 <h3 id="gm-build"><code>/gm-build</code> 内部做了什么？<a class="headerlink" href="#gm-build" title="Permanent link">&para;</a></h3>
-<p><code>/gm-build</code> 推进 <code>PLAN.md</code> 中的任务列表：先派 <strong>Worker</strong> 把所有任务做到 <code>completed</code>，然后跑一次 verify+review pass——<strong>Verifier</strong> 无头编译项目并运行测试，<strong>Reviewer</strong> 检查 Godot 特有的坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务加到 <code>PLAN.md</code>）、REJECT（finding 是误报——记录到 <code>MEMORY.md</code> 的 <strong>Reviewer Triage Log</strong> 段）或 SKIP（finding 是对的但暂时不修——同段记录）。critical/major 的 REJECT/SKIP 必须附引证；这些决策都会在 <code>/gm-accept</code> 或 final review 摘要里展示。循环持续到没有任何 ACCEPT。如果 Worker 跑过了但 Verifier 或 Reviewer 没跑，<code>check_completion.py</code> Hook 会拒绝 <code>/gm-build</code> 结束。</p>
+<p><code>/gm-build</code> 推进 <code>PLAN.md</code> 中的任务列表：先派 <strong>Worker</strong> 把所有任务做到 <code>completed</code>，然后跑一次 verify+review pass——<strong>Verifier</strong> 无头编译项目并运行测试，<strong>Reviewer</strong> 检查 Godot 特有的坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务加到 <code>PLAN.md</code>）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证，但原始 finding 和 triage 决策不写入 <code>MEMORY.md</code>。循环持续到没有任何 ACCEPT。如果 Worker 跑过了但 Verifier 或 Reviewer 没跑，<code>check_completion.py</code> Hook 会拒绝 <code>/gm-build</code> 结束。</p>
 <h3 id="ai-git-worktree">AI 为什么需要 git worktree？<a class="headerlink" href="#ai-git-worktree" title="Permanent link">&para;</a></h3>
 <p>当 <code>/gm-build</code> 并行运行多个 Worker 时，每个 Worker 需要独立的文件夹来写文件，互不冲突。Git worktree 允许多个工作目录共享同一个仓库历史。这也是 <code>/gm-scaffold</code> 要创建初始 git 提交的原因——worktree 需要至少一个提交才能使用。</p>
 <hr />
@@ -3407,7 +3407,7 @@
 <h3 id="gdd">为什么我的游戏和 GDD 里说的不完全一样？<a class="headerlink" href="#gdd" title="Permanent link">&para;</a></h3>
 <p>AI 代码生成不是确定性的，游戏系统之间复杂的交互可能产生预期之外的结果。这正是 <code>/gm-evaluate</code> 和 <code>/gm-fixgap</code> 存在的原因：评估器对照你的 GDD 给运行中的游戏打分，生成差距列表，然后 Fixgap 派发 Worker 逐一填补。对于小游戏，跑一轮通常就够了；更复杂的游戏可能需要再跑一轮。</p>
 <h3 id="_10">我可以手动修改生成的代码吗？<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
-<p>可以，你的修改会被保留。但要注意，如果你在新 tag 中再次运行 <code>/gm-build</code>，它可能会添加涉及同一文件的新任务——新的 Worker 输出可能会扩展或部分覆盖你的手动修改。建议手动修改保持在小范围内，并在 <code>MEMORY.md</code> 中记录下来，让 AI 知道这些改动是有意为之的。</p>
+<p>可以，你的修改会被保留。但要注意，如果你在新 tag 中再次运行 <code>/gm-build</code>，它可能会添加涉及同一文件的新任务——新的 Worker 输出可能会扩展或部分覆盖你的手动修改。建议手动修改保持在小范围内。只有长期架构决策或项目约束才记录到 <code>MEMORY.md</code>；功能需求应写入对应的设计文档。</p>
 <h3 id="_11">截图和测试结果在哪里？<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
 <ul>
 <li>每个场景的视觉参考图（由 <code>/gm-asset</code> 生成）：<code>references/scene_&lt;name&gt;.png</code></li>

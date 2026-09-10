@@ -2868,7 +2868,7 @@
 <p><strong><code>SCENES.md</code></strong> — 所有场景的说明：每个场景包含什么，其中的游戏对象如何对应到 ECS 实体。由 <code>/gm-gdd</code> 生成，工作流用它作为生成 <code>.tscn</code> 文件的蓝图。</p>
 <p><strong><code>ASSETS.md</code></strong> — 游戏所需全部素材的清单：逻辑名称、文件路径、生成时用的设置。由 <code>/gm-asset</code> 写成并更新。如果你添加了自己的美术文件，工作流会把它们加入这个清单。</p>
 <p><strong><code>TOC.md</code></strong> — 上面所有文档的目录，自动生成。不确定该看哪个文档时，用它快速索引。</p>
-<p><strong><code>MEMORY.md</code></strong> — AI 想在多次会话之间记住的东西：发现的规律、过去的错误、重要的决定。自动写入和更新。如果你想了解 AI 在某次早期会话里为什么做了某个选择，读这个文件很有用。</p>
+<p><strong><code>MEMORY.md</code></strong> — 跨 tag 保存的稳定架构决策与项目约束。它不记录任务历史、运行时错误、gotcha、workaround、Reviewer triage 或其他动态学习；Worker 不能写入。</p>
 <hr />
 <h2 id="_4">测试文件在哪里<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <p>GodotMaker 在生成游戏代码的同时也生成测试，方便尽早发现问题。</p>
