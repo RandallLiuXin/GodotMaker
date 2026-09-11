@@ -4,6 +4,29 @@ All notable changes to GodotMaker will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
+## [1.1.0] - 2026-09-11
+
+### Added
+
+- Added Alibaba Cloud Model Studio Wan 2.7 as an API-backed image provider.
+- Added a bilingual, agent-assisted guide for re-initializing 0.x workspaces on 1.0.
+- Added layered indexes, summaries, and sealed manifests for tag archives.
+- Added index, backfill, and reindex commands for sealing and maintaining tag archives.
+
+### Changed
+
+- Workers now return bounded execution and failure diagnostics without writing task history into project memory.
+- Scoped project memory to stable architecture decisions and project constraints.
+- Made tag-archive finalization fail closed around seals, index updates, interrupted writes, warnings, and mirrored subtree deletions.
+
+### Fixed
+
+- Made environment checks verify that `godot-e2e` is importable in the interpreter GodotMaker runs on (#193).
+
+### Removed
+
+- Removed delegated Write/Edit access to root project memory where the selected runtime can enforce that boundary.
+
 ## [1.0.0] - 2026-09-01
 
 ### Added
