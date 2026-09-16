@@ -2,9 +2,10 @@
 
 One-shot migration, no compatibility layer:
 
-- only `STYLE.md`  -> its text is preserved verbatim inside a new `DESIGN.md`
-  (`Legacy Style Notes`), the nine image-style dimensions stay unspecified, and
-  the obsolete `STYLE.md` is removed once the new file reads back intact;
+- only `STYLE.md`  -> its text is preserved byte-for-byte inside a new
+  `DESIGN.md` (`Legacy Style Notes`), the nine image-style dimensions stay
+  unspecified, and the obsolete `STYLE.md` is removed only after the embedded
+  block has been extracted back out and compared against the original;
 - only `DESIGN.md` -> no-op;
 - both            -> `DESIGN.md` is the sole active authority. Nothing is
   merged or copied from `STYLE.md`; it is removed once `DESIGN.md` is confirmed
@@ -30,6 +31,60 @@ DIMENSIONS = (
 )
 
 UNSPECIFIED = "{unspecified}"
+
+FENCE_INFO = "markdown"
+
+# A file with no final newline cannot sit inside a fenced block unchanged — the
+# closing fence needs a line of its own. That is the only edit ever made to the
+# legacy text, and it is stated in the document so the original stays derivable.
+NO_FINAL_NEWLINE_NOTE = (
+    "The original file ended without a final newline; exactly one was added so "
+    "the block below can close. Nothing else was changed."
+)
+
+
+def _read_verbatim(path: Path) -> str:
+    """Read text with no universal-newline translation.
+
+    `Path.read_text` rewrites CRLF to LF, which would silently normalise a
+    legacy file we promised to keep byte-for-byte.
+    """
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return handle.read()
+
+
+def _write_verbatim(path: Path, text: str) -> None:
+    """Write text with no newline translation (`write_text` emits CRLF on Windows)."""
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        handle.write(text)
+
+
+def _embed_legacy(legacy: str) -> tuple[str, bool]:
+    """Return (text to place inside the fence, whether a newline was added)."""
+    if legacy.endswith(("\n", "\r")):
+        return legacy, False
+    return legacy + "\n", True
+
+
+def _extract_legacy(design_text: str) -> str | None:
+    """Pull the quoted legacy block back out of Legacy Style Notes.
+
+    This is the migration's own proof of losslessness: what goes in must come
+    back out before the source file is deleted.
+    """
+    lines = design_text.splitlines(keepends=True)
+    for start, line in enumerate(lines):
+        stripped = line.rstrip("\r\n")
+        if not stripped.endswith(FENCE_INFO):
+            continue
+        fence = stripped[:-len(FENCE_INFO)]
+        if len(fence) < 3 or set(fence) != {"`"}:
+            continue
+        for end in range(start + 1, len(lines)):
+            if lines[end].rstrip("\r\n") == fence:
+                return "".join(lines[start + 1:end])
+        return None
+    return None
 
 
 def _project_name(target: Path, legacy: str) -> str:
@@ -69,6 +124,7 @@ def _fence_for(text: str) -> str:
 
 def _build_design_md(target: Path, legacy: str) -> str:
     fence = _fence_for(legacy)
+    embedded, added_newline = _embed_legacy(legacy)
     lines = [
         f"# DESIGN: {_project_name(target, legacy)}",
         "",
@@ -104,12 +160,15 @@ def _build_design_md(target: Path, legacy: str) -> str:
         "Verbatim content of the removed `STYLE.md`. Historical record only — it",
         "does not override or supplement the sections above.",
         "",
-        fence + "markdown",
-        legacy.rstrip("\n"),
-        fence,
-        "",
     ]
-    return "\n".join(lines)
+    if added_newline:
+        lines += [NO_FINAL_NEWLINE_NOTE, ""]
+
+    # Everything above is ours, so it is joined with LF. The legacy block is
+    # spliced in as-is — its own line endings, blank lines and trailing
+    # newlines must survive, so it is never passed through the join.
+    head = "\n".join(lines) + "\n"
+    return f"{head}{fence}{FENCE_INFO}\n{embedded}{fence}\n"
 
 
 def _ensure_toc_entry(target: Path) -> None:
@@ -122,9 +181,13 @@ def _ensure_toc_entry(target: Path) -> None:
              "image-style dimensions, UI visual language, Do / Don't "
              "(produced by `/gm-gdd`)")
 
+    original = _read_verbatim(toc)
+    # Rewriting an entry must not also rewrite the file's line endings.
+    eol = "\r\n" if "\r\n" in original else "\n"
+
     kept: list[str] = []
     replaced = False
-    for line in toc.read_text(encoding="utf-8").splitlines():
+    for line in original.splitlines():
         if line.startswith("- `STYLE.md`"):
             if not replaced:
                 kept.append(entry)
@@ -145,9 +208,9 @@ def _ensure_toc_entry(target: Path) -> None:
         else:
             kept.insert(kept.index(anchor) + 1, entry)
 
-    text = "\n".join(kept).rstrip("\n") + "\n"
-    if text != toc.read_text(encoding="utf-8"):
-        toc.write_text(text, encoding="utf-8")
+    text = eol.join(kept).rstrip("\r\n") + eol
+    if text != original:
+        _write_verbatim(toc, text)
         print("Updated TOC.md with the DESIGN.md entry")
 
 
@@ -178,13 +241,23 @@ def migrate(target: Path) -> None:
         print("Neither DESIGN.md nor STYLE.md present; nothing to migrate")
         return
 
-    legacy = style_path.read_text(encoding="utf-8")
+    legacy = _read_verbatim(style_path)
     content = _build_design_md(target, legacy)
-    design_path.write_text(content, encoding="utf-8")
+    _write_verbatim(design_path, content)
 
-    if design_path.read_text(encoding="utf-8") != content:
+    written = _read_verbatim(design_path)
+    if written != content:
         raise RuntimeError(
             "DESIGN.md did not read back as written; STYLE.md left in place."
+        )
+
+    # Deleting the only copy of the legacy text is the irreversible step, so
+    # prove the round trip first rather than trusting the construction.
+    expected, _added_newline = _embed_legacy(legacy)
+    if _extract_legacy(written) != expected:
+        raise RuntimeError(
+            "Legacy Style Notes did not round-trip to the original STYLE.md "
+            "text; STYLE.md left in place."
         )
 
     style_path.unlink()

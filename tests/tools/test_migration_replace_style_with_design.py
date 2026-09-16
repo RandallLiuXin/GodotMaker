@@ -245,3 +245,110 @@ def test_missing_toc_is_tolerated(tmp_path: Path):
     migration.migrate(tmp_path)
 
     assert not (tmp_path / "TOC.md").exists()
+
+
+def test_toc_line_endings_are_preserved(tmp_path: Path):
+    migration = _load_migration()
+    (tmp_path / "STYLE.md").write_text(LEGACY, encoding="utf-8")
+    (tmp_path / "TOC.md").write_bytes(
+        b"# Document Index: Card Arena\r\n\r\n"
+        b"- `ROADMAP.md` - plan\r\n"
+        b"- `STYLE.md` - Visual prompt style guide for image generation\r\n"
+        b"- `ASSETS.md` - assets\r\n"
+    )
+
+    migration.migrate(tmp_path)
+
+    toc = (tmp_path / "TOC.md").read_bytes()
+    assert b"\r\n" in toc
+    assert b"\n" not in toc.replace(b"\r\n", b"")
+    assert b"`STYLE.md`" not in toc
+
+
+# ---------- byte-exact preservation of the legacy text ----------
+
+def _extract_legacy_block(design_path: Path) -> bytes:
+    """Independently pull the quoted block out of Legacy Style Notes.
+
+    Deliberately does NOT reuse the migration's own extractor: the point is to
+    read the produced document the way a human recovering the old file would.
+    """
+    text = design_path.read_bytes().decode("utf-8")
+    lines = text.splitlines(keepends=True)
+    for start, line in enumerate(lines):
+        stripped = line.rstrip("\r\n")
+        if not stripped.endswith("markdown"):
+            continue
+        fence = stripped[: -len("markdown")]
+        if len(fence) < 3 or set(fence) != {"`"}:
+            continue
+        for end in range(start + 1, len(lines)):
+            if lines[end].rstrip("\r\n") == fence:
+                return "".join(lines[start + 1:end]).encode("utf-8")
+    raise AssertionError("no Legacy Style Notes block found")
+
+
+@pytest.mark.parametrize("raw", [
+    pytest.param(b"# Visual Style: A\n\nseed\n", id="lf"),
+    pytest.param(b"# Visual Style: A\n\nseed\n\n\n", id="lf-trailing-blank-lines"),
+    pytest.param(b"# Visual Style: A\r\n\r\nseed\r\n", id="crlf"),
+    pytest.param(b"# Visual Style: A\r\n\r\nseed\r\n\r\n\r\n", id="crlf-trailing-blank-lines"),
+    pytest.param(b"# Visual Style: A\rseed\r", id="cr"),
+    pytest.param(b"# Visual Style: A\n```md\nx\n```\n\n", id="inner-fence-and-blank-tail"),
+    pytest.param("# Visual Style: A\n\n  \tseed  \n".encode("utf-8"), id="whitespace-and-nbsp"),
+])
+def test_legacy_text_survives_byte_for_byte(tmp_path: Path, raw: bytes):
+    """A file ending in a newline must come back out of DESIGN.md unchanged."""
+    migration = _load_migration()
+    (tmp_path / "STYLE.md").write_bytes(raw)
+
+    migration.migrate(tmp_path)
+
+    assert _extract_legacy_block(tmp_path / "DESIGN.md") == raw
+    assert migration.NO_FINAL_NEWLINE_NOTE not in (
+        (tmp_path / "DESIGN.md").read_text(encoding="utf-8")
+    )
+
+
+@pytest.mark.parametrize("raw", [
+    pytest.param(b"# Visual Style: A\n\nseed", id="no-final-newline"),
+    pytest.param(b"", id="empty-file"),
+])
+def test_only_added_byte_is_a_closing_newline_and_it_is_disclosed(
+    tmp_path: Path, raw: bytes
+):
+    """A fenced block needs a final newline. That single edit is stated in the
+    document, so the original stays derivable."""
+    migration = _load_migration()
+    (tmp_path / "STYLE.md").write_bytes(raw)
+
+    migration.migrate(tmp_path)
+
+    assert _extract_legacy_block(tmp_path / "DESIGN.md") == raw + b"\n"
+    assert migration.NO_FINAL_NEWLINE_NOTE in (
+        (tmp_path / "DESIGN.md").read_text(encoding="utf-8")
+    )
+
+
+def test_generated_sections_use_lf_regardless_of_platform(tmp_path: Path):
+    """Only the quoted legacy block may carry foreign line endings."""
+    migration = _load_migration()
+    (tmp_path / "STYLE.md").write_bytes(b"# Visual Style: A\n\nseed\n")
+
+    migration.migrate(tmp_path)
+
+    assert b"\r" not in (tmp_path / "DESIGN.md").read_bytes()
+
+
+def test_migration_refuses_to_delete_style_when_the_block_cannot_round_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The delete is irreversible, so a broken embedding must stop it."""
+    migration = _load_migration()
+    (tmp_path / "STYLE.md").write_bytes(b"# Visual Style: A\n\nseed\n")
+    monkeypatch.setattr(migration, "_extract_legacy", lambda _text: "corrupted")
+
+    with pytest.raises(RuntimeError, match="round-trip"):
+        migration.migrate(tmp_path)
+
+    assert (tmp_path / "STYLE.md").read_bytes() == b"# Visual Style: A\n\nseed\n"
