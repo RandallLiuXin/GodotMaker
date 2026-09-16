@@ -56,7 +56,7 @@ class TestNoRoleRegularConversation:
 class TestNoRoleSubagentRegularConversation:
     """Without current_role, subagents are not treated as pipeline workers."""
 
-    @pytest.mark.parametrize("doc", ["PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md"])
+    @pytest.mark.parametrize("doc", ["PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md"])
     def test_allow_planning_docs(self, doc):
         _, _, parsed = run_hook(HOOK, {
             "tool_name": "Edit",
@@ -116,7 +116,9 @@ class TestProjectMemoryOwnership:
 
     @pytest.mark.parametrize("path", [
         "src/memory/s_memory.gd",
-        "docs/memory/design.md",
+        # NOT design.md — that is now a planning-doc basename (DESIGN.md),
+        # and planning docs are matched by name at any depth on purpose.
+        "docs/memory/architecture.md",
         "notes/MEMORY.md",
     ])
     def test_nested_non_memory_paths_are_allowed(self, path):
@@ -156,7 +158,7 @@ class TestDecomposerSubagent:
     # Full decomposer-owned set: PLANNING_DOCS minus gap.md (which belongs to
     # /gm-fixgap's lead, not decomposer) plus project.godot.
     _DECOMPOSER_OWNED_FILES = [
-        "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md",
+        "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md",
         "project.godot",
     ]
 
@@ -364,7 +366,7 @@ class TestRoleBased:
 
     def test_gdd_can_write_planning_docs(self, project_dir):
         write_current_role("gdd")
-        for path in ["GDD.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
+        for path in ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
             _, _, parsed = run_hook(HOOK, {
                 "tool_name": "Write",
                 "tool_input": {"file_path": path},
@@ -420,7 +422,7 @@ class TestRoleBased:
 
     def test_asset_blocked_from_other_files(self, project_dir):
         write_current_role("asset")
-        for path in ["assets/sprite.png", "PLAN.md", "STRUCTURE.md", "STYLE.md", "SCENES.md",
+        for path in ["assets/sprite.png", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "SCENES.md",
                      "GAP.md", "src/x.gd", "GDD.md"]:
             _, _, parsed = run_hook(HOOK, {
                 "tool_name": "Write",

@@ -12,7 +12,7 @@
 
 ## Visual Style Source
 
-Initial visual seed text lives in `STYLE.md`. Generated scene references,
+The project visual contract lives in `DESIGN.md`. Generated scene references,
 character-bundle identity anchors, and manifest source relationships are the
 primary style anchors after they exist.
 

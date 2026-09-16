@@ -16,7 +16,7 @@ docs/tags/
     ├── GDD-snapshot.md
     ├── PLAN.md
     ├── STRUCTURE.md
-    ├── STYLE.md
+    ├── DESIGN.md
     ├── SCENES.md
     ├── MEMORY.md
     ├── memory/               MEMORY.md 索引的架构与约束详情

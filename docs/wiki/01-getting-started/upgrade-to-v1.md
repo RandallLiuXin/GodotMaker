@@ -70,7 +70,7 @@ The largest 0.8.2-to-1.0 project-document change is the asset handoff:
   hand from old paths or old evidence.
 
 The local agent should also reconcile `GDD.md`, the current-tag `PLAN.md`,
-`STRUCTURE.md`, `SCENES.md`, `STYLE.md`, `MEMORY.md`, `ROADMAP.md`, existing
+`STRUCTURE.md`, `SCENES.md`, `DESIGN.md`, `MEMORY.md`, `ROADMAP.md`, existing
 Godot resource bindings, addons, and custom runtime configuration. Not every
 workspace needs every change: the on-disk game is the authority.
 
@@ -132,7 +132,7 @@ Phase A - read-only audit:
   may be stored outside the repository. Note that Claude Code and Codex publish
   remove the old entry before adding the replacement, so an add failure can
   leave no registration.
-- Read `GDD.md`, `PLAN.md`, `ASSETS.md`, `STRUCTURE.md`, `SCENES.md`, `STYLE.md`,
+- Read `GDD.md`, `PLAN.md`, `ASSETS.md`, `STRUCTURE.md`, `SCENES.md`, `DESIGN.md`,
   `MEMORY.md`, and `ROADMAP.md` when present.
 - Inspect `project.godot`, addons, scenes, scripts, resource paths, generated
   assets, and retained evidence under `.godotmaker/`.

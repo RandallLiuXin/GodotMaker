@@ -136,7 +136,7 @@ class TestRoleReminder:
         assert "scaffold" in ctx
 
     def test_gdd_complete_reminds_asset(self, project_dir):
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
+        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
             open(f, "w").close()
         _, code, parsed = run_hook(HOOK, {
             "hook_event_name": "PreToolUse",
@@ -200,7 +200,7 @@ class TestRoleReminder:
         assert parsed is None or "additionalContext" not in parsed.get("hookSpecificOutput", {})
 
     def test_windows_path(self, project_dir):
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
+        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
             open(f, "w").close()
         _, code, parsed = run_hook(HOOK, {
             "hook_event_name": "PreToolUse",
@@ -216,7 +216,7 @@ class TestRoleReminder:
         assert "/gm-asset" in ctx
 
     def test_edit_tool_for_gdd_event_reminds_asset(self, project_dir):
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
+        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
             open(f, "w").close()
         _, code, parsed = run_hook(HOOK, {
             "hook_event_name": "PreToolUse",
@@ -323,7 +323,7 @@ class TestTagArchived:
     """
 
     REQUIRED_FILES = [
-        "GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "SCENES.md",
+        "GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "SCENES.md",
         "MEMORY.md", "evaluation-final.json", "CHANGELOG.md",
         "README.md", "SUMMARY.md",
     ]
@@ -449,7 +449,7 @@ class TestTagArchived:
             ("GDD.md", "# GDD\n"),
             ("PLAN.md", "# Plan\n\n**Tag:** v0.1.0\n"),
             ("STRUCTURE.md", "# Structure\n"),
-            ("STYLE.md", "# Style\n"),
+            ("DESIGN.md", "# Design\n"),
             ("SCENES.md", "# Scenes\n"),
             ("MEMORY.md", "# Memory\n"),
         ):

@@ -19,6 +19,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Replaced the project `STYLE.md` visual seed with a plain-text `DESIGN.md` visual contract covering visual identity, nine image-style dimensions, UI visual language, and Do / Don't lists; existing projects migrate on publish, legacy text preserved verbatim.
+
 ## Fixed
 
 ## Removed

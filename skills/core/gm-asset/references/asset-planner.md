@@ -1,6 +1,6 @@
 # Asset Planning Reference
 
-Plan current-tag production units from `ASSETS.md`, `PLAN.md`, `STYLE.md`,
+Plan current-tag production units from `ASSETS.md`, `PLAN.md`, `DESIGN.md`,
 `STRUCTURE.md`, and `SCENES.md`. A unit owns one public request and names its
 complete expected logical output set in that family's native contract:
 `scene-prop-set` and `compact-prop-pack` slots, `platform-strip` segments and

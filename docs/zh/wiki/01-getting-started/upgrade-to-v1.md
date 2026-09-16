@@ -59,7 +59,7 @@ asset runtime 或 `tools/` 等受管理路径内的自定义文件不会被保�
   写入，不能根据旧路径或旧证据手工恢复。
 
 本地 Agent 还应核对 `GDD.md`、当前 tag 的 `PLAN.md`、`STRUCTURE.md`、
-`SCENES.md`、`STYLE.md`、`MEMORY.md`、`ROADMAP.md`、现有 Godot 资源绑定、
+`SCENES.md`、`DESIGN.md`、`MEMORY.md`、`ROADMAP.md`、现有 Godot 资源绑定、
 addons 和自定义 runtime 配置。并非每个工作区都需要修改所有项目；磁盘上的真实
 游戏才是判断依据。
 
@@ -112,7 +112,7 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
   `check_project.py`：有效 MCP 状态可能存于仓库之外。还要注明 Claude Code 与 Codex
   publish 会先移除旧 entry 再添加新 entry，因此 add 失败后可能没有任何注册。
 - 存在时读取 `GDD.md`、`PLAN.md`、`ASSETS.md`、`STRUCTURE.md`、`SCENES.md`、
-  `STYLE.md`、`MEMORY.md` 和 `ROADMAP.md`。
+  `DESIGN.md`、`MEMORY.md` 和 `ROADMAP.md`。
 - 检查 `project.godot`、addons、场景、脚本、资源路径、生成资产，以及
   `.godotmaker/` 中保留的历史证据。
 - 将现有项目文档与 v1.0.0 模板作只读比较。

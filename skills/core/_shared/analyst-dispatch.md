@@ -34,9 +34,9 @@ matches.
 - {row id/name/status/path when available}
 
 ### Visual Context
-- STYLE.md is an initial visual seed.
+- DESIGN.md is an initial visual seed.
 - Existing scene references and canonical asset references are primary style anchors.
-- Do not treat STYLE.md as the final style source when image references exist.
+- Do not treat DESIGN.md as the final style source when image references exist.
 
 ### Task
 1. Inspect only the listed candidate paths.
@@ -111,7 +111,7 @@ Write `assets/manifest.json` as JSON:
 3. Do not modify ASSETS.md.
 4. Do not modify game code.
 5. Do not generate new visual assets.
-6. Do not create STYLE.md or update visual style direction.
+6. Do not create DESIGN.md or update visual style direction.
 7. Use `candidate_for` only for high-confidence row matches.
 8. Use `handoff: direct_runtime` only for single files that already match a
    final ASSETS.md runtime path.

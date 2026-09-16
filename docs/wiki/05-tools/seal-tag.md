@@ -17,7 +17,7 @@ docs/tags/
     ├── GDD-snapshot.md
     ├── PLAN.md
     ├── STRUCTURE.md
-    ├── STYLE.md
+    ├── DESIGN.md
     ├── SCENES.md
     ├── MEMORY.md
     ├── memory/               architecture files MEMORY.md indexes

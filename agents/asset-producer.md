@@ -69,7 +69,7 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 
 1. Use visible scene references and canonical asset references as the primary
    style anchors.
-2. Use `STYLE.md` only when no visual reference exists or compact style
+2. Use `DESIGN.md` only when no visual reference exists or compact style
    language is needed.
 3. Use solid flat magenta `#FF00FF` for sources that need extraction.
 4. Keep generated sources free of text, labels, UI callouts, watermarks, and

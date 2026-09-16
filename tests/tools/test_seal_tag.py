@@ -47,7 +47,7 @@ def project_dir(tmp_path: Path) -> Path:
         "- [v0.1.0-M2] dash\n"
     )
     (tmp_path / "STRUCTURE.md").write_text("# STRUCTURE\n")
-    (tmp_path / "STYLE.md").write_text("# STYLE\n")
+    (tmp_path / "DESIGN.md").write_text("# DESIGN\n")
     (tmp_path / "SCENES.md").write_text("# SCENES\n")
     (tmp_path / "MEMORY.md").write_text(
         "# MEMORY\n\n## System Index\n\n"
@@ -75,7 +75,7 @@ def test_archive_copies_docs_and_evidence(project_dir: Path):
     assert (dest / "GDD-snapshot.md").read_text() == "# GDD\n"
     assert (dest / "PLAN.md").exists()
     assert (dest / "STRUCTURE.md").exists()
-    assert (dest / "STYLE.md").exists()
+    assert (dest / "DESIGN.md").exists()
     assert (dest / "SCENES.md").exists()
     assert (dest / "MEMORY.md").exists()
     assert json.loads((dest / "evaluation-final.json").read_text())["result"] == "approve"
@@ -1127,7 +1127,7 @@ def _legacy_archive(project_dir: Path, tag: str = "v0.0.9") -> Path:
     """An archive in the pre-index layout: flat docs, no README/SUMMARY/memory."""
     dest = project_dir / "docs" / "tags" / tag
     dest.mkdir(parents=True)
-    for name in ("GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "STYLE.md", "SCENES.md"):
+    for name in ("GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "SCENES.md"):
         (dest / name).write_text(f"# legacy {name}\n", encoding="utf-8")
     (dest / "MEMORY.md").write_text(
         "# MEMORY\n\n- [movement](memory/movement.md) - not archived back then\n",
@@ -1143,6 +1143,26 @@ def _legacy_archive(project_dir: Path, tag: str = "v0.0.9") -> Path:
         encoding="utf-8",
     )
     return dest
+
+
+def test_backfill_does_not_treat_a_legacy_style_md_as_the_visual_contract(
+    project_dir: Path,
+):
+    """Archives sealed before DESIGN.md hold STYLE.md. It is frozen history —
+    backfill must record the DESIGN.md gap rather than fall back to it."""
+    dest = _legacy_archive(project_dir, "v0.0.8")
+    (dest / "DESIGN.md").unlink()
+    (dest / "STYLE.md").write_text("# legacy STYLE.md\n", encoding="utf-8")
+
+    assert run(project_dir, "backfill", "v0.0.8").returncode == 0
+
+    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert any("DESIGN.md" in w for w in manifest["warnings"])
+    readme = (dest / "README.md").read_text(encoding="utf-8")
+    assert "partial" in readme
+    # The frozen file itself is untouched and never promoted to a contract role.
+    assert (dest / "STYLE.md").read_text(encoding="utf-8") == "# legacy STYLE.md\n"
+    assert "| [STYLE.md](STYLE.md) |" not in readme
 
 
 def test_backfill_adds_index_files_without_touching_canonical_documents(project_dir: Path):
@@ -1555,13 +1575,13 @@ def test_backfilled_summary_links_all_resolve(project_dir: Path):
     missing canonical documents, so SUMMARY must link only what is there."""
     seal_tag = _load_seal_tag_module()
     dest = _legacy_archive(project_dir, "v0.0.9")
-    (dest / "STYLE.md").unlink()          # a gap the backfill must tolerate
+    (dest / "DESIGN.md").unlink()          # a gap the backfill must tolerate
     (dest / "CHANGELOG.md").unlink()
 
     assert run(project_dir, "backfill", "v0.0.9").returncode == 0
     summary = (dest / "SUMMARY.md").read_text(encoding="utf-8")
     assert "(memory/)" not in summary
-    assert "STYLE.md" not in summary
+    assert "DESIGN.md" not in summary
     assert "CHANGELOG.md" not in summary
 
     for doc in (dest / "README.md", dest / "SUMMARY.md",
@@ -1791,7 +1811,7 @@ def test_backfill_preserves_warnings_recorded_by_an_earlier_run(project_dir: Pat
 def test_backfill_does_not_duplicate_carried_warnings(project_dir: Path):
     """Each `--force` pass re-derives the same notes; they must not stack up."""
     dest = _legacy_archive(project_dir, "v0.0.9")
-    (dest / "STYLE.md").unlink()      # a gap re-derived on every pass
+    (dest / "DESIGN.md").unlink()      # a gap re-derived on every pass
 
     for _ in range(3):
         assert run(project_dir, "backfill", "v0.0.9", "--force").returncode == 0
@@ -1800,7 +1820,7 @@ def test_backfill_does_not_duplicate_carried_warnings(project_dir: Path):
         (dest / "evidence" / "manifest.json").read_text(encoding="utf-8")
     )["warnings"]
     assert len(warnings) == len(set(warnings)), warnings
-    assert sum("STYLE.md" in w for w in warnings) == 1
+    assert sum("DESIGN.md" in w for w in warnings) == 1
     assert sum("memory/movement.md" in w for w in warnings) == 1
 
 

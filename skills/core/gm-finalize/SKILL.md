@@ -97,7 +97,7 @@ The helper copies per-tag working docs, the `memory/` subtree and best-effort ru
 | `docs/tags/<Tag>/GDD-snapshot.md` | `GDD.md` |
 | `docs/tags/<Tag>/PLAN.md` | `PLAN.md` |
 | `docs/tags/<Tag>/STRUCTURE.md` | `STRUCTURE.md` |
-| `docs/tags/<Tag>/STYLE.md` | `STYLE.md` |
+| `docs/tags/<Tag>/DESIGN.md` | `DESIGN.md` |
 | `docs/tags/<Tag>/SCENES.md` | `SCENES.md` |
 | `docs/tags/<Tag>/MEMORY.md` | `MEMORY.md` |
 | `docs/tags/<Tag>/memory/` | `memory/` |
@@ -258,7 +258,7 @@ It does NOT touch: `.godotmaker/metrics.jsonl` (cross-session history), `.godotm
 
 Then verify the reset landed — `.godotmaker/stage.jsonl` is empty (0 bytes) and `.godotmaker/metrics_current.jsonl` does not exist. If either check fails, STOP and report.
 
-The root-level working docs (`PLAN.md`, `STRUCTURE.md`, `STYLE.md`, `SCENES.md`) stay at root.
+The root-level working docs (`PLAN.md`, `STRUCTURE.md`, `DESIGN.md`, `SCENES.md`) stay at root.
 
 ### 10. Append finalize event
 

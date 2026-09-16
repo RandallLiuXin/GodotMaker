@@ -13,6 +13,7 @@ my-game/
 ├── PLAN.md
 ├── STRUCTURE.md
 ├── SCENES.md
+├── DESIGN.md
 ├── ASSETS.md
 ├── TOC.md
 ├── MEMORY.md
@@ -54,6 +55,8 @@ These Markdown files are the "source of truth" the AI reads before making decisi
 **`STRUCTURE.md`** — The technical architecture: which components and systems exist, what data each component holds, what each system does. Written by `/gm-gdd`, then updated by `/gm-build`. Reading it gives you the clearest picture of how the game code is organised.
 
 **`SCENES.md`** — A description of every scene: what it contains and how the game objects in it map to ECS entities. Written by `/gm-gdd`; the workflow uses it as a blueprint when generating `.tscn` files.
+
+**`DESIGN.md`** — The project's visual contract: a short visual identity, nine image-style dimensions (medium, color, shape, line, material, lighting, depth, composition, detail density), a UI visual language section, and Do / Don't lists. Written by `/gm-gdd` and kept authoritative for every later image generation and visual review. It is plain prose — no screenshots or technical parameters. If the art direction is drifting, this is the file to correct.
 
 **`ASSETS.md`** — A list of every asset the game needs: the logical name, the file path, and the generation settings used. Written and updated by `/gm-asset`. If you add your own art files, the workflow updates this list to include them.
 

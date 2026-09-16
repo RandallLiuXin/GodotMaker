@@ -1,6 +1,6 @@
 ---
 name: decomposer
-description: Decomposes a confirmed GDD + ROADMAP into the current tag's artifact set — PLAN.md, STRUCTURE.md, SCENES.md, STYLE.md, TOC.md, plus appends new rows to the cross-tag ASSETS.md (and optionally project.godot tweaks). Owns sub-stage 1c of /gm-gdd. Returns only a short summary so the lead's context stays lean.
+description: Decomposes a confirmed GDD + ROADMAP into the current tag's artifact set — PLAN.md, STRUCTURE.md, SCENES.md, DESIGN.md, TOC.md, plus appends new rows to the cross-tag ASSETS.md (and optionally project.godot tweaks). Owns sub-stage 1c of /gm-gdd. Returns only a short summary so the lead's context stays lean.
 model: inherit
 ---
 
@@ -25,7 +25,7 @@ The lead does NOT want to see the file content come back. Your report is a short
 
 1. `GDD Path` — read in full. Cross-tag design source of truth.
 2. `Roadmap Path` — read in full. Pull this tag's entry; understand what neighbouring tags will deliver later (helps avoid premature scope).
-3. `Templates Dir` — read the 6 templates as you need them: `PLAN.md`, `STYLE.md`, `ASSETS.md`, `SCENES.md`, `STRUCTURE.md`, `TOC.md`. The templates already document their own conventions (Tag header, Tag Mechanics, risk taxonomy, schedule phases, etc.) — follow them rather than inventing structure.
+3. `Templates Dir` — read the 6 templates as you need them: `PLAN.md`, `DESIGN.md`, `ASSETS.md`, `SCENES.md`, `STRUCTURE.md`, `TOC.md`. The templates already document their own conventions (Tag header, Tag Mechanics, risk taxonomy, schedule phases, etc.) — follow them rather than inventing structure.
 4. `Project.godot Path` — read to know current viewport / main_scene / autoloads, decide whether tweaks are needed. `main_scene` is off-limits (see Absolute Prohibitions).
 5. `Manifest Path` (optional) — if present, ASSETS.md `provided` rows derive from it.
 6. `Prior Tag Archives` (subsequent mode only) — read each prior tag's `PLAN.md` (for Tag Mechanics) and `STRUCTURE.md` (for what systems / components already exist). You do NOT modify these archives; you read them so the new tag's plan integrates with what already shipped.
@@ -58,7 +58,7 @@ Standard packages:
 |---|---|---|
 | `plan-package` | `PLAN.md` | Step 1 |
 | `architecture-package` | `STRUCTURE.md`, `project.godot` | Steps 5-6 |
-| `scene-asset-package` | `STYLE.md`, `SCENES.md`, `ASSETS.md`, `TOC.md` | Steps 2-4, 7 |
+| `scene-asset-package` | `DESIGN.md`, `SCENES.md`, `ASSETS.md`, `TOC.md` | Steps 2-4, 7 |
 
 ## Steps (run in order)
 
@@ -85,14 +85,44 @@ Required structure (matches the template):
 - If the current ROADMAP entry cannot form a playable unit, report `failed` and state that ROADMAP.md needs a playable-unit tag.
 - All tasks in the Task Status table start as `pending`.
 
-### Step 2: STYLE.md
+### Step 2: DESIGN.md
 
-Run this step only when `STYLE.md` is in `Owned Files`, or when no `Work Package` is provided.
+Run this step only when `DESIGN.md` is in `Owned Files`, or when no `Work Package` is provided.
 
-Follow the rules in `.claude/templates/STYLE.md`:
+`DESIGN.md` is the project's visual contract and accumulates across tags.
+Follow the structure and writing rules the template documents: Visual Identity,
+the nine numbered image-style dimensions, UI Visual Language, Do, and Don't.
 
-- **Initial mode:** Create from the template, populate Style Anchor, Prompt Suffix, UI / Asset Rules, Avoid, and Reference Notes from GDD §4 and user-provided visual notes.
-- **Subsequent mode:** Update only when this tag introduces a new visual direction.
+**Allowed sources.** Write a rule only when one of these establishes it:
+
+1. `GDD.md` (its visual-direction section in particular);
+2. visual notes the user stated explicitly, as relayed in your brief;
+3. a reference document or image you can actually read.
+
+Nothing else is a source. Your own taste, genre conventions, and "what usually
+looks good" are not sources.
+
+**Never invent.** A dimension no allowed source establishes stays
+`{unspecified}` in the file. An empty placeholder is a correct answer here;
+a plausible-sounding rule the project never agreed to is not. The same applies
+to `Do` and `Don't` — keep only entries a source actually supports.
+
+**UI Visual Language.** When the project has visible UI, write observable UI
+rules. When it has none, the whole section is exactly
+`N/A - this project has no visible UI.` — do not invent a UI system to fill it.
+
+**Keep technical requirements out.** Canvas size, alpha, frame counts, atlas
+regions, metadata, Godot resource types, and engine bindings belong to
+`ASSETS.md` and the Asset Skill contracts, never to `DESIGN.md`.
+
+- **Initial mode:** Create from the template and fill every section the allowed
+  sources support.
+- **Subsequent mode:** Do NOT overwrite the file from the template. Rewrite
+  only the sections whose visual direction this tag confirmably changes, and
+  leave every other section exactly as it is — no re-wording, no re-ordering,
+  no filling in previously `{unspecified}` content that nothing new
+  establishes. If this tag confirms no visual change, leave `DESIGN.md`
+  untouched and report it as unchanged.
 
 ### Step 3: ASSETS.md
 
@@ -258,7 +288,7 @@ If you wrote some files but not others, still report `failed` and list what got 
 - PLAN.md — {tag id, K risk + M main = N total tasks, all pending; T tag mechanics + I inherited mechanics; playable unit summary}
 - STRUCTURE.md — {tag id, C components added, S systems added, R systems refactored}
 - SCENES.md — {tag id, N scenes covered}
-- STYLE.md — {style anchor, prompt suffix status, rule count}
+- DESIGN.md — {created | sections updated: <names> | unchanged; dimensions left `{unspecified}`; UI section written or N/A}
 - ASSETS.md — {N new rows appended for current tag, P provided + Q MISSING among them; prior-tag rows untouched}
 - TOC.md — {updated|created}
 

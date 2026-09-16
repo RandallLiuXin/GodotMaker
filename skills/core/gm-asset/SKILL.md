@@ -29,7 +29,7 @@ Asset is re-runnable per tag. Use the current state of `ASSETS.md`,
 Stop when any required input is missing:
 
 1. `project.godot`: tell user to run `/gm-scaffold`.
-2. `ROADMAP.md`, `STYLE.md`, `ASSETS.md`, `SCENES.md`, or `PLAN.md`: tell user
+2. `ROADMAP.md`, `DESIGN.md`, `ASSETS.md`, `SCENES.md`, or `PLAN.md`: tell user
    to run `/gm-gdd`.
 3. Missing `**Tag:**` header in `PLAN.md`: tell user to re-run `/gm-gdd`.
 
@@ -66,7 +66,7 @@ If you've added new art files or scenes since last run, just tell me and I'll re
 5. Do not generate raw visual art in the manager context.
 6. Do not write generated image files with direct Write/Edit.
 7. Do not modify `GDD.md`, `PLAN.md`, `GAP.md`, `STRUCTURE.md`, `SCENES.md`, or
-   `STYLE.md`.
+   `DESIGN.md`.
 8. Do not write game code.
 9. Mark audio rows `deferred` unless the user provided matching files.
 10. Do not modify prior-tag rows.
@@ -115,7 +115,7 @@ Use `references/asset-planner.md` for production-unit selection.
 ### Step 1 - Inventory Current-Tag Work
 
 1. Read `ASSETS.md`.
-2. Read `PLAN.md`, `STYLE.md`, `SCENES.md`, and `STRUCTURE.md`.
+2. Read `PLAN.md`, `DESIGN.md`, `SCENES.md`, and `STRUCTURE.md`.
 3. Build a current-tag missing list.
 4. Split the list into audio, user-provided candidates, scene references, and
    generated visual production units.
@@ -230,7 +230,7 @@ One production unit may return many outputs. Register all runtime outputs togeth
 
 ### Inputs
 - ASSETS.md rows: {row ids or names}
-- Style seed: STYLE.md
+- Design contract: DESIGN.md
 - Scene docs: SCENES.md sections or references
 - Canonical references: {paths}
 

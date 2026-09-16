@@ -101,7 +101,7 @@ ARCHIVE_MAP = [
     ("GDD.md",                          "GDD-snapshot.md"),
     ("PLAN.md",                         "PLAN.md"),
     ("STRUCTURE.md",                    "STRUCTURE.md"),
-    ("STYLE.md",                        "STYLE.md"),
+    ("DESIGN.md",                       "DESIGN.md"),
     ("SCENES.md",                       "SCENES.md"),
     ("MEMORY.md",                       "MEMORY.md"),
     (".godotmaker/evaluation.json",     "evaluation-final.json"),
@@ -145,7 +145,7 @@ ARCHIVE_FILE_ROLES = {
     "GDD-snapshot.md":       ("Game design document as it stood when the tag shipped", "`GDD.md`"),
     "PLAN.md":               ("Playable units and the task table for this tag", "`PLAN.md`"),
     "STRUCTURE.md":          ("ECS component/system layout for this tag", "`STRUCTURE.md`"),
-    "STYLE.md":              ("Visual style contract for this tag", "`STYLE.md`"),
+    "DESIGN.md":             ("Project visual contract as of this tag", "`DESIGN.md`"),
     "SCENES.md":             ("Scene inventory for this tag", "`SCENES.md`"),
     "MEMORY.md":             ("Architecture and constraints frozen at seal time", "`MEMORY.md`"),
     "evaluation-final.json": ("Final evaluator verdict for this tag", "`.godotmaker/evaluation.json`"),
@@ -686,10 +686,10 @@ def _canonical_pointers(manifest: dict) -> list[str]:
         if name in present:
             lines.append(f"- [{name}]({name}) — {label}")
 
-    architecture = [f"[{n}]({n})" for n in ("STRUCTURE.md", "SCENES.md", "STYLE.md")
+    architecture = [f"[{n}]({n})" for n in ("STRUCTURE.md", "SCENES.md", "DESIGN.md")
                     if n in present]
     if architecture:
-        lines.append(f"- {' · '.join(architecture)} — architecture, scenes, style")
+        lines.append(f"- {' · '.join(architecture)} — architecture, scenes, visual contract")
 
     if "MEMORY.md" in present:
         if manifest.get("memory_files"):
@@ -833,7 +833,7 @@ def _render_tag_readme(tag: str, manifest: dict, link_warnings: list[str]) -> st
         "",
         "1. `SUMMARY.md` — one-screen answer to \"what shipped in this tag\".",
         "2. `CHANGELOG.md` / `PLAN.md` — the delivered mechanics and their task trail.",
-        "3. `STRUCTURE.md`, `SCENES.md`, `STYLE.md` — how it was built, if you need to touch it again.",
+        "3. `STRUCTURE.md`, `SCENES.md`, `DESIGN.md` — how it was built, if you need to touch it again.",
         "4. `MEMORY.md` + `memory/` — architecture decisions and constraints at seal time.",
         "5. `evidence/` — the proof, only when a claim above is in doubt.",
         "",

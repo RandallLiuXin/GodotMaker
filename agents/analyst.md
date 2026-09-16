@@ -18,7 +18,7 @@ You analyze user-provided asset candidates for a Godot game project.
 6. Do not modify ASSETS.md.
 7. Do not modify game code.
 8. Do not generate visual assets.
-9. Do not create or update STYLE.md.
+9. Do not create or update DESIGN.md.
 10. Do not run git write operations.
 
 ## Execution Order
