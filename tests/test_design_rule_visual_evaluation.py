@@ -1130,14 +1130,86 @@ def test_resource_paths_resolve_to_openable_files(declared, expected):
         "res://.",
         "res://../outside/hero.png",
         "../outside/hero.png",
+        "res://a/../../outside/hero.png",
         "/etc/passwd",
+        "res:///etc/passwd",
         "C:/Windows/system32/x.png",
         "   ",
+        # A drive letter hidden behind the res:// prefix. The prefix branch
+        # used to return before the absolute-path guard, so this resolved to
+        # a real system file that visual-qa would then read and upload.
+        "res://C:/Windows/win.ini",
+        "res://c:/windows/win.ini",
+        "res://C:\\Windows\\System32\\drivers\\etc\\hosts",
+        "res://D:/secrets/key.png",
+        # NTFS alternate data stream.
+        "res://assets/generated/hero.png:hidden",
     ],
 )
 def test_unsafe_or_empty_capture_paths_are_rejected(declared):
     with pytest.raises(DesignError):
         design_rules.resolve_capture(declared)
+
+
+@pytest.mark.parametrize(
+    "declared",
+    [
+        "res://C:/Windows/win.ini",
+        "res://C:\\Windows\\win.ini",
+        "C:/Windows/win.ini",
+    ],
+)
+def test_a_drive_letter_never_reaches_a_built_request(tmp_path, declared):
+    """F-003: `Path(root) / 'C:/...'` discards the root on Windows, so a
+    drive-letter capture passed the existence check against a real system
+    file and would have been handed to the VQA backend."""
+    _write_png(tmp_path / "assets/generated/character-bundle/hero/hero.png")
+
+    with pytest.raises(DesignError):
+        build_request(
+            DESIGN_MD,
+            subject_name="hero",
+            subject_class="character",
+            subject_kind="asset",
+            captures=[declared],
+            project_root=tmp_path,
+        )
+
+    # The same escape must not slip in as a reference either, since the
+    # reference path is quoted into the prompt.
+    with pytest.raises(DesignError):
+        build_request(
+            DESIGN_MD,
+            subject_name="hero",
+            subject_class="character",
+            subject_kind="asset",
+            captures=["res://assets/generated/character-bundle/hero/hero.png"],
+            references=[declared],
+            project_root=tmp_path,
+        )
+
+
+def test_containment_is_checked_against_resolved_paths(tmp_path):
+    root = tmp_path / "proj"
+    (root / "assets").mkdir(parents=True)
+
+    with pytest.raises(DesignError, match="outside the project root"):
+        design_rules._contained(root, "../escape.png")
+
+
+def test_a_symlink_out_of_the_project_is_refused(tmp_path):
+    """String guards cannot see a symlink; the resolved-path check can."""
+    root = tmp_path / "proj"
+    (root / "assets").mkdir(parents=True)
+    outside = tmp_path / "outside.png"
+    _write_png(outside)
+    try:
+        (root / "assets" / "link.png").symlink_to(outside)
+    except (OSError, NotImplementedError) as exc:  # pragma: no cover
+        pytest.skip(f"symlinks unavailable on this host: {exc}")
+
+    with pytest.raises(DesignError, match="outside the project root"):
+        design_rules._contained(root, "assets/link.png")
 
 
 def test_request_hands_visual_qa_a_path_it_can_open(tmp_path):
@@ -1248,6 +1320,23 @@ def test_cli_rejects_a_capture_that_does_not_exist(cli_project: Path):
     assert not (cli_project / "request.json").exists(), (
         "a rejected request must not be written"
     )
+
+
+def test_cli_refuses_a_drive_letter_capture(cli_project: Path):
+    escaped = _run(
+        "build-request",
+        "--design", "DESIGN.md",
+        "--subject", "character",
+        "--name", "hero",
+        "--kind", "asset",
+        "--capture", "res://C:/Windows/win.ini",
+        "--output", "request.json",
+        cwd=cli_project,
+    )
+
+    assert escaped.returncode == 2
+    assert "drive" in escaped.stderr
+    assert not (cli_project / "request.json").exists()
 
 
 def test_asset_skill_passes_result_paths_verbatim():

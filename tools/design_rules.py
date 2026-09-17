@@ -49,7 +49,7 @@ import argparse
 import json
 import re
 import sys
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 REQUEST_SCHEMA = "gm-design-rule-check/v1"
 RESULT_SCHEMA = "gm-design-rule-result/v1"
@@ -332,26 +332,58 @@ def resolve_capture(value: str) -> str:
     if not raw:
         raise DesignError("capture path must be non-empty")
 
-    if raw.startswith(RES_PREFIX):
-        remainder = raw[len(RES_PREFIX):]
-        segments = [s for s in remainder.replace("\\", "/").split("/") if s != ""]
-        if not segments or any(s in (".", "..") for s in segments):
-            raise DesignError(
-                f"invalid resource path {raw!r}: expected res:// followed by a "
-                "relative path with no '.' or '..' segment"
-            )
-        return "/".join(segments)
-
-    candidate = PurePosixPath(raw.replace("\\", "/"))
-    if candidate.is_absolute() or (len(raw) > 1 and raw[1] == ":"):
+    remainder = raw[len(RES_PREFIX):] if raw.startswith(RES_PREFIX) else raw
+    # Both forms funnel through one guard. Splitting them was how a drive
+    # letter smuggled inside a `res://` value skipped the absolute-path check.
+    normalised = remainder.replace("\\", "/")
+    if normalised.startswith("/"):
+        # A rooted path, or the `res:///` form the asset contract rejects.
+        # Reinterpreting it as project-relative would quietly change which
+        # file is read, so it is an error rather than a silent rewrite.
         raise DesignError(
-            f"capture path {raw!r} must be project-relative or a res:// "
-            "resource path, not absolute"
+            f"path {raw!r} must be project-relative, not rooted at '/'"
         )
-    segments = [s for s in candidate.parts if s not in ("", ".")]
-    if not segments or any(s == ".." for s in segments):
-        raise DesignError(f"capture path {raw!r} must stay inside the project")
+    # `.` is a no-op segment; `..` is the one that walks out.
+    segments = [s for s in normalised.split("/") if s not in ("", ".")]
+    if not segments:
+        raise DesignError(
+            f"invalid path {raw!r}: expected a relative path to an image"
+        )
+
+    for segment in segments:
+        if segment == "..":
+            raise DesignError(
+                f"path {raw!r} must stay inside the project: "
+                "'..' segments are not allowed"
+            )
+        if ":" in segment:
+            # `C:/...` as a whole path or hidden after res://, and NTFS
+            # alternate data streams (`sheet.png:secret`). Neither is a
+            # project-relative image path.
+            raise DesignError(
+                f"path {raw!r} must be project-relative: the segment "
+                f"{segment!r} names a drive or stream"
+            )
     return "/".join(segments)
+
+
+def _contained(project_root: Path, target: str) -> Path:
+    """Resolve `target` under `project_root`, refusing anything outside it.
+
+    The string guards above already reject the obvious escapes; this is the
+    check that cannot be argued with, and it also catches a symlink inside the
+    project that points somewhere else.
+    """
+    root = project_root.resolve()
+    resolved = (root / target).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        raise DesignError(
+            f"path {target!r} resolves to {resolved}, which is outside the "
+            f"project root {root}. Captures are project files only."
+        ) from None
+    return resolved
 
 
 def _resolved_paths(
@@ -365,8 +397,12 @@ def _resolved_paths(
     resolved: list[str] = []
     for value in values:
         target = resolve_capture(value)
-        if require_existing and project_root is not None:
-            if not (project_root / target).is_file():
+        if project_root is not None:
+            # Containment is checked for every path, existing or not: a
+            # reference is quoted into the prompt, so it must be a project
+            # path too.
+            on_disk = _contained(project_root, target)
+            if require_existing and not on_disk.is_file():
                 raise DesignError(
                     f"{label} {value!r} resolves to {target!r}, which does not "
                     f"exist under {project_root.resolve()}. This is a problem "
