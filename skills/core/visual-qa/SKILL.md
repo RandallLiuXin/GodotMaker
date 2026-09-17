@@ -196,6 +196,9 @@ cosmetic/style-only, can ship.
 ### Answer
 {Direct, specific, actionable answer. Reference locations, frames, colors, objects.}
 
+### Content Verdict: {pass | fail | warning | n/a}
+{Omit only when the question states no content requirements. Covers the content requirements ALONE — required visible elements, readability, layout, motion. A design rule deviation never moves this line.}
+
 ### Design Rule Findings
 {Omit when the question lists no design rules. Otherwise one line per rule, every rule answered:}
 - rule_id: {id} | verdict: {pass | fail | uncertain | not_applicable} | confidence: {high | medium | low} | evidence_conflict: {yes | no} | capture: {file} | evidence: {what you observe}
@@ -204,7 +207,16 @@ cosmetic/style-only, can ship.
 {What in the screenshots supports the answer. Reference specific frames and locations.}
 ```
 
+When a question carries both content requirements and design rules, the two are
+reported separately on purpose. The overall `### Verdict` is a combined summary
+and is **not** a content-only gate: a caller that maps it straight to a blocking
+issue would promote an ordinary design rule deviation into one, which the
+downstream grader explicitly classifies as non-blocking. Gate content on
+`### Content Verdict`; design rule severity comes from
+`tools/design_rules.py grade`.
+
 The `Design Rule Findings` block is what
 `tools/design_rules.py grade --findings` consumes. Every `rule_id` the question
 listed must appear exactly once; a `fail` or `uncertain` without evidence is
-rejected there, not silently accepted.
+rejected there, not silently accepted. Report `evidence_conflict` as `yes` or
+`no` — never leave it blank.

@@ -285,10 +285,10 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 
    ```
    # Static scene — dispatch a subagent to run visual-qa with:
-   --question "{design_rule_question} Also answer, independently of the design rules: does this screenshot satisfy the scene contract? Goal: {scene goal from SCENES.md}. Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}. Verify: {acceptance criteria block, or mechanic-id list fallback}." e2e/screenshots/scene_{name}.png --log e2e/screenshots/vqa.log
+   --question "{design_rule_question} Also report a separate `### Content Verdict` covering ONLY the content requirements below, never the design rules: does this screenshot satisfy the scene contract? Goal: {scene goal from SCENES.md}. Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}. Verify: {acceptance criteria block, or mechanic-id list fallback}." e2e/screenshots/scene_{name}.png --log e2e/screenshots/vqa.log
 
    # Dynamic scene (frame sequence in per-scene subdir) — dispatch a subagent to run visual-qa with:
-   --question "{design_rule_question} Also answer, independently of the design rules: does this frame sequence satisfy the scene contract? Goal: ... Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}. Verify: required content remains visible, motion is fluid, no stuck entities, and animation matches movement." e2e/screenshots/scene_{name}/frame_*.png --log e2e/screenshots/vqa.log
+   --question "{design_rule_question} Also report a separate `### Content Verdict` covering ONLY the content requirements below, never the design rules: does this frame sequence satisfy the scene contract? Goal: ... Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}. Verify: required content remains visible, motion is fluid, no stuck entities, and animation matches movement." e2e/screenshots/scene_{name}/frame_*.png --log e2e/screenshots/vqa.log
    ```
 
    **Audit trail.** Record every visual-qa call (verdict + context + mode + files + log path + output digest) in `visual_checks.{scene_name}.vqa_calls[]` (schema below). Also record the screenshot/frame paths used in `visual_checks.{scene_name}.captures[]`, and the graded per-rule findings in `visual_checks.{scene_name}.design_rules[]`. Keep the request, raw findings, and graded output under `.godotmaker/design-checks/` so the chain from rule text to verdict stays inspectable. If you override a recorded verdict for the final `result` — for instance you read the PNGs yourself and disagree — write the reason and what you saw into `visual_checks.{scene_name}.notes`. Either way, `result` reflects the chain transparently.
@@ -302,8 +302,19 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 
    If a `fail` looks wrong, prefer re-calling visual-qa with refined context before overriding by hand. If the final visual-qa output marks an issue as style-only or non-blocking, do not promote it to `critical_issue`; record it in `visual_checks.{scene_name}.notes` or `minor_issues`.
 
-   - Verdict mapping (on the final recorded verdict): `fail` → critical_issue; `warning` → major_issue; `pass` → recorded under `visual_checks`.
-   - The scene's `result` is the worse of the content verdict and the graded
+   - Verdict mapping runs on the visual-qa `### Content Verdict`, **never on
+     the overall `### Verdict`**: `fail` → critical_issue; `warning` →
+     major_issue; `pass` → recorded under `visual_checks`. The overall verdict
+     combines content and design rules, so mapping it here would promote an
+     ordinary `Do` entry or dimension deviation into a blocker — exactly what
+     the grader classifies as `non_blocking`. Record the overall verdict in
+     `vqa_calls[].verdict` for the audit and gate on the content one.
+   - If the backend omitted `### Content Verdict` while the question did state
+     content requirements, do not fall back to the overall verdict: re-call
+     visual-qa for the content answer. Guessing which half a `fail` came from
+     is how a non-blocking finding becomes a blocker.
+   - Design rule blocking comes from the graded `disposition` alone. The
+     scene's `result` is the worse of the content verdict and the graded
      `design_rule_result`. A `blocking` design rule finding forces `fail`; a
      `human_review` or high-confidence `non_blocking` finding forces at worst
      `warning`, which is a major_issue and does not block the tag.
@@ -404,6 +415,7 @@ Write evaluation results to `.godotmaker/evaluation.json`:
           "log": "e2e/screenshots/vqa.log",
           "context": "Goal: ... Requirements: ... Verify: ...",
           "verdict": "pass | fail | warning",
+          "content_verdict": "pass | fail | warning | n/a",
           "output_summary": "<first line or 1-sentence digest of the visual-qa response>"
         }
       ]

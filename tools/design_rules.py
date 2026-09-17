@@ -592,6 +592,35 @@ def classify(
     return "non_blocking", "major" if confidence == "high" else "minor"
 
 
+_CONFLICT_TRUE = {"yes", "true"}
+_CONFLICT_FALSE = {"no", "false", ""}
+
+
+def _parse_conflict(rule_id: str, value: object) -> bool:
+    """Read `evidence_conflict` strictly, never through `bool()`.
+
+    visual-qa reports this field as the word `yes` or `no`, and an agent
+    transcribes that into JSON. `bool("no")` is `True`, so a plain truthiness
+    test silently turns every ordinary passing rule into `human_review` — a
+    spurious warning on a clean evaluation. Every other transcribed field here
+    is checked against its allowed values; this one is too.
+    """
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalised = value.strip().lower()
+        if normalised in _CONFLICT_TRUE:
+            return True
+        if normalised in _CONFLICT_FALSE:
+            return False
+    raise DesignError(
+        f"rule {rule_id!r} has evidence_conflict={value!r}; expected a JSON "
+        "boolean or one of 'yes' / 'no'"
+    )
+
+
 def scene_result(findings: list[dict]) -> str:
     """`fail` / `warning` / `pass` for one subject's graded findings."""
     dispositions = {finding["disposition"] for finding in findings}
@@ -692,8 +721,14 @@ def grade(
                 f"rule {rule_id!r} reported {verdict!r} without observable evidence"
             )
 
+        if verdict != "not_applicable" and not finding.get("confidence"):
+            # Defaulting a missing confidence to "high" would let a dropped
+            # field turn a required-rule failure into a blocker on its own.
+            raise DesignError(
+                f"rule {rule_id!r} reported {verdict!r} without a confidence"
+            )
         confidence = finding.get("confidence", "high")
-        conflict = bool(finding.get("evidence_conflict"))
+        conflict = _parse_conflict(rule_id, finding.get("evidence_conflict"))
         disposition, severity = classify(
             verdict,
             rule["requirement"],

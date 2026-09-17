@@ -759,6 +759,57 @@ def test_conflicting_evidence_goes_to_human_review_even_when_reported_pass(scene
     assert result["human_review_required"] is True
 
 
+@pytest.mark.parametrize("reported", [False, "no", "No", "NO", "false", "", None])
+def test_no_conflict_reported_as_a_word_stays_a_pass(scene_request, reported):
+    """`bool("no")` is True. A truthiness test here turned every ordinary
+    passing rule into a spurious human_review warning."""
+    findings = _all_pass(scene_request)
+    for finding in findings:
+        if finding["rule_id"] == "d1.r1":
+            finding["evidence_conflict"] = reported
+    result = grade(scene_request, findings)
+
+    assert _finding(result, "d1.r1")["disposition"] == "pass"
+    assert result["result"] == "pass"
+    assert result["human_review_required"] is False
+
+
+@pytest.mark.parametrize("reported", [True, "yes", "Yes", "true"])
+def test_a_real_conflict_still_reaches_human_review(scene_request, reported):
+    findings = _all_pass(scene_request)
+    for finding in findings:
+        if finding["rule_id"] == "d1.r1":
+            finding["evidence_conflict"] = reported
+    result = grade(scene_request, findings)
+
+    assert _finding(result, "d1.r1")["disposition"] == "human_review"
+    assert result["human_review_required"] is True
+
+
+@pytest.mark.parametrize("reported", ["maybe", "y", 1, 0, [], {"a": 1}])
+def test_an_unreadable_conflict_value_is_rejected(scene_request, reported):
+    findings = _all_pass(scene_request)
+    for finding in findings:
+        if finding["rule_id"] == "d1.r1":
+            finding["evidence_conflict"] = reported
+
+    with pytest.raises(DesignError, match="evidence_conflict"):
+        grade(scene_request, findings)
+
+
+def test_a_dropped_confidence_is_rejected_rather_than_assumed_high(scene_request):
+    """Defaulting to 'high' would let a lost field promote a required-rule
+    failure straight to a blocker."""
+    findings = _all_pass(scene_request)
+    for finding in findings:
+        if finding["rule_id"] == "dont.r1":
+            finding.update(verdict="fail", evidence="gradient on torso")
+            finding.pop("confidence", None)
+
+    with pytest.raises(DesignError, match="without a confidence"):
+        grade(scene_request, findings)
+
+
 def test_human_override_is_recorded_with_its_original_disposition(scene_request):
     findings = _all_pass(scene_request)
     for finding in findings:
@@ -1357,6 +1408,28 @@ def test_visual_qa_reports_rule_level_findings():
 
     skill = _read(VQA_SKILL)
     assert "do not assign severity" in skill.lower()
+
+
+def test_visual_qa_reports_a_separate_content_verdict():
+    """A combined overall verdict cannot gate content: mapping it straight to
+    a critical issue would promote an ordinary Do deviation to a blocker."""
+    for path in (VQA_SKILL, VQA_QUESTION_PROMPT):
+        text = _read(path)
+        assert "Content Verdict" in text, f"{path.name} lost the content verdict"
+        prose = _prose(text)
+        assert "content requirements ALONE" in prose
+        assert "design rule deviation" in prose.lower()
+
+
+def test_evaluate_gates_content_on_the_content_verdict_only():
+    prose = _prose(_read(EVALUATE_SKILL))
+
+    assert "never on the overall `### Verdict`" in prose
+    assert "Content Verdict" in prose
+    # The promotion the mapping used to allow must be named so it stays fixed.
+    assert "would promote an ordinary `Do` entry or dimension deviation into a blocker" in prose
+    # And a missing content verdict must not silently fall back.
+    assert "do not fall back to the overall verdict" in prose
 
 
 def test_visual_qa_criteria_defer_severity_to_the_rule_text():

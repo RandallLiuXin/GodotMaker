@@ -24,9 +24,20 @@ reference image; a reference is provenance context only.
 
 ### Verdict: {pass | fail | warning}
 
+{Combined summary of everything you were asked. A caller never gates on this
+line alone when it also asked for design rules — see Content Verdict below.}
+
 ### Answer
 
 {Direct answer to the question. Be specific and actionable — if the question is about a bug, describe exactly what's wrong and where. If about behavior, describe what you observe frame by frame.}
+
+### Content Verdict: {pass | fail | warning | n/a}
+
+{Omit this block only when the question states no content requirements. This
+verdict covers the content requirements ALONE — the required visible elements,
+readability, layout, and motion. A design rule deviation must never move it:
+those are reported per rule below and their severity is derived downstream.
+Write `n/a` if the question listed no content requirements.}
 
 ### Design Rule Findings
 
