@@ -52,6 +52,9 @@ STYLE_MD_ALLOWED_FILES = {
     # Pins that a tag archive sealed before DESIGN.md keeps its frozen
     # STYLE.md without it ever being read as the visual contract.
     "tests/tools/test_seal_tag.py",
+    # Pins that a coexisting legacy STYLE.md cannot change a design rule
+    # request or result: the fixture has to create the file to prove it.
+    "tests/test_design_rule_visual_evaluation.py",
     "CHANGELOG.md",
 }
 STYLE_MD_ALLOWED_PREFIXES = ("docs/update/",)

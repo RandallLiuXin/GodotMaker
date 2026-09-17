@@ -52,6 +52,7 @@ VQA_STATIC_PROMPT = (
 VQA_DYNAMIC_PROMPT = (
     REPO_ROOT / "skills" / "core" / "visual-qa" / "scripts" / "dynamic_prompt.md"
 )
+ASSET_SKILL = REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md"
 FIXGAP_SKILL = REPO_ROOT / "skills" / "core" / "gm-fixgap" / "SKILL.md"
 WORKER_DISPATCH = REPO_ROOT / "skills" / "core" / "_shared" / "worker-dispatch.md"
 VERIFIER_DISPATCH = REPO_ROOT / "skills" / "core" / "_shared" / "verifier-dispatch.md"
@@ -62,6 +63,11 @@ TOOL = REPO_ROOT / "tools" / "design_rules.py"
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _prose(text: str) -> str:
+    """Collapse whitespace so a phrase assertion survives line re-wrapping."""
+    return " ".join(text.split())
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +291,8 @@ def test_rule_text_is_verbatim_from_design_md():
         # and shows no UI.
         ("character", {"d7", "d8", "ui"}),
         ("environment", {"ui"}),
+        # An FX sheet is lit but, like a character sheet, stages nothing.
+        ("effect", {"d7", "d8", "ui"}),
         # A flat UI layer judged on its own has no lighting and no depth.
         ("ui", {"d6", "d7"}),
         ("mixed", set()),
@@ -328,6 +336,32 @@ def test_no_visible_ui_project_declares_no_ui_rules():
     )
     # Every other group survives.
     assert {rule["group"] for rule in rules} == set(ALL_GROUPS)
+
+
+def test_every_asset_family_maps_to_a_subject_class():
+    """A new Asset Skill family must be classified explicitly.
+
+    Without this, an unmapped family would either crash the asset review or,
+    worse, silently default into the wrong rule set.
+    """
+    from asset_family_registry import FAMILY_NAMES
+
+    assert set(design_rules.ASSET_SUBJECT_CLASSES) == set(FAMILY_NAMES)
+    for family, subject_class in design_rules.ASSET_SUBJECT_CLASSES.items():
+        assert subject_class in design_rules.SUBJECT_CLASSES, family
+
+
+def test_asset_families_classify_by_what_they_show():
+    mapping = design_rules.ASSET_SUBJECT_CLASSES
+
+    assert mapping["character-bundle"] == "character"
+    assert mapping["fx-bundle"] == "effect"
+    assert mapping["ui-kit"] == mapping["card-kit"] == "ui"
+    # A screen reference is a whole composed screen, world content plus UI.
+    assert mapping["screen-reference"] == "mixed"
+    for family in ("background-map", "platform-strip", "tileset",
+                   "scene-prop-set", "compact-prop-pack"):
+        assert mapping[family] == "environment", family
 
 
 def test_unknown_subject_class_is_rejected():
@@ -898,6 +932,160 @@ def test_evaluate_does_not_gate_on_reference_similarity():
     assert "provenance" in evaluate
 
 
+# ---------------------------------------------------------------------------
+# Generated assets run the same chain before they are registered
+# ---------------------------------------------------------------------------
+
+def test_asset_review_runs_the_same_chain():
+    asset = _read(ASSET_SKILL)
+
+    assert "tools/design_rules.py subject-for" in asset
+    assert "tools/design_rules.py build-request" in asset
+    assert "tools/design_rules.py grade" in asset
+    assert "--backend-error" in asset
+    assert "Design Rule Findings" in asset
+    # The manager must not read image binaries itself.
+    assert "Dispatch a subagent" in asset
+    assert "visual-qa" in asset
+
+
+def test_asset_review_happens_before_registration():
+    """A rule-violating asset must not reach `generated` and then be reviewed."""
+    asset = _read(ASSET_SKILL)
+    review = asset.index("### Step 5 - Review Generated Assets Against DESIGN.md")
+    register = asset.index("### Step 6 - Register Validated Results")
+
+    assert review < register
+
+
+def test_asset_review_blocks_registration_only_on_a_blocking_disposition():
+    asset = _read(ASSET_SKILL)
+    step = asset[asset.index("### Step 5 - Review Generated"):
+                 asset.index("### Step 6 - Register Validated Results")]
+
+    prose = _prose(step)
+    assert "disposition" in prose
+    assert "do not register this unit" in prose
+    assert "leave its `ASSETS.md` rows unchanged" in prose
+    # Ordinary findings must not stop an asset shipping.
+    assert "never blocks registration" in prose
+    assert "human_review" in prose
+
+
+def test_asset_review_does_not_contaminate_the_deterministic_levels():
+    """Prohibited: writing a subjective verdict into L0-L4."""
+    asset = _read(ASSET_SKILL)
+    step = asset[asset.index("### Step 5 - Review Generated"):
+                 asset.index("### Step 6 - Register Validated Results")]
+
+    prose = _prose(step)
+    assert "Never write a design rule outcome into `validation.levels`" in prose
+    assert "never clears a failed L0-L5 level" in prose
+
+
+def test_asset_review_treats_the_reference_as_provenance():
+    asset = _read(ASSET_SKILL)
+    step = asset[asset.index("### Step 5 - Review Generated"):
+                 asset.index("### Step 6 - Register Validated Results")]
+
+    prose = _prose(step)
+    assert "provenance" in prose
+    assert "differs in composition from its reference is not a defect" in prose
+
+
+def test_asset_review_only_inspects_real_images():
+    asset = _read(ASSET_SKILL)
+    step = asset[asset.index("### Step 5 - Review Generated"):
+                 asset.index("### Step 6 - Register Validated Results")]
+
+    prose = _prose(step)
+    assert "previews[].path" in prose
+    assert "sources[].path" in prose
+    # A Godot resource is not something a VQA backend can look at.
+    assert "are not images" in prose
+    assert "do not invent a capture" in prose
+
+
+def test_asset_review_keeps_its_audit_trail():
+    asset = _read(ASSET_SKILL)
+
+    assert ".godotmaker/asset-generation/design-checks/" in asset
+
+
+@pytest.mark.parametrize(
+    "asset_type, capture",
+    [
+        ("character-bundle", "assets/generated/character-bundle/hero/hero.png"),
+        ("background-map", "assets/generated/background-map/forest/forest.png"),
+        ("ui-kit", "assets/generated/ui-kit/hud/hud_sheet.png"),
+    ],
+)
+def test_generated_asset_grades_end_to_end(asset_type, capture):
+    """The path F-001 named: a produced asset that violates a Don't at high
+    confidence is blocked before registration, by rule id."""
+    subject_class = design_rules.ASSET_SUBJECT_CLASSES[asset_type]
+    request = build_request(
+        DESIGN_MD,
+        subject_name=asset_type,
+        subject_class=subject_class,
+        subject_kind="asset",
+        captures=[capture],
+        references=["references/canonical_hero.png"],
+    )
+    result = _single_fault(
+        request,
+        "dont.r1",
+        verdict="fail",
+        evidence="the sheet renders a photographic gradient ramp across the body",
+        confidence="high",
+    )
+
+    assert result["result"] == "fail"
+    assert len(result["critical_issues"]) == 1
+    assert "dont.r1" in result["critical_issues"][0]
+    assert _finding(result, "dont.r1")["disposition"] == "blocking"
+
+    # And an ordinary deviation on the same asset does not block it.
+    tolerated = _single_fault(
+        request,
+        "do.r1",
+        verdict="fail",
+        evidence="silhouette reads softly at 1x",
+        confidence="high",
+    )
+    assert tolerated["critical_issues"] == []
+    assert _finding(tolerated, "do.r1")["disposition"] == "non_blocking"
+
+
+def test_ui_asset_carries_ui_rules_and_drops_unobservable_ones():
+    request = build_request(
+        DESIGN_MD,
+        subject_name="hud",
+        subject_class=design_rules.ASSET_SUBJECT_CLASSES["ui-kit"],
+        subject_kind="asset",
+        captures=["assets/generated/ui-kit/hud/hud_sheet.png"],
+    )
+    groups = {r["group"]: r["applicable"] for r in request["rules"]}
+
+    assert groups["ui"] is True
+    assert groups["d6"] is False and groups["d7"] is False
+
+
+def test_effect_asset_drops_staging_rules_but_keeps_lighting():
+    request = build_request(
+        DESIGN_MD,
+        subject_name="hit_spark",
+        subject_class=design_rules.ASSET_SUBJECT_CLASSES["fx-bundle"],
+        subject_kind="asset",
+        captures=["assets/generated/fx-bundle/hit_spark/sheet.png"],
+    )
+    groups = {r["group"]: r["applicable"] for r in request["rules"]}
+
+    assert groups["d6"] is True
+    assert groups["d7"] is False and groups["d8"] is False
+    assert groups["ui"] is False
+
+
 def test_visual_qa_reports_rule_level_findings():
     for text in (_read(VQA_SKILL), _read(VQA_QUESTION_PROMPT)):
         assert "Design Rule Findings" in text
@@ -1030,6 +1218,16 @@ def test_cli_grade_rejects_a_bad_findings_payload(cli_project: Path):
     )
     assert graded.returncode == 2
     assert "omit rules" in graded.stderr
+
+
+def test_cli_subject_for_classifies_a_family(cli_project: Path):
+    resolved = _run("subject-for", "character-bundle", cwd=cli_project)
+    assert resolved.returncode == 0, resolved.stderr
+    assert resolved.stdout.strip() == "character"
+
+    unknown = _run("subject-for", "sprite-soup", cwd=cli_project)
+    assert unknown.returncode == 2
+    assert "no subject class" in unknown.stderr
 
 
 def test_cli_grade_requires_findings_or_a_backend_error(cli_project: Path):

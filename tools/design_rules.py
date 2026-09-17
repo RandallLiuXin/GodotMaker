@@ -5,6 +5,7 @@
 project actually wrote down, not against how closely a screenshot resembles a
 reference image. This tool owns the deterministic half of that judgement:
 
+0. ``subject-for``    - map an Asset Skill family to its subject class.
 1. ``rules``          - split `DESIGN.md` into individually addressable rules.
 2. ``build-request``  - pick the rules that apply to one subject and emit the
                         request a visual-qa Question-mode call is built from.
@@ -17,12 +18,13 @@ the rule text — `Don't` entries, literal `MUST` / `MUST NOT`, and rules the
 author explicitly marked required — combined with the reported confidence, and
 that mapping lives here so it stays auditable and identical across runs.
 
-`STYLE.md` is never read. When a migrated project still carries one next to
-`DESIGN.md`, its text cannot reach a request: the only input is the DESIGN
-path, and the preserved `Legacy Style Notes` section is excluded from rule
-extraction.
+A migrated project's legacy visual seed file is never read. When one still
+sits next to `DESIGN.md`, its text cannot reach a request: the only input is
+the DESIGN path, and the preserved `Legacy Style Notes` section is excluded
+from rule extraction.
 
 Usage:
+    python tools/design_rules.py subject-for character-bundle
     python tools/design_rules.py rules --design DESIGN.md [--subject ui]
     python tools/design_rules.py build-request --design DESIGN.md \
         --subject mixed --name scene_battle \
@@ -54,7 +56,7 @@ RESULT_SCHEMA = "gm-design-rule-result/v1"
 DESIGN_FILE = "DESIGN.md"
 
 # Sections that carry rules. `Legacy Style Notes` deliberately does not: it is
-# the verbatim body of a removed STYLE.md, kept as history only.
+# the verbatim body of a removed legacy seed file, kept as history only.
 IDENTITY_HEADING = "Visual Identity"
 IMAGE_STYLE_HEADING = "Image Style"
 UI_HEADING = "UI Visual Language"
@@ -65,7 +67,25 @@ LEGACY_HEADING = "Legacy Style Notes"
 UI_NA_SENTENCE = "N/A - this project has no visible UI."
 
 # What the capture shows. Drives which rule groups can be observed at all.
-SUBJECT_CLASSES = ("character", "environment", "ui", "mixed")
+SUBJECT_CLASSES = ("character", "environment", "effect", "ui", "mixed")
+
+# Asset family -> subject class, so `/gm-asset` never guesses what a produced
+# sheet shows. Every first-class Asset Skill family appears exactly once; a new
+# family without an entry is caught by the contract tests, not silently
+# defaulted into the wrong rule set.
+ASSET_SUBJECT_CLASSES = {
+    "character-bundle": "character",
+    "background-map": "environment",
+    "platform-strip": "environment",
+    "scene-prop-set": "environment",
+    "compact-prop-pack": "environment",
+    "tileset": "environment",
+    "fx-bundle": "effect",
+    "ui-kit": "ui",
+    "card-kit": "ui",
+    # A screen reference is a whole composed screen: world content and UI.
+    "screen-reference": "mixed",
+}
 
 # Rule group -> subject classes where the group is observable. A group absent
 # from a class is reported `not_applicable`, never silently dropped: the audit
@@ -79,11 +99,11 @@ GROUP_APPLICABILITY = {
     "d5": set(SUBJECT_CLASSES),
     # Lighting and cast shadows are a property of rendered art, not of a flat
     # UI layer judged on its own.
-    "d6": {"character", "environment", "mixed"},
-    # Perspective and depth need a staged space; an isolated character sheet or
-    # a UI-only capture has none.
+    "d6": {"character", "environment", "effect", "mixed"},
+    # Perspective and depth need a staged space; an isolated character or
+    # effect sheet and a UI-only capture have none.
     "d7": {"environment", "mixed"},
-    # An isolated character sheet has no scene composition to judge.
+    # An isolated character or effect sheet has no scene composition to judge.
     "d8": {"environment", "ui", "mixed"},
     "d9": set(SUBJECT_CLASSES),
     "ui": {"ui", "mixed"},
@@ -94,7 +114,7 @@ GROUP_APPLICABILITY = {
 NA_REASONS = {
     "d6": "lighting and shadow are not observable in a UI-only capture",
     "d7": "no staged space or depth cue is present in this capture",
-    "d8": "no scene composition is present in an isolated character capture",
+    "d8": "no scene composition is present in an isolated subject capture",
     "ui": "this capture shows no UI surface",
 }
 
@@ -140,7 +160,7 @@ def _is_authored(line: str) -> bool:
 def _split_sections(text: str) -> list[tuple[str, str, list[str]]]:
     """Return `(level, heading, body_lines)` for every `##`/`###` section.
 
-    Fenced blocks are skipped so a preserved legacy STYLE.md body cannot
+    Fenced blocks are skipped so a preserved legacy seed body cannot
     introduce phantom headings.
     """
     sections: list[tuple[str, str, list[str]]] = []
@@ -683,6 +703,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
 
+    subject = sub.add_parser(
+        "subject-for", help="print the subject class for an Asset Skill family"
+    )
+    subject.add_argument("asset_type")
+
     listing = sub.add_parser("rules", help="list the rules DESIGN.md declares")
     listing.add_argument("--design", default=DESIGN_FILE)
     listing.add_argument("--subject", choices=SUBJECT_CLASSES)
@@ -713,6 +738,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.command == "subject-for":
+            subject_class = ASSET_SUBJECT_CLASSES.get(args.asset_type)
+            if subject_class is None:
+                raise DesignError(
+                    f"no subject class for asset family {args.asset_type!r}; "
+                    f"known families: {sorted(ASSET_SUBJECT_CLASSES)}"
+                )
+            sys.stdout.write(subject_class + "\n")
+            return 0
+
         if args.command == "rules":
             rules = extract_rules(_read_text(Path(args.design)))
             if args.subject:

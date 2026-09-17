@@ -252,7 +252,79 @@ One production unit may return many outputs. Register all runtime outputs togeth
 Do not dispatch one subagent per ASSETS.md row when the work is one bundle.
 Dispatch one subagent per production unit.
 
-### Step 5 - Register Validated Results
+### Step 5 - Review Generated Assets Against DESIGN.md
+
+Run this for every generated visual production unit whose result validated,
+**before** Step 6 registers it. A produced asset is judged by the rules
+`DESIGN.md` states, not by how closely it resembles any reference image.
+
+1. **Collect inspectable images** from the returned result: `previews[].path`,
+   `sources[].path`, and any `reference` role entry in `outputs[]`. Runtime
+   `.tres` / `.res` resources are not images — never pass one. If a unit
+   returned no inspectable image, skip the review and record that reason in the
+   unit's report; do not invent a capture.
+
+2. **Resolve the subject class** from the family — do not guess it:
+
+   ```bash
+   python tools/design_rules.py subject-for {asset_type}
+   ```
+
+3. **Build the rule request** for that subject:
+
+   ```bash
+   python tools/design_rules.py build-request --design DESIGN.md \
+     --subject {subject_class} --name {asset_id} --kind asset \
+     --capture {inspectable image path} \
+     --reference {canonical or style reference path, when the unit used one} \
+     --output .godotmaker/asset-generation/design-checks/{asset_id}-request.json
+   ```
+
+   Repeat `--capture` per inspectable image. `--reference` is provenance
+   context only: a produced asset that shares the project's visual language but
+   differs in composition from its reference is not a defect, and matching a
+   reference does not excuse a rule violation.
+
+4. **Dispatch a subagent** to run the `visual-qa` skill in Question mode with
+   the text `build-request --question` printed, passed verbatim, plus
+   `--log .godotmaker/asset-generation/design-checks/{asset_id}-vqa.log`. The
+   manager never reads image binaries itself (Manager Rule 2).
+
+5. **Grade the returned `Design Rule Findings`.** Transcribe them verbatim to
+   `{asset_id}-findings.json` in the same directory, then:
+
+   ```bash
+   python tools/design_rules.py grade \
+     --request .godotmaker/asset-generation/design-checks/{asset_id}-request.json \
+     --findings .godotmaker/asset-generation/design-checks/{asset_id}-findings.json \
+     --output .godotmaker/asset-generation/design-checks/{asset_id}-graded.json
+   ```
+
+   If the visual-qa call errored or its backend was unavailable, grade with
+   `--backend-error "<message>"` instead of `--findings`.
+
+6. **Route by `disposition`** — the graded output decides, never you and never
+   the producer:
+
+   - any `blocking` finding, or a backend error → **do not register this unit.**
+     Report the failing unit with its `rule_id`, verbatim `rule_text`, and
+     evidence, and leave its `ASSETS.md` rows unchanged. An asset that
+     high-confidence violates a `Don't`, a literal `MUST` / `MUST NOT`, or
+     another explicitly required rule does not become `generated`, and neither
+     does one whose contract was never actually checked.
+   - `non_blocking` findings → register normally and report them. An ordinary
+     `Do` entry or dimension deviation never blocks registration.
+   - `human_review` findings → register normally and surface them to the user
+     with their `rule_id` and evidence. Do not resolve one yourself.
+
+7. **Keep the audit.** The request, findings, graded result, and VQA log stay
+   under `.godotmaker/asset-generation/design-checks/`. Never write a design
+   rule outcome into `validation.levels`: L0-L5 are deterministic technical
+   facts owned by the Asset Skill, and a subjective rule verdict must not
+   appear there or change one. Equally, a passing design rule review never
+   clears a failed L0-L5 level.
+
+### Step 6 - Register Validated Results
 
 Use this procedure for every production unit.
 
