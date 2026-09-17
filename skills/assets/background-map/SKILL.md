@@ -28,10 +28,16 @@ stage state, generated manifests, or dispatch state.
 
 ## Source, Reference, and Provider Contract
 
-References are optional. With no references, generate from the brief. With one
-or more references, validate every declared local path is a readable image,
-preserve its `canonical`, `style`, or `screen` role, and send the actual image to
-the selected provider. A textual path, a prompt-only description, or a silently
+Carry every visual rule stated in `brief` into the prompt as written; it is
+the visual specification for this plate. References are optional and condition
+those rules with concrete identity, palette, and continuity — they never
+outrank or extend them, and a contradiction between the two is a STOP with a
+blocker naming the reference role, its path, and the rule.
+
+With no references, generate from the brief alone. With one or more references,
+validate every declared local path is a readable image, preserve its
+`canonical`, `style`, or `screen` role, and send the actual image to the
+selected provider. A textual path, a prompt-only description, or a silently
 omitted reference is a failure.
 
 Resolve a request `res://` reference against the project root before provider

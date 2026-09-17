@@ -34,9 +34,12 @@ matches.
 - {row id/name/status/path when available}
 
 ### Visual Context
-- DESIGN.md is an initial visual seed.
-- Existing scene references and canonical asset references are primary style anchors.
-- Do not treat DESIGN.md as the final style source when image references exist.
+- DESIGN.md is the project's visual specification authority.
+- Existing scene references and canonical asset references are visual
+  conditioning: they carry identity, palette, and continuity, and never
+  outrank, extend, or replace a DESIGN.md rule.
+- DESIGN.md is the only visual document to read. An older visual file left
+  beside it is closed history.
 
 ### Task
 1. Inspect only the listed candidate paths.

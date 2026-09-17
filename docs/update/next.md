@@ -20,6 +20,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Changed
 
 - Replaced the project `STYLE.md` visual seed with a plain-text `DESIGN.md` visual contract covering visual identity, nine image-style dimensions, UI visual language, and Do / Don't lists; existing projects migrate on publish, legacy text preserved verbatim.
+- Asset generation now treats `DESIGN.md` as the visual specification authority and role-labeled reference images as visual conditioning: each production unit carries its applicable design sections verbatim in the request brief, and a conflicting reference is a blocker instead of a silent drop.
 
 ## Fixed
 

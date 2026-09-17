@@ -46,7 +46,15 @@ manifests, stable entries, or worker dispatch state.
 
 ## Produce
 
-1. Inspect the reference and write `theme_plan.json` before image generation.
+1. Read the visual rules stated in `brief` — for a UI kit they cover both the
+   image style and the UI visual language — then inspect the reference and
+   write `theme_plan.json` before image generation. The rules decide; the
+   reference supplies concrete palette, contrast, and material evidence within
+   them. A reference that contradicts a stated rule is a STOP with a blocker
+   naming the reference role, its path, and the rule. `theme_plan.json` records
+   how those rules and that evidence resolve into this family's required
+   tokens for this one request; it is a production artifact, never a reusable
+   style source, and it never adds a rule the brief did not state.
    It contains:
 
    - a positive `rendering_medium` such as `bold comic-book game art`,
@@ -59,7 +67,8 @@ manifests, stable entries, or worker dispatch state.
      `corner_radius_medium`, `corner_radius_large`, `border_width`,
      `content_margin`, `shadow_size`, `shadow_offset`, and `font_size`;
    - concise observations for palette, contrast, shape, outline, shadow, and
-     material language, plus the reference roles and paths used to derive them.
+     material language, plus the `brief` rules and the reference roles and
+     paths each observation was derived from.
 
    Use positive medium language. Do not put pixel-art negations into image
    prompts. The Theme plan is a deterministic visual-system specification, not
