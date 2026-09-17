@@ -12,12 +12,19 @@ $ARGUMENTS
 CRITICAL: Find acceptance-blocking problems. Do not rationalize defects that
 block the caller-provided Task Context.
 
-CRITICAL: When Task Context is provided, use its `Verify:` criteria as the
-gate. Treat the reference image as visual intent, not as a pixel-perfect or
-style-matching gate. Do not fail a check for pure reference/style mismatch
-(palette, capitalization, wording, roundedness, spacing, polish) unless it
-breaks the `Verify:` criteria, blocks operation, destabilizes layout, or makes
+CRITICAL: When Task Context is provided, use its `Verify:` criteria and any
+design rules it lists as the gate. A reference image is provenance and
+auxiliary context only — never a pixel-perfect or style-matching bar. Do not
+fail a check for pure reference mismatch (palette, capitalization, wording,
+roundedness, spacing, polish, composition) unless it breaks a stated design
+rule or the `Verify:` criteria, blocks operation, destabilizes layout, or makes
 the visible state logically false.
+
+CRITICAL: When the caller lists design rules, answer every one of them by
+`rule_id` and report verdict, evidence, and confidence. Do not assign severity
+and do not decide what blocks acceptance — `tools/design_rules.py grade`
+derives that from the rule text. See `scripts/criteria.md` § "Design Rule
+Checks".
 
 ## Execution Steps
 
@@ -156,8 +163,8 @@ Read `scripts/criteria.md` before choosing the final verdict.
 ```text
 ### Verdict: {pass | fail | warning}
 
-### Reference Match
-{1-3 sentences: does the game capture the reference's intent: placement logic, scaling, composition, camera?}
+### Reference Provenance
+{1-3 sentences: context only — how the capture relates to the reference's visual language. Never a pass/fail criterion on its own.}
 
 ### Goal Assessment
 {1-3 sentences from Task Context. "No task context provided." if none.}
@@ -189,6 +196,27 @@ cosmetic/style-only, can ship.
 ### Answer
 {Direct, specific, actionable answer. Reference locations, frames, colors, objects.}
 
+### Content Verdict: {pass | fail | warning | n/a}
+{Omit only when the question states no content requirements. Covers the content requirements ALONE — required visible elements, readability, layout, motion. A design rule deviation never moves this line.}
+
+### Design Rule Findings
+{Omit when the question lists no design rules. Otherwise one line per rule, every rule answered:}
+- rule_id: {id} | verdict: {pass | fail | uncertain | not_applicable} | confidence: {high | medium | low} | evidence_conflict: {yes | no} | capture: {file} | evidence: {what you observe}
+
 ### Visual Evidence
 {What in the screenshots supports the answer. Reference specific frames and locations.}
 ```
+
+When a question carries both content requirements and design rules, the two are
+reported separately on purpose. The overall `### Verdict` is a combined summary
+and is **not** a content-only gate: a caller that maps it straight to a blocking
+issue would promote an ordinary design rule deviation into one, which the
+downstream grader explicitly classifies as non-blocking. Gate content on
+`### Content Verdict`; design rule severity comes from
+`tools/design_rules.py grade`.
+
+The `Design Rule Findings` block is what
+`tools/design_rules.py grade --findings` consumes. Every `rule_id` the question
+listed must appear exactly once; a `fail` or `uncertain` without evidence is
+rejected there, not silently accepted. Report `evidence_conflict` as `yes` or
+`no` — never leave it blank.

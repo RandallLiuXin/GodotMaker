@@ -22,7 +22,7 @@ E2E tests live in **a single `e2e/` directory** that always reflects the current
 
 **FIRST ACTION — before anything else:** Write `evaluate` to `.godotmaker/current_role`.
 
-**Permission:** You can write to `e2e/`, `.godotmaker/evaluation.json`, and append to `.godotmaker/stage.jsonl` (plus `.godotmaker/current_role` set during Session Setup). All other files are read-only.
+**Permission:** You can write to `e2e/`, `.godotmaker/evaluation.json`, `.godotmaker/design-checks/`, and append to `.godotmaker/stage.jsonl` (plus `.godotmaker/current_role` set during Session Setup). All other files are read-only.
 
 ## Resume Check
 
@@ -66,7 +66,14 @@ Read in order:
 3. `STRUCTURE.md` — current tag's ECS architecture
 4. `SCENES.md` — current tag's scenes
 5. `ASSETS.md` — cross-tag asset manifest
-6. `ROADMAP.md` — confirm `<Tag>` is the entry being worked on (it should be the earliest entry without a `git tag`)
+6. `DESIGN.md` — the project's visual contract: Visual Identity, the nine
+   Image Style dimensions, UI Visual Language, and the Do / Don't lists. This
+   is the sole authority for every visual judgement in Phase 3. Read only this
+   file for visual rules. A migrated project may still carry a legacy visual
+   seed file beside it; that file is history and must never be opened, quoted,
+   or used to fill a gap — an unwritten `DESIGN.md` section simply has no rules
+   to check.
+7. `ROADMAP.md` — confirm `<Tag>` is the entry being worked on (it should be the earliest entry without a `git tag`)
 
 Build a single **expected-mechanics checklist** = (every `[<Tag>-MN]` from Tag Mechanics) ∪ (every `[<prev>-MN]` from Inherited Mechanics). This is the union of mechanics the game must currently support. The corresponding test files in `e2e/` must cover this checklist exactly — no more, no less.
 
@@ -154,14 +161,113 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
    or Readability Requirement text. Missing deferral reasons are incomplete
    bindings.
 
-   **Question construction.** Pull the `Acceptance criteria` block from
+   **Question construction.** A scene is judged on two independent things: the
+   content it must show, and the design rules it must obey.
+
+   *Content requirements.* Pull the `Acceptance criteria` block from
    SCENES.md for this scene. Add the scene's `Asset bindings` rows and matching
    ASSETS.md Visual Asset Contract rows. If the block is absent, fall back to
    the mechanic ids from PLAN.md Tag Mechanics + Inherited Mechanics that this
-   scene exercises, each with its one-line description. Ask whether the
-   screenshot or frame sequence satisfies the required visible content,
-   readability, layout, and motion/animation requirements. For deterministic
-   setup screenshots, add `Visible state only; do not infer prior play history.`.
+   scene exercises, each with its one-line description. These cover the
+   required visible content, readability, layout, and motion/animation
+   requirements. For deterministic setup screenshots, add
+   `Visible state only; do not infer prior play history.`.
+
+   *Design rules.* Classify what the capture shows, then build the rule list
+   with the tool — do not summarise `DESIGN.md` yourself:
+
+   | Subject class | Use when the capture shows |
+   |---|---|
+   | `character` | a character or creature on its own (a generated sheet, a portrait) |
+   | `environment` | a staged space with no UI: background, tileset, props, platforms |
+   | `ui` | UI surfaces only: HUD, menu, card face, inventory panel |
+   | `mixed` | a played scene with both world content and UI — most gameplay screenshots |
+
+   ```bash
+   python tools/design_rules.py build-request --design DESIGN.md \
+     --subject {character|environment|ui|mixed} --name scene_{name} --kind scene \
+     --capture e2e/screenshots/scene_{name}.png \
+     --requirement "{one acceptance criterion or contract row}" \
+     --reference references/scene_{name}.png \
+     --output .godotmaker/design-checks/scene_{name}-request.json
+   ```
+
+   Repeat `--capture` for a frame sequence and `--requirement` per criterion.
+   Every capture must already exist under the project root — `build-request`
+   fails if one does not, which means the screenshot step did not produce it.
+   Fix the capture; never grade a missing screenshot as a backend error.
+   The tool selects the rules that apply to that subject class — a UI-only
+   capture additionally carries every UI Visual Language rule, while rules that
+   cannot be observed in it (lighting and shadow, space and depth) come back
+   `not_applicable` with a reason rather than being dropped. Render the
+   question text with `--question` and pass it verbatim as `--question` to
+   visual-qa.
+
+   `--reference` is provenance context only. Do not ask whether the capture
+   resembles the reference: a different composition in the same visual language
+   is not a defect, and copying the reference's composition does not excuse a
+   rule violation. When a reference and `DESIGN.md` disagree, `DESIGN.md` wins
+   and the disagreement goes in `visual_checks.<scene>.notes`.
+
+   **Grading design rule findings.** Transcribe the `Design Rule Findings`
+   block visual-qa returned into
+   `.godotmaker/design-checks/scene_{name}-findings.json` — one object per
+   rule, verbatim, inventing nothing:
+
+   ```json
+   [
+     {
+       "rule_id": "dont.r1",
+       "verdict": "pass | fail | uncertain | not_applicable",
+       "evidence": "<the backend's observation, copied>",
+       "confidence": "high | medium | low",
+       "evidence_conflict": false,
+       "captures": ["e2e/screenshots/scene_<name>.png"]
+     }
+   ]
+   ```
+
+   Then feed it back through the tool. Never derive severity yourself:
+
+   ```bash
+   python tools/design_rules.py grade \
+     --request .godotmaker/design-checks/scene_{name}-request.json \
+     --findings .godotmaker/design-checks/scene_{name}-findings.json \
+     --output .godotmaker/design-checks/scene_{name}-graded.json
+   ```
+
+   If the visual-qa invocation errored or its backend was unavailable, run the
+   same command with `--backend-error "<message>"` instead of `--findings`: an
+   unchecked contract must not read as a checked one.
+
+   The grader rejects an incomplete answer rather than filling the hole: a
+   missing rule, an invented `rule_id`, a `fail` or `uncertain` with no
+   evidence, or an answer on a rule the request marked N/A all fail the
+   command. Re-call visual-qa for the rules it skipped instead of writing
+   them yourself.
+
+   The grader applies one policy, and it is the whole blocking rule:
+
+   - a high-confidence failure of a `Don't` entry, a literal `MUST` /
+     `MUST NOT` rule, or any other rule the author marked required →
+     `disposition: blocking`, `severity: blocker`;
+   - an ordinary `Do` entry or an ordinary dimension bullet that the capture
+     deviates from → `disposition: non_blocking`. It is reported, never
+     promoted to a blocker;
+   - `uncertain`, conflicting evidence, or a low/medium-confidence suspected
+     violation of a required rule → `disposition: human_review`. Never convert
+     one of these into a PASS or into a hard fail on your own.
+
+   Copy the graded `findings[]` into `visual_checks.<scene>.design_rules`, and
+   set `visual_checks.<scene>.design_rule_result` and
+   `human_review_required` from the graded output. Route the graded
+   `critical_issues` / `major_issues` / `minor_issues` into the top-level lists
+   of the same name.
+
+   **Design rule findings never override the deterministic checks below.** The
+   binding preflight, atlas misuse check, build, mechanics, and E2E gates own
+   their own verdicts; a design rule cannot clear a failing one, and a passing
+   one cannot clear a blocking design rule violation.
 
    **Atlas misuse check.** When a scene's `Asset bindings` reference a
    `region_atlas` (or a single element sourced from a `grid_sheet`), add to the
@@ -173,21 +279,45 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 
    **VQA log path.** Ask `visual-qa` to write its debug log to `e2e/screenshots/vqa.log`.
 
+   `{design_rule_question}` below is the exact text
+   `python tools/design_rules.py build-request ... --question` printed. Pass it
+   verbatim; do not paraphrase it or trim the rule list.
+
    ```
    # Static scene — dispatch a subagent to run visual-qa with:
-   --question "Does this screenshot satisfy the scene contract? Goal: {scene goal from SCENES.md}. Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}. Verify: {acceptance criteria block, or mechanic-id list fallback}." e2e/screenshots/scene_{name}.png --log e2e/screenshots/vqa.log
+   --question "{design_rule_question} Also report a separate `### Content Verdict` covering ONLY the content requirements below, never the design rules: does this screenshot satisfy the scene contract? Goal: {scene goal from SCENES.md}. Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}. Verify: {acceptance criteria block, or mechanic-id list fallback}." e2e/screenshots/scene_{name}.png --log e2e/screenshots/vqa.log
 
    # Dynamic scene (frame sequence in per-scene subdir) — dispatch a subagent to run visual-qa with:
-   --question "Does this frame sequence satisfy the scene contract? Goal: ... Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}. Verify: required content remains visible, motion is fluid, no stuck entities, and animation matches movement." e2e/screenshots/scene_{name}/frame_*.png --log e2e/screenshots/vqa.log
+   --question "{design_rule_question} Also report a separate `### Content Verdict` covering ONLY the content requirements below, never the design rules: does this frame sequence satisfy the scene contract? Goal: ... Requirements: {SCENES.md Asset bindings + matching ASSETS.md Visual Asset Contract rows}. Verify: required content remains visible, motion is fluid, no stuck entities, and animation matches movement." e2e/screenshots/scene_{name}/frame_*.png --log e2e/screenshots/vqa.log
    ```
 
-   **Audit trail.** Record every visual-qa call (verdict + context + mode + files + log path + output digest) in `visual_checks.{scene_name}.vqa_calls[]` (schema below). Also record the screenshot/frame paths used in `visual_checks.{scene_name}.captures[]`. If you override a recorded verdict for the final `result` — for instance you read the PNGs yourself and disagree — write the reason and what you saw into `visual_checks.{scene_name}.notes`. Either way, `result` reflects the chain transparently.
+   **Audit trail.** Record every visual-qa call (verdict + context + mode + files + log path + output digest) in `visual_checks.{scene_name}.vqa_calls[]` (schema below). Also record the screenshot/frame paths used in `visual_checks.{scene_name}.captures[]`, and the graded per-rule findings in `visual_checks.{scene_name}.design_rules[]`. Keep the request, raw findings, and graded output under `.godotmaker/design-checks/` so the chain from rule text to verdict stays inspectable. If you override a recorded verdict for the final `result` — for instance you read the PNGs yourself and disagree — write the reason and what you saw into `visual_checks.{scene_name}.notes`. Either way, `result` reflects the chain transparently.
 
-   **Real invocation required.** Every `vqa_calls` entry and every `vqa.log` line must come from a visual-qa invocation — do not author them directly. If the invocation errors or its backend is unavailable, record a `critical_issue` and set `result: reject`.
+   A design rule finding may only be re-dispositioned through the graded
+   output's `override` field, which requires `by: human` and a reason. You
+   cannot silently promote a `non_blocking` finding to a blocker, nor resolve a
+   `human_review` finding yourself — report it and let the user decide.
+
+   **Real invocation required.** Every `vqa_calls` entry, every `vqa.log` line, and every `design_rules[]` verdict must come from a visual-qa invocation — do not author them directly. If the invocation errors or its backend is unavailable, grade it with `--backend-error`, record a `critical_issue`, and set `result: reject`.
 
    If a `fail` looks wrong, prefer re-calling visual-qa with refined context before overriding by hand. If the final visual-qa output marks an issue as style-only or non-blocking, do not promote it to `critical_issue`; record it in `visual_checks.{scene_name}.notes` or `minor_issues`.
 
-   - Verdict mapping (on the final recorded verdict): `fail` → critical_issue; `warning` → major_issue; `pass` → recorded under `visual_checks`.
+   - Verdict mapping runs on the visual-qa `### Content Verdict`, **never on
+     the overall `### Verdict`**: `fail` → critical_issue; `warning` →
+     major_issue; `pass` → recorded under `visual_checks`. The overall verdict
+     combines content and design rules, so mapping it here would promote an
+     ordinary `Do` entry or dimension deviation into a blocker — exactly what
+     the grader classifies as `non_blocking`. Record the overall verdict in
+     `vqa_calls[].verdict` for the audit and gate on the content one.
+   - If the backend omitted `### Content Verdict` while the question did state
+     content requirements, do not fall back to the overall verdict: re-call
+     visual-qa for the content answer. Guessing which half a `fail` came from
+     is how a non-blocking finding becomes a blocker.
+   - Design rule blocking comes from the graded `disposition` alone. The
+     scene's `result` is the worse of the content verdict and the graded
+     `design_rule_result`. A `blocking` design rule finding forces `fail`; a
+     `human_review` or high-confidence `non_blocking` finding forces at worst
+     `warning`, which is a major_issue and does not block the tag.
    - Backend follows `vqa_model` / `vqa_fallback_model` in `.godotmaker/config.yaml`.
 
 For each check, record: **PASS** or **FAIL** with evidence (E2E output, screenshot path, error message).
@@ -255,7 +385,26 @@ Write evaluation results to `.godotmaker/evaluation.json`:
       "captures": ["e2e/screenshots/scene_<name>.png"],
       "vqa_log": "e2e/screenshots/vqa.log",
       "result": "pass | fail | warning",
+      "design_rule_result": "pass | fail | warning",
+      "human_review_required": false,
       "notes": "",
+      "design_rules": [
+        {
+          "rule_id": "dont.r1",
+          "group": "dont",
+          "source": "DESIGN.md > Don't",
+          "rule_text": "<the rule verbatim from DESIGN.md>",
+          "requirement": "required | normal",
+          "verdict": "pass | fail | uncertain | not_applicable",
+          "evidence": "<what is observable in the capture>",
+          "confidence": "high | medium | low",
+          "evidence_conflict": false,
+          "disposition": "pass | blocking | non_blocking | human_review | not_applicable",
+          "severity": "blocker | major | minor | none",
+          "captures": ["e2e/screenshots/scene_<name>.png"],
+          "na_reason": "<required when verdict is not_applicable>"
+        }
+      ],
       "vqa_calls": [
         {
           "ts": "<UTC ISO 8601>",
@@ -266,6 +415,7 @@ Write evaluation results to `.godotmaker/evaluation.json`:
           "log": "e2e/screenshots/vqa.log",
           "context": "Goal: ... Requirements: ... Verify: ...",
           "verdict": "pass | fail | warning",
+          "content_verdict": "pass | fail | warning | n/a",
           "output_summary": "<first line or 1-sentence digest of the visual-qa response>"
         }
       ]

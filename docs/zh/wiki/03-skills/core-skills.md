@@ -59,7 +59,7 @@ Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十三
 
 | 技能 | 提供的内容 | 被谁加载 |
 |------|-----------|----------|
-| `visual-qa` | 如何分析截图中的视觉缺陷，并与参考图像对比 | `/gm-evaluate` |
+| `visual-qa` | 如何分析截图中的视觉缺陷，并逐条对照 `DESIGN.md` 判断 | `/gm-evaluate` |
 | `screenshot` | 如何从运行中的 Godot 实例抓取游戏截图 | `/gm-evaluate`、`/gm-fixgap` |
 | `mcp-driver` | 如何在运行时通过 godot-mcp 检查实时 Godot 项目——用于构建工具无法单独诊断问题时 | `/gm-fixgap` |
 

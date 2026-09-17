@@ -113,10 +113,14 @@ Runtime Snapshot` above.
 
 ### Visual Self-Check                                    [REQUIRED for fixgap visual tasks]
 - Source: {evaluation.json.visual_checks scene and blocking finding}
-- Reference: {references/scene_name.png}
+- Design rule: {rule_id, verbatim rule_text, and reported evidence from visual_checks.<scene>.design_rules[] — omit only when the blocking finding is not a design rule one}
+- Reference: {references/scene_name.png — provenance context only, never a similarity target}
 - Target state: {scene or gameplay state to capture}
-- Verify: {observable visual criteria from evaluation vqa_calls[].context or SCENES.md Acceptance criteria}
+- Verify: {the design rule above, plus observable visual criteria from evaluation vqa_calls[].context or SCENES.md Acceptance criteria}
 - Output directory: `reports/fixgap-visual/{task_id}/`
+
+The worker satisfies the named rule. Matching the reference image's
+composition is not the goal and does not close the task.
 
 ### Scene Layout Reference                                [REQUIRED for UI/scene tasks]
 {Copy the relevant scene description from SCENES.md here.

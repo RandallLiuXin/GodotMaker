@@ -245,7 +245,13 @@ Required only when the brief includes `Visual Self-Check`.
 - Screenshot(s): {paths, or SKIP reason}
 - visual-qa command: {exact command, or SKIP reason}
 - visual-qa verdict: {pass | fail | warning | error | SKIP}
+- Design rule: {rule_id and verbatim rule text from the brief, or N/A}
+- Design rule satisfied: {what is now observable that satisfies it, or N/A}
 - Output: {copy-paste if FAIL/WARNING/ERROR, "clean" if PASS}
+
+When the brief names a design rule, the check passes by satisfying that rule.
+Resembling the reference image is not the bar — the reference is provenance
+context only.
 
 ### Notes
 {Anything the lead agent needs to know — assumptions made, issues

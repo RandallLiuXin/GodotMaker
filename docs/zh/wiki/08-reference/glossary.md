@@ -62,7 +62,7 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **Verifier** — 运行无头 Godot 构建和 Worker 编写的单元测试，然后报告是否通过的子代理。Verifier 还会执行"对抗性探测"——针对边界情况和错误处理的定向测试。如果验证失败，问题返回给 Worker。另见：*Sub-agent*、*Worker*、*Reviewer*。
 
-**Visual QA** / **VQA** — 将运行中的游戏截图与参考图像或一组书面标准进行比对的过程。`/gm-evaluate` 使用 `visual-qa` 技能，并根据 `vqa_model` 配置选择 `native`、Gemini 或 OpenAI，对照 GDD 描述和 `/gm-asset` 生成的每个场景参考图为场景打分。另见：*Evaluation*。
+**Visual QA** / **VQA** — 将运行中的游戏截图对照书面标准逐条检查的过程。`/gm-evaluate` 使用 `visual-qa` 技能，并根据 `vqa_model` 配置选择 `native`、Gemini 或 OpenAI，逐条对照项目的 `DESIGN.md` 视觉合约以及场景自身的内容要求作出判断。`/gm-asset` 生成的参考图仅作为来源上下文，与它相像从来不是验收标准。另见：*Evaluation*、*DESIGN.md*。
 
 **Worker** — 实现一个游戏任务的子代理：编写 GDScript 代码、单元测试和端到端测试，然后返回一份结构化报告。报告只包含执行结果和失败证据，不再自动产生 Memory/Learning 条目；Worker 不能写根 `MEMORY.md` 或 `memory/`。Worker 在隔离的 git worktree 中运行。Worker 完成后，必须由 Verifier 和 Reviewer 先后完成验收，才会开始下一个任务。另见：*Sub-agent*、*Verifier*、*Reviewer*、*Worktree*。
 
