@@ -20,6 +20,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Changed
 
 - Replaced the project `STYLE.md` visual seed with a plain-text `DESIGN.md` visual contract covering visual identity, nine image-style dimensions, UI visual language, and Do / Don't lists; existing projects migrate on publish, legacy text preserved verbatim.
+- `/gm-evaluate` now judges assets and scenes rule by rule against `DESIGN.md` instead of against reference-image similarity, reporting per-rule evidence, confidence, and severity, and blocking only on high-confidence violations of `Don't`, `MUST` / `MUST NOT`, or explicitly required rules.
 
 ## Fixed
 

@@ -38,6 +38,7 @@ Agent({
 
 ### Visual Verification                                  [REQUIRED when requested]
 - Scene/reference/capture paths: {visual_checks scene, reference, captures[], and latest vqa_calls[].files from evaluation.json}
+- Design rule: {rule_id, verbatim rule_text, and reported evidence from visual_checks.<scene>.design_rules[], when the finding is a design rule one}
 - Visual-qa context: {latest vqa_calls[].context or scene Acceptance criteria}
 - Asset contract rows: {relevant SCENES.md Asset bindings and ASSETS.md Visual Asset Contract rows}
 - VQA log: {visual_checks.<scene>.vqa_log or latest vqa_calls[].log}
@@ -55,6 +56,10 @@ Agent({
 For visual gaps, include a command that runs visual-qa on evaluator captures.
 If a fresh capture, VQA log, or helper script is needed, write it only under
 `reports/verifier-temp/`.
+
+A design rule gap is verified against the named rule, not against the
+reference image: the reference is provenance context, so a capture in the same
+visual language with a different composition is not a failure.
 
 ## Spot-Check Protocol
 

@@ -59,7 +59,7 @@ Supporting skills are reference packs loaded silently by the role skills. You ne
 
 | Skill | What it provides | Loaded by |
 |-------|-----------------|-----------|
-| `visual-qa` | How to analyse screenshots for visual defects and compare against reference images | `/gm-evaluate` |
+| `visual-qa` | How to analyse screenshots for visual defects and judge them rule by rule against `DESIGN.md` | `/gm-evaluate` |
 | `screenshot` | How to capture gameplay screenshots from a running Godot instance | `/gm-evaluate`, `/gm-fixgap` |
 | `mcp-driver` | How to inspect a live Godot project at runtime via godot-mcp, used when build tools alone can't diagnose a problem | `/gm-fixgap` |
 

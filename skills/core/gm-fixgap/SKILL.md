@@ -130,6 +130,19 @@ For blocking visual tasks, copy the relevant `evaluation.json.visual_checks`
 scene, reference, captures[], latest `vqa_calls[].context`, and latest
 `vqa_calls[].log` into the GAP task.
 
+**Design rule findings.** `visual_checks.<scene>.design_rules[]` entries are
+routed by their `disposition`, which evaluation derived from the rule text —
+never re-judge one:
+
+- `blocking` → a C task. Cite the `rule_id`, the verbatim `rule_text`, and the
+  reported `evidence`; the fix is to satisfy that rule, not to look more like
+  the reference image.
+- `non_blocking` → keep it in GAP notes or minor issues. An ordinary `Do`
+  entry or dimension deviation never becomes a C/J task on its own.
+- `human_review` → do not create a task and do not fix it. Surface it to the
+  user as an open question with its `rule_id` and evidence; only a human
+  resolves it.
+
 #### 1b. Pull failures from `verify_report.json`
 
 Run this sub-step only if `.godotmaker/verify_report.json` exists, `result == "fail"`, and its `ts` is later than the most recent `role == "fixgap"` event in `stage.jsonl` (or there is no prior fixgap event). Otherwise (file missing, `result == "pass"`, or stale `ts`) → skip 1b; GAP.md comes from 1a only.

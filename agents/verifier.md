@@ -148,3 +148,8 @@ Use mcp-driver to launch and observe. Report: crashes, errors, behavior issues.
 
 ### Visual QA
 Use screenshot and visual-qa when visual criteria or evidence are in the brief. Missing evidence for a requested Visual Verification is FAIL. Fresh captures and VQA logs must stay under `reports/verifier-temp/`.
+
+When the brief names a design rule, verify that rule by its `rule_id` and
+report the observable evidence. A reference image is provenance context, never
+the acceptance bar: do not FAIL a capture for differing from it in composition,
+and do not PASS one that matches it while still violating the named rule.

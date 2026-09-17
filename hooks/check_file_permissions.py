@@ -42,6 +42,9 @@ SCOPE_MEMORY = "memory"
 EVAL_ALLOWED_GM_FILES = {".godotmaker/evaluation.json",
                           ".godotmaker/stage.jsonl",
                           ".godotmaker/current_role"}
+# Evaluator-owned directory: per-subject design rule check request, raw
+# findings, and graded result.
+DESIGN_CHECKS_DIR = ".godotmaker/design-checks/"
 VERIFY_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/current_role",
                             ".godotmaker/verify_report.json"}
@@ -100,6 +103,18 @@ def _is_godotmaker_path(path_lower: str) -> bool:
     return path_lower.startswith(GODOTMAKER_DIR) or f"/{GODOTMAKER_DIR}" in path_lower
 
 
+def _is_design_check_path(path_lower: str) -> bool:
+    """True for the evaluator-owned design rule check artefacts.
+
+    `/gm-evaluate` writes one request, findings, and graded result per subject
+    here so the chain from a DESIGN.md rule to its verdict stays inspectable.
+    """
+    return (
+        path_lower.startswith(DESIGN_CHECKS_DIR)
+        or f"/{DESIGN_CHECKS_DIR}" in path_lower
+    )
+
+
 def _is_asset_generation_path(path_lower: str) -> bool:
     return (
         path_lower.startswith(".godotmaker/asset-generation/")
@@ -154,11 +169,15 @@ def _check_main(role: str, path_lower: str, file_name: str, ext: str) -> None:
     is_assets = _is_assets_path(path_lower)
 
     if role == "evaluate":
-        if is_e2e or _matches_allowed_gm(path_lower, EVAL_ALLOWED_GM_FILES):
+        if (
+            is_e2e
+            or _is_design_check_path(path_lower)
+            or _matches_allowed_gm(path_lower, EVAL_ALLOWED_GM_FILES)
+        ):
             return
         _block(f"Evaluator can only write e2e/, .godotmaker/evaluation.json, "
-               f".godotmaker/stage.jsonl, or .godotmaker/current_role "
-               f"(attempted: {file_name}).", file_name)
+               f".godotmaker/design-checks/, .godotmaker/stage.jsonl, or "
+               f".godotmaker/current_role (attempted: {file_name}).", file_name)
 
     if role == "verify":
         if _matches_allowed_gm(path_lower, VERIFY_ALLOWED_GM_FILES):

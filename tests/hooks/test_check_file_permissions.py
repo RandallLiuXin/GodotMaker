@@ -523,6 +523,22 @@ class TestRoleBased:
         })
         assert not is_blocked(parsed)
 
+    def test_evaluate_can_write_design_checks(self, project_dir):
+        """Design rule check request/findings/graded output are evaluator-owned
+        (per gm-evaluate SKILL.md Phase 3 'Question construction')."""
+        write_current_role("evaluate")
+        for path in [
+            ".godotmaker/design-checks/scene_battle-request.json",
+            ".godotmaker/design-checks/scene_battle-findings.json",
+            ".godotmaker/design-checks/scene_battle-graded.json",
+        ]:
+            _, _, parsed = run_hook(HOOK, {
+                "tool_name": "Write",
+                "tool_input": {"file_path": path},
+                "agent_id": "",
+            })
+            assert not is_blocked(parsed), f"evaluate must allow {path}"
+
     def test_evaluate_blocked_from_other_files(self, project_dir):
         write_current_role("evaluate")
         # Includes other .godotmaker/ paths that are NOT in the allow-list
