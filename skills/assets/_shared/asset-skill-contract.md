@@ -83,6 +83,26 @@ not independently triggerable.
 `references[].role` is one of `canonical`, `style`, `screen`. `references[].path`
 is a non-empty string.
 
+### Design rules and references
+
+`brief` is the only style source an asset skill has. A caller that maintains a
+project visual contract copies the applicable rules into `brief` verbatim; a
+direct caller writes its own. Either way the rules in `brief` are the visual
+specification authority for the request, and the skill stays independent: it
+never opens a project visual document itself.
+
+`references` is visual conditioning for those rules. A reference carries
+identity, palette, and continuity into the provider call in its declared role,
+and it never outranks, extends, or replaces a rule stated in `brief`. Every
+supplied reference is a required input: attach its real image bytes to the
+provider call, preserve its role in the prompt and provenance, and STOP rather
+than dropping, reweighting, or downgrading it. A path named only in prompt text
+is not an attachment.
+
+When a supplied reference contradicts a rule stated in `brief`, the request is
+contradictory: STOP with a blocker naming the reference role and path plus the
+rule it contradicts. Silently following either side is not a valid result.
+
 ## Result
 
 ```json

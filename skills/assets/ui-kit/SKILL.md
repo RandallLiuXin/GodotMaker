@@ -46,7 +46,15 @@ manifests, stable entries, or worker dispatch state.
 
 ## Produce
 
-1. Inspect the reference and write `theme_plan.json` before image generation.
+1. Read the visual rules stated in `brief` — for a UI kit they cover both the
+   image style and the UI visual language — then inspect the reference and
+   write `theme_plan.json` before image generation. The rules decide; the
+   reference supplies concrete palette, contrast, and material evidence within
+   them. A reference that contradicts a stated rule is a STOP with a blocker
+   naming the reference role, its path, and the rule. `theme_plan.json` records
+   how those rules and that evidence resolve into this family's required
+   tokens for this one request; it is a production artifact, never a reusable
+   style source, and it never adds a rule the brief did not state.
    It contains:
 
    - a positive `rendering_medium` such as `bold comic-book game art`,
@@ -59,17 +67,35 @@ manifests, stable entries, or worker dispatch state.
      `corner_radius_medium`, `corner_radius_large`, `border_width`,
      `content_margin`, `shadow_size`, `shadow_offset`, and `font_size`;
    - concise observations for palette, contrast, shape, outline, shadow, and
-     material language, plus the reference roles and paths used to derive them.
+     material language, plus the `brief` rules and the reference roles and
+     paths each observation was derived from.
 
-   Use positive medium language. Do not put pixel-art negations into image
-   prompts. The Theme plan is a deterministic visual-system specification, not
-   generated art.
+   Write `rendering_medium` and your own added prompt language positively;
+   do not author a pixel-art negation of your own. This does not license
+   editing the caller's rules: a rule the `brief` states is carried as written
+   even when it names pixel art. The Theme plan is a deterministic
+   visual-system specification, not generated art.
 
 2. Generate the deterministic source plan:
 
    ```powershell
    python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --scheme .agents/skills/ui-kit/references/source-sheet-scheme.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
    ```
+
+   Both plan prompts carry the `brief` word for word — every selected design
+   rule, `Do` / `Don't` entry, and UI visual-language rule reaches both provider
+   calls as written. There is no exception: the plan never drops, rewrites, or
+   reweights a carried rule, because a rule the caller selected and the provider
+   never sees is a rule that was not applied. Its line structure is kept too,
+   so a heading and each bullet stay separate rules instead of reflowing into
+   one running sentence.
+
+   Naming pixel art in an image prompt can bias a provider toward it, so every
+   carried rule that does so — whatever its phrasing — is recorded under
+   `visual_direction.pixel_art_rule_notes` with `disposition: carried_verbatim`.
+   Report those notes as a residual risk; do not treat them as permission to
+   edit the rule. `rendering_medium` still states the medium positively in the
+   same prompt.
 
    Use the plan prompts unchanged. Make exactly two provider calls, attaching
    every reference to each call:

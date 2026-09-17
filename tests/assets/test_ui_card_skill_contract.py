@@ -312,7 +312,13 @@ def test_source_sheet_plan_requires_magenta_color_key_and_positive_medium_prompt
     assert plan["scheme"]["background"]["color"] == "#FF00FF"
     assert len(plan["sheets"]) == 2
     assert all("#FF00FF" in sheet["prompt"] for sheet in plan["sheets"])
-    assert all("pixel-art" not in sheet["prompt"].lower() and "pixel art" not in sheet["prompt"].lower() for sheet in plan["sheets"])
+    # The plan states the medium positively and authors no pixel-art negation of
+    # its own. The caller's wording is carried, so judge only the added language.
+    assert all("hand-painted fantasy illustration" in sheet["prompt"] for sheet in plan["sheets"])
+    for sheet in plan["sheets"]:
+        authored = sheet["prompt"].replace(plan["visual_direction"]["text"], "").lower()
+        assert "pixel-art" not in authored and "pixel art" not in authored
+    assert request["brief"] in " ".join(plan["sheets"][0]["prompt"].split())
     assert [len(sheet["components"]) for sheet in plan["sheets"]] == [8, 24]
     assert all("left to right and then top to bottom" in sheet["prompt"] for sheet in plan["sheets"])
     assert plan["sheets"][0]["components"][0] == "button_normal"
@@ -337,6 +343,116 @@ def test_source_sheet_plan_requires_magenta_color_key_and_positive_medium_prompt
     assert icon_slots["slider_grabber"]["target_size"] == [48, 48]
     assert plan["sheets"][1]["slots"][-1]["name"] == "slider_grabber_disabled"
     assert plan["sheets"][1]["slots"][-1]["rect"] == [624, 304, 48, 48]
+
+
+# A caller's selected visual rules reach the real provider prompt, in their own
+# wording. `_DESIGN_BRIEF` mimics what `/gm-asset` copies out of `DESIGN.md`.
+_DESIGN_BRIEF = """## Visual Identity
+
+Hand-inked storybook fantasy with warm parchment values.
+
+## 2. Color And Value
+
+Warm parchment mid-values.
+
+- Keep saturation under the mid range.
+
+## UI Visual Language
+
+UI reads as inked parchment panels.
+
+- Panels use the parchment surface with a dark ink border.
+
+## Do
+
+- Do keep gameplay-critical shapes unobstructed.
+
+## Don't
+
+- Don't render neon or chrome materials.
+"""
+
+
+def test_source_sheet_prompts_carry_the_callers_visual_rules_verbatim():
+    tool = _source_plan_tool()
+    request = _request("ui-kit")
+    request["brief"] = _DESIGN_BRIEF
+    scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
+
+    plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+
+    rules = [
+        "Hand-inked storybook fantasy with warm parchment values.",
+        "Warm parchment mid-values.",
+        "Keep saturation under the mid range.",
+        "UI reads as inked parchment panels.",
+        "Panels use the parchment surface with a dark ink border.",
+        "Do keep gameplay-critical shapes unobstructed.",
+        "Don't render neon or chrome materials.",
+    ]
+    # Both provider calls, not just one: each sheet is its own generation.
+    for sheet in plan["sheets"]:
+        for rule in rules:
+            assert rule in sheet["prompt"], rule
+    assert plan["visual_direction"]["carried_verbatim"] is True
+    assert plan["visual_direction"]["pixel_art_rule_notes"] == []
+    for rule in rules:
+        assert rule in plan["visual_direction"]["text"], rule
+    # `carried_verbatim` means the text is not reflowed: each heading and bullet
+    # stays its own line, so the provider still sees separate rules.
+    assert plan["visual_direction"]["text"] == request["brief"].strip()
+    for sheet in plan["sheets"]:
+        assert request["brief"].strip() in sheet["prompt"]
+        assert "## UI Visual Language\n" in sheet["prompt"]
+        assert "\n- Do keep gameplay-critical shapes unobstructed." in sheet["prompt"]
+
+
+# A rule naming pixel art is the case the plan used to edit. Every phrasing is
+# carried and reported, not just the two an earlier negation filter matched.
+_PIXEL_ART_RULES = (
+    "- Not pixel art at any scale.",
+    "- Painterly non-pixel-art rendering.",
+    "- Don't use pixel art.",
+    "- Do not imitate pixel art with nearest-neighbor scaling.",
+)
+
+
+def test_source_sheet_prompts_carry_a_pixel_art_rule_verbatim():
+    """A selected rule reaches the provider even when it names pixel art."""
+    tool = _source_plan_tool()
+    request = _request("ui-kit")
+    request["brief"] = _DESIGN_BRIEF + "\n".join(_PIXEL_ART_RULES) + "\n"
+    scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
+
+    plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+
+    for sheet in plan["sheets"]:
+        for rule in _PIXEL_ART_RULES:
+            assert rule in sheet["prompt"], rule
+        # Nothing was reworded into a substitute for the rule.
+        assert "Painterly rendering." not in sheet["prompt"]
+        assert "hand-painted fantasy illustration" in sheet["prompt"]
+
+
+def test_source_sheet_plan_reports_a_pixel_art_rule_as_a_residual_risk():
+    """The wording is flagged for the report, never edited out of the prompt."""
+    tool = _source_plan_tool()
+    request = _request("ui-kit")
+    request["brief"] = _DESIGN_BRIEF + "\n".join(_PIXEL_ART_RULES) + "\n"
+    scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
+
+    plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+
+    notes = plan["visual_direction"]["pixel_art_rule_notes"]
+    # Every phrasing that names pixel art is reported, so a producer report can
+    # never claim there is no residual risk while such a rule is in the prompt.
+    assert [note["segment"] for note in notes] == list(_PIXEL_ART_RULES)
+    assert {note["disposition"] for note in notes} == {"carried_verbatim"}
+    assert all(note["residual_risk"] for note in notes)
+    # A flagged rule is still present in full, in both prompts.
+    for sheet in plan["sheets"]:
+        for note in notes:
+            assert note["segment"] in sheet["prompt"]
 
 
 def test_stylebox_plan_expands_fixed_surface_patches_into_runtime_styleboxes():

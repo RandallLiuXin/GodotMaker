@@ -67,14 +67,20 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 
 ## Prompt Rules
 
-1. Use visible scene references and canonical asset references as the primary
-   style anchors.
-2. Use `DESIGN.md` only when no visual reference exists or compact style
-   language is needed.
-3. Use solid flat magenta `#FF00FF` for sources that need extraction.
-4. Keep generated sources free of text, labels, UI callouts, watermarks, and
+1. Use the `DESIGN.md` rules the brief carries as the visual specification
+   authority. Put them in the provider prompt as written; a design rule the
+   brief lists but the prompt drops is an unfinished unit.
+2. Use visible scene references and canonical asset references as visual
+   conditioning attached alongside those rules — they carry identity, palette,
+   and continuity, and never outrank, extend, or replace a design rule.
+3. Do not add a design rule the brief does not carry, do not summarize the
+   carried rules into a second style description, and do not read `DESIGN.md`
+   or any other project visual document yourself. The brief is the only style
+   source.
+4. Use solid flat magenta `#FF00FF` for sources that need extraction.
+5. Keep generated sources free of text, labels, UI callouts, watermarks, and
    borders unless the production unit asks for UI components.
-5. Do not request transparent backgrounds, checkerboards, or alpha grids.
+6. Do not request transparent backgrounds, checkerboards, or alpha grids.
 
 When a prompt depends on an existing image:
 
@@ -83,6 +89,12 @@ When a prompt depends on an existing image:
 3. Name the invariants to preserve.
 4. Name the traits allowed to change.
 5. Use the provider doc for reference-image input.
+
+When a reference in the brief contradicts a carried design rule, stop the unit
+and report a blocker naming the reference role, its path, and the `DESIGN.md`
+section heading it contradicts. Never drop, reweight, or downgrade a reference
+the brief supplied, a user named, or a family binding requires — candidate
+exclusion is the planner's decision, not yours.
 
 ## Report Format
 
@@ -97,6 +109,13 @@ When a prompt depends on an existing image:
 - Configured Provider: {provider from plan.provider}
 - Used Provider: {provider actually used}
 - Input rows: {ids or names}
+
+### Visual Inputs
+- Design sections carried by the brief: {`DESIGN.md` headings, verbatim names}
+- Design sections written into the prompt: {same headings, or the missing ones}
+- References attached: {count} — {role, path, sha256, attached: true per entry, or none}
+- Reference conflicts: {none | blocker: role + path vs `DESIGN.md` heading}
+- Residual prompt risks: {none | rule wording a provider may respond to poorly, carried anyway}
 
 ### Outputs
 - Sources: {paths or none}
