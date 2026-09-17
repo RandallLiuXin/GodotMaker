@@ -2868,16 +2868,17 @@
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── PLAN.md
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── STRUCTURE.md
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── SCENES.md
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── ASSETS.md
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── TOC.md
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── MEMORY.md
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── test/
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── e2e/
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>├── CLAUDE.md
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>├── .claude/
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── .godotmaker/
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>├── .git/
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>└── .gitignore
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── DESIGN.md
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── ASSETS.md
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── TOC.md
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── MEMORY.md
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── test/
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>├── e2e/
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>├── CLAUDE.md
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── .claude/
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>├── .godotmaker/
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>├── .git/
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>└── .gitignore
 </code></pre></div>
 <hr />
 <h2 id="where-the-game-lives">Where the game lives<a class="headerlink" href="#where-the-game-lives" title="Permanent link">&para;</a></h2>
@@ -2894,6 +2895,7 @@
 <p><strong><code>PLAN.md</code></strong> — The task list. The AI tracks every implementation task here — what has been done, what is pending, what failed. You can read it to see progress. The AI updates it automatically; editing it yourself is not recommended.</p>
 <p><strong><code>STRUCTURE.md</code></strong> — The technical architecture: which components and systems exist, what data each component holds, what each system does. Written by <code>/gm-gdd</code>, then updated by <code>/gm-build</code>. Reading it gives you the clearest picture of how the game code is organised.</p>
 <p><strong><code>SCENES.md</code></strong> — A description of every scene: what it contains and how the game objects in it map to ECS entities. Written by <code>/gm-gdd</code>; the workflow uses it as a blueprint when generating <code>.tscn</code> files.</p>
+<p><strong><code>DESIGN.md</code></strong> — The project's visual contract: a short visual identity, nine image-style dimensions (medium, color, shape, line, material, lighting, depth, composition, detail density), a UI visual language section, and Do / Don't lists. Written by <code>/gm-gdd</code> and kept authoritative for every later image generation and visual review. It is plain prose — no screenshots or technical parameters. If the art direction is drifting, this is the file to correct.</p>
 <p><strong><code>ASSETS.md</code></strong> — A list of every asset the game needs: the logical name, the file path, and the generation settings used. Written and updated by <code>/gm-asset</code>. If you add your own art files, the workflow updates this list to include them.</p>
 <p><strong><code>TOC.md</code></strong> — Table of contents for all the documents above. Generated automatically. Useful as a quick index if you're not sure which document to look at.</p>
 <p><strong><code>MEMORY.md</code></strong> — The cross-tag record of stable architecture decisions and project constraints. It does not contain task history, runtime failures, gotchas, workarounds, reviewer triage, or other dynamic learning. Workers cannot write it.</p>

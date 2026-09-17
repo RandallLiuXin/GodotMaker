@@ -2868,16 +2868,17 @@
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── PLAN.md
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── STRUCTURE.md
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── SCENES.md
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── ASSETS.md
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── TOC.md
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── MEMORY.md
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── test/
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── e2e/
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>├── CLAUDE.md
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>├── .claude/
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── .godotmaker/
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>├── .git/
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>└── .gitignore
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── DESIGN.md
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── ASSETS.md
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── TOC.md
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── MEMORY.md
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── test/
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>├── e2e/
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>├── CLAUDE.md
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── .claude/
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>├── .godotmaker/
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>├── .git/
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>└── .gitignore
 </code></pre></div>
 <hr />
 <h2 id="_2">游戏本体在哪里<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
@@ -2894,6 +2895,7 @@
 <p><strong><code>PLAN.md</code></strong> — 任务清单。AI 在这里追踪每一个实现任务——做了什么、等待中的是什么、哪些失败了。你可以读它来了解进度。AI 会自动更新；不建议自己手动改。</p>
 <p><strong><code>STRUCTURE.md</code></strong> — 技术架构：存在哪些组件和系统，每个组件持有什么数据，每个系统做什么事。由 <code>/gm-gdd</code> 写成，并由 <code>/gm-build</code> 更新。读这个文件能最清楚地了解游戏代码是怎么组织的。</p>
 <p><strong><code>SCENES.md</code></strong> — 所有场景的说明：每个场景包含什么，其中的游戏对象如何对应到 ECS 实体。由 <code>/gm-gdd</code> 生成，工作流用它作为生成 <code>.tscn</code> 文件的蓝图。</p>
+<p><strong><code>DESIGN.md</code></strong> — 项目的视觉合同：一段视觉定位描述、九个图像风格维度（媒介、色彩、形状、线条、材质、光影、空间深度、构图层次、细节密度）、UI 视觉语言章节，以及 Do / Don't 列表。由 <code>/gm-gdd</code> 写成，并在之后所有图像生成和视觉审查中保持权威。它是纯文本描述，不含截图或技术参数。美术方向跑偏时，改这个文件。</p>
 <p><strong><code>ASSETS.md</code></strong> — 游戏所需全部素材的清单：逻辑名称、文件路径、生成时用的设置。由 <code>/gm-asset</code> 写成并更新。如果你添加了自己的美术文件，工作流会把它们加入这个清单。</p>
 <p><strong><code>TOC.md</code></strong> — 上面所有文档的目录，自动生成。不确定该看哪个文档时，用它快速索引。</p>
 <p><strong><code>MEMORY.md</code></strong> — 跨 tag 保存的稳定架构决策与项目约束。它不记录任务历史、运行时错误、gotcha、workaround、Reviewer triage 或其他动态学习；Worker 不能写入。</p>

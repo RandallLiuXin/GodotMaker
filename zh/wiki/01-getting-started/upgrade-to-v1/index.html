@@ -2861,7 +2861,7 @@ asset runtime 或 <code>tools/</code> 等受管理路径内的自定义文件不
   写入，不能根据旧路径或旧证据手工恢复。</li>
 </ul>
 <p>本地 Agent 还应核对 <code>GDD.md</code>、当前 tag 的 <code>PLAN.md</code>、<code>STRUCTURE.md</code>、
-<code>SCENES.md</code>、<code>STYLE.md</code>、<code>MEMORY.md</code>、<code>ROADMAP.md</code>、现有 Godot 资源绑定、
+<code>SCENES.md</code>、<code>DESIGN.md</code>、<code>MEMORY.md</code>、<code>ROADMAP.md</code>、现有 Godot 资源绑定、
 addons 和自定义 runtime 配置。并非每个工作区都需要修改所有项目；磁盘上的真实
 游戏才是判断依据。</p>
 <h2 id="agent-prompt">可复制的 Agent Prompt<a class="headerlink" href="#agent-prompt" title="Permanent link">&para;</a></h2>
@@ -2910,7 +2910,7 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
 <a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>  `check_project.py`：有效 MCP 状态可能存于仓库之外。还要注明 Claude Code 与 Codex
 <a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>  publish 会先移除旧 entry 再添加新 entry，因此 add 失败后可能没有任何注册。
 <a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>- 存在时读取 `GDD.md`、`PLAN.md`、`ASSETS.md`、`STRUCTURE.md`、`SCENES.md`、
-<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>  `STYLE.md`、`MEMORY.md` 和 `ROADMAP.md`。
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>  `DESIGN.md`、`MEMORY.md` 和 `ROADMAP.md`。
 <a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>- 检查 `project.godot`、addons、场景、脚本、资源路径、生成资产，以及
 <a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>  `.godotmaker/` 中保留的历史证据。
 <a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>- 将现有项目文档与 v1.0.0 模板作只读比较。
