@@ -339,6 +339,95 @@ def test_source_sheet_plan_requires_magenta_color_key_and_positive_medium_prompt
     assert plan["sheets"][1]["slots"][-1]["rect"] == [624, 304, 48, 48]
 
 
+# A caller's selected visual rules reach the real provider prompt, in their own
+# wording. `_DESIGN_BRIEF` mimics what `/gm-asset` copies out of `DESIGN.md`.
+_DESIGN_BRIEF = """## Visual Identity
+
+Hand-inked storybook fantasy with warm parchment values.
+
+## 2. Color And Value
+
+Warm parchment mid-values.
+
+- Keep saturation under the mid range.
+
+## UI Visual Language
+
+UI reads as inked parchment panels.
+
+- Panels use the parchment surface with a dark ink border.
+
+## Do
+
+- Do keep gameplay-critical shapes unobstructed.
+
+## Don't
+
+- Don't render neon or chrome materials.
+"""
+
+
+def test_source_sheet_prompts_carry_the_callers_visual_rules_verbatim():
+    tool = _source_plan_tool()
+    request = _request("ui-kit")
+    request["brief"] = _DESIGN_BRIEF
+    scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
+
+    plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+
+    rules = [
+        "Hand-inked storybook fantasy with warm parchment values.",
+        "Warm parchment mid-values.",
+        "Keep saturation under the mid range.",
+        "UI reads as inked parchment panels.",
+        "Panels use the parchment surface with a dark ink border.",
+        "Do keep gameplay-critical shapes unobstructed.",
+        "Don't render neon or chrome materials.",
+    ]
+    # Both provider calls, not just one: each sheet is its own generation.
+    for sheet in plan["sheets"]:
+        for rule in rules:
+            assert rule in sheet["prompt"], rule
+    assert plan["visual_direction"]["removed_pixel_art_negations"] == []
+    for rule in rules:
+        assert rule in plan["visual_direction"]["text"], rule
+
+
+def test_source_sheet_plan_drops_pixel_art_negations_without_mangling_a_rule():
+    """A negation is removed as a whole rule, never down to a fragment."""
+    tool = _source_plan_tool()
+    request = _request("ui-kit")
+    request["brief"] = (
+        _DESIGN_BRIEF + "- Not pixel art at any scale.\n- Painterly non-pixel-art rendering.\n"
+    )
+    scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
+
+    plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+
+    removals = plan["visual_direction"]["removed_pixel_art_negations"]
+    assert [item["action"] for item in removals] == ["segment_dropped", "qualifier_removed"]
+    assert removals[0]["segment"] == "- Not pixel art at any scale."
+    assert removals[1]["matched"] == "non-pixel-art"
+    for sheet in plan["sheets"]:
+        prompt = sheet["prompt"]
+        # The dropped rule leaves no dangling fragment behind.
+        assert "at any scale" not in prompt
+        assert "pixel art" not in prompt.lower() and "pixel-art" not in prompt.lower()
+        # The qualifier's positive rule survives, and the other rules are intact.
+        assert "Painterly rendering." in prompt
+        assert "Don't render neon or chrome materials." in prompt
+
+
+def test_source_sheet_plan_stops_when_nothing_is_left_to_direct_the_provider():
+    tool = _source_plan_tool()
+    request = _request("ui-kit")
+    request["brief"] = "Not pixel art."
+    scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
+
+    with pytest.raises(tool.UISourcePlanError, match="no visual direction"):
+        tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+
+
 def test_stylebox_plan_expands_fixed_surface_patches_into_runtime_styleboxes():
     source_tool = _source_plan_tool()
     stylebox_tool = _stylebox_plan_tool()

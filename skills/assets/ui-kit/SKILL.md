@@ -80,6 +80,15 @@ manifests, stable entries, or worker dispatch state.
    python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --scheme .agents/skills/ui-kit/references/source-sheet-scheme.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
    ```
 
+   Both plan prompts carry the `brief` — including every selected design rule,
+   Do / Don't entry, and UI visual-language rule — into the provider call in
+   its own wording. The one exception is a pixel-art negation: naming pixel art
+   in an image prompt biases the provider toward it, and this family already
+   asserts its medium positively through `rendering_medium`. The plan drops such
+   a phrase and records it under `visual_direction.removed_pixel_art_negations`,
+   so the removal stays auditable and no rule is silently mangled into a
+   fragment. A brief left with no visual direction at all is a STOP.
+
    Use the plan prompts unchanged. Make exactly two provider calls, attaching
    every reference to each call:
 

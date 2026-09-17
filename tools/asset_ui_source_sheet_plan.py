@@ -16,6 +16,8 @@ class UISourcePlanError(Exception):
 
 
 PIXEL_LANGUAGE = re.compile(r"\b(?:non[- ]?pixel(?:[- ]?art)?|not\s+pixel(?:[- ]?art)?)\b", re.IGNORECASE)
+# One brief rule: a Markdown line, or a sentence inside one.
+_SEGMENT = re.compile(r"(?<=[.!?])\s+|\n+")
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
@@ -29,8 +31,46 @@ def _read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _clean_visual_direction(brief: str) -> str:
-    return " ".join(PIXEL_LANGUAGE.sub("", brief).split())
+def _visual_direction(brief: str) -> tuple[str, list[dict[str, str]]]:
+    """Carry the brief into the provider prompt, minus pixel-art negations.
+
+    The brief holds the caller's visual rules verbatim, so the prompt keeps its
+    wording. The one exception is a pixel-art negation: naming pixel art in an
+    image prompt biases the provider toward it, and this family already asserts
+    its medium positively through `rendering_medium`.
+
+    Removing only the matched words can leave a fragment — `Not pixel art at
+    any scale.` would become `at any scale.`, which is a mangled rule rather
+    than a carried one. So a segment that *opens* with the negation is dropped
+    whole, a negation used as a qualifier loses just those words, and every
+    removal is reported for the plan's audit record.
+    """
+    removals: list[dict[str, str]] = []
+    kept: list[str] = []
+    for segment in _SEGMENT.split(brief):
+        if not segment.strip():
+            continue
+        match = PIXEL_LANGUAGE.search(segment)
+        if match is None:
+            kept.append(segment)
+            continue
+        opening = segment[: match.start()].strip(" \t-*>#")
+        if opening:
+            trimmed = " ".join(PIXEL_LANGUAGE.sub("", segment).split())
+            removals.append({
+                "segment": " ".join(segment.split()),
+                "matched": ", ".join(m.group(0) for m in PIXEL_LANGUAGE.finditer(segment)),
+                "action": "qualifier_removed",
+            })
+            kept.append(trimmed)
+        else:
+            # The negation is the whole rule; the positive medium replaces it.
+            removals.append({
+                "segment": " ".join(segment.split()),
+                "matched": match.group(0),
+                "action": "segment_dropped",
+            })
+    return " ".join(" ".join(kept).split()), removals
 
 
 def _positive_int(value: Any, label: str) -> int:
@@ -224,7 +264,11 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
         or not geometry_profiles
     ):
         raise UISourcePlanError("source-sheet scheme is malformed")
-    direction = _clean_visual_direction(brief)
+    direction, removed_negations = _visual_direction(brief)
+    if not direction:
+        raise UISourcePlanError(
+            "request.brief carries no visual direction once pixel-art negations are removed"
+        )
     common = (
         f"Create reusable {rendering_medium.strip()} game UI source art. "
         f"Match the supplied style reference's palette, shape language, outlines, shadows, and material treatment. "
@@ -302,6 +346,10 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
         "asset_id": asset_id,
         "provider": provider,
         "rendering_medium": rendering_medium.strip(),
+        "visual_direction": {
+            "text": direction,
+            "removed_pixel_art_negations": removed_negations,
+        },
         "references": references,
         "scheme": {
             "version": scheme.get("version"),

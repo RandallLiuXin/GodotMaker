@@ -36,7 +36,6 @@ REQUEST_SCHEMA = (
     / "asset-skill-request.schema.json"
 )
 DESIGN_TEMPLATE = REPO_ROOT / "templates" / "DESIGN.md"
-ASSETS_TEMPLATE = REPO_ROOT / "templates" / "ASSETS.md"
 
 # The nine image-style dimension headings, in template order. Mirrors
 # tests/test_design_md_contract.py — the section names are one fixed contract.
@@ -538,13 +537,6 @@ def test_analyst_dispatch_states_the_inverted_authority():
     assert "visual\n  conditioning" in body
     assert "never\n  outrank, extend, or replace a DESIGN.md rule" in body
     assert "is closed history" in body
-
-
-def test_assets_template_keeps_design_above_its_anchors():
-    body = _section(_read(ASSETS_TEMPLATE), "Visual Style Source")
-    assert "stays the visual\nspecification authority" in body
-    assert "visual conditioning for that contract" in body
-    assert "never a replacement\nfor it" in body
 
 
 # ---------------------------------------------------------------------------

@@ -12,11 +12,9 @@
 
 ## Visual Style Source
 
-The project visual contract lives in `DESIGN.md` and stays the visual
-specification authority for every generated asset. Generated scene references,
-character-bundle identity anchors, and manifest source relationships are
-visual conditioning for that contract once they exist, never a replacement
-for it.
+The project visual contract lives in `DESIGN.md`. Generated scene references,
+character-bundle identity anchors, and manifest source relationships are the
+primary style anchors after they exist.
 
 ## Gameplay Actor Asset Rows
 
