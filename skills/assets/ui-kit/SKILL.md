@@ -86,10 +86,12 @@ manifests, stable entries, or worker dispatch state.
    rule, `Do` / `Don't` entry, and UI visual-language rule reaches both provider
    calls as written. There is no exception: the plan never drops, rewrites, or
    reweights a carried rule, because a rule the caller selected and the provider
-   never sees is a rule that was not applied.
+   never sees is a rule that was not applied. Its line structure is kept too,
+   so a heading and each bullet stay separate rules instead of reflowing into
+   one running sentence.
 
-   Naming pixel art in an image prompt can bias a provider toward it, so a
-   carried rule that does so is recorded under
+   Naming pixel art in an image prompt can bias a provider toward it, so every
+   carried rule that does so — whatever its phrasing — is recorded under
    `visual_direction.pixel_art_rule_notes` with `disposition: carried_verbatim`.
    Report those notes as a residual risk; do not treat them as permission to
    edit the rule. `rendering_medium` still states the medium positively in the

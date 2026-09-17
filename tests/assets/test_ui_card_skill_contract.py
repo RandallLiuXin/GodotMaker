@@ -398,10 +398,17 @@ def test_source_sheet_prompts_carry_the_callers_visual_rules_verbatim():
     assert plan["visual_direction"]["pixel_art_rule_notes"] == []
     for rule in rules:
         assert rule in plan["visual_direction"]["text"], rule
+    # `carried_verbatim` means the text is not reflowed: each heading and bullet
+    # stays its own line, so the provider still sees separate rules.
+    assert plan["visual_direction"]["text"] == request["brief"].strip()
+    for sheet in plan["sheets"]:
+        assert request["brief"].strip() in sheet["prompt"]
+        assert "## UI Visual Language\n" in sheet["prompt"]
+        assert "\n- Do keep gameplay-critical shapes unobstructed." in sheet["prompt"]
 
 
-# A rule naming pixel art is the case the plan used to edit. These phrasings are
-# the ones its negation filter matched.
+# A rule naming pixel art is the case the plan used to edit. Every phrasing is
+# carried and reported, not just the two an earlier negation filter matched.
 _PIXEL_ART_RULES = (
     "- Not pixel art at any scale.",
     "- Painterly non-pixel-art rendering.",
@@ -437,10 +444,9 @@ def test_source_sheet_plan_reports_a_pixel_art_rule_as_a_residual_risk():
     plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
 
     notes = plan["visual_direction"]["pixel_art_rule_notes"]
-    assert [note["segment"] for note in notes] == [
-        "- Not pixel art at any scale.",
-        "- Painterly non-pixel-art rendering.",
-    ]
+    # Every phrasing that names pixel art is reported, so a producer report can
+    # never claim there is no residual risk while such a rule is in the prompt.
+    assert [note["segment"] for note in notes] == list(_PIXEL_ART_RULES)
     assert {note["disposition"] for note in notes} == {"carried_verbatim"}
     assert all(note["residual_risk"] for note in notes)
     # A flagged rule is still present in full, in both prompts.
