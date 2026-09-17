@@ -12,9 +12,14 @@ One-shot migration, no compatibility layer:
   readable and non-empty;
 - neither         -> nothing to migrate (`/gm-gdd` writes `DESIGN.md`).
 """
+import os
 from pathlib import Path
 
 LEGACY_HEADING = "## Legacy Style Notes"
+
+# Suffix used by `_atomic_write_verbatim`. A crash can leave one behind; it is
+# never mistaken for a project document because the name is not `DESIGN.md`.
+TMP_SUFFIX = ".migrate-tmp"
 
 # Section order and wording are bound to `templates/DESIGN.md` by
 # tests/test_design_md_contract.py — change both together.
@@ -53,10 +58,29 @@ def _read_verbatim(path: Path) -> str:
         return handle.read()
 
 
-def _write_verbatim(path: Path, text: str) -> None:
-    """Write text with no newline translation (`write_text` emits CRLF on Windows)."""
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        handle.write(text)
+def _atomic_write_verbatim(path: Path, text: str) -> None:
+    """Write through a same-directory temp file + `os.replace`, translating nothing.
+
+    `newline=""` because `write_text` would emit CRLF on Windows and undo the
+    byte-for-byte promise made about the quoted legacy text.
+
+    Atomic because a direct write that dies partway (full disk, crash) would
+    leave a truncated `DESIGN.md` next to a still-present `STYLE.md` while the
+    migration is still pending. The retry would then take that partial file as
+    the active contract and delete the only copy of the legacy text.
+    `os.replace` is atomic on POSIX and Windows, so `DESIGN.md` is either
+    absent or complete.
+    """
+    tmp = path.with_name(path.name + TMP_SUFFIX)
+    try:
+        with tmp.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def _embed_legacy(legacy: str) -> tuple[str, bool]:
@@ -210,7 +234,7 @@ def _ensure_toc_entry(target: Path) -> None:
 
     text = eol.join(kept).rstrip("\r\n") + eol
     if text != original:
-        _write_verbatim(toc, text)
+        _atomic_write_verbatim(toc, text)
         print("Updated TOC.md with the DESIGN.md entry")
 
 
@@ -243,7 +267,7 @@ def migrate(target: Path) -> None:
 
     legacy = _read_verbatim(style_path)
     content = _build_design_md(target, legacy)
-    _write_verbatim(design_path, content)
+    _atomic_write_verbatim(design_path, content)
 
     written = _read_verbatim(design_path)
     if written != content:

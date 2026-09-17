@@ -4,9 +4,9 @@ Covers the one-shot migration semantics: legacy-only, DESIGN-only, both files
 present, neither present, arbitrary legacy text, write failure, and repeated
 runs.
 """
+import errno
 import importlib.util
-import stat
-import sys
+import os
 from pathlib import Path
 
 import pytest
@@ -171,20 +171,59 @@ def test_both_present_refuses_to_drop_style_when_design_is_empty(tmp_path: Path)
 
 # ---------- failure / idempotence ----------
 
-@pytest.mark.skipif(sys.platform == "win32",
-                    reason="read-only directories do not block writes on Windows")
-def test_write_failure_leaves_style_in_place(tmp_path: Path):
+def test_write_failure_leaves_style_in_place(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A failed DESIGN.md write must never cost the only copy of the legacy text.
+
+    The failure is injected rather than provoked with directory permissions:
+    read-only directories do not block writes on Windows, nor for a root user
+    in a container, so a permission-based version of this test silently stops
+    testing anything on most runners.
+    """
     migration = _load_migration()
     (tmp_path / "STYLE.md").write_text(LEGACY, encoding="utf-8")
-    tmp_path.chmod(stat.S_IRUSR | stat.S_IXUSR)
-    try:
-        with pytest.raises(OSError):
-            migration.migrate(tmp_path)
-    finally:
-        tmp_path.chmod(stat.S_IRWXU)
+
+    def out_of_space(_src, _dst):
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    # Fails the final swap, so the real temp-file write and cleanup still run.
+    monkeypatch.setattr(os, "replace", out_of_space)
+
+    with pytest.raises(OSError):
+        migration.migrate(tmp_path)
 
     assert (tmp_path / "STYLE.md").read_text(encoding="utf-8") == LEGACY
     assert not (tmp_path / "DESIGN.md").exists()
+    assert list(tmp_path.glob("*" + migration.TMP_SUFFIX)) == []
+
+
+def test_a_failed_write_never_leaves_a_partial_design_for_the_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The regression behind the atomic write.
+
+    A torn DESIGN.md would still be non-empty, so the retry would take the
+    both-files path, treat the truncated file as the active contract, and
+    delete STYLE.md — losing the legacy text for good.
+    """
+    migration = _load_migration()
+    raw = LEGACY.encode("utf-8")
+    (tmp_path / "STYLE.md").write_bytes(raw)
+
+    def out_of_space(_src, _dst):
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    monkeypatch.setattr(os, "replace", out_of_space)
+    with pytest.raises(OSError):
+        migration.migrate(tmp_path)
+    monkeypatch.undo()
+
+    # The retry migrate.py performs, the migration still being pending.
+    migration.migrate(tmp_path)
+
+    assert _extract_legacy_block(tmp_path / "DESIGN.md") == raw
+    assert not (tmp_path / "STYLE.md").exists()
 
 
 def test_rerun_is_idempotent(tmp_path: Path):
