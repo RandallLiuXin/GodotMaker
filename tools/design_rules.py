@@ -29,6 +29,7 @@ Usage:
     python tools/design_rules.py build-request --design DESIGN.md \
         --subject mixed --name scene_battle \
         --capture e2e/screenshots/scene_battle.png \
+        [--project-root .] \
         --requirement "Player sprite visible centered-left" \
         [--reference references/scene_battle.png] \
         [--output .godotmaker/design-checks/scene_battle-request.json]
@@ -48,7 +49,7 @@ import argparse
 import json
 import re
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 REQUEST_SCHEMA = "gm-design-rule-check/v1"
 RESULT_SCHEMA = "gm-design-rule-result/v1"
@@ -309,6 +310,74 @@ def applicability(group: str, subject_class: str) -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
+# Capture paths
+# ---------------------------------------------------------------------------
+
+RES_PREFIX = "res://"
+
+
+def resolve_capture(value: str) -> str:
+    """Map one declared image path to a project-root-relative POSIX path.
+
+    An Asset Skill result states its paths as Godot resource paths
+    (`res://assets/generated/...png`). A VQA backend reads files, not Godot
+    resources, so a `res://` value handed straight to visual-qa fails its
+    existence check before any model call — which would then look like a
+    backend outage and reject a perfectly good asset.
+
+    Both callers already run from the project root, so a relative POSIX path is
+    what visual-qa can actually open, and it stays portable in the audit.
+    """
+    raw = (value or "").strip()
+    if not raw:
+        raise DesignError("capture path must be non-empty")
+
+    if raw.startswith(RES_PREFIX):
+        remainder = raw[len(RES_PREFIX):]
+        segments = [s for s in remainder.replace("\\", "/").split("/") if s != ""]
+        if not segments or any(s in (".", "..") for s in segments):
+            raise DesignError(
+                f"invalid resource path {raw!r}: expected res:// followed by a "
+                "relative path with no '.' or '..' segment"
+            )
+        return "/".join(segments)
+
+    candidate = PurePosixPath(raw.replace("\\", "/"))
+    if candidate.is_absolute() or (len(raw) > 1 and raw[1] == ":"):
+        raise DesignError(
+            f"capture path {raw!r} must be project-relative or a res:// "
+            "resource path, not absolute"
+        )
+    segments = [s for s in candidate.parts if s not in ("", ".")]
+    if not segments or any(s == ".." for s in segments):
+        raise DesignError(f"capture path {raw!r} must stay inside the project")
+    return "/".join(segments)
+
+
+def _resolved_paths(
+    values: list[str],
+    *,
+    project_root: Path | None,
+    label: str,
+    require_existing: bool,
+) -> tuple[list[str], list[str]]:
+    """`(resolved, originals)` for a list of declared image paths."""
+    resolved: list[str] = []
+    for value in values:
+        target = resolve_capture(value)
+        if require_existing and project_root is not None:
+            if not (project_root / target).is_file():
+                raise DesignError(
+                    f"{label} {value!r} resolves to {target!r}, which does not "
+                    f"exist under {project_root.resolve()}. This is a problem "
+                    "with the asset or the capture, not a visual-qa backend "
+                    "error - do not grade it as one."
+                )
+        resolved.append(target)
+    return resolved, [v.strip() for v in values]
+
+
+# ---------------------------------------------------------------------------
 # Request construction
 # ---------------------------------------------------------------------------
 
@@ -321,8 +390,16 @@ def build_request(
     captures: list[str] | None = None,
     requirements: list[str] | None = None,
     references: list[str] | None = None,
+    project_root: Path | None = None,
 ) -> dict:
     """Build the deterministic request behind one visual-qa Question call.
+
+    Captures may be given as Godot resource paths (`res://...`) exactly as an
+    Asset Skill result states them; they are resolved to project-relative paths
+    visual-qa can open, and the declared originals are kept for the audit.
+    Pass `project_root` to also require every capture to exist — the CLI always
+    does, so a missing image fails here rather than surfacing later as a fake
+    backend error.
 
     `references` are recorded as provenance context only. Overall resemblance
     to a reference is never a criterion: two captures in the same visual
@@ -335,9 +412,23 @@ def build_request(
         )
     if not subject_name:
         raise DesignError("subject name is required")
-    captures = list(captures or [])
-    if not captures:
+    declared_captures = list(captures or [])
+    if not declared_captures:
         raise DesignError("at least one capture is required")
+    resolved_captures, capture_resources = _resolved_paths(
+        declared_captures,
+        project_root=project_root,
+        label="capture",
+        require_existing=True,
+    )
+    # A reference is only named in the prompt, never opened, so it is shape-
+    # checked but not required to exist.
+    resolved_references, reference_resources = _resolved_paths(
+        list(references or []),
+        project_root=project_root,
+        label="reference",
+        require_existing=False,
+    )
 
     rules = []
     for rule in extract_rules(design_text):
@@ -355,9 +446,12 @@ def build_request(
             "class": subject_class,
             "kind": subject_kind,
         },
-        "captures": captures,
+        # What visual-qa is handed, and what the producer declared.
+        "captures": resolved_captures,
+        "capture_resources": capture_resources,
         "content_requirements": list(requirements or []),
-        "reference_provenance": list(references or []),
+        "reference_provenance": resolved_references,
+        "reference_resources": reference_resources,
         "rules": rules,
     }
 
@@ -726,6 +820,11 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help="provenance context only; never a similarity criterion",
     )
+    request.add_argument(
+        "--project-root",
+        default=".",
+        help="root the captures are resolved against and checked for existence",
+    )
     request.add_argument("--question", action="store_true", help="print the question text")
     request.add_argument("--output")
 
@@ -767,6 +866,7 @@ def main(argv: list[str] | None = None) -> int:
                 captures=args.capture,
                 requirements=args.requirement,
                 references=args.reference,
+                project_root=Path(args.project_root),
             )
             if args.question:
                 sys.stdout.write(render_question(payload) + "\n")

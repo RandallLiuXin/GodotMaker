@@ -193,6 +193,9 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
    ```
 
    Repeat `--capture` for a frame sequence and `--requirement` per criterion.
+   Every capture must already exist under the project root — `build-request`
+   fails if one does not, which means the screenshot step did not produce it.
+   Fix the capture; never grade a missing screenshot as a backend error.
    The tool selects the rules that apply to that subject class — a UI-only
    capture additionally carries every UI Visual Language rule, while rules that
    cannot be observed in it (lighting and shadow, space and depth) come back

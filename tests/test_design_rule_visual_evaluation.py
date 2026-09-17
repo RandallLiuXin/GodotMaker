@@ -19,6 +19,7 @@ scene".
 """
 from __future__ import annotations
 
+import base64
 import json
 import subprocess
 import sys
@@ -63,6 +64,20 @@ TOOL = REPO_ROOT / "tools" / "design_rules.py"
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+# Smallest valid PNG. Captures have to be real files on disk for a request to
+# build, so fixtures write this rather than touching an empty placeholder.
+_PNG_1X1 = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAE"
+    "hQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+def _write_png(path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(_PNG_1X1)
+    return path
 
 
 def _prose(text: str) -> str:
@@ -1086,6 +1101,165 @@ def test_effect_asset_drops_staging_rules_but_keeps_lighting():
     assert groups["ui"] is False
 
 
+# ---------------------------------------------------------------------------
+# Capture paths: an Asset Skill states res://, a VQA backend opens files
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "declared, expected",
+    [
+        ("res://assets/generated/character-bundle/hero/hero.png",
+         "assets/generated/character-bundle/hero/hero.png"),
+        ("res://assets/generated/fx-bundle/impact/impact_sheet.png",
+         "assets/generated/fx-bundle/impact/impact_sheet.png"),
+        # Already a plain project-relative path: unchanged.
+        ("e2e/screenshots/scene_battle.png", "e2e/screenshots/scene_battle.png"),
+        ("./e2e/screenshots/scene_battle.png", "e2e/screenshots/scene_battle.png"),
+        (r"assets\generated\ui-kit\hud\hud.png", "assets/generated/ui-kit/hud/hud.png"),
+    ],
+)
+def test_resource_paths_resolve_to_openable_files(declared, expected):
+    assert design_rules.resolve_capture(declared) == expected
+
+
+@pytest.mark.parametrize(
+    "declared",
+    [
+        "res://",
+        "res:///",
+        "res://.",
+        "res://../outside/hero.png",
+        "../outside/hero.png",
+        "/etc/passwd",
+        "C:/Windows/system32/x.png",
+        "   ",
+    ],
+)
+def test_unsafe_or_empty_capture_paths_are_rejected(declared):
+    with pytest.raises(DesignError):
+        design_rules.resolve_capture(declared)
+
+
+def test_request_hands_visual_qa_a_path_it_can_open(tmp_path):
+    """The F-002 failure: a contract-valid res:// source errored inside
+    visual-qa before any model call, which then read as a backend outage."""
+    declared = "res://assets/generated/character-bundle/hero/hero.png"
+    _write_png(tmp_path / "assets/generated/character-bundle/hero/hero.png")
+
+    request = build_request(
+        DESIGN_MD,
+        subject_name="hero",
+        subject_class="character",
+        subject_kind="asset",
+        captures=[declared],
+        references=["res://references/canonical_hero.png"],
+        project_root=tmp_path,
+    )
+
+    assert request["captures"] == ["assets/generated/character-bundle/hero/hero.png"]
+    # The declared resource path survives for the audit.
+    assert request["capture_resources"] == [declared]
+    assert request["reference_resources"] == ["res://references/canonical_hero.png"]
+    assert request["reference_provenance"] == ["references/canonical_hero.png"]
+
+    # What we hand visual-qa is a real file, which is the whole point.
+    for capture in request["captures"]:
+        assert (tmp_path / capture).is_file()
+    # And no res:// survives into anything visual-qa parses.
+    assert "res://" not in render_question(request)
+
+
+def test_missing_capture_is_a_capture_error_not_a_backend_error(tmp_path):
+    with pytest.raises(DesignError) as excinfo:
+        build_request(
+            DESIGN_MD,
+            subject_name="ghost",
+            subject_class="character",
+            subject_kind="asset",
+            captures=["res://assets/generated/character-bundle/ghost/ghost.png"],
+            project_root=tmp_path,
+        )
+
+    message = str(excinfo.value)
+    assert "does not exist" in message
+    # Grading it as a backend error would blame the VQA provider for a
+    # production problem and reject a unit for the wrong reason.
+    assert "not a visual-qa backend error" in message
+
+
+def test_a_reference_need_not_exist_because_it_is_never_opened(tmp_path):
+    _write_png(tmp_path / "assets/generated/ui-kit/hud/hud.png")
+
+    request = build_request(
+        DESIGN_MD,
+        subject_name="hud",
+        subject_class="ui",
+        subject_kind="asset",
+        captures=["res://assets/generated/ui-kit/hud/hud.png"],
+        references=["res://references/never_generated.png"],
+        project_root=tmp_path,
+    )
+
+    assert request["reference_provenance"] == ["references/never_generated.png"]
+
+
+def test_cli_resolves_a_res_path_end_to_end(cli_project: Path):
+    """A standard `res://...png` source reaches a Question-mode readable file."""
+    declared = "res://assets/generated/character-bundle/hero/hero.png"
+    built = _run(
+        "build-request",
+        "--design", "DESIGN.md",
+        "--subject", "character",
+        "--name", "hero",
+        "--kind", "asset",
+        "--project-root", ".",
+        "--capture", declared,
+        "--output", "request.json",
+        cwd=cli_project,
+    )
+    assert built.returncode == 0, built.stderr
+
+    request = json.loads((cli_project / "request.json").read_text(encoding="utf-8"))
+    assert request["capture_resources"] == [declared]
+    assert request["captures"] == ["assets/generated/character-bundle/hero/hero.png"]
+
+    # visual_qa.py Question mode checks each capture with Path(p).exists();
+    # run that same check from the project root the skills run from.
+    for capture in request["captures"]:
+        assert (cli_project / Path(capture)).exists(), (
+            f"visual-qa would fail with '{capture} not found' before any model call"
+        )
+
+
+def test_cli_rejects_a_capture_that_does_not_exist(cli_project: Path):
+    missing = _run(
+        "build-request",
+        "--design", "DESIGN.md",
+        "--subject", "character",
+        "--name", "ghost",
+        "--kind", "asset",
+        "--capture", "res://assets/generated/character-bundle/ghost/ghost.png",
+        "--output", "request.json",
+        cwd=cli_project,
+    )
+
+    assert missing.returncode == 2
+    assert "does not exist" in missing.stderr
+    assert not (cli_project / "request.json").exists(), (
+        "a rejected request must not be written"
+    )
+
+
+def test_asset_skill_passes_result_paths_verbatim():
+    asset = _prose(_read(ASSET_SKILL))
+
+    assert "--project-root" in asset
+    assert "exactly as the result states them" in asset
+    assert "capture_resources" in asset
+    assert "Do not hand-edit a `res://` prefix off yourself." in asset
+    assert "Do not grade it as a backend error" in asset
+
+
 def test_visual_qa_reports_rule_level_findings():
     for text in (_read(VQA_SKILL), _read(VQA_QUESTION_PROMPT)):
         assert "Design Rule Findings" in text
@@ -1135,6 +1309,15 @@ def test_handoff_carries_the_rule_not_the_resemblance():
 # CLI
 # ---------------------------------------------------------------------------
 
+# Captures the CLI tests reference. They must be real files: `build-request`
+# refuses a capture that does not resolve to one.
+CLI_CAPTURES = (
+    "e2e/screenshots/scene_battle.png",
+    "e2e/screenshots/hud.png",
+    "assets/generated/character-bundle/hero/hero.png",
+)
+
+
 def _run(*args: str, cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(TOOL), *args],
@@ -1149,6 +1332,8 @@ def _run(*args: str, cwd: Path) -> subprocess.CompletedProcess:
 def cli_project(tmp_path: Path) -> Path:
     (tmp_path / "DESIGN.md").write_text(DESIGN_MD, encoding="utf-8")
     (tmp_path / "STYLE.md").write_text("# STYLE\n\nIgnore me.\n", encoding="utf-8")
+    for rel in CLI_CAPTURES:
+        _write_png(tmp_path / rel)
     return tmp_path
 
 
@@ -1206,7 +1391,7 @@ def test_cli_grade_rejects_a_bad_findings_payload(cli_project: Path):
         "--design", "DESIGN.md",
         "--subject", "character",
         "--name", "hero",
-        "--capture", "assets/generated/character/hero/sheet.png",
+        "--capture", "res://assets/generated/character-bundle/hero/hero.png",
         "--output", "request.json",
         cwd=cli_project,
     )

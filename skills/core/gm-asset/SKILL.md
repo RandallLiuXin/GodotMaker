@@ -264,6 +264,13 @@ Run this for every generated visual production unit whose result validated,
    returned no inspectable image, skip the review and record that reason in the
    unit's report; do not invent a capture.
 
+   Pass these paths to `build-request` **exactly as the result states them**.
+   An Asset Skill result declares Godot resource paths (`res://assets/...`),
+   which no VQA backend can open; `build-request` resolves each one to the
+   project-relative file visual-qa actually reads and keeps the declared
+   resource path in the request's `capture_resources` for the audit. Do not
+   hand-edit a `res://` prefix off yourself.
+
 2. **Resolve the subject class** from the family — do not guess it:
 
    ```bash
@@ -275,7 +282,8 @@ Run this for every generated visual production unit whose result validated,
    ```bash
    python tools/design_rules.py build-request --design DESIGN.md \
      --subject {subject_class} --name {asset_id} --kind asset \
-     --capture {inspectable image path} \
+     --project-root . \
+     --capture {result path, res:// or project-relative, verbatim} \
      --reference {canonical or style reference path, when the unit used one} \
      --output .godotmaker/asset-generation/design-checks/{asset_id}-request.json
    ```
@@ -284,6 +292,13 @@ Run this for every generated visual production unit whose result validated,
    context only: a produced asset that shares the project's visual language but
    differs in composition from its reference is not a defect, and matching a
    reference does not excuse a rule violation.
+
+   `build-request` fails when a capture does not resolve to a real file under
+   the project root. That is a production problem with the unit — report it as
+   a failed production unit and leave its rows unchanged. **Do not grade it as
+   a backend error**, and do not dispatch visual-qa with a path that failed to
+   resolve. Read the resolved `captures` out of the written request and pass
+   those to visual-qa.
 
 4. **Dispatch a subagent** to run the `visual-qa` skill in Question mode with
    the text `build-request --question` printed, passed verbatim, plus
