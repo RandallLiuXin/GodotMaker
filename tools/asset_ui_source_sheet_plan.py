@@ -32,45 +32,32 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _visual_direction(brief: str) -> tuple[str, list[dict[str, str]]]:
-    """Carry the brief into the provider prompt, minus pixel-art negations.
+    """Carry the brief into the provider prompt without editing its rules.
 
-    The brief holds the caller's visual rules verbatim, so the prompt keeps its
-    wording. The one exception is a pixel-art negation: naming pixel art in an
-    image prompt biases the provider toward it, and this family already asserts
-    its medium positively through `rendering_medium`.
+    The brief holds the caller's visual rules — for a `/gm-asset` caller, the
+    selected `DESIGN.md` sections copied out verbatim. The prompt therefore
+    reproduces them word for word, including a `Do` / `Don't` rule that names
+    pixel art. This plan never drops, rewrites, or reweights a carried rule;
+    doing so would mean the provider never receives a rule the caller selected.
 
-    Removing only the matched words can leave a fragment — `Not pixel art at
-    any scale.` would become `at any scale.`, which is a mangled rule rather
-    than a carried one. So a segment that *opens* with the negation is dropped
-    whole, a negation used as a qualifier loses just those words, and every
-    removal is reported for the plan's audit record.
+    Naming pixel art in an image prompt can still bias a provider toward it, so
+    such a rule is reported as a residual risk for the producer's report rather
+    than silently removed. The family also asserts its medium positively
+    through `rendering_medium`, which stays in the prompt alongside the rules.
     """
-    removals: list[dict[str, str]] = []
-    kept: list[str] = []
+    notes: list[dict[str, str]] = []
     for segment in _SEGMENT.split(brief):
         if not segment.strip():
             continue
-        match = PIXEL_LANGUAGE.search(segment)
-        if match is None:
-            kept.append(segment)
-            continue
-        opening = segment[: match.start()].strip(" \t-*>#")
-        if opening:
-            trimmed = " ".join(PIXEL_LANGUAGE.sub("", segment).split())
-            removals.append({
+        matches = [match.group(0) for match in PIXEL_LANGUAGE.finditer(segment)]
+        if matches:
+            notes.append({
                 "segment": " ".join(segment.split()),
-                "matched": ", ".join(m.group(0) for m in PIXEL_LANGUAGE.finditer(segment)),
-                "action": "qualifier_removed",
+                "matched": ", ".join(matches),
+                "disposition": "carried_verbatim",
+                "residual_risk": "pixel-art wording in an image prompt can bias the provider",
             })
-            kept.append(trimmed)
-        else:
-            # The negation is the whole rule; the positive medium replaces it.
-            removals.append({
-                "segment": " ".join(segment.split()),
-                "matched": match.group(0),
-                "action": "segment_dropped",
-            })
-    return " ".join(" ".join(kept).split()), removals
+    return " ".join(brief.split()), notes
 
 
 def _positive_int(value: Any, label: str) -> int:
@@ -264,11 +251,7 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
         or not geometry_profiles
     ):
         raise UISourcePlanError("source-sheet scheme is malformed")
-    direction, removed_negations = _visual_direction(brief)
-    if not direction:
-        raise UISourcePlanError(
-            "request.brief carries no visual direction once pixel-art negations are removed"
-        )
+    direction, pixel_art_rule_notes = _visual_direction(brief)
     common = (
         f"Create reusable {rendering_medium.strip()} game UI source art. "
         f"Match the supplied style reference's palette, shape language, outlines, shadows, and material treatment. "
@@ -348,7 +331,8 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
         "rendering_medium": rendering_medium.strip(),
         "visual_direction": {
             "text": direction,
-            "removed_pixel_art_negations": removed_negations,
+            "carried_verbatim": True,
+            "pixel_art_rule_notes": pixel_art_rule_notes,
         },
         "references": references,
         "scheme": {

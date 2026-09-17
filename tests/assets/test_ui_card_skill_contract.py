@@ -312,7 +312,13 @@ def test_source_sheet_plan_requires_magenta_color_key_and_positive_medium_prompt
     assert plan["scheme"]["background"]["color"] == "#FF00FF"
     assert len(plan["sheets"]) == 2
     assert all("#FF00FF" in sheet["prompt"] for sheet in plan["sheets"])
-    assert all("pixel-art" not in sheet["prompt"].lower() and "pixel art" not in sheet["prompt"].lower() for sheet in plan["sheets"])
+    # The plan states the medium positively and authors no pixel-art negation of
+    # its own. The caller's wording is carried, so judge only the added language.
+    assert all("hand-painted fantasy illustration" in sheet["prompt"] for sheet in plan["sheets"])
+    for sheet in plan["sheets"]:
+        authored = sheet["prompt"].replace(plan["visual_direction"]["text"], "").lower()
+        assert "pixel-art" not in authored and "pixel art" not in authored
+    assert request["brief"] in " ".join(plan["sheets"][0]["prompt"].split())
     assert [len(sheet["components"]) for sheet in plan["sheets"]] == [8, 24]
     assert all("left to right and then top to bottom" in sheet["prompt"] for sheet in plan["sheets"])
     assert plan["sheets"][0]["components"][0] == "button_normal"
@@ -388,44 +394,59 @@ def test_source_sheet_prompts_carry_the_callers_visual_rules_verbatim():
     for sheet in plan["sheets"]:
         for rule in rules:
             assert rule in sheet["prompt"], rule
-    assert plan["visual_direction"]["removed_pixel_art_negations"] == []
+    assert plan["visual_direction"]["carried_verbatim"] is True
+    assert plan["visual_direction"]["pixel_art_rule_notes"] == []
     for rule in rules:
         assert rule in plan["visual_direction"]["text"], rule
 
 
-def test_source_sheet_plan_drops_pixel_art_negations_without_mangling_a_rule():
-    """A negation is removed as a whole rule, never down to a fragment."""
+# A rule naming pixel art is the case the plan used to edit. These phrasings are
+# the ones its negation filter matched.
+_PIXEL_ART_RULES = (
+    "- Not pixel art at any scale.",
+    "- Painterly non-pixel-art rendering.",
+    "- Don't use pixel art.",
+    "- Do not imitate pixel art with nearest-neighbor scaling.",
+)
+
+
+def test_source_sheet_prompts_carry_a_pixel_art_rule_verbatim():
+    """A selected rule reaches the provider even when it names pixel art."""
     tool = _source_plan_tool()
     request = _request("ui-kit")
-    request["brief"] = (
-        _DESIGN_BRIEF + "- Not pixel art at any scale.\n- Painterly non-pixel-art rendering.\n"
-    )
+    request["brief"] = _DESIGN_BRIEF + "\n".join(_PIXEL_ART_RULES) + "\n"
     scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
 
     plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
 
-    removals = plan["visual_direction"]["removed_pixel_art_negations"]
-    assert [item["action"] for item in removals] == ["segment_dropped", "qualifier_removed"]
-    assert removals[0]["segment"] == "- Not pixel art at any scale."
-    assert removals[1]["matched"] == "non-pixel-art"
     for sheet in plan["sheets"]:
-        prompt = sheet["prompt"]
-        # The dropped rule leaves no dangling fragment behind.
-        assert "at any scale" not in prompt
-        assert "pixel art" not in prompt.lower() and "pixel-art" not in prompt.lower()
-        # The qualifier's positive rule survives, and the other rules are intact.
-        assert "Painterly rendering." in prompt
-        assert "Don't render neon or chrome materials." in prompt
+        for rule in _PIXEL_ART_RULES:
+            assert rule in sheet["prompt"], rule
+        # Nothing was reworded into a substitute for the rule.
+        assert "Painterly rendering." not in sheet["prompt"]
+        assert "hand-painted fantasy illustration" in sheet["prompt"]
 
 
-def test_source_sheet_plan_stops_when_nothing_is_left_to_direct_the_provider():
+def test_source_sheet_plan_reports_a_pixel_art_rule_as_a_residual_risk():
+    """The wording is flagged for the report, never edited out of the prompt."""
     tool = _source_plan_tool()
     request = _request("ui-kit")
-    request["brief"] = "Not pixel art."
+    request["brief"] = _DESIGN_BRIEF + "\n".join(_PIXEL_ART_RULES) + "\n"
     scheme = json.loads((REPO_ROOT / "skills" / "assets" / "ui-kit" / "references" / "source-sheet-scheme.json").read_text(encoding="utf-8"))
 
-    with pytest.raises(tool.UISourcePlanError, match="no visual direction"):
-        tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+    plan = tool.build_source_sheet_plan(request, scheme, rendering_medium="hand-painted fantasy illustration")
+
+    notes = plan["visual_direction"]["pixel_art_rule_notes"]
+    assert [note["segment"] for note in notes] == [
+        "- Not pixel art at any scale.",
+        "- Painterly non-pixel-art rendering.",
+    ]
+    assert {note["disposition"] for note in notes} == {"carried_verbatim"}
+    assert all(note["residual_risk"] for note in notes)
+    # A flagged rule is still present in full, in both prompts.
+    for sheet in plan["sheets"]:
+        for note in notes:
+            assert note["segment"] in sheet["prompt"]
 
 
 def test_stylebox_plan_expands_fixed_surface_patches_into_runtime_styleboxes():

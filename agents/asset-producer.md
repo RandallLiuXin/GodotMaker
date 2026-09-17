@@ -115,6 +115,7 @@ exclusion is the planner's decision, not yours.
 - Design sections written into the prompt: {same headings, or the missing ones}
 - References attached: {count} — {role, path, sha256, attached: true per entry, or none}
 - Reference conflicts: {none | blocker: role + path vs `DESIGN.md` heading}
+- Residual prompt risks: {none | rule wording a provider may respond to poorly, carried anyway}
 
 ### Outputs
 - Sources: {paths or none}

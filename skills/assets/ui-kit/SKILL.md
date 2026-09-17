@@ -70,9 +70,11 @@ manifests, stable entries, or worker dispatch state.
      material language, plus the `brief` rules and the reference roles and
      paths each observation was derived from.
 
-   Use positive medium language. Do not put pixel-art negations into image
-   prompts. The Theme plan is a deterministic visual-system specification, not
-   generated art.
+   Write `rendering_medium` and your own added prompt language positively;
+   do not author a pixel-art negation of your own. This does not license
+   editing the caller's rules: a rule the `brief` states is carried as written
+   even when it names pixel art. The Theme plan is a deterministic
+   visual-system specification, not generated art.
 
 2. Generate the deterministic source plan:
 
@@ -80,14 +82,18 @@ manifests, stable entries, or worker dispatch state.
    python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --scheme .agents/skills/ui-kit/references/source-sheet-scheme.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
    ```
 
-   Both plan prompts carry the `brief` — including every selected design rule,
-   Do / Don't entry, and UI visual-language rule — into the provider call in
-   its own wording. The one exception is a pixel-art negation: naming pixel art
-   in an image prompt biases the provider toward it, and this family already
-   asserts its medium positively through `rendering_medium`. The plan drops such
-   a phrase and records it under `visual_direction.removed_pixel_art_negations`,
-   so the removal stays auditable and no rule is silently mangled into a
-   fragment. A brief left with no visual direction at all is a STOP.
+   Both plan prompts carry the `brief` word for word — every selected design
+   rule, `Do` / `Don't` entry, and UI visual-language rule reaches both provider
+   calls as written. There is no exception: the plan never drops, rewrites, or
+   reweights a carried rule, because a rule the caller selected and the provider
+   never sees is a rule that was not applied.
+
+   Naming pixel art in an image prompt can bias a provider toward it, so a
+   carried rule that does so is recorded under
+   `visual_direction.pixel_art_rule_notes` with `disposition: carried_verbatim`.
+   Report those notes as a residual risk; do not treat them as permission to
+   edit the rule. `rendering_medium` still states the medium positively in the
+   same prompt.
 
    Use the plan prompts unchanged. Make exactly two provider calls, attaching
    every reference to each call:

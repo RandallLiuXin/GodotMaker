@@ -442,6 +442,20 @@ def test_ui_families_keep_technical_output_in_the_skill_contract():
     assert "they cover both the image style\nand the UI visual language" in card_kit
 
 
+def test_ui_kit_prompt_plan_carries_every_selected_rule_without_editing_it():
+    """The generated prompts are the provider's view of the selected rules."""
+    ui_kit = _read(FAMILY_SKILLS["ui-kit"])
+    step = ui_kit.split("2. Generate the deterministic source plan", 1)[1]
+    step = step.split("3. Process each real provider image", 1)[0]
+    assert "carry the `brief` word for word" in step
+    assert "There is no exception" in step
+    assert "never drops, rewrites, or\n   reweights a carried rule" in step
+    # A risky rule is reported, not filtered out of the prompt.
+    assert "`disposition: carried_verbatim`" in step
+    assert "residual risk" in step
+    assert "do not treat them as permission to\n   edit the rule" in step
+
+
 # ---------------------------------------------------------------------------
 # AC-04: conflict disposition
 # ---------------------------------------------------------------------------
