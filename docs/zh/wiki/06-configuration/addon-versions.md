@@ -2,7 +2,16 @@
 
 `addon_versions.json` 固定了 GodotMaker 所使用的 Godot addon 的精确版本——目前包括用于 ECS 的 `gecs`、用于单元测试的 `gdUnit4`，以及用于端到端测试的 `godot-e2e`。将版本与 Godot 引擎版本绑定，可以防止升级时悄无声息地破坏你的构建。
 
-该文件位于 GodotMaker 仓库的 `config/addon_versions.json`，而不是你的游戏项目内部。
+源文件位于 GodotMaker 仓库的 `config/addon_versions.json`。发布时，它会复制到
+所选 runtime 在游戏项目内的配置目录：
+
+- Claude Code：`.claude/config/addon_versions.json`
+- Codex：`.agents/config/addon_versions.json`
+- OpenCode：`.opencode/config/addon_versions.json`
+- Pi：`.pi/config/addon_versions.json`
+
+`/gm-scaffold` 读取这个发布后的 runtime 本地副本；在游戏项目中检查版本锁定时，
+请使用 `.godotmaker/config.yaml` 所选 runtime 对应的路径。
 
 ## 文件内容
 

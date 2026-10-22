@@ -2,7 +2,17 @@
 
 `addon_versions.json` pins the exact Godot addon versions that GodotMaker uses — currently `gecs` for ECS, `gdUnit4` for unit testing, and `godot-e2e` for end-to-end testing. Keeping them pinned per Godot engine version means upgrades do not silently break your build.
 
-The file lives in the GodotMaker repository at `config/addon_versions.json`, not inside your game project.
+The source file lives in the GodotMaker repository at
+`config/addon_versions.json`. Publishing copies it into the selected runtime's
+project-local config directory:
+
+- Claude Code: `.claude/config/addon_versions.json`
+- Codex: `.agents/config/addon_versions.json`
+- OpenCode: `.opencode/config/addon_versions.json`
+- Pi: `.pi/config/addon_versions.json`
+
+`/gm-scaffold` reads that published runtime-local copy, so use the path for the
+runtime selected in `.godotmaker/config.yaml` when inspecting a game project.
 
 ## What's in it
 

@@ -27,6 +27,11 @@ All required checks passed! Ready to use GodotMaker.
 - 已安装核心包：`requests`、`pillow`。
 - 根据 `.godotmaker/config.yaml` 检查提供方包：Gemini 需要 `google-genai`，OpenAI 需要 `openai`，Grok 图片生成需要 `xai-sdk`。Wan 使用标准库 HTTP 客户端；选中后还要求 `DASHSCOPE_API_KEY` 与显式 `DASHSCOPE_REGION`。
 
+`pymatting` 是条件依赖，不属于 `check_env.py` 的预检项。只有
+`tools/asset_sheet_process.py` 使用 `--background magenta` 处理图集时才会导入它。
+使用这条清理路径前请安装 `tools/requirements.txt`；不要求移除品红背景的运行不会
+导入它。
+
 ### Godot E2E（Python 包）
 
 - `[FAIL]`：GodotMaker 使用的那个 Python 没有安装 `godot-e2e` 包。
@@ -61,13 +66,19 @@ All required checks passed! Ready to use GodotMaker.
 
 - Godot 4.5 或更高版本可通过 PATH 中的 `godot` 或 `godot4` 命令访问。
 
-如果 Godot 不在 PATH 中，这项检查会显示警告而非硬性失败——你仍可以在运行 `publish.py` 时手动输入可执行文件的完整路径，它会被保存到 `.claude/godotmaker.yaml` 供后续使用。
+如果 Godot 不在 PATH 中，这项检查会显示警告而非硬性失败——你仍可以在运行
+`publish.py` 时手动输入可执行文件的完整路径。路径会保存到所选 runtime 的
+`godotmaker.yaml`（位于 `.claude/`、`.agents/`、`.opencode/` 或 `.pi/`）；
+`check_env.py` 会根据 `.godotmaker/config.yaml` 的 `agent` 值解析对应路径。
 
 ### 所选 coding agent
 
 - Claude Code 项目会检查 `claude` 是否已安装。
 - Codex 项目会检查 `codex` 是否已安装、`.agents` runtime tree 是否存在，以及 `godot` MCP server 是否已配置。
 - OpenCode 项目会检查 `opencode` 是否已安装、`.opencode` runtime tree 和 hook adapter 是否存在，以及 `godot` MCP server 是否已配置。
+- Pi 项目会检查 `pi` 是否已安装，以及 `.pi` 下的 skills、agents、runtime mapping、
+  config sidecar 和 `godotmaker-runtime.ts` extension 是否存在。文件系统无法证明项目
+  已被信任，因此检查器还会提醒你使用 `--approve` 启动 Pi，或交互式信任该项目。
 
 ### API 密钥
 
@@ -78,7 +89,7 @@ All required checks passed! Ready to use GodotMaker.
 | `XAI_API_KEY` | 选中时必填 | xAI Grok 图片生成 |
 
 
-API 后端 selector 在缺少对应 key 时会失败。`asset_image_model: native` 对 Codex 会通过，对 Claude Code 会给出警告，因为检查工具无法证明 Claude 侧一定有原生生图能力。OpenCode 项目如果使用 `native` 生图或 `native` VQA 会失败，直到你把这些字段改成 `codex` 或 API 后端 selector。Claude Code 或 OpenCode 项目使用 `asset_image_model: codex` 时，需要 `codex` CLI 位于 PATH 中。
+API 后端 selector 在缺少对应 key 时会失败。`asset_image_model: native` 对 Codex 会通过，对 Claude Code 会给出警告，因为检查工具无法证明 Claude 侧一定有原生生图能力。OpenCode 和 Pi 项目如果使用 `native` 生图或 `native` VQA 会失败，直到你把这些字段改成 `codex` 或 API 后端 selector。使用 `asset_image_model: codex` 时，需要 `codex` CLI 位于 PATH 中。
 
 检查工具还会验证被选中提供方的 Python 包能否正常导入，从而捕获单靠版本号检查无法发现的安装问题。
 

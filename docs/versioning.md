@@ -135,7 +135,8 @@ boundaries without `--force`, which performs a clean re-initialization.
 
 Full rebuild re-deploys framework code and removes incompatible current state:
 - The selected runner's `skills/`, `agents/`, `config/`, and `templates/`
-- `.godotmaker/hooks/`, `.godotmaker/stage_schemas.json`
+- `.godotmaker/hooks/`, `.godotmaker/asset-runtime/`,
+  `.godotmaker/stage_schemas.json`
 - Current pipeline state: `.godotmaker/state.json`, `pipeline_state.json`,
   `stage.jsonl`, `current_role`, `evaluation.json`, `verify_report.json`,
   and `final_report.json`
@@ -169,14 +170,13 @@ Downgrading (e.g., `0.4.0 → 0.3.0`) is blocked by default. Use `--force` to ov
 python tools/publish.py --force /path/to/my-game
 ```
 
-A forced downgrade still calls `run_migrations()` for routing consistency,
-but in practice the call is a no-op: `applied_migrations.json` already
-records every migration applied at the higher version, and the older
-release ships with a subset of those scripts on disk, so `pending = disk
-- applied` is empty. Migrations are not "rolled back" — that would
-require explicit down-migration scripts, which this system does not
-ship. If you need to roll back a schema change, restore the target
-project from a VCS snapshot.
+A forced downgrade follows the normal tracked-state path and calls
+`run_migrations()`. It applies any migration script present in the older
+checkout whose ID is not already recorded in `applied_migrations.json`; for a
+normally published higher-version target this is usually a no-op. It never
+reverses already-applied migrations. The system does not ship down-migration
+scripts, so restore the target project from a VCS snapshot if a schema change
+must be rolled back.
 
 ### Re-publish Same Version
 
@@ -224,6 +224,7 @@ Every publish overwrites:
 | Selected runner `skills/` | All skills (flattened from core + reviewer) |
 | Selected runner `agents/` | Agent definitions (worker, verifier, reviewer, analyst, asset-producer) |
 | `.godotmaker/hooks/` | All hook scripts |
+| `.godotmaker/asset-runtime/` | Shared asset schemas, compilers, validators, and provider references |
 | Selected runner `config/` | Config files |
 | Selected runner `templates/` | Document templates |
 | `tools/` | Python tools (check_project, check_env, etc.) |
