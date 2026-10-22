@@ -81,6 +81,17 @@ If OpenCode subagent execution is unavailable, use a sequential fallback only
 when the current stage explicitly allows the lead session to perform that role's
 work. Otherwise stop and report the missing capability before editing files.
 
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+Claude Code.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `native` | `.opencode/plugins/godotmaker-hooks.js` invokes `check_stage_prerequisites.py` before the OpenCode `task` tool executes. |
+| `delegated_write_boundaries` | `native` | OpenCode agent `permission` frontmatter provides the write boundary; the plugin additionally applies the identity-free `memory` scope. Identity-dependent Python subagent gates remain unsupported. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, `stage_reminder.py` is only a non-authoritative write-time reminder. |
+
 ## Runtime Boundaries
 
 - Use the configured OpenCode `godot` MCP server for Godot operations. If it is

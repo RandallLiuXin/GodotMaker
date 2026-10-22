@@ -77,6 +77,18 @@ skill instruction, prefer skill-local resolution.
 | `create_or_use_isolated_workspace` | Prefer Codex-native isolated execution only if it carries `.agents/skills`, `.agents/agents`, `.agents/templates`, `.agents/godotmaker.yaml`, `.godotmaker/hooks`, and project files. If that cannot be guaranteed, use a git worktree fallback only when safe, or gate delegation. |
 | `finish_branch_or_handoff` | On a normal branch, follow the user's commit/push/PR instructions. In Codex App or detached-head environments, do not force branch operations; summarize changes and use the host application's handoff controls when required. |
 
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+Claude Code. Codex lifecycle hooks do not provide an equivalent write-tool or
+delegation preflight interception surface.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `prompt-level` | The active `$gm-*` skill must check its prerequisites before `spawn_agent`; Codex has no registered pre-dispatch hook for this gate. |
+| `delegated_write_boundaries` | `prompt-level` | Project-local role definitions constrain delegated writes. Codex does not forward `Write` or `Edit` events to `check_file_permissions.py`. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, Codex has no authoritative completion gate. |
+
 ## Delegated Roles
 
 Codex delegation is not the Claude Code `Agent({ subagent_type: ... })` API.

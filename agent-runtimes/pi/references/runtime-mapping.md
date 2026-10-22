@@ -66,6 +66,18 @@ Pi child processes also inherit their parent environment and may read ancestor
 `AGENTS.md` files. Run delegation from a clean project environment and do not
 place workspace credentials in inherited environment variables.
 
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+Claude Code. Pi does not expose equivalent write-tool or delegation preflight
+hook forwarding.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `prompt-level` | The active `/skill:gm-*` instructions must check prerequisites before `godotmaker_delegate`; the Pi extension has no pre-dispatch hook for this gate. |
+| `delegated_write_boundaries` | `prompt-level` | Role definitions and delegate briefs constrain writes. Pi has no per-role filesystem permission model or write-time hook. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, Pi has no authoritative completion gate. |
+
 ## Capability boundaries
 
 - Built-in `bash`, `read`, `edit`, and `write` cover source edits and the
