@@ -19,6 +19,7 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Changed
 
+- Publishing existing projects now refreshes GodotMaker-managed runtime hooks for Claude Code, Codex, OpenCode, and Pi while preserving unrelated user configuration and independent extensions (#212) — @RandallLiuXin.
 - Replaced the project `STYLE.md` visual seed with a plain-text `DESIGN.md` visual contract covering visual identity, nine image-style dimensions, UI visual language, and Do / Don't lists; existing projects migrate on publish, legacy text preserved verbatim.
 - `/gm-asset` now reviews every generated asset before registration and `/gm-evaluate` reviews every scene, both rule by rule against `DESIGN.md` instead of against reference-image similarity, reporting per-rule evidence, confidence, and severity, and blocking only on high-confidence violations of `Don't`, `MUST` / `MUST NOT`, or explicitly required rules.
 - Asset generation now treats `DESIGN.md` as the visual specification authority and role-labeled reference images as visual conditioning: each production unit carries its applicable design sections verbatim in the request brief, and a conflicting reference is a blocker instead of a silent drop.
