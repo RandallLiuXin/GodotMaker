@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-22T16:35:29.570Z",
+  "commands": [
+    "node qa/runtime-delegation/probe-opencode-injection.mjs",
+    "node qa/runtime-delegation/probe-opencode-injection.mjs --live"
+  ],
+  "environment": {
+    "runtime": "opencode 1.18.21",
+    "model": "deepseek/deepseek-v4-pro"
+  },
+  "prompt": "Return the value of GM_INJECT_TOKEN supplied by runtime hook context. Do not guess a value.",
+  "fixedPayload": {
+    "hookSpecificOutput": {
+      "hookEventName": "PreToolUse",
+      "additionalContext": "GM_INJECT_TOKEN=GM_INJECT_SENTINEL_4f2b9d"
+    }
+  },
+  "adapterBoundaryRuns": [
+    {
+      "repeat": 1,
+      "taskArgumentsMutated": false,
+      "hookReturnPropagated": false,
+      "defectReproduced": true
+    },
+    {
+      "repeat": 2,
+      "taskArgumentsMutated": false,
+      "hookReturnPropagated": false,
+      "defectReproduced": true
+    }
+  ],
+  "liveRuns": [
+    {
+      "repeat": 1,
+      "exitCode": 0,
+      "elapsedMs": 20172.898,
+      "stdoutBytes": 2536,
+      "taskObserved": true,
+      "sentinelObserved": false,
+      "contextMissingObserved": true,
+      "defectReproduced": true
+    },
+    {
+      "repeat": 2,
+      "exitCode": 0,
+      "elapsedMs": 21607.068,
+      "stdoutBytes": 2511,
+      "taskObserved": true,
+      "sentinelObserved": false,
+      "contextMissingObserved": true,
+      "defectReproduced": true
+    }
+  ],
+  "defectReproduced": true
+}
