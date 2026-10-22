@@ -39,11 +39,13 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 - Any other `fixgap` event carrying `outcome` → STOP. Ask the user to run
   `/gm-fixgap`.
 - Otherwise, define the **latest state-changing event** as the last event in
-  file order whose `role` is `build` or `fixgap`. A bare `fixgap` event (one
-  without `outcome`) is state-changing. Define a **fresh successful verify** as
-  an event with `role == "verify"` that appears later in file order than that
-  latest state-changing event. `gm-verify` appends a verify event only on PASS,
-  so a failed verify run cannot satisfy this prerequisite.
+  file order whose `role` is `build`, or whose `role` is `fixgap` unless it is
+  the exact `evaluator_owned_e2e` handoff defined above. A bare `fixgap` event
+  (one without `outcome`) is state-changing. Define a
+  **fresh successful verify** as an event with `role == "verify"` that
+  appears later in file order than that latest state-changing event.
+  `gm-verify` appends a verify event only on PASS, so a failed verify run cannot
+  satisfy this prerequisite.
 - If there is no state-changing event → STOP. Tell the user to run
   `/gm-build` first.
 - If there is no fresh successful verify → STOP. Tell the user to run
@@ -63,6 +65,7 @@ Sequence examples below are ordered from oldest to newest:
 | `build → verify → fixgap` | STOP: run `/gm-verify` |
 | `build → verify → fixgap → verify` | proceed |
 | `build → verify → fixgap(outcome=handoff, next_role=evaluate, reason=evaluator_owned_e2e)` | proceed through the handoff branch |
+| `build → verify → fixgap(outcome=handoff, next_role=evaluate, reason=evaluator_owned_e2e) → evaluate → evaluate` | STOP: evaluate already ran |
 
 ## Resolve `godot` binary
 

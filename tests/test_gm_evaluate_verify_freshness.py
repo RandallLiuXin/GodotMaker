@@ -17,7 +17,8 @@ def test_resume_check_defines_a_verify_freshness_boundary():
     resume = _resume_check()
 
     assert "**latest state-changing event**" in resume
-    assert "last event in\n  file order whose `role` is `build` or `fixgap`" in resume
+    assert "whose `role` is `fixgap` unless it is" in resume
+    assert "the exact `evaluator_owned_e2e` handoff defined above" in resume
     assert "A bare `fixgap` event" in resume
     assert "**fresh successful verify**" in resume
     assert "appears later in file order" in resume
@@ -45,8 +46,11 @@ def test_evaluator_owned_handoff_remains_the_only_fixgap_bypass():
     handoff = resume.index('outcome == "handoff"')
     other_outcome = resume.index("Any other `fixgap` event carrying `outcome`")
     freshness = resume.index("**latest state-changing event**")
+    repeated_evaluate = resume.index(
+        'If the **last event** has `role == "evaluate"`'
+    )
 
-    assert handoff < other_outcome < freshness
+    assert handoff < other_outcome < freshness < repeated_evaluate
     assert (
         "the only `fixgap` event that does not require\n  a later verify event"
         in resume
@@ -54,4 +58,9 @@ def test_evaluator_owned_handoff_remains_the_only_fixgap_bypass():
     assert (
         "| `build → verify → fixgap(outcome=handoff, next_role=evaluate, "
         "reason=evaluator_owned_e2e)` | proceed through the handoff branch |"
+    ) in resume
+    assert (
+        "| `build → verify → fixgap(outcome=handoff, next_role=evaluate, "
+        "reason=evaluator_owned_e2e) → evaluate → evaluate` | STOP: evaluate "
+        "already ran |"
     ) in resume
