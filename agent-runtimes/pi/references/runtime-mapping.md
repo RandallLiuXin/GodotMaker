@@ -40,6 +40,26 @@ Pi has no built-in MCP or `Agent` tool. GodotMaker publishes
   disjoint worktree jobs in parallel, inspect their branches, merge them, then
   run the normal build/verify gates.
 
+The extension owns one role policy table. When dispatch omits `model`, it reads
+the role's key from `.godotmaker/config.yaml`, falling back to `sonnet`. An
+explicit non-empty `model` on the dispatch request takes precedence. The
+special explicit value `inherit` suppresses `--model`, so the child inherits
+Pi's active model. Every other resolved value is passed as
+`--model <resolved-model>` to the Pi subprocess.
+
+| GodotMaker role | Model policy key | Pi delegation and isolation |
+|---|---|---|
+| `worker` | `worker_model` | Writable implementation role; separate git worktree by default. |
+| `reviewer` | `reviewer_model` | Read-only by prompt contract; separate git worktree by default. |
+| `verifier` | `verifier_model` | Read-only by prompt contract; separate git worktree by default. |
+| `analyst` | `analyst_model` | May write only `assets/manifest.json`; separate git worktree by default. |
+| `asset-producer` | `asset_producer_model` | Writes one scoped asset production unit; separate git worktree by default. |
+| `decomposer` | `decomposer_model` | Writes only its decomposition package; separate git worktree by default. |
+| `gdd-auditor` | `auditor_model` | Read-only by prompt contract; separate git worktree by default. |
+
+Use `shared` only for one explicitly serial request whose role contract permits
+the lead checkout. Parallel requests must all use worktree isolation.
+
 Before using `worktree` delegation, commit the published runtime resources that
 the delegate must receive: `.pi/`, `.godotmaker/config.yaml` and hooks,
 `tools/`, and `AGENTS.md`. The extension verifies these resources inside every

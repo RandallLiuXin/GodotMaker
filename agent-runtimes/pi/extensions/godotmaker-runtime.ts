@@ -11,10 +11,14 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import {
+  ROLE_POLICIES,
+  buildDelegateArgs,
+  resolveDelegateModel,
+  rolePolicy,
+} from "./delegate-policy.mjs";
 
-const ROLES = new Set([
-  "worker", "verifier", "reviewer", "analyst", "asset-producer", "decomposer", "gdd-auditor",
-]);
+const ROLES = new Set(Object.keys(ROLE_POLICIES));
 const MAX_PARALLEL = 3;
 const DEFAULT_DELEGATE_TIMEOUT_SECONDS = 15 * 60;
 const MAX_DELEGATE_TIMEOUT_SECONDS = 60 * 60;
@@ -24,12 +28,13 @@ const REQUIRED_RUNTIME_PATHS = [
   ".pi/godotmaker.yaml",
   ".pi/references/runtime-mapping.md",
   ".pi/extensions/godotmaker-runtime.ts",
+  ".pi/extensions/delegate-policy.mjs",
   ".godotmaker/config.yaml",
   "tools",
   "AGENTS.md",
 ];
 
-type DelegateRequest = { role: string; task: string; isolation?: string; timeoutSeconds?: number };
+type DelegateRequest = { role: string; task: string; model?: string; isolation?: string; timeoutSeconds?: number };
 
 function projectRoot(cwd: string): string {
   let current = path.resolve(cwd);
@@ -96,6 +101,8 @@ function removeWorktree(root: string, directory: string): void {
 
 async function runDelegate(root: string, request: DelegateRequest, signal?: AbortSignal) {
   if (!ROLES.has(request.role)) throw new Error(`Unsupported GodotMaker Pi role: ${request.role}`);
+  const policy = rolePolicy(request.role);
+  const resolvedModel = resolveDelegateModel(root, request.role, request.model);
   const rootMissing = missingRuntimePaths(root);
   if (rootMissing.length) {
     throw new Error(`Pi delegation requires published runtime resources: ${rootMissing.join(", ")}. Re-run publish with --agent pi.`);
@@ -105,7 +112,7 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
 
   let cwd = root;
   let branch: string | undefined;
-  if ((request.isolation ?? "worktree") === "worktree") {
+  if ((request.isolation ?? policy.defaultIsolation) === "worktree") {
     try {
       const isolated = createWorktree(root, request.role);
       cwd = isolated.cwd;
@@ -134,11 +141,9 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
     "Return an explicit PASS/FAIL summary with commands run and changed files.\n",
   ].join(""), "utf8");
 
-  const invocation = piInvocation([
-    "--approve", "--mode", "json", "--no-session", "-p",
-    "--append-system-prompt", promptFile,
-    `GodotMaker role: ${request.role}\n\nTask:\n${request.task}`,
-  ]);
+  const invocation = piInvocation(buildDelegateArgs(
+    request.role, request.task, promptFile, resolvedModel,
+  ));
   if (!invocation) {
     fs.rmSync(promptDir, { recursive: true, force: true });
     if (branch) removeWorktree(root, cwd);
@@ -177,7 +182,13 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
       if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
     });
     if (result.code !== 0) throw new Error(`Pi ${request.role} exited ${result.code}: ${result.stderr.trim() || finalAssistantText(result.stdout)}`);
-    return { role: request.role, cwd, branch, summary: finalAssistantText(result.stdout) };
+    return {
+      role: request.role,
+      model: resolvedModel ?? "inherit",
+      cwd,
+      branch,
+      summary: finalAssistantText(result.stdout),
+    };
   } finally {
     fs.rmSync(promptDir, { recursive: true, force: true });
   }
@@ -199,10 +210,12 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({
       role: Type.Optional(Type.String()),
       task: Type.Optional(Type.String()),
+      model: Type.Optional(Type.String({ minLength: 1 })),
       isolation: Type.Optional(Type.Union([Type.Literal("worktree"), Type.Literal("shared")])),
       timeoutSeconds: Type.Optional(Type.Number({ minimum: 1, maximum: MAX_DELEGATE_TIMEOUT_SECONDS })),
       requests: Type.Optional(Type.Array(Type.Object({
         role: Type.String(), task: Type.String(),
+        model: Type.Optional(Type.String({ minLength: 1 })),
         isolation: Type.Optional(Type.Union([Type.Literal("worktree"), Type.Literal("shared")])),
         timeoutSeconds: Type.Optional(Type.Number({ minimum: 1, maximum: MAX_DELEGATE_TIMEOUT_SECONDS })),
       }))),
@@ -210,17 +223,19 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, params, signal, _update, ctx) {
       const root = projectRoot(ctx.cwd);
       const requests: DelegateRequest[] = params.requests ?? (params.role && params.task
-        ? [{ role: params.role, task: params.task, isolation: params.isolation, timeoutSeconds: params.timeoutSeconds }] : []);
+        ? [{ role: params.role, task: params.task, model: params.model, isolation: params.isolation, timeoutSeconds: params.timeoutSeconds }] : []);
       if (!requests.length || requests.length > MAX_PARALLEL) {
         return { ...toolText(`Provide one role/task or 1-${MAX_PARALLEL} requests.`), isError: true };
       }
-      if (requests.length > 1 && requests.some((request) => (request.isolation ?? "worktree") !== "worktree")) {
+      if (requests.length > 1 && requests.some((request) => (
+        request.isolation ?? "worktree"
+      ) !== "worktree")) {
         return { ...toolText("Parallel Pi delegation requires worktree isolation."), isError: true };
       }
       try {
         const results = await Promise.all(requests.map((request) => runDelegate(root, request, signal)));
         const summary = results.map((result) => [
-          `${result.role}: ${result.summary}`,
+          `${result.role} [model: ${result.model}]: ${result.summary}`,
           result.branch ? `Merge candidate: ${result.branch} (${result.cwd})` : "Shared working tree",
         ].join("\n")).join("\n\n");
         return toolText(summary, { results });
