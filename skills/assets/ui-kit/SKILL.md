@@ -55,8 +55,8 @@ manifests, stable entries, or worker dispatch state.
    that contradicts a stated rule is a STOP with a blocker naming the reference
    role, its path, and the rule. `theme_plan.json` records how those rules and
    that evidence resolve into this family's required tokens for this one
-   request; it is a production artifact, never a reusable style source, and it
-   never adds a rule the brief did not state.
+   request; it is a production artifact, never a reusable
+   style source, and it never adds a rule the brief did not state.
    It contains:
 
    - a positive `rendering_medium` such as `bold comic-book game art`,
