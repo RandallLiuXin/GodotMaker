@@ -28,19 +28,41 @@ E2E tests live in **a single `e2e/` directory** that always reflects the current
 
 Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"role": X, "ts": Y}`.
 
-- If **no event with `role == "verify"`** exists anywhere in the file → STOP. Tell user to run `/gm-verify` first.
 - If `PLAN.md` is missing the `**Tag:**` header → STOP. Tell user the file is stale and to re-run `/gm-gdd` to regenerate it for the current tag.
-- If the **last event** has `role == "evaluate"` AND `.godotmaker/evaluation.json` exists → STOP. Tell the user:
-  > "Evaluate already ran at {timestamp} with no verify since. Recommended next: /gm-accept (if approved) or /gm-fixgap (if rejected).
-  > If you need to redo this step or have other plans, just tell me."
 - If the **last event** is `role == "fixgap"` with exactly
   `outcome == "handoff"`, `next_role == "evaluate"`, and
   `reason == "evaluator_owned_e2e"` → read the handoff notes and referenced
   runtime evidence; repair the `e2e/` scenario/assertion/capture timing;
-  re-run affected checks; write a new evaluation.
+  re-run affected checks; write a new evaluation. This handoff is routing, not
+  a state-changing event, so it is the only `fixgap` event that does not require
+  a later verify event.
 - Any other `fixgap` event carrying `outcome` → STOP. Ask the user to run
   `/gm-fixgap`.
+- Otherwise, define the **latest state-changing event** as the last event in
+  file order whose `role` is `build` or `fixgap`. A bare `fixgap` event (one
+  without `outcome`) is state-changing. Define a **fresh successful verify** as
+  an event with `role == "verify"` that appears later in file order than that
+  latest state-changing event. `gm-verify` appends a verify event only on PASS,
+  so a failed verify run cannot satisfy this prerequisite.
+- If there is no state-changing event → STOP. Tell the user to run
+  `/gm-build` first.
+- If there is no fresh successful verify → STOP. Tell the user to run
+  `/gm-verify` first. An older verify anywhere else in the history does not
+  satisfy this check.
+- If the **last event** has `role == "evaluate"` AND `.godotmaker/evaluation.json` exists → STOP. Tell the user:
+  > "Evaluate already ran at {timestamp} with no verify since. Recommended next: /gm-accept (if approved) or /gm-fixgap (if rejected).
+  > If you need to redo this step or have other plans, just tell me."
 - Otherwise → proceed (evaluate is naturally re-invoked after each verify pass).
+
+Sequence examples below are ordered from oldest to newest:
+
+| Events | Resume result |
+|---|---|
+| `build → verify` | proceed |
+| `verify → build` | STOP: run `/gm-verify` |
+| `build → verify → fixgap` | STOP: run `/gm-verify` |
+| `build → verify → fixgap → verify` | proceed |
+| `build → verify → fixgap(outcome=handoff, next_role=evaluate, reason=evaluator_owned_e2e)` | proceed through the handoff branch |
 
 ## Resolve `godot` binary
 
