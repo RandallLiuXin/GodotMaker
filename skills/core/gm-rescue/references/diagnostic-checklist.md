@@ -33,8 +33,8 @@ Files to inspect (under `hooks/` in the godotmaker repo):
   text file, or vice versa.
 - `check_stage_prerequisites.py`'s schema validation against
   `config/stage_schemas.json` — see §3 below.
-- `stage_reminder.py` — runs `validate_schema_files` and the
-  `PROGRAMMATIC_CHECKS` table at role completion.
+- `append_stage_event.py` — runs the side-effect-free checks in
+  `completion_gate.py` before archiving or appending a role completion.
   Common defect: a check function returns a string the user can't act
   on, or fires on a state the role legitimately produces.
 
@@ -69,13 +69,13 @@ What to look for:
 
 `config/stage_schemas.json` declares each role's required output files
 and `checks`. Mismatches here surface as "Cannot mark role X complete"
-errors from `stage_reminder.py`.
+errors from `append_stage_event.py`.
 
 What to look for:
 - A `files` entry that names a path the role doesn't actually produce
   (or produces under a different name).
 - A `checks` entry naming a function that doesn't exist in
-  `PROGRAMMATIC_CHECKS` — this would raise at hook time.
+  `PROGRAMMATIC_CHECKS` — this would leave the append gate without the named check.
 - A role missing entirely from the schema, when downstream code expects
   it (e.g., the `rescue` role).
 

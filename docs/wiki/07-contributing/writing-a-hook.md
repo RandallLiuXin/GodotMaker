@@ -116,7 +116,7 @@ A condensed summary. For full detail on each hook, see [../../hooks.md](../../ho
 |--------|-------|---------|---------|
 | `session_start.py` | SessionStart | No | Clear session metrics and state, inject GodotMaker version into context |
 | `check_file_permissions.py` | PreToolUse (Write\|Edit) | Yes | Enforce per-role write rules driven by `.godotmaker/current_role` |
-| `stage_reminder.py` | PreToolUse (Write\|Edit) | Yes | Intercept `stage.jsonl` appends, validate role outputs, inject next-role pointer |
+| `stage_reminder.py` | PreToolUse (Write\|Edit) | No | Detect direct `stage.jsonl` writes and inject a next-role pointer |
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | Yes | Block `build` / `fixgap` from dispatching workers if prerequisite role did not complete |
 | `check_asset_access.py` | PreToolUse (Read) | Yes | Block the main agent from reading image files in `assets/` (forces analyst sub-agent) |
 | `log_subagent.py` | SubagentStart | No | Record sub-agent start with role detection; called again by `on_subagent_stop.py` for stop metrics |
