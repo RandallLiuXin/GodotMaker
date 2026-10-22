@@ -15,11 +15,11 @@ Before provider dispatch, write `.godotmaker/asset-generation/plans/<asset_id>_a
 
 Use exact resolved grid and frame order for a source batch, but do not treat planning guidance as a reason to reject a valid artistic request. When a fixed-size provider source would make a dense action too small for the chosen canvas and safe area, split the action into source batches and preserve every batch's prompt, raw source, attachments, and report. Combine their resolved frames in action order before compiling one SpriteFrames resource.
 
-Use an explicit visual style or attached style image. Examples are `hand-drawn cel-shaded fantasy`, `comic-book ink and flat color`, and `painterly storybook`. Pixel-art production is unsupported in this family; stop clearly when it is requested. Do not use nearest-neighbor resampling.
+Carry the visual rules stated in `brief` into every provider prompt as written; they are the visual specification for this bundle. Examples of the style language they establish are `hand-drawn cel-shaded fantasy`, `comic-book ink and flat color`, and `painterly storybook`. Pixel-art production is unsupported in this family; stop clearly when it is requested. Do not use nearest-neighbor resampling.
 
 ## References and identity anchor
 
-External references are optional. Validate each path is a readable image, preserve its `canonical`, `style`, or `screen` role, resolve `res://` from the project root, and attach the actual images to the declared provider. Never replace an image attachment with a path in prompt text. Use only the declared `native`, `codex`, `gemini`, `openai`, or `wan` provider; do not silently switch. Stop clearly when the selected provider cannot generate or attach the required images.
+External references are optional and condition those rules rather than replace them: an attached `style` or `canonical` image supplies identity, palette, and continuity, never a style rule the brief did not state. Validate each path is a readable image, preserve its `canonical`, `style`, or `screen` role, resolve `res://` from the project root, and attach the actual images to the declared provider. Never replace an image attachment with a path in prompt text. Use only the declared `native`, `codex`, `gemini`, `openai`, or `wan` provider; do not silently switch. Stop clearly when the selected provider cannot generate or attach the required images, and stop with a blocker when a supplied reference contradicts a rule stated in `brief` instead of dropping either one.
 
 Choose one identity anchor:
 

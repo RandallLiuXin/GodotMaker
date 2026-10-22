@@ -46,7 +46,12 @@ with `reference_inputs`; it records hashes and attachment provenance.
 
 Turn the brief into one concrete source plan: frame geometry/orientation,
 empty portrait or card-art safe zones unless finished art is requested, rarity
-language, state treatment, and only the requested component list. A reusable
+language, state treatment, and only the requested component list. Carry every
+visual rule stated in `brief` — for a card kit they cover both the image style
+and the UI visual language — into the prompt as written. Those rules decide;
+an attached reference conditions them with concrete palette and material
+evidence and never extends or overrides them. Stop with a blocker naming the
+reference role, its path, and the rule when the two contradict. A reusable
 card frame is not a flattened example card. Keep card-art and portrait windows empty
 unless the request declares finished art. Keep generated images free of readable
 text, numbers, watermarks, and unrelated composite screens.

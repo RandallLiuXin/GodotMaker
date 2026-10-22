@@ -15,7 +15,12 @@ class UISourcePlanError(Exception):
     """Raised when a provider source-sheet plan cannot be produced."""
 
 
-PIXEL_LANGUAGE = re.compile(r"\b(?:non[- ]?pixel(?:[- ]?art)?|not\s+pixel(?:[- ]?art)?)\b", re.IGNORECASE)
+# Any wording that names pixel art. This only decides what gets reported as a
+# residual risk, so it matches every phrasing — `Don't use pixel art` carries
+# the same provider risk as `non-pixel-art`, and neither is ever removed.
+PIXEL_ART_WORDING = re.compile(r"\bpixel[\s-]?art\b", re.IGNORECASE)
+# One brief rule: a Markdown line, or a sentence inside one.
+_SEGMENT = re.compile(r"(?<=[.!?])\s+|\n+")
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
@@ -29,8 +34,38 @@ def _read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _clean_visual_direction(brief: str) -> str:
-    return " ".join(PIXEL_LANGUAGE.sub("", brief).split())
+def _visual_direction(brief: str) -> tuple[str, list[dict[str, str]]]:
+    """Carry the brief into the provider prompt without editing its rules.
+
+    The brief holds the caller's visual rules — for a `/gm-asset` caller, the
+    selected `DESIGN.md` sections copied out verbatim. The prompt therefore
+    reproduces them word for word, including a `Do` / `Don't` rule that names
+    pixel art. This plan never drops, rewrites, or reweights a carried rule;
+    doing so would mean the provider never receives a rule the caller selected.
+
+    The brief's own line structure is part of how it reads: a heading and each
+    bullet are separate rules, and flattening them into one running sentence
+    blurs the boundaries the provider has to honour. So only the surrounding
+    blank space is trimmed; headings, bullets, and line breaks are kept.
+
+    Naming pixel art in an image prompt can still bias a provider toward it, so
+    such a rule is reported as a residual risk for the producer's report rather
+    than silently removed. The family also asserts its medium positively
+    through `rendering_medium`, which stays in the prompt alongside the rules.
+    """
+    notes: list[dict[str, str]] = []
+    for segment in _SEGMENT.split(brief):
+        if not segment.strip():
+            continue
+        matches = [match.group(0) for match in PIXEL_ART_WORDING.finditer(segment)]
+        if matches:
+            notes.append({
+                "segment": " ".join(segment.split()),
+                "matched": ", ".join(matches),
+                "disposition": "carried_verbatim",
+                "residual_risk": "pixel-art wording in an image prompt can bias the provider",
+            })
+    return brief.strip(), notes
 
 
 def _positive_int(value: Any, label: str) -> int:
@@ -224,11 +259,11 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
         or not geometry_profiles
     ):
         raise UISourcePlanError("source-sheet scheme is malformed")
-    direction = _clean_visual_direction(brief)
+    direction, pixel_art_rule_notes = _visual_direction(brief)
     common = (
         f"Create reusable {rendering_medium.strip()} game UI source art. "
         f"Match the supplied style reference's palette, shape language, outlines, shadows, and material treatment. "
-        f"Visual direction: {direction} "
+        f"Visual direction, to follow as written:\n{direction}\n"
         "Use a perfectly flat, solid #FF00FF canvas background only. Reserve exact #FF00FF exclusively for the color-key background; do not use it in the artwork. "
         f"Keep every component fully separated by at least {composition['minimum_gap_px']} pixels of visible #FF00FF and away from every canvas edge. "
         "Create isolated reusable UI elements only: no characters, scenes, full screen mockups, readable text, numbers, logos, or branding. "
@@ -302,6 +337,11 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
         "asset_id": asset_id,
         "provider": provider,
         "rendering_medium": rendering_medium.strip(),
+        "visual_direction": {
+            "text": direction,
+            "carried_verbatim": True,
+            "pixel_art_rule_notes": pixel_art_rule_notes,
+        },
         "references": references,
         "scheme": {
             "version": scheme.get("version"),

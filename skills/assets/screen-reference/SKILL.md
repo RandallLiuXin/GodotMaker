@@ -31,7 +31,10 @@ present and non-empty, every `{ role, path }` is a required visual input:
 3. attach the actual image bytes to the selected provider request. A path
    mentioned only in text is not an attachment;
 4. STOP before writing a raw source or final output when an input is unreadable
-   or the selected provider cannot attach it.
+   or the selected provider cannot attach it;
+5. STOP with a blocker naming the reference role, its path, and the rule when it
+   contradicts a visual rule stated in `brief`. A reference conditions those
+   rules and never outranks them.
 
 Use the configured provider named by the request or production brief. `native`,
 `codex`, `gemini`, `openai`, and `wan` are binding selections: execute that documented
@@ -48,8 +51,12 @@ generic result directly in the matching catalog row.
 `spec` must declare the target `size` (`WIDTHxHEIGHT`) and `aspect_ratio`
 (`WIDTH:HEIGHT`). Build a prompt that names the game and screen purpose,
 camera/viewpoint, visible gameplay objects, approximate layout, HUD or UI safe
-regions, style language, target aspect/orientation, and each supplied reference
-role. Do not add labels, callouts, debug overlays, or unrequested objects.
+regions, target aspect/orientation, and each supplied reference role. Carry
+every visual rule stated in `brief` into that prompt as written: for this
+family the brief is the whole visual specification a foundation reference has,
+so a dropped or paraphrased rule is a failed unit. Do not invent a rule the
+brief does not state. Do not add labels, callouts, debug overlays, or
+unrequested objects.
 
 Treat object positions and sizes in the provider image as approximate visual
 direction. The raw provider source is not required to satisfy the final canvas

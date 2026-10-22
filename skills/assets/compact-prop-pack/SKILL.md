@@ -63,6 +63,11 @@ ordinary illustration.
 Honor the request's provider exactly. Never silently switch among `native`,
 `codex`, `gemini`, `openai`, or `wan`.
 
+- Carry every visual rule stated in `brief` into the prompt as written; it is
+  the visual specification for this pack. References condition those rules and
+  never outrank or extend them; a supplied reference that contradicts one of
+  them is a STOP with a blocker naming the reference role, its path, and the
+  rule.
 - With no `references`, generate the one source sheet from the brief and
   declared item list.
 - With references, validate every path is readable before generation, preserve

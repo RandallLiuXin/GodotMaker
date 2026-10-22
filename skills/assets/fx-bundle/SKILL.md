@@ -63,9 +63,11 @@ cell count.
    installs this guide from the shared `gm-asset` provider contract. Execute
    that provider route only; do not silently substitute `native`, `codex`,
    `gemini`, `openai`, or `wan`.
-2. With no references, generate from the request's identity, gameplay role,
-   direction, scale, frame count or static target, intended visual style,
-   isolated foreground, solid `#FF00FF` source background, and no text or UI.
+2. Carry every visual rule stated in `brief` into the prompt as written; it is
+   the visual specification for this effect. With no references, generate from
+   those rules plus the request's identity, gameplay role, direction, scale,
+   frame count or static target, isolated foreground, solid `#FF00FF` source
+   background, and no text or UI.
 3. With references, validate every referenced path is readable, preserve its
    role, and attach the actual image to the chosen provider. A pathname in a
    text prompt is not an attachment. For Codex, resolve each `res://` reference
@@ -104,8 +106,11 @@ cell count.
    as well as the generated assets it changes; do not omit the script merely
    because it is an implementation detail.
 
-References influence scale, direction, palette, and visual style. Do not claim
-they were attached or validated unless the provider trace proves it.
+References condition scale, direction, palette, and continuity within the
+rules stated in `brief`; they never outrank or extend those rules. A supplied
+reference that contradicts one of them is a STOP with a blocker naming the
+reference role, its path, and the rule, not a reference to drop. Do not claim
+references were attached or validated unless the provider trace proves it.
 
 ## Production loop
 

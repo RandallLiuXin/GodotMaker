@@ -22,7 +22,11 @@ not read or write `ASSETS.md`, tags, stage state, or generated manifests.
 Read `.godotmaker/asset-runtime/asset-skill-contract.md` before producing a
 result; this family adds the source-sheet and atlas rules below.
 
-`references` is optional. Without references, derive the visual direction and
+Carry every visual rule stated in `brief` into the prompt as written; it is
+the visual specification for this set. `references` is optional and conditions
+those rules rather than replacing them; a supplied reference that contradicts
+one of them is a STOP with a blocker naming the reference role, its path, and
+the rule. Without references, derive the visual direction and
 complete object list from the written brief. With references, every path must be
 a readable image, every declared role must be preserved, and the actual images
 must be supplied to the pinned provider. A path mentioned only in prompt text is

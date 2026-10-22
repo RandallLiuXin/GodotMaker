@@ -163,6 +163,13 @@ plan artifact fields.
 Apply the Visual Anchor Gate from `references/asset-planner.md` before
 dispatching generated visual work.
 
+For every generated visual unit, apply Design Rule Selection and Reference
+Conflict Disposition from `references/asset-planner.md`: select the applicable
+`DESIGN.md` sections for the unit's asset type, assign each reference its role,
+and record the selected headings plus any `excluded_reference` entry in the
+plan artifact. Read only `DESIGN.md` for visual rules; an older visual file
+left beside it stays closed.
+
 ### Step 4 - Dispatch Asset Producers
 
 Dispatch `asset-producer` for every generated visual production unit.
@@ -230,9 +237,21 @@ One production unit may return many outputs. Register all runtime outputs togeth
 
 ### Inputs
 - ASSETS.md rows: {row ids or names}
-- Design contract: DESIGN.md
 - Scene docs: SCENES.md sections or references
-- Canonical references: {paths}
+
+### Design Rules
+{The applicable `DESIGN.md` sections for this asset type, copied verbatim from
+the project's `DESIGN.md` per the Design Rule Selection table in
+`references/asset-planner.md`. These rules are the visual specification
+authority for this unit. Never summarize them, never substitute another
+visual document, and never send only the file path.}
+
+### Reference Inputs
+- {role: `canonical` | `style` | `screen`} — {path}
+{Each entry is attached to the provider call as real image bytes and is visual
+conditioning for the rules above, never a replacement for them. A reference
+that contradicts a listed rule is a blocker, not something the producer drops.
+Write `none` when the unit has no reference input.}
 
 ### Outputs
 - Generated output directory: `assets/generated/{asset_type}/{asset_id}/`
