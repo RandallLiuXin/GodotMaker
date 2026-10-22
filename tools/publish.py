@@ -16,6 +16,7 @@ Usage:
     python tools/publish.py --force <target_godot_project_dir>
 """
 import argparse
+import copy
 import json
 import os
 import re
@@ -48,6 +49,11 @@ class VersionCheckResult(NamedTuple):
     level: str  # "FRESH" | "SAME" | "PATCH" | "MINOR" | "MAJOR" | "DOWNGRADE"
     target_ver: SemVer | None
     source_ver: SemVer | None
+
+
+class RuntimeSurfaceConflict(ValueError):
+    """Raised when a runtime hook config cannot be merged without data loss."""
+
 
 EXCLUDE_DIRS = {"__pycache__", "doc_source", ".workspace"}
 AGENT_CHOICES = (AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE, AGENT_PI)
@@ -762,7 +768,7 @@ def publish_agents(repo_root: Path, agents_target: Path,
 def publish_agent_plugins(repo_root: Path, target: Path,
                           agent: str = AGENT_CLAUDE_CODE,
                           force: bool = False) -> int:
-    """Publish selected-runtime plugin adapters, when the runtime uses them."""
+    """Publish framework-owned runtime files without removing user extensions."""
     adapter = get_agent_adapter(agent)
     plugins_target = adapter.plugins_dir(target)
     if plugins_target is None:
@@ -777,19 +783,135 @@ def publish_agent_plugins(repo_root: Path, target: Path,
     if not plugins_src.exists():
         return 0
 
-    if plugins_target.exists() and not force:
-        relative = plugins_target.relative_to(target)
-        print(f"{relative} already exists, skipping (use --force to overwrite)")
-        return 0
+    count = 0
+    for source_file in sorted(plugins_src.rglob("*")):
+        if not source_file.is_file():
+            continue
+        relative = source_file.relative_to(plugins_src)
+        destination = plugins_target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_file, destination)
+        count += 1
 
-    copy_tree(plugins_src, plugins_target)
-    count = len([p for p in plugins_target.rglob("*") if p.is_file()])
-    print(f"Published {agent} plugins/ ({count} files)")
+    print(f"Published {agent} runtime extension(s) ({count} files)")
     return count
 
 
+def _read_json_object(path: Path, role: str) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as e:
+        raise RuntimeSurfaceConflict(
+            f"{role} is not readable valid JSON: {path} ({e})"
+        ) from e
+    if not isinstance(value, dict):
+        raise RuntimeSurfaceConflict(
+            f"{role} must contain a JSON object: {path}"
+        )
+    return value
+
+
+def _is_framework_hook_command(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    command = value.get("command")
+    if not isinstance(command, str):
+        return False
+    return ".godotmaker/hooks/" in command.replace("\\", "/")
+
+
+def _validated_hook_events(config: dict, role: str) -> dict:
+    events = config.get("hooks", {})
+    if not isinstance(events, dict):
+        raise RuntimeSurfaceConflict(f"{role} 'hooks' value must be an object")
+
+    for event, entries in events.items():
+        if not isinstance(entries, list):
+            raise RuntimeSurfaceConflict(
+                f"{role} hook event {event!r} must contain a list"
+            )
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                raise RuntimeSurfaceConflict(
+                    f"{role} hook event {event!r} entry {index} must be an object"
+                )
+            if "hooks" in entry and not isinstance(entry["hooks"], list):
+                raise RuntimeSurfaceConflict(
+                    f"{role} hook event {event!r} entry {index} has a non-list "
+                    "'hooks' value"
+                )
+    return events
+
+
+def merge_agent_hook_config(framework: dict, existing: dict) -> dict:
+    """Refresh framework hooks while preserving user-owned JSON data.
+
+    A leaf command that invokes ``.godotmaker/hooks/`` is framework-owned.
+    All other top-level keys, hook events, matcher entries, and commands are
+    user-owned. Current framework entries run first, in source order, followed
+    by preserved custom entries in their existing order.
+    """
+    framework_events = _validated_hook_events(framework, "framework config")
+    existing_events = _validated_hook_events(existing, "existing config")
+    merged = copy.deepcopy(existing)
+    custom_events: dict[str, list] = {}
+
+    for event, entries in existing_events.items():
+        preserved = []
+        for entry in entries:
+            if "hooks" not in entry:
+                preserved.append(copy.deepcopy(entry))
+                continue
+
+            hooks = entry["hooks"]
+            custom_hooks = [
+                copy.deepcopy(hook)
+                for hook in hooks
+                if not _is_framework_hook_command(hook)
+            ]
+            removed_framework_hook = len(custom_hooks) != len(hooks)
+            if not removed_framework_hook:
+                preserved.append(copy.deepcopy(entry))
+            elif custom_hooks:
+                custom_entry = copy.deepcopy(entry)
+                custom_entry["hooks"] = custom_hooks
+                preserved.append(custom_entry)
+        if preserved:
+            custom_events[event] = preserved
+
+    merged_events: dict[str, list] = {}
+    for event, entries in framework_events.items():
+        merged_events[event] = copy.deepcopy(entries)
+        merged_events[event].extend(custom_events.pop(event, []))
+    for event, entries in custom_events.items():
+        merged_events[event] = entries
+    merged["hooks"] = merged_events
+    return merged
+
+
+def validate_agent_hook_config_update(
+    repo_root: Path, target: Path, agent: str, force: bool
+) -> None:
+    """Preflight a hook config update before publish changes the target."""
+    spec = AGENT_HOOK_CONFIGS.get(agent)
+    source_root = AGENT_RUNTIME_SOURCE_ROOTS.get(agent)
+    if spec is None or source_root is None:
+        return
+    source_relative, target_relative = spec
+    src = repo_root / source_root / source_relative
+    dst = target / target_relative
+    if not src.exists():
+        return
+
+    framework = _read_json_object(src, "framework hook config")
+    _validated_hook_events(framework, "framework config")
+    if dst.exists() and not force:
+        existing = _read_json_object(dst, "existing hook config")
+        merge_agent_hook_config(framework, existing)
+
+
 def deploy_agent_hook_config(repo_root: Path, target: Path, agent: str, force: bool):
-    """Deploy selected-agent hook config."""
+    """Deploy or merge the selected-agent hook config."""
     spec = AGENT_HOOK_CONFIGS.get(agent)
     source_root = AGENT_RUNTIME_SOURCE_ROOTS.get(agent)
     if spec is None or source_root is None:
@@ -805,7 +927,17 @@ def deploy_agent_hook_config(repo_root: Path, target: Path, agent: str, force: b
         shutil.copy2(src, dst)
         print(f"Created {target_relative} (hooks enabled)")
     else:
-        print(f"{target_relative} already exists, skipping (use --force to overwrite)")
+        framework = _read_json_object(src, "framework hook config")
+        existing = _read_json_object(dst, "existing hook config")
+        merged = merge_agent_hook_config(framework, existing)
+        dst.write_text(
+            json.dumps(merged, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        print(
+            f"Updated {target_relative} "
+            "(framework hooks refreshed; custom entries preserved)"
+        )
 
 
 def deploy_agent_instructions(repo_root: Path, target: Path, agent: str):
@@ -1437,6 +1569,17 @@ def main():
 
     agent = args.agent
     adapter = get_agent_adapter(agent)
+    try:
+        validate_agent_hook_config_update(
+            repo_root, target, agent, args.force
+        )
+    except RuntimeSurfaceConflict as e:
+        print(f"ERROR: runtime hook config conflict: {e}", file=sys.stderr)
+        print(
+            "Fix the existing JSON or re-run with --force to replace it.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     config_dir = adapter.project_config_dir(target)
     skills_target = adapter.skill_dir(target)
     config_file = config_dir / "godotmaker.yaml"
@@ -1456,10 +1599,6 @@ def main():
             if d.exists():
                 print(f"  Cleaning {d}")
                 rmtree_force(d)
-        plugins_dir = adapter.plugins_dir(target)
-        if plugins_dir is not None and plugins_dir.exists():
-            print(f"  Cleaning {plugins_dir}")
-            rmtree_force(plugins_dir)
         runtime_refs_dir = adapter.runtime_references_dir(target)
         if runtime_refs_dir is not None and runtime_refs_dir.exists():
             print(f"  Cleaning {runtime_refs_dir}")

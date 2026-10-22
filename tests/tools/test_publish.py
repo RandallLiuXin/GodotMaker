@@ -1787,6 +1787,98 @@ class TestCodexPublishParity:
         assert deployed == source
         assert "PreToolUse" not in deployed["hooks"]
 
+    @pytest.mark.parametrize(
+        ("agent", "target_relative"),
+        [
+            (agent_runtime.AGENT_CLAUDE_CODE, Path(".claude/settings.json")),
+            (agent_runtime.AGENT_CODEX, Path(".codex/hooks.json")),
+        ],
+    )
+    def test_existing_hook_config_refreshes_framework_and_preserves_custom_data(
+        self, tmp_path, agent, target_relative
+    ):
+        target = tmp_path / "target"
+        hooks_file = target / target_relative
+        hooks_file.parent.mkdir(parents=True)
+        hooks_file.write_text(
+            json.dumps({
+                "permissions": {"allow": ["Bash(custom:*)"]},
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": (
+                                        "python .godotmaker/hooks/stale_hook.py"
+                                    ),
+                                },
+                                {
+                                    "type": "command",
+                                    "command": "python custom_session_hook.py",
+                                },
+                            ],
+                        },
+                    ],
+                    "UserPromptSubmit": [
+                        {
+                            "matcher": "custom",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "python custom_prompt_hook.py",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            }),
+            encoding="utf-8",
+        )
+
+        publish.deploy_agent_hook_config(
+            REPO_ROOT, target, agent, force=False
+        )
+
+        deployed = json.loads(hooks_file.read_text(encoding="utf-8"))
+        source_relative = publish.AGENT_HOOK_CONFIGS[agent][0]
+        framework = json.loads(
+            (
+                REPO_ROOT
+                / publish.AGENT_RUNTIME_SOURCE_ROOTS[agent]
+                / source_relative
+            ).read_text(encoding="utf-8")
+        )
+        assert deployed["permissions"] == {"allow": ["Bash(custom:*)"]}
+        for event, entries in framework["hooks"].items():
+            assert deployed["hooks"][event][:len(entries)] == entries
+
+        serialized = json.dumps(deployed)
+        assert "stale_hook.py" not in serialized
+        assert "custom_session_hook.py" in serialized
+        assert "custom_prompt_hook.py" in serialized
+
+    def test_hook_config_conflict_leaves_existing_file_unchanged(self, tmp_path):
+        target = tmp_path / "target"
+        settings_file = target / ".claude" / "settings.json"
+        settings_file.parent.mkdir(parents=True)
+        invalid = '{"hooks": ["not-an-event-map"]}\n'
+        settings_file.write_text(invalid, encoding="utf-8")
+
+        with pytest.raises(
+            publish.RuntimeSurfaceConflict,
+            match="'hooks' value must be an object",
+        ):
+            publish.deploy_agent_hook_config(
+                REPO_ROOT,
+                target,
+                agent_runtime.AGENT_CLAUDE_CODE,
+                force=False,
+            )
+
+        assert settings_file.read_text(encoding="utf-8") == invalid
+
 
 class TestOpenCodePublishParity:
     def test_opencode_publish_outputs_required_runtime_contract(
@@ -1921,18 +2013,41 @@ class TestOpenCodePublishParity:
         assert not (target / ".claude" / "plugins").exists()
         assert not (target / ".agents" / "plugins").exists()
 
-    def test_publish_agent_plugins_preserves_existing_without_force(self, tmp_path):
-        repo = Path(__file__).resolve().parents[2]
+    @pytest.mark.parametrize(
+        ("agent", "managed_relative", "custom_relative"),
+        [
+            (
+                publish.AGENT_OPENCODE,
+                Path(".opencode/plugins/godotmaker-hooks.js"),
+                Path(".opencode/plugins/user-plugin.js"),
+            ),
+            (
+                publish.AGENT_PI,
+                Path(".pi/extensions/godotmaker-runtime.ts"),
+                Path(".pi/extensions/user-extension.ts"),
+            ),
+        ],
+    )
+    def test_existing_runtime_extension_is_refreshed_and_custom_file_preserved(
+        self, tmp_path, agent, managed_relative, custom_relative
+    ):
         target = tmp_path / "target"
-        plugin = target / ".opencode" / "plugins" / "godotmaker-hooks.js"
-        plugin.parent.mkdir(parents=True)
-        plugin.write_text("custom\n", encoding="utf-8")
+        managed_file = target / managed_relative
+        custom_file = target / custom_relative
+        managed_file.parent.mkdir(parents=True)
+        managed_file.write_text("stale framework file\n", encoding="utf-8")
+        custom_file.write_text("user owned\n", encoding="utf-8")
 
-        assert publish_agent_plugins(repo, target, publish.AGENT_OPENCODE) == 0
-        assert plugin.read_text(encoding="utf-8") == "custom\n"
+        assert publish_agent_plugins(REPO_ROOT, target, agent) == 1
 
-        assert publish_agent_plugins(repo, target, publish.AGENT_OPENCODE, force=True) == 1
-        assert "GodotMakerHooks" in plugin.read_text(encoding="utf-8")
+        source_dir = (
+            REPO_ROOT
+            / publish.AGENT_RUNTIME_SOURCE_ROOTS[agent]
+            / publish.AGENT_RUNTIME_EXTENSION_DIRS[agent]
+        )
+        source_file = source_dir / managed_file.name
+        assert managed_file.read_bytes() == source_file.read_bytes()
+        assert custom_file.read_text(encoding="utf-8") == "user owned\n"
 
     def test_opencode_publish_updates_project_config_agent(
         self, tmp_path, monkeypatch
