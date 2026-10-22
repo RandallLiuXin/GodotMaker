@@ -43,6 +43,123 @@ from publish import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _run_asset_validator_commands(
+    project_root: Path, tools_root: Path, skills_root: Path
+) -> None:
+    """Run both validator CLIs against missing-source handoffs.
+
+    L1 is expected to fail because this smoke only supplies the handoff JSON.
+    Reaching that diagnostic proves the command found and executed its bundled
+    family validator rather than failing during resource discovery.
+    """
+    smoke = project_root / "validator-smoke"
+    smoke.mkdir(parents=True, exist_ok=True)
+
+    ui_request = smoke / "ui-request.json"
+    ui_result = smoke / "ui-result.json"
+    ui_request.write_text(
+        (skills_root / "ui-kit" / "fixtures" / "representative-request.json").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
+    ui_result.write_text(
+        (skills_root / "ui-kit" / "fixtures" / "representative-result.json").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
+
+    scene_request = smoke / "scene-request.json"
+    scene_result = smoke / "scene-result.json"
+    scene_report = smoke / "scene-report.json"
+    scene_request.write_text(
+        json.dumps(
+            {
+                "asset_type": "scene-prop-set",
+                "asset_id": "market",
+                "brief": "Two scene props.",
+                "spec": {
+                    "version": 1,
+                    "atlas": {"width": 32, "height": 16},
+                    "slots": [
+                        {"name": "coin", "rect": [0, 0, 16, 16], "source": "coin.png"},
+                        {"name": "chest", "rect": [16, 0, 16, 16], "source": "chest.png"},
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    scene_result.write_text(
+        json.dumps(
+            {
+                "asset_type": "scene-prop-set",
+                "outputs": [
+                    {
+                        "role": "runtime",
+                        "name": name,
+                        "path": f"res://assets/generated/scene-prop-set/market/{name}.tres",
+                        "godot_type": "AtlasTexture",
+                    }
+                    for name in ("coin", "chest")
+                ],
+                "sources": [
+                    {
+                        "path": "res://assets/generated/scene-prop-set/market/market.png",
+                        "layout": "region_atlas",
+                    }
+                ],
+                "previews": [],
+                "validation": {"passed": False},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    ui = subprocess.run(
+        [
+            sys.executable,
+            str(tools_root / "asset_ui_card_validate.py"),
+            "--request", str(ui_request),
+            "--result", str(ui_result),
+            "--project-root", str(project_root),
+            "--godot-path", "godot",
+            "--allow-failure",
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert ui.returncode == 0, ui.stderr
+    ui_validation = json.loads(ui_result.read_text(encoding="utf-8"))["validation"]
+    assert ui_validation["levels"]["L0"] is True
+    assert ui_validation["levels"]["L1"] is False
+
+    scene = subprocess.run(
+        [
+            sys.executable,
+            str(tools_root / "asset_scene_prop_set_validate.py"),
+            "--request", str(scene_request),
+            "--result", str(scene_result),
+            "--report", str(scene_report),
+            "--project-root", str(project_root),
+            "--godot-path", "godot",
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert scene.returncode == 1, scene.stderr
+    scene_validation = json.loads(scene_report.read_text(encoding="utf-8"))["validation"]
+    assert scene_validation["levels"]["L0"] is True
+    assert scene_validation["levels"]["L1"] is False
+
+
 PRIMARY_ROLE_SKILLS = [
     "gm-scaffold",
     "gm-gdd",
@@ -1021,6 +1138,16 @@ class TestPublishSkills:
 
 
 class TestPublishedAssetRuntime:
+    def test_source_tree_validator_commands_resolve_bundled_skills(self, tmp_path):
+        project_root = tmp_path / "source-project"
+        project_root.mkdir()
+
+        _run_asset_validator_commands(
+            project_root,
+            REPO_ROOT / "tools",
+            REPO_ROOT / "skills" / "assets",
+        )
+
     @pytest.mark.parametrize(
         "publish_project,skill_root",
         [
@@ -1270,6 +1397,11 @@ for adapter, other in ((ui_kit, "card-kit"), (card_kit, "ui-kit")):
             env=environment,
         )
         assert completed.returncode == 0, completed.stderr
+        _run_asset_validator_commands(
+            target,
+            target / "tools",
+            target / skill_root,
+        )
 
     @pytest.mark.parametrize(
         "missing_path,expected_message",
