@@ -113,6 +113,20 @@ def test_valid_approve_passes(tmp_path, monkeypatch):
     assert check_evaluation_playable_unit_complete() == []
 
 
+def test_bracketed_and_unbracketed_ids_match_on_both_sides(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    write_e2e_tests()
+    with open("PLAN.md", "w", encoding="utf-8") as f:
+        f.write(PLAN.replace("[v0.1.0-M2]", "v0.1.0-M2"))
+    evaluation = valid_evaluation()
+    evaluation["playable_unit"]["rows"]["[v0.1.0-M1]"] = (
+        evaluation["playable_unit"]["rows"].pop("v0.1.0-M1")
+    )
+    write_json(".godotmaker/evaluation.json", evaluation)
+
+    assert check_evaluation_playable_unit_complete() == []
+
+
 def test_missing_row_blocks(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     write_plan()

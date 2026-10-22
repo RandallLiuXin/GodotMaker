@@ -79,7 +79,8 @@ Build a single **expected-mechanics checklist** = (every `[<Tag>-MN]` from Tag M
 
 Build a **playable-unit checklist** from PLAN.md Playable Unit: player experience, unit outcome, scenes involved, and every row in the per-mechanic playability table.
 
-Key `playable_unit.rows` by mechanic id, for example `v0.1.0-M1`.
+Key `playable_unit.rows` by the canonical mechanic id without display brackets,
+for example `v0.1.0-M1` (not `[v0.1.0-M1]` and not a row name).
 
 ### Phase 2 — Maintain the e2e/ suite
 
@@ -360,7 +361,7 @@ Write evaluation results to `.godotmaker/evaluation.json`:
   "playable_unit": {
     "result": "pass | fail",
     "rows": {
-      "<mechanic_id_or_row_name>": {
+      "<mechanic_id>": {
         "result": "pass | fail",
         "test": "e2e/test_<tag_slug>_playable_unit_<slug>.gd",
         "evidence": [
