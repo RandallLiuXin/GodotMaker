@@ -62,7 +62,7 @@ cell count.
    `.godotmaker/asset-runtime/references/providers/<provider>.md`. The runtime
    installs this guide from the shared `gm-asset` provider contract. Execute
    that provider route only; do not silently substitute `native`, `codex`,
-   `gemini`, `openai`, or `wan`.
+   `gemini`, `openai`, `grok`, or `wan`.
 2. Carry every visual rule stated in `brief` into the prompt as written; it is
    the visual specification for this effect. With no references, generate from
    those rules plus the request's identity, gameplay role, direction, scale,

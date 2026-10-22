@@ -24,6 +24,7 @@ from asset_validation.godot_probe import GodotProbe  # noqa: E402
 from ui_card_standalone_validation import UICardSkillError, compile_and_validate  # noqa: E402
 from asset_result_registration import register_result  # noqa: E402
 from asset_compiler import CompileRequest, build_default_registry, theme  # noqa: E402
+from asset_provider_registry import ASSET_IMAGE_PROVIDERS  # noqa: E402
 from asset_ui_theme_recipe import (  # noqa: E402
     UI_GEOMETRY_TOKENS,
     UI_ICONS,
@@ -281,6 +282,28 @@ def test_closed_family_contract_binds_every_declared_output_and_source(family):
 
     assert checked["ok"] is True
     assert checked["asset_type"] == family
+
+
+@pytest.mark.parametrize("provider", ASSET_IMAGE_PROVIDERS)
+def test_ui_family_gate_and_source_planner_accept_canonical_provider(provider):
+    request = _request("ui-kit")
+    request["provider"] = provider
+    scheme = json.loads(
+        (
+            REPO_ROOT
+            / "skills"
+            / "assets"
+            / "ui-kit"
+            / "references"
+            / "source-sheet-scheme.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert check_ui_card_request(request)["ok"] is True
+    plan = _source_plan_tool().build_source_sheet_plan(
+        request, scheme, rendering_medium="hand-painted fantasy illustration"
+    )
+    assert plan["provider"] == provider
 
 
 def test_ui_contract_rejects_a_missing_requested_hover_state():

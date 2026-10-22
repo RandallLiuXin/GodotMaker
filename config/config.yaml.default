@@ -44,6 +44,7 @@ vqa_fallback_model: native
 # - gemini:<model>: API-backed source generation through tools/asset_source_generate.py
 # - openai:<model>: API-backed source generation through tools/asset_source_generate.py
 # - grok:<model>: API-backed source generation through tools/asset_source_generate.py
+# - wan:<model>: API-backed source generation through tools/asset_source_generate.py
 asset_image_model: native
 
 # Agent model configuration. All roles default to sonnet; raise

@@ -61,7 +61,7 @@ ordinary illustration.
 ## Provider and Reference Preconditions
 
 Honor the request's provider exactly. Never silently switch among `native`,
-`codex`, `gemini`, `openai`, or `wan`.
+`codex`, `gemini`, `openai`, `grok`, or `wan`.
 
 - Carry every visual rule stated in `brief` into the prompt as written; it is
   the visual specification for this pack. References condition those rules and
@@ -75,7 +75,7 @@ Honor the request's provider exactly. Never silently switch among `native`,
   image as provider image input. Passing a path only in text is not attachment.
 - For `codex`, call the image provider with the actual reference files through
   `referenced_image_paths`; omit that parameter only when there are no
-  references. For `gemini`, `openai`, and `wan`, use the reference-input path of
+  references. For `gemini`, `openai`, `grok`, and `wan`, use the reference-input path of
   `tools/asset_source_generate.py`. If the pinned provider cannot accept a
   required reference image, STOP before output rather than changing provider.
 - For `native`, use its declared native generation path. If that path cannot

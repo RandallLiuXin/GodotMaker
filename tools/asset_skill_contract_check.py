@@ -18,13 +18,14 @@ from typing import Any
 
 from asset_family_registry import FAMILY_NAMES
 from asset_output_paths import AssetOutputPathError, safe_identifier
+from asset_provider_registry import ASSET_IMAGE_PROVIDER_SET
 
 # The public families a request or result may name are exactly the first-class
 # Asset Skills the family registry declares.
 ASSET_TYPES = set(FAMILY_NAMES)
 
 REFERENCE_ROLES = {"canonical", "style"}
-PROVIDERS = {"native", "codex", "gemini", "openai", "wan"}
+PROVIDERS = ASSET_IMAGE_PROVIDER_SET
 OUTPUT_ROLES = {"runtime", "reference"}
 SOURCE_LAYOUTS = {
     "single",

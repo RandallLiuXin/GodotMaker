@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(
 
 import publish
 import agent_runtime
+from asset_provider_registry import ASSET_IMAGE_PROVIDERS
 from project_config import DEFAULT_CONFIG_TEMPLATE, ProjectConfigResult
 from publish import (
     read_godot_path,
@@ -1248,10 +1249,9 @@ class TestPublishedAssetRuntime:
             assert references, f"{skill_name} must reference the published asset runtime"
             for reference in references:
                 if "<provider>" in reference:
-                    providers = ("native", "codex", "gemini", "openai", "wan")
                     assert all(
                         (target / reference.replace("<provider>", provider)).exists()
-                        for provider in providers
+                        for provider in ASSET_IMAGE_PROVIDERS
                     ), f"{skill_name} references missing published provider guides: {reference}"
                 else:
                     assert (target / reference).exists(), (

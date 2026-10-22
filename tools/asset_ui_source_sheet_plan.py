@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_runtime import agent_skill_root
+from asset_provider_registry import ASSET_IMAGE_PROVIDER_SET
 from asset_ui_theme_recipe import UI_ICONS, UI_TEXTURE_STYLEBOXES
 
 
@@ -238,7 +239,7 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
     brief = request.get("brief")
     if not isinstance(asset_id, str) or not asset_id:
         raise UISourcePlanError("request.asset_id must be a non-empty string")
-    if provider not in {"native", "codex", "gemini", "openai", "wan"}:
+    if provider not in ASSET_IMAGE_PROVIDER_SET:
         raise UISourcePlanError("request.provider must be pinned")
     if not isinstance(references, list) or not references:
         raise UISourcePlanError("ui-kit requires a binding reference")
