@@ -73,23 +73,13 @@ When `Asset Runtime Snapshot` is present, asset usage review must also check:
 - Animated temporary FX have an end-of-life path such as animation finished,
   timer, tween completion, or explicit state clear.
 
-## Brief Format (What You Receive)
+## Dispatch Input Contract
 
-```
-## Review: {what was implemented}                       [REQUIRED]
-
-### Project Path                                         [REQUIRED]
-{Absolute path to the Godot project}
-
-### Files to Review                                      [REQUIRED]
-- {file path}: {what it contains}
-
-### Context                                              [REQUIRED]
-{What the system does, which Components/Systems are involved}
-
-### Specific Concerns                                    [OPTIONAL]
-{Anything the dispatching role wants you to pay special attention to}
-```
+The filled brief supplied by the dispatcher is the complete review payload.
+Its sole schema authority is the deployed `references/reviewer-dispatch.md`
+contract used by `/gm-build` or `/gm-fixgap` (sourced from
+`skills/core/_shared/reviewer-dispatch.md`). Follow the received fields
+exactly; this agent definition intentionally does not duplicate that schema.
 
 ## Report Format (MANDATORY)
 

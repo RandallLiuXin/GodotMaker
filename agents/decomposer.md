@@ -152,8 +152,14 @@ bindings`. Use `not required this tag` only with a deferral reason.
 SCENES.md is an **end-of-tag snapshot** (same model as STRUCTURE.md) — overwrite root from `.claude/templates/SCENES.md` in both modes. After this step the file lists every scene that exists in the game as of this tag, so `/gm-evaluate`'s per-scene visual cross-check covers inherited scenes too.
 
 - `**Tag:** {Current Tag}` header at the top.
+- Resolve the target viewport before writing any scene. Use the explicit GDD
+  §4 `Target viewport` when present. Otherwise use `480×270` for the pixel
+  profile and `1280×720` for the non-pixel profile. Write that exact resolved
+  value into every scene's `Resolution reference`; never substitute the
+  `1920×1080` pixel-profile window override. Step 6 must apply the same
+  resolved viewport to `project.godot`.
 - Initial mode (v0.1.0): cover all scenes the first playable unit needs. Minimum required for a playable closed loop: a Main Menu (or auto-start), a Gameplay scene (with HUD overlay), and a Game Over / Results scene.
-- Subsequent mode: read prior tags' archived SCENES.md, carry forward every scene unchanged, then add this tag's new scenes. For scenes this tag redesigns, replace the prior description with the new one and tag the section header `(redesigned in {Current Tag})`. For scenes this tag intentionally removes (paired with a Main Build refactor task), drop the section.
+- Subsequent mode: read prior tags' archived SCENES.md, carry forward every scene unchanged except updating `Resolution reference` to the resolved current viewport, then add this tag's new scenes. For scenes this tag redesigns, replace the prior description with the new one and tag the section header `(redesigned in {Current Tag})`. For scenes this tag intentionally removes (paired with a Main Build refactor task), drop the section.
 - Populate each scene's `Acceptance criteria` block with observable facts a screenshot reader can mark PASS/FAIL on. Source: this tag's PLAN Tag Mechanics + Inherited Mechanics that the scene exercises (each line referenced as `[<Tag>-Mn]`) + GDD acceptance language for the scene. Carried-forward scenes in subsequent mode: copy their Acceptance criteria from the prior archive verbatim unless this tag adds visible elements.
 
 ### Step 5: STRUCTURE.md
