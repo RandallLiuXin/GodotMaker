@@ -67,6 +67,31 @@ def check_diligence(events: list[dict], require_reviewer: bool = True) -> list[s
     return issues
 
 
+def get_diligence_failure(role: str, events: list[dict]) -> dict | None:
+    """Return a structured completion failure without producing side effects.
+
+    This is the reusable pre-append decision. Callers own any subsequent
+    metrics, state, archive, or stage-log mutations.
+    """
+    if role not in WORKER_DISPATCH_ROLES:
+        return None
+
+    issues = check_diligence(events, require_reviewer=True)
+    if not issues:
+        return None
+
+    reason = (
+        f"Cannot finish '{role}' role — diligence issues:\n"
+        + "\n".join(f"  - {line}" for line in issues)
+    )
+    return {
+        "decision": "block",
+        "role": role,
+        "issues": issues,
+        "reason": reason,
+    }
+
+
 def main():
     try:
         data = json.load(sys.stdin)
@@ -97,17 +122,16 @@ def main():
         sys.exit(0)
 
     events = read_current_events()
-    issues = check_diligence(events, require_reviewer=True)
+    failure = get_diligence_failure(role, events)
 
-    if issues:
+    if failure:
         state.increment("stop_block_count")
         record_event(EventType.GATE_CHECK, gate="completion",
-                     result="fail", role=role, issues=issues[:5])
-        reason = (
-            f"Cannot finish '{role}' role — diligence issues:\n"
-            + "\n".join(f"  - {line}" for line in issues)
-        )
-        print(json.dumps({"decision": "block", "reason": reason}))
+                     result="fail", role=role, issues=failure["issues"][:5])
+        print(json.dumps({
+            "decision": failure["decision"],
+            "reason": failure["reason"],
+        }))
         sys.exit(0)
 
     record_event(EventType.GATE_CHECK, gate="completion", result="pass", role=role)

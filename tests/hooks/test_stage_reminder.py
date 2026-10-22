@@ -184,6 +184,47 @@ class TestRoleReminder:
         ctx = parsed["hookSpecificOutput"]["additionalContext"]
         assert "/gm-accept" in ctx and "/gm-fixgap" in ctx
 
+    def test_fixgap_handoff_keeps_gap_and_reminds_event_next_role(self, project_dir):
+        with open("GAP.md", "w", encoding="utf-8") as f:
+            f.write("# Open evaluator-owned E2E gap\n")
+        _, code, parsed = run_hook(HOOK, {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": ".godotmaker/stage.jsonl",
+                "content": stage_jsonl([{
+                    "role": "fixgap",
+                    "ts": "2026-01-01T06:00:00Z",
+                    "outcome": "handoff",
+                    "next_role": "evaluate",
+                }]),
+            },
+        })
+        assert code == 0
+        assert not is_blocked(parsed)
+        assert parsed["hookSpecificOutput"]["additionalContext"].endswith(
+            "Next: /gm-evaluate"
+        )
+
+    def test_ordinary_fixgap_still_requires_gap_archive(self, project_dir):
+        with open("GAP.md", "w", encoding="utf-8") as f:
+            f.write("# Unarchived gap\n")
+        _, _, parsed = run_hook(HOOK, {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": ".godotmaker/stage.jsonl",
+                "content": stage_jsonl([{
+                    "role": "fixgap",
+                    "ts": "2026-01-01T06:00:00Z",
+                }]),
+            },
+        })
+        assert is_blocked(parsed)
+        assert "GAP.md is still at project root" in (
+            parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        )
+
     def test_finalize_complete_no_reminder(self, project_dir):
         with open(".godotmaker/final_report.json", "w") as f:
             f.write('{"status": "completed"}')

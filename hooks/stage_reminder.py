@@ -45,25 +45,29 @@ if set(ROLE_NEXT) != set(PIPELINE_ROLES):
 # Programmatic check functions
 # ---------------------------------------------------------------------------
 
-def check_plan_all_verified() -> str | None:
+def check_plan_all_verified(_event: dict | None = None) -> str | None:
     """Build role: PLAN.md must have all tasks marked `verified`."""
     return _check_task_table_all_verified("PLAN.md")
 
 
-def check_gap_archived() -> str | None:
+def check_gap_archived(event: dict | None = None) -> str | None:
     """Fixgap role: GAP.md must be archived (moved out of project root).
 
-    The fixgap role's When Done step archives the completed GAP.md to
+    An evaluator handoff deliberately leaves GAP.md at the project root so
+    evaluate can continue the same gap cycle. Ordinary fixgap completion
+    archives the completed GAP.md to
     `.godotmaker/gaps/<iteration>/GAP.md`. If GAP.md is still at root
     when the fixgap event is recorded, the role skipped the archive.
     """
+    if event and event.get("outcome") == "handoff":
+        return None
     if os.path.isfile("GAP.md"):
         return ("GAP.md is still at project root — it must be archived to "
                 ".godotmaker/gaps/<iteration>/GAP.md before completing fixgap.")
     return None
 
 
-def check_evaluation_playable_unit() -> str | None:
+def check_evaluation_playable_unit(_event: dict | None = None) -> str | None:
     """Evaluate role: evaluation.json must cover every PLAN Playable Unit row."""
     issues = check_evaluation_playable_unit_complete()
     if issues:
@@ -93,7 +97,7 @@ _SEAL_HINT = "run `python tools/seal_tag.py index {tag}` to seal the archive"
 _REINDEX_HINT = "run `python tools/seal_tag.py reindex` to rebuild it"
 
 
-def check_tag_archived() -> str | None:
+def check_tag_archived(_event: dict | None = None) -> str | None:
     """Finalize role: docs/tags/<Tag>/ must contain a full, SEALED archive of
     the just-finalized tag. The current tag is read from PLAN.md's `**Tag:**`
     header (still scoped to the tag being finalized at this point).
@@ -170,7 +174,7 @@ def _check_task_table_all_verified(path: str) -> str | None:
 PROGRAMMATIC_CHECKS = {
     "plan_all_verified": check_plan_all_verified,
     "evaluation_playable_unit": check_evaluation_playable_unit,
-    "gap_archived": check_gap_archived,
+    "gap_archived_unless_handoff": check_gap_archived,
     "tag_archived": check_tag_archived,
 }
 
@@ -179,13 +183,14 @@ PROGRAMMATIC_CHECKS = {
 # Role extraction
 # ---------------------------------------------------------------------------
 
-def extract_latest_role(tool_input: dict) -> str | None:
-    """Extract the role of the LAST event in a Write/Edit tool input.
+def extract_latest_event(tool_input: dict) -> dict | None:
+    """Extract the LAST stage event in a Write/Edit tool input.
 
     The hook runs when a gm-* skill writes/edits .godotmaker/stage.jsonl.
     The relevant event is the one being added — i.e. the last valid
-    {"role": X, "ts": Y} line in the payload. Returns None if no such
-    event is found.
+    {"role": X, "ts": Y} line in the payload. Keeping the full event is
+    required because completion semantics may depend on fields such as
+    ``outcome`` and ``next_role``. Returns None if no such event is found.
     """
     content = tool_input.get("content") or tool_input.get("new_string", "")
     if not content:
@@ -203,16 +208,27 @@ def extract_latest_role(tool_input: dict) -> str | None:
         role = entry.get("role")
         ts = entry.get("ts")
         if role and ts and role in PIPELINE_ROLES:
-            latest = role
+            latest = entry
     return latest
+
+
+def extract_latest_role(tool_input: dict) -> str | None:
+    """Return the role from :func:`extract_latest_event`."""
+    event = extract_latest_event(tool_input)
+    return event.get("role") if event else None
 
 
 # ---------------------------------------------------------------------------
 # Reminder helper
 # ---------------------------------------------------------------------------
 
-def get_next_role_reminder(completed_role: str) -> str | None:
-    next_step = ROLE_NEXT.get(completed_role)
+def get_next_role_reminder(completed_role: str, event: dict | None = None) -> str | None:
+    event_next_role = event.get("next_role") if event else None
+    next_step = (
+        f"/gm-{event_next_role}"
+        if isinstance(event_next_role, str) and event_next_role
+        else ROLE_NEXT.get(completed_role)
+    )
     if not next_step:
         return None
     return f"[Role '{completed_role}' complete] Next: {next_step}"
@@ -242,9 +258,10 @@ def main():
     if not normalized.endswith(".godotmaker/stage.jsonl"):
         sys.exit(0)
 
-    completed_role = extract_latest_role(tool_input)
-    if not completed_role:
+    completed_event = extract_latest_event(tool_input)
+    if not completed_event:
         sys.exit(0)
+    completed_role = completed_event["role"]
 
     # -----------------------------------------------------------------------
     # Validate role outputs before allowing completion
@@ -257,7 +274,7 @@ def main():
         for check_name in role_schema.get("checks", []):
             check_fn = PROGRAMMATIC_CHECKS.get(check_name)
             if check_fn:
-                result = check_fn()
+                result = check_fn(completed_event)
                 if result:
                     issues.append(result)
 
@@ -278,7 +295,7 @@ def main():
     record_event(EventType.GATE_CHECK, gate=f"role_{completed_role}",
                  result="complete")
 
-    reminder = get_next_role_reminder(completed_role)
+    reminder = get_next_role_reminder(completed_role, completed_event)
     if reminder:
         result = {
             "hookSpecificOutput": {

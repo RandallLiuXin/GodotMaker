@@ -138,7 +138,10 @@ def test_evaluate_requires_runtime_playable_unit_proof():
 
     assert "Playable Unit coverage passes" in evaluate
     assert "Static code evidence is not enough" in evaluate
-    assert "Key `playable_unit.rows` by mechanic id" in evaluate
+    assert "Key `playable_unit.rows` by the canonical mechanic id" in evaluate
+    assert "canonical mechanic id without display brackets" in evaluate
+    assert '"<mechanic_id>": {' in evaluate
+    assert "mechanic_id_or_row_name" not in evaluate
     assert "write one `playable_unit.rows` entry for" in evaluate
     assert '"playable_unit"' in evaluate
     assert "completion_fail_or_exit_reached" in evaluate
