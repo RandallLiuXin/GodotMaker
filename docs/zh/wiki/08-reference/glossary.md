@@ -46,7 +46,7 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **Stage vs Role** — "Stage"是 GodotMaker 早期对流水线步骤的称呼。流水线已被重新设计为基于角色的指令，没有中央协调器。"stage"这个词仍出现在部分文件名中（如 `stage_schemas.json`、`stage.jsonl`），但今后的规范术语是"role"。另见：*Role*。
 
-**stage.jsonl** — 位于 `.godotmaker/stage.jsonl` 的只追加日志文件。每当一个 `/gm-*` 角色成功完成时，它追加一行 JSON：`{"role": "<name>", "ts": "<iso-timestamp>", ...}`（部分事件还带额外字段：`tag`、`decision`、`conclusion`）。Hook 读取此文件决定下一步是否允许进行。`/gm-finalize` 在每个 tag 的最后会清空它。"jsonl"表示每行是一个独立的合法 JSON 对象。
+**stage.jsonl** — 位于 `.godotmaker/stage.jsonl` 的只追加日志文件。每当一个 `/gm-*` 角色成功完成时，它追加一行 JSON：`{"role": "<name>", "ts": "<iso-timestamp>", ...}`（部分事件还带额外字段：`tag`、`decision`、`conclusion`）。Hook 读取此文件来判断下一角色是否可以开始。`/gm-finalize` 在每个 tag 的最后会清空它。"jsonl"表示每行是一个独立的合法 JSON 对象。
 
 **STRUCTURE.md** — 由 `/gm-gdd` 生成、范围限定为 **当前 tag** 的架构文档：列出本 tag 结束时应有的全部 Components / Systems（含先前 tag 累积的 + 本 tag 新增的或 refactor 的）。
 

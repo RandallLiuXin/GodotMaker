@@ -180,6 +180,7 @@ When you run `python tools/publish.py <target>`:
 
 | File | What it controls |
 |------|-----------------|
+| `config.yaml.default` | Default per-project agent runtime, role models, visual QA model, and asset generation model |
 | `stage_schemas.json` | Per-role required outputs and programmatic checks (keys are role names) |
 | `addon_versions.json` | Pinned Godot addon versions per engine version |
 

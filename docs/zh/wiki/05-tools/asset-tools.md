@@ -59,7 +59,7 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
 | `asset_tileset_profile.py` | 生成 TileSet profile、atlas 指引和原生 TileSet 编译配方。 |
 | `asset_family_registry.py` | 输出或校验公开 Asset Skill family、variant、输出类型与基数合同。 |
 
-常用的结构检查命令：
+运行常用的结构检查：
 
 ```bash
 python tools/asset_family_registry.py --check

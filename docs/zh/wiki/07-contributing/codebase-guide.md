@@ -178,7 +178,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 
 | 文件 | 控制内容 |
 |------|-----------------|
-| `settings.json` | Hook 注册：哪些脚本响应哪些 Claude Code 事件 |
+| `config.yaml.default` | 每个项目默认的 agent runtime、角色模型、视觉 QA 模型和资产生成模型 |
 | `stage_schemas.json` | 每个角色的必要输出和程序化检查（key 为角色名） |
 | `addon_versions.json` | 按引擎版本锁定的 Godot 插件版本 |
 

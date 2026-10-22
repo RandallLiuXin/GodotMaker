@@ -50,7 +50,7 @@ Definitions for terms you'll see across the GodotMaker docs and slash-command ou
 
 **Tag archive** — The sealed `docs/tags/<Tag>/` directory: the tag's frozen working documents, `memory/` subtree and E2E evidence, plus a generated `SUMMARY.md`, a per-tag `README.md`, and an `evidence/manifest.json` recording every archived file's size, SHA-256 and source revision. `docs/tags/README.md` indexes every sealed tag. Read an archive top-down — parent index, then `SUMMARY.md`, then the canonical documents. Once sealed it is immutable; `/gm-finalize` refuses to rewrite it. See also: *Tag*.
 
-**stage.jsonl** — An append-only log file at `.godotmaker/stage.jsonl`. Every time a `/gm-*` role finishes successfully, it appends one JSON line: `{"role": "<name>", "ts": "<iso-timestamp>"}`. The `check_stage_prerequisites.py` hook reads this file to confirm that required earlier roles have completed before allowing a new role to start. "jsonl" means each line is a separate valid JSON object.
+**stage.jsonl** — An append-only log file at `.godotmaker/stage.jsonl`. Every time a `/gm-*` role finishes successfully, it appends one JSON line: `{"role": "<name>", "ts": "<iso-timestamp>", ...}`. Some events include extra fields such as `tag`, `decision`, or `conclusion`. Hooks read this file to decide whether the next role may start. `/gm-finalize` resets it at the end of each tag. "jsonl" means each line is a separate valid JSON object.
 
 **STRUCTURE.md** — A planning document produced by `/gm-gdd` that describes the folder layout of the generated project: which directories exist, what kinds of files go in each, and how the source tree is organised.
 
