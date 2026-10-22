@@ -34,18 +34,29 @@ Pi has no built-in MCP or `Agent` tool. GodotMaker publishes
 - `godotmaker_runtime` provides project information, bounded headless runs, and
   a managed run/debug-output/stop loop. It replaces the `godot-mcp` path; do
   not silently omit runtime debugging.
-- `godotmaker_delegate` launches role-isolated `pi --mode json --approve`
-  child processes from `.pi/agents/*.md`. Worker-like jobs use a separate git
-  worktree by default and return a merge-candidate branch. Run at most three
-  disjoint worktree jobs in parallel, inspect their branches, merge them, then
-  run the normal build/verify gates.
+- `godotmaker_delegate` launches role-contracted `pi --mode json --approve`
+  child processes from `.pi/agents/*.md`. Isolation defaults are fixed by role:
+
+  | Role | Default isolation | Write / merge contract |
+  |---|---|---|
+  | `worker` | `worktree` | Writes in its worktree, commits, and returns a merge-candidate branch. |
+  | `decomposer`, `asset-producer` | `shared` | Writes directly to the main working tree; parallel requests must declare non-overlapping `writePaths`. No merge step. |
+  | `reviewer`, `verifier`, `analyst`, `gdd-auditor` | `shared` | Read-only; no merge step. |
+
+  An explicit `isolation: "worktree"` or `isolation: "shared"` always overrides
+  the role default. Run at most three requests in parallel. Every parallel
+  shared writer must provide a non-empty list of project-relative `writePaths`;
+  directory ancestry counts as overlap, so `assets/unit-a` conflicts with
+  `assets/unit-a/icon.png`. The bridge rejects overlapping scopes before any
+  delegate starts. Shared read-only roles need no write scope.
 
 Before using `worktree` delegation, commit the published runtime resources that
 the delegate must receive: `.pi/`, `.godotmaker/config.yaml` and hooks,
 `tools/`, and `AGENTS.md`. The extension verifies these resources inside every
 new worktree and fails closed when they are absent; it does not copy untracked
-files into an isolated worker. `shared` is only for one non-parallel role and
-does not provide isolation.
+files into an isolated worker. `shared` runs in the main working tree and does
+not provide OS-level isolation. Use it in parallel only through the bridge's
+read-only or disjoint-write role contracts.
 
 Pi has no per-role filesystem permission model. Reviewer and verifier prompts
 prohibit mutation, but that is not a hard sandbox boundary when `bash` is
