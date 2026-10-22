@@ -4,13 +4,11 @@ This page gets you from a fresh clone to a running test suite, and walks through
 
 ## Get the source
 
-```bash
-git clone https://github.com/RandallLiuXin/GodotMaker.git
-cd GodotMaker
-pip install -r tools/requirements.txt
-```
-
-You also need **Godot 4.5 or later** on your `PATH`. Run this to confirm everything is in place before you start:
+The canonical [contributor setup and validation contract](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#development-setup)
+defines the supported tool versions, development dependencies, Git hooks, and
+clean-checkout validation commands. Complete that setup first. You can then run
+the framework-specific environment diagnostic when your change exercises a
+published Godot project:
 
 ```bash
 python tools/check_env.py
@@ -82,4 +80,7 @@ No formatter is enforced by the repo. Match the style of the file you are editin
 
 ## Branching
 
-`main` is the trunk; all pull requests land here. Keep changes small and open a PR early rather than accumulating a large branch. Every PR must add at least one entry to `docs/update/next.md` under the appropriate category. See [Release process](release-process.md) for the full workflow.
+`main` is the trunk; all pull requests land here. Keep changes small and open a
+PR early rather than accumulating a large branch. Follow the canonical
+[release-note entry contract](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries)
+and see [Release process](release-process.md) for the release-owner workflow.

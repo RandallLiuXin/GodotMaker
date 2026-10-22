@@ -4,13 +4,8 @@
 
 ## 获取源码
 
-```bash
-git clone https://github.com/RandallLiuXin/GodotMaker.git
-cd GodotMaker
-pip install -r tools/requirements.txt
-```
-
-你还需要将 **Godot 4.5 或更高版本**加入 `PATH`。开始之前先运行以下命令确认环境就绪：
+规范的[贡献者搭建与验证合同](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#development-setup)
+定义支持的工具版本、开发依赖、Git hook 以及 clean checkout 验证命令。请先完成该合同中的搭建步骤。若改动会运行已发布到 Godot 项目的框架，再执行框架专用环境诊断：
 
 ```bash
 python tools/check_env.py
@@ -82,4 +77,6 @@ python -m pytest tests/ -k "test_blocks_missing_sections" -x -q
 
 ## 分支策略
 
-`main` 是主干分支，所有 Pull Request 都合并到这里。保持改动精简，尽早开 PR，不要在本地积累大型分支。每个 PR 都必须在 `docs/update/next.md` 的适当分类下至少添加一条记录。完整工作流程见 [发版流程](release-process.md)。
+`main` 是主干分支，所有 Pull Request 都合并到这里。保持改动精简，尽早开 PR，不要在本地积累大型分支。请遵循规范的
+[发布说明条目合同](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries)，
+并参阅 [发版流程](release-process.md)了解发布负责人工作流。

@@ -9,18 +9,34 @@ GodotMaker is an ECS-native text-to-game framework for Godot. It uses gecs (open
 ## Repository Structure
 
 ```
-hooks/              8 Python hook scripts + hooks/metrics/ subsystem
+.github/            pull-request templates and CI, docs, and release workflows
+agents/             pipeline sub-agent profiles
+agent-runtimes/     runner-specific config, references, and templates
+config/             framework defaults, schemas, and addon versions
+hooks/              Python policy hooks + hooks/metrics/ subsystem
 skills/
+  assets/           asset-production skills + shared asset tooling
   core/             role-based gm-* skills + supporting skills (gecs, godot-api, ...)
     _shared/        cross-skill reference docs (see "Shared reference docs" below)
-  reviewer/         8 reviewer skills (physics, animation, ui, etc.)
+  reviewer/         domain reviewer skills (physics, animation, ui, etc.)
+migrations/         timestamped target-project migrations
+scripts/            contributor Git hooks and their installer
 shell/              publish.sh / publish.ps1, report.sh / report.bat
-tools/              publish.py, check_env.py, check_project.py, asset_source_generate.py, etc.
-config/             config.yaml.default, stage_schemas.json, addon_versions.json
-agent-runtimes/     runner-specific references, templates, and hook config
 templates/          PLAN/STRUCTURE/ASSETS/SCENES/MEMORY/GDD templates + game-claude.md
+tests/              hook, tool, skill-contract, and pipeline tests
+tools/              publish.py, check_env.py, check_project.py, asset_*.py, etc.
 docs/               hooks.md, wiki/, update/
 ```
+
+## Contributor hard rules
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) is the contributor contract for minimum
+  tool versions, development dependencies, Git-hook order, local validation,
+  CI gates, and `docs/update/next.md` entries.
+- Do not edit `CHANGELOG.md` for an ordinary contribution. Release preparation
+  follows [`docs/update/release-checklist.md`](docs/update/release-checklist.md).
+- Treat `scripts/pre-commit`, `scripts/pre-push`, and `.github/workflows/` as
+  the executable validation sources; keep documentation aligned with them.
 
 ## Shared reference docs (`skills/core/_shared/`)
 
