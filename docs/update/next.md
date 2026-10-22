@@ -26,3 +26,5 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 ## Fixed
 
 ## Removed
+
+- Removed the project `MEMORY.md` / `memory/` subsystem. Fresh publishes no longer create, read, validate, or archive it; upgrades preserve legacy files unchanged and use `STRUCTURE.md` for architecture ownership, dependencies, ordering constraints, and stable invariants.

@@ -66,7 +66,6 @@ Agent({
 ### Prohibited Actions                                   [REQUIRED]
 - DO NOT ask for approval, wait for user input, or pause for confirmation. Execute the task directly. If required information or external state is missing, report `PARTIAL` or `FAILED` with the blocker.
 - DO NOT fabricate resource paths — only use paths listed in ASSETS.md or verified to exist in the project. If you need an asset that doesn't exist, report it in your summary; do NOT invent a path.
-- DO NOT write the root `MEMORY.md` or any file under the root `memory/` directory.
 - DO NOT modify files outside your Deliverables list — read-only access to all other files. Exception: runtime asset integration repair (worker agent, File Ownership) overrides this line for the bound artifact and the project-local scene or script that binds it; report every such file in Notes.
 - DO NOT write `test_system_has_query` tests — system.q is null outside World (see gecs gotcha G14).
 - DO NOT introduce E2E-only gameplay changes.

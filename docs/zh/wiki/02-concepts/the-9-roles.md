@@ -72,13 +72,13 @@
 - 读取当前 tag 的 `PLAN.md`，找出待处理的任务，从风险最高的开始
 - 派遣 Worker（最多同时 3 个）——每个 Worker 实现一个游戏系统及其单元测试，然后汇报执行结果和失败证据。Worker 不写 Memory/Learning 条目；在具备 SubagentStop 生命周期 Hook 的 Runtime（当前为 Claude Code 和 Codex）中，未成功的交接改为产生有界的 `worker_error` 诊断
 - `PLAN.md` 中所有任务都达到 `completed` 后，派遣一个 Verifier（无界面编译并跑单元测试），然后派遣一个 Reviewer（拥有 Godot 特有的领域知识——物理、UI、动画等）——每个循环迭代一次 verify+review pass，不再按 Worker 数量触发
-- 对每个评审 finding，主 Agent 在三个选项中选一个：ACCEPT（在 `PLAN.md` 追加新的修复任务）、REJECT（finding 是误报）、SKIP（finding 是对的但暂时不修）。默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT/SKIP 需附强制引证（gotcha 条目、API 文档、架构决策、项目约束或任务 ID）。原始 finding 和 triage 决策不写入 `MEMORY.md`
+- 对每个评审 finding，主 Agent 在三个选项中选一个：ACCEPT（在 `PLAN.md` 追加新的修复任务）、REJECT（finding 是误报）、SKIP（finding 是对的但暂时不修）。默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT/SKIP 需附强制引证（gotcha 条目、API 文档、`STRUCTURE.md` 架构规则或任务 ID）。原始 finding 和 triage 决策作为运行时证据保留
 - 只要本轮有任何 finding 被 ACCEPT，循环就回到派遣 Worker 阶段
 - 只有当 `PLAN.md` 里所有任务都标记为 `verified`，且最后一轮评审 ACCEPT 数为零，构建才结束
 
 **你得到什么：** `src/` 里的游戏代码、`scenes/` 里的场景、`test/` 里的单元测试——全部限定在本 tag 的新增 / refactor 范围内。
 
-**需要知道的：** 在这个步骤里你无法自己写游戏代码——权限系统会阻止。主 Agent 负责协调，Worker 负责实际写代码，而且不能写根 `MEMORY.md` 或 `memory/`。Worker 触动当前 tag 范围之外的文件，必须 `PLAN.md` 中有显式 refactor 任务点名那些文件；不允许"顺手清理"。如果同一个任务失败三次，构建会暂停并询问你下一步怎么做。
+**需要知道的：** 在这个步骤里你无法自己写游戏代码——权限系统会阻止。主 Agent 负责协调，Worker 负责实际写代码。Worker 触动当前 tag 范围之外的文件，必须 `PLAN.md` 中有显式 refactor 任务点名那些文件；不允许"顺手清理"。如果同一个任务失败三次，构建会暂停并询问你下一步怎么做。
 
 ---
 
@@ -164,7 +164,7 @@
 **背后发生了什么：**
 - 验证项目仍能干净编译，`evaluation.json` 显示 `approve`
 - 对照最终代码核对 `PLAN.md`、`STRUCTURE.md` 和场景文档，确保归档里的名称对应实际交付的系统和组件
-- 把当前的 `GDD.md` / `PLAN.md` / `STRUCTURE.md` / `SCENES.md` / `MEMORY.md`（完整快照）、`memory/` 子目录和 `evaluation.json` 复制到 `docs/tags/<Tag>/`
+- 把当前的 `GDD.md` / `PLAN.md` / `STRUCTURE.md` / `DESIGN.md` / `SCENES.md` 快照和 `evaluation.json` 复制到 `docs/tags/<Tag>/`
 - 生成 `docs/tags/<Tag>/CHANGELOG.md`，总结交付的 mechanic、新增系统、跨 tag refactor
 - 封存归档：写入 `SUMMARY.md`、该 tag 的 `README.md`、父级索引 `docs/tags/README.md`，以及列出每个归档文件路径、字节数、SHA-256 和来源 revision 的 `evidence/manifest.json`
 - 在本地执行 `git tag <Tag>`（不 push）
@@ -185,7 +185,7 @@
 **什么时候运行：** 仅当流水线卡住时——通常是几轮 `/gm-fixgap` 都没法收敛，或者你怀疑是框架 bug 而非游戏代码 bug。
 
 **背后发生了什么：**
-- 读取运行时产出（`.godotmaker/current_role`、`stage.jsonl`、`evaluation.json`、最近的 `traces/`、`metrics.jsonl`）和当前 tag 的工作文档（`PLAN.md`、`GAP.md` 如存在、`MEMORY.md`）
+- 读取运行时产出（`.godotmaker/current_role`、`stage.jsonl`、`evaluation.json`、最近的 `traces/`、`metrics.jsonl`）和当前 tag 的工作文档（`PLAN.md`、`GAP.md` 如存在、`STRUCTURE.md`）
 - 走 godotmaker 各层（hooks → SKILL.md → config → templates → 共享 refs → tools），找匹配症状的缺陷
 - 输出诊断到聊天——不改游戏代码、不写文件（唯二的写入是把 `.godotmaker/current_role` 设为 `rescue`，以及向 `stage.jsonl` 追加一条 rescue 事件）
 - 如果发现 godotmaker 缺陷：起草一份 GitHub issue 草稿供你审阅后向上游提交

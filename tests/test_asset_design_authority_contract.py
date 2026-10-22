@@ -70,7 +70,7 @@ FAMILY_SKILLS = {
 # on this list is a second style source — exactly what this contract forbids.
 KNOWN_NON_VISUAL_DOCS = frozenset({
     "ASSETS.md", "PLAN.md", "SCENES.md", "STRUCTURE.md", "ROADMAP.md",
-    "GDD.md", "GAP.md", "MEMORY.md", "TOC.md", "CLAUDE.md", "SKILL.md",
+    "GDD.md", "GAP.md", "TOC.md", "CLAUDE.md", "SKILL.md",
 })
 PROJECT_DOC = re.compile(r"\b([A-Z][A-Z0-9_-]*\.md)\b")
 

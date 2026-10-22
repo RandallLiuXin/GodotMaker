@@ -59,7 +59,7 @@ asset runtime 或 `tools/` 等受管理路径内的自定义文件不会被保�
   写入，不能根据旧路径或旧证据手工恢复。
 
 本地 Agent 还应核对 `GDD.md`、当前 tag 的 `PLAN.md`、`STRUCTURE.md`、
-`SCENES.md`、`DESIGN.md`、`MEMORY.md`、`ROADMAP.md`、现有 Godot 资源绑定、
+`SCENES.md`、`DESIGN.md`、`ROADMAP.md`、现有 Godot 资源绑定、
 addons 和自定义 runtime 配置。并非每个工作区都需要修改所有项目；磁盘上的真实
 游戏才是判断依据。
 
@@ -112,7 +112,7 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
   `check_project.py`：有效 MCP 状态可能存于仓库之外。还要注明 Claude Code 与 Codex
   publish 会先移除旧 entry 再添加新 entry，因此 add 失败后可能没有任何注册。
 - 存在时读取 `GDD.md`、`PLAN.md`、`ASSETS.md`、`STRUCTURE.md`、`SCENES.md`、
-  `DESIGN.md`、`MEMORY.md` 和 `ROADMAP.md`。
+  `DESIGN.md` 和 `ROADMAP.md`。
 - 检查 `project.godot`、addons、场景、脚本、资源路径、生成资产，以及
   `.godotmaker/` 中保留的历史证据。
 - 将现有项目文档与 v1.0.0 模板作只读比较。
@@ -154,7 +154,7 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
   应报告 blocker，或请求重新运行对应 Asset Skill。
 - 当场景或脚本仍指向已废弃资产输出时，更新资源绑定。若验证过的确定性转换足够，
   不要只为了改路径就重新生成已接受的美术素材。
-- 让 GDD、当前 tag 计划、结构、场景、风格、路线图和记忆文档与真实游戏一致。
+- 让 GDD、当前 tag 计划、结构、场景、风格和路线图文档与真实游戏一致。
   如果通过 `/gm-gdd` 或其他流水线阶段重新生成会改变产品意图，先提出方案并等待批准。
 - Provider 凭证缺失或模型不可用属于 blocker，不能以此为理由伪造生成资产或验证证据。
 
@@ -174,6 +174,10 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
 ```
 
 ## 预期交接标准
+
+升级后，遗留的根 `MEMORY.md` 和 `memory/` 文件归项目自行所有。GodotMaker
+会保持它们不变，但不再读取、校验、发布或归档。将仍有效的架构归属、依赖、
+顺序约束和稳定不变量迁入 `STRUCTURE.md`；不要迁移任务历史、日志或评审 finding。
 
 干净重新初始化成功，只能证明 1.0 框架已安全部署。只有本地 Agent 同时证明项目自有
 契约与现有游戏一致，而且游戏仍能构建和运行，升级才算完成。最终报告中应把这两个

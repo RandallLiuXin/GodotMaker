@@ -13,12 +13,12 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 - **Don't bypass the role lock.** `.godotmaker/current_role` decides who may write what. If a hook denies a write, dispatch the right subagent or switch to the right `/gm-*` skill — don't try to `--force` past it.
 - **Don't write `e2e/` outside the Evaluator role.** Workers expose `simulate_*()` interfaces and write unit tests for them. The Evaluator (`/gm-evaluate`) maintains the single `e2e/` suite that always reflects the current game.
 - **Don't manually edit `.godotmaker/stage.jsonl`.** Each `/gm-*` skill appends its own role timestamp on completion. `/gm-finalize` truncates it between tags.
-- **Read `MEMORY.md` before dispatching a worker.** It records stable architecture and project constraints across tags. Workers never write it or the root `memory/` directory.
+- **Read `STRUCTURE.md` before dispatching a worker.** It owns architecture boundaries, component ownership, dependencies, ordering constraints, and stable invariants as of the end of the current tag.
 
 ### Tag scope
 
 - **`PLAN.md`/`STRUCTURE.md`/`SCENES.md` describe ONLY the current tag.** Previous tags' versions live in `docs/tags/<prev_tag>/` and are immutable. Don't add new content for an already-shipped tag — open a new tag instead.
-- **`DESIGN.md`, `ASSETS.md`, and `MEMORY.md` accumulate across tags.** Don't split per tag — append rows / entries; the `Tag` column on each ASSETS row marks the introducing tag.
+- **`DESIGN.md` and `ASSETS.md` accumulate across tags.** Don't split per tag — append rows / entries; the `Tag` column on each ASSETS row marks the introducing tag.
 - **Don't silently rewrite prior-tag code.** Workers may touch files outside the current tag's scope only when `PLAN.md` has an explicit refactor task naming those files. "Cleanup detours" are not allowed.
 - **Don't modify any file under `docs/tags/`.** Those archives are the historical record of what shipped at each tag.
 
@@ -39,7 +39,7 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 | Project visual contract | `DESIGN.md` |
 | Asset manifest (cross-tag, with introducing-tag column) | `ASSETS.md` |
 | What a previous tag shipped | `docs/tags/<prev_tag>/` |
-| Architecture decisions + project constraints (cross-tag) | `MEMORY.md` (index) |
+| Architecture ownership, dependencies, ordering, and invariants | `STRUCTURE.md` |
 | Each role's full contract | `.claude/skills/gm-*/SKILL.md` |
 | ECS API + the full gotcha list | `.claude/skills/gecs/` |
 | godot-e2e API | `.claude/skills/godot-e2e/SKILL.md` |

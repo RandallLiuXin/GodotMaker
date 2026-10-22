@@ -90,7 +90,7 @@ Files to inspect (under `templates/`):
 - `PLAN.md` — if the `**Tag:**` header or `Tag Mechanics` / `Inherited
   Mechanics` sections are missing, every downstream skill that depends
   on them breaks (gm-build, gm-evaluate especially).
-- `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `MEMORY.md`, `ROADMAP.md`,
+- `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `ROADMAP.md`,
   `TOC.md` — same idea, smaller blast radius.
 - `game-claude.md` — what gets deployed to the game project's CLAUDE.md.
   Wrong content here misroutes the user's expectations of the pipeline.

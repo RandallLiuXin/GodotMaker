@@ -70,7 +70,7 @@ The largest 0.8.2-to-1.0 project-document change is the asset handoff:
   hand from old paths or old evidence.
 
 The local agent should also reconcile `GDD.md`, the current-tag `PLAN.md`,
-`STRUCTURE.md`, `SCENES.md`, `DESIGN.md`, `MEMORY.md`, `ROADMAP.md`, existing
+`STRUCTURE.md`, `SCENES.md`, `DESIGN.md`, `ROADMAP.md`, existing
 Godot resource bindings, addons, and custom runtime configuration. Not every
 workspace needs every change: the on-disk game is the authority.
 
@@ -133,7 +133,7 @@ Phase A - read-only audit:
   remove the old entry before adding the replacement, so an add failure can
   leave no registration.
 - Read `GDD.md`, `PLAN.md`, `ASSETS.md`, `STRUCTURE.md`, `SCENES.md`, `DESIGN.md`,
-  `MEMORY.md`, and `ROADMAP.md` when present.
+  and `ROADMAP.md` when present.
 - Inspect `project.godot`, addons, scenes, scripts, resource paths, generated
   assets, and retained evidence under `.godotmaker/`.
 - Compare the existing project documents with the v1.0.0 templates without
@@ -183,7 +183,7 @@ Phase C - project-semantic migration:
 - Update scene/script resource bindings when they still point at superseded
   asset outputs. Do not regenerate accepted art merely to change a path when a
   validated deterministic conversion is sufficient.
-- Reconcile GDD, current-tag plan, structure, scene, style, roadmap, and memory
+- Reconcile GDD, current-tag plan, structure, scene, style, and roadmap
   documents with the actual game. If regeneration through `/gm-gdd` or another
   pipeline stage would change product intent, propose it and wait for approval.
 - Treat missing provider credentials or unavailable models as blockers, not as
@@ -208,6 +208,12 @@ Phase D - verification and handoff:
 ```
 
 ## Expected handoff
+
+Legacy root `MEMORY.md` and `memory/` files are project-owned after upgrade.
+GodotMaker leaves them unchanged but no longer reads, validates, publishes, or
+archives them. Move any still-current architecture ownership, dependencies,
+ordering constraints, and stable invariants into `STRUCTURE.md`; migrate no
+task history, logs, or review findings.
 
 A successful clean re-initialization proves only that the 1.0 framework was
 deployed safely. The upgrade is complete when the local agent has also shown

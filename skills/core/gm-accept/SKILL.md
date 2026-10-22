@@ -35,7 +35,7 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 Read these files:
 - `.godotmaker/evaluation.json` — evaluator results (mandatory)
 - `PLAN.md` — task completion status
-- `MEMORY.md` — stable architecture decisions and project constraints
+- `STRUCTURE.md` — architecture ownership, dependencies, ordering constraints, and stable invariants
 - `GDD.md` — original requirements
 
 ### 2. Collect Screenshots

@@ -324,7 +324,7 @@ class TestTagArchived:
 
     REQUIRED_FILES = [
         "GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "SCENES.md",
-        "MEMORY.md", "evaluation-final.json", "CHANGELOG.md",
+        "evaluation-final.json", "CHANGELOG.md",
         "README.md", "SUMMARY.md",
     ]
 
@@ -451,7 +451,6 @@ class TestTagArchived:
             ("STRUCTURE.md", "# Structure\n"),
             ("DESIGN.md", "# Design\n"),
             ("SCENES.md", "# Scenes\n"),
-            ("MEMORY.md", "# Memory\n"),
         ):
             with open(name, "w", encoding="utf-8") as f:
                 f.write(body)

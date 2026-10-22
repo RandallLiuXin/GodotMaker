@@ -188,7 +188,7 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 
 ## templates/
 
-Markdown 文档模板，由 `publish.py` 部署到新游戏项目的所选 agent 模板目录下。角色技能在工作过程中填充这些模板。模板包括：`GDD.md`、`PLAN.md`、`STRUCTURE.md`、`SCENES.md`、`ASSETS.md`、`GAP.md`、`MEMORY.md`、`TOC.md`、`game-claude.md`。
+Markdown 文档模板，由 `publish.py` 部署到新游戏项目的所选 agent 模板目录下。角色技能在工作过程中填充这些模板。模板包括：`GDD.md`、`PLAN.md`、`STRUCTURE.md`、`SCENES.md`、`ASSETS.md`、`GAP.md`、`TOC.md`、`game-claude.md`。
 
 ---
 

@@ -24,7 +24,6 @@ PLANNING_DOCS = {"plan.md", "structure.md", "design.md", "assets.md", "gap.md",
 # project.godot is the engine config and changes the whole game. Subagents
 # may not edit it unless their agent_type is in PLANNING_WRITER_AGENT_TYPES.
 PROJECT_GODOT = "project.godot"
-MEMORY_INDEX = "memory.md"
 E2E_DIR_PREFIX = "e2e/"
 ASSETS_DIR_PREFIX = "assets/"
 REFERENCES_DIR_PREFIX = "references/"
@@ -32,8 +31,6 @@ GODOTMAKER_DIR = ".godotmaker/"
 # Subagent types whose entire purpose is writing planning docs — exempt
 # from the general subagent block on PLANNING_DOCS and PROJECT_GODOT.
 PLANNING_WRITER_AGENT_TYPES = {"decomposer"}
-SCOPE_FULL = "full"
-SCOPE_MEMORY = "memory"
 # Per-role narrow write allow-lists under .godotmaker/. Each role needs
 # current_role + stage.jsonl for bookkeeping; evaluate / verify also write
 # their structured verdict; rescue is diagnostic-only (chat output only),
@@ -50,41 +47,6 @@ VERIFY_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/verify_report.json"}
 RESCUE_ALLOWED_GM_FILES = {".godotmaker/stage.jsonl",
                             ".godotmaker/current_role"}
-
-
-def _project_relative_segments(file_path: str) -> list[str] | None:
-    """Return normalized project-relative path segments for a write.
-
-    The hook runs from the project root. Normalizing through ``abspath`` folds
-    ordinary ``.`` and ``..`` components for both relative and absolute tool
-    paths. A Claude worktree path is treated as another project root after its
-    ``.claude/worktrees/<agent>`` prefix. This is a Write/Edit contract guard,
-    not a filesystem sandbox; shell writes and path aliases are outside it.
-    """
-    try:
-        root = os.path.normcase(os.path.abspath(os.getcwd()))
-        target = os.path.normcase(os.path.abspath(os.path.normpath(file_path)))
-        if os.path.commonpath([root, target]) != root:
-            return None
-    except (OSError, ValueError):
-        return None
-
-    relative = os.path.relpath(target, root).replace("\\", "/")
-    segments = [part.lower() for part in relative.split("/") if part not in ("", ".")]
-    for index in range(len(segments) - 2):
-        if segments[index:index + 2] == [".claude", "worktrees"]:
-            return segments[index + 3:]
-    return segments
-
-
-def _is_memory_path(file_path: str) -> bool:
-    """True for the root MEMORY.md or a file below root memory/."""
-    segments = _project_relative_segments(file_path)
-    if not segments:
-        return False
-    return segments == [MEMORY_INDEX] or (
-        segments[0] == "memory" and len(segments) > 1
-    )
 
 
 def _is_e2e_path(path_lower: str) -> bool:
@@ -246,25 +208,13 @@ def _lookup_agent_type(agent_id: str) -> str:
     return ""
 
 
-def _check_subagent(file_path: str, path_lower: str, file_name: str,
-                    agent_id: str, agent_type: str,
-                    scope: str = SCOPE_FULL) -> None:
+def _check_subagent(path_lower: str, file_name: str,
+                    agent_id: str, agent_type: str) -> None:
     """Apply subagent rules. Calls _block on violation.
 
-    OpenCode child sessions use the memory-only scope because the adapter can
-    identify delegation but not the child role. The memory rule is common to
-    every delegated execution role; the ownership rules below are not.
+    Delegated roles are classified before this hook runs so their ownership
+    rules can be enforced directly.
     """
-    if _is_memory_path(file_path):
-        _block(
-            f"Subagents cannot write project memory ({file_name}). "
-            "Report execution results and failure evidence instead.",
-            file_name,
-            agent_id,
-        )
-    if scope == SCOPE_MEMORY:
-        return
-
     if agent_type == "asset-producer":
         if (_is_asset_generation_path(path_lower)
                 or _is_assets_path(path_lower)
@@ -329,7 +279,6 @@ def main():
 
     agent_id = data.get("agent_id", "")
     is_subagent = bool(agent_id) or bool(data.get("is_subagent"))
-    scope = data.get("permission_scope") or SCOPE_FULL
     agent_type = data.get("agent_type", "") or _lookup_agent_type(agent_id)
 
     record_event(
@@ -346,8 +295,7 @@ def main():
                      file=file_name, agent_id=agent_id or "main", role=role)
         sys.exit(0)
     elif is_subagent:
-        _check_subagent(file_path, path_lower, file_name, agent_id,
-                        agent_type, scope)
+        _check_subagent(path_lower, file_name, agent_id, agent_type)
     else:
         _check_main(role, path_lower, file_name, ext)
 

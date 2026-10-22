@@ -189,7 +189,7 @@ When you run `python tools/publish.py <target>`:
 
 ## templates/
 
-Markdown document templates that `publish.py` deploys into new game projects under the selected agent template directory. The role skills fill these in during their work. Templates include: `GDD.md`, `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `GAP.md`, `MEMORY.md`, `TOC.md`, `game-claude.md`.
+Markdown document templates that `publish.py` deploys into new game projects under the selected agent template directory. The role skills fill these in during their work. Templates include: `GDD.md`, `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `GAP.md`, `TOC.md`, `game-claude.md`.
 
 ---
 

@@ -18,7 +18,7 @@ shell/              publish.sh / publish.ps1, report.sh / report.bat
 tools/              publish.py, check_env.py, check_project.py, asset_source_generate.py, etc.
 config/             config.yaml.default, stage_schemas.json, addon_versions.json
 agent-runtimes/     runner-specific references, templates, and hook config
-templates/          PLAN/STRUCTURE/ASSETS/SCENES/MEMORY/GDD templates + game-claude.md
+templates/          PLAN/STRUCTURE/ASSETS/SCENES/GDD templates + game-claude.md
 docs/               hooks.md, wiki/, update/
 ```
 
@@ -73,7 +73,7 @@ python tools/check_env.py
 
 Each game project ships in **SemVer-tagged release tags** (v0.1.0, v0.2.0, …). One full pipeline pass produces one tag. `ROADMAP.md` lists the planned tags; the earliest entry without a `git tag` is the **current tag**, and the per-tag root documents (`PLAN.md`, `STRUCTURE.md`, `SCENES.md`) are scoped to it. `gm-finalize` archives the tag's working docs to `docs/tags/<tag>/`, runs `git tag <tag>`, and resets per-tag runtime state for the next round.
 
-Cross-tag (root, accumulating): `GDD.md`, `ROADMAP.md`, `MEMORY.md`, `ASSETS.md` (assets are reusable across tags; each row carries a `Tag` column marking the introducing tag).
+Cross-tag (root, accumulating): `GDD.md`, `ROADMAP.md`, `ASSETS.md` (assets are reusable across tags; each row carries a `Tag` column marking the introducing tag).
 Per-tag (root, overwritten each `/gm-gdd`): `PLAN.md`, `STRUCTURE.md`, `SCENES.md`.
 Per-tag archives (immutable once sealed): `docs/tags/<tag>/`.
 

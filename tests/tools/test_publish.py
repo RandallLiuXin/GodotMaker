@@ -1802,12 +1802,31 @@ class TestOpenCodePublishParity:
         assert (target / ".opencode" / "agents" / "worker.md").exists()
         assert (target / ".opencode" / "references" / "runtime-mapping.md").exists()
         assert (target / ".opencode" / "templates" / "ROADMAP.md").exists()
+        assert not (target / ".opencode" / "templates" / "MEMORY.md").exists()
+        assert not (target / ".opencode" / "templates" / "memory_subsystem.md").exists()
         assert (target / ".opencode" / "config" / "config.yaml.default").exists()
         assert (target / ".opencode" / "godotmaker.yaml").exists()
         assert (target / "AGENTS.md").exists()
         assert not (target / "CLAUDE.md").exists()
         assert not (target / ".codex" / "hooks.json").exists()
         assert not (target / ".agents" / "skills").exists()
+
+    def test_publish_preserves_legacy_project_files_without_deploying_templates(
+        self, tmp_path, monkeypatch
+    ):
+        def seed_legacy_files(target):
+            (target / "MEMORY.md").write_text("legacy index\n", encoding="utf-8")
+            (target / "memory").mkdir()
+            (target / "memory" / "system.md").write_text("legacy detail\n", encoding="utf-8")
+
+        target = _publish_opencode_project(
+            tmp_path, monkeypatch, before_publish=seed_legacy_files
+        )
+
+        assert (target / "MEMORY.md").read_text(encoding="utf-8") == "legacy index\n"
+        assert (target / "memory" / "system.md").read_text(encoding="utf-8") == "legacy detail\n"
+        assert not (target / ".opencode" / "templates" / "MEMORY.md").exists()
+        assert not (target / ".opencode" / "templates" / "memory_subsystem.md").exists()
 
     def test_published_opencode_mapping_uses_opencode_paths(
         self, tmp_path, monkeypatch
@@ -1842,7 +1861,7 @@ class TestOpenCodePublishParity:
             target / ".opencode" / "agents" / "gdd-auditor.md"
         ).read_text(encoding="utf-8")
 
-        assert "Never write project memory" in worker
+        assert "Never write project memory" not in worker
         assert "### Memory Entry" not in worker
 
         worker_frontmatter = _parse_simple_frontmatter(worker)

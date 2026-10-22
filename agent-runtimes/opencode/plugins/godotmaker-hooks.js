@@ -155,17 +155,11 @@ function runPreToolHooks(projectRoot, input, output, childSessions) {
   const isChildSession = childSessions.has(input.sessionID || "")
 
   if (tool === "write" || tool === "edit") {
-    // OpenCode tool hooks do not expose a reliable subagent identity.
     const payload = basePayload("PreToolUse", input, args)
-    if (isChildSession) {
-      // OpenCode does not expose the child role here. Apply only the memory
-      // rule, which is shared by every delegated execution role.
-      runHook(projectRoot, "check_file_permissions.py", {
-        ...payload,
-        is_subagent: true,
-        permission_scope: "memory",
-      })
-    } else {
+    // Child-session edit boundaries are provided by agent permission
+    // frontmatter. OpenCode does not expose the role identity needed by the
+    // Python write gate, so only the root session invokes it.
+    if (!isChildSession) {
       runHook(projectRoot, "check_file_permissions.py", payload)
     }
     runHook(projectRoot, "stage_reminder.py", payload)
