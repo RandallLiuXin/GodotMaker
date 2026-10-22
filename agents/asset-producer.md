@@ -38,12 +38,19 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 20. End every report with exactly one machine outcome block.
 21. Report `DONE` only with passing validation and no blockers. Otherwise report
     `PARTIAL` or `FAILED` and list every blocker.
+22. Read the manager-owned canonical request from
+    `.godotmaker/asset-generation/<asset_id>-request.json`; never create,
+    derive, replace, or modify that file. Write the canonical result to
+    `.godotmaker/asset-generation/<asset_id>-result.json`. Keep work products
+    and reports under `.godotmaker/asset-generation/work/` and
+    `.godotmaker/asset-generation/reports/` respectively.
 
 ## Execution Order
 
 1. Read the brief.
 2. Read the production contract. The brief names a first-class Asset Skill;
-   invoke it with the supplied generic request.
+   invoke it with the supplied manager-owned canonical request without changing
+   that request.
 3. Read the provider document.
 4. Read listed shared docs.
 5. Generate or claim source images.

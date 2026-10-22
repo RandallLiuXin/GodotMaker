@@ -155,6 +155,15 @@ Write plan artifacts under `.godotmaker/asset-generation/work/`.
 Use `references/asset-planner.md` for grouping, dependencies, batch rules, and
 plan artifact fields.
 
+For every production unit, write its complete generic Asset Skill request to
+`.godotmaker/asset-generation/<asset_id>-request.json`. Validate it with
+`python tools/asset_skill_contract_check.py --kind request <request-path>`
+before dispatch. This is the immutable canonical request owned by the manager:
+after dispatch, neither the producer nor the manager may replace or mutate it.
+The producer owns the matching
+`.godotmaker/asset-generation/<asset_id>-result.json` and all work products and
+reports beneath `.godotmaker/asset-generation/`.
+
 For every generated visual unit, apply Design Rule Selection and Reference
 Conflict Disposition from `references/asset-planner.md`: select the applicable
 `DESIGN.md` sections for the unit's asset type, assign each reference its role,
@@ -228,6 +237,7 @@ One production unit may return many outputs. Register all runtime outputs togeth
 - {references/asset-curation.md when needed}
 
 ### Inputs
+- Canonical request: `.godotmaker/asset-generation/{asset_id}-request.json`
 - ASSETS.md rows: {row ids or names}
 - Scene docs: SCENES.md sections or references
 
@@ -251,6 +261,7 @@ Write `none` when the unit has no reference input.}
 - Runtime output paths: {final loadable Godot resources for the logical rows}
 - Prompt paths: {paths}
 - Report path: {path}
+- Canonical result: `.godotmaker/asset-generation/{asset_id}-result.json`
 
 ### Scope
 - Write only the listed outputs.
@@ -356,9 +367,12 @@ Use this procedure for every production unit.
 Resolve the configured Godot executable from `.claude/godotmaker.yaml`'s
 `godot_path`; when it is absent, use `godot` from `PATH`.
 
-1. Require one validated request and result JSON for the entire production
-   unit. The request declares the complete logical output set; the result must
-   match it exactly.
+1. Require the manager-owned immutable
+   `.godotmaker/asset-generation/<asset_id>-request.json` and the producer-owned
+   `.godotmaker/asset-generation/<asset_id>-result.json` for the entire
+   production unit. The request declares the complete logical output set; the
+   result must match it exactly. Reject a producer report that points at a
+   different request path or indicates that the canonical request was rewritten.
 2. Ensure `ASSETS.md` uses the Runtime Type / Runtime Path runtime table. Every
    worker-consumable logical output has one row. Sources, atlases, candidates,
    and curation evidence remain in production reports.

@@ -1,8 +1,9 @@
 # Asset Planning Reference
 
 Plan current-tag production units from `ASSETS.md`, `PLAN.md`, `DESIGN.md`,
-`STRUCTURE.md`, and `SCENES.md`. A unit owns one public request and names its
-complete expected logical output set in that family's native contract:
+`STRUCTURE.md`, and `SCENES.md`. The `/gm-asset` manager owns one public request
+per unit and names its complete expected logical output set in that family's
+native contract:
 `scene-prop-set` and `compact-prop-pack` slots, `platform-strip` segments and
 kind, or `ui-kit` / `card-kit` styleboxes, atlas regions, and theme. Use
 `request.spec.outputs` only for a multi-output family without a native output
@@ -28,12 +29,20 @@ declaration.
    images, action sheets, source grids, and other provenance remain in the
    request, result, and reports; do not plan them as rows.
 8. Record `family=<asset_type>` in every planned row's Generation Params.
+   Re-registration ownership of completed reference rows is checked against
+   that field; a row without it cannot be re-registered by its own unit.
 9. Plan a character portrait for a UI display slot as its own `portrait`
    unit. When the character has an identity anchor, such as the canonical
    image in its `character-bundle` result, attach it as a `canonical`
    reference. Never route a portrait to `background-map`, which owns scenic
    backgrounds only, or add it to a `character-bundle`, whose one runtime
    output is its `SpriteFrames`.
+10. Before dispatch, write the complete request to
+   `.godotmaker/asset-generation/<asset_id>-request.json`, validate it with
+   `tools/asset_skill_contract_check.py --kind request`, and then treat that
+   file as immutable. The producer reads this manager-owned request and writes
+    the matching `.godotmaker/asset-generation/<asset_id>-result.json`; it never
+    creates, derives, or rewrites the canonical request.
 
 ## Visual Authority
 

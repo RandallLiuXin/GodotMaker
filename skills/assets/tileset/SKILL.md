@@ -9,7 +9,7 @@ Produce one reusable square TileSet from a real source atlas. This production pa
 
 ## Contract
 
-Read and enforce `.godotmaker/asset-runtime/asset-skill-contract.md` and `schema/request.schema.json`. Read the caller input from `ASSET_REQUEST.json`. Accept only `asset_type: "tileset"`, a stable `asset_id`, a concise `brief`, optional visible art references, and the typed family `spec`. The caller never supplies output paths, compiler recipes, profile coordinates, or processing commands. Return the deterministic runtime result at:
+Read and enforce `.godotmaker/asset-runtime/asset-skill-contract.md` and `schema/request.schema.json`. Read the caller input from the canonical `.godotmaker/asset-generation/<asset_id>-request.json`. Accept only `asset_type: "tileset"`, a stable `asset_id`, a concise `brief`, optional visible art references, and the typed family `spec`. The caller never supplies output paths, compiler recipes, profile coordinates, or processing commands. Return the deterministic runtime result at `.godotmaker/asset-generation/<asset_id>-result.json`:
 
 ```json
 {
@@ -60,7 +60,7 @@ Retain the controlled claim result, prompt, raw source, reference roles and path
 3. Use `asset_image_finalize.py` for transparent-background, AABB, alignment, or scale repair when diagnostics require it. Recompose the fixed profile from the retained provider image's two material regions; code owns every transition mask and reserved transparent slot:
 
    ```powershell
-   python tools/asset_tileset_profile.py --request ASSET_REQUEST.json `
+   python tools/asset_tileset_profile.py --request .godotmaker/asset-generation/<asset_id>-request.json `
      --tile-size <width>x<height> `
      --material-source .godotmaker/asset-generation/source/<asset_id>_provider.png `
      --composed-atlas-out assets/generated/tileset/<asset_id>/<asset_id>_atlas.png `
@@ -72,7 +72,7 @@ Retain the controlled claim result, prompt, raw source, reference roles and path
 
    ```powershell
    python tools/asset_tileset_profile.py `
-     --request ASSET_REQUEST.json `
+     --request .godotmaker/asset-generation/<asset_id>-request.json `
      --atlas assets/generated/tileset/<asset_id>/<asset_id>_atlas.png `
      --texture res://assets/generated/tileset/<asset_id>/<asset_id>_atlas.png `
      --godot-path <godot-executable> `
@@ -94,4 +94,9 @@ An L1-L4 diagnostic is a repair loop, not a final result. Read the failure, repa
 
 ## Delivery
 
-Return only the generic result JSON. `validation.passed` can be true only after all applicable L0-L4 checks passed. Report the selected profile, stable atlas and `.tres` paths, tile size, and intentionally omitted semantics in retained trace evidence. A TileSet is a reusable tile library; creating or painting a `TileMap` is outside this skill.
+Write only the generic result JSON to
+`.godotmaker/asset-generation/<asset_id>-result.json`, then return that same
+object. `validation.passed` can be true only after all applicable L0-L4 checks
+passed. Report the selected profile, stable atlas and `.tres` paths, tile size,
+and intentionally omitted semantics in retained trace evidence. A TileSet is a
+reusable tile library; creating or painting a `TileMap` is outside this skill.

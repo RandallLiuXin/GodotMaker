@@ -365,12 +365,16 @@ class TestRoleBased:
 
     def test_asset_can_write_godotmaker(self, project_dir):
         write_current_role("asset")
-        _, _, parsed = run_hook(HOOK, {
-            "tool_name": "Write",
-            "tool_input": {"file_path": ".godotmaker/state.json"},
-            "agent_id": "",
-        })
-        assert not is_blocked(parsed)
+        for path in (
+            ".godotmaker/state.json",
+            ".godotmaker/asset-generation/player-request.json",
+        ):
+            _, _, parsed = run_hook(HOOK, {
+                "tool_name": "Write",
+                "tool_input": {"file_path": path},
+                "agent_id": "",
+            })
+            assert not is_blocked(parsed), f"asset manager should write {path}"
 
     def test_asset_blocked_from_other_files(self, project_dir):
         write_current_role("asset")
@@ -579,6 +583,7 @@ class TestSubagentInRole:
     @pytest.mark.parametrize("path", [
         ".godotmaker/asset-generation/reports/unit.json",
         ".godotmaker/asset-generation/sources/player_source.png",
+        ".godotmaker/asset-generation/player-result.json",
         "assets/sprites/player.png",
         "references/scene_main.png",
     ])
@@ -591,6 +596,34 @@ class TestSubagentInRole:
             "agent_type": "asset-producer",
         })
         assert not is_blocked(parsed), f"asset-producer should write {path}"
+
+    @pytest.mark.parametrize("path", [
+        ".godotmaker/asset-generation/ui-request.json",
+        ".godotmaker\\asset-generation\\player-request.json",
+    ])
+    def test_asset_producer_blocks_manager_owned_canonical_requests(self, project_dir, path):
+        write_current_role("asset")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "asset-producer-1",
+            "agent_type": "asset-producer",
+        })
+        assert is_blocked(parsed), f"asset-producer must not rewrite canonical request: {path}"
+        assert "manager-owned canonical requests" in (
+            parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        )
+
+    def test_asset_producer_can_write_internal_resolved_request(self, project_dir):
+        write_current_role("asset")
+        path = ".godotmaker/asset-generation/work/player-resolved-request.json"
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "asset-producer-1",
+            "agent_type": "asset-producer",
+        })
+        assert not is_blocked(parsed)
 
     @pytest.mark.parametrize("path", [
         "ASSETS.md",

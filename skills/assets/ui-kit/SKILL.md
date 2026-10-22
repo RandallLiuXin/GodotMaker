@@ -50,11 +50,13 @@ manifests, stable entries, or worker dispatch state.
    image style and the UI visual language — then inspect the reference and
    write `theme_plan.json` before image generation. The rules decide; the
    reference supplies concrete palette, contrast, and material evidence within
-   them. A reference that contradicts a stated rule is a STOP with a blocker
-   naming the reference role, its path, and the rule. `theme_plan.json` records
-   how those rules and that evidence resolve into this family's required
-   tokens for this one request; it is a production artifact, never a reusable
-   style source, and it never adds a rule the brief did not state.
+   them. Write the plan to
+   `.godotmaker/asset-generation/work/<asset_id>/theme_plan.json`. A reference
+   that contradicts a stated rule is a STOP with a blocker naming the reference
+   role, its path, and the rule. `theme_plan.json` records how those rules and
+   that evidence resolve into this family's required tokens for this one
+   request; it is a production artifact, never a reusable style source, and it
+   never adds a rule the brief did not state.
    It contains:
 
    - a positive `rendering_medium` such as `bold comic-book game art`,
@@ -79,7 +81,7 @@ manifests, stable entries, or worker dispatch state.
 2. Generate the deterministic source plan:
 
    ```powershell
-   python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
+   python tools/asset_ui_source_sheet_plan.py --request .godotmaker/asset-generation/<asset_id>-request.json --scheme .agents/skills/ui-kit/references/source-sheet-scheme.json --rendering-medium "<theme_plan rendering_medium>" --out .godotmaker/asset-generation/work/<asset_id>/source_sheet_plan.json
    ```
 
    Both plan prompts carry the `brief` word for word — every selected design
@@ -113,10 +115,12 @@ manifests, stable entries, or worker dispatch state.
    that never touches canvas edges. Save each raw provider image and full
    provenance. Do not accept a screen mockup as either sheet.
 
-   Write `source_sheet_provenance.json` as an array with exactly one final
-   record per sheet, in plan order. Each record contains `sheet_id`, final
-   `attempt`, exact `prompt`, `provider`, `image_model`, `coding_model`,
-   `reasoning`, `tool_call_id`, `attached_references`, and `raw_source_path`.
+   Write
+   `.godotmaker/asset-generation/reports/<asset_id>_source_sheet_provenance.json`
+   as an array with exactly one final record per sheet, in plan order. Each
+   record contains `sheet_id`, final `attempt`, exact `prompt`, `provider`,
+   `image_model`, `coding_model`, `reasoning`, `tool_call_id`,
+   `attached_references`, and `raw_source_path`.
    Every attached reference entry preserves its request `role` and readable
    request-relative `path`. Keep earlier failed generation attempts under a
    `retries` array on that sheet's final record; never replace or conceal them.
@@ -143,7 +147,7 @@ manifests, stable entries, or worker dispatch state.
 4. Compile the flat-first runtime resources. Generate `stylebox_plan.json`:
 
    ```powershell
-   python tools/asset_ui_stylebox_plan.py --source-sheet-plan source_sheet_plan.json --theme-plan theme_plan.json --asset-id <asset_id> --out stylebox_plan.json
+   python tools/asset_ui_stylebox_plan.py --source-sheet-plan .godotmaker/asset-generation/work/<asset_id>/source_sheet_plan.json --theme-plan .godotmaker/asset-generation/work/<asset_id>/theme_plan.json --asset-id <asset_id> --out .godotmaker/asset-generation/work/<asset_id>/stylebox_plan.json
    ```
 
    The fixed profiles, not freehand agent guesses, own borders, content
@@ -151,9 +155,11 @@ manifests, stable entries, or worker dispatch state.
    eight source patches into 23 stable `StyleBoxTexture` outputs. Base,
    Primary, Secondary, and Danger button families reuse the same state patches
    through deterministic `modulate_color`; popup and tooltip reuse panel
-   patches. Copy `stylebox_plan.styleboxes` unchanged into the request at
-   `.godotmaker/asset-generation/<asset_id>-request.json` under `spec.styleboxes`
-   and compile every entry.
+   patches. Compare `stylebox_plan.styleboxes` with `spec.styleboxes` in the
+   immutable manager-owned request at
+   `.godotmaker/asset-generation/<asset_id>-request.json`; they must match
+   exactly. A mismatch is a planning-contract failure, not permission for the
+   producer to rewrite the request. Compile every declared entry.
 
    Compile 31 stable runtime `AtlasTexture` outputs from the icon metadata.
    Multiple names may intentionally share one of the 24 source rectangles.
@@ -163,7 +169,7 @@ manifests, stable entries, or worker dispatch state.
 5. Generate and compile the complete Theme recipe:
 
    ```powershell
-   python tools/asset_ui_theme_recipe.py --theme-plan theme_plan.json --asset-id <asset_id> --out theme_recipe.json
+   python tools/asset_ui_theme_recipe.py --theme-plan .godotmaker/asset-generation/work/<asset_id>/theme_plan.json --asset-id <asset_id> --out .godotmaker/asset-generation/work/<asset_id>/theme_recipe.json
    ```
 
    The recipe uses native `StyleBoxFlat`/`StyleBoxEmpty` resources for input,
@@ -194,9 +200,10 @@ manifests, stable entries, or worker dispatch state.
    The family validator checks each output's declared path. Cross-output path
    uniqueness is enforced when the manager registers the completed result.
 
-7. Write the complete derived request to
-   `.godotmaker/asset-generation/<asset_id>-request.json` and candidate result
-   to `.godotmaker/asset-generation/<asset_id>-result.json`. Run the public
+7. Read the complete manager-owned request from
+   `.godotmaker/asset-generation/<asset_id>-request.json` without changing it,
+   and write the candidate result to
+   `.godotmaker/asset-generation/<asset_id>-result.json`. Run the public
    validator after resources exist:
 
    ```powershell

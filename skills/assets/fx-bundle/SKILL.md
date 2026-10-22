@@ -21,6 +21,9 @@ validate this family with
 `tools/asset_animated_bundle_contract_check.py --kind request`. At final
 handoff, call the latter with `--request <request.json> --result <result.json>`.
 The family checker binds `spec.mode` to the runtime type and source layout.
+When invoked by `/gm-asset`, read the immutable manager-owned request from
+`.godotmaker/asset-generation/<asset_id>-request.json` and write the result to
+`.godotmaker/asset-generation/<asset_id>-result.json`.
 
 ## Boundary and STOP
 
@@ -129,9 +132,9 @@ STOP condition occurs. Never mark the first failed check as the final result.
    write the final result, and run the request/result handoff checker. Preserve
    the build fingerprint as evidence; `/gm-asset` validates the result and
    records it directly in `ASSETS.md`. Then write that generic result object to
-   `ASSET_RESULT.json` in the project root and return only its JSON contents:
-   no Markdown links, prose, or alternate result shape. L5/L6 visual judgment
-   belongs to the private Eval, not this production Skill.
+   `.godotmaker/asset-generation/<asset_id>-result.json` and return only its
+   JSON contents: no Markdown links, prose, or alternate result shape. L5/L6
+   visual judgment belongs to the private Eval, not this production Skill.
 
 ### Godot executable for L3/L4
 
@@ -201,13 +204,14 @@ An animated result has one `SpriteFrames` runtime output and one stable
 `grid_sheet` source. A static result has one `Texture2D` runtime output at the
 same stable PNG path as its `single` source. Both final results include explicit
 passing `L0` through `L4` evidence; no other runtime Godot type is valid.
-`ASSET_RESULT.json` is the final machine-readable handoff, not a report link or
-a summary of another JSON file.
+`.godotmaker/asset-generation/<asset_id>-result.json` is the final
+machine-readable handoff, not a report link or a summary of another JSON file.
 
 ### Trace finalization
 
-Before writing `ASSET_RESULT.json`, reread the emitted trace and validate its
-own paths against the files on disk. `source_layout` and `godot_artifact` live
+Before writing `.godotmaker/asset-generation/<asset_id>-result.json`, reread
+the emitted trace and validate its own paths against the files on disk.
+`source_layout` and `godot_artifact` live
 inside `trace.artifacts`, never at the trace root. For an animation,
 `trace.artifacts.final_frames` is the exact ordered list from the action
 processor's recorded final-frame paths; do not reconstruct or edit these names

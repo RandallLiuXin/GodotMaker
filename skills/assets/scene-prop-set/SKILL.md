@@ -150,7 +150,7 @@ sidecar evidence, never extra keys in the generic result.
    `--godot-path` is an explicit production-run override:
 
    ```powershell
-   python tools/asset_scene_prop_set_validate.py --request ASSET_REQUEST.json --result .godotmaker/asset-generation/<asset_id>-result.json --report .godotmaker/asset-generation/reports/<asset_id>_validation.json --project-root .
+   python tools/asset_scene_prop_set_validate.py --request .godotmaker/asset-generation/<asset_id>-request.json --result .godotmaker/asset-generation/<asset_id>-result.json --report .godotmaker/asset-generation/reports/<asset_id>_validation.json --project-root .
    ```
 
    L3 loads every AtlasTexture headlessly through that configured engine. L0
@@ -176,8 +176,9 @@ Return exactly one shared generic result JSON object and no prose. A failed
 result has `outputs: []`, `validation.passed: false`, and explanatory notes; it
 must not expose partial runtime output.
 
-For `/gm-asset`, persist the successful generic request/result pair at
-`.godotmaker/asset-generation/<asset_id>-request.json` and
+For `/gm-asset`, read but never rewrite the manager-owned immutable request at
+`.godotmaker/asset-generation/<asset_id>-request.json`, and persist the
+successful generic result at
 `.godotmaker/asset-generation/<asset_id>-result.json`. The declared slots are
 the complete output contract. The manager validates the result and directly
 registers every named AtlasTexture in its matching `ASSETS.md` row. The Skill
