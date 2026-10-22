@@ -56,7 +56,7 @@ mismatch fails before a network request.
 ## References and limits
 
 Wan accepts 0–9 images. Put every required local image in `reference_inputs` as
-`{ "role": "canonical|style|screen", "path": "<local image path>" }` in the
+`{ "role": "canonical|style", "path": "<local image path>" }` in the
 planned order. The generator sends each actual file as a Base64 data URI in that
 same order, then the prompt. It validates up to 20 MB per image before Base64
 encoding, a total encoded reference payload of at most 32 MB, 240–8000 px per

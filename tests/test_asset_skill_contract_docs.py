@@ -118,16 +118,20 @@ def _with(base, mutate):
 # reach the SAME verdict on every row — both directions, valid and invalid.
 def _result_parity_cases():
     base = _result_base()
-    ref_only = {
-        "asset_type": "screen-reference",
-        "outputs": [{"role": "reference", "path": "references/scene_main.png"}],
-        "sources": [],
-        "previews": [],
-        "validation": {"passed": True, "levels": {"L0": True, "L1": True}},
-    }
+    with_reference_evidence = _with(
+        base,
+        lambda d: d["outputs"].append(
+            {
+                "role": "reference",
+                "name": "canonical",
+                "path": "res://assets/generated/character-bundle/player/player_canonical.png",
+                "godot_type": "Texture2D",
+            }
+        ),
+    )
     return [
         ("valid-base", base, True),
-        ("valid-reference-only", ref_only, True),
+        ("valid-reference-evidence", with_reference_evidence, True),
         (
             "valid-all-levels-true",
             _with(base, lambda d: d["validation"].update(

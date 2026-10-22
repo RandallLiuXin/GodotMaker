@@ -166,7 +166,7 @@ def _origin_path_for(output: Path) -> Path:
     Mirrors the asset under an ``origin/`` sibling of the project
     ``assets/`` root (e.g. ``assets/img/foo.png`` -> ``assets/origin/foo.png``).
     Falls back to an ``origin/`` directory beside the output when there is no
-    ``assets`` ancestor (e.g. scene references under ``references/``).
+    ``assets`` ancestor (for example a user-owned output directory).
     """
     for ancestor in output.parents:
         if ancestor.name == "assets":

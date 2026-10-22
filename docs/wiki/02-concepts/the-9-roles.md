@@ -52,10 +52,10 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 - Reads the current tag's MISSING rows from `ASSETS.md`
 - For assets you have already provided: dispatches an Analyst helper to inspect your image files and record what they contain
 - For assets that are still missing: generates them via an image generation API (Gemini or xAI, depending on your configuration)
-- For each entry in `SCENES.md`: generates a target reference image at `references/scene_<name>.png` from the scene description, art direction, and your provided art style
+- For every production unit: copies the applicable `DESIGN.md` rules into the generation brief and may attach user-provided style or identity images as optional conditioning
 - Updates `ASSETS.md` with the actual file paths and final status
 
-**What you get:** Art files in `assets/`, scene reference images in `references/`, and resolved status on this tag's `ASSETS.md` rows. The scene references become the visual contract that `/gm-evaluate` later compares running screenshots against.
+**What you get:** Runtime art files in `assets/` and resolved status on this tag's `ASSETS.md` rows. `DESIGN.md` remains the visual contract used by generation and evaluation.
 
 **Things to know:** If a previous tag's asset is broken, raise it as a fix task in `/gm-fixgap`.
 
@@ -111,7 +111,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 - Maintains a single `e2e/` directory that always reflects the current game: writes new tests for this tag's Tag Mechanics, verifies inherited tests still exist, and prunes tests for mechanics PLAN's Main Build refactor tasks deliberately removed
 - Enforces the **playable-closed-loop hard gate**: headless boot + at least one mechanic E2E + at least one of {death, win, exit} ending exists
 - Runs the full `e2e/` suite — every test for every still-supported mechanic. A failing inherited mechanic is just as critical as a failing new one
-- Takes screenshots of each scene and compares them against reference images using a visual quality check
+- Takes screenshots of each scene and checks observable scene requirements plus the applicable `DESIGN.md` rules using visual QA
 - Produces a final verdict: approve or reject, with a list of specific problems if rejected
 
 **What you get:** `.godotmaker/evaluation.json` (the full verdict, with per-mechanic PASS/FAIL records), latest screenshots in `e2e/screenshots/`, and archived evaluate-run evidence under `.godotmaker/evaluation-runs/`.

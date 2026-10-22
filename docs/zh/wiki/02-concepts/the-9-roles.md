@@ -52,10 +52,10 @@
 - 读取 `ASSETS.md` 中本 tag 的 MISSING 行
 - 对你已经提供的资源：派 Analyst 子代理检查图片文件、记录其内容
 - 对仍缺失的资源：通过图像生成 API 自动生成（Gemini 或 xAI，取决于你的配置）
-- 对 `SCENES.md` 中的每个场景：根据场景描述、艺术方向和你提供的素材风格，生成场景目标参考图，写入 `references/scene_<name>.png`
+- 对每个生产单元：把适用的 `DESIGN.md` 规则写入生成 brief，并可把用户显式提供的风格图或身份图作为可选条件输入
 - 用实际文件路径和最终状态更新 `ASSETS.md`
 
-**你得到什么：** `assets/` 目录里的美术文件、`references/` 目录里的场景参考图，以及本 tag 新增行被标记为 `provided` / `generated` / `deferred`。这些场景参考图会成为视觉合约，后续 `/gm-evaluate` 用它们来对照运行时截图。
+**你得到什么：** `assets/` 目录里的运行时美术文件，以及本 tag 新增行被标记为 `provided` / `generated` / `deferred`。`DESIGN.md` 始终是生成和验收共同使用的视觉合约。
 
 **需要知道的：** 如果先前 tag 的资源坏了，作为 `/gm-fixgap` 修复任务提出。
 
@@ -111,7 +111,7 @@
 - 维护一份单一的 `e2e/` 目录，让它始终反映当前游戏：为本 tag 新增的 Tag Mechanic 写新测试，确认继承的 mechanic 测试还在，对 PLAN 中 Main Build refactor 任务显式删除的 mechanic 同步删除其测试
 - 强制 **可玩闭环硬门**：headless 启动不崩 + 至少一个 mechanic 能跑通 E2E + 至少一个 {死亡/胜利/退出} 出口可达
 - 跑完整套 `e2e/`——每个仍在支持的 mechanic 都要测试。继承 mechanic 的失败和新 mechanic 的失败一样关键
-- 对每个场景截图，用视觉质量检查工具与参考图对比
+- 对每个场景截图，用视觉质量检查工具核对可观察的场景要求和适用的 `DESIGN.md` 规则
 - 得出最终结论：approve 或 reject，如果 reject 则附上具体问题列表
 
 **你得到什么：** `.godotmaker/evaluation.json`（完整判定结果，按 mechanic id 列出 PASS/FAIL）、`e2e/screenshots/` 里的最新截图，以及 `.godotmaker/evaluation-runs/` 下的每轮评估证据归档。

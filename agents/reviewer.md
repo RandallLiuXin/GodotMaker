@@ -58,7 +58,7 @@ You are STRICTLY PROHIBITED from:
 
 8. **Run asset usage review** when the brief includes `Asset Runtime Snapshot`. Check:
    - Implementation uses final asset paths listed in the snapshot
-   - No source image, curation candidate, prompt file, or scene reference is used as a runtime asset
+   - No source image, curation candidate, prompt file, or optional provider input is used as a runtime asset
    - No listed final asset is replaced with placeholder art, procedural shapes, or freshly drawn stand-ins
 
 9. **Write your report** (exact format below).

@@ -52,11 +52,11 @@ asset runtime 或 `tools/` 等受管理路径内的自定义文件不会被保�
   生产证据，不再是单独交给 worker 的运行时行。
 - `ui-kit`、`card-kit`、`compact-prop-pack` 等多输出 family 会原子注册所有声明的
   运行时输出。
-- 仅作参考的素材在 `source_ready` 结束，不能作为可加载资源交给 worker。
+- runtime family 返回的 reference 输出只保留为生产证据；它们不会创建目录行或进入 worker handoff。
 - 生成素材通常位于 `assets/generated/<asset-family>/<asset-id>/`，且只有通过对应
   Asset Skill 验证后才能标记为 `generated`。
-- `generated` 和 `source_ready` 必须由 1.0 的 validated request/result 和原子注册链
-  写入，不能根据旧路径或旧证据手工恢复。
+- `generated` 必须由 1.0 的 validated request/result 和原子注册链写入，不能根据旧路径
+  或旧证据手工恢复。
 
 本地 Agent 还应核对 `GDD.md`、当前 tag 的 `PLAN.md`、`STRUCTURE.md`、
 `SCENES.md`、`DESIGN.md`、`MEMORY.md`、`ROADMAP.md`、现有 Godot 资源绑定、
@@ -123,7 +123,7 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
     位于 `assets/generated/<asset-family>/<asset-id>/`。
   * 角色玩法动画应通过 `character-bundle` 解析到 `SpriteFrames`；基准参考图与动作
     源图是证据，不是额外运行时行。
-  * 仅参考输出使用 `source_ready`，不能当作运行时资源。
+  * reference 输出只保留为证据，不能当作运行时资源或目录行。
   * 不要把旧 manifest/stable-entry 指针保留成兼容层；找到场景和 worker 真正加载的
     1.0 资源。
 - 输出一张审计表，包含：项目、当前状态、所需变化、证据、风险、建议动作。分开列出
@@ -147,8 +147,8 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
 - 让 `ASSETS.md` 的结构符合 1.0 Runtime Type / Runtime Path 表。保留有价值的
   provenance，但应移除过时的 worker-facing 行或指针，而不是增加兼容读取层。若没有
   有效的 1.0 证据链证明某项输出，应让它保持 `MISSING` 或 `deferred`。
-- 绝不能手改 Runtime Type、Runtime Path 或 Status 来绕过注册。`generated` 或
-  `source_ready` 必须拥有 validated v1.0 request 和匹配 result，并通过
+- 绝不能手改 Runtime Type、Runtime Path 或 Status 来绕过注册。`generated` 必须拥有
+  validated v1.0 request 和匹配 result，并通过
   `tools/asset_result_registration.py` 校验声明的 Godot 类型与资源、原子注册整个
   production unit；多输出 family 必须整组成功或整组失败。若旧证据无法重建这条链，
   应报告 blocker，或请求重新运行对应 Asset Skill。

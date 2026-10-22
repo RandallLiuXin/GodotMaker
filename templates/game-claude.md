@@ -25,7 +25,7 @@ This project ships in **tags** (SemVer: v0.1.0, v0.2.0, …). Each tag is one fu
 ### Resources
 
 - Never fabricate resource paths. Use only paths listed in `ASSETS.md` or already on disk. If you need an asset that does not exist, report it — do not invent.
-- Never edit `references/scene_*.png`. They are the visual ground truth that `/gm-evaluate` compares the running game against. To regenerate them, re-run `/gm-asset` Step 3.
+- Treat `DESIGN.md` as the sole visual rule authority. User-provided images are optional provider inputs, not scene targets or evaluation ground truth.
 
 ## Where to look
 

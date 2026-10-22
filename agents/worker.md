@@ -91,7 +91,7 @@ asset. Every object carries exactly asset_id and godot_artifact (type/path).}
 
 ### Visual Self-Check                                  [OPTIONAL]
 - Source: {evaluation.json.visual_checks scene and blocking finding}
-- Reference: {references/scene_name.png}
+- Design rule: {rule_id and verbatim DESIGN.md rule text}
 - Target state: {scene or gameplay state to capture}
 - Verify: {observable visual criteria}
 - Output directory: `reports/fixgap-visual/{task_id}/`
@@ -158,7 +158,7 @@ write a repair record, run a revalidation pass, or author a new skill.
   including a generated `.tres` — to make the integration work, under the File
   Ownership exception above. Report what you changed in Notes.
 - Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
-  prompt files, or scene references as runtime assets.
+  prompt files, or optional provider-input images as runtime assets.
 - Do not replace listed final assets with placeholders, procedural shapes, or
   freshly drawn stand-ins.
 - If the snapshot is empty for a visual task, or a listed artifact path does not

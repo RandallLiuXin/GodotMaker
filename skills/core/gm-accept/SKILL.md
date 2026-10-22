@@ -42,7 +42,8 @@ Read these files:
 
 Do NOT capture new screenshots. Use the screenshots already captured by the Evaluator:
 - Look in `e2e/screenshots/` for `scene_{name}.png` files
-- These correspond to reference images in `references/scene_{name}.png`
+- Present each screenshot with the evaluator's `DESIGN.md` rule findings and
+  observable scene-requirement verdict
 - If no evaluator screenshots exist, note this as a gap
 
 ### 3. Present to User
@@ -76,7 +77,7 @@ Format a clear summary:
 {instructions}
 
 ### Screenshots
-{show evaluator screenshots side-by-side with references}
+{show evaluator screenshots with their design-rule and content verdicts}
 
 ### What's Next
 - After /gm-finalize this tag will be archived to docs/tags/{Tag}/ and `git tag {Tag}` will be created.

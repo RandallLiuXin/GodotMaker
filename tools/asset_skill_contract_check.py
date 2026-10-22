@@ -23,7 +23,7 @@ from asset_output_paths import AssetOutputPathError, safe_identifier
 # Asset Skills the family registry declares.
 ASSET_TYPES = set(FAMILY_NAMES)
 
-REFERENCE_ROLES = {"canonical", "style", "screen"}
+REFERENCE_ROLES = {"canonical", "style"}
 PROVIDERS = {"native", "codex", "gemini", "openai", "wan"}
 OUTPUT_ROLES = {"runtime", "reference"}
 SOURCE_LAYOUTS = {

@@ -51,8 +51,8 @@ to the current skill directory, not the project root. For example, inside
 `.agents/skills/gm-asset/references/asset-runtime-pipeline.md`.
 
 Project artifact paths are different: if a skill asks the stage to create or
-consume project assets such as `references/scene_<name>.png`, resolve those as
-project-root files. When the path is a Markdown support document mentioned by a
+consume project assets, resolve those as project-root files. When the path is a
+Markdown support document mentioned by a
 skill instruction, prefer skill-local resolution.
 
 ## Capability Mapping

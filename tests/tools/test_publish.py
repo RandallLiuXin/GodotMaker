@@ -55,6 +55,27 @@ PRIMARY_ROLE_SKILLS = [
     "gm-finalize",
 ]
 
+def test_upgrade_removes_retired_screen_reference_skills_but_preserves_project_images(
+    tmp_path,
+):
+    expected = b"user-owned-image"
+    image = tmp_path / "references" / "scene_main.png"
+    image.parent.mkdir()
+    image.write_bytes(expected)
+    retired_dirs = []
+    for adapter in publish.AGENT_ADAPTERS.values():
+        retired = adapter.skill_dir(tmp_path) / "screen-reference"
+        retired.mkdir(parents=True)
+        (retired / "SKILL.md").write_text("framework-owned", encoding="utf-8")
+        retired_dirs.append(retired)
+
+    removed = publish.remove_retired_framework_files(tmp_path)
+
+    assert set(removed) == set(retired_dirs)
+    assert all(not path.exists() for path in retired_dirs)
+    assert image.read_bytes() == expected
+
+
 def _parse_simple_frontmatter(content: str) -> dict:
     lines = content.splitlines()
     assert lines and lines[0] == "---"
@@ -1123,7 +1144,6 @@ ui_kit = load_runner("published_ui_kit_validation", "ui-kit")
 card_kit = load_runner("published_card_kit_validation", "card-kit")
 background_map = load_runner("published_background_map_validation", "background-map")
 platform_strip = load_runner("published_platform_strip_validation", "platform-strip")
-screen_reference = load_runner("published_screen_reference_validation", "screen-reference")
 character_bundle = load_runner("published_character_bundle_validation", "character-bundle")
 fx_bundle = load_runner("published_fx_bundle_validation", "fx-bundle")
 compact_prop_pack = load_runner("published_compact_prop_pack_validation", "compact-prop-pack")
@@ -1132,7 +1152,7 @@ assert callable(tileset.compile_and_validate)
 assert callable(ui_kit.compile_and_validate)
 assert callable(card_kit.compile_and_validate)
 assert all(callable(module.compile_and_validate) for module in (
-    background_map, platform_strip, screen_reference, character_bundle,
+    background_map, platform_strip, character_bundle,
     fx_bundle, compact_prop_pack, scene_prop_set,
 ))
 
@@ -1213,7 +1233,7 @@ background_result = {{
     "sources": [{{"path": "res://assets/generated/background-map/sky/sky.png", "layout": "single"}}],
     "previews": [], "validation": {{"passed": False}},
 }}
-for adapter in (platform_strip, screen_reference, character_bundle, fx_bundle, compact_prop_pack, scene_prop_set):
+for adapter in (platform_strip, character_bundle, fx_bundle, compact_prop_pack, scene_prop_set):
     try:
         adapter.compile_and_validate(background_request, background_result, project_root=target, godot_path="godot")
     except adapter.MissingFamilySkillError as exc:
@@ -1303,7 +1323,7 @@ skills = Path({str(skills_target)!r})
 missing = Path({str(missing)!r})
 for family in (
     "tileset", "ui-kit", "card-kit", "background-map", "platform-strip",
-    "screen-reference", "character-bundle", "fx-bundle", "compact-prop-pack",
+    "character-bundle", "fx-bundle", "compact-prop-pack",
     "scene-prop-set",
 ):
     runner = skills / family / "standalone_validation.py"

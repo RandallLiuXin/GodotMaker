@@ -35,6 +35,6 @@
 - `GAP.md` — Gap-fix task list (present only during `/gm-fixgap`; archived to `.godotmaker/gaps/<n>/` afterwards)
 
 ## Reference
-- `references/` — Scene reference images (produced by `/gm-asset`)
+- `references/` — Optional user-provided style or identity images
 - `assets/manifest.json` — Asset manifest (produced by `/gm-asset`, if user provides assets)
 - `e2e/` — End-to-end test suite (produced by `/gm-evaluate`)

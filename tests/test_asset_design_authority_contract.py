@@ -53,8 +53,8 @@ DIMENSIONS = (
 
 # Dimensions no generated image can be produced without.
 UNIVERSAL_DIMENSIONS = frozenset({1, 2, 3, 4, 5, 6, 9})
-# The two families that own the whole frame, so they own composition and depth.
-FULL_FRAME_FAMILIES = frozenset({"screen-reference", "background-map"})
+# The family that owns the whole frame, so it owns composition and depth.
+FULL_FRAME_FAMILIES = frozenset({"background-map"})
 # The families whose output is a reusable UI surface system.
 UI_FAMILIES = frozenset({"ui-kit", "card-kit"})
 
@@ -322,12 +322,12 @@ def test_reference_selection_is_bounded_and_verbatim():
     assert "8. Composition And Visual Hierarchy" not in character
     assert "UI Visual Language" not in character
 
-    foundation = select_design_sections(FILLED_DESIGN, "screen-reference")
-    assert len(foundation) > len(character)
+    background = select_design_sections(FILLED_DESIGN, "background-map")
+    assert len(background) > len(character)
 
     # Every selection is drawn from DESIGN.md text — never rewritten.
     sections = _design_sections(FILLED_DESIGN)
-    for heading in foundation:
+    for heading in background:
         assert sections[heading] in FILLED_DESIGN
 
 
@@ -344,26 +344,15 @@ def test_reference_selection_skips_unspecified_and_na_sections():
 
 
 # ---------------------------------------------------------------------------
-# AC-01: the foundation reference
+# AC-01: no foundation reference
 # ---------------------------------------------------------------------------
 
-def test_anchor_gate_plans_one_design_driven_foundation_reference():
-    body = _section(_read(PLANNER), "Visual Anchor Gate")
-    assert "plan exactly one foundation unit and nothing else" in body
-    assert "single `screen-reference`" in body
-    assert "complete\n`DESIGN.md` visual contract verbatim" in body
-    for heading in ("Visual Identity", "UI Visual Language", "Do", "Don't"):
-        assert heading in body
-    assert "content brief" in body
-    assert "It has no reference\ninput" in body
-    assert "design provenance" in body
-
-
-def test_screen_reference_skill_treats_the_brief_as_the_whole_specification():
-    text = _read(FAMILY_SKILLS["screen-reference"])
-    assert "Carry\nevery visual rule stated in `brief` into that prompt as written" in text
-    assert "the brief is the whole visual specification" in text
-    assert "Do not invent a rule the\nbrief does not state." in text
+def test_planner_generates_runtime_units_without_a_foundation_reference():
+    body = _section(_read(PLANNER), "Optional Image Inputs")
+    assert "Do not create a foundation image or a per-scene reference" in body
+    assert "generate the requested\nruntime unit directly" in body
+    assert "`DESIGN.md` rules" in body
+    assert "do not create\n`ASSETS.md` rows" in body
 
 
 # ---------------------------------------------------------------------------
@@ -377,7 +366,7 @@ def test_manager_brief_carries_design_rules_and_role_labeled_references():
     assert "visual specification\nauthority for this unit" in text
     assert "never send only the file path" in text
     assert "### Reference Inputs" in text
-    for role in ("canonical", "style", "screen"):
+    for role in ("canonical", "style"):
         assert f"`{role}`" in text
     assert "attached to the provider call as real image bytes" in text
     assert "Design Rule Selection and Reference\nConflict Disposition" in text
@@ -386,11 +375,11 @@ def test_manager_brief_carries_design_rules_and_role_labeled_references():
 def test_producer_prompt_rules_put_design_above_references():
     rules = _section(_read(PRODUCER), "Prompt Rules")
     authority = "visual specification\n   authority"
-    conditioning = "visual\n   conditioning"
+    normalized = " ".join(rules.split())
     assert authority in rules, "the carried DESIGN.md rules must be the authority"
-    assert conditioning in rules, "references must be stated as conditioning"
+    assert "visual conditioning" in normalized, "references must be stated as conditioning"
     # Rule order is the authority order: rules first, references second.
-    assert rules.index(authority) < rules.index(conditioning)
+    assert normalized.index("visual specification authority") < normalized.index("visual conditioning")
     assert "a design rule the\n   brief lists but the prompt drops is an unfinished unit" in rules
     assert "never outrank, extend, or replace a design rule" in rules
     # No second style source, and no independent read of a project visual doc.
@@ -547,9 +536,10 @@ def test_planner_and_manager_read_only_design_for_visual_rules():
 
 def test_analyst_dispatch_states_the_inverted_authority():
     body = _section(_read(ANALYST_DISPATCH), "Analyze User-Provided Assets")
+    normalized = " ".join(body.split())
     assert "DESIGN.md is the project's visual specification authority." in body
-    assert "visual\n  conditioning" in body
-    assert "never\n  outrank, extend, or replace a DESIGN.md rule" in body
+    assert "visual conditioning" in normalized
+    assert "never outrank, extend, or replace a DESIGN.md rule" in normalized
     assert "is closed history" in body
 
 

@@ -60,14 +60,14 @@ The largest 0.8.2-to-1.0 project-document change is the asset handoff:
   separate worker-facing runtime rows.
 - Multi-output families such as `ui-kit`, `card-kit`, and
   `compact-prop-pack` register every declared runtime output atomically.
-- Reference-only assets finish at `source_ready`; they must not be presented to
-  workers as loadable runtime resources.
+- Reference outputs from runtime families remain production evidence; they do
+  not create catalog rows or enter worker handoff.
 - Generated assets normally live below
   `assets/generated/<asset-family>/<asset-id>/` and must pass the corresponding
   Asset Skill validation before a row is marked `generated`.
-- `generated` and `source_ready` are written through the 1.0 validated
-  request/result and atomic registration chain. They must not be restored by
-  hand from old paths or old evidence.
+- `generated` is written through the 1.0 validated request/result and atomic
+  registration chain. It must not be restored by hand from old paths or old
+  evidence.
 
 The local agent should also reconcile `GDD.md`, the current-tag `PLAN.md`,
 `STRUCTURE.md`, `SCENES.md`, `DESIGN.md`, `MEMORY.md`, `ROADMAP.md`, existing
@@ -146,7 +146,7 @@ Phase A - read-only audit:
   * Character gameplay animation should resolve through `character-bundle` to
     `SpriteFrames`; canonical references and action source sheets are evidence,
     not additional runtime rows.
-  * Reference-only outputs use `source_ready` and are not runtime resources.
+  * Reference outputs remain evidence and are not runtime resources or rows.
   * Do not retain legacy manifest/stable-entry pointers as a compatibility
     layer; identify the actual 1.0 resource that scenes and workers load.
 - Present an audit table with: item, current state, required change, evidence,
@@ -174,7 +174,7 @@ Phase C - project-semantic migration:
   rows or pointers rather than adding a compatibility reader. Leave an output
   `MISSING` or `deferred` when no valid 1.0 evidence chain can prove it.
 - Never hand-edit Runtime Type, Runtime Path, or Status to bypass registration.
-  A `generated` or `source_ready` result requires a validated v1.0 request and
+  A `generated` result requires a validated v1.0 request and
   matching result. Use `tools/asset_result_registration.py` to validate the
   declared Godot types and resources and register the entire production unit
   atomically; a multi-output family must succeed or fail as a group. If old

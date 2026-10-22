@@ -72,7 +72,7 @@ AI 代码生成不是确定性的，游戏系统之间复杂的交互可能产�
 
 ### 截图和测试结果在哪里？
 
-- 每个场景的视觉参考图（由 `/gm-asset` 生成）：`references/scene_<name>.png`
+- 用户显式提供的可选风格图或身份图：`references/`
 - 评估期间截取的运行时截图：`e2e/screenshots/`
 - 动画帧序列（每个场景一个子目录）：`e2e/screenshots/scene_<name>/frame_*.png`
 - 每轮评估归档的截图和判定：`.godotmaker/evaluation-runs/`
@@ -117,7 +117,7 @@ Hook 内置了防死锁限制。`check_completion.py` 最多允许连续拦截 5
 
 ### 我的评估分数很低，但游戏看起来没问题。
 
-评估器对照每个场景的参考图和 GDD 描述进行视觉 QA。如果 `/gm-asset` 没有生成 `references/scene_*.png` 文件，评估器就没有视觉参考来比对，会给出保守的低分。在重新评估前，先重新运行 asset 命令补全缺失的参考图。
+评估器会根据 `SCENES.md` / `ASSETS.md` 中可观察的要求和 `DESIGN.md` 中适用的规则检查场景截图。请查看 `.godotmaker/evaluation.json` 中逐条规则的 finding：如果书面设计合同没有表达预期，就修正合同；如果渲染结果违反合同，就修正场景。
 
 ### 我怎么回滚到旧版本的 GodotMaker？
 

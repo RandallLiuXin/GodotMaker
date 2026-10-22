@@ -95,6 +95,7 @@ AGENT_RUNTIME_EXTENSION_DIRS = {
 ASSET_RUNTIME_SOURCE = Path("skills") / "assets" / "_shared"
 ASSET_RUNTIME_TARGET = Path(".godotmaker") / "asset-runtime"
 ASSET_PROVIDER_REFERENCES_SOURCE = Path("skills") / "core" / "gm-asset" / "references" / "providers"
+RETIRED_SKILL_NAMES = ("screen-reference",)
 
 @dataclass(frozen=True)
 class AgentPublishAdapter:
@@ -366,6 +367,27 @@ def rmtree_force(path: Path):
         shutil.rmtree(path, onexc=_rmtree_handle_readonly)
     else:
         shutil.rmtree(path, onerror=_rmtree_handle_readonly)
+
+
+def remove_retired_framework_files(target: Path) -> list[Path]:
+    """Remove framework-owned skills retired from the public publish surface.
+
+    Incremental publishing replaces skills that still exist but intentionally
+    does not wipe a whole skill root. Without this bounded cleanup, removed
+    framework skills would remain callable forever. Project content such as
+    user-owned ``references/*.png`` is outside these exact targets and is never
+    touched.
+    """
+    removed: list[Path] = []
+    for adapter in AGENT_ADAPTERS.values():
+        skill_root = adapter.skill_dir(target)
+        for name in RETIRED_SKILL_NAMES:
+            retired = skill_root / name
+            if retired.is_dir():
+                rmtree_force(retired)
+                removed.append(retired)
+                print(f"  Removed retired framework skill {retired}")
+    return removed
 
 
 def copy_tree(src: Path, dst: Path):
@@ -1440,6 +1462,8 @@ def main():
     config_dir = adapter.project_config_dir(target)
     skills_target = adapter.skill_dir(target)
     config_file = config_dir / "godotmaker.yaml"
+
+    remove_retired_framework_files(target)
 
     # MAJOR upgrade with --force: clean all framework-managed content
     if level == "MAJOR" and args.force:

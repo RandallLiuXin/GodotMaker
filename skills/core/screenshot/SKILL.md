@@ -99,7 +99,7 @@ with GodotE2E.launch(project_path, timeout=15.0) as game:
 Then feed reference + sequence to `visual-qa` (see `.claude/skills/visual-qa/SKILL.md`):
 
 ```
-Skill(skill="visual-qa") "Check references/scene_main.png against e2e/screenshots/scene_main/frame_*.png — Goal: ..., Requirements: ..., Verify: ..."
+Skill(skill="visual-qa") "Check e2e/screenshots/scene_main/frame_*.png — Goal: ..., Requirements: ..., DESIGN.md rules: ..., Verify: ..."
 ```
 
 For static scenes (decoration, terrain, UI without motion), one screenshot

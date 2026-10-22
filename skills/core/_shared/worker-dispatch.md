@@ -91,11 +91,11 @@ Name the runtime state or FX lifecycle a `SpriteFrames` artifact should play in
 `Game Mechanic Function`, not by pasting frame data here.
 The resolver accepts `generated` and complete user-provided `provided` runtime
 rows. It exits non-zero with an `error` on any other status, missing or invalid
-runtime columns, a missing artifact file, or a reference-only asset.
+runtime columns, or a missing artifact file.
 On failure, state the resolver's `error` and do not dispatch the visual task.
 Never fill this section with an artifact path the resolver did not emit.
 Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
-prompt files, or scene references as runtime assets.}
+prompt files, or optional provider-input images as runtime assets.}
 
 ### Visual Asset Contract                                [REQUIRED for visual tasks]
 {Copy the relevant PLAN.md Runtime Asset Assignments, SCENES.md Asset
@@ -105,8 +105,8 @@ prompt files, or scene references as runtime assets.}
  final runtime asset path.
  Take every generated or user-provided runtime path from the resolved `Asset
 Runtime Snapshot` above.
- Do not use source sheets, curation candidates, prompt files, scene references,
- or ASSETS.md rows whose type is `reference` as runtime assets.
+ Do not use source sheets, curation candidates, prompt files, or optional
+ provider-input images as runtime assets.
  Do not replace an available final asset with placeholder art, procedural
  shapes, or freshly drawn stand-ins.
  Never ask a worker to generate, draw, or synthesize art.}
@@ -114,7 +114,7 @@ Runtime Snapshot` above.
 ### Visual Self-Check                                    [REQUIRED for fixgap visual tasks]
 - Source: {evaluation.json.visual_checks scene and blocking finding}
 - Design rule: {rule_id, verbatim rule_text, and reported evidence from visual_checks.<scene>.design_rules[] — omit only when the blocking finding is not a design rule one}
-- Reference: {references/scene_name.png — provenance context only, never a similarity target}
+- Reference: {optional user-provided canonical/style image path, or none — provider provenance only, never a similarity target}
 - Target state: {scene or gameplay state to capture}
 - Verify: {the design rule above, plus observable visual criteria from evaluation vqa_calls[].context or SCENES.md Acceptance criteria}
 - Output directory: `reports/fixgap-visual/{task_id}/`
@@ -126,7 +126,7 @@ composition is not the goal and does not close the task.
 {Copy the relevant scene description from SCENES.md here.
  Include: element positions, sizes, layout type, mood.
  Worker MUST follow these layout specs — element positions and proportions
- must match the description. Reference image at references/scene_{name}.png}
+ must match the description and the listed DESIGN.md rules.}
 ```
 
 ## Dispatch Rules
