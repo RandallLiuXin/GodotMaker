@@ -14,7 +14,8 @@ GodotMaker 把你的游戏想法变成可运行的 Godot 4 原型。正常路径
 |------|-----------|
 | [快速上手](01-getting-started/installation.md) | 第一次配置 GodotMaker，或新建项目 |
 | [核心概念](02-concepts/how-it-works.md) | 想理解 CLI 工作流、9 个角色命令、ECS 和设计选择 |
-| [技能系统](03-skills/skill-system.md) | 了解角色技能、辅助技能、审查员技能分别做什么 |
+| [技能系统](03-skills/skill-system.md) | 了解角色、辅助、Asset 和审查员技能分别做什么 |
+| [Asset 技能](03-skills/asset-skills.md) | Registry 驱动的生产 family、原生 artifact 类型和 L0-L4 验证阶梯 |
 | [故障排查](04-troubleshooting/common-problems.md) | 运行卡住、被拦截或行为异常时，在这里找解法 |
 | [工具](05-tools/publish.md) | `publish.py`、`check_env.py`、`check_project.py` 及资源工具参考 |
 | [配置](06-configuration/project-config.md) | 每个项目的偏好设置、provider 配置、主机路径、插件版本锁定 |

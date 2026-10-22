@@ -50,8 +50,9 @@ GodotMaker is licensed under the Business Source License 1.1 (see [LICENSE](LICE
 
 ### Prerequisites
 
-- Godot 4.x (with .NET support recommended)
+- Godot 4.5+ (with .NET support recommended)
 - Python 3.10+
+- Node.js 22+
 - .NET SDK 8.0+
 - [gitleaks](https://github.com/gitleaks-io/gitleaks) (for secret scanning)
 

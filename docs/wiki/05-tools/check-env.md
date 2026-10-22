@@ -54,7 +54,7 @@ This check covers the Python package. The `addons/godot_e2e/` addon inside your 
 
 ### Node.js
 
-- Node.js 18 or later is installed (needed to run `godot-mcp` via `npx`).
+- Node.js 22 or later is installed (needed to run `godotmaker-cli` and `godot-mcp` via `npx`).
 - `npx` is available on your PATH (it comes with Node.js).
 
 ### Godot

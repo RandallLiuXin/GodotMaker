@@ -10,7 +10,7 @@
 - **Title:** {working title}
 - **Genre:** {platformer, shooter, puzzle, RPG, tower defense, etc.}
 - **Perspective:** {2D side-view / 2D top-down / 2D fixed/grid}
-- **Platform:** Godot 4.x (Desktop)
+- **Platform:** Godot 4.5+ (Desktop)
 - **One-line pitch:** {one sentence that captures the core fantasy}
 - **Target session length:** {how long is one play session}
 

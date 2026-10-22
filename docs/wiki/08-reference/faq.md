@@ -18,7 +18,8 @@ See the installation page for setup instructions.
 
 ### What Godot version do I need?
 
-Godot 4.5 or later. GodotMaker does not support Godot 3.x or Godot 4.3 and below.
+Godot 4.5 or later. Earlier Godot releases, including 4.4 and all 3.x releases,
+are outside the supported baseline.
 
 ### How long does it take to make a game?
 

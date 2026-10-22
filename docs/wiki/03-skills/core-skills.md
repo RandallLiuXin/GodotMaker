@@ -1,6 +1,9 @@
 # Core Skills
 
-Core skills come in two kinds: the nine role skills exposed as `/gm-*` commands, and thirteen supporting skills that role skills load automatically. This page covers both.
+The `skills/core/` inventory contains the pipeline role skills, the
+out-of-pipeline `gm-rescue` diagnostic, and supporting skills that roles load as
+needed. This page mirrors those shipped directories instead of maintaining a
+separate total.
 
 ## Role skills
 
@@ -21,6 +24,12 @@ There are nine role skills, each responsible for one part of game creation. In t
 After `/gm-finalize` you can begin the next tag through the CLI, or manually by running `/gm-gdd` again (for example, to add a new feature). `/gm-scaffold` is a one-time setup step per project.
 
 For a deeper look at what each role does and the decisions it makes, see [The 9 roles](../02-concepts/the-9-roles.md).
+
+## Out-of-pipeline diagnostic
+
+`/gm-rescue` diagnoses a stuck pipeline and decides whether the blockage points
+to a GodotMaker framework defect. It does not modify game code and is not one of
+the nine tag-iteration roles.
 
 ## Supporting skills
 
@@ -62,6 +71,12 @@ Supporting skills are reference packs loaded silently by the role skills. You ne
 | `visual-qa` | How to analyse screenshots for visual defects and judge them rule by rule against `DESIGN.md` | `/gm-evaluate` |
 | `screenshot` | How to capture gameplay screenshots from a running Godot instance | `/gm-evaluate`, `/gm-fixgap` |
 | `mcp-driver` | How to inspect a live Godot project at runtime via godot-mcp, used when build tools alone can't diagnose a problem | `/gm-fixgap` |
+
+### Disabled tooling
+
+| Skill | Status |
+|-------|--------|
+| `gdtoolkit` | Shipped for reference but not loaded by the current pipeline; reevaluation is tracked in `ROADMAP.md` because the linter has crashed on ECS-style class shapes. |
 
 The full content of any supporting skill's `SKILL.md` lives in `skills/core/<name>/` in the repository if you want to see exactly what reference material it contains.
 

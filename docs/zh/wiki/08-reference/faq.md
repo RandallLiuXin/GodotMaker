@@ -18,7 +18,8 @@ Claude Code 本身需要 Anthropic 账号并开通 API 访问（或已开通 Cla
 
 ### 我需要哪个版本的 Godot？
 
-Godot 4.5 或更高版本。GodotMaker 不支持 Godot 3.x 或 Godot 4.3 及以下版本。
+Godot 4.5 或更高版本。更早的 Godot 版本（包括 4.4 和全部 3.x 版本）不在官方
+支持基线内。
 
 ### 做一个游戏要多长时间？
 

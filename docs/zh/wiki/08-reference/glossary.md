@@ -32,7 +32,7 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **PLAN.md** — 由 `/gm-gdd` 生成、范围限定为 **当前 tag** 的任务列表。包含 Tag Mechanics（本 tag 要交付的 mechanic 列表）、Inherited Mechanics（先前 tag 已交付、本 tag 必须保持不破坏的 mechanic 列表）、风险任务、主体任务表，每项任务都有状态字段（`pending` / `in_progress` / `completed` / `verified`）。`/gm-build` 通过为每个任务派发 Worker 来逐一推进。Hook `stage_reminder.py` 会阻止 `/gm-build` 在所有任务都标记为 `verified` 之前结束。
 
-**Reviewer** — 一种子代理，以及一套 8 个专项技能（`physics`、`animation`、`ui`、`tilemap`、`navigation`、`shader`、`audio`、`particles`）。当 `PLAN.md` 中所有任务都 `completed` 且 Verifier 通过后，Reviewer 对代码进行检查，比对每个技能的 `gotchas.md` 和 `checklist.md` 中记录的 Godot 特有坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务追加到 `PLAN.md`）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证。原始 finding 和 triage 决策不写入 `MEMORY.md`。另见：*Sub-agent*、*Worker*、*Verifier*。
+**Reviewer** — 一种子代理，以及 `physics`、`animation`、`ui`、`tilemap`、`navigation`、`shader`、`audio`、`particles` 这些专项技能。当 `PLAN.md` 中所有任务都 `completed` 且 Verifier 通过后，Reviewer 对代码进行检查，比对每个技能的 `gotchas.md` 和 `checklist.md` 中记录的 Godot 特有坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务追加到 `PLAN.md`）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证。原始 finding 和 triage 决策不写入 `MEMORY.md`。另见：*Sub-agent*、*Worker*、*Verifier*。
 
 **Rescue** — 由 `/gm-rescue` 触发的主流程外诊断角色。当流水线卡住时调用（通常在多轮 `/gm-fixgap` 都没办法收敛之后）。检查 godotmaker 自身的 hooks、skills、config、templates，判断卡死是否由框架缺陷造成；只输出到聊天（不写文件、不改代码）。如果发现框架缺陷，会起草一份 GitHub issue 草稿供用户审阅后自行提交。隐私：草稿默认不包含项目路径、项目源码、GDD 内容。另见：*Tag*。
 
@@ -42,7 +42,7 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **SCENES.md** — 由 `/gm-gdd` 生成的规划文档，列出 **当前 tag** 需要新增或重做的 Godot 场景、包含的内容以及场景之间的关系。先前 tag 的场景描述保留在对应的 `docs/tags/<prev>/SCENES.md` 归档里。
 
-**Skill**（coding-agent 技能）— 一个给所选 coding agent 提供特定工作指令的 Markdown 文件（`SKILL.md`）。GodotMaker 提供 9 个流水线角色技能（Claude Code 使用 `/gm-*`，Codex 使用 `$gm-*`）、辅助技能以及 Reviewer 技能。技能会部署到所选 agent 的项目本地技能目录（Claude Code 为 `.claude/skills/`，Codex 为 `.agents/skills/`）。
+**Skill**（coding-agent 技能）— 一个给所选 coding agent 提供特定工作指令的 Markdown 文件（`SKILL.md`）。GodotMaker 提供流水线角色技能、主流程外的 `gm-rescue` 诊断、辅助技能、Reviewer 领域和 registry 声明的 Asset Skill family。技能会部署到所选 agent 的项目本地技能目录（Claude Code 为 `.claude/skills/`，Codex 为 `.agents/skills/`）；角色会按需加载辅助、Reviewer 和 Asset Skill。仓库目录与 `tools/asset_family_registry.py` 是 inventory 真值来源。
 
 **Stage vs Role** — "Stage"是 GodotMaker 早期对流水线步骤的称呼。流水线已被重新设计为基于角色的指令，没有中央协调器。"stage"这个词仍出现在部分文件名中（如 `stage_schemas.json`、`stage.jsonl`），但今后的规范术语是"role"。另见：*Role*。
 

@@ -54,7 +54,7 @@ All required checks passed! Ready to use GodotMaker.
 
 ### Node.js
 
-- 已安装 Node.js 18 或更高版本（通过 `npx` 运行 `godot-mcp` 时需要）。
+- 已安装 Node.js 22 或更高版本（运行 `godotmaker-cli` 以及通过 `npx` 运行 `godot-mcp` 时需要）。
 - `npx` 在 PATH 中可用（随 Node.js 一起安装）。
 
 ### Godot
