@@ -13,6 +13,8 @@ description: |
 
 $ARGUMENTS
 
+<!-- agent-operations: invoke_supporting_skill, run_shell_command -->
+
 Capture screenshots from a running Godot game using godot-e2e's internal
 viewport capture. Works headless, multi-monitor safe, no external tools needed.
 
@@ -96,10 +98,11 @@ with GodotE2E.launch(project_path, timeout=15.0) as game:
             game.wait_seconds(0.5)  # 0.5s = 2 FPS, matches VQA Dynamic cadence
 ```
 
-Then feed reference + sequence to `visual-qa` (see `.claude/skills/visual-qa/SKILL.md`):
+Then invoke the published `visual-qa` supporting skill through the active
+runtime's `invoke_supporting_skill` mapping, with these arguments:
 
 ```
-Skill(skill="visual-qa") "Check references/scene_main.png against e2e/screenshots/scene_main/frame_*.png — Goal: ..., Requirements: ..., Verify: ..."
+Check references/scene_main.png against e2e/screenshots/scene_main/frame_*.png — Goal: ..., Requirements: ..., Verify: ...
 ```
 
 For static scenes (decoration, terrain, UI without motion), one screenshot

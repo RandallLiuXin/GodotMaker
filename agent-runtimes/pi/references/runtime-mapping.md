@@ -26,6 +26,34 @@ interactively before using `/skill:gm-<role>`.
 Read `godot_path` through `python tools/agent_runtime.py godot_path`; it selects
 the `.pi` sidecar from `.godotmaker/config.yaml`.
 
+## Operation mapping
+
+| Operation | Class | Invocation path |
+|---|---|---|
+| `invoke_stage` | `native` | Invoke the published stage as `/skill:gm-<role>`. |
+| `invoke_supporting_skill` | `native` | Invoke a published supporting skill as `/skill:<skill-name>`. |
+| `read_project_config` | `native` | Read `.pi/godotmaker.yaml`, or use `python tools/agent_runtime.py <key>` for selected-runtime lookup. |
+| `read_skill_reference` | `native` | Resolve `references/`, `scripts/`, `tools/`, and bundled docs from `.pi/skills/<skill>/`. |
+| `dispatch_worker` | `emulated` | Call `godotmaker_delegate` with `role: "worker"`; worktree isolation is the default. |
+| `dispatch_reviewer` | `emulated` | Call `godotmaker_delegate` with `role: "reviewer"`; treat read-only behavior as prompt-level, not an OS sandbox. |
+| `dispatch_verifier` | `emulated` | Call `godotmaker_delegate` with `role: "verifier"` and preserve the returned report. |
+| `dispatch_analyst` | `gated` | Call `godotmaker_delegate` with `role: "analyst"`; gate when the selected Pi model cannot inspect the declared assets. |
+| `dispatch_asset_producer` | `emulated` | Call `godotmaker_delegate` with `role: "asset-producer"` and the selected provider brief. |
+| `dispatch_decomposer` | `emulated` | Call `godotmaker_delegate` with `role: "decomposer"` and explicit work packages/owned files. |
+| `dispatch_gdd_auditor` | `emulated` | Call `godotmaker_delegate` with `role: "gdd-auditor"` and the bounded audit brief. |
+| `track_plan` | `emulated` | Maintain a concise visible checklist in Pi session output; do not edit project planning artifacts as a substitute. |
+| `ask_user_question` | `emulated` | Ask a concise normal Pi prompt; gate a non-interactive run unless the skill permits a default. |
+| `classify_repair_attempt` | `emulated` | Read `references/repair-attempt-accounting.md` and apply its evidence rules after each delegate result. |
+| `inspect_images` | `gated` | `native` is unsupported. For `codex`, run `codex exec --ephemeral -s read-only -C <project> -i <image>... -o <result> "<constructed VQA prompt>"`, emit the result, and append the VQA log; API selectors run the skill-local visual-qa script. |
+| `generate_images` | `gated` | `native` is unsupported. Use the selected `codex` or API provider path and preserve the generated-path claim/report contract. |
+| `run_shell_command` | `native` | Use Pi `bash`, preserving cwd, exit status, and important output. |
+| `access_godot_mcp` | `emulated` | Use `godotmaker_runtime` for project info and the bounded run/debug-output/stop loop. |
+| `apply_permission_policy` | `gated` | Trust the project with `pi --approve`; role restrictions are prompt-level and must fail closed when required resources are missing. |
+| `forward_hook_context` | `unsupported` | Pi publishes no hook adapter. Do not claim hook context injection; rely on skill output and the extension's explicit results. |
+| `detect_worktree_state` | `native` | Inspect git branch, worktree, HEAD, and project trust before delegation or finish. |
+| `create_or_use_isolated_workspace` | `emulated` | `godotmaker_delegate` creates and validates a git worktree; `shared` is allowed only for one non-parallel role. |
+| `finish_branch_or_handoff` | `native` | Inspect returned merge-candidate branches, merge safely, and use normal git delivery or a host handoff. |
+
 ## Godot and delegation
 
 Pi has no built-in MCP or `Agent` tool. GodotMaker publishes

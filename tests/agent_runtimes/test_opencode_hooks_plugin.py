@@ -74,6 +74,79 @@ console.log(JSON.stringify(prompts));
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required")
+def test_session_start_forwards_additional_context_without_reply(tmp_path: Path):
+    write_hook(
+        tmp_path,
+        "session_start.py",
+        (
+            "import json\n"
+            "print(json.dumps({'hookSpecificOutput': {"
+            "'additionalContext': '[GodotMaker v1.2.3]'"
+            "}}))\n"
+        ),
+    )
+
+    source = f"""
+import {{ pathToFileURL }} from 'node:url';
+const {{ GodotMakerHooks }} = await import(pathToFileURL({json.dumps(str(PLUGIN))}).href);
+const prompts = [];
+const client = {{ session: {{ prompt: async (input) => prompts.push(input) }} }};
+const hooks = await GodotMakerHooks({{ directory: {json.dumps(str(tmp_path))}, client }});
+await hooks.event({{ event: {{ type: 'session.created', properties: {{ info: {{ id: 'root' }} }} }} }});
+console.log(JSON.stringify(prompts));
+"""
+    result = run_node(source, tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    prompts = json.loads(result.stdout)
+    assert prompts == [{
+        "path": {"id": "root"},
+        "body": {
+            "noReply": True,
+            "parts": [{"type": "text", "text": "[GodotMaker v1.2.3]"}],
+        },
+    }]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is required")
+def test_stage_reminder_forwards_additional_context_without_reply(tmp_path: Path):
+    write_hook(
+        tmp_path,
+        "stage_reminder.py",
+        (
+            "import json\n"
+            "print(json.dumps({'hookSpecificOutput': {"
+            "'additionalContext': 'Next: run /gm-verify'"
+            "}}))\n"
+        ),
+    )
+
+    source = f"""
+import {{ pathToFileURL }} from 'node:url';
+const {{ GodotMakerHooks }} = await import(pathToFileURL({json.dumps(str(PLUGIN))}).href);
+const prompts = [];
+const client = {{ session: {{ prompt: async (input) => prompts.push(input) }} }};
+const hooks = await GodotMakerHooks({{ directory: {json.dumps(str(tmp_path))}, client }});
+await hooks['tool.execute.before'](
+  {{ tool: 'write', callID: 'call-1', sessionID: 'root' }},
+  {{ args: {{ filePath: '.godotmaker/stage.jsonl', content: 'x' }} }}
+);
+console.log(JSON.stringify(prompts));
+"""
+    result = run_node(source, tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    prompts = json.loads(result.stdout)
+    assert prompts == [{
+        "path": {"id": "root"},
+        "body": {
+            "noReply": True,
+            "parts": [{"type": "text", "text": "Next: run /gm-verify"}],
+        },
+    }]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is required")
 def test_pre_tool_block_still_throws(tmp_path: Path):
     write_hook(
         tmp_path,
