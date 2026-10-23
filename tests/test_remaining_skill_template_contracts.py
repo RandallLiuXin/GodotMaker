@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import re
 from pathlib import Path, PurePosixPath
 
 
@@ -60,6 +61,14 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _gap_archive_path(gap_text: str) -> PurePosixPath:
+    match = re.search(r"^- Archive path:\s+(.+)$", gap_text, re.MULTILINE)
+    assert match, "GAP.md must record its source evaluation archive path"
+    run_id = PurePosixPath(match.group(1).strip()).name
+    assert run_id not in {"", ".", "evaluation-runs"}
+    return PurePosixPath(".godotmaker/gaps") / run_id / "GAP.md"
+
+
 def test_gap_run_identity_comes_only_from_latest_evaluation_run():
     fixgap = _read(FIXGAP)
     template = _read(GAP_TEMPLATE)
@@ -67,7 +76,7 @@ def test_gap_run_identity_comes_only_from_latest_evaluation_run():
     assert ".godotmaker/evaluation-runs/latest.json" in fixgap
     for field in ("archive_path", "stage_event_ts", "tag"):
         assert field in fixgap
-    assert "Do not expect or\nread `iteration`, `ts`" in fixgap
+    assert "Do not expect or read `iteration`, `ts`" in " ".join(fixgap.split())
     assert "<source-evaluation-iteration>" not in fixgap
     assert "Source Evaluation: <evaluation iteration / ts>" not in fixgap
 
@@ -107,10 +116,37 @@ def test_real_latest_artifact_shape_resolves_a_unique_gap_archive(tmp_path):
     assert latest["evaluation_json"] == f'{latest["archive_path"]}/evaluation.json'
     assert latest["archive_path"] != first["archive_path"]
 
+    gap = _read(GAP_TEMPLATE).replace(
+        "{.godotmaker/evaluation-runs/<run-id>}", latest["archive_path"]
+    )
+    gap_archive = _gap_archive_path(gap)
     run_id = PurePosixPath(latest["archive_path"]).name
-    gap_archive = PurePosixPath(".godotmaker/gaps") / run_id / "GAP.md"
     assert str(gap_archive) == f".godotmaker/gaps/{run_id}/GAP.md"
     assert run_id not in {"", ".", "evaluation-runs"}
+
+
+def test_stale_gap_archives_under_its_own_source_run():
+    fixgap = _read(FIXGAP)
+    old_archive = ".godotmaker/evaluation-runs/20261022T120000Z_v0.2.0"
+    latest = {
+        "archive_path": ".godotmaker/evaluation-runs/20261022T130000Z_v0.2.0"
+    }
+    stale_gap = _read(GAP_TEMPLATE).replace(
+        "{.godotmaker/evaluation-runs/<run-id>}", old_archive
+    )
+
+    archive_path = _gap_archive_path(stale_gap)
+
+    assert archive_path == PurePosixPath(
+        ".godotmaker/gaps/20261022T120000Z_v0.2.0/GAP.md"
+    )
+    assert PurePosixPath(latest["archive_path"]).name not in archive_path.parts
+    assert "archive the stale GAP under the run id from its own header" in fixgap
+    assert (
+        "Never archive the stale GAP under the current `latest.json` run id"
+        in fixgap
+    )
+    assert "Read `Archive path` from the `Source Evaluation Run` header" in fixgap
 
 
 def test_dispatch_contracts_are_the_single_source_of_required_inputs():
