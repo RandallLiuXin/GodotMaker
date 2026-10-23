@@ -118,7 +118,7 @@ async function runWorker() {
 
   child.stdout.on("data", (buffer) => {
     const text = buffer.toString();
-    stdout += text; // Mirrors the current production collector exactly.
+    stdout += text; // Mirrors the production stdout accumulation operation only.
     stdoutBytes += buffer.length;
     peakRssBytes = Math.max(peakRssBytes, process.memoryUsage().rss);
     const scan = markerCarry + text;

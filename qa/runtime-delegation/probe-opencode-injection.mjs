@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -10,8 +10,8 @@ const plugin = join(repoRoot, "agent-runtimes", "opencode", "plugins", "godotmak
 const sentinel = "GM_INJECT_SENTINEL_4f2b9d";
 const fixedArgs = {
   subagent_type: "worker",
-  description: "Return the runtime-injected sentinel exactly.",
-  prompt: "Return the runtime-injected sentinel exactly.",
+  description: "Exercise the task pre-hook adapter.",
+  prompt: "Fixed task payload for the adapter-boundary probe.",
 };
 
 function opencodeExecutable() {
@@ -71,87 +71,16 @@ async function runProbe(repeat) {
   }
 }
 
-function runLiveProbe(repeat) {
-  const project = mkdtempSync(join(tmpdir(), "godotmaker-opencode-live-"));
-  const pluginDir = join(project, ".opencode", "plugins");
-  const agentsDir = join(project, ".opencode", "agents");
-  mkdirSync(pluginDir, { recursive: true });
-  mkdirSync(agentsDir, { recursive: true });
-  copyFileSync(plugin, join(pluginDir, "godotmaker-hooks.js"));
-  writeHooks(project);
-  writeFileSync(join(agentsDir, "worker.md"), [
-    "---",
-    "name: worker",
-    "description: Reads a runtime-injected token and reports it.",
-    "mode: subagent",
-    "permission:",
-    "  read: deny",
-    "  grep: deny",
-    "  bash: deny",
-    "  edit: deny",
-    "---",
-    "Return the value of GM_INJECT_TOKEN from the delegated prompt or runtime context.",
-    "If it is absent, return exactly CONTEXT_MISSING.",
-    "",
-  ].join("\n"), "utf8");
-  const livePrompt = [
-    "Use the task tool exactly once with subagent_type worker.",
-    "Ask the worker to return the value of GM_INJECT_TOKEN supplied by runtime hook context.",
-    "Do not guess a value. Return only the worker's answer.",
-  ].join(" ");
-  const started = performance.now();
-  try {
-    const result = spawnSync(opencodeExecutable(), [
-      "run",
-      "--model", "deepseek/deepseek-v4-pro",
-      "--format", "json",
-      "--auto",
-      livePrompt,
-    ], {
-      cwd: project,
-      encoding: "utf8",
-      timeout: 120000,
-      windowsHide: true,
-      maxBuffer: 1024 * 1024 * 4,
-    });
-    const stdout = result.stdout ?? "";
-    return {
-      repeat,
-      prompt: livePrompt,
-      exitCode: result.status,
-      elapsedMs: Number((performance.now() - started).toFixed(3)),
-      stdoutBytes: Buffer.byteLength(stdout),
-      stderrTail: (result.stderr ?? "").slice(-2000),
-      taskObserved: /\btask\b|subagent_type|worker/i.test(stdout),
-      sentinelObserved: stdout.includes(sentinel),
-      contextMissingObserved: stdout.includes("CONTEXT_MISSING"),
-      stdoutTail: stdout.slice(-4000),
-    };
-  } finally {
-    rmSync(project, { recursive: true, force: true });
-  }
-}
-
 const runs = [await runProbe(1), await runProbe(2)];
 const report = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   runtime: "opencode",
   opencodeVersion: opencodeVersion(),
-  model: "deepseek/deepseek-v4-pro",
   prompt: fixedArgs.prompt,
   fixedPayload: { hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: `GM_INJECT_TOKEN=${sentinel}` } },
-  interpretation: "The current adapter returns neither hook context nor mutated task arguments.",
+  interpretation: "The current task pre-hook adapter discards the hook result: it neither propagates the result nor mutates task arguments.",
   defectReproduced: runs.every((run) => run.passed),
   runs,
 };
-if (process.argv.includes("--live")) {
-  report.liveRuns = [runLiveProbe(1), runLiveProbe(2)];
-  report.liveDefectReproduced = report.liveRuns.every((run) => (
-    run.exitCode === 0
-    && run.taskObserved
-    && !run.sentinelObserved
-    && run.contextMissingObserved
-  ));
-}
 process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

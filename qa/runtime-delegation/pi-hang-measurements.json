@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-23T00:51:25.306Z",
+  "command": "node qa/runtime-delegation/probe-pi-stdin-hang.mjs",
+  "environment": {
+    "runtime": "pi 0.84.2",
+    "node": "v24.14.0",
+    "model": "deepseek/deepseek-v4-pro",
+    "thinking": "off",
+    "mode": "json"
+  },
+  "fixedInput": {
+    "prompt": "Reply exactly GM_DONE.",
+    "timeoutMs": 10000,
+    "repeats": 2
+  },
+  "productionSpawn": "spawn(command, args, { cwd, shell: false, windowsHide: true })",
+  "controlDifference": "stdio[0] is ignore; stdout and stderr remain pipes",
+  "productionRuns": [
+    {
+      "repeat": 1,
+      "stdinMode": "open-pipe",
+      "timedOut": true,
+      "exitCode": null,
+      "signal": "SIGTERM",
+      "spawnError": null,
+      "elapsedMs": 10032.923,
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "stderrTail": "",
+      "finalAssistant": ""
+    },
+    {
+      "repeat": 2,
+      "stdinMode": "open-pipe",
+      "timedOut": true,
+      "exitCode": null,
+      "signal": "SIGTERM",
+      "spawnError": null,
+      "elapsedMs": 10026.349,
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "stderrTail": "",
+      "finalAssistant": ""
+    }
+  ],
+  "controlRuns": [
+    {
+      "repeat": 1,
+      "stdinMode": "ignore",
+      "timedOut": false,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 3832.652,
+      "stdoutBytes": 3866,
+      "stderrBytes": 0,
+      "stderrTail": "",
+      "finalAssistant": "GM_DONE"
+    },
+    {
+      "repeat": 2,
+      "stdinMode": "ignore",
+      "timedOut": false,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 3425.16,
+      "stdoutBytes": 3991,
+      "stderrBytes": 0,
+      "stderrTail": "",
+      "finalAssistant": "GM_DONE"
+    }
+  ],
+  "hangReproduced": true,
+  "controlPassed": true,
+  "passed": true
+}
