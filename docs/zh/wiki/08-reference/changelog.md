@@ -26,7 +26,9 @@
 
 下一个版本的待处理变更在 [`../../update/next.md`](../../update/next.md) 中追踪。
 
-贡献者须知：每个 Pull Request 合并前，必须在 `next.md` 的对应分类下（`Added`、`Changed`、`Fixed`、`Removed`）添加一条记录。发布时，`next.md` 会归档为 `docs/update/vX.Y.Z.md`，并以空白版本替换。
+贡献者请遵循规范的
+[发布说明条目合同](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries)。
+发布时，`next.md` 会归档为 `docs/update/vX.Y.Z.md`，并以空白版本替换。
 
 ---
 

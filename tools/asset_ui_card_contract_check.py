@@ -337,7 +337,7 @@ def validate_ui_reference_inputs(request: Mapping[str, Any], project_root: Path)
     if not isinstance(references, list) or not references:
         raise UICardContractError("ui-kit requires at least one binding image reference")
     for index, reference in enumerate(references):
-        if not isinstance(reference, Mapping) or reference.get("role") not in {"canonical", "style", "screen"}:
+        if not isinstance(reference, Mapping) or reference.get("role") not in {"canonical", "style"}:
             raise UICardContractError(f"ui-kit reference[{index}] must preserve a supported role")
         raw_path = reference.get("path")
         if not isinstance(raw_path, str) or not raw_path.strip():

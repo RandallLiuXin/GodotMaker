@@ -223,8 +223,9 @@ python tools/migrate.py --new my-slug
 `publish.py` does NOT always invoke the first form. On FRESH install and
 MAJOR `--force` re-init it calls `baseline_applied()` directly (the
 second form's library equivalent), since a brand-new target has nothing
-to migrate from. The first form is what runs on PATCH / MINOR / SAME
-upgrades — and what you get when you call the CLI yourself.
+to migrate from. The first form is what runs on PATCH / MINOR / SAME publishes
+and forced DOWNGRADE publishes — and what you get when you call the CLI
+yourself.
 
 If you point the bare `migrate.py /target` form at a project that has
 **no `.godotmaker/version` file at all** (truly fresh, never published),
@@ -239,12 +240,28 @@ defined as a backward-incompatible change to user-saved files or runtime
 state — by construction, no incremental migration can bridge it.
 
 The intended path is `publish.py --force`, which wipes framework content
-and runtime state, re-deploys from scratch, then baselines the migration
-tracker. User configs (`CLAUDE.md`, `.claude/godotmaker.yaml`,
-`.godotmaker/config.yaml`) and the user's game code are preserved.
+(including the selected runtime's skills, agents, config, templates and
+extensions, `.godotmaker/hooks/`, `.godotmaker/asset-runtime/`, and `tools/`)
+plus incompatible current pipeline state, re-deploys from scratch, then
+baselines the migration tracker. User configs (root agent instructions, the
+selected runtime's `godotmaker.yaml`, and `.godotmaker/config.yaml`) and the
+user's game code are preserved.
 
 There is no convention for "deleting old migrations at MAJOR boundaries"
 in the new model — the timestamp series is monotonic and global. If a
 migration becomes irrelevant for projects that have moved past it (which
 happens for every executed migration), it stays on disk as historical
 record; new fresh installs will baseline it as applied without running.
+
+## What about downgrades?
+
+`publish.py` blocks a DOWNGRADE by default. `--force` authorizes the publish,
+but it does not select baseline semantics and does not reverse migrations.
+The target keeps its existing `applied_migrations.json`, and
+`run_migrations()` executes only migration IDs that exist in the older
+checkout but are not already recorded. That is normally an empty set for a
+fully published higher-version target, but the tracked-state calculation is
+still authoritative.
+
+There are no down-migration scripts. Restore the target from version control
+when a downgrade must also undo a schema or state change.

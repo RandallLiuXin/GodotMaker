@@ -61,12 +61,22 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _gap_archive_path(gap_text: str) -> PurePosixPath:
+def _gap_archive_path(
+    gap_text: str, existing: set[PurePosixPath] | None = None
+) -> PurePosixPath:
     match = re.search(r"^- Archive path:\s+(.+)$", gap_text, re.MULTILINE)
     assert match, "GAP.md must record its source evaluation archive path"
     run_id = PurePosixPath(match.group(1).strip()).name
     assert run_id not in {"", ".", "evaluation-runs"}
-    return PurePosixPath(".godotmaker/gaps") / run_id / "GAP.md"
+    existing = existing or set()
+    candidate = PurePosixPath(".godotmaker/gaps") / run_id / "GAP.md"
+    suffix = 2
+    while candidate in existing:
+        candidate = (
+            PurePosixPath(".godotmaker/gaps") / f"{run_id}-{suffix}" / "GAP.md"
+        )
+        suffix += 1
+    return candidate
 
 
 def test_gap_run_identity_comes_only_from_latest_evaluation_run():
@@ -147,6 +157,29 @@ def test_stale_gap_archives_under_its_own_source_run():
         in fixgap
     )
     assert "Read `Archive path` from the `Source Evaluation Run` header" in fixgap
+
+
+def test_repeated_fixgap_rounds_allocate_unique_archives_for_the_same_run():
+    fixgap = _read(FIXGAP)
+    gap = _read(GAP_TEMPLATE).replace(
+        "{.godotmaker/evaluation-runs/<run-id>}",
+        ".godotmaker/evaluation-runs/20261022T120000Z_v0.2.0",
+    )
+    first = _gap_archive_path(gap)
+    second = _gap_archive_path(gap, {first})
+    third = _gap_archive_path(gap, {first, second})
+
+    assert first == PurePosixPath(
+        ".godotmaker/gaps/20261022T120000Z_v0.2.0/GAP.md"
+    )
+    assert second == PurePosixPath(
+        ".godotmaker/gaps/20261022T120000Z_v0.2.0-2/GAP.md"
+    )
+    assert third == PurePosixPath(
+        ".godotmaker/gaps/20261022T120000Z_v0.2.0-3/GAP.md"
+    )
+    assert "allocate the first free sibling" in fixgap
+    assert "never\noverwrite or replace an archived GAP" in fixgap
 
 
 def test_dispatch_contracts_are_the_single_source_of_required_inputs():

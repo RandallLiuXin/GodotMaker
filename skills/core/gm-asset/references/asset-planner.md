@@ -28,8 +28,6 @@ declaration.
    images, action sheets, source grids, and other provenance remain in the
    request, result, and reports; do not plan them as rows.
 8. Record `family=<asset_type>` in every planned row's Generation Params.
-   Re-registration ownership of completed reference rows is checked against
-   that field; a row without it cannot be re-registered by its own unit.
 
 ## Visual Authority
 
@@ -55,7 +53,6 @@ Select by asset type:
 
 | Asset type | Visual Identity | Image Style dimensions | UI Visual Language | Do / Don't |
 | --- | --- | --- | --- | --- |
-| `screen-reference` | yes | 1-9 | yes | yes |
 | `background-map` | yes | 1-9 | no | yes |
 | `character-bundle` | yes | 1, 2, 3, 4, 5, 6, 7, 9 | no | yes |
 | `fx-bundle` | yes | 1, 2, 3, 4, 5, 6, 9 | no | yes |
@@ -66,8 +63,8 @@ Select by asset type:
 | `ui-kit` | yes | 1, 2, 3, 4, 5, 6, 8, 9 | yes | yes |
 | `card-kit` | yes | 1, 2, 3, 4, 5, 6, 8, 9 | yes | yes |
 
-The two full-frame families own the frame, so they take all nine dimensions.
-A subject family produces sprites a scene composes later, so dimension 8
+`background-map` owns the frame, so it takes all nine dimensions. A subject
+family produces sprites a scene composes later, so dimension 8
 (Composition And Visual Hierarchy) is not its authority. A UI family produces
 flat reusable surfaces, so dimension 7 (Space, Perspective, And Depth) is not
 its authority. `ui-kit` and `card-kit` additionally take UI Visual Language;
@@ -77,26 +74,24 @@ Skip any selected section whose body is `{unspecified}` or `N/A`. Select
 nothing beyond the row above — the brief stays bounded, and it carries exactly
 one style source.
 
-## Visual Anchor Gate
+## Optional Image Inputs
 
-Use user-provided assets, selected scene references, or previously generated
-files already recorded in `ASSETS.md` as anchors.
+Do not create a foundation image or a per-scene reference. A unit may use a
+user-provided character identity anchor or style image, or a previously
+generated canonical image already recorded in production evidence, as an
+optional provider input. When no such image exists, generate the requested
+runtime unit directly from its applicable `DESIGN.md` rules.
 
-When no anchor exists, plan exactly one foundation unit and nothing else: a
-single `screen-reference` whose `request.brief` carries the complete
-`DESIGN.md` visual contract verbatim — Visual Identity, all nine Image Style
-dimensions, UI Visual Language, Do, and Don't — plus the content brief for the
-screen it depicts, drawn from `SCENES.md` and `PLAN.md`. It has no reference
-input, and its only style source is `DESIGN.md`. Record the selected headings
-in the plan artifact as its design provenance. Collect its report, then rebuild
-the plan with it as the anchor.
+Optional images are conditioning and provenance only. They do not create
+`ASSETS.md` rows, do not become an evaluation target, and do not change which
+`DESIGN.md` sections the unit receives.
 
 ## Reference Conflict Disposition
 
 Decide one disposition per reference before the request is built:
 
 1. `consistent` — the reference contradicts no selected `DESIGN.md` rule.
-   Attach it in its `canonical`, `style`, or `screen` role.
+   Attach it in its `canonical` or `style` role.
 2. `excluded_candidate` — a candidate that is in no request yet contradicts a
    selected rule. Drop it from selection and record an `excluded_reference`
    entry in the plan artifact with its path, the conflicting section heading,

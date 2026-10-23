@@ -1,6 +1,6 @@
 """Tests for check_stage_prerequisites.py hook (role-based pipeline).
 
-This hook only enforces for build/fixgap roles before Agent dispatch.
+This hook only enforces for build/fixgap roles before Agent/Task dispatch.
 It checks that the prerequisite role is completed and its outputs exist.
 """
 import os
@@ -88,6 +88,17 @@ class TestAssetIntentionallyUnenforced:
 
 
 class TestBuildPrerequisites:
+    def test_agent_and_task_aliases_make_the_same_decision(self, project_dir):
+        write_current_role("build")
+        decisions = []
+        for tool_name in ("Agent", "Task"):
+            payload = {**AGENT_INPUT, "tool_name": tool_name}
+            _, code, parsed = run_hook(HOOK, payload)
+            decisions.append((code, parsed))
+
+        assert decisions[0] == decisions[1]
+        assert is_blocked(decisions[0][1])
+
     def test_block_when_scaffold_artifact_missing(self, project_dir):
         write_current_role("build")
         write_completed_roles(["gdd"])

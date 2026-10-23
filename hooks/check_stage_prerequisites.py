@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse hook (Agent tool): verify role prerequisites before worker dispatch.
+"""PreToolUse hook (Agent/Task tool): verify role prerequisites before dispatch.
 
 Only enforces for roles that drive worker orchestration:
   - build → requires gdd completed + scaffold artifacts present
@@ -48,7 +48,7 @@ def main():
     except (json.JSONDecodeError, EOFError):
         sys.exit(0)
 
-    if data.get("tool_name") != "Agent":
+    if data.get("tool_name") not in {"Agent", "Task"}:
         sys.exit(0)
 
     # Only check main agent (the gm-* skill orchestrating dispatch)

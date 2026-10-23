@@ -60,17 +60,17 @@ The largest 0.8.2-to-1.0 project-document change is the asset handoff:
   separate worker-facing runtime rows.
 - Multi-output families such as `ui-kit`, `card-kit`, and
   `compact-prop-pack` register every declared runtime output atomically.
-- Reference-only assets finish at `source_ready`; they must not be presented to
-  workers as loadable runtime resources.
+- Reference outputs from runtime families remain production evidence; they do
+  not create catalog rows or enter worker handoff.
 - Generated assets normally live below
   `assets/generated/<asset-family>/<asset-id>/` and must pass the corresponding
   Asset Skill validation before a row is marked `generated`.
-- `generated` and `source_ready` are written through the 1.0 validated
-  request/result and atomic registration chain. They must not be restored by
-  hand from old paths or old evidence.
+- `generated` is written through the 1.0 validated request/result and atomic
+  registration chain. It must not be restored by hand from old paths or old
+  evidence.
 
 The local agent should also reconcile `GDD.md`, the current-tag `PLAN.md`,
-`STRUCTURE.md`, `SCENES.md`, `DESIGN.md`, `MEMORY.md`, `ROADMAP.md`, existing
+`STRUCTURE.md`, `SCENES.md`, `DESIGN.md`, `ROADMAP.md`, existing
 Godot resource bindings, addons, and custom runtime configuration. Not every
 workspace needs every change: the on-disk game is the authority.
 
@@ -133,7 +133,7 @@ Phase A - read-only audit:
   remove the old entry before adding the replacement, so an add failure can
   leave no registration.
 - Read `GDD.md`, `PLAN.md`, `ASSETS.md`, `STRUCTURE.md`, `SCENES.md`, `DESIGN.md`,
-  `MEMORY.md`, and `ROADMAP.md` when present.
+  and `ROADMAP.md` when present.
 - Inspect `project.godot`, addons, scenes, scripts, resource paths, generated
   assets, and retained evidence under `.godotmaker/`.
 - Compare the existing project documents with the v1.0.0 templates without
@@ -146,7 +146,7 @@ Phase A - read-only audit:
   * Character gameplay animation should resolve through `character-bundle` to
     `SpriteFrames`; canonical references and action source sheets are evidence,
     not additional runtime rows.
-  * Reference-only outputs use `source_ready` and are not runtime resources.
+  * Reference outputs remain evidence and are not runtime resources or rows.
   * Do not retain legacy manifest/stable-entry pointers as a compatibility
     layer; identify the actual 1.0 resource that scenes and workers load.
 - Present an audit table with: item, current state, required change, evidence,
@@ -174,7 +174,7 @@ Phase C - project-semantic migration:
   rows or pointers rather than adding a compatibility reader. Leave an output
   `MISSING` or `deferred` when no valid 1.0 evidence chain can prove it.
 - Never hand-edit Runtime Type, Runtime Path, or Status to bypass registration.
-  A `generated` or `source_ready` result requires a validated v1.0 request and
+  A `generated` result requires a validated v1.0 request and
   matching result. Use `tools/asset_result_registration.py` to validate the
   declared Godot types and resources and register the entire production unit
   atomically; a multi-output family must succeed or fail as a group. If old
@@ -183,7 +183,7 @@ Phase C - project-semantic migration:
 - Update scene/script resource bindings when they still point at superseded
   asset outputs. Do not regenerate accepted art merely to change a path when a
   validated deterministic conversion is sufficient.
-- Reconcile GDD, current-tag plan, structure, scene, style, roadmap, and memory
+- Reconcile GDD, current-tag plan, structure, scene, style, and roadmap
   documents with the actual game. If regeneration through `/gm-gdd` or another
   pipeline stage would change product intent, propose it and wait for approval.
 - Treat missing provider credentials or unavailable models as blockers, not as
@@ -208,6 +208,12 @@ Phase D - verification and handoff:
 ```
 
 ## Expected handoff
+
+Legacy root `MEMORY.md` and `memory/` files are project-owned after upgrade.
+GodotMaker leaves them unchanged but no longer reads, validates, publishes, or
+archives them. Move any still-current architecture ownership, dependencies,
+ordering constraints, and stable invariants into `STRUCTURE.md`; migrate no
+task history, logs, or review findings.
 
 A successful clean re-initialization proves only that the 1.0 framework was
 deployed safely. The upgrade is complete when the local agent has also shown

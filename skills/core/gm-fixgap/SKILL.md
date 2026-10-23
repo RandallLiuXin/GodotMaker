@@ -28,6 +28,17 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 - If `evaluation.json` `result` is `"approve"` → STOP. Tell the user:
   > "The latest evaluation was already approved. Recommended next: /gm-accept.
   > If you need to redo this step or have other plans, just tell me."
+
+Read `.godotmaker/verify_report.json` if it exists.
+
+Define **pending verify feedback** as:
+- `.godotmaker/verify_report.json` exists.
+- Its top-level `result` is `"fail"`.
+- Its `ts` is later than the latest `role == "fixgap"` event in `stage.jsonl`, or there is no prior fixgap event.
+
+Apply the remaining resume gates in this order:
+
+- If pending verify feedback exists → proceed, even if the last event is `fixgap` and `GAP.md` is not at project root.
 - If the **last event** has `role == "fixgap"` AND `GAP.md` is not at project root (already archived) → STOP. Tell the user:
   > "Fixgap already completed for the latest evaluation at {timestamp}. Recommended next: /gm-verify.
   > If you need to redo this step or have other plans, just tell me."
@@ -39,9 +50,8 @@ Then read context:
 - `.godotmaker/evaluation-runs/latest.json` → the sole source of the evaluation run identity (`archive_path`, `stage_event_ts`, and `tag`); do not read run identity fields from `evaluation.json`
 - `.godotmaker/verify_report.json` → mechanical-layer failures from the most recent verify
 - `PLAN.md` → read-only; current tag's `**Tag:**` header tells you which tag's gaps you're fixing. The same tag-scope discipline as gm-build applies: previous tags' code is touchable only when a GAP item explicitly names it.
-- `STRUCTURE.md` → architecture (fixes need to respect existing system boundaries)
+- `STRUCTURE.md` → architecture ownership, dependencies, ordering constraints, and stable invariants (fixes need to respect existing system boundaries)
 - `ASSETS.md` → the generated-runtime authority; for a visual task, derive each asset with `tools/asset_result_registration.py --snapshot`
-- `MEMORY.md` index + sub-files → stable architecture decisions and project constraints
 
 ## Hard Rules
 
@@ -254,10 +264,13 @@ review round added no ACCEPTED tasks.
 
 Read `Archive path` from the `Source Evaluation Run` header of the GAP.md being
 archived, normalize it, and take its final path segment as
-`<evaluation-run-id>`. Move that GAP.md to
-`.godotmaker/gaps/<evaluation-run-id>/GAP.md` so stale and current GAPs remain
-bound to their own evaluation runs and the project root is clean for the next
-round. For normal completion the header matches
+`<evaluation-run-id>`. Use `.godotmaker/gaps/<evaluation-run-id>/GAP.md` when
+that path does not exist. If it already exists, allocate the first free sibling
+directory by appending `-2`, `-3`, and so on to `<evaluation-run-id>`; never
+overwrite or replace an archived GAP. Move the GAP.md to the allocated path so
+stale and current GAPs remain bound to their own evaluation runs, repeated
+fixgap rounds for the same run remain distinct, and the project root is clean
+for the next round. For normal completion the header matches
 `evaluation-runs/latest.json.archive_path`; for stale replacement it
 intentionally does not. Do not derive the directory from the current
 `latest.json` or from `evaluation.json`.
@@ -277,19 +290,12 @@ continuable, and do not consume the repair budget.
 - After parallel workers complete, merge branches and build-check
 - See `references/worker-dispatch.md` → Parallel Worker Dispatch for merge procedure
 
-## Architecture and Constraints Record
+## Architecture Contract
 
-```
-MEMORY.md              <- Architecture and constraints index
-memory/
-  {system_name}.md     <- Detailed system architecture and constraints
-```
-
-- Read MEMORY.md before dispatching workers.
-- Write only stable architecture decisions or project constraints. Do not
-  record task history, failures, gotchas, workarounds, reviewer triage, or
-  other dynamic learning.
-- Do not update MEMORY.md when no durable architecture or constraint changed.
+- Read `STRUCTURE.md` before dispatching workers.
+- Keep architecture ownership, dependencies, ordering constraints, and stable
+  invariants in `STRUCTURE.md`. Do not record task history, failures, gotchas,
+  workarounds, reviewer triage, or other dynamic learning there.
 - Where the runtime exposes SubagentStop lifecycle hooks (currently Claude
   Code and Codex), Worker failures become diagnostic `worker_error` events,
   not project rules or prompt context for the next dispatch.
@@ -316,7 +322,7 @@ Your context window is finite. Protect it:
 
 **Out of your context (delegate to workers):** Fix code, test code, build/lint output, screenshot analysis.
 
-**When context gets large:** Summarize completed fixes and reference documents by path. Do not use MEMORY.md as a context-recovery log.
+**When context gets large:** Summarize completed fixes and reference documents by path. Do not turn project documents into context-recovery logs.
 
 ## When Done
 
