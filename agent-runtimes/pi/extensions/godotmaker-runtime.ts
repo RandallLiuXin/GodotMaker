@@ -11,6 +11,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import {
+  buildDelegateArgs,
+  resolveDelegateModel,
+} from "./delegate-policy.mjs";
 
 type Isolation = "worktree" | "shared";
 type RoleAccess = "write" | "scoped-write" | "read-only";
@@ -39,6 +43,7 @@ const REQUIRED_RUNTIME_PATHS = [
   ".pi/godotmaker.yaml",
   ".pi/references/runtime-mapping.md",
   ".pi/extensions/godotmaker-runtime.ts",
+  ".pi/extensions/delegate-policy.mjs",
   ".godotmaker/config.yaml",
   "tools",
   "AGENTS.md",
@@ -47,6 +52,7 @@ const REQUIRED_RUNTIME_PATHS = [
 type DelegateRequest = {
   role: string;
   task: string;
+  model?: string;
   isolation?: Isolation;
   writePaths?: string[];
   timeoutSeconds?: number;
@@ -179,6 +185,7 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
   const contract = ROLE_CONTRACTS[request.role];
   const isolation = resolveIsolation(request);
   const writePaths = request.writePaths?.map(normalizeWritePath);
+  const resolvedModel = resolveDelegateModel(root, request.role, request.model);
   const rootMissing = missingRuntimePaths(root);
   if (rootMissing.length) {
     throw new Error(`Pi delegation requires published runtime resources: ${rootMissing.join(", ")}. Re-run publish with --agent pi.`);
@@ -224,11 +231,9 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
     "Return an explicit PASS/FAIL summary with commands run and changed files.\n",
   ].join(""), "utf8");
 
-  const invocation = piInvocation([
-    "--approve", "--mode", "json", "--no-session", "-p",
-    "--append-system-prompt", promptFile,
-    `GodotMaker role: ${request.role}\n\nTask:\n${request.task}`,
-  ]);
+  const invocation = piInvocation(buildDelegateArgs(
+    request.role, request.task, promptFile, resolvedModel,
+  ));
   if (!invocation) {
     fs.rmSync(promptDir, { recursive: true, force: true });
     if (branch) removeWorktree(root, cwd);
@@ -267,7 +272,13 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
       if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
     });
     if (result.code !== 0) throw new Error(`Pi ${request.role} exited ${result.code}: ${result.stderr.trim() || finalAssistantText(result.stdout)}`);
-    return { role: request.role, cwd, branch, summary: finalAssistantText(result.stdout) };
+    return {
+      role: request.role,
+      model: resolvedModel ?? "inherit",
+      cwd,
+      branch,
+      summary: finalAssistantText(result.stdout),
+    };
   } finally {
     fs.rmSync(promptDir, { recursive: true, force: true });
   }
@@ -289,11 +300,13 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({
       role: Type.Optional(Type.String()),
       task: Type.Optional(Type.String()),
+      model: Type.Optional(Type.String({ minLength: 1 })),
       isolation: Type.Optional(Type.Union([Type.Literal("worktree"), Type.Literal("shared")])),
       writePaths: Type.Optional(Type.Array(Type.String())),
       timeoutSeconds: Type.Optional(Type.Number({ minimum: 1, maximum: MAX_DELEGATE_TIMEOUT_SECONDS })),
       requests: Type.Optional(Type.Array(Type.Object({
         role: Type.String(), task: Type.String(),
+        model: Type.Optional(Type.String({ minLength: 1 })),
         isolation: Type.Optional(Type.Union([Type.Literal("worktree"), Type.Literal("shared")])),
         writePaths: Type.Optional(Type.Array(Type.String())),
         timeoutSeconds: Type.Optional(Type.Number({ minimum: 1, maximum: MAX_DELEGATE_TIMEOUT_SECONDS })),
@@ -305,6 +318,7 @@ export default function (pi: ExtensionAPI) {
         ? [{
           role: params.role,
           task: params.task,
+          model: params.model,
           isolation: params.isolation,
           writePaths: params.writePaths,
           timeoutSeconds: params.timeoutSeconds,
@@ -316,7 +330,7 @@ export default function (pi: ExtensionAPI) {
         validateParallelRequests(requests);
         const results = await Promise.all(requests.map((request) => runDelegate(root, request, signal)));
         const summary = results.map((result) => [
-          `${result.role}: ${result.summary}`,
+          `${result.role} [model: ${result.model}]: ${result.summary}`,
           result.branch
             ? ROLE_CONTRACTS[result.role].ownsMerge
               ? `Merge candidate: ${result.branch} (${result.cwd})`

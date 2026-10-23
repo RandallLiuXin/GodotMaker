@@ -2293,22 +2293,24 @@ class TestOpenCodePublishParity:
         assert not (target / ".agents" / "plugins").exists()
 
     @pytest.mark.parametrize(
-        ("agent", "managed_relative", "custom_relative"),
+        ("agent", "managed_relative", "custom_relative", "expected_count"),
         [
             (
                 publish.AGENT_OPENCODE,
                 Path(".opencode/plugins/godotmaker-hooks.js"),
                 Path(".opencode/plugins/user-plugin.js"),
+                1,
             ),
             (
                 publish.AGENT_PI,
                 Path(".pi/extensions/godotmaker-runtime.ts"),
                 Path(".pi/extensions/user-extension.ts"),
+                2,
             ),
         ],
     )
     def test_existing_runtime_extension_is_refreshed_and_custom_file_preserved(
-        self, tmp_path, agent, managed_relative, custom_relative
+        self, tmp_path, agent, managed_relative, custom_relative, expected_count
     ):
         target = tmp_path / "target"
         managed_file = target / managed_relative
@@ -2317,7 +2319,7 @@ class TestOpenCodePublishParity:
         managed_file.write_text("stale framework file\n", encoding="utf-8")
         custom_file.write_text("user owned\n", encoding="utf-8")
 
-        assert publish_agent_plugins(REPO_ROOT, target, agent) == 1
+        assert publish_agent_plugins(REPO_ROOT, target, agent) == expected_count
 
         source_dir = (
             REPO_ROOT

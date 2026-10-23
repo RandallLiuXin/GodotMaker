@@ -14,12 +14,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_SOURCE = (
     REPO_ROOT / "agent-runtimes" / "pi" / "extensions" / "godotmaker-runtime.ts"
 )
+POLICY_SOURCE = (
+    REPO_ROOT / "agent-runtimes" / "pi" / "extensions" / "delegate-policy.mjs"
+)
 NODE = shutil.which("node")
 
 
 def _runtime_module(tmp_path: Path) -> Path:
     runtime = tmp_path / "godotmaker-runtime.ts"
     shutil.copy2(RUNTIME_SOURCE, runtime)
+    shutil.copy2(POLICY_SOURCE, tmp_path / "delegate-policy.mjs")
     package = tmp_path / "node_modules" / "typebox"
     package.mkdir(parents=True)
     (package / "package.json").write_text(
@@ -123,6 +127,7 @@ def _write_temp_project(project: Path) -> None:
         ".pi/godotmaker.yaml",
         ".pi/references/runtime-mapping.md",
         ".pi/extensions/godotmaker-runtime.ts",
+        ".pi/extensions/delegate-policy.mjs",
         ".godotmaker/config.yaml",
         "AGENTS.md",
     ):

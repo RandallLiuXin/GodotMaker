@@ -517,6 +517,7 @@ def check_pi(r: EnvCheck, project_dir: Path):
         (project_dir / ".pi" / "references" / "runtime-mapping.md", ".pi/references/runtime-mapping.md"),
         (project_dir / ".pi" / "godotmaker.yaml", ".pi/godotmaker.yaml"),
         (project_dir / ".pi" / "extensions" / "godotmaker-runtime.ts", ".pi/extensions/godotmaker-runtime.ts"),
+        (project_dir / ".pi" / "extensions" / "delegate-policy.mjs", ".pi/extensions/delegate-policy.mjs"),
     ]
     for path, label in paths:
         if path.exists():
