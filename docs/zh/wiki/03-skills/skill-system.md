@@ -1,6 +1,6 @@
 # 技能系统
 
-在 Claude Code 里，"技能"（Skill）是一组为特定任务打包好的指令和参考文档。你可以把每个技能想象成一本专科手册：当 Claude 需要完成某件事——搭建项目骨架、编写游戏逻辑、排查常见 bug——它就会找到对应的技能，按照里面的指引来操作。GodotMaker 的技能分为两层。
+在 Claude Code 里，"技能"（Skill）是一组为特定任务打包好的指令和参考文档。你可以把每个技能想象成一本专科手册：当 Claude 需要完成某件事——搭建项目骨架、编写游戏逻辑、排查常见 bug——它就会找到对应的技能，按照里面的指引来操作。GodotMaker 的技能分为 Core、Reviewer 和 Asset 三层。
 
 ## 第一层 — Core 技能
 
@@ -16,6 +16,13 @@ Reviewer（审查员）技能是八个专项领域清单，覆盖物理、UI、�
 
 完整列表以及每个 Reviewer 能捕获哪类问题，见 [Reviewer 技能](reviewer-skills.md)。
 
+## 第三层 — Asset 技能
+
+Asset Skill 负责有类型的视觉生产 family。Runtime family 必须通过 L0-L4，原生
+Godot artifact 才能进入 worker handoff；reference-only family 停在
+`source_ready`。Registry 驱动的 family 与 artifact 矩阵见
+[Asset 技能](asset-skills.md)。
+
 ## 技能是如何部署的
 
 技能文件存放在本仓库的 `skills/core/`、`skills/reviewer/` 和 `skills/assets/` 目录下。当你运行 `python tools/publish.py <project>` 时，每个非私有的技能目录都会被复制到 `<project>/.claude/skills/`，Claude Code 会自动找到它们。运行 `python tools/publish.py --agent codex <project>` 时，publish 会把同一套技能写入 `<project>/.agents/skills/`，并附带 Codex runtime mapping references，让 Codex 能解释 `.claude/...` 路径和 `/gm-*` 命令这类 Claude-first 表面语义。Asset 的 `_shared` 不是可调用的 Skill；它会以 schema、compiler registry 和 L0-L4 validator 运行时的形式发布到 `<project>/.godotmaker/asset-runtime/`。
@@ -24,5 +31,6 @@ Reviewer（审查员）技能是八个专项领域清单，覆盖物理、UI、�
 
 ## 延伸阅读
 
-- [Core 技能](core-skills.md) — 九个角色命令与十二个支撑技能
+- [Core 技能](core-skills.md) — 流水线、rescue 与支撑技能
+- [Asset 技能](asset-skills.md) — 公开生产 family 与 L0-L4 验证
 - [Reviewer 技能](reviewer-skills.md) — 八个专项质量审查技能

@@ -5,7 +5,9 @@ Steps to follow when publishing a new version of GodotMaker.
 ## Release preparation
 
 1. **Finalize `docs/update/next.md`**
-   - Review all entries, fix typos, group by category
+   - Review all entries against the canonical
+     [release-note entry contract](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries),
+     fix typos, and group them by category
    - Rename `next.md` to `vX.Y.Z.md` (e.g., `v0.5.0.md`) as a permanent archive
    - Create a new empty `next.md` by copying `next.template.md`
    ```bash
@@ -48,7 +50,7 @@ Steps to follow when publishing a new version of GodotMaker.
 3. **Update version numbers** — these MUST stay in lockstep. Skipping any one ships a half-bumped release.
    - **`VERSION`** — single-line file at the repo root, content is the bare `X.Y.Z` (no leading `v`, no trailing newline issues). This is the **source-of-truth** `tools/publish.py` reads (`read_source_version()` in `tools/publish.py`) and writes into target projects' `.godotmaker/version`. Forgetting this bump causes downstream consumers (`godotmaker-cli`, `publish.py` upgrade detection) to see `installed_version != target_version` on every run, triggering an infinite "framework upgrade X.Y.Z-1 → X.Y.Z" loop that never converges.
    - `pyproject.toml` — update `version = "X.Y.Z"`. Python package metadata only; not consumed by the publish pipeline, but kept in sync so PyPI/SDK consumers see the same number.
-   - `CHANGELOG.md` — add a new `## [X.Y.Z] — YYYY-MM-DD` section with entries from the archived `next.md`
+   - `CHANGELOG.md` — add a new `## [X.Y.Z] - YYYY-MM-DD` section with entries from the archived `next.md`
    - **`LICENSE` Change Date** — in the `Change Date` field, pin this release's concrete Change Date: the calendar date equal to this release's publication date plus four years (a release published 2026-06-01 records `2030-06-01`). BUSL treats `Change Date` as a license parameter, so the tagged release's `LICENSE` should contain only the concrete value, followed directly by `Change License`.
      ```text
      Change Date:

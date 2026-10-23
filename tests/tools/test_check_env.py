@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -147,6 +148,27 @@ class TestCheckFunctions:
         assert any("Node.js 24.14.0" in p for p in r.passed)
         assert any("npx" in p for p in r.passed)
 
+    @pytest.mark.parametrize(
+        ("version", "passes"),
+        [("21.99.0", False), ("22.0.0", True)],
+    )
+    @patch("check_env.shutil.which", return_value="/usr/bin/npx")
+    def test_check_node_support_boundary(self, mock_which, version, passes):
+        from check_env import check_node
+
+        r = EnvCheck()
+        with patch("check_env.get_version", return_value=version):
+            check_node(r)
+
+        if passes:
+            assert any(f"Node.js {version} (>= 22)" in item for item in r.passed)
+            assert not any("Node.js" in item for item in r.failed)
+        else:
+            assert any(
+                f"Node.js {version} too old (>= 22 required)" in item
+                for item in r.failed
+            )
+
     @patch("check_env.get_version", return_value=None)
     def test_check_node_missing(self, mock_ver):
         from check_env import check_node
@@ -160,6 +182,32 @@ class TestCheckFunctions:
         check_python(r)
         # Current interpreter should pass version check
         assert any("Python" in p for p in r.passed)
+
+    @pytest.mark.parametrize(
+        ("version", "passes"),
+        [((3, 9, 99), False), ((3, 10, 0), True)],
+    )
+    def test_check_python_support_boundary(self, version, passes):
+        from check_env import check_python
+
+        version_info = SimpleNamespace(
+            major=version[0], minor=version[1], micro=version[2]
+        )
+        r = EnvCheck()
+        with patch("check_env.sys.version_info", version_info):
+            check_python(r)
+
+        rendered = ".".join(str(part) for part in version)
+        if passes:
+            assert any(
+                f"Python {rendered} (>= 3.10)" in item for item in r.passed
+            )
+            assert not any(item.startswith("Python") for item in r.failed)
+        else:
+            assert any(
+                f"Python {rendered} too old (>= 3.10 required)" in item
+                for item in r.failed
+            )
 
     @patch("check_env.shutil.which", return_value="/usr/bin/claude")
     def test_check_claude_found(self, mock_which):
@@ -183,6 +231,29 @@ class TestCheckFunctions:
         check_godot(r, tmp_path)
         assert any("configured path: /opt/godot" in p for p in r.passed)
         assert len(r.failed) == 0
+
+    @pytest.mark.parametrize(
+        ("version", "passes"),
+        [("4.4.99", False), ("4.5.0", True)],
+    )
+    @patch("check_env.read_godot_path", return_value="/opt/godot")
+    def test_check_godot_support_boundary(self, mock_path, version, passes, tmp_path):
+        from check_env import check_godot
+
+        r = EnvCheck()
+        with patch("check_env._get_version_from_path", return_value=version):
+            check_godot(r, tmp_path)
+
+        if passes:
+            assert any(
+                f"Godot {version} (>= 4.5)" in item for item in r.passed
+            )
+            assert not r.failed
+        else:
+            assert any(
+                f"Godot {version} too old (>= 4.5 required)" in item
+                for item in r.failed
+            )
 
     @patch("check_env.check_codex")
     @patch("check_env.detect_agent", return_value="codex")

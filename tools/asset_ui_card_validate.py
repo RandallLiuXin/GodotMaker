@@ -8,6 +8,8 @@ import json
 import os
 from pathlib import Path
 
+from agent_runtime import agent_skill_root
+
 
 def _load_skill_validator(skill_path: Path):
     spec = importlib.util.spec_from_file_location("asset_ui_card_skill", skill_path)
@@ -23,7 +25,11 @@ def main() -> int:
     parser.add_argument("--request", required=True)
     parser.add_argument("--result", required=True)
     parser.add_argument("--project-root", default=".")
-    parser.add_argument("--skill", default=".agents/skills/ui-kit/standalone_validation.py")
+    parser.add_argument(
+        "--skill",
+        default=None,
+        help="Standalone validator override (default: bundled ui-kit validator)",
+    )
     parser.add_argument("--godot-path", default=os.environ.get("GODOT_BIN", ""))
     parser.add_argument("--allow-failure", action="store_true", help="Return diagnostics without a nonzero process exit")
     args = parser.parse_args()
@@ -34,7 +40,12 @@ def main() -> int:
     result_path = (root / args.result).resolve()
     request = json.loads(request_path.read_text(encoding="utf-8"))
     result = json.loads(result_path.read_text(encoding="utf-8"))
-    validated = _load_skill_validator((root / args.skill).resolve())(
+    if args.skill:
+        skill_path = (root / args.skill).resolve()
+    else:
+        runtime_root = Path(__file__).resolve().parents[1]
+        skill_path = agent_skill_root(runtime_root) / "ui-kit" / "standalone_validation.py"
+    validated = _load_skill_validator(skill_path)(
         request, result, project_root=root, godot_path=args.godot_path
     )
     result_path.write_text(json.dumps(validated, indent=2) + "\n", encoding="utf-8")

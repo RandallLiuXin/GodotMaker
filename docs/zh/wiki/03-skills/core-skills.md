@@ -1,6 +1,7 @@
 # Core 技能
 
-Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十三个由角色技能自动加载的支撑技能。本页对两类技能都有说明。
+`skills/core/` inventory 包含流水线角色技能、主流程外诊断技能 `gm-rescue`，以及
+角色按需加载的支撑技能。本页直接镜像已交付目录，不另行维护容易漂移的总数。
 
 ## 角色技能
 
@@ -10,7 +11,7 @@ Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十三
 |------|------|----------|--------|
 | `/gm-scaffold` | 创建一个新的 Godot 项目，包含正确的目录结构、所需插件，并完成首次 git 提交 | 无（每个项目只运行一次） | `project.godot`、`addons/`、初始 `CLAUDE.md` 或 `AGENTS.md` |
 | `/gm-gdd` | 询问你关于游戏的构想，然后编写设计文档和工作计划 | 已搭建好的项目骨架 | `GDD.md`、`PLAN.md`、`STRUCTURE.md`、`SCENES.md`、`ASSETS.md`、`TOC.md` |
-| `/gm-asset` | 生成缺失的美术资源，或分析你提供的美术资源，为构建阶段准备好可用的素材 | `/gm-gdd` 产出的 `ASSETS.md` | 美术文件、场景参考图和更新后的 `ASSETS.md`；参考图可以完成，但不会成为运行时资产 |
+| `/gm-asset` | 生成缺失的美术资源，或分析你提供的美术资源，为构建阶段准备好可用的素材 | `/gm-gdd` 产出的 `ASSETS.md` | 运行时美术文件和更新后的 `ASSETS.md`；用户可选图片只作为 provider 输入 |
 | `/gm-build` | 通过向 Worker（工人）子 Agent 分批派发任务来实现游戏，Reviewer 会对结果进行审查 | `/gm-gdd` 产出的设计文档 | `src/`、`scenes/` 下的游戏代码，单元测试，端对端测试 |
 | `/gm-verify` | 运行机械性检查：项目能否编译、单元测试是否通过、必要文件是否存在 | 已构建好的项目 | 一份打印到聊天里的通过/失败报告，并向 `.godotmaker/stage.jsonl` 追加一个 `verify` 事件 |
 | `/gm-evaluate` | 独立运行游戏，截图并对照 GDD 给结果评分 | 已通过验证的项目 | `.godotmaker/evaluation.json`，`e2e/screenshots/` 下的截图 |
@@ -21,6 +22,11 @@ Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十三
 `/gm-finalize` 完成后，你可以通过 CLI 开启下一个 tag，也可以手动再次运行 `/gm-gdd`（例如添加新功能）。`/gm-scaffold` 是每个项目只需执行一次的 setup 步骤。
 
 想深入了解每个角色的职责和它做出的各种决策，见 [九个角色](../02-concepts/the-9-roles.md)。
+
+## 主流程外诊断
+
+`/gm-rescue` 用于诊断卡住的流水线，并判断阻塞是否指向 GodotMaker 框架缺陷。
+它不会修改游戏代码，也不属于九个 tag 迭代角色。
 
 ## 支撑技能
 
@@ -62,6 +68,12 @@ Core 技能分为两类：九个以 `/gm-*` 暴露的角色技能，以及十三
 | `visual-qa` | 如何分析截图中的视觉缺陷，并逐条对照 `DESIGN.md` 判断 | `/gm-evaluate` |
 | `screenshot` | 如何从运行中的 Godot 实例抓取游戏截图 | `/gm-evaluate`、`/gm-fixgap` |
 | `mcp-driver` | 如何在运行时通过 godot-mcp 检查实时 Godot 项目——用于构建工具无法单独诊断问题时 | `/gm-fixgap` |
+
+### 已禁用工具
+
+| 技能 | 状态 |
+|------|------|
+| `gdtoolkit` | 仍随仓库提供作参考，但当前流水线不会加载；其 linter 会在 ECS 风格 class shape 上崩溃，重新评估工作记录在 `ROADMAP.md`。 |
 
 如果你想查看某个支撑技能的完整参考内容，它的 `SKILL.md` 位于仓库的 `skills/core/<name>/` 目录下。
 

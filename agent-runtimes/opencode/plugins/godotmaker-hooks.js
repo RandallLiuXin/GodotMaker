@@ -32,6 +32,33 @@ function blockReason(parsed) {
   return null
 }
 
+function additionalContext(parsed) {
+  const specific = asObject(parsed?.hookSpecificOutput)
+  const context = specific.additionalContext
+  return typeof context === "string" && context.trim() ? context.trim() : null
+}
+
+async function forwardHookContext(client, sessionID, parsed) {
+  const context = additionalContext(parsed)
+  if (!context || !sessionID) return
+  if (!client?.session?.prompt) {
+    console.warn("[GodotMaker] OpenCode client cannot forward hook additionalContext")
+    return
+  }
+  try {
+    await client.session.prompt({
+      path: { id: sessionID },
+      body: {
+        noReply: true,
+        parts: [{ type: "text", text: context }],
+      },
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.warn(`[GodotMaker] failed to forward hook additionalContext: ${message}`)
+  }
+}
+
 function runHook(projectRoot, script, payload, options = {}) {
   const scriptPath = hookPath(projectRoot, script)
   if (!existsSync(scriptPath)) return null
@@ -149,26 +176,21 @@ function taskPayload(input, args) {
   return payload
 }
 
-function runPreToolHooks(projectRoot, input, output, childSessions) {
+async function runPreToolHooks(projectRoot, client, input, output, childSessions) {
   const tool = String(input.tool || "").toLowerCase()
   const args = asObject(output.args)
   const isChildSession = childSessions.has(input.sessionID || "")
 
   if (tool === "write" || tool === "edit") {
-    // OpenCode tool hooks do not expose a reliable subagent identity.
     const payload = basePayload("PreToolUse", input, args)
-    if (isChildSession) {
-      // OpenCode does not expose the child role here. Apply only the memory
-      // rule, which is shared by every delegated execution role.
-      runHook(projectRoot, "check_file_permissions.py", {
-        ...payload,
-        is_subagent: true,
-        permission_scope: "memory",
-      })
-    } else {
+    // Child-session edit boundaries are provided by agent permission
+    // frontmatter. OpenCode does not expose the role identity needed by the
+    // Python write gate, so only the root session invokes it.
+    if (!isChildSession) {
       runHook(projectRoot, "check_file_permissions.py", payload)
     }
-    runHook(projectRoot, "stage_reminder.py", payload)
+    const reminder = runHook(projectRoot, "stage_reminder.py", payload)
+    await forwardHookContext(client, input.sessionID || "", reminder)
     return
   }
 
@@ -212,10 +234,11 @@ async function runSessionEventHooks(projectRoot, client, event, rootSessions) {
     const sessionID = info.id || event?.properties?.sessionID || ""
     if (info.parentID) return
     if (sessionID) rootSessions.add(sessionID)
-    runHook(projectRoot, "session_start.py", {
+    const started = runHook(projectRoot, "session_start.py", {
       hook_event_name: "SessionStart",
       session_id: sessionID,
     }, { failOnNonZero: false })
+    await forwardHookContext(client, sessionID, started)
     return
   }
 
@@ -252,7 +275,7 @@ export const GodotMakerHooks = async (ctx) => {
       await runSessionEventHooks(projectRoot, client, event, rootSessions)
     },
     "tool.execute.before": async (input, output) => {
-      runPreToolHooks(projectRoot, input, output, childSessions)
+      await runPreToolHooks(projectRoot, client, input, output, childSessions)
     },
     "tool.execute.after": async (input, output) => {
       runPostToolHooks(projectRoot, input, output)

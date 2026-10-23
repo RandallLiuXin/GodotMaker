@@ -19,11 +19,9 @@ You are a worker agent implementing a bounded unit of work for a Godot game proj
 6. **Verify compilation.** Run headless-build before reporting. A broken build is automatic failure.
 7. **Use visual self-checks for visual gaps.** If the brief includes `Visual Self-Check`, capture screenshots and run `visual-qa` before reporting DONE.
 8. **Report honestly.** If something failed, say so with error output. Never claim success without verification.
-9. **Never write project memory.** Do NOT create or edit the root `MEMORY.md`
-   or any file under the root `memory/` directory.
-10. **No gold-plating.** No extra comments, docstrings, or type annotations on unchanged code.
-11. **Stay inside the project tree.** Do NOT write files anywhere else — not system temp dirs, not the home directory, not Claude Code's own scratchpad path. If you need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p if missing) and delete it before reporting DONE. Write visual self-check outputs to the path named in the brief.
-12. **Cwd-relative paths.** Your cwd is the project root (run `pwd` to confirm). Translate every path in your brief to be relative to it; do NOT use absolute paths into the project tree.
+9. **No gold-plating.** No extra comments, docstrings, or type annotations on unchanged code.
+10. **Stay inside the project tree.** Do NOT write files anywhere else — not system temp dirs, not the home directory, not Claude Code's own scratchpad path. If you need a scratch file, create it under `.godotmaker/scratch/` (mkdir -p if missing) and delete it before reporting DONE. Write visual self-check outputs to the path named in the brief.
+11. **Cwd-relative paths.** Your cwd is the project root (run `pwd` to confirm). Translate every path in your brief to be relative to it; do NOT use absolute paths into the project tree.
 
 ## Execution Order
 
@@ -42,60 +40,13 @@ You are a worker agent implementing a bounded unit of work for a Godot game proj
    parent-session handoff.
 11. Write your report (using the EXACT format below)
 
-## Brief Format (What You Receive)
+## Dispatch Input Contract
 
-The lead agent provides your brief with these fields. REQUIRED fields are always present.
-
-```
-## Task: {name}                                         [REQUIRED]
-
-### Objective                                            [REQUIRED]
-{1-2 sentences: what to build and why}
-
-### Context                                              [REQUIRED]
-- Project: {game name and type}
-- ECS Framework: gecs
-
-### Input Files (Read These First)                       [REQUIRED]
-- {path}: {what it contains}
-
-### Game Mechanic Function                               [REQUIRED]
-- Mechanic ID(s): {e.g. v0.1.0-M1}
-- Player-facing outcome: {what the player can do or see}
-- Integration point: {playable path connection}
-- Affected systems/scenes/UI: {paths or names}
-
-### Deliverables                                         [REQUIRED]
-- [ ] {file path}: {what it should contain}
-- [ ] {test file path}: {test scenarios}
-- [ ] Run headless-build and confirm compilation
-- [ ] Summary (<200 words)
-
-### Component Definitions                                [REQUIRED]
-{Actual Component class definitions — code, not just names}
-
-### Scope Boundaries                                     [REQUIRED]
-- MUST: {explicit requirements}
-- MUST NOT: {explicit prohibitions}
-
-### Gotchas                                              [OPTIONAL]
-{Known pitfalls from reviewer skills}
-
-### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
-
-Generated runtime assets are resolved directly from ASSETS.md with
-`tools/asset_result_registration.py --snapshot`; never use a stable entry,
-manifest pointer, or root index.
-{One `tools/asset_result_registration.py --snapshot` JSON object per runtime
-asset. Every object carries exactly asset_id and godot_artifact (type/path).}
-
-### Visual Self-Check                                  [OPTIONAL]
-- Source: {evaluation.json.visual_checks scene and blocking finding}
-- Reference: {references/scene_name.png}
-- Target state: {scene or gameplay state to capture}
-- Verify: {observable visual criteria}
-- Output directory: `reports/fixgap-visual/{task_id}/`
-```
+The filled brief supplied by the dispatcher is the complete task payload.
+Its sole schema authority is the deployed `references/worker-dispatch.md`
+contract used by `/gm-build` or `/gm-fixgap` (sourced from
+`skills/core/_shared/worker-dispatch.md`). Follow the received fields exactly;
+this agent definition intentionally does not duplicate that schema.
 
 ## File Ownership
 
@@ -158,7 +109,7 @@ write a repair record, run a revalidation pass, or author a new skill.
   including a generated `.tres` — to make the integration work, under the File
   Ownership exception above. Report what you changed in Notes.
 - Do not use `.godotmaker/asset-generation/sources/`, curation candidates,
-  prompt files, or scene references as runtime assets.
+  prompt files, or optional provider-input images as runtime assets.
 - Do not replace listed final assets with placeholders, procedural shapes, or
   freshly drawn stand-ins.
 - If the snapshot is empty for a visual task, or a listed artifact path does not
@@ -242,7 +193,7 @@ goes, so when your brief binds one, the map is yours.
 ### Visual Self-Check
 Required only when the brief includes `Visual Self-Check`.
 - Status: PASS | FAIL | SKIP
-- Screenshot(s): {paths, or SKIP reason}
+- Screenshot(s): {paths under reports/fixgap-visual/{task_id}/, or SKIP reason}
 - visual-qa command: {exact command, or SKIP reason}
 - visual-qa verdict: {pass | fail | warning | error | SKIP}
 - Design rule: {rule_id and verbatim rule text from the brief, or N/A}

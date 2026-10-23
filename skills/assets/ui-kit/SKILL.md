@@ -79,7 +79,7 @@ manifests, stable entries, or worker dispatch state.
 2. Generate the deterministic source plan:
 
    ```powershell
-   python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --scheme .agents/skills/ui-kit/references/source-sheet-scheme.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
+   python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
    ```
 
    Both plan prompts carry the `brief` word for word — every selected design

@@ -15,7 +15,7 @@
 ## Scene: {Scene Name}
 
 - **Type:** menu | gameplay | hud | overlay | cutscene
-- **Resolution reference:** 1920×1080
+- **Resolution reference:** {resolved target viewport width}×{resolved target viewport height}
 - **Layout:** vertical-center | horizontal-center | edge-anchored | grid | freeform
 - **Background:** {description of background — color, gradient, image, particles}
 - **Mood:** {visual/emotional tone}

@@ -83,7 +83,6 @@ _TAG_ARCHIVE_FILES = (
     "STRUCTURE.md",
     "DESIGN.md",
     "SCENES.md",
-    "MEMORY.md",
     "evaluation-final.json",
     "CHANGELOG.md",
     # Written by `tools/seal_tag.py index`, which is also what marks the

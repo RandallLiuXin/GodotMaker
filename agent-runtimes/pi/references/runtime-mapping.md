@@ -26,6 +26,34 @@ interactively before using `/skill:gm-<role>`.
 Read `godot_path` through `python tools/agent_runtime.py godot_path`; it selects
 the `.pi` sidecar from `.godotmaker/config.yaml`.
 
+## Operation mapping
+
+| Operation | Class | Invocation path |
+|---|---|---|
+| `invoke_stage` | `native` | Invoke the published stage as `/skill:gm-<role>`. |
+| `invoke_supporting_skill` | `emulated` | Read `.pi/skills/<skill-name>/SKILL.md` with Pi's `read` tool, follow it in the current session, and pass the caller's arguments as task context. `/skill:<skill-name>` is a user-side entrypoint only and may be disabled. |
+| `read_project_config` | `native` | Read `.pi/godotmaker.yaml`, or use `python tools/agent_runtime.py <key>` for selected-runtime lookup. |
+| `read_skill_reference` | `native` | Resolve `references/`, `scripts/`, `tools/`, and bundled docs from `.pi/skills/<skill>/`. |
+| `dispatch_worker` | `emulated` | Call `godotmaker_delegate` with `role: "worker"`; worktree isolation is the default. |
+| `dispatch_reviewer` | `emulated` | Call `godotmaker_delegate` with `role: "reviewer"`; treat read-only behavior as prompt-level, not an OS sandbox. |
+| `dispatch_verifier` | `emulated` | Call `godotmaker_delegate` with `role: "verifier"` and preserve the returned report. |
+| `dispatch_analyst` | `gated` | Call `godotmaker_delegate` with `role: "analyst"`; gate when the selected Pi model cannot inspect the declared assets. |
+| `dispatch_asset_producer` | `emulated` | Call `godotmaker_delegate` with `role: "asset-producer"` and the selected provider brief. |
+| `dispatch_decomposer` | `emulated` | Call `godotmaker_delegate` with `role: "decomposer"` and explicit work packages/owned files. |
+| `dispatch_gdd_auditor` | `emulated` | Call `godotmaker_delegate` with `role: "gdd-auditor"` and the bounded audit brief. |
+| `track_plan` | `emulated` | Maintain a concise visible checklist in Pi session output; do not edit project planning artifacts as a substitute. |
+| `ask_user_question` | `emulated` | Ask a concise normal Pi prompt; gate a non-interactive run unless the skill permits a default. |
+| `classify_repair_attempt` | `emulated` | Read `references/repair-attempt-accounting.md` and apply its evidence rules after each delegate result. |
+| `inspect_images` | `gated` | `native` is unsupported. For `codex`, run `codex exec --ephemeral -s read-only -C <project> -i <image>... -o <result> "<constructed VQA prompt>"`, emit the result, and append the VQA log; API selectors run the skill-local visual-qa script. |
+| `generate_images` | `gated` | `native` is unsupported. Use the selected `codex` or API provider path and preserve the generated-path claim/report contract. |
+| `run_shell_command` | `native` | Use Pi `bash`, preserving cwd, exit status, and important output. |
+| `access_godot_mcp` | `emulated` | Use `godotmaker_runtime` for project info and the bounded run/debug-output/stop loop. |
+| `apply_permission_policy` | `gated` | Trust the project with `pi --approve`; role restrictions are prompt-level and must fail closed when required resources are missing. |
+| `forward_hook_context` | `unsupported` | Pi publishes no hook adapter. Do not claim hook context injection; rely on skill output and the extension's explicit results. |
+| `detect_worktree_state` | `native` | Inspect git branch, worktree, HEAD, and project trust before delegation or finish. |
+| `create_or_use_isolated_workspace` | `emulated` | `godotmaker_delegate` creates and validates a git worktree; `shared` is allowed only for one non-parallel role. |
+| `finish_branch_or_handoff` | `native` | Inspect returned merge-candidate branches, merge safely, and use normal git delivery or a host handoff. |
+
 ## Godot and delegation
 
 Pi has no built-in MCP or `Agent` tool. GodotMaker publishes
@@ -34,29 +62,56 @@ Pi has no built-in MCP or `Agent` tool. GodotMaker publishes
 - `godotmaker_runtime` provides project information, bounded headless runs, and
   a managed run/debug-output/stop loop. It replaces the `godot-mcp` path; do
   not silently omit runtime debugging.
-- `godotmaker_delegate` launches role-isolated `pi --mode json --approve`
-  child processes from `.pi/agents/*.md`. Worker-like jobs use a separate git
-  worktree by default and return a merge-candidate branch. Run at most three
-  disjoint worktree jobs in parallel, inspect their branches, merge them, then
-  run the normal build/verify gates.
+- `godotmaker_delegate` launches role-contracted `pi --mode json --approve`
+  child processes from `.pi/agents/*.md`. Isolation defaults are fixed by role:
+
+  | Role | Default isolation | Write / merge contract |
+  |---|---|---|
+  | `worker` | `worktree` | Writes in its worktree, commits, and returns a merge-candidate branch. |
+  | `decomposer`, `asset-producer` | `shared` | Writes directly to the main working tree; parallel requests must declare non-overlapping `writePaths`. No merge step. |
+  | `reviewer`, `verifier`, `analyst`, `gdd-auditor` | `shared` | Read-only; no merge step. |
+
+  An explicit `isolation: "worktree"` or `isolation: "shared"` always overrides
+  the role default. Run at most three requests in parallel. Every parallel
+  shared writer must provide a non-empty list of project-relative `writePaths`;
+  directory ancestry counts as overlap, so `assets/unit-a` conflicts with
+  `assets/unit-a/icon.png`. The bridge rejects overlapping scopes before any
+  delegate starts. Shared read-only roles need no write scope.
+
+The extension owns one role policy table. When dispatch omits `model`, it reads
+the role's key from `.godotmaker/config.yaml`, falling back to `inherit`. An
+explicit non-empty `model` on the dispatch request takes precedence. The
+cross-runtime Claude aliases `haiku`, `sonnet`, and `opus`, plus the explicit
+value `inherit`, suppress `--model` so the child inherits Pi's active provider
+and model. Use Pi's full provider/model selector to choose a different model;
+every such resolved value is passed as `--model <resolved-model>` to the Pi
+subprocess.
+
+| GodotMaker role | Model policy key | Pi delegation and isolation |
+|---|---|---|
+| `worker` | `worker_model` | Writable implementation role; separate git worktree by default. |
+| `reviewer` | `reviewer_model` | Read-only by prompt contract; separate git worktree by default. |
+| `verifier` | `verifier_model` | Read-only by prompt contract; separate git worktree by default. |
+| `analyst` | `analyst_model` | May write only `assets/manifest.json`; separate git worktree by default. |
+| `asset-producer` | `asset_producer_model` | Writes one scoped asset production unit; separate git worktree by default. |
+| `decomposer` | `decomposer_model` | Writes only its decomposition package; separate git worktree by default. |
+| `gdd-auditor` | `auditor_model` | Read-only by prompt contract; separate git worktree by default. |
+
+Use `shared` only for one explicitly serial request whose role contract permits
+the lead checkout. Parallel requests must all use worktree isolation.
 
 Before using `worktree` delegation, commit the published runtime resources that
 the delegate must receive: `.pi/`, `.godotmaker/config.yaml` and hooks,
 `tools/`, and `AGENTS.md`. The extension verifies these resources inside every
 new worktree and fails closed when they are absent; it does not copy untracked
-files into an isolated worker. `shared` is only for one non-parallel role and
-does not provide isolation.
+files into an isolated worker. `shared` runs in the main working tree and does
+not provide OS-level isolation. Use it in parallel only through the bridge's
+read-only or disjoint-write role contracts.
 
 Pi has no per-role filesystem permission model. Reviewer and verifier prompts
 prohibit mutation, but that is not a hard sandbox boundary when `bash` is
 available. Treat their result as independent model judgment, not OS-enforced
 read-only execution.
-
-Delegated roles must not write the root `MEMORY.md` or files below the root
-`memory/` directory. Pi has no equivalent write-time hook, so the role
-definition and the delegate contract enforce this at prompt level, not as an
-OS sandbox. Only the lead session may update stable architecture decisions and
-project constraints.
 
 If the extension, trust, `pi` binary, `git HEAD`, or configured Godot executable
 is unavailable, stop before the dependent stage and state the missing setup.
@@ -65,6 +120,18 @@ sandbox or grant permissions beyond the Pi process.
 Pi child processes also inherit their parent environment and may read ancestor
 `AGENTS.md` files. Run delegation from a clean project environment and do not
 place workspace credentials in inherited environment variables.
+
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+Claude Code. Pi does not expose equivalent write-tool or delegation preflight
+hook forwarding.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `prompt-level` | The active `/skill:gm-*` instructions must check prerequisites before `godotmaker_delegate`; the Pi extension has no pre-dispatch hook for this gate. |
+| `delegated_write_boundaries` | `prompt-level` | Role definitions and delegate briefs constrain writes. Pi has no per-role filesystem permission model or write-time hook. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, Pi has no authoritative completion gate. |
 
 ## Capability boundaries
 

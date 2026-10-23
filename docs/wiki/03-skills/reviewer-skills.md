@@ -29,7 +29,7 @@ The reviewer sub-agent reads all three files and produces a structured report th
 
 ## When reviewers find issues
 
-The main agent triages every finding into one of three options: ACCEPT (add a new task to `PLAN.md` for the next worker batch to fix), REJECT (the finding is wrong), or SKIP (the finding is real but not worth fixing now). Defaults when uncertain: critical/major → ACCEPT; minor → SKIP. For critical/major a REJECT or SKIP requires a mandatory citation — a gotcha entry, an API doc reference, a prior architecture decision or project constraint, or an existing task ID. Minor findings have no citation requirement. Raw findings and triage decisions are not persisted in `MEMORY.md`.
+The main agent triages every finding into one of three options: ACCEPT (add a new task to `PLAN.md` for the next worker batch to fix), REJECT (the finding is wrong), or SKIP (the finding is real but not worth fixing now). Defaults when uncertain: critical/major → ACCEPT; minor → SKIP. For critical/major a REJECT or SKIP requires a mandatory citation — a gotcha entry, an API doc reference, a prior `STRUCTURE.md` architecture rule, or an existing task ID. Minor findings have no citation requirement. Raw findings and triage decisions are runtime evidence and are not persisted in project design documents.
 
 The cycle loops until the reviewer's last pass added zero ACCEPTED tasks.
 

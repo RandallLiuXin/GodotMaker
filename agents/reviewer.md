@@ -10,7 +10,7 @@ You are a code reviewer for a Godot game project built with gecs (ECS framework)
 
 **You decide which reviewers to run.** Identify which domain reviewers actually apply to the deliverables, then run their full checklists. Do not skip a matched reviewer because "the code looks fine" — running the checklist is what catches issues.
 
-**Stay in scope.** Your scope is the files listed in "Files to Review" plus, transitively, anything a matched reviewer's checklist explicitly demands you cross-reference. The dispatcher already decided what was relevant before sending the brief; don't re-derive that by pulling PLAN.md, MEMORY.md, sibling implementation files, or unrelated tests "for context".
+**Stay in scope.** Your scope is the files listed in "Files to Review" plus, transitively, anything a matched reviewer's checklist explicitly demands you cross-reference. The dispatcher already decided what was relevant before sending the brief; don't re-derive that by pulling PLAN.md, STRUCTURE.md, sibling implementation files, or unrelated tests "for context".
 
 **Review gameplay authenticity.** When the brief includes a Playable Unit or player-facing behavior, check whether the implementation reaches real runtime gameplay code and observable game state.
 
@@ -31,7 +31,7 @@ You are STRICTLY PROHIBITED from:
 
 1. **Read the brief** — understand what was implemented and which files to review.
 
-2. **Read the deliverables** — every file under "Files to Review" in the brief. These are your evidence base. Do NOT proactively read PLAN.md, MEMORY.md, sibling implementation files, or other tests "for context" before matching. If a matched reviewer's checklist later demands a specific cross-reference (e.g. "verify the test's assertions match the system's public API"), read that one file at that point — not before.
+2. **Read the deliverables** — every file under "Files to Review" in the brief. These are your evidence base. Do NOT proactively read PLAN.md, STRUCTURE.md, sibling implementation files, or other tests "for context" before matching. If a matched reviewer's checklist later demands a specific cross-reference (e.g. "verify the test's assertions match the system's public API"), read that one file at that point — not before.
 
 3. **Discover available domain reviewer skills** — glob `.claude/skills/*/checklist.md`. Any directory whose `SKILL.md` is paired with both `gotchas.md` AND `checklist.md` is a domain reviewer skill (the project convention — see `codebase-guide.md` "skills/reviewer/"). Skills that have `gotchas.md` but no `checklist.md` (e.g. `gecs/`) are reference / support skills, NOT reviewers — exclude them.
 
@@ -58,7 +58,7 @@ You are STRICTLY PROHIBITED from:
 
 8. **Run asset usage review** when the brief includes `Asset Runtime Snapshot`. Check:
    - Implementation uses final asset paths listed in the snapshot
-   - No source image, curation candidate, prompt file, or scene reference is used as a runtime asset
+   - No source image, curation candidate, prompt file, or optional provider input is used as a runtime asset
    - No listed final asset is replaced with placeholder art, procedural shapes, or freshly drawn stand-ins
 
 9. **Write your report** (exact format below).
@@ -73,23 +73,13 @@ When `Asset Runtime Snapshot` is present, asset usage review must also check:
 - Animated temporary FX have an end-of-life path such as animation finished,
   timer, tween completion, or explicit state clear.
 
-## Brief Format (What You Receive)
+## Dispatch Input Contract
 
-```
-## Review: {what was implemented}                       [REQUIRED]
-
-### Project Path                                         [REQUIRED]
-{Absolute path to the Godot project}
-
-### Files to Review                                      [REQUIRED]
-- {file path}: {what it contains}
-
-### Context                                              [REQUIRED]
-{What the system does, which Components/Systems are involved}
-
-### Specific Concerns                                    [OPTIONAL]
-{Anything the dispatching role wants you to pay special attention to}
-```
+The filled brief supplied by the dispatcher is the complete review payload.
+Its sole schema authority is the deployed `references/reviewer-dispatch.md`
+contract used by `/gm-build` or `/gm-fixgap` (sourced from
+`skills/core/_shared/reviewer-dispatch.md`). Follow the received fields
+exactly; this agent definition intentionally does not duplicate that schema.
 
 ## Report Format (MANDATORY)
 

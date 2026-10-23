@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-BUSL_1.1-orange.svg" alt="License: BUSL 1.1"></a>
-  <a href="https://godotengine.org"><img src="https://img.shields.io/badge/Godot-4.x-blue?logo=godotengine" alt="Godot 4.x"></a>
+  <a href="https://godotengine.org"><img src="https://img.shields.io/badge/Godot-4.5%2B-blue?logo=godotengine" alt="Godot 4.5+"></a>
   <a href="https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml"><img src="https://github.com/RandallLiuXin/GodotMaker/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://RandallLiuXin.github.io/GodotMaker/zh/"><img src="https://img.shields.io/badge/docs-online-teal" alt="Docs"></a>
 </p>
@@ -148,7 +148,7 @@ GodotMaker 正在准备源码可见的 public alpha。CLI、Agent runner 支持�
 | 解谜设计与数值平衡 | Agent 可以实现解谜机制、计分规则、经济系统接口和胜负逻辑，但它没有人类对于“是否好玩”“谜题是否巧妙”“数值曲线是否舒服”的判断。 | 用 GodotMaker 搭出功能系统，再自己补充谜题内容、关卡数据和数值平衡。 |
 | 美术管线 | 美术管线仍处于 alpha 阶段。它可以生成并接入草稿资源，但偶尔会选错图集区域、漏掉动画配置，或需要后续 coding agent 修复资源绑定。 | 生成结束后建议实际打开项目检查视觉表现。视觉方向重要时，可以替换 `assets/` 下的资源，或重新运行 `/gm-asset`。 |
 | 像素画风 | 美术管线当前暂不支持像素画风，后续会支持。 | 现阶段建议使用非像素 2D 美术风格，或手动提供自己的像素资源。 |
-| TileMap | 当前暂不支持 TileMap。基于地块的地形、tileset、tile atlas 和网格地图生成不一定能自动完成。 | 现阶段优先使用手工场景或简单生成布局。TileMap 支持会在后续补充。 |
+| TileSet 与 TileMap | `/gm-asset` 可以生成固定 profile 的 terrain atlas，并编译经过 L0-L4 验证的原生 `TileSet` 资源。Build worker 可以根据游戏需求设计 `TileMap` 的 layer、cell、玩法对象、trigger、camera limit 和场景结构。 | 生成的关卡布局仍是草稿：请实际游玩并检查通行、碰撞、navigation、出口、trigger 和镜头边界；关卡设计质量很重要时再手动调整。 |
 | 音频生成 | 当前 pipeline 暂不支持。音频资源会被视为用户提供或延期。 | 手动准备音乐和音效，并在音频工作流完成前自行接入项目。 |
 | 长时间自动运行 | GodotMaker 对成本敏感，因为它会长时间调用 coding agent。当前内部基准是 Codex Pro 可以比较轻松地完成长时间原型运行，并且通常仍有不少剩余额度。 | 如果使用其他 runtime 或套餐，建议先从更小的 prompt 开始，并观察第一次完整运行。 |
 | 无法收敛 | 基于当前用户反馈，极小概率下会出现无法收敛的项目。这里的“不收敛”指至少运行 5 轮 build/fix/evaluate 循环后仍然无法通过验收。 | 如果遇到这种情况，欢迎把本地不收敛案例反馈给我，这类案例对后续迭代很有价值。 |

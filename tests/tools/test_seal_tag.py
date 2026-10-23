@@ -7,10 +7,12 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 import pytest
 
@@ -26,6 +28,21 @@ def _load_seal_tag_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _local_markdown_links(text: str) -> list[str]:
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+    text = re.sub(r"^```.*?^```", "", text, flags=re.DOTALL | re.MULTILINE)
+    targets = []
+    for match in re.finditer(r"\[[^\]]*\]\(\s*([^)]+?)\s*\)", text):
+        target = match.group(1).strip()
+        if target.startswith("<") and target.endswith(">"):
+            target = target[1:-1].strip()
+        else:
+            target = target.split()[0] if target.split() else ""
+        if target and not target.startswith(("http://", "https://", "mailto:", "#")):
+            targets.append(unquote(target.split("#", 1)[0]))
+    return targets
 
 
 def run(project_dir: Path, *args: str) -> subprocess.CompletedProcess:
@@ -49,13 +66,9 @@ def project_dir(tmp_path: Path) -> Path:
     (tmp_path / "STRUCTURE.md").write_text("# STRUCTURE\n")
     (tmp_path / "DESIGN.md").write_text("# DESIGN\n")
     (tmp_path / "SCENES.md").write_text("# SCENES\n")
-    (tmp_path / "MEMORY.md").write_text(
-        "# MEMORY\n\n## System Index\n\n"
-        "- [movement](memory/movement.md) - PlayerMovementSystem notes\n",
-        encoding="utf-8",
-    )
+    (tmp_path / "MEMORY.md").write_text("# Legacy project file\n", encoding="utf-8")
     (tmp_path / "memory").mkdir()
-    (tmp_path / "memory" / "movement.md").write_text("# movement\n", encoding="utf-8")
+    (tmp_path / "memory" / "legacy.md").write_text("# Legacy detail\n", encoding="utf-8")
     (tmp_path / ".godotmaker" / "evaluation.json").write_text(
         json.dumps({"result": "approve", "minor_issues": ["small note"]})
     )
@@ -77,17 +90,22 @@ def test_archive_copies_docs_and_evidence(project_dir: Path):
     assert (dest / "STRUCTURE.md").exists()
     assert (dest / "DESIGN.md").exists()
     assert (dest / "SCENES.md").exists()
-    assert (dest / "MEMORY.md").exists()
+    assert not (dest / "MEMORY.md").exists()
     assert json.loads((dest / "evaluation-final.json").read_text())["result"] == "approve"
     assert (dest / "evidence" / "e2e" / "test_v0_1_0_M1_jump.py").exists()
     assert not (dest / "evidence" / "e2e" / "screenshots").exists()
     assert (dest / "evidence" / "screenshots" / "scene_main.png").exists()
-    assert (dest / "memory" / "movement.md").exists()
+    assert not (dest / "memory").exists()
+    assert (project_dir / "MEMORY.md").read_text(encoding="utf-8") == "# Legacy project file\n"
+    assert (project_dir / "memory" / "legacy.md").read_text(encoding="utf-8") == "# Legacy detail\n"
     manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["archive_path"] == "docs/tags/v0.1.0/evidence/"
     assert manifest["e2e_files"] == 1
     assert manifest["screenshots"] == 1
-    assert manifest["memory_files"] == 1
+    assert "memory_files" not in manifest
+    assert "link_warnings" not in manifest
+    assert not any(entry["path"] == "MEMORY.md" or entry["path"].startswith("memory/")
+                   for entry in manifest["files"])
     assert manifest["warnings"] == []
     # `archive` alone never seals — that is `index`'s job.
     assert manifest["sealed"] is False
@@ -112,11 +130,11 @@ def test_archive_missing_source_exits_2(project_dir: Path):
 
 def test_archive_lists_every_missing_source_not_just_first(project_dir: Path):
     (project_dir / "GDD.md").unlink()
-    (project_dir / "MEMORY.md").unlink()
+    (project_dir / "DESIGN.md").unlink()
     r = run(project_dir, "archive", "v0.1.0")
     assert r.returncode == 2
     assert "GDD.md" in r.stderr
-    assert "MEMORY.md" in r.stderr
+    assert "DESIGN.md" in r.stderr
 
 
 def test_archive_succeeds_when_evidence_copy_fails(
@@ -511,89 +529,10 @@ def _stage_extra_tag(project_dir: Path, tag: str, theme: str) -> None:
     )
 
 
-def test_archive_freezes_memory_subtree_next_to_memory_md(project_dir: Path):
-    (project_dir / "memory" / "collision.md").write_text("# collision\n", encoding="utf-8")
-    r = run(project_dir, "archive", "v0.1.0")
-    assert r.returncode == 0, r.stderr
-
-    dest = project_dir / "docs" / "tags" / "v0.1.0"
-    assert (dest / "memory" / "movement.md").read_text(encoding="utf-8") == "# movement\n"
-    assert (dest / "memory" / "collision.md").exists()
-    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["memory_files"] == 2
-    assert {"memory/movement.md", "memory/collision.md"} <= {
-        entry["path"] for entry in manifest["files"]
-    }
-
-
-def test_archive_blocks_when_memory_link_has_no_archived_target(project_dir: Path):
-    (project_dir / "MEMORY.md").write_text(
-        "# MEMORY\n\n- [ghost](memory/ghost.md) - never written\n", encoding="utf-8"
-    )
-    r = run(project_dir, "archive", "v0.1.0")
-    assert r.returncode == 2
-    assert "memory/ghost.md" in r.stderr
-
-    dest = project_dir / "docs" / "tags" / "v0.1.0"
-    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["sealed"] is False, "a broken index must never seal"
-
-
-def test_archive_ignores_links_inside_html_comments_and_code_fences(project_dir: Path):
-    """templates/MEMORY.md ships its example `memory/*.md` entries inside an
-    HTML comment. Treating those as real links would block every first
-    finalize on a fresh project."""
-    (project_dir / "MEMORY.md").write_text(
-        "# MEMORY\n\n"
-        "<!-- Example entries (delete when starting):\n"
-        "- [movement_system](memory/movement_system.md) - example\n"
-        "-->\n\n"
-        "```markdown\n- [fenced](memory/fenced.md)\n```\n\n"
-        "- [movement](memory/movement.md) - real entry\n",
-        encoding="utf-8",
-    )
-    r = run(project_dir, "archive", "v0.1.0")
-    assert r.returncode == 0, r.stderr
-
-
-def test_archive_warns_but_does_not_block_on_links_outside_the_archive(project_dir: Path):
-    """MEMORY.md legitimately cites source files that are not archived."""
-    (project_dir / "MEMORY.md").write_text(
-        "# MEMORY\n\n- [movement](memory/movement.md)\n- see [player](src/player.gd)\n",
-        encoding="utf-8",
-    )
-    r = run(project_dir, "archive", "v0.1.0")
-    assert r.returncode == 0, r.stderr
-    manifest = json.loads(
-        (project_dir / "docs" / "tags" / "v0.1.0" / "evidence" / "manifest.json")
-        .read_text(encoding="utf-8")
-    )
-    assert any("src/player.gd" in w for w in manifest["link_warnings"])
-
-
-def test_archive_blocks_links_that_escape_the_archive_boundary(project_dir: Path):
-    (project_dir / "MEMORY.md").write_text(
-        "# MEMORY\n\n- [escape](../../../secrets.md)\n", encoding="utf-8"
-    )
-    r = run(project_dir, "archive", "v0.1.0")
-    assert r.returncode == 2
-    assert "escapes the archive boundary" in r.stderr
-
-
-def test_archive_blocks_absolute_links(project_dir: Path):
-    (project_dir / "MEMORY.md").write_text(
-        "# MEMORY\n\n- [abs](/etc/passwd)\n", encoding="utf-8"
-    )
-    r = run(project_dir, "archive", "v0.1.0")
-    assert r.returncode == 2
-    assert "absolute path" in r.stderr
-
-
 def test_archive_excludes_caches_and_temp_files(project_dir: Path):
     (project_dir / "e2e" / "__pycache__").mkdir()
     (project_dir / "e2e" / "__pycache__" / "test_x.pyc").write_text("junk")
     (project_dir / "e2e" / "scratch.tmp").write_text("junk")
-    (project_dir / "memory" / "notes.bak").write_text("junk")
 
     r = run(project_dir, "archive", "v0.1.0")
     assert r.returncode == 0, r.stderr
@@ -662,7 +601,7 @@ def test_index_manifest_carries_full_provenance(project_dir: Path):
     assert "source_revision" in manifest
 
     by_path = {entry["path"]: entry for entry in manifest["files"]}
-    for required in ("PLAN.md", "SUMMARY.md", "README.md", "memory/movement.md",
+    for required in ("PLAN.md", "SUMMARY.md", "README.md",
                      "evidence/e2e/test_v0_1_0_M1_jump.py",
                      "evidence/screenshots/scene_main.png"):
         assert required in by_path, required
@@ -672,7 +611,6 @@ def test_index_manifest_carries_full_provenance(project_dir: Path):
 
     assert by_path["PLAN.md"]["category"] == "document"
     assert by_path["SUMMARY.md"]["category"] == "index"
-    assert by_path["memory/movement.md"]["category"] == "memory"
     assert by_path["evidence/e2e/test_v0_1_0_M1_jump.py"]["category"] == "e2e"
     assert by_path["evidence/screenshots/scene_main.png"]["category"] == "screenshot"
 
@@ -742,19 +680,12 @@ def test_summary_stays_within_its_length_bound(project_dir: Path):
 
 
 def test_summary_does_not_absorb_worker_exploration_notes(project_dir: Path):
-    """SUMMARY is an index over confirmed deliverables. Worker discoveries and
-    architecture records stay in MEMORY.md."""
-    (project_dir / "MEMORY.md").write_text(
-        "# MEMORY\n\n- [movement](memory/movement.md)\n\n"
-        "## Architecture Decisions\n\n- movement uses ECS-owned velocity\n",
-        encoding="utf-8",
-    )
+    """SUMMARY is an index over confirmed deliverables, not worker notes."""
     assert seal(project_dir).returncode == 0
     summary = (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").read_text(
         encoding="utf-8"
     )
     assert "raycast approach" not in summary
-    assert "[MEMORY.md](MEMORY.md)" in summary, "but it must still point at it"
 
 
 def test_summary_ignores_a_final_report_belonging_to_another_tag(project_dir: Path):
@@ -1107,7 +1038,6 @@ def test_parent_readme_omits_unsealed_and_nonexistent_tags(project_dir: Path):
 
 def test_generated_index_links_all_resolve(project_dir: Path):
     """Markdown link check over everything seal_tag generates."""
-    seal_tag = _load_seal_tag_module()
     assert seal(project_dir).returncode == 0
     tags_root = project_dir / "docs" / "tags"
 
@@ -1115,7 +1045,7 @@ def test_generated_index_links_all_resolve(project_dir: Path):
                 tags_root / "v0.1.0" / "README.md",
                 tags_root / "v0.1.0" / "SUMMARY.md"):
         text = doc.read_text(encoding="utf-8")
-        targets = seal_tag._local_markdown_links(text)
+        targets = _local_markdown_links(text)
         assert targets, f"{doc.name} should link somewhere"
         for target in targets:
             assert (doc.parent / target).exists(), f"{doc.name} -> {target}"
@@ -1184,20 +1114,17 @@ def test_backfill_adds_index_files_without_touching_canonical_documents(project_
     assert "[v0.0.9](v0.0.9/)" in parent
 
 
-def test_backfill_records_the_missing_memory_subtree_instead_of_inventing_one(
-    project_dir: Path,
-):
-    """Copying today's memory/ into a historical tag would inject present-day
-    content into a past snapshot, so backfill reports the gap instead."""
+def test_backfill_preserves_legacy_archive_without_inventing_files(project_dir: Path):
     dest = _legacy_archive(project_dir)
+    legacy = (dest / "MEMORY.md").read_bytes()
     assert run(project_dir, "backfill", "v0.0.9").returncode == 0
 
     assert not (dest / "memory").exists()
+    assert (dest / "MEMORY.md").read_bytes() == legacy
     manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["backfilled"] is True
     assert manifest["sealed"] is True
-    assert any("memory/movement.md" in w for w in manifest["warnings"])
-    assert "partial" in (dest / "README.md").read_text(encoding="utf-8")
+    assert not any("memory/" in w for w in manifest["warnings"])
 
 
 def test_backfill_all_covers_every_archive_on_disk(project_dir: Path):
@@ -1360,27 +1287,6 @@ def test_archive_of_an_unsealed_tag_does_not_rewrite_the_parent_index(
 
 # ---------- an archive mirrors the source, including deletions ----------
 
-def test_archive_drops_a_memory_snapshot_whose_source_disappeared(project_dir: Path):
-    """On the documented retry path the root memory/ may be gone. Keeping the
-    previous run's copy would hash stale content into the new manifest and
-    seal it as part of this tag's snapshot."""
-    assert run(project_dir, "archive", "v0.1.0").returncode == 0
-    dest = project_dir / "docs" / "tags" / "v0.1.0"
-    assert (dest / "memory" / "movement.md").exists()
-
-    shutil.rmtree(project_dir / "memory")
-    # MEMORY.md must stop linking there too, or the link check blocks the seal.
-    (project_dir / "MEMORY.md").write_text("# MEMORY\n\nno subsystem files\n",
-                                           encoding="utf-8")
-
-    r = run(project_dir, "archive", "v0.1.0")
-    assert r.returncode == 0, r.stderr
-    assert not (dest / "memory").exists()
-    manifest = json.loads((dest / "evidence" / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["memory_files"] == 0
-    assert not any(e["path"].startswith("memory/") for e in manifest["files"])
-
-
 def test_archive_drops_evidence_whose_source_disappeared(project_dir: Path):
     assert run(project_dir, "archive", "v0.1.0").returncode == 0
     dest = project_dir / "docs" / "tags" / "v0.1.0"
@@ -1406,9 +1312,6 @@ def test_sealed_manifest_hashes_match_the_files_on_disk_after_a_rewrite(
     through, a sealed manifest describes exactly what is there."""
     assert seal(project_dir).returncode == 0
     (project_dir / "PLAN.md").write_text("# PLAN\n**Tag:** v0.1.0\nsecond pass\n")
-    shutil.rmtree(project_dir / "memory")
-    (project_dir / "MEMORY.md").write_text("# MEMORY\n\nnothing linked\n", encoding="utf-8")
-
     assert run(project_dir, "archive", "v0.1.0", "--force").returncode == 0
     assert run(project_dir, "index", "v0.1.0").returncode == 0
 
@@ -1527,38 +1430,7 @@ def test_force_index_keeps_other_sealed_tags_listed(project_dir: Path):
 
 # ---------- SUMMARY only links what was archived ----------
 
-def _drop_memory(project_dir: Path) -> None:
-    shutil.rmtree(project_dir / "memory")
-    (project_dir / "MEMORY.md").write_text(
-        "# MEMORY\n\nNo sub-system files for this project.\n", encoding="utf-8"
-    )
-
-
-def test_summary_omits_the_memory_link_when_no_subtree_was_archived(project_dir: Path):
-    """SUMMARY.md is the advertised entry point, so a link it always emits is a
-    guaranteed 404 for any project without a `memory/` directory."""
-    _drop_memory(project_dir)
-    assert seal(project_dir).returncode == 0
-
-    summary = (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").read_text(
-        encoding="utf-8"
-    )
-    assert "(memory/)" not in summary
-    assert "[MEMORY.md](MEMORY.md)" in summary, "the architecture record is still linked"
-    assert "no `memory/` subtree archived" in summary
-
-
-def test_summary_links_the_memory_subtree_when_it_exists(project_dir: Path):
-    assert seal(project_dir).returncode == 0
-    summary = (project_dir / "docs" / "tags" / "v0.1.0" / "SUMMARY.md").read_text(
-        encoding="utf-8"
-    )
-    assert "[memory/](memory/)" in summary
-
-
-def test_generated_index_links_resolve_without_a_memory_subtree(project_dir: Path):
-    seal_tag = _load_seal_tag_module()
-    _drop_memory(project_dir)
+def test_generated_index_links_resolve(project_dir: Path):
     assert seal(project_dir).returncode == 0
     tags_root = project_dir / "docs" / "tags"
 
@@ -1566,28 +1438,26 @@ def test_generated_index_links_resolve_without_a_memory_subtree(project_dir: Pat
                 tags_root / "v0.1.0" / "README.md",
                 tags_root / "v0.1.0" / "SUMMARY.md"):
         text = doc.read_text(encoding="utf-8")
-        for target in seal_tag._local_markdown_links(text):
+        for target in _local_markdown_links(text):
             assert (doc.parent / target).exists(), f"{doc.name} -> {target}"
 
 
 def test_backfilled_summary_links_all_resolve(project_dir: Path):
-    """The legacy-backfill path never copies a memory subtree and tolerates
-    missing canonical documents, so SUMMARY must link only what is there."""
-    seal_tag = _load_seal_tag_module()
+    """Legacy backfill tolerates missing canonical documents, so SUMMARY links
+    only what is there."""
     dest = _legacy_archive(project_dir, "v0.0.9")
     (dest / "DESIGN.md").unlink()          # a gap the backfill must tolerate
     (dest / "CHANGELOG.md").unlink()
 
     assert run(project_dir, "backfill", "v0.0.9").returncode == 0
     summary = (dest / "SUMMARY.md").read_text(encoding="utf-8")
-    assert "(memory/)" not in summary
     assert "DESIGN.md" not in summary
     assert "CHANGELOG.md" not in summary
 
     for doc in (dest / "README.md", dest / "SUMMARY.md",
                 project_dir / "docs" / "tags" / "README.md"):
         text = doc.read_text(encoding="utf-8")
-        for target in seal_tag._local_markdown_links(text):
+        for target in _local_markdown_links(text):
             assert (doc.parent / target).exists(), f"{doc.name} -> {target}"
 
 
@@ -1821,7 +1691,6 @@ def test_backfill_does_not_duplicate_carried_warnings(project_dir: Path):
     )["warnings"]
     assert len(warnings) == len(set(warnings)), warnings
     assert sum("DESIGN.md" in w for w in warnings) == 1
-    assert sum("memory/movement.md" in w for w in warnings) == 1
 
 
 def test_an_interrupted_backfill_keeps_the_warnings_it_inherited(

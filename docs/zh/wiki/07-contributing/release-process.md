@@ -21,23 +21,9 @@ GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；
 
 ## next.md 工作流
 
-贡献者从不直接编辑 `CHANGELOG.md`。每个 Pull Request 都需要在 `docs/update/next.md` 的适当分类下至少添加一条记录：
-
-```markdown
-## Added
-- 新增内容的简要说明 (#123) — @author
-
-## Changed
-- 发生了什么变化以及原因 (#124) — @author
-
-## Fixed
-- 修复了什么问题 (#125) — @author
-
-## Removed
-- 删除了什么内容 (#126) — @author
-```
-
-分类名称遵循 [Keep a Changelog](https://keepachangelog.com/) 规范。如果四个标准分类都不合适，可以新增一个。
+贡献者从不直接编辑 `CHANGELOG.md`。规范的
+[发布说明条目合同](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries)
+定义 Pull Request 何时以及如何更新 `docs/update/next.md`；本发布页面不会重复这些规则。
 
 发版时，`next.md` 会被归档，并从模板创建新的空 `next.md`。贡献者立即开始向新的 `next.md` 添加下一批变更记录。这意味着 `CHANGELOG.md` 每次发版只由负责发版的人修改一次。
 
@@ -55,7 +41,7 @@ GodotMaker 使用语义版本控制。每次发版遵循一份简短的清单；
 3. **更新 CHANGELOG.md。** 在文件开头插入新章节：
 
    ```markdown
-   ## [X.Y.Z] — YYYY-MM-DD
+   ## [X.Y.Z] - YYYY-MM-DD
 
    ### Added
    - （来自 next.md 的条目）

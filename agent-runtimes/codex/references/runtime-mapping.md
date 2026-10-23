@@ -51,31 +51,49 @@ to the current skill directory, not the project root. For example, inside
 `.agents/skills/gm-asset/references/asset-runtime-pipeline.md`.
 
 Project artifact paths are different: if a skill asks the stage to create or
-consume project assets such as `references/scene_<name>.png`, resolve those as
-project-root files. When the path is a Markdown support document mentioned by a
+consume project assets, resolve those as project-root files. When the path is a
+Markdown support document mentioned by a
 skill instruction, prefer skill-local resolution.
 
-## Capability Mapping
+## Operation Mapping
 
-| Capability | Codex mapping |
-|---|---|
-| `invoke_stage` | Native when the published project-local skill exists under the Codex skill tree and can be invoked as `$gm-*`. If a shared reference says to run `/gm-verify`, execute `$gm-verify`. Gate if the matching `$gm-*` skill is not available. |
-| `read_project_config` | Read the Codex-published project config path produced by publish, normally `.agents/godotmaker.yaml`, whenever shared docs refer to `.claude/godotmaker.yaml` or `godotmaker.yaml` config. Gate if it is missing and the stage needs `godot_path` or project settings. |
-| `read_skill_reference` | Read references from the published Codex skill tree, normally `.agents/skills/<skill>/references/`. A shared skill path like `references/asset-runtime-pipeline.md` is skill-local, not project-root. Shared refs are deployed copies; do not look for `_shared/` at runtime. |
-| `dispatch_worker` | Use `spawn_agent(agent_type="worker", message=...)` with a message that explicitly loads the Codex project-local worker role definition and worker brief when the Codex runtime exposes subagent spawning with project-local context. If unavailable, use a sequential fallback only for work the stage contract allows the lead agent to do directly; otherwise gate before editing. |
-| `dispatch_reviewer` | Use `spawn_agent(agent_type="worker", message=...)` with a message that explicitly loads the Codex project-local reviewer role definition and reviewer references when available. If unavailable, the lead session may run the review checklist only when the skill explicitly allows non-delegated review; otherwise gate and report that Codex reviewer delegation is unsupported in this environment. |
-| `dispatch_verifier` | Use `spawn_agent(agent_type="worker", message=...)` with a message that explicitly loads the Codex project-local verifier role definition and verifier references when available. If unavailable, run deterministic verification commands directly only where the verifier contract is mechanical and no independent judgment is required; otherwise gate. |
-| `track_plan` | Map Claude-style `TodoWrite` planning to Codex `update_plan`. Keep exactly one active item and update status as work progresses. This is separate from editing project files such as `PLAN.md` or `GAP.md`. |
-| `classify_repair_attempt` | For `$gm-build` and `$gm-fixgap`, read the published `references/repair-attempt-accounting.md` and each worker's `Repair Attempt Evidence`. Count every dispatch only in `dispatch_count`; increment `repair_attempt_count` only for an evidence-complete effective production repair. At the no-progress threshold, report or re-dispatch the orchestration incident while keeping the business task continuable. |
-| `ask_user_question` | Map Claude-style `AskUserQuestion` to Codex `request_user_input` when that tool is available in the active mode. If unavailable, ask the user a concise normal question. In non-interactive execution, choose a conservative default only when the skill permits it and record the assumption; otherwise gate before continuing. |
-| `native_image_inspection` | Use the active Codex runtime image-reading path for `native` and `codex`. Write the requested VQA log entry. If unavailable, gate before visual QA. |
-| `native_image_generation` | Use the active Codex image generation path for `native` and `codex`. Follow the generated-path claim protocol in `gm-asset/references/providers/codex.md` and write the authoritative `--out-report` claim result. If unavailable, gate before asset generation. |
-| `run_shell_command` | Use Codex shell execution with the current sandbox and approval policy. Capture command, working directory, exit code, and important output in the final stage report. Do not imply a command passed if it was skipped or blocked. |
-| `access_godot_mcp` | Use the configured Codex MCP server for Godot. Codex publish must register `godot-mcp` by default and fail if registration cannot complete, because later GodotMaker stages depend on the MCP tools. |
-| `apply_permission_policy` | Use the Codex sandbox/approval model and project hooks together. Expected framework commands should run without interactive deadlock; if approval is denied or unavailable, stop and report the blocked command. Do not bypass `.godotmaker/hooks` or role locks. |
-| `detect_worktree_state` | Inspect git state before delegation or finish: normal branch, linked worktree, already-isolated workspace, detached HEAD, or host-managed task checkout. Treat detached HEAD as a handoff constraint, not as a reason to create commits blindly. |
-| `create_or_use_isolated_workspace` | Prefer Codex-native isolated execution only if it carries `.agents/skills`, `.agents/agents`, `.agents/templates`, `.agents/godotmaker.yaml`, `.godotmaker/hooks`, and project files. If that cannot be guaranteed, use a git worktree fallback only when safe, or gate delegation. |
-| `finish_branch_or_handoff` | On a normal branch, follow the user's commit/push/PR instructions. In Codex App or detached-head environments, do not force branch operations; summarize changes and use the host application's handoff controls when required. |
+| Operation | Class | Invocation path |
+|---|---|---|
+| `invoke_stage` | `native` | Invoke the matching published `$gm-*` skill; map shared `/gm-*` vocabulary before execution. |
+| `invoke_supporting_skill` | `emulated` | Read `.agents/skills/<skill-name>/SKILL.md` with the filesystem read tool, follow it in the current session, and pass the caller's arguments as task context. `$<skill-name>` is a user-side entrypoint only. |
+| `read_project_config` | `native` | Read `.agents/godotmaker.yaml` after applying the shared path mapping. |
+| `read_skill_reference` | `native` | Resolve from `.agents/skills/<skill>/`; skill-local `references/`, `scripts/`, `tools/`, and docs stay relative to that directory. |
+| `dispatch_worker` | `gated` | Use `spawn_agent(agent_type="worker", message=...)` and explicitly load `.agents/agents/worker.md`; gate if spawning or required context is unavailable. |
+| `dispatch_reviewer` | `gated` | Spawn a worker-type delegate that explicitly loads `.agents/agents/reviewer.md`; direct review is allowed only when the stage says so. |
+| `dispatch_verifier` | `gated` | Spawn a worker-type delegate that loads `.agents/agents/verifier.md`; only mechanical checks may fall back to the lead session. |
+| `dispatch_analyst` | `gated` | Spawn a delegate that loads `.agents/agents/analyst.md` and receives only declared asset paths; gate when image access or spawning is unavailable. |
+| `dispatch_asset_producer` | `gated` | Spawn a delegate that loads `.agents/agents/asset-producer.md` and the selected provider brief; gate when spawning is unavailable. |
+| `dispatch_decomposer` | `gated` | Spawn delegates that load `.agents/agents/decomposer.md` with explicit work packages and owned files. |
+| `dispatch_gdd_auditor` | `gated` | Spawn a delegate that loads `.agents/agents/gdd-auditor.md` and the bounded audit brief. |
+| `track_plan` | `native` | Use Codex `update_plan`, keeping one active item; never substitute edits to project planning artifacts. |
+| `ask_user_question` | `emulated` | Use `request_user_input` when available, otherwise ask a concise normal question; gate non-interactive runs unless the skill permits a default. |
+| `classify_repair_attempt` | `emulated` | Read `references/repair-attempt-accounting.md` and each worker's `Repair Attempt Evidence`; count every dispatch in `dispatch_count`, increment `repair_attempt_count` only for an evidence-complete effective repair, and keep the business task continuable at the no-progress threshold. |
+| `inspect_images` | `native` | Use active Codex image inspection for `native` and `codex`; API selectors run the visual-qa script; always write the requested VQA log. |
+| `generate_images` | `native` | Use active Codex image generation for `native` and `codex`, then apply the generated-path claim and `--out-report` contract. |
+| `run_shell_command` | `native` | Use Codex shell execution with the active sandbox/approval policy and capture cwd, exit status, and important output. |
+| `access_godot_mcp` | `gated` | Use the registered Codex `godot` MCP server; publish must register it and dependent stages stop when it is absent. |
+| `apply_permission_policy` | `native` | Apply Codex sandbox/approval policy together with `.godotmaker/hooks`; never bypass denials or role locks. |
+| `forward_hook_context` | `native` | Codex hook handling consumes `hookSpecificOutput.additionalContext` from the published `.codex/hooks.json` commands. |
+| `detect_worktree_state` | `native` | Inspect branch, linked-worktree, detached-HEAD, host-isolation, and sandbox state before dispatch or finish. |
+| `create_or_use_isolated_workspace` | `emulated` | Prefer Codex isolation when it carries runtime files; otherwise use a safe git worktree fallback or gate. |
+| `finish_branch_or_handoff` | `native` | Use normal git delivery on a safe branch; in host-managed or detached environments use the host handoff controls. |
+
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+Claude Code. Codex lifecycle hooks do not provide an equivalent write-tool or
+delegation preflight interception surface.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `prompt-level` | The active `$gm-*` skill must check its prerequisites before `spawn_agent`; Codex has no registered pre-dispatch hook for this gate. |
+| `delegated_write_boundaries` | `prompt-level` | Project-local role definitions constrain delegated writes. Codex does not forward `Write` or `Edit` events to `check_file_permissions.py`. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, Codex has no authoritative completion gate. |
 
 ## Delegated Roles
 
@@ -100,15 +118,13 @@ Codex must classify every delegated role before dispatch:
 | `reviewer` | `spawn_agent(agent_type="worker", message=...)` with a message that makes the delegate read `.agents/agents/reviewer.md`, reviewer references, and the integrated diff/state. | Gate unless the current skill explicitly allows the lead session to run reviewer checks. |
 | `verifier` | `spawn_agent(agent_type="worker", message=...)` with a message that makes the delegate read `.agents/agents/verifier.md`, verifier references, and completed deliverables. | Direct shell verification is allowed for mechanical checks; independent verifier judgment remains gated without delegation. |
 | `analyst` | `spawn_agent(agent_type="worker", message=...)` with a message that makes the delegate read `.agents/agents/analyst.md` and user-provided asset paths. | Gate or ask the user for a manual asset summary if files cannot be inspected in the current environment. |
+| `asset-producer` | `spawn_agent(agent_type="worker", message=...)` with a message that makes the delegate read `.agents/agents/asset-producer.md`, one asset production unit, and its provider/tool references. | Gate if the active runtime cannot provide the requested asset provider or an isolated writable workspace. |
+| `decomposer` | `spawn_agent(agent_type="worker", message=...)` with a message that makes the delegate read `.agents/agents/decomposer.md`, the confirmed GDD/ROADMAP, and the current tag scope. | Sequential emulation is allowed only when the lead role may write every owned decomposition artifact; otherwise gate. |
+| `gdd-auditor` | `spawn_agent(agent_type="worker", message=...)` with a message that makes the delegate read `.agents/agents/gdd-auditor.md` and the draft GDD. | Gate unless the current skill explicitly allows the lead session to run the read-only audit checklist. |
 
 Do not claim parallel worker execution unless Codex actually spawned isolated
 workers. If running a sequential fallback, say so in the report and preserve the
 same task state transitions.
-
-Delegated roles must not write the root `MEMORY.md` or files below the root
-`memory/` directory. Codex exposes no equivalent PreToolUse write gate here,
-so this is a prompt-level boundary carried by the role definition. Only the
-lead session may update stable architecture decisions and project constraints.
 
 ## Project Tool Status Overrides
 
@@ -132,9 +148,8 @@ Before creating or reusing isolation, detect the current checkout:
 
 ## MCP, Hooks, Permissions, And Sandbox
 
-- MCP: Codex uses a configured Codex MCP server. Project publish registers the
-  required `godot` server through `codex mcp` by default and should fail if that
-  registration cannot complete.
+- MCP: Codex uses a configured Codex MCP server. Codex publish must register `godot-mcp` by default
+  through `codex mcp` and should fail if registration cannot complete.
 - Hooks: `.godotmaker/hooks` remain authoritative. If a hook denies a write,
   follow the role contract or dispatch the proper role; do not bypass hooks.
 - Permissions: use the Codex host runtime's sandbox and approval settings.

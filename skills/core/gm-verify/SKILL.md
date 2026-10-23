@@ -42,7 +42,11 @@ Section B to stdout. Capture stdout.
 
 What the script does:
 
-- Reads `godot_path` from `.claude/godotmaker.yaml`; falls back to
+- Resolves the selected runtime from `.godotmaker/config.yaml`, then reads
+  `godot_path` from that runtime's `godotmaker.yaml`: `.claude/` for Claude
+  Code, `.agents/` for Codex, `.opencode/` for OpenCode, or `.pi/` for Pi.
+  Older projects without an `agent` field use runtime-directory detection and
+  then the Claude Code default. If no value is configured, it falls back to
   plain `godot` from PATH. A missing or broken binary surfaces as a
   `tooling_notes[].suggested_fallback = "escalate"` entry.
 - Runs `<godot_path> --headless --quit` and writes blocking Godot diagnostics

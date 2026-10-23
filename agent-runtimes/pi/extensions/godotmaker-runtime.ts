@@ -11,10 +11,29 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import {
+  buildDelegateArgs,
+  resolveDelegateModel,
+} from "./delegate-policy.mjs";
 
-const ROLES = new Set([
-  "worker", "verifier", "reviewer", "analyst", "asset-producer", "decomposer", "gdd-auditor",
-]);
+type Isolation = "worktree" | "shared";
+type RoleAccess = "write" | "scoped-write" | "read-only";
+type RoleContract = {
+  defaultIsolation: Isolation;
+  access: RoleAccess;
+  ownsMerge: boolean;
+};
+
+export const ROLE_CONTRACTS: Record<string, RoleContract> = {
+  worker: { defaultIsolation: "worktree", access: "write", ownsMerge: true },
+  decomposer: { defaultIsolation: "shared", access: "scoped-write", ownsMerge: false },
+  "asset-producer": { defaultIsolation: "shared", access: "scoped-write", ownsMerge: false },
+  verifier: { defaultIsolation: "shared", access: "read-only", ownsMerge: false },
+  reviewer: { defaultIsolation: "shared", access: "read-only", ownsMerge: false },
+  analyst: { defaultIsolation: "shared", access: "read-only", ownsMerge: false },
+  "gdd-auditor": { defaultIsolation: "shared", access: "read-only", ownsMerge: false },
+};
+const ROLES = new Set(Object.keys(ROLE_CONTRACTS));
 const MAX_PARALLEL = 3;
 const DEFAULT_DELEGATE_TIMEOUT_SECONDS = 15 * 60;
 const MAX_DELEGATE_TIMEOUT_SECONDS = 60 * 60;
@@ -24,12 +43,79 @@ const REQUIRED_RUNTIME_PATHS = [
   ".pi/godotmaker.yaml",
   ".pi/references/runtime-mapping.md",
   ".pi/extensions/godotmaker-runtime.ts",
+  ".pi/extensions/delegate-policy.mjs",
   ".godotmaker/config.yaml",
   "tools",
   "AGENTS.md",
 ];
 
-type DelegateRequest = { role: string; task: string; isolation?: string; timeoutSeconds?: number };
+type DelegateRequest = {
+  role: string;
+  task: string;
+  model?: string;
+  isolation?: Isolation;
+  writePaths?: string[];
+  timeoutSeconds?: number;
+};
+
+export function resolveIsolation(request: DelegateRequest): Isolation {
+  const contract = ROLE_CONTRACTS[request.role];
+  if (!contract) throw new Error(`Unsupported GodotMaker Pi role: ${request.role}`);
+  return request.isolation ?? contract.defaultIsolation;
+}
+
+function normalizeWritePath(value: string): string {
+  const candidate = value.trim().replaceAll("\\", "/");
+  if (!candidate || candidate.startsWith("/") || /^[A-Za-z]:\//.test(candidate)) {
+    throw new Error(`Write scopes must be project-relative paths: ${value}`);
+  }
+  const normalized = path.posix.normalize(candidate)
+    .replace(/^\.\//, "")
+    .replace(/\/+$/, "") || ".";
+  if (normalized === ".." || normalized.startsWith("../")) {
+    throw new Error(`Write scopes must stay inside the project: ${value}`);
+  }
+  return normalized;
+}
+
+function pathsOverlap(left: string, right: string): boolean {
+  if (left === "." || right === ".") return true;
+  const comparableLeft = process.platform === "win32" ? left.toLowerCase() : left;
+  const comparableRight = process.platform === "win32" ? right.toLowerCase() : right;
+  return comparableLeft === comparableRight
+    || comparableLeft.startsWith(`${comparableRight}/`)
+    || comparableRight.startsWith(`${comparableLeft}/`);
+}
+
+export function validateParallelRequests(requests: DelegateRequest[]): void {
+  if (requests.length < 2) return;
+  const sharedWriters = requests.flatMap((request, requestIndex) => {
+    const contract = ROLE_CONTRACTS[request.role];
+    if (!contract) throw new Error(`Unsupported GodotMaker Pi role: ${request.role}`);
+    if (resolveIsolation(request) !== "shared" || contract.access === "read-only") return [];
+    if (!request.writePaths?.length) {
+      throw new Error(`Parallel shared ${request.role} delegation requires non-empty writePaths.`);
+    }
+    const paths = [...new Set(request.writePaths.map(normalizeWritePath))];
+    return [{ request, requestIndex, paths }];
+  });
+  for (let leftIndex = 0; leftIndex < sharedWriters.length; leftIndex += 1) {
+    const left = sharedWriters[leftIndex];
+    for (let rightIndex = leftIndex + 1; rightIndex < sharedWriters.length; rightIndex += 1) {
+      const right = sharedWriters[rightIndex];
+      for (const leftPath of left.paths) {
+        for (const rightPath of right.paths) {
+          if (pathsOverlap(leftPath, rightPath)) {
+            throw new Error(
+              `Parallel shared write scopes overlap: request ${left.requestIndex + 1} (${left.request.role}) `
+              + `and request ${right.requestIndex + 1} (${right.request.role}) both own ${leftPath} / ${rightPath}.`
+            );
+          }
+        }
+      }
+    }
+  }
+}
 
 function projectRoot(cwd: string): string {
   let current = path.resolve(cwd);
@@ -96,6 +182,10 @@ function removeWorktree(root: string, directory: string): void {
 
 async function runDelegate(root: string, request: DelegateRequest, signal?: AbortSignal) {
   if (!ROLES.has(request.role)) throw new Error(`Unsupported GodotMaker Pi role: ${request.role}`);
+  const contract = ROLE_CONTRACTS[request.role];
+  const isolation = resolveIsolation(request);
+  const writePaths = request.writePaths?.map(normalizeWritePath);
+  const resolvedModel = resolveDelegateModel(root, request.role, request.model);
   const rootMissing = missingRuntimePaths(root);
   if (rootMissing.length) {
     throw new Error(`Pi delegation requires published runtime resources: ${rootMissing.join(", ")}. Re-run publish with --agent pi.`);
@@ -105,7 +195,7 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
 
   let cwd = root;
   let branch: string | undefined;
-  if ((request.isolation ?? "worktree") === "worktree") {
+  if (isolation === "worktree") {
     try {
       const isolated = createWorktree(root, request.role);
       cwd = isolated.cwd;
@@ -125,20 +215,25 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
 
   const promptDir = fs.mkdtempSync(path.join(os.tmpdir(), "godotmaker-pi-"));
   const promptFile = path.join(promptDir, "role.md");
+  const writeContract = contract.access === "read-only"
+    ? "This role is read-only. Do not modify project files. "
+    : writePaths?.length
+      ? `You may write only these project-relative paths: ${writePaths.join(", ")}. `
+      : "Write only the exact paths assigned in the task. ";
+  const mergeContract = contract.ownsMerge && isolation === "worktree"
+    ? "Commit completed changes before reporting so the returned branch can be merged. "
+    : "This role does not own a merge workflow. ";
   fs.writeFileSync(promptFile, [
     fs.readFileSync(roleFile, "utf8"),
     "\n\n# Pi runtime contract\n",
-    "This is an isolated Pi role. Use only Pi built-in tools and project-local GodotMaker resources. ",
-    "Do not delegate again. If working in a worktree, commit completed changes before reporting. ",
-    "Never write the root MEMORY.md or files under the root memory/ directory. ",
+    `This Pi role uses ${isolation} isolation. Use only Pi built-in tools and project-local GodotMaker resources. `,
+    `Do not delegate again. ${writeContract}${mergeContract}`,
     "Return an explicit PASS/FAIL summary with commands run and changed files.\n",
   ].join(""), "utf8");
 
-  const invocation = piInvocation([
-    "--approve", "--mode", "json", "--no-session", "-p",
-    "--append-system-prompt", promptFile,
-    `GodotMaker role: ${request.role}\n\nTask:\n${request.task}`,
-  ]);
+  const invocation = piInvocation(buildDelegateArgs(
+    request.role, request.task, promptFile, resolvedModel,
+  ));
   if (!invocation) {
     fs.rmSync(promptDir, { recursive: true, force: true });
     if (branch) removeWorktree(root, cwd);
@@ -177,7 +272,13 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
       if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
     });
     if (result.code !== 0) throw new Error(`Pi ${request.role} exited ${result.code}: ${result.stderr.trim() || finalAssistantText(result.stdout)}`);
-    return { role: request.role, cwd, branch, summary: finalAssistantText(result.stdout) };
+    return {
+      role: request.role,
+      model: resolvedModel ?? "inherit",
+      cwd,
+      branch,
+      summary: finalAssistantText(result.stdout),
+    };
   } finally {
     fs.rmSync(promptDir, { recursive: true, force: true });
   }
@@ -195,33 +296,46 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "godotmaker_delegate",
     label: "GodotMaker Delegate",
-    description: "Run GodotMaker worker, verifier, reviewer, or decomposition roles in isolated Pi processes. Worker-like requests default to separate git worktrees; merge their returned branches only after review.",
+    description: "Run GodotMaker roles with role-specific isolation. Workers default to worktrees; artifact producers share the main tree with disjoint write scopes; review roles are shared and read-only.",
     parameters: Type.Object({
       role: Type.Optional(Type.String()),
       task: Type.Optional(Type.String()),
+      model: Type.Optional(Type.String({ minLength: 1 })),
       isolation: Type.Optional(Type.Union([Type.Literal("worktree"), Type.Literal("shared")])),
+      writePaths: Type.Optional(Type.Array(Type.String())),
       timeoutSeconds: Type.Optional(Type.Number({ minimum: 1, maximum: MAX_DELEGATE_TIMEOUT_SECONDS })),
       requests: Type.Optional(Type.Array(Type.Object({
         role: Type.String(), task: Type.String(),
+        model: Type.Optional(Type.String({ minLength: 1 })),
         isolation: Type.Optional(Type.Union([Type.Literal("worktree"), Type.Literal("shared")])),
+        writePaths: Type.Optional(Type.Array(Type.String())),
         timeoutSeconds: Type.Optional(Type.Number({ minimum: 1, maximum: MAX_DELEGATE_TIMEOUT_SECONDS })),
       }))),
     }),
     async execute(_id, params, signal, _update, ctx) {
       const root = projectRoot(ctx.cwd);
       const requests: DelegateRequest[] = params.requests ?? (params.role && params.task
-        ? [{ role: params.role, task: params.task, isolation: params.isolation, timeoutSeconds: params.timeoutSeconds }] : []);
+        ? [{
+          role: params.role,
+          task: params.task,
+          model: params.model,
+          isolation: params.isolation,
+          writePaths: params.writePaths,
+          timeoutSeconds: params.timeoutSeconds,
+        }] : []);
       if (!requests.length || requests.length > MAX_PARALLEL) {
         return { ...toolText(`Provide one role/task or 1-${MAX_PARALLEL} requests.`), isError: true };
       }
-      if (requests.length > 1 && requests.some((request) => (request.isolation ?? "worktree") !== "worktree")) {
-        return { ...toolText("Parallel Pi delegation requires worktree isolation."), isError: true };
-      }
       try {
+        validateParallelRequests(requests);
         const results = await Promise.all(requests.map((request) => runDelegate(root, request, signal)));
         const summary = results.map((result) => [
-          `${result.role}: ${result.summary}`,
-          result.branch ? `Merge candidate: ${result.branch} (${result.cwd})` : "Shared working tree",
+          `${result.role} [model: ${result.model}]: ${result.summary}`,
+          result.branch
+            ? ROLE_CONTRACTS[result.role].ownsMerge
+              ? `Merge candidate: ${result.branch} (${result.cwd})`
+              : `Isolated worktree: ${result.branch} (${result.cwd}); this role has no merge contract`
+            : "Shared working tree",
         ].join("\n")).join("\n\n");
         return toolText(summary, { results });
       } catch (error) {

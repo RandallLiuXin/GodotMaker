@@ -97,6 +97,38 @@ codex.cmd remote-control -c sandbox_mode='"danger-full-access"' -c approval_poli
 
 完整的升级策略与迁移脚本说明请参见 [`../../versioning.md`](../../versioning.md)。各版本变更内容请查阅[更新日志](../08-reference/changelog.md)。
 
+如果目标是 0.x 工作区，请按
+[1.0 Agent 辅助升级指南](../01-getting-started/upgrade-to-v1.md) 在干净重新初始化前后
+审计并迁移项目自有文档与资源绑定。
+
+### 运行时 hook 所有权与冲突
+
+运行时 hook surface 有明确的所有权。正常的同版本、patch 或 minor 发布会更新
+framework-owned 部分，不会继续保留旧 surface：
+
+| Runtime | Framework-owned | User-owned | 正常发布行为 |
+|---------|-----------------|------------|--------------|
+| Claude Code | `.claude/settings.json` 中命令引用 `.godotmaker/hooks/` 的 hook command 条目 | 其他所有顶层键、hook event、matcher 条目和 command | 用当前版本替换框架命令，然后按原顺序保留自定义条目 |
+| Codex | `.codex/hooks.json` 中命令引用 `.godotmaker/hooks/` 的 hook command 条目 | 其他所有顶层键、hook event、matcher 条目和 command | 使用与 Claude Code 相同的合并策略 |
+| OpenCode | `.opencode/plugins/godotmaker-hooks.js` | `.opencode/plugins/` 中的其他文件 | 覆盖框架 plugin，保留独立 plugin |
+| Pi | `.pi/extensions/godotmaker-runtime.ts` | `.pi/extensions/` 中的其他文件 | 覆盖框架 extension，保留独立 extension |
+
+不要在 framework-owned plugin 或 extension 文件内定制；下次发布会替换它。
+请把用户逻辑放在独立 plugin/extension 文件或自定义 JSON hook 条目中。
+
+- **降级：**仍然需要 `--force`，并运行 checkout 出来的目标 GodotMaker 版本中的
+  发布器。降级到早于本文 ownership-aware 行为的版本时，旧发布器会完整替换
+  JSON hook config，并删除后重建整个 `.opencode/plugins/` 或 `.pi/extensions/`
+  目录；独立 plugin/extension 文件及自定义 JSON hook 条目都会被删除。降级前请
+  提交或备份这些文件和条目，或者在降级后从 VCS 恢复目标项目。`--force` 不会
+  反向执行迁移或回退项目状态。
+- **回滚：**`--force` 不是完整回滚。请从 VCS 恢复目标项目，checkout 匹配的
+  GodotMaker 版本，然后重新发布。
+- **冲突：**如果已有 Claude/Codex 文件不是有效 JSON，或其 `hooks` schema
+  无法安全合并，正常发布会在改动目标前停止，并保持该文件不变。请修复 JSON，
+  或用 `--force` 显式替换完整 hook config。OpenCode/Pi 的受管文件不执行合并；
+  其中的本地修改会被覆盖。
+
 ## 选项
 
 ```bash
@@ -106,14 +138,10 @@ python tools/publish.py --agent opencode --force /path/to/my-game
 python tools/publish.py --agent pi --force /path/to/my-game
 ```
 
-如果目标是 0.x 工作区，请按
-[1.0 Agent 辅助升级指南](../01-getting-started/upgrade-to-v1.md) 在干净重新初始化前后
-审计并迁移项目自有文档与资源绑定。
-
 `--force` 同时做四件事：
 
 1. 重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。
-2. 即使你已自定义过所选 runner 的 hook config 或 adapter（`.claude/settings.json`、`.codex/hooks.json`、`.opencode/plugins/godotmaker-hooks.js` 或 `.pi/extensions/godotmaker-runtime.ts`），也会强制覆盖。
+2. 即使你已自定义过所选 runner 的 framework-owned surface，也会完整替换其 JSON hook config 或 adapter（`.claude/settings.json`、`.codex/hooks.json`、`.opencode/plugins/godotmaker-hooks.js` 或 `.pi/extensions/godotmaker-runtime.ts`）。
 3. 跳过 minor 升级的确认提示，并显式授权 major 升级所需的干净重新初始化。
 4. 允许降级。
 
@@ -121,13 +149,12 @@ python tools/publish.py --agent pi --force /path/to/my-game
 
 ## 升级时哪些内容会被保留
 
-正常发布不会覆盖以下文件（只有 `--force` 才能改动所选 runner 的 hook config）：
-
-| 文件 | 保留原因 |
-|------|---------------|
-| `CLAUDE.md` / `AGENTS.md` | 你可能添加了项目专属指令 |
-| `.claude/settings.json` / `.codex/hooks.json` / `.opencode/plugins/godotmaker-hooks.js` / `.pi/extensions/godotmaker-runtime.ts` | 你可能调整过 hook 行为 |
-| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` / `.pi/godotmaker.yaml` | 包含本机专属的 Godot 路径 |
-| `.godotmaker/config.yaml` | 包含项目专属的偏好设置 |
+| User-owned 内容 | 正常发布行为 |
+|-----------------|--------------|
+| `CLAUDE.md` / `AGENTS.md` | 保留项目专属指令 |
+| `.claude/settings.json` / `.codex/hooks.json` 中的无关键与自定义 hook 条目 | 刷新框架 hook command 时保留 |
+| `.opencode/plugins/` / `.pi/extensions/` 中的独立文件 | 刷新指定 GodotMaker adapter 文件时保留 |
+| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` / `.pi/godotmaker.yaml` | 保留本机专属 Godot 路径 |
+| `.godotmaker/config.yaml` | 保留项目专属偏好设置 |
 
 你的游戏代码、场景、素材以及规划文档（`GDD.md`、`PLAN.md` 等）不受 publish 影响——它只管理框架层。

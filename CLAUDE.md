@@ -9,18 +9,34 @@ GodotMaker is an ECS-native text-to-game framework for Godot. It uses gecs (open
 ## Repository Structure
 
 ```
-hooks/              8 Python hook scripts + hooks/metrics/ subsystem
+.github/            pull-request templates and CI, docs, and release workflows
+agent-runtimes/     runner-specific config, references, and templates
+agents/             pipeline sub-agent profiles
+config/             framework defaults, schemas, and addon versions
+hooks/              Python policy hooks + hooks/metrics/ subsystem
+migrations/         timestamped target-project migrations
+scripts/            contributor Git hooks and their installer
+shell/              publish.sh / publish.ps1, report.sh / report.bat
 skills/
+  assets/           asset-production skills + shared asset tooling
   core/             role-based gm-* skills + supporting skills (gecs, godot-api, ...)
     _shared/        cross-skill reference docs (see "Shared reference docs" below)
-  reviewer/         8 reviewer skills (physics, animation, ui, etc.)
-shell/              publish.sh / publish.ps1, report.sh / report.bat
-tools/              publish.py, check_env.py, check_project.py, asset_source_generate.py, etc.
-config/             config.yaml.default, stage_schemas.json, addon_versions.json
-agent-runtimes/     runner-specific references, templates, and hook config
-templates/          PLAN/STRUCTURE/ASSETS/SCENES/MEMORY/GDD templates + game-claude.md
+  reviewer/         domain reviewer skills (physics, animation, ui, etc.)
+templates/          PLAN/STRUCTURE/ASSETS/SCENES/GDD templates + game-claude.md
+tests/              hook, tool, skill-contract, and pipeline tests
+tools/              publish.py, check_env.py, check_project.py, asset_*.py, etc.
 docs/               hooks.md, wiki/, update/
 ```
+
+## Contributor hard rules
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) is the contributor contract for minimum
+  tool versions, development dependencies, Git-hook order, local validation,
+  CI gates, and `docs/update/next.md` entries.
+- Do not edit `CHANGELOG.md` for an ordinary contribution. Release preparation
+  follows [`docs/update/release-checklist.md`](docs/update/release-checklist.md).
+- Treat `scripts/pre-commit`, `scripts/pre-push`, and `.github/workflows/` as
+  the executable validation sources; keep documentation aligned with them.
 
 ## Shared reference docs (`skills/core/_shared/`)
 
@@ -41,7 +57,7 @@ For the manifest schema, add/remove flows, and publish debugging see
 ## Key Commands
 
 ```bash
-# Run tests (193+ tests)
+# Run the test suite
 python -m pytest tests/ -x -q
 
 # Publish to a game project
@@ -65,15 +81,16 @@ python tools/check_env.py
 - **Layer 1 — Core**:
   - **9 pipeline skills** (run in tag iteration): `gm-scaffold` (once), then per tag: `gm-gdd → gm-asset → gm-build → gm-verify → gm-evaluate → gm-fixgap (loop) → gm-accept → gm-finalize`
   - **1 out-of-pipeline skill**: `gm-rescue` — diagnostic-only, invoked manually when the pipeline is stuck; checks whether the blockage is a godotmaker defect; never modifies game code
-  - **Supporting skills**: game-planner, project-scaffold, godot-api, gecs, input-mapper, headless-build, gdunit-driver, godot-e2e, visual-qa, screenshot, mcp-driver
-- **Layer 2 — Reviewer** (8 skills): physics, animation, ui, tilemap, navigation, shader, audio, particles — each has SKILL.md + gotchas.md + checklist.md
-- **Layer 3 — Pattern**: per game genre (deferred)
+  - **Supporting skills**: game-planner, project-scaffold, godot-api, gecs, input-mapper, headless-build, gdunit-driver, godot-e2e, visual-qa, screenshot, mcp-driver, phantom-camera; gdtoolkit remains shipped but disabled pending reevaluation
+- **Layer 2 — Reviewer**: physics, animation, ui, tilemap, navigation, shader, audio, particles — each has SKILL.md + gotchas.md + checklist.md
+- **Layer 3 — Asset**: public families are declared by `tools/asset_family_registry.py`; runtime families must pass L0-L4 before worker handoff
+- **Layer 4 — Pattern**: per game genre (deferred)
 
 ## Tag-iterative pipeline
 
 Each game project ships in **SemVer-tagged release tags** (v0.1.0, v0.2.0, …). One full pipeline pass produces one tag. `ROADMAP.md` lists the planned tags; the earliest entry without a `git tag` is the **current tag**, and the per-tag root documents (`PLAN.md`, `STRUCTURE.md`, `SCENES.md`) are scoped to it. `gm-finalize` archives the tag's working docs to `docs/tags/<tag>/`, runs `git tag <tag>`, and resets per-tag runtime state for the next round.
 
-Cross-tag (root, accumulating): `GDD.md`, `ROADMAP.md`, `MEMORY.md`, `ASSETS.md` (assets are reusable across tags; each row carries a `Tag` column marking the introducing tag).
+Cross-tag (root, accumulating): `GDD.md`, `ROADMAP.md`, `ASSETS.md` (assets are reusable across tags; each row carries a `Tag` column marking the introducing tag).
 Per-tag (root, overwritten each `/gm-gdd`): `PLAN.md`, `STRUCTURE.md`, `SCENES.md`.
 Per-tag archives (immutable once sealed): `docs/tags/<tag>/`.
 

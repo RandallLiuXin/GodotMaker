@@ -24,7 +24,7 @@ Write `asset` to `.godotmaker/current_role` before any other action.
 ## Resume Check
 
 Asset is re-runnable per tag. Use the current state of `ASSETS.md`,
-`SCENES.md`, `references/`, and `.godotmaker/asset-generation/`.
+`SCENES.md`, and `.godotmaker/asset-generation/`.
 
 Stop when any required input is missing:
 
@@ -33,18 +33,12 @@ Stop when any required input is missing:
    to run `/gm-gdd`.
 3. Missing `**Tag:**` header in `PLAN.md`: tell user to re-run `/gm-gdd`.
 
-Proceed when either check has current-tag work:
+Proceed when any current-tag `ASSETS.md` row, including an Audio table row, has
+status `MISSING`. Under Manager Rule 9, mark unavailable audio rows `deferred`
+before considering the no-work path; only explicitly deferred audio is exempt.
 
-1. Any current-tag `ASSETS.md` row, including an Audio table row, with status
-   `MISSING`. Under Manager Rule 9, mark unavailable audio rows `deferred`
-   before considering the no-work path; only explicitly deferred audio is
-   exempt from this check.
-2. Current-tag scene references whose `references/scene_{name}.png` or report
-   is missing or stale against `SCENES.md` and the Visual Asset Contract.
-
-If neither check has work — no current-tag row is `MISSING`, unavailable audio
-is explicitly `deferred`, and all current-tag scene references are current —
-record the completed asset stage before stopping:
+If no current-tag row is `MISSING`, unavailable audio is explicitly `deferred`,
+and no other work remains, record the completed asset stage before stopping:
 
 ```bash
 python tools/append_stage_event.py asset
@@ -53,8 +47,8 @@ python tools/append_stage_event.py asset
 Then stop with:
 
 ```text
-No MISSING assets and no missing scene references for the current tag. Recommended next: /gm-build.
-If you've added new art files or scenes since last run, just tell me and I'll re-scan.
+No MISSING assets for the current tag. Recommended next: /gm-build.
+If you've added new art files since last run, just tell me and I'll re-scan.
 ```
 
 ## Manager Rules
@@ -99,7 +93,6 @@ Use `references/asset-planner.md` for production-unit selection.
 
 | Production unit | First entry document |
 | --- | --- |
-| `screen-reference` | First-class `screen-reference` Asset Skill |
 | `character-bundle` | First-class `character-bundle` Asset Skill |
 | `fx-bundle` | First-class `fx-bundle` Asset Skill |
 | `ui-kit` | First-class `ui-kit` Asset Skill |
@@ -117,8 +110,8 @@ Use `references/asset-planner.md` for production-unit selection.
 1. Read `ASSETS.md`.
 2. Read `PLAN.md`, `DESIGN.md`, `SCENES.md`, and `STRUCTURE.md`.
 3. Build a current-tag missing list.
-4. Split the list into audio, user-provided candidates, scene references, and
-   generated visual production units.
+4. Split the list into audio, user-provided candidates, and generated visual
+   production units.
 5. Keep prior-tag rows unchanged.
 
 ### Step 2 - Detect User-Provided Files
@@ -160,9 +153,6 @@ Write plan artifacts under `.godotmaker/asset-generation/work/`.
 Use `references/asset-planner.md` for grouping, dependencies, batch rules, and
 plan artifact fields.
 
-Apply the Visual Anchor Gate from `references/asset-planner.md` before
-dispatching generated visual work.
-
 For every generated visual unit, apply Design Rule Selection and Reference
 Conflict Disposition from `references/asset-planner.md`: select the applicable
 `DESIGN.md` sections for the unit's asset type, assign each reference its role,
@@ -197,7 +187,6 @@ there is no production-unit document left to substitute for one:
 | `character-bundle` | First-class Asset Skill: `character-bundle` |
 | `fx-bundle` | First-class Asset Skill: `fx-bundle` |
 | `platform-strip` | First-class Asset Skill: `platform-strip` |
-| `screen-reference` | First-class Asset Skill: `screen-reference` |
 | `ui-kit` | First-class Asset Skill: `ui-kit` |
 | `card-kit` | First-class Asset Skill: `card-kit` |
 | `scene-prop-set` | First-class Asset Skill: `scene-prop-set` |
@@ -213,7 +202,7 @@ Brief shape:
 {one concrete generated visual production unit}
 
 ### Production Contract
-- First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | screen-reference | ui-kit | card-kit | compact-prop-pack | scene-prop-set | tileset}
+- First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | ui-kit | card-kit | compact-prop-pack | scene-prop-set | tileset}
 - Invoke that named Skill with one shared generic asset request. Every
   production unit is a first-class Skill; there is no production-unit document
   to read and no fallback contract for a family.
@@ -224,7 +213,7 @@ One production unit may return many outputs. Register all runtime outputs togeth
 
 - Validate the generic result with `tools/asset_skill_contract_check.py`.
 - On a failed validation, report the failure and do not register it.
-- On success, retain sources and evidence in the producer report and send only the request/result to direct registration. Each runtime output needs a named logical asset row. For runtime families, reference outputs are validated evidence only and are not registered; only reference-only families register a `source_ready` reference row.
+- On success, retain sources and evidence in the producer report and send only the request/result to direct registration. Each runtime output needs a named logical asset row. Reference outputs are validated evidence only and are not registered.
 - The manager consumes the validated result directly. It never reads or writes registration drafts, manifests, or family-specific adapter state.
 ### Provider
 - {references/providers/<provider>.md}
@@ -247,7 +236,7 @@ authority for this unit. Never summarize them, never substitute another
 visual document, and never send only the file path.}
 
 ### Reference Inputs
-- {role: `canonical` | `style` | `screen`} — {path}
+- {role: `canonical` | `style`} — {path}
 {Each entry is attached to the provider call as real image bytes and is visual
 conditioning for the rules above, never a replacement for them. A reference
 that contradicts a listed rule is a blocker, not something the producer drops.
@@ -257,7 +246,6 @@ Write `none` when the unit has no reference input.}
 - Generated output directory: `assets/generated/{asset_type}/{asset_id}/`
 - Raw source paths: {scratch paths under .godotmaker/asset-generation/sources/}
 - Runtime output paths: {final loadable Godot resources for the logical rows}
-- Reference paths: {paths under references/ for reference-only assets}
 - Prompt paths: {paths}
 - Report path: {path}
 
@@ -381,10 +369,8 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
 ```
 
    Missing, duplicated, unexpected, out-of-project, missing, unloadable, or
-   wrong-type runtime outputs fail closed and leave all rows unchanged. Runtime-family
-   reference outputs remain validated evidence and do not create rows; a
-   reference-only family output becomes `source_ready` and is never a worker
-   runtime asset.
+   wrong-type runtime outputs fail closed and leave all rows unchanged.
+   Reference outputs remain validated evidence and do not create rows.
 
 4. Do not create stable entries, manifest pointers, root indexes, bundle
    manifests, or family-specific entry drafts. Do not use an anchor output for
@@ -396,18 +382,16 @@ python tools/asset_result_registration.py --assets-md ASSETS.md --tag <tag> \
 
 For current-tag rows only, use the result-registration command above. Runtime
 rows are complete only with `Status: generated`, an explicit Runtime Type, and
-a final loadable Runtime Path. Only reference-only family rows use
-`Runtime Type: reference` and `Status: source_ready`; they never enter a worker
-snapshot. Reference outputs returned by runtime families remain result evidence,
-not rows. `Generation Params` may retain production inputs and evidence links,
-but never runtime metadata or a manifest pointer.
+a final loadable Runtime Path. Reference outputs remain result evidence, not
+rows. `Generation Params` may retain production inputs and evidence links, but
+never runtime metadata or a manifest pointer.
 
 ## Plan Discipline
 
 ASSETS.md status transitions are forward-only:
 
 ```text
-MISSING -> provided | generated | source_ready | deferred
+MISSING -> provided | generated | deferred
 ```
 
 If the user wants to regenerate an accepted prior asset, add a current-tag row
@@ -416,9 +400,8 @@ or leave a fix task for a later role.
 ## Completion
 
 Runtime rows are complete at `generated` only after direct registration.
-Reference-only rows complete at `source_ready`; runtime-family reference outputs
-remain result evidence. If any output cannot be validated, report the failing
-production unit and leave its rows unchanged.
+Reference outputs remain result evidence. If any output cannot be validated,
+report the failing production unit and leave its rows unchanged.
 
 After ASSETS.md has no current-tag `MISSING` rows and all unavailable
 current-tag audio rows are explicitly `deferred`:
