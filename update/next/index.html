@@ -2848,6 +2848,7 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Publishing existing projects now refreshes GodotMaker-managed runtime hooks for Claude Code, Codex, OpenCode, and Pi while preserving unrelated user configuration and independent extensions (#212) — @RandallLiuXin.</li>
 <li>Replaced the project <code>STYLE.md</code> visual seed with a plain-text <code>DESIGN.md</code> visual contract covering visual identity, nine image-style dimensions, UI visual language, and Do / Don't lists; existing projects migrate on publish, legacy text preserved verbatim.</li>
 <li><code>/gm-asset</code> now reviews every generated asset before registration and <code>/gm-evaluate</code> reviews every scene, both rule by rule against <code>DESIGN.md</code> instead of against reference-image similarity, reporting per-rule evidence, confidence, and severity, and blocking only on high-confidence violations of <code>Don't</code>, <code>MUST</code> / <code>MUST NOT</code>, or explicitly required rules.</li>
 <li>Asset generation now treats <code>DESIGN.md</code> as the visual specification authority and role-labeled reference images as visual conditioning: each production unit carries its applicable design sections verbatim in the request brief, and a conflicting reference is a blocker instead of a silent drop.</li>

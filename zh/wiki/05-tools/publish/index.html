@@ -1106,6 +1106,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="升级已有项目">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        运行时 hook 所有权与冲突
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2802,6 +2819,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="升级已有项目">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        运行时 hook 所有权与冲突
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2988,48 +3022,106 @@ PATCH 和 MINOR 都会执行所有未应用的脚本。完整策略见
 <a href="../../../versioning/"><code>../../versioning.md</code></a>。</p>
 </blockquote>
 <p>完整的升级策略与迁移脚本说明请参见 <a href="../../../versioning/"><code>../../versioning.md</code></a>。各版本变更内容请查阅<a href="../../08-reference/changelog/">更新日志</a>。</p>
+<p>如果目标是 0.x 工作区，请按
+<a href="../../01-getting-started/upgrade-to-v1/">1.0 Agent 辅助升级指南</a> 在干净重新初始化前后
+审计并迁移项目自有文档与资源绑定。</p>
+<h3 id="hook">运行时 hook 所有权与冲突<a class="headerlink" href="#hook" title="Permanent link">&para;</a></h3>
+<p>运行时 hook surface 有明确的所有权。正常的同版本、patch 或 minor 发布会更新
+framework-owned 部分，不会继续保留旧 surface：</p>
+<table>
+<thead>
+<tr>
+<th>Runtime</th>
+<th>Framework-owned</th>
+<th>User-owned</th>
+<th>正常发布行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code</td>
+<td><code>.claude/settings.json</code> 中命令引用 <code>.godotmaker/hooks/</code> 的 hook command 条目</td>
+<td>其他所有顶层键、hook event、matcher 条目和 command</td>
+<td>用当前版本替换框架命令，然后按原顺序保留自定义条目</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td><code>.codex/hooks.json</code> 中命令引用 <code>.godotmaker/hooks/</code> 的 hook command 条目</td>
+<td>其他所有顶层键、hook event、matcher 条目和 command</td>
+<td>使用与 Claude Code 相同的合并策略</td>
+</tr>
+<tr>
+<td>OpenCode</td>
+<td><code>.opencode/plugins/godotmaker-hooks.js</code></td>
+<td><code>.opencode/plugins/</code> 中的其他文件</td>
+<td>覆盖框架 plugin，保留独立 plugin</td>
+</tr>
+<tr>
+<td>Pi</td>
+<td><code>.pi/extensions/godotmaker-runtime.ts</code></td>
+<td><code>.pi/extensions/</code> 中的其他文件</td>
+<td>覆盖框架 extension，保留独立 extension</td>
+</tr>
+</tbody>
+</table>
+<p>不要在 framework-owned plugin 或 extension 文件内定制；下次发布会替换它。
+请把用户逻辑放在独立 plugin/extension 文件或自定义 JSON hook 条目中。</p>
+<ul>
+<li><strong>降级：</strong>仍然需要 <code>--force</code>，并运行 checkout 出来的目标 GodotMaker 版本中的
+  发布器。降级到早于本文 ownership-aware 行为的版本时，旧发布器会完整替换
+  JSON hook config，并删除后重建整个 <code>.opencode/plugins/</code> 或 <code>.pi/extensions/</code>
+  目录；独立 plugin/extension 文件及自定义 JSON hook 条目都会被删除。降级前请
+  提交或备份这些文件和条目，或者在降级后从 VCS 恢复目标项目。<code>--force</code> 不会
+  反向执行迁移或回退项目状态。</li>
+<li><strong>回滚：</strong><code>--force</code> 不是完整回滚。请从 VCS 恢复目标项目，checkout 匹配的
+  GodotMaker 版本，然后重新发布。</li>
+<li><strong>冲突：</strong>如果已有 Claude/Codex 文件不是有效 JSON，或其 <code>hooks</code> schema
+  无法安全合并，正常发布会在改动目标前停止，并保持该文件不变。请修复 JSON，
+  或用 <code>--force</code> 显式替换完整 hook config。OpenCode/Pi 的受管文件不执行合并；
+  其中的本地修改会被覆盖。</li>
+</ul>
 <h2 id="_4">选项<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>codex<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>opencode<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>pi<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 </code></pre></div>
-<p>如果目标是 0.x 工作区，请按
-<a href="../../01-getting-started/upgrade-to-v1/">1.0 Agent 辅助升级指南</a> 在干净重新初始化前后
-审计并迁移项目自有文档与资源绑定。</p>
 <p><code>--force</code> 同时做四件事：</p>
 <ol>
 <li>重新部署前清空所选 agent 的技能目录，移除旧版本遗留的技能文件。</li>
-<li>即使你已自定义过所选 runner 的 hook config 或 adapter（<code>.claude/settings.json</code>、<code>.codex/hooks.json</code>、<code>.opencode/plugins/godotmaker-hooks.js</code> 或 <code>.pi/extensions/godotmaker-runtime.ts</code>），也会强制覆盖。</li>
+<li>即使你已自定义过所选 runner 的 framework-owned surface，也会完整替换其 JSON hook config 或 adapter（<code>.claude/settings.json</code>、<code>.codex/hooks.json</code>、<code>.opencode/plugins/godotmaker-hooks.js</code> 或 <code>.pi/extensions/godotmaker-runtime.ts</code>）。</li>
 <li>跳过 minor 升级的确认提示，并显式授权 major 升级所需的干净重新初始化。</li>
 <li>允许降级。</li>
 </ol>
 <p>对于加了 <code>--force</code> 的 <strong>major</strong> 升级，清理范围更大：所选 agent 的 <code>skills/</code>、<code>agents/</code>、<code>config/</code>、<code>templates/</code>，<code>.godotmaker/hooks/</code>、<code>tools/</code>，以及当前流水线状态（<code>state.json</code>、<code>pipeline_state.json</code>、<code>stage.jsonl</code>、<code>current_role</code>、<code>evaluation.json</code>、<code>verify_report.json</code>、<code>final_report.json</code>、metrics、schema 和迁移 tracker）都会被清空并从头重建。<code>.godotmaker/evaluation-runs/</code>、<code>.godotmaker/gaps/</code> 和 <code>.godotmaker/asset-generation/</code> 下的历史证据会被保留。</p>
 <h2 id="_5">升级时哪些内容会被保留<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p>正常发布不会覆盖以下文件（只有 <code>--force</code> 才能改动所选 runner 的 hook config）：</p>
 <table>
 <thead>
 <tr>
-<th>文件</th>
-<th>保留原因</th>
+<th>User-owned 内容</th>
+<th>正常发布行为</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>CLAUDE.md</code> / <code>AGENTS.md</code></td>
-<td>你可能添加了项目专属指令</td>
+<td>保留项目专属指令</td>
 </tr>
 <tr>
-<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code> / <code>.opencode/plugins/godotmaker-hooks.js</code> / <code>.pi/extensions/godotmaker-runtime.ts</code></td>
-<td>你可能调整过 hook 行为</td>
+<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code> 中的无关键与自定义 hook 条目</td>
+<td>刷新框架 hook command 时保留</td>
+</tr>
+<tr>
+<td><code>.opencode/plugins/</code> / <code>.pi/extensions/</code> 中的独立文件</td>
+<td>刷新指定 GodotMaker adapter 文件时保留</td>
 </tr>
 <tr>
 <td><code>.claude/godotmaker.yaml</code> / <code>.agents/godotmaker.yaml</code> / <code>.opencode/godotmaker.yaml</code> / <code>.pi/godotmaker.yaml</code></td>
-<td>包含本机专属的 Godot 路径</td>
+<td>保留本机专属 Godot 路径</td>
 </tr>
 <tr>
 <td><code>.godotmaker/config.yaml</code></td>
-<td>包含项目专属的偏好设置</td>
+<td>保留项目专属偏好设置</td>
 </tr>
 </tbody>
 </table>

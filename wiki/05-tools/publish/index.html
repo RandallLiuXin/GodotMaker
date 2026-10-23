@@ -1106,6 +1106,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Upgrading an existing project">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#runtime-hook-ownership-and-conflicts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime hook ownership and conflicts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2802,6 +2819,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Upgrading an existing project">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#runtime-hook-ownership-and-conflicts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime hook ownership and conflicts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3007,6 +3041,66 @@ for the full policy.</p>
 <a href="../../01-getting-started/upgrade-to-v1/">1.0 agent-assisted upgrade guide</a> to
 audit and migrate project-owned documents and resource bindings around the
 clean re-initialization.</p>
+<h3 id="runtime-hook-ownership-and-conflicts">Runtime hook ownership and conflicts<a class="headerlink" href="#runtime-hook-ownership-and-conflicts" title="Permanent link">&para;</a></h3>
+<p>Runtime hook surfaces have explicit ownership. A normal same-version, patch,
+or minor publish updates the framework-owned portion instead of leaving an old
+surface in place:</p>
+<table>
+<thead>
+<tr>
+<th>Runtime</th>
+<th>Framework-owned</th>
+<th>User-owned</th>
+<th>Normal publish behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code</td>
+<td>Hook command items in <code>.claude/settings.json</code> whose command references <code>.godotmaker/hooks/</code></td>
+<td>Every other top-level key, hook event, matcher entry, and command</td>
+<td>Replaces framework commands with the current release, then preserves custom entries in their existing order</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>Hook command items in <code>.codex/hooks.json</code> whose command references <code>.godotmaker/hooks/</code></td>
+<td>Every other top-level key, hook event, matcher entry, and command</td>
+<td>Uses the same merge policy as Claude Code</td>
+</tr>
+<tr>
+<td>OpenCode</td>
+<td><code>.opencode/plugins/godotmaker-hooks.js</code></td>
+<td>Every other file in <code>.opencode/plugins/</code></td>
+<td>Overwrites the framework plugin and preserves independent plugins</td>
+</tr>
+<tr>
+<td>Pi</td>
+<td><code>.pi/extensions/godotmaker-runtime.ts</code></td>
+<td>Every other file in <code>.pi/extensions/</code></td>
+<td>Overwrites the framework extension and preserves independent extensions</td>
+</tr>
+</tbody>
+</table>
+<p>Do not customize a framework-owned plugin or extension file; the next publish
+will replace it. Put user logic in a separate plugin/extension file or a custom
+JSON hook entry.</p>
+<ul>
+<li><strong>Downgrade:</strong> still requires <code>--force</code> and runs the publisher from the
+  GodotMaker version you checked out. When downgrading to a version from before
+  the ownership-aware behavior documented here, the older publisher replaces
+  the complete JSON hook config and removes and recreates the entire
+  <code>.opencode/plugins/</code> or <code>.pi/extensions/</code> directory. This deletes independent
+  plugin/extension files as well as custom JSON hook entries. Commit or back up
+  those files and entries before downgrading, or restore the target project from
+  VCS afterward. <code>--force</code> does not reverse migrations or project state.</li>
+<li><strong>Rollback:</strong> <code>--force</code> is not a complete rollback. Restore the target project
+  from VCS, check out the matching GodotMaker version, and publish again.</li>
+<li><strong>Conflict:</strong> if an existing Claude/Codex file is invalid JSON or its <code>hooks</code>
+  schema cannot be safely merged, normal publish stops before changing the
+  target and leaves that file unchanged. Fix the JSON, or use <code>--force</code> to
+  explicitly replace the whole hook config. OpenCode/Pi managed files do not
+  merge; local edits inside them are overwritten.</li>
+</ul>
 <h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>codex<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
@@ -3016,36 +3110,39 @@ clean re-initialization.</p>
 <p><code>--force</code> does four things at once:</p>
 <ol>
 <li>Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.</li>
-<li>Overwrites the selected runner's hook config or adapter (<code>.claude/settings.json</code>, <code>.codex/hooks.json</code>, <code>.opencode/plugins/godotmaker-hooks.js</code>, or <code>.pi/extensions/godotmaker-runtime.ts</code>) even if you've already customized it.</li>
+<li>Replaces the selected runner's complete JSON hook config or framework adapter (<code>.claude/settings.json</code>, <code>.codex/hooks.json</code>, <code>.opencode/plugins/godotmaker-hooks.js</code>, or <code>.pi/extensions/godotmaker-runtime.ts</code>) even if you've customized that framework-owned surface.</li>
 <li>Skips the minor-upgrade confirmation and explicitly authorizes the clean re-initialization required for a major upgrade.</li>
 <li>Allows downgrades.</li>
 </ol>
 <p>For <strong>major</strong> upgrades with <code>--force</code>, the clean-up is more thorough: the selected agent's <code>skills/</code>, <code>agents/</code>, <code>config/</code>, and <code>templates/</code> folders, <code>.godotmaker/hooks/</code>, <code>tools/</code>, and current pipeline state (<code>state.json</code>, <code>pipeline_state.json</code>, <code>stage.jsonl</code>, <code>current_role</code>, <code>evaluation.json</code>, <code>verify_report.json</code>, <code>final_report.json</code>, metrics, schemas, and the migration tracker) are wiped and rebuilt from scratch. Historical evidence under <code>.godotmaker/evaluation-runs/</code>, <code>.godotmaker/gaps/</code>, and <code>.godotmaker/asset-generation/</code> is preserved.</p>
 <h2 id="what-is-preserved-on-upgrade">What is preserved on upgrade<a class="headerlink" href="#what-is-preserved-on-upgrade" title="Permanent link">&para;</a></h2>
-<p>These files are never overwritten by a normal publish (only <code>--force</code> can change the selected runner's hook config):</p>
 <table>
 <thead>
 <tr>
-<th>File</th>
-<th>Why it is kept</th>
+<th>User-owned content</th>
+<th>Normal publish behavior</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>CLAUDE.md</code> / <code>AGENTS.md</code></td>
-<td>You may have added project-specific instructions</td>
+<td>Preserved so project-specific instructions remain intact</td>
 </tr>
 <tr>
-<td><code>.claude/settings.json</code> / <code>.codex/hooks.json</code> / <code>.opencode/plugins/godotmaker-hooks.js</code> / <code>.pi/extensions/godotmaker-runtime.ts</code></td>
-<td>You may have adjusted hook behavior</td>
+<td>Unrelated keys and custom hook entries in <code>.claude/settings.json</code> / <code>.codex/hooks.json</code></td>
+<td>Preserved while framework hook commands are refreshed</td>
+</tr>
+<tr>
+<td>Independent files in <code>.opencode/plugins/</code> / <code>.pi/extensions/</code></td>
+<td>Preserved while the named GodotMaker adapter file is refreshed</td>
 </tr>
 <tr>
 <td><code>.claude/godotmaker.yaml</code> / <code>.agents/godotmaker.yaml</code> / <code>.opencode/godotmaker.yaml</code> / <code>.pi/godotmaker.yaml</code></td>
-<td>Contains your machine-specific Godot path</td>
+<td>Preserved because it contains the machine-specific Godot path</td>
 </tr>
 <tr>
 <td><code>.godotmaker/config.yaml</code></td>
-<td>Contains your project-specific preferences</td>
+<td>Preserved because it contains project-specific preferences</td>
 </tr>
 </tbody>
 </table>
