@@ -48,7 +48,7 @@ omitted reference is a failure. Resolve a request `res://` reference against
 the project root before provider dispatch, while retaining the request path and
 role in provenance.
 
-Use exactly the declared `provider` (`native`, `codex`, `gemini`, `openai`, or `wan`).
+Use exactly the declared `provider` (`native`, `codex`, `gemini`, `openai`, `grok`, or `wan`).
 Do not substitute another provider. Read its provider document before source
 generation. If it cannot execute its declared image-attachment path for every
 reference, STOP with `validation.passed: false` and create no final runtime

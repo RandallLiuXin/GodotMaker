@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-23T00:52:49.196Z",
+  "runtime": "opencode",
+  "opencodeVersion": "1.18.21",
+  "prompt": "Fixed task payload for the adapter-boundary probe.",
+  "fixedPayload": {
+    "hookSpecificOutput": {
+      "hookEventName": "PreToolUse",
+      "additionalContext": "GM_INJECT_MARKER=GM_INJECT_SENTINEL_4f2b9d"
+    }
+  },
+  "interpretation": "The current task pre-hook adapter discards the hook result: it neither propagates the result nor mutates task arguments.",
+  "defectReproduced": true,
+  "runs": [
+    {
+      "repeat": 1,
+      "input": {
+        "subagent_type": "worker",
+        "description": "Exercise the task pre-hook adapter.",
+        "prompt": "Fixed task payload for the adapter-boundary probe."
+      },
+      "output": {
+        "args": {
+          "subagent_type": "worker",
+          "description": "Exercise the task pre-hook adapter.",
+          "prompt": "Fixed task payload for the adapter-boundary probe."
+        }
+      },
+      "returned": null,
+      "sentinel": "GM_INJECT_SENTINEL_4f2b9d",
+      "sentinelInDelegationArgs": false,
+      "sentinelInHookReturn": false,
+      "passed": true
+    },
+    {
+      "repeat": 2,
+      "input": {
+        "subagent_type": "worker",
+        "description": "Exercise the task pre-hook adapter.",
+        "prompt": "Fixed task payload for the adapter-boundary probe."
+      },
+      "output": {
+        "args": {
+          "subagent_type": "worker",
+          "description": "Exercise the task pre-hook adapter.",
+          "prompt": "Fixed task payload for the adapter-boundary probe."
+        }
+      },
+      "returned": null,
+      "sentinel": "GM_INJECT_SENTINEL_4f2b9d",
+      "sentinelInDelegationArgs": false,
+      "sentinelInHookReturn": false,
+      "passed": true
+    }
+  ]
+}

@@ -215,6 +215,12 @@ def test_codex_and_pi_role_tables_match_all_published_agents(tmp_path):
     ) == expected
 
 
+def test_pi_runtime_delegate_closes_child_stdin():
+    runtime = REPO_ROOT / "agent-runtimes" / "pi" / "extensions" / "godotmaker-runtime.ts"
+    text = runtime.read_text(encoding="utf-8")
+    assert 'stdio: ["ignore", "pipe", "pipe"]' in text
+
+
 def test_pi_gitignore_covers_runtime_state(tmp_path):
     publish.ensure_gitignore(tmp_path, publish.AGENT_PI)
     entries = (tmp_path / ".gitignore").read_text(encoding="utf-8")

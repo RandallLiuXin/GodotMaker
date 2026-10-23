@@ -245,7 +245,12 @@ async function runDelegate(root: string, request: DelegateRequest, signal?: Abor
   );
   try {
     const result = await new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
-      const child = spawn(invocation.command, invocation.args, { cwd, shell: false, windowsHide: true });
+      const child = spawn(invocation.command, invocation.args, {
+        cwd,
+        shell: false,
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
       let stdout = "";
       let stderr = "";
       let timedOut = false;
