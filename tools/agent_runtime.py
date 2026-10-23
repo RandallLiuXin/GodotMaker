@@ -72,6 +72,19 @@ def agent_config_root(project_dir: Path, agent: str | None = None) -> Path:
 
 
 def agent_skill_root(project_dir: Path, agent: str | None = None) -> Path:
+    """Return the bundled skill root for a source or published runtime.
+
+    Asset skills live under ``skills/assets`` in the source checkout and are
+    flattened into the selected adapter's skill directory when published.
+    Detect the source checkout before applying the published-runtime mapping so
+    callers can use one resolver in both layouts.
+    """
+    source_root = project_dir / "skills" / "assets"
+    if (
+        (project_dir / "tools" / "agent_runtime.py").is_file()
+        and (source_root / "_shared").is_dir()
+    ):
+        return source_root
     return agent_config_root(project_dir, agent) / "skills"
 
 

@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from agent_runtime import agent_skill_root
 from asset_ui_theme_recipe import UI_ICONS, UI_TEXTURE_STYLEBOXES
 
 
@@ -356,12 +357,30 @@ def build_source_sheet_plan(request: dict[str, Any], scheme: dict[str, Any], *, 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--request", required=True)
-    parser.add_argument("--scheme", required=True)
+    parser.add_argument(
+        "--scheme",
+        default=None,
+        help="Source-sheet scheme override (default: bundled ui-kit scheme)",
+    )
     parser.add_argument("--rendering-medium", required=True)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
+    if args.scheme:
+        scheme_path = Path(args.scheme)
+    else:
+        runtime_root = Path(__file__).resolve().parents[1]
+        scheme_path = (
+            agent_skill_root(runtime_root)
+            / "ui-kit"
+            / "references"
+            / "source-sheet-scheme.json"
+        )
     try:
-        plan = build_source_sheet_plan(_read_json(Path(args.request)), _read_json(Path(args.scheme)), rendering_medium=args.rendering_medium)
+        plan = build_source_sheet_plan(
+            _read_json(Path(args.request)),
+            _read_json(scheme_path),
+            rendering_medium=args.rendering_medium,
+        )
     except UISourcePlanError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
