@@ -139,21 +139,7 @@ def test_every_asset_family_selector_accepts_canonical_provider(provider):
     assert check_request(request)["ok"] is True
 
 
-@pytest.mark.parametrize(
-    "skill_name",
-    [
-        "background-map",
-        "card-kit",
-        "character-bundle",
-        "compact-prop-pack",
-        "fx-bundle",
-        "platform-strip",
-        "scene-prop-set",
-        "screen-reference",
-        "tileset",
-        "ui-kit",
-    ],
-)
+@pytest.mark.parametrize("skill_name", sorted(ASSET_TYPES))
 def test_family_provider_dispatch_docs_name_every_canonical_provider(skill_name):
     content = (REPO_ROOT / "skills" / "assets" / skill_name / "SKILL.md").read_text(
         encoding="utf-8"
