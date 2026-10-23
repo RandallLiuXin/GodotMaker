@@ -3357,9 +3357,9 @@
 <p>Reviewer（审查员）技能是八个专项领域清单，覆盖物理、UI、音频、动画等方向。它们不是斜杠命令——你不会直接输入它们。相反，一个 Reviewer 子 Agent（自动启动的独立 Claude 实例）会在 <code>/gm-build</code> 和 <code>/gm-fixgap</code> 期间加载相关的 Reviewer 技能，对刚写好的代码逐条核对已知的 Godot 坑点，并汇报发现的问题。</p>
 <p>完整列表以及每个 Reviewer 能捕获哪类问题，见 <a href="../reviewer-skills/">Reviewer 技能</a>。</p>
 <h2 id="asset">第三层 — Asset 技能<a class="headerlink" href="#asset" title="Permanent link">&para;</a></h2>
-<p>Asset Skill 负责有类型的视觉生产 family。Runtime family 必须通过 L0-L4，原生
-Godot artifact 才能进入 worker handoff；reference-only family 停在
-<code>source_ready</code>。Registry 驱动的 family 与 artifact 矩阵见
+<p>Asset Skill 负责有类型的视觉生产 family。每个 family 都是 runtime family：
+必须通过 L0-L4，原生 Godot artifact 才会登记为 <code>generated</code> 并进入 worker
+handoff。Registry 驱动的 family 与 artifact 矩阵见
 <a href="../asset-skills/">Asset 技能</a>。</p>
 <h2 id="_2">技能是如何部署的<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <p>技能文件存放在本仓库的 <code>skills/core/</code>、<code>skills/reviewer/</code> 和 <code>skills/assets/</code> 目录下。当你运行 <code>python tools/publish.py &lt;project&gt;</code> 时，每个非私有的技能目录都会被复制到 <code>&lt;project&gt;/.claude/skills/</code>，Claude Code 会自动找到它们。运行 <code>python tools/publish.py --agent codex &lt;project&gt;</code> 时，publish 会把同一套技能写入 <code>&lt;project&gt;/.agents/skills/</code>，并附带 Codex runtime mapping references，让 Codex 能解释 <code>.claude/...</code> 路径和 <code>/gm-*</code> 命令这类 Claude-first 表面语义。Asset 的 <code>_shared</code> 不是可调用的 Skill；它会以 schema、compiler registry 和 L0-L4 validator 运行时的形式发布到 <code>&lt;project&gt;/.godotmaker/asset-runtime/</code>。</p>

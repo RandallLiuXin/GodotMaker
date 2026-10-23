@@ -3359,11 +3359,13 @@ contract defines when an entry is required, its format, and allowed categories.<
 <h2 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Added a canonical agent-operation contract with executable Claude Code, Codex, OpenCode, and Pi mappings, including runtime-neutral supporting-skill and visual QA handoffs (#226) — @RandallLiuXin.</li>
+<li>Added a first-class <code>portrait</code> Asset Skill that generates and validates one character portrait <code>Texture2D</code> for a UI display slot, optionally conditioned on the character's identity anchor, so the <code>ASSETS.md</code> template no longer routes portraits through <code>background-map</code> (#229) — @RandallLiuXin.</li>
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Pi delegation now resolves each published role's configured provider/model, with explicit dispatch overrides, into subprocess <code>--model</code> arguments while inheriting Pi's active model for generic Claude aliases; Codex and Pi document all seven role mappings (#225) — @RandallLiuXin.</li>
 <li>Aligned generated GAP provenance and archives with evaluation-run manifests (including collision-free repeated repair rounds), centralized worker, reviewer, and verifier dispatch schemas, and resolved SCENES viewport examples from the project contract (#221) — @RandallLiuXin.</li>
+<li>Runtime <code>ASSETS.md</code> rows now share one status vocabulary, <code>MISSING</code> to <code>provided</code>, <code>generated</code>, or <code>deferred</code>, and Asset Skill source layouts are limited to the physical <code>single</code>, <code>grid_sheet</code>, <code>region_atlas</code>, <code>tile_atlas</code>, and <code>theme_recipe</code> arrangements (#229) — @RandallLiuXin.</li>
 <li>Publishing existing projects now refreshes GodotMaker-managed runtime hooks for Claude Code, Codex, OpenCode, and Pi while preserving unrelated user configuration and independent extensions (#212) — @RandallLiuXin.</li>
 <li>Unified the asset image provider contract across config, schemas, validation, family dispatch, documentation, and generation; added Grok as a supported API provider and documented the Wan model selector (#214) — @RandallLiuXin.</li>
 <li>Replaced the project <code>STYLE.md</code> visual seed with a plain-text <code>DESIGN.md</code> visual contract covering visual identity, nine image-style dimensions, UI visual language, and Do / Don't lists; existing projects migrate on publish, legacy text preserved verbatim.</li>

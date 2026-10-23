@@ -3324,60 +3324,76 @@ validation. The authoritative inventory is
 <td>background-map</td>
 <td>default</td>
 <td>Texture2D</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>card-kit</td>
 <td>default</td>
 <td>AtlasTexture, StyleBoxTexture, Theme</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>character-bundle</td>
 <td>default</td>
 <td>SpriteFrames</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>compact-prop-pack</td>
 <td>default</td>
 <td>AtlasTexture</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>fx-bundle</td>
 <td>static, animated</td>
 <td>SpriteFrames, Texture2D</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>platform-strip</td>
 <td>single, atlas</td>
 <td>AtlasTexture, Texture2D</td>
-<td>ready</td>
+<td>generated</td>
+</tr>
+<tr>
+<td>portrait</td>
+<td>default</td>
+<td>Texture2D</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>scene-prop-set</td>
 <td>default</td>
 <td>AtlasTexture</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>tileset</td>
 <td>default</td>
 <td>TileSet</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>ui-kit</td>
 <td>default</td>
 <td>AtlasTexture, StyleBoxTexture, Theme</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 </tbody>
 </table>
 <p>Each family returns one or more native Godot artifacts after its complete
 validation path succeeds.</p>
+<p>Every runtime <code>ASSETS.md</code> row moves forward only, from <code>MISSING</code> to
+<code>provided</code> (a user-supplied file), <code>generated</code> (a registered family result),
+or <code>deferred</code>. A source layout names only the physical pixel arrangement:
+<code>single</code>, <code>grid_sheet</code>, <code>region_atlas</code>, <code>tile_atlas</code>, or <code>theme_recipe</code>.
+A <code>reference</code> output, such as a character identity anchor, is evidence for a
+runtime family and never becomes a row or a layout.</p>
+<p><code>portrait</code> owns a character portrait for a UI display slot. It may take the
+character's identity anchor as an optional <code>canonical</code> reference, while
+<code>background-map</code> stays limited to scenic backgrounds, maps, and parallax
+plates.</p>
 <p>To inspect or verify the same inventory directly from the source of truth, run:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/asset_family_registry.py<span class="w"> </span>--output<span class="w"> </span>json
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>tools/asset_family_registry.py<span class="w"> </span>--check
@@ -3415,7 +3431,7 @@ result from being registered in <code>ASSETS.md</code> or handed to a worker.</p
 </tr>
 </tbody>
 </table>
-<p>Runtime output reaches <code>ready</code> only after L0-L4 pass. Provider
+<p>Runtime output reaches <code>generated</code> only after L0-L4 pass. Provider
 availability and visual quality are separate evidence: a green structural
 ladder does not claim that a remote provider was available or that its art met a
 particular creative direction.</p>

@@ -3323,59 +3323,72 @@
 <td>background-map</td>
 <td>default</td>
 <td>Texture2D</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>card-kit</td>
 <td>default</td>
 <td>AtlasTexture, StyleBoxTexture, Theme</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>character-bundle</td>
 <td>default</td>
 <td>SpriteFrames</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>compact-prop-pack</td>
 <td>default</td>
 <td>AtlasTexture</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>fx-bundle</td>
 <td>static, animated</td>
 <td>SpriteFrames, Texture2D</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>platform-strip</td>
 <td>single, atlas</td>
 <td>AtlasTexture, Texture2D</td>
-<td>ready</td>
+<td>generated</td>
+</tr>
+<tr>
+<td>portrait</td>
+<td>default</td>
+<td>Texture2D</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>scene-prop-set</td>
 <td>default</td>
 <td>AtlasTexture</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>tileset</td>
 <td>default</td>
 <td>TileSet</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 <tr>
 <td>ui-kit</td>
 <td>default</td>
 <td>AtlasTexture, StyleBoxTexture, Theme</td>
-<td>ready</td>
+<td>generated</td>
 </tr>
 </tbody>
 </table>
 <p>各 family 只有在完整验证路径成功后，才会返回一个或多个原生 Godot artifact。</p>
+<p>每条 runtime <code>ASSETS.md</code> 行只能向前推进：从 <code>MISSING</code> 变为 <code>provided</code>（用户提供的文件）、
+<code>generated</code>（已登记的 family result）或 <code>deferred</code>。Source layout 只描述物理像素排列：
+<code>single</code>、<code>grid_sheet</code>、<code>region_atlas</code>、<code>tile_atlas</code> 或 <code>theme_recipe</code>。
+<code>reference</code> 输出（例如角色 identity anchor）是 runtime family 的证据，永远不会成为
+表格行或 layout。</p>
+<p><code>portrait</code> 负责 UI 展示位中的角色立绘。它可以把角色的 identity anchor 作为可选的
+<code>canonical</code> reference 输入；<code>background-map</code> 仍只负责场景背景、地图和视差背景板。</p>
 <p>要直接从真值来源查看或校验同一份 inventory，请运行：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/asset_family_registry.py<span class="w"> </span>--output<span class="w"> </span>json
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>tools/asset_family_registry.py<span class="w"> </span>--check
@@ -3413,7 +3426,7 @@
 </tr>
 </tbody>
 </table>
-<p>Runtime 输出只有在 L0-L4 全部通过后才会到达 <code>ready</code>。Provider 可用性与视觉质量属于独立证据：
+<p>Runtime 输出只有在 L0-L4 全部通过后才会到达 <code>generated</code>。Provider 可用性与视觉质量属于独立证据：
 结构验证全绿，并不代表远程 provider 一定可用，也不代表其美术符合特定创作方向。</p>
 <h2 id="_1">相关页面<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
 <ul>
