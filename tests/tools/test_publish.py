@@ -42,6 +42,9 @@ from publish import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PUBLISHED_PROJECT_CONTRACT_FIXTURES = (
+    REPO_ROOT / "tests" / "fixtures" / "project-contracts"
+)
 
 
 PRIMARY_ROLE_SKILLS = [
@@ -1836,33 +1839,30 @@ class TestOpenCodePublishParity:
         assert not (target / ".opencode" / "templates" / "MEMORY.md").exists()
         assert not (target / ".opencode" / "templates" / "memory_subsystem.md").exists()
 
+    @pytest.mark.parametrize("source_version", ["v1.0.0", "v1.1.0"])
     @pytest.mark.parametrize("level", ["MINOR", "MAJOR"])
     def test_upgrade_rewrites_generated_contracts_and_preserves_legacy_data(
-        self, tmp_path, monkeypatch, level
+        self, tmp_path, monkeypatch, capsys, level, source_version
     ):
-        legacy_index = "MEMORY" + ".md"
-        legacy_directory = "memory" + "/"
+        legacy_index = "MEMORY.md"
+        legacy_directory = "memory/"
+        fixture_root = PUBLISHED_PROJECT_CONTRACT_FIXTURES / source_version
 
         def seed_upgrade_project(target):
+            # These fixtures are frozen verbatim from the published tag templates.
+            generated_instructions = (fixture_root / "CLAUDE.md").read_text(
+                encoding="utf-8"
+            )
+            (target / "CLAUDE.md").write_text(
+                generated_instructions,
+                encoding="utf-8",
+            )
             (target / "AGENTS.md").write_text(
-                "# AGENTS.md\n\n"
-                "Custom project guidance stays.\n\n"
-                f"- **Read `{legacy_index}` before dispatching a worker.** "
-                "It records stable architecture and project constraints across "
-                f"tags. Workers never write it or the root `{legacy_directory}` directory.\n"
-                f"- **`DESIGN.md`, `ASSETS.md`, and `{legacy_index}` accumulate "
-                "across tags.** Don't split per tag — append rows / entries; the "
-                "`Tag` column on each ASSETS row marks the introducing tag.\n"
-                "| Architecture decisions + project constraints (cross-tag) | "
-                f"`{legacy_index}` (index) |\n",
+                generated_instructions.replace("# CLAUDE.md", "# AGENTS.md", 1),
                 encoding="utf-8",
             )
             (target / "TOC.md").write_text(
-                "# Document Index\n\n"
-                f"- `{legacy_index}` — Stable architecture decisions and "
-                "project constraints\n"
-                f"- `{legacy_directory}` — Optional per-system architecture "
-                "and constraint details\n",
+                (fixture_root / "TOC.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             (target / legacy_index).write_text("legacy index\n", encoding="utf-8")
@@ -1877,22 +1877,27 @@ class TestOpenCodePublishParity:
             level=level,
         )
 
-        instructions = (target / "AGENTS.md").read_text(encoding="utf-8")
         toc = (target / "TOC.md").read_text(encoding="utf-8")
-        assert "Custom project guidance stays." in instructions
-        assert legacy_index not in instructions
-        assert legacy_directory not in instructions
-        assert "Read `STRUCTURE.md` before dispatching a worker." in instructions
-        assert (
-            "Architecture ownership, dependencies, ordering, and invariants"
-            in instructions
-        )
+        for filename in ("CLAUDE.md", "AGENTS.md"):
+            instructions = (target / filename).read_text(encoding="utf-8")
+            assert legacy_index not in instructions
+            assert legacy_directory not in instructions
+            assert "Read `STRUCTURE.md` before dispatching a worker." in instructions
+            assert "`DESIGN.md` and `ASSETS.md` accumulate across tags." in instructions
+            assert (
+                "Architecture ownership, dependencies, ordering, and invariants"
+                in instructions
+            )
         assert legacy_index not in toc
         assert legacy_directory not in toc
         assert (target / legacy_index).read_text(encoding="utf-8") == "legacy index\n"
         assert (target / legacy_directory / "system.md").read_text(
             encoding="utf-8"
         ) == "legacy detail\n"
+        assert (
+            "still contains custom legacy architecture references"
+            not in capsys.readouterr().out
+        )
 
     def test_custom_lines_are_preserved_and_warned(self, tmp_path, capsys):
         legacy_index = "MEMORY" + ".md"

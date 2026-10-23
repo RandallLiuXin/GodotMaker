@@ -12,6 +12,9 @@ DEPRECATION_DOCS = {
     "docs/wiki/01-getting-started/upgrade-to-v1.md",
     "docs/zh/wiki/01-getting-started/upgrade-to-v1.md",
 }
+LEGACY_REFERENCE_IMPLEMENTATIONS = {
+    "tools/publish.py",
+}
 
 
 def test_removed_templates_are_absent_and_structure_owns_architecture_contract():
@@ -87,6 +90,8 @@ def test_active_framework_contracts_have_no_removed_subsystem_references():
                 continue
             relative = path.relative_to(REPO_ROOT).as_posix()
             if relative.startswith("docs/update/"):
+                continue
+            if relative in LEGACY_REFERENCE_IMPLEMENTATIONS:
                 continue
             content = path.read_text(encoding="utf-8")
             for line_number, line in enumerate(content.splitlines(), start=1):

@@ -406,46 +406,75 @@ def render_agent_template_tree(root: Path, adapter: AgentPublishAdapter) -> None
         file.replace(file.with_name("agents.md.tmpl"))
 
 
-LEGACY_MEMORY_INDEX = "MEMORY" + ".md"
-LEGACY_MEMORY_DIRECTORY = "memory" + "/"
+LEGACY_MEMORY_INDEX = "MEMORY.md"
+LEGACY_MEMORY_DIRECTORY = "memory/"
+
+CURRENT_STRUCTURE_READ_LINE = (
+    "- **Read `STRUCTURE.md` before dispatching a worker.** It owns "
+    "architecture boundaries, component ownership, dependencies, ordering "
+    "constraints, and stable invariants as of the end of the current tag."
+)
+CURRENT_ACCUMULATION_LINE = (
+    "- **`DESIGN.md` and `ASSETS.md` accumulate across tags.** Don't split "
+    "per tag — append rows / entries; the `Tag` column on each ASSETS row "
+    "marks the introducing tag."
+)
+CURRENT_STRUCTURE_ROUTE_LINE = (
+    "| Architecture ownership, dependencies, ordering, and invariants | "
+    "`STRUCTURE.md` |"
+)
 
 LEGACY_ROOT_INSTRUCTION_LINES = {
     (
         f"- **Read `{LEGACY_MEMORY_INDEX}` before dispatching a worker.** "
+        "Past mistakes are indexed there — workers will repeat them otherwise. "
+        f"`{LEGACY_MEMORY_INDEX}` accumulates across tags."
+    ): CURRENT_STRUCTURE_READ_LINE,
+    (
+        f"- **Read `{LEGACY_MEMORY_INDEX}` before dispatching a worker.** "
         "It records stable architecture and project constraints across tags. "
         f"Workers never write it or the root `{LEGACY_MEMORY_DIRECTORY}` directory."
-    ): (
-        "- **Read `STRUCTURE.md` before dispatching a worker.** It owns "
-        "architecture boundaries, component ownership, dependencies, ordering "
-        "constraints, and stable invariants as of the end of the current tag."
-    ),
+    ): CURRENT_STRUCTURE_READ_LINE,
+    (
+        f"- **`STYLE.md`, `ASSETS.md`, and `{LEGACY_MEMORY_INDEX}` accumulate "
+        "across tags.** Don't split per tag — append rows / entries; the `Tag` "
+        "column on each ASSETS row marks the introducing tag."
+    ): CURRENT_ACCUMULATION_LINE,
     (
         f"- **`DESIGN.md`, `ASSETS.md`, and `{LEGACY_MEMORY_INDEX}` accumulate "
         "across tags.** Don't split per tag — append rows / entries; the `Tag` "
         "column on each ASSETS row marks the introducing tag."
-    ): (
-        "- **`DESIGN.md` and `ASSETS.md` accumulate across tags.** Don't split "
-        "per tag — append rows / entries; the `Tag` column on each ASSETS row "
-        "marks the introducing tag."
-    ),
+    ): CURRENT_ACCUMULATION_LINE,
+    (
+        "| Past discoveries + gotchas (cross-tag) | "
+        f"`{LEGACY_MEMORY_INDEX}` (index) |"
+    ): CURRENT_STRUCTURE_ROUTE_LINE,
     (
         "| Architecture decisions + project constraints (cross-tag) | "
         f"`{LEGACY_MEMORY_INDEX}` (index) |"
-    ): (
-        "| Architecture ownership, dependencies, ordering, and invariants | "
-        "`STRUCTURE.md` |"
-    ),
+    ): CURRENT_STRUCTURE_ROUTE_LINE,
 }
 
 LEGACY_TOC_LINES = {
+    f"- `{LEGACY_MEMORY_INDEX}` — Knowledge base index, append-only across tags": None,
     (
         f"- `{LEGACY_MEMORY_INDEX}` — Stable architecture decisions and "
         "project constraints"
     ): None,
+    f"- `{LEGACY_MEMORY_DIRECTORY}` — Per-system memory subsystem files": None,
     (
         f"- `{LEGACY_MEMORY_DIRECTORY}` — Optional per-system architecture "
         "and constraint details"
     ): None,
+    (
+        "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `STYLE.md`, "
+        f"`SCENES.md`, `{LEGACY_MEMORY_INDEX}` — frozen working docs "
+        "(ASSETS.md is cross-tag and stays at the root)"
+    ): (
+        "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `STYLE.md`, "
+        "`SCENES.md` — frozen working docs (ASSETS.md is cross-tag and stays "
+        "at the root)"
+    ),
     (
         "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `DESIGN.md`, "
         f"`SCENES.md`, `{LEGACY_MEMORY_INDEX}` — frozen working docs "
