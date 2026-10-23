@@ -3159,10 +3159,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#askuserquestion-for-user-confirmations" class="md-nav__link">
+  <a href="#runtime-mapped-questions-for-user-confirmations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        AskUserQuestion for User Confirmations
+        Runtime-Mapped Questions for User Confirmations
       
     </span>
   </a>
@@ -3251,10 +3251,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#askuserquestion-for-user-confirmations" class="md-nav__link">
+  <a href="#runtime-mapped-questions-for-user-confirmations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        AskUserQuestion for User Confirmations
+        Runtime-Mapped Questions for User Confirmations
       
     </span>
   </a>
@@ -3293,14 +3293,18 @@ Git worktree requires at least one commit — without it:
 Push is NOT required, only a local commit.</p>
 <p><strong>Discovered:</strong> 3 failures across 3-game testing. Workaround was falling
 back to sequential execution, but the root fix is simply committing first.</p>
-<h2 id="askuserquestion-for-user-confirmations">AskUserQuestion for User Confirmations<a class="headerlink" href="#askuserquestion-for-user-confirmations" title="Permanent link">&para;</a></h2>
+<h2 id="runtime-mapped-questions-for-user-confirmations">Runtime-Mapped Questions for User Confirmations<a class="headerlink" href="#runtime-mapped-questions-for-user-confirmations" title="Permanent link">&para;</a></h2>
 <p><strong>What:</strong> Role skills that need a human decision (<code>/gm-scaffold</code> for project
 parameters, <code>/gm-gdd</code> for GDD approval, <code>/gm-asset</code> for art-direction confirmation,
-<code>/gm-accept</code> for the final go/no-go) must use the AskUserQuestion tool, not
-plain-text prompts.</p>
+<code>/gm-accept</code> for the final go/no-go) must use the runtime mapping's
+<code>ask_user_question</code> operation, not assume Claude Code's <code>AskUserQuestion</code> tool.
+Claude Code maps it to <code>AskUserQuestion</code>, Codex to <code>request_user_input</code> or a
+gated normal question, OpenCode to <code>question</code>, and Pi to its documented prompt
+fallback.</p>
 <p><strong>Why:</strong> Plain-text questions are easy to miss or ignore mid-session.
-AskUserQuestion creates a structured interaction that reliably pauses the
-session for user response, so the role doesn't drift into assumptions.</p>
+The mapped operation uses a structured interaction when the runtime provides
+one and otherwise stops at an explicit question or non-interactive gate, so the
+role does not drift into assumptions.</p>
 
 
 

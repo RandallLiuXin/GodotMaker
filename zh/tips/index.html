@@ -3159,10 +3159,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#askuserquestion" class="md-nav__link">
+  <a href="#runtime" class="md-nav__link">
     <span class="md-ellipsis">
       
-        用户确认使用 AskUserQuestion
+        用户确认使用 runtime 映射提问
       
     </span>
   </a>
@@ -3251,10 +3251,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#askuserquestion" class="md-nav__link">
+  <a href="#runtime" class="md-nav__link">
     <span class="md-ellipsis">
       
-        用户确认使用 AskUserQuestion
+        用户确认使用 runtime 映射提问
       
     </span>
   </a>
@@ -3292,10 +3292,9 @@ Git worktree 要求至少有一个提交——没有提交时会报错：
 </code></pre></div>
 不需要推送到远端，只需要本地提交即可。</p>
 <p><strong>发现经过：</strong> 在 3 个游戏的测试中出现了 3 次失败。当时的应急方案是回退到顺序执行，但根本解决方案就是先提交一次。</p>
-<h2 id="askuserquestion">用户确认使用 AskUserQuestion<a class="headerlink" href="#askuserquestion" title="Permanent link">&para;</a></h2>
-<p><strong>是什么：</strong> 需要人工决策的角色技能（<code>/gm-scaffold</code> 询问项目参数、<code>/gm-gdd</code> 询问 GDD 审批、<code>/gm-asset</code> 询问美术方向确认、<code>/gm-accept</code> 询问最终通过/拒绝）必须使用 AskUserQuestion 工具，而不是纯文本提问。</p>
-<p><strong>为什么：</strong> 纯文本问题在会话中间很容易被错过或忽略。
-AskUserQuestion 创建了一个结构化交互，能可靠地暂停会话等待用户响应，防止角色在无人确认的情况下自行做出假设。</p>
+<h2 id="runtime">用户确认使用 runtime 映射提问<a class="headerlink" href="#runtime" title="Permanent link">&para;</a></h2>
+<p><strong>是什么：</strong> 需要人工决策的角色技能（<code>/gm-scaffold</code> 询问项目参数、<code>/gm-gdd</code> 询问 GDD 审批、<code>/gm-asset</code> 询问美术方向确认、<code>/gm-accept</code> 询问最终通过/拒绝）必须使用 runtime mapping 中的 <code>ask_user_question</code> operation，不能假定当前一定存在 Claude Code 的 <code>AskUserQuestion</code> 工具。Claude Code 映射到 <code>AskUserQuestion</code>，Codex 映射到 <code>request_user_input</code> 或带 gate 的普通提问，OpenCode 映射到 <code>question</code>，Pi 使用其文档化的提问回退路径。</p>
+<p><strong>为什么：</strong> 纯文本问题在会话中间很容易被错过或忽略。映射后的 operation 会在 runtime 支持时使用结构化交互，否则停在明确问题或非交互 gate 上，防止角色在无人确认的情况下自行做出假设。</p>
 
 
 
