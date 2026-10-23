@@ -3246,7 +3246,8 @@ by incremental migration. <code>publish.py</code> refuses to upgrade across MAJO
 boundaries without <code>--force</code>, which performs a clean re-initialization.</p>
 <p>Full rebuild re-deploys framework code and removes incompatible current state:
 - The selected runner's <code>skills/</code>, <code>agents/</code>, <code>config/</code>, and <code>templates/</code>
-- <code>.godotmaker/hooks/</code>, <code>.godotmaker/stage_schemas.json</code>
+- <code>.godotmaker/hooks/</code>, <code>.godotmaker/asset-runtime/</code>,
+  <code>.godotmaker/stage_schemas.json</code>
 - Current pipeline state: <code>.godotmaker/state.json</code>, <code>pipeline_state.json</code>,
   <code>stage.jsonl</code>, <code>current_role</code>, <code>evaluation.json</code>, <code>verify_report.json</code>,
   and <code>final_report.json</code>
@@ -3272,14 +3273,13 @@ before resuming the pipeline.</p>
 <p>Downgrading (e.g., <code>0.4.0 → 0.3.0</code>) is blocked by default. Use <code>--force</code> to override:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 </code></pre></div>
-<p>A forced downgrade still calls <code>run_migrations()</code> for routing consistency,
-but in practice the call is a no-op: <code>applied_migrations.json</code> already
-records every migration applied at the higher version, and the older
-release ships with a subset of those scripts on disk, so <code>pending = disk
-- applied</code> is empty. Migrations are not "rolled back" — that would
-require explicit down-migration scripts, which this system does not
-ship. If you need to roll back a schema change, restore the target
-project from a VCS snapshot.</p>
+<p>A forced downgrade follows the normal tracked-state path and calls
+<code>run_migrations()</code>. It applies any migration script present in the older
+checkout whose ID is not already recorded in <code>applied_migrations.json</code>; for a
+normally published higher-version target this is usually a no-op. It never
+reverses already-applied migrations. The system does not ship down-migration
+scripts, so restore the target project from a VCS snapshot if a schema change
+must be rolled back.</p>
 <h3 id="re-publish-same-version">Re-publish Same Version<a class="headerlink" href="#re-publish-same-version" title="Permanent link">&para;</a></h3>
 <p>Re-publishing the same version is always allowed. This is useful for
 picking up local changes during development.</p>
@@ -3332,6 +3332,10 @@ deployed.</p>
 <tr>
 <td><code>.godotmaker/hooks/</code></td>
 <td>All hook scripts</td>
+</tr>
+<tr>
+<td><code>.godotmaker/asset-runtime/</code></td>
+<td>Shared asset schemas, compilers, validators, and provider references</td>
 </tr>
 <tr>
 <td>Selected runner <code>config/</code></td>

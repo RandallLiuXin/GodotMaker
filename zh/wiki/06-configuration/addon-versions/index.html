@@ -2836,7 +2836,16 @@
 
 <h1 id="addon">Addon 版本管理<a class="headerlink" href="#addon" title="Permanent link">&para;</a></h1>
 <p><code>addon_versions.json</code> 固定了 GodotMaker 所使用的 Godot addon 的精确版本——目前包括用于 ECS 的 <code>gecs</code>、用于单元测试的 <code>gdUnit4</code>，以及用于端到端测试的 <code>godot-e2e</code>。将版本与 Godot 引擎版本绑定，可以防止升级时悄无声息地破坏你的构建。</p>
-<p>该文件位于 GodotMaker 仓库的 <code>config/addon_versions.json</code>，而不是你的游戏项目内部。</p>
+<p>源文件位于 GodotMaker 仓库的 <code>config/addon_versions.json</code>。发布时，它会复制到
+所选 runtime 在游戏项目内的配置目录：</p>
+<ul>
+<li>Claude Code：<code>.claude/config/addon_versions.json</code></li>
+<li>Codex：<code>.agents/config/addon_versions.json</code></li>
+<li>OpenCode：<code>.opencode/config/addon_versions.json</code></li>
+<li>Pi：<code>.pi/config/addon_versions.json</code></li>
+</ul>
+<p><code>/gm-scaffold</code> 读取这个发布后的 runtime 本地副本；在游戏项目中检查版本锁定时，
+请使用 <code>.godotmaker/config.yaml</code> 所选 runtime 对应的路径。</p>
 <h2 id="_1">文件内容<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
 <p>这个文件将每个支持的 Godot 版本映射到一组 addon 条目。每个条目记录了 GitHub 仓库地址、要下载的精确 git tag，以及文件在项目中的安装位置。当前的版本锁定如下：</p>
 <table>

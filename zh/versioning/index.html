@@ -3231,7 +3231,8 @@
 <p>MAJOR 版本变更意味着无法通过增量迁移处理的破坏性变更。<code>publish.py</code> 拒绝跨 MAJOR 边界升级，除非使用 <code>--force</code>，该选项会执行干净的重新初始化。</p>
 <p>全量重建会重新部署框架代码，并清除不兼容的当前状态：
 - 所选 runner 的 <code>skills/</code>、<code>agents/</code>、<code>config/</code>、<code>templates/</code>
-- <code>.godotmaker/hooks/</code>、<code>.godotmaker/stage_schemas.json</code>
+- <code>.godotmaker/hooks/</code>、<code>.godotmaker/asset-runtime/</code>、
+  <code>.godotmaker/stage_schemas.json</code>
 - 当前流水线状态：<code>.godotmaker/state.json</code>、<code>pipeline_state.json</code>、
   <code>stage.jsonl</code>、<code>current_role</code>、<code>evaluation.json</code>、<code>verify_report.json</code>、
   <code>final_report.json</code>
@@ -3252,11 +3253,10 @@
 <p>降级（如 <code>0.4.0 → 0.3.0</code>）默认被阻止。使用 <code>--force</code> 可以绕过限制：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--force<span class="w"> </span>/path/to/my-game
 </code></pre></div>
-<p>强制降级仍然调用 <code>run_migrations()</code>（保持路由一致性），但实际上是 no-op：
-<code>applied_migrations.json</code> 记录的是高版本应用过的全部迁移，而老版本磁盘上只有
-其中一个子集，所以 <code>pending = disk - applied</code> 恒为空。迁移不会"回滚"——
-要回滚 schema 变更需要显式的反向迁移脚本，本系统不提供。如果确实需要回滚某次
-schema 变更，请从 VCS 快照恢复目标项目。</p>
+<p>强制降级会沿用已有状态的正常路径并调用 <code>run_migrations()</code>。旧版 checkout 中凡是
+存在、但 ID 尚未记录在 <code>applied_migrations.json</code> 里的迁移脚本，仍会被执行；对于
+经过正常发布的高版本目标，这通常是 no-op。它绝不会反向撤销已应用的迁移。本系统
+不提供 down-migration 脚本；如果必须回滚 schema 变更，请从 VCS 快照恢复目标项目。</p>
 <h3 id="_10">重新发布相同版本<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
 <p>重新发布相同版本始终允许，在开发期间拾取本地变更时很有用。</p>
 <h2 id="_11">会话中的版本显示<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h2>
@@ -3297,6 +3297,10 @@ schema 变更，请从 VCS 快照恢复目标项目。</p>
 <tr>
 <td><code>.godotmaker/hooks/</code></td>
 <td>所有 Hook 脚本</td>
+</tr>
+<tr>
+<td><code>.godotmaker/asset-runtime/</code></td>
+<td>共用素材 schema、编译器、验证器和 provider 参考文档</td>
 </tr>
 <tr>
 <td>所选 runner 的 <code>config/</code></td>
