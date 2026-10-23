@@ -2872,7 +2872,7 @@ and <a href="../../05-tools/publish/">Publish</a> for command options.</p>
   hand from old paths or old evidence.</li>
 </ul>
 <p>The local agent should also reconcile <code>GDD.md</code>, the current-tag <code>PLAN.md</code>,
-<code>STRUCTURE.md</code>, <code>SCENES.md</code>, <code>DESIGN.md</code>, <code>MEMORY.md</code>, <code>ROADMAP.md</code>, existing
+<code>STRUCTURE.md</code>, <code>SCENES.md</code>, <code>DESIGN.md</code>, <code>ROADMAP.md</code>, existing
 Godot resource bindings, addons, and custom runtime configuration. Not every
 workspace needs every change: the on-disk game is the authority.</p>
 <h2 id="copyable-agent-prompt">Copyable agent prompt<a class="headerlink" href="#copyable-agent-prompt" title="Permanent link">&para;</a></h2>
@@ -2931,7 +2931,7 @@ game repository. Replace the two placeholders before starting.</p>
 <a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>  remove the old entry before adding the replacement, so an add failure can
 <a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>  leave no registration.
 <a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>- Read `GDD.md`, `PLAN.md`, `ASSETS.md`, `STRUCTURE.md`, `SCENES.md`, `DESIGN.md`,
-<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>  `MEMORY.md`, and `ROADMAP.md` when present.
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>  and `ROADMAP.md` when present.
 <a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>- Inspect `project.godot`, addons, scenes, scripts, resource paths, generated
 <a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>  assets, and retained evidence under `.godotmaker/`.
 <a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a>- Compare the existing project documents with the v1.0.0 templates without
@@ -2981,7 +2981,7 @@ game repository. Replace the two placeholders before starting.</p>
 <a id="__codelineno-1-101" name="__codelineno-1-101" href="#__codelineno-1-101"></a>- Update scene/script resource bindings when they still point at superseded
 <a id="__codelineno-1-102" name="__codelineno-1-102" href="#__codelineno-1-102"></a>  asset outputs. Do not regenerate accepted art merely to change a path when a
 <a id="__codelineno-1-103" name="__codelineno-1-103" href="#__codelineno-1-103"></a>  validated deterministic conversion is sufficient.
-<a id="__codelineno-1-104" name="__codelineno-1-104" href="#__codelineno-1-104"></a>- Reconcile GDD, current-tag plan, structure, scene, style, roadmap, and memory
+<a id="__codelineno-1-104" name="__codelineno-1-104" href="#__codelineno-1-104"></a>- Reconcile GDD, current-tag plan, structure, scene, style, and roadmap
 <a id="__codelineno-1-105" name="__codelineno-1-105" href="#__codelineno-1-105"></a>  documents with the actual game. If regeneration through `/gm-gdd` or another
 <a id="__codelineno-1-106" name="__codelineno-1-106" href="#__codelineno-1-106"></a>  pipeline stage would change product intent, propose it and wait for approval.
 <a id="__codelineno-1-107" name="__codelineno-1-107" href="#__codelineno-1-107"></a>- Treat missing provider credentials or unavailable models as blockers, not as
@@ -3005,6 +3005,11 @@ game repository. Replace the two placeholders before starting.</p>
 <a id="__codelineno-1-125" name="__codelineno-1-125" href="#__codelineno-1-125"></a>  checks still required; blockers; and rollback instructions.
 </code></pre></div>
 <h2 id="expected-handoff">Expected handoff<a class="headerlink" href="#expected-handoff" title="Permanent link">&para;</a></h2>
+<p>Legacy root <code>MEMORY.md</code> and <code>memory/</code> files are project-owned after upgrade.
+GodotMaker leaves them unchanged but no longer reads, validates, publishes, or
+archives them. Move any still-current architecture ownership, dependencies,
+ordering constraints, and stable invariants into <code>STRUCTURE.md</code>; migrate no
+task history, logs, or review findings.</p>
 <p>A successful clean re-initialization proves only that the 1.0 framework was
 deployed safely. The upgrade is complete when the local agent has also shown
 that project-owned contracts match the existing game and that the game still

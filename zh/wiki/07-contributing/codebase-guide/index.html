@@ -3161,7 +3161,7 @@ runtime 类型和路径行，并派生 worker snapshot。</p>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── agent-runtimes/          runner 专属 reference、template、hook config 和 plugin adapter
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, TOC）
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── tests/                   ~320 个 hook 和工具的单元测试
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── shell/                   publish.sh / publish.ps1, report.sh / report.bat
@@ -3456,7 +3456,7 @@ Codex 使用 <code>agent-runtimes/&lt;agent&gt;/config/</code> 下的配置文�
 <p><code>stage_schemas.json</code> 是 <code>stage_reminder.py</code> 和 <code>check_stage_prerequisites.py</code> 都会读取的 schema。其 key 为角色名（<code>scaffold</code>、<code>gdd</code>、<code>build</code> 等），每个值包含可选的 <code>files</code> 数组（必须存在于磁盘上的路径）和可选的 <code>checks</code> 数组（程序化验证器名称）。完整 schema 说明见 <a href="../writing-a-skill/">编写技能</a>。</p>
 <hr />
 <h2 id="templates">templates/<a class="headerlink" href="#templates" title="Permanent link">&para;</a></h2>
-<p>Markdown 文档模板，由 <code>publish.py</code> 部署到新游戏项目的所选 agent 模板目录下。角色技能在工作过程中填充这些模板。模板包括：<code>GDD.md</code>、<code>PLAN.md</code>、<code>STRUCTURE.md</code>、<code>SCENES.md</code>、<code>ASSETS.md</code>、<code>GAP.md</code>、<code>MEMORY.md</code>、<code>TOC.md</code>、<code>game-claude.md</code>。</p>
+<p>Markdown 文档模板，由 <code>publish.py</code> 部署到新游戏项目的所选 agent 模板目录下。角色技能在工作过程中填充这些模板。模板包括：<code>GDD.md</code>、<code>PLAN.md</code>、<code>STRUCTURE.md</code>、<code>SCENES.md</code>、<code>ASSETS.md</code>、<code>GAP.md</code>、<code>TOC.md</code>、<code>game-claude.md</code>。</p>
 <hr />
 <h2 id="tests">tests/<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <p>测试套件，按覆盖对象组织。</p>

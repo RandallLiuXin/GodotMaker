@@ -1248,17 +1248,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#memory-link-checking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Memory link checking
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#backfilling-older-archives" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2859,17 +2848,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#memory-link-checking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Memory link checking
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#backfilling-older-archives" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2917,21 +2895,18 @@ by an older GodotMaker release.</p>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    ├── STRUCTURE.md
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    ├── DESIGN.md
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    ├── SCENES.md
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    ├── MEMORY.md
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    ├── memory/               architecture files MEMORY.md indexes
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    ├── evaluation-final.json
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    └── evidence/
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        ├── manifest.json     every archived file: path, category, bytes, SHA-256
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        ├── e2e/
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        └── screenshots/
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    ├── evaluation-final.json
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    └── evidence/
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        ├── manifest.json     every archived file: path, category, bytes, SHA-256
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        ├── e2e/
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        └── screenshots/
 </code></pre></div>
 <p>The flat document paths (<code>PLAN.md</code>, <code>STRUCTURE.md</code>, <code>SCENES.md</code>, …) are
 unchanged from earlier releases, so anything that already reads
 <code>docs/tags/&lt;Tag&gt;/PLAN.md</code> keeps working.</p>
-<p>An archive mirrors the project as it stands when <code>archive</code> runs, deletions
-included: if <code>memory/</code> or <code>e2e/</code> is gone by the time the command runs, the
-previous run's copy is removed rather than carried forward into the new
-snapshot.</p>
+<p>An archive mirrors the project as it stands when <code>archive</code> runs. If <code>e2e/</code> is
+gone by the time the command runs, the previous run's evidence copy is removed
+rather than carried forward into the new snapshot.</p>
 <h2 id="reading-an-archive">Reading an archive<a class="headerlink" href="#reading-an-archive" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong><code>docs/tags/README.md</code></strong> — which tags exist, in version order, with their
@@ -2946,12 +2921,12 @@ snapshot.</p>
 </ol>
 <p><code>SUMMARY.md</code> is a retrieval index, not a source of truth. It restates facts
 from <code>CHANGELOG.md</code>, <code>PLAN.md</code>, <code>evaluation-final.json</code> and <code>final_report.json</code>
-and nothing else — worker traces, exploration notes and <code>MEMORY.md</code> never
-reach it. When the summary and a canonical document disagree,
+and nothing else — worker traces and exploration notes never reach it. When
+the summary and a canonical document disagree,
 the canonical document wins.</p>
-<p>It links only what the archive actually holds. A project with no <code>memory/</code>
-directory, or a backfilled archive missing a canonical document, gets a summary
-without that pointer rather than one advertising a link that 404s.</p>
+<p>It links only what the archive actually holds. A backfilled archive missing a
+canonical document gets a summary without that pointer rather than one
+advertising a link that 404s.</p>
 <h2 id="immutability">Immutability<a class="headerlink" href="#immutability" title="Permanent link">&para;</a></h2>
 <p><code>evidence/manifest.json</code> carries <code>"sealed": true</code> once a tag is fully sealed.
 From then on <code>archive</code> and <code>index</code> refuse to touch the directory and exit <code>3</code>.
@@ -3026,7 +3001,7 @@ itself — the seal landed, the index refresh after it did not. Re-running
 <tbody>
 <tr>
 <td><code>python tools/seal_tag.py archive &lt;Tag&gt;</code></td>
-<td>Copies the working docs, the <code>memory/</code> subtree and <code>e2e/</code> evidence into <code>docs/tags/&lt;Tag&gt;/</code>, then link-checks the archived <code>MEMORY.md</code>. Writes an unsealed manifest.</td>
+<td>Copies the working docs and <code>e2e/</code> evidence into <code>docs/tags/&lt;Tag&gt;/</code>. Writes an unsealed manifest.</td>
 </tr>
 <tr>
 <td><code>python tools/seal_tag.py index &lt;Tag&gt;</code></td>
@@ -3051,22 +3026,7 @@ itself — the seal landed, the index refresh after it did not. Re-running
 </tbody>
 </table>
 <p>Exit codes: <code>0</code> success · <code>1</code> filesystem or runtime failure · <code>2</code> missing
-sources, unresolvable memory links, or bad usage · <code>3</code> the tag is already
-sealed.</p>
-<h2 id="memory-link-checking">Memory link checking<a class="headerlink" href="#memory-link-checking" title="Permanent link">&para;</a></h2>
-<p><code>MEMORY.md</code> indexes detailed architecture and constraints under <code>memory/</code>. Archiving the index
-without those files would freeze a set of broken links, so <code>archive</code> copies
-<code>memory/</code> too and then verifies the archived <code>MEMORY.md</code>:</p>
-<ul>
-<li>A <code>memory/…</code> link with no archived target, an absolute path, or a link that
-  escapes the archive directory <strong>blocks the seal</strong> (exit 2). Fix the root
-  <code>MEMORY.md</code>, or restore the missing file, and re-run.</li>
-<li>A link to a live project file that is deliberately not archived
-  (<code>src/player.gd</code>, <code>assets/…</code>) is recorded in the manifest's <code>link_warnings</code>
-  and does not block.</li>
-</ul>
-<p>Links inside HTML comments and fenced code blocks are ignored, so the example
-entries shipped in the <code>MEMORY.md</code> template never block a first finalize.</p>
+sources or bad usage · <code>3</code> the tag is already sealed.</p>
 <h2 id="backfilling-older-archives">Backfilling older archives<a class="headerlink" href="#backfilling-older-archives" title="Permanent link">&para;</a></h2>
 <p>Archives created before this layout existed have the flat documents but no
 <code>README.md</code>, <code>SUMMARY.md</code> or manifest, so they are invisible to the parent
@@ -3074,10 +3034,7 @@ index. Retrofit them once:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/seal_tag.py<span class="w"> </span>backfill<span class="w"> </span>--all
 </code></pre></div>
 <p>Backfill only adds index files. It never rewrites a canonical document — it
-hashes them before and after and fails if any changed. It also does <strong>not</strong>
-copy today's <code>memory/</code> into a historical tag: that would inject present-day
-content into a past snapshot. The missing subtree is recorded as a manifest
-warning instead, and the tag README reports completeness as <code>partial</code>.</p>
+hashes them before and after and fails if any changed.</p>
 <p>Archives that already carry a sealed manifest are skipped — re-indexing one
 would replace its recorded seal revision with whatever this run resolves. Pass
 <code>--force</code> to re-index them anyway.</p>

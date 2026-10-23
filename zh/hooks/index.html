@@ -3158,14 +3158,9 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 </tbody>
 </table>
 <p>在流水线角色活跃期间，通用子代理会被阻止写入 <code>e2e/</code> 和规划文档（<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> / <code>GAP.md</code>）。<code>asset-producer</code> 可以写入 <code>assets/</code>、<code>references/</code> 和 <code>.godotmaker/asset-generation/</code>。</p>
-<p>在 Runtime 支持的 Write/Edit Hook 路径上，所有子代理还会被阻止写入根
-<code>MEMORY.md</code> 和根 <code>memory/</code> 目录下的任何文件。相对路径、绝对路径、worktree
-路径和普通 <code>..</code> 写法会先规范化。这是工具 Hook 契约，不是文件系统沙箱；shell
-写入不在这个 Hook 的覆盖范围内。</p>
 <p>Runner 说明：这个子代理写入 gate 需要 runtime 提供 <code>agent_id</code>。OpenCode child
-session 不暴露该 payload，因此 OpenCode adapter 对 child 写入只运行无需身份的
-<code>memory</code> scope；其他角色所有权规则仍依赖 OpenCode 原生 edit permission。Codex
-和 Pi 没有等价的写入 Hook，其架构记录边界只在 prompt 层执行。</p>
+session 不暴露该 payload，因此其角色所有权规则由 OpenCode 原生
+edit permission 执行。</p>
 <p>未设置角色时，表示当前没有活跃的 <code>/gm-*</code> 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。</p>
 <p>同时为每次文件操作记录 <code>FILE_WRITE</code> / <code>FILE_EDIT</code> 指标事件。</p>
 <h3 id="stage_reminderpy">stage_reminder.py<a class="headerlink" href="#stage_reminderpy" title="Permanent link">&para;</a></h3>

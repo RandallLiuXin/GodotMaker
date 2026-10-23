@@ -2857,6 +2857,9 @@ When a new version is released, this file will be archived as <code>vX.Y.Z.md</c
 <li>Aligned <code>/gm-evaluate</code> E2E generation with canonical <code>e2e/test_*.py</code> pytest files so generated tests are discovered by pytest and the project checker (#210) — @RandallLiuXin.</li>
 </ul>
 <h2 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Removed the project <code>MEMORY.md</code> / <code>memory/</code> subsystem. Fresh publishes no longer create, read, validate, or archive it; upgrades preserve legacy files unchanged and use <code>STRUCTURE.md</code> for architecture ownership, dependencies, ordering constraints, and stable invariants.</li>
+</ul>
 
 
 

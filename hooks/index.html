@@ -3167,17 +3167,9 @@ skill) and applies that role's write rules. Per-role summary:</p>
 and from planning docs (<code>PLAN.md</code> / <code>STRUCTURE.md</code> / <code>ASSETS.md</code> /
 <code>GAP.md</code>). <code>asset-producer</code> may write <code>assets/</code>, <code>references/</code>, and
 <code>.godotmaker/asset-generation/</code>.</p>
-<p>All subagents are also blocked, on supported Write/Edit hook paths, from the
-root <code>MEMORY.md</code> and every file below the root <code>memory/</code> directory. Relative,
-absolute, worktree, and ordinary <code>..</code> path forms are normalized. This is a
-tool-hook contract rather than a filesystem sandbox; shell writes are outside
-the hook.</p>
-<p>Runner note: this subagent write gate requires a runtime-provided <code>agent_id</code>.
-OpenCode child sessions do not expose that payload, so the OpenCode adapter
-runs only the identity-free <code>memory</code> scope for child writes and leaves all
-role-specific ownership rules to OpenCode-native edit permissions. Codex and
-Pi have no equivalent write hook; their architecture-record boundary is
-prompt-level.</p>
+<p>Runner note: the subagent write gate requires a runtime-provided <code>agent_id</code>.
+OpenCode child sessions do not expose that payload, so their role-specific
+ownership rules are enforced by OpenCode-native edit permissions.</p>
 <p>When no role is set, no <code>/gm-*</code> pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
 conversations in a GodotMaker project directory.</p>
@@ -3305,7 +3297,7 @@ the Worker sections that own them; missing data remains empty rather than
 being inferred from another role or arbitrary pasted output. Identical
 <code>(agent_id, error_fingerprint)</code> events are written once. A successful Worker
 writes no diagnostic, and diagnostics are never injected into later prompts
-or promoted automatically into project memory.</p>
+or promoted automatically into project contracts.</p>
 <p><code>worker_error</code> emission follows the existing <code>on_subagent_stop.py</code> support:
 Claude Code and Codex only. Because Codex exposes the generic <code>worker</code> agent
 type for every delegated role, its output must be identifiable as a Worker
