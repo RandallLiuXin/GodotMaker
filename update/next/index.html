@@ -3377,6 +3377,7 @@ contract defines when an entry is required, its format, and allowed categories.<
 <h2 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Aligned <code>/gm-evaluate</code> E2E generation with canonical <code>e2e/test_*.py</code> pytest files so generated tests are discovered by pytest and the project checker (#210) — @RandallLiuXin.</li>
+<li>Required a fresh successful <code>/gm-verify</code> after every build or fixgap state change, including evaluator-owned E2E handoffs, before <code>/gm-evaluate</code> can resume (#213) — @RandallLiuXin.</li>
 <li>Stage completion events now validate through the runtime-neutral append tool before writing logs or evaluation archives, while runtime hooks only provide next-role guidance (#224) — @RandallLiuXin.</li>
 <li>Made asset validators and the UI source-sheet planner resolve bundled skill resources across source, Claude Code, Codex, OpenCode, and Pi layouts (#215) — @RandallLiuXin.</li>
 </ul>
