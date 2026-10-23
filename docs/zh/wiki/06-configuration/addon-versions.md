@@ -1,25 +1,34 @@
 # Addon 版本管理
 
-`addon_versions.json` 固定了 GodotMaker 所使用的 Godot addon 的精确版本——目前包括用于 ECS 的 `gecs`、用于单元测试的 `gdUnit4`，以及用于端到端测试的 `godot-e2e`。将版本与 Godot 引擎版本绑定，可以防止升级时悄无声息地破坏你的构建。
+`addon_versions.json` 固定了 GodotMaker 所使用的 Godot addon 的精确版本——目前包括用于 ECS 的 `gecs`、用于单元测试的 `gdUnit4`，以及用于端到端测试的 `godot-e2e`。按 Godot 引擎版本保留兼容记录，可以防止升级时悄无声息地破坏构建。GodotMaker 的官方支持基线是 Godot 4.5+；更早的行只作为已有项目的迁移数据保留。
 
-该文件位于 GodotMaker 仓库的 `config/addon_versions.json`，而不是你的游戏项目内部。
+源文件位于 GodotMaker 仓库的 `config/addon_versions.json`。发布时，它会复制到
+所选 runtime 在游戏项目内的配置目录：
+
+- Claude Code：`.claude/config/addon_versions.json`
+- Codex：`.agents/config/addon_versions.json`
+- OpenCode：`.opencode/config/addon_versions.json`
+- Pi：`.pi/config/addon_versions.json`
+
+`/gm-scaffold` 读取这个发布后的 runtime 本地副本；在游戏项目中检查版本锁定时，
+请使用 `.godotmaker/config.yaml` 所选 runtime 对应的路径。
 
 ## 文件内容
 
-这个文件将每个支持的 Godot 版本映射到一组 addon 条目。每个条目记录了 GitHub 仓库地址、要下载的精确 git tag，以及文件在项目中的安装位置。当前的版本锁定如下：
+这个文件将已知的 Godot 兼容版本线映射到一组 addon 条目。每个条目记录了 GitHub 仓库地址、要下载的精确 git tag，以及文件在项目中的安装位置。当前的版本锁定如下：
 
-| Godot 版本 | gecs | gdUnit4 | godot-e2e |
-|---|---|---|---|
-| 4.3 | v7.1.0 | v5.1.1 | v1.1.0 |
-| 4.4 | v7.1.0 | v5.1.1 | v1.1.0 |
-| 4.5 | v7.1.0 | v6.1.0 | v1.3.0 |
+| Godot 版本 | 支持状态 | gecs | gdUnit4 | godot-e2e |
+|---|---|---|---|---|
+| 4.3 | 旧版映射；不受支持 | v7.1.0 | v5.1.1 | v1.1.0 |
+| 4.4 | 旧版映射；不受支持 | v7.1.0 | v5.1.1 | v1.1.0 |
+| 4.5+ | 官方支持基线 | v7.1.0 | v6.1.0 | v1.3.0 |
 
 重要规则：
 
 - **gdUnit4** v5.x 兼容 Godot 4.3 和 4.4；v6.x 需要 Godot 4.5 或更高版本。
 - **godot-e2e** v1.3.0 用于 Godot 4.5+；4.3/4.4 保持在 v1.1.0。
 
-GodotMaker 会根据你安装的 Godot 版本自动选择对应的行。如果某个 Godot 版本没有列出，scaffold 会使用最接近的更低映射版本；如果没有任何更低映射，则会向用户报告问题，而不是猜测版本。Godot 4.5+ 在所有维度上都对应最新的 addon。
+GodotMaker 会根据你安装的 Godot 版本自动选择对应的行。如果某个 Godot 版本没有列出，scaffold 会使用最接近的更低映射版本；如果没有任何更低映射，则会向用户报告问题，而不是猜测版本。Godot 4.5+ 在所有维度上都对应最新的 addon。旧版映射不会扩大公开支持范围：`check_env.py` 会拒绝低于 Godot 4.5 的版本。
 
 ## 为什么要锁定版本
 

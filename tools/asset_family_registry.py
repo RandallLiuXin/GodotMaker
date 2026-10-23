@@ -270,18 +270,6 @@ _SPECS: tuple[FamilySpec, ...] = (
         ),
     ),
     FamilySpec(
-        family="screen-reference",
-        role=REFERENCE_ROLE,
-        variants=(
-            DeliveryVariant(
-                variant=DEFAULT_VARIANT,
-                entry_source_layouts=("reference",),
-                artifact_types=(),
-                runtime_outputs="none",
-            ),
-        ),
-    ),
-    FamilySpec(
         family="tileset",
         role=RUNTIME_ROLE,
         variants=(

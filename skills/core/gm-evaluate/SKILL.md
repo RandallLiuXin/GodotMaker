@@ -136,10 +136,10 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 6. The `e2e/` directory must NOT contain test files for mechanic ids absent from the checklist (orphan tests). Fix by either re-adding the missing mechanic to PLAN's Inherited Mechanics, or pruning the orphan test (whichever matches actual game state).
 
 **Visual cross-check (per scene listed in SCENES.md):**
-7. Capture screenshots under `e2e/screenshots/`. Use `game.screenshot("e2e/screenshots/scene_{name}.png")` for static scenes. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Dynamic Mode". Treat `e2e/screenshots/` as latest-run output only.
+7. Capture screenshots under `e2e/screenshots/`. Use `game.screenshot("e2e/screenshots/scene_{name}.png")` for static scenes. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Question Mode". Treat `e2e/screenshots/` as latest-run output only.
 8. Inspect the captured screenshots by dispatching a subagent to run the
-   `visual-qa` skill in Question mode. Do not compare screenshots against
-   `references/scene_{name}.png`.
+   `visual-qa` skill in Question mode. Judge them only against observable scene
+   requirements and the applicable rules selected from `DESIGN.md`.
 
    **Visual binding preflight.** Before calling visual-qa, check the scene's
    `Asset bindings` rows. Each non-`procedural` / non-`UI text` /
@@ -189,7 +189,6 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
      --subject {character|environment|ui|mixed} --name scene_{name} --kind scene \
      --capture e2e/screenshots/scene_{name}.png \
      --requirement "{one acceptance criterion or contract row}" \
-     --reference references/scene_{name}.png \
      --output .godotmaker/design-checks/scene_{name}-request.json
    ```
 
@@ -203,12 +202,6 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
    `not_applicable` with a reason rather than being dropped. Render the
    question text with `--question` and pass it verbatim as `--question` to
    visual-qa.
-
-   `--reference` is provenance context only. Do not ask whether the capture
-   resembles the reference: a different composition in the same visual language
-   is not a defect, and copying the reference's composition does not excuse a
-   rule violation. When a reference and `DESIGN.md` disagree, `DESIGN.md` wins
-   and the disagreement goes in `visual_checks.<scene>.notes`.
 
    **Grading design rule findings.** Transcribe the `Design Rule Findings`
    block visual-qa returned into

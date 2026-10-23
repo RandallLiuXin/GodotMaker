@@ -237,36 +237,33 @@ def test_result_mismatches_fail_before_any_assets_md_row_is_changed(tmp_path, ou
     assert assets_md.read_text(encoding="utf-8") == original
 
 
-def test_reference_row_completes_without_entering_worker_runtime_snapshot(tmp_path):
+def test_optional_reference_evidence_does_not_create_an_assets_row(tmp_path):
     assets_md = tmp_path / "ASSETS.md"
-    _assets_md(assets_md, ["screen_ref"])
-    reference = tmp_path / "references" / "screen_ref.png"
-    reference.parent.mkdir()
-    reference.write_bytes(b"png")
-    result = tmp_path / "reference-result.json"
-    result.write_text(
-        json.dumps(
+    _assets_md(assets_md, ["market_stall"])
+    _touch_runtime(tmp_path, "market_stall")
+    result = tmp_path / "result.json"
+    _result(
+        result,
+        [
+            _runtime("market_stall"),
             {
-                "asset_type": "screen-reference",
-                "outputs": [{"role": "reference", "name": "screen_ref", "path": "references/screen_ref.png"}],
-                "sources": [],
-                "previews": [],
-                "validation": {"passed": True},
-            }
-        ),
-        encoding="utf-8",
+                "role": "reference",
+                "name": "canonical",
+                "path": "res://assets/generated/scene-prop-set/market/canonical.png",
+            },
+        ],
     )
     request = tmp_path / "request.json"
-    request.write_text(
-        json.dumps({"asset_type": "screen-reference", "asset_id": "screen_ref", "brief": "reference"}),
-        encoding="utf-8",
+    _request(request, ["market_stall"])
+
+    registered = register_result(
+        assets_md, result, tag=TAG, request_path=request, loader=_loader
     )
 
-    register_result(assets_md, result, tag=TAG, request_path=request, loader=_loader)
-
-    assert "| reference | references/screen_ref.png | source_ready |" in assets_md.read_text(encoding="utf-8")
-    with pytest.raises(AssetResultRegistrationError, match="expected generated"):
-        runtime_snapshot(assets_md, tag=TAG, asset_ids=["screen_ref"])
+    assert registered["updated"] == ["market_stall"]
+    text = assets_md.read_text(encoding="utf-8")
+    assert "canonical" not in text
+    assert "source_ready" not in text
 
 
 def test_snapshot_accepts_provided_runtime_from_an_earlier_tag(tmp_path):
@@ -316,44 +313,6 @@ def test_snapshot_rejects_provided_rows_with_incomplete_runtime_columns(
 
     with pytest.raises(AssetResultRegistrationError, match=error):
         runtime_snapshot(assets_md, tag="v0.1.0", asset_ids=["hero"])
-
-
-@pytest.mark.parametrize(
-    ("reference_path", "error"),
-    [
-        ("res://references/screen_ref.png", "project-local relative path"),
-        ("../outside.png", "resolves outside the project"),
-    ],
-)
-def test_reference_only_registration_rejects_nonlocal_paths(tmp_path, reference_path, error):
-    assets_md = tmp_path / "ASSETS.md"
-    _assets_md(assets_md, ["screen_ref"])
-    result = tmp_path / "reference-result.json"
-    result.write_text(
-        json.dumps(
-            {
-                "asset_type": "screen-reference",
-                "outputs": [
-                    {"role": "reference", "name": "screen_ref", "path": reference_path}
-                ],
-                "sources": [],
-                "previews": [],
-                "validation": {"passed": True},
-            }
-        ),
-        encoding="utf-8",
-    )
-    request = tmp_path / "request.json"
-    request.write_text(
-        json.dumps({"asset_type": "screen-reference", "asset_id": "screen_ref", "brief": "reference"}),
-        encoding="utf-8",
-    )
-    original = assets_md.read_text(encoding="utf-8")
-
-    with pytest.raises(AssetResultRegistrationError, match=error):
-        register_result(assets_md, result, tag=TAG, request_path=request, loader=_loader)
-
-    assert assets_md.read_text(encoding="utf-8") == original
 
 
 def test_missing_runtime_file_or_failed_godot_check_keeps_the_whole_unit_missing(tmp_path):

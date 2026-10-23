@@ -10,7 +10,12 @@
 
 **`pipeline.model`** — 可选的 `godotmaker-cli` 模型覆盖项，用于自动 build/evaluate 阶段。GodotMaker 框架会保留 `.godotmaker/config.yaml` 里的这个值，但不会直接消费它；请使用所选 agent runtime 支持的模型 ID，具体以 `godotmaker-cli` / GodotMakerApp 文档为准。
 
-**`agent`** — 当前项目选择的编码智能体运行时，例如 `claude-code`、`codex` 或 `opencode`。
+**`agent`** — 当前项目选择的编码智能体运行时：`claude-code`、`codex`、
+`opencode` 或 `pi`。
+
+**`reasoning_effort`** — 所选编码智能体运行时的可选推理等级覆盖项。不设置时继承
+agent 或用户默认值。常用且已测试的值包括 `low`、`medium`、`high` 和 `xhigh`；
+其他值只有在所选 runtime 接受时才有效。
 
 **`worker_model`** — 编写游戏代码的 Claude 模型。默认是 `sonnet`；需要更强实现推理的游戏可改为 `opus`。
 
@@ -34,6 +39,9 @@ agent: claude-code
 # pipeline:
 #   model: <agent-model-id>
 
+# 所选 runtime 的可选推理等级覆盖项。
+# reasoning_effort: high
+
 vqa_model: native
 vqa_fallback_model: native
 
@@ -56,7 +64,8 @@ decomposer_model: sonnet
 
 对于 Codex 项目，`asset_image_model: native` 映射到 Codex 原生图片生成，前提是当前宿主暴露了这个能力。对于 Claude Code 项目，`native` 需要 Claude 侧有原生生图工具。没有原生路径时，`/gm-asset` 必须停止并要求你改用 `codex` 或 API 后端。
 
-对于 OpenCode 项目，框架不使用 `native` 生图或 `native` VQA。运行完整流水线前，请把 `asset_image_model` 和 `vqa_model` 改成 `codex` 或 API 后端 selector。
+OpenCode 和 Pi 项目不支持 `native` 生图或 `native` VQA。运行完整流水线前，
+请把 `asset_image_model` 和 `vqa_model` 改成 `codex` 或 API 后端 selector。
 
 如果 Claude Code 项目希望使用 Codex 图片生成：
 
@@ -132,6 +141,7 @@ agent: codex
 godotmaker-cli --agent claude-code
 godotmaker-cli --agent codex
 godotmaker-cli --agent opencode
+godotmaker-cli --agent pi
 ```
 
 覆盖自动 pipeline 阶段使用的所选 agent 模型时，请使用当前 `godotmaker-cli` /
@@ -149,5 +159,7 @@ pipeline:
 
 GodotMaker 会通过所选 runner 的入口注册 hook 脚本：Claude Code 使用
 `.claude/settings.json`，Codex 使用 `.codex/hooks.json`，OpenCode 使用
-`.opencode/plugins/godotmaker-hooks.js`。这些文件由框架管理；如果升级后
-hook 不再触发，可以运行 `python tools/publish.py --force <project>` 重新发布所选 runner 的 hook 入口。
+`.opencode/plugins/godotmaker-hooks.js`。Pi 不使用 hook config 文件，而是使用
+`.pi/extensions/godotmaker-runtime.ts` runtime bridge。这些文件由框架管理；
+如果升级后入口失效，可以运行 `python tools/publish.py --force <project>` 重新发布
+所选 runner 的 hook 或 extension 入口。

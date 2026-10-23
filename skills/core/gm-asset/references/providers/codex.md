@@ -159,7 +159,7 @@ Assets:
   source_path: .godotmaker/asset-generation/sources/<asset_id>_source.png
   prompt: <prompt>
   references:
-    - role: <canonical|style|screen>
+    - role: <canonical|style>
       path: <local readable image path>
   require_provider_trace: true
 

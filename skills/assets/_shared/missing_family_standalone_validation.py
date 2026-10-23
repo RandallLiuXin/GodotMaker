@@ -47,7 +47,6 @@ _LEVELS = ("L0", "L1", "L2", "L3", "L4")
 _FAMILIES = {
     "background-map",
     "platform-strip",
-    "screen-reference",
     "character-bundle",
     "fx-bundle",
     "compact-prop-pack",
@@ -86,11 +85,6 @@ def _failure(
     levels = {name: name in passed for name in _LEVELS}
     levels[level] = False
     return _mapped(result, levels, error)
-
-
-def _reference_failure(result: Mapping[str, Any], error: Exception) -> dict[str, Any]:
-    """Map reference-only failures without inventing runtime ladder levels."""
-    return _mapped(result, {"L0": True, "L1": False}, error)
 
 
 def _terminal_generation_stop(result: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -180,37 +174,6 @@ def _check_background(
             ),
         )
     ]
-
-
-def _check_screen_reference(
-    request: Mapping[str, Any], result: Mapping[str, Any]
-) -> str:
-    asset_id = request["asset_id"]
-    expected = f"references/{asset_id}.png"
-    expected_source = f".godotmaker/asset-generation/sources/{asset_id}_source.png"
-    if (
-        _runtime(result)
-        or result["previews"]
-        or len(result["outputs"]) != 1
-    ):
-        raise MissingFamilySkillError(
-            "screen-reference must have one reference output and no runtime source"
-        )
-    if result["sources"] != [{"path": expected_source, "layout": "single"}]:
-        raise MissingFamilySkillError(
-            "screen-reference must declare its deterministic raw single source"
-        )
-    output = result["outputs"][0]
-    if (
-        output.get("role") != "reference"
-        or output.get("name") != asset_id
-        or output.get("path") != expected
-        or "godot_type" in output
-    ):
-        raise MissingFamilySkillError(
-            "screen-reference output must use its stable reference path"
-        )
-    return expected
 
 
 def _check_platform(
@@ -556,17 +519,15 @@ def _check_props(
 
 def _declarations(
     request: Mapping[str, Any], result: Mapping[str, Any]
-) -> tuple[str | None, list[tuple[Mapping[str, Any], CompileRequest]]]:
+) -> list[tuple[Mapping[str, Any], CompileRequest]]:
     family = request["asset_type"]
     if family == "background-map":
-        return None, _check_background(request, result)
-    if family == "screen-reference":
-        return _check_screen_reference(request, result), []
+        return _check_background(request, result)
     if family == "platform-strip":
-        return None, _check_platform(request, result)
+        return _check_platform(request, result)
     if family in {"character-bundle", "fx-bundle"}:
-        return None, _check_bundle(request, result)
-    return None, _check_props(request, result)
+        return _check_bundle(request, result)
+    return _check_props(request, result)
 
 
 def _l1_file(root: Path, path: str, *, family: str, asset_id: str) -> Path:
@@ -939,49 +900,13 @@ def compile_and_validate(
         if stopped is not None:
             return stopped
         request = _resolved_character_request(request, root)
-        reference_path, declarations = _declarations(request, result)
+        declarations = _declarations(request, result)
         auxiliary_paths = _auxiliary_paths(result)
     except (AssetContractError, MissingFamilySkillError) as exc:
         raise MissingFamilySkillError(f"L0 standalone contract failed: {exc}") from exc
     family, asset_id = request["asset_type"], request["asset_id"]
     passed = ["L0"]
     try:
-        if reference_path is not None:
-            file = _project_file(root, reference_path, "reference image")
-            try:
-                is_non_empty = file.is_file() and file.stat().st_size > 0
-            except OSError as exc:
-                raise ValidationError(
-                    f"reference image cannot be read: {reference_path}"
-                ) from exc
-            if not is_non_empty:
-                raise ValidationError(
-                    f"reference image is not a non-empty file: {reference_path}"
-                )
-            try:
-                _png_dimensions(file)
-            except ValidationError as exc:
-                raise ValidationError(
-                    f"reference image is not a decodable PNG: {reference_path}"
-                ) from exc
-            raw_source = _project_file(
-                root,
-                f".godotmaker/asset-generation/sources/{asset_id}_source.png",
-                "raw screen-reference source",
-            )
-            if not raw_source.is_file() or raw_source.stat().st_size <= 0:
-                raise ValidationError(
-                    "raw screen-reference source is not a non-empty file: "
-                    f".godotmaker/asset-generation/sources/{asset_id}_source.png"
-                )
-            try:
-                _png_dimensions(raw_source)
-            except ValidationError as exc:
-                raise ValidationError(
-                    "raw screen-reference source is not a decodable PNG: "
-                    f".godotmaker/asset-generation/sources/{asset_id}_source.png"
-                ) from exc
-            return _mapped(result, {"L0": True, "L1": True})
         if family == "platform-strip":
             _verify_platform_delivery(request, declarations, root)
         elif family in {"compact-prop-pack", "scene-prop-set"}:
@@ -1031,11 +956,7 @@ def compile_and_validate(
                     f"reference output or preview is not a non-empty file: {path}"
                 )
     except (OSError, RuntimeContractError, ValidationError) as exc:
-        return (
-            _reference_failure(result, exc)
-            if reference_path is not None
-            else _failure(result, passed, "L1", exc)
-        )
+        return _failure(result, passed, "L1", exc)
     passed.append("L1")
     try:
         registry = build_default_registry()

@@ -38,7 +38,7 @@ python tools/asset_source_generate.py --spec <spec.json>
 ## Reference Images
 
 Put every required local reference in `reference_inputs` as
-`{ "role": "canonical|style|screen", "path": "<local image path>" }`. Use
+`{ "role": "canonical|style", "path": "<local image path>" }`. Use
 only images listed by the production-unit brief or selected by the manager. The
 tool validates that every input is readable, sends its actual file bytes through
 the image-edit endpoint, and records role/path/hash provenance in its report.

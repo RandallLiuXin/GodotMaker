@@ -71,18 +71,9 @@ and from planning docs (`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` /
 `GAP.md`). `asset-producer` may write `assets/`, `references/`, and
 `.godotmaker/asset-generation/`.
 
-All subagents are also blocked, on supported Write/Edit hook paths, from the
-root `MEMORY.md` and every file below the root `memory/` directory. Relative,
-absolute, worktree, and ordinary `..` path forms are normalized. This is a
-tool-hook contract rather than a filesystem sandbox; shell writes are outside
-the hook.
-
-Runner note: this subagent write gate requires a runtime-provided `agent_id`.
-OpenCode child sessions do not expose that payload, so the OpenCode adapter
-runs only the identity-free `memory` scope for child writes and leaves all
-role-specific ownership rules to OpenCode-native edit permissions. Codex and
-Pi have no equivalent write hook; their architecture-record boundary is
-prompt-level.
+Runner note: the subagent write gate requires a runtime-provided `agent_id`.
+OpenCode child sessions do not expose that payload, so their role-specific
+ownership rules are enforced by OpenCode-native edit permissions.
 
 When no role is set, no `/gm-*` pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
@@ -201,7 +192,7 @@ the Worker sections that own them; missing data remains empty rather than
 being inferred from another role or arbitrary pasted output. Identical
 `(agent_id, error_fingerprint)` events are written once. A successful Worker
 writes no diagnostic, and diagnostics are never injected into later prompts
-or promoted automatically into project memory.
+or promoted automatically into project contracts.
 
 `worker_error` emission follows the existing `on_subagent_stop.py` support:
 Claude Code and Codex only. Because Codex exposes the generic `worker` agent

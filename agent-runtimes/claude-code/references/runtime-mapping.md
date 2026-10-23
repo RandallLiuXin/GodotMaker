@@ -29,6 +29,17 @@ current Claude Code behavior so other runtime mappings can stay symmetric.
 | `create_or_use_isolated_workspace` | Use Claude Code worktree behavior and published carry-over files where configured; avoid deleting externally owned worktrees. |
 | `finish_branch_or_handoff` | Finish on the current branch/worktree according to user instructions, or hand off when the checkout state prevents a safe commit, push, or PR. |
 
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+another runtime.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `native` | Claude Code `PreToolUse` invokes `check_stage_prerequisites.py` for both `Agent` and `Task`. |
+| `delegated_write_boundaries` | `native` | Claude Code `PreToolUse` forwards `Write` and `Edit` with subagent identity to `check_file_permissions.py`. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, `stage_reminder.py` is only a non-authoritative write-time reminder. |
+
 ## Gate Rule
 
 If a required Claude Code mechanism is missing in a project-local publish, stop

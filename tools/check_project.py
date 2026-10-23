@@ -486,13 +486,6 @@ def check_plan(project_dir: Path, result: CheckResult):
     else:
         result.fail("STRUCTURE.md not found")
 
-    # Check MEMORY.md
-    memory_file = project_dir / "MEMORY.md"
-    if memory_file.exists():
-        result.ok("MEMORY.md exists")
-    else:
-        result.warn("MEMORY.md not found (optional but recommended)")
-
     # Check ASSETS.md
     assets_file = project_dir / "ASSETS.md"
     if assets_file.exists():

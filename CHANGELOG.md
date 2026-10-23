@@ -15,6 +15,7 @@ Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
 ### Changed
 
+- Made `DESIGN.md` the sole visual authority for asset production and evaluation, with optional user images used only as provider conditioning.
 - Workers now return bounded execution and failure diagnostics without writing task history into project memory.
 - Scoped project memory to stable architecture decisions and project constraints.
 - Made tag-archive finalization fail closed around seals, index updates, interrupted writes, warnings, and mirrored subtree deletions.
@@ -25,6 +26,7 @@ Format: [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
 
 ### Removed
 
+- Removed the generated screen-reference asset family, reference-only catalog rows, and scene-similarity acceptance flow.
 - Removed delegated Write/Edit access to root project memory where the selected runtime can enforce that boundary.
 
 ## [1.0.0] - 2026-09-01

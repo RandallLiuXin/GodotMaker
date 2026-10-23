@@ -14,7 +14,8 @@ GodotMaker turns a game idea into a playable Godot 4 prototype. The normal path 
 |---------|-----------------|
 | [Getting Started](01-getting-started/installation.md) | First time setting up GodotMaker, or making a fresh project |
 | [Concepts](02-concepts/how-it-works.md) | You want to understand the CLI workflow, 9 role commands, ECS, and design choices |
-| [Skills](03-skills/skill-system.md) | What the role / supporting / reviewer skills are and which one does what |
+| [Skills](03-skills/skill-system.md) | What the role, supporting, Asset, and reviewer skills are and which one does what |
+| [Asset Skills](03-skills/asset-skills.md) | Registry-backed production families, native artifact types, and the L0-L4 validation ladder |
 | [Troubleshooting](04-troubleshooting/common-problems.md) | A run stopped, was blocked, or behaved oddly - find a fix here |
 | [Tools](05-tools/publish.md) | Reference for `publish.py`, `check_env.py`, `check_project.py`, asset helpers |
 | [Configuration](06-configuration/project-config.md) | Per-project preferences, provider setup, host paths, addon version pinning |
@@ -36,7 +37,8 @@ GodotMaker turns a game idea into a playable Godot 4 prototype. The normal path 
 
 - GodotMaker currently targets 2D Godot games. 3D game generation is not supported.
 - The art pipeline is still alpha and may need follow-up repair for atlas regions, animation setup, or asset binding.
-- Pixel art and TileMap support are planned but not currently supported.
+- Pixel art style is planned but not currently supported.
+- TileSet generation and TileMap authoring are supported; generated level layouts still require manual playtesting.
 - Level layout, puzzle content, and numeric balance still need human judgment and manual refinement.
 - Audio generation is not supported yet.
 - Very long automated runs are cost-sensitive, and rare projects may fail to converge after repeated build/fix/evaluate loops.

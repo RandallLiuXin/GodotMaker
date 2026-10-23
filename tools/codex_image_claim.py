@@ -169,9 +169,9 @@ def _reference_items(value: Any, *, item_label: str) -> list[dict[str, str]]:
                 f"{label} must contain exactly role and path"
             )
         role = _string(reference.get("role"), "role", item_label=label)
-        if role not in {"canonical", "style", "screen"}:
+        if role not in {"canonical", "style"}:
             raise CodexImageClaimError(
-                f"{label}.role must be canonical, style, or screen"
+                f"{label}.role must be canonical or style"
             )
         references.append({
             "role": role,
@@ -184,16 +184,9 @@ def _planned_items(plan: Any) -> dict[str, dict[str, Any]]:
     if not isinstance(plan, dict):
         raise CodexImageClaimError("Plan must be a JSON object")
 
-    raw_items: list[Any] = []
-    if isinstance(plan.get("items"), list):
-        raw_items.extend(plan["items"])
-    if plan.get("anchor_item") is not None:
-        raw_items.append(plan["anchor_item"])
-    if isinstance(plan.get("parallel_items"), list):
-        raw_items.extend(plan["parallel_items"])
-
-    if not raw_items:
-        raise CodexImageClaimError("Plan must contain items, anchor_item, or parallel_items")
+    raw_items = plan.get("items")
+    if not isinstance(raw_items, list) or not raw_items:
+        raise CodexImageClaimError("Plan must contain a non-empty items list")
 
     planned: dict[str, dict[str, Any]] = {}
     for index, item in enumerate(raw_items):

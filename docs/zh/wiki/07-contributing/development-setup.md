@@ -5,7 +5,7 @@
 ## 获取源码
 
 规范的[贡献者搭建与验证合同](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#development-setup)
-定义支持的工具版本、开发依赖、Git hook 以及 clean checkout 验证命令。请先完成该合同中的搭建步骤。若改动会运行已发布到 Godot 项目的框架，再执行框架专用环境诊断：
+定义支持的工具版本、开发依赖、Git hook 以及 clean checkout 验证命令。支持基线为 **Python 3.10+**、**Node.js 22+** 和 **Godot 4.5+**；完整搭建步骤仍以该合同为准。请先完成该合同中的搭建步骤。若改动会运行已发布到 Godot 项目的框架，再执行框架专用环境诊断：
 
 ```bash
 python tools/check_env.py
@@ -15,15 +15,17 @@ python tools/check_env.py
 
 ```
 GodotMaker/
-├── hooks/          8 个 hook 脚本，强制执行流水线规则 + hooks/metrics/ 子系统
+├── hooks/          流水线规则与遥测 hook + hooks/metrics/ 子系统
+├── agents/         子 Agent 定义
 ├── skills/
-│   ├── core/       角色技能 + 辅助技能 + _shared/ 跨技能共享参考文档
-│   └── reviewer/   8 个领域审查技能 (physics, animation, ui, ...)
+│   ├── core/       流水线、rescue 与辅助技能 + _shared/ 共享参考文档
+│   ├── assets/     First-class Asset Skill + 共享 L0-L4 runtime
+│   └── reviewer/   领域审查技能
 ├── tools/          CLI 工具：publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 ├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
 ├── agent-runtimes/ runner 专属 reference、template 和 hook config
 ├── templates/      部署到生成的游戏项目中的文档模板
-├── tests/          ~320 个 hook 和工具的单元测试
+├── tests/          Hook、工具、asset、runtime 与流水线测试
 ├── docs/           Wiki、贡献指南、版本参考、hooks 参考
 ├── shell/          publish.sh / publish.ps1, report.sh / report.bat
 ├── migrations/     跨版本迁移脚本
@@ -41,7 +43,9 @@ GodotMaker/
 python -m pytest tests/ -x -q
 ```
 
-`-x` 参数在第一次失败时立即停止。去掉它可以一次看到所有失败。当前测试套件约有 320 个测试，覆盖全部 8 个 hook、publish、check_project、迁移脚本以及端到端流水线。
+`-x` 参数在第一次失败时立即停止。去掉它可以一次看到所有失败。测试套件覆盖
+hook、publish、项目检查、迁移、asset/runtime 合同和端到端流水线；需要当前
+inventory 时请以测试收集结果为准，不维护容易漂移的裸总数。
 
 运行单个文件：
 
