@@ -117,6 +117,39 @@ If the target is a 0.x workspace, use the
 audit and migrate project-owned documents and resource bindings around the
 clean re-initialization.
 
+### Runtime hook ownership and conflicts
+
+Runtime hook surfaces have explicit ownership. A normal same-version, patch,
+or minor publish updates the framework-owned portion instead of leaving an old
+surface in place:
+
+| Runtime | Framework-owned | User-owned | Normal publish behavior |
+|---------|-----------------|------------|-------------------------|
+| Claude Code | Hook command items in `.claude/settings.json` whose command references `.godotmaker/hooks/` | Every other top-level key, hook event, matcher entry, and command | Replaces framework commands with the current release, then preserves custom entries in their existing order |
+| Codex | Hook command items in `.codex/hooks.json` whose command references `.godotmaker/hooks/` | Every other top-level key, hook event, matcher entry, and command | Uses the same merge policy as Claude Code |
+| OpenCode | `.opencode/plugins/godotmaker-hooks.js` | Every other file in `.opencode/plugins/` | Overwrites the framework plugin and preserves independent plugins |
+| Pi | `.pi/extensions/godotmaker-runtime.ts` | Every other file in `.pi/extensions/` | Overwrites the framework extension and preserves independent extensions |
+
+Do not customize a framework-owned plugin or extension file; the next publish
+will replace it. Put user logic in a separate plugin/extension file or a custom
+JSON hook entry.
+
+- **Downgrade:** still requires `--force` and runs the publisher from the
+  GodotMaker version you checked out. When downgrading to a version from before
+  the ownership-aware behavior documented here, the older publisher replaces
+  the complete JSON hook config and removes and recreates the entire
+  `.opencode/plugins/` or `.pi/extensions/` directory. This deletes independent
+  plugin/extension files as well as custom JSON hook entries. Commit or back up
+  those files and entries before downgrading, or restore the target project from
+  VCS afterward. `--force` does not reverse migrations or project state.
+- **Rollback:** `--force` is not a complete rollback. Restore the target project
+  from VCS, check out the matching GodotMaker version, and publish again.
+- **Conflict:** if an existing Claude/Codex file is invalid JSON or its `hooks`
+  schema cannot be safely merged, normal publish stops before changing the
+  target and leaves that file unchanged. Fix the JSON, or use `--force` to
+  explicitly replace the whole hook config. OpenCode/Pi managed files do not
+  merge; local edits inside them are overwritten.
+
 ## Options
 
 ```bash
@@ -129,7 +162,7 @@ python tools/publish.py --agent pi --force /path/to/my-game
 `--force` does four things at once:
 
 1. Clears the selected agent's skill directory before re-deploying, removing any skills left over from a previous version.
-2. Overwrites the selected runner's hook config or adapter (`.claude/settings.json`, `.codex/hooks.json`, `.opencode/plugins/godotmaker-hooks.js`, or `.pi/extensions/godotmaker-runtime.ts`) even if you've already customized it.
+2. Replaces the selected runner's complete JSON hook config or framework adapter (`.claude/settings.json`, `.codex/hooks.json`, `.opencode/plugins/godotmaker-hooks.js`, or `.pi/extensions/godotmaker-runtime.ts`) even if you've customized that framework-owned surface.
 3. Skips the minor-upgrade confirmation and explicitly authorizes the clean re-initialization required for a major upgrade.
 4. Allows downgrades.
 
@@ -137,13 +170,12 @@ For **major** upgrades with `--force`, the clean-up is more thorough: the select
 
 ## What is preserved on upgrade
 
-These files are never overwritten by a normal publish (only `--force` can change the selected runner's hook config):
-
-| File | Why it is kept |
-|------|---------------|
-| `CLAUDE.md` / `AGENTS.md` | You may have added project-specific instructions |
-| `.claude/settings.json` / `.codex/hooks.json` / `.opencode/plugins/godotmaker-hooks.js` / `.pi/extensions/godotmaker-runtime.ts` | You may have adjusted hook behavior |
-| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` / `.pi/godotmaker.yaml` | Contains your machine-specific Godot path |
-| `.godotmaker/config.yaml` | Contains your project-specific preferences |
+| User-owned content | Normal publish behavior |
+|--------------------|-------------------------|
+| `CLAUDE.md` / `AGENTS.md` | Preserved so project-specific instructions remain intact |
+| Unrelated keys and custom hook entries in `.claude/settings.json` / `.codex/hooks.json` | Preserved while framework hook commands are refreshed |
+| Independent files in `.opencode/plugins/` / `.pi/extensions/` | Preserved while the named GodotMaker adapter file is refreshed |
+| `.claude/godotmaker.yaml` / `.agents/godotmaker.yaml` / `.opencode/godotmaker.yaml` / `.pi/godotmaker.yaml` | Preserved because it contains the machine-specific Godot path |
+| `.godotmaker/config.yaml` | Preserved because it contains project-specific preferences |
 
 Your game code, scenes, assets, and planning documents (`GDD.md`, `PLAN.md`, etc.) are not touched by publish — it only manages the framework layer.

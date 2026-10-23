@@ -8,6 +8,41 @@
 
 ## Dimension: 2D
 
+## Architecture Ownership
+
+<!-- Name each subsystem, the files or nodes it owns, and the boundary it
+     exposes to other subsystems. Keep product behavior in GDD.md, visual
+     direction in DESIGN.md, release scope in ROADMAP.md, and asset facts in
+     ASSETS.md. -->
+
+| Subsystem | Owns | Public Boundary | Must Not Own |
+|-----------|------|-----------------|--------------|
+| {Subsystem} | {components, systems, scenes, or resources} | {signals, queries, or APIs} | {out-of-scope responsibility} |
+
+## Architecture Dependencies
+
+<!-- Record dependencies between subsystems and the contract each dependency
+     relies on. Do not record task history or transient implementation notes. -->
+
+| Consumer | Dependency | Contract |
+|----------|------------|----------|
+| {Subsystem} | {Subsystem or engine service} | {required data, API, or lifecycle guarantee} |
+
+## Ordering Constraints
+
+<!-- List initialization, update, teardown, and data-flow ordering that must
+     remain true beyond a single task. The System Schedule below is the
+     executable detail for system update order. -->
+
+1. {Producer or initialization step} runs before {consumer} because {reason}.
+
+## Stable Invariants
+
+<!-- Durable architecture rules that future tags and workers must preserve.
+     Requirements owned by GDD.md/DESIGN.md/ROADMAP.md/ASSETS.md stay there. -->
+
+- {Invariant and the boundary it protects}
+
 ## Input Actions
 
 | Action | Keys |

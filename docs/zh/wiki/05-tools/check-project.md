@@ -51,7 +51,6 @@ python tools/check_project.py /path/to/my-game --all
 ```text
 [PASS] project.godot exists
 [FAIL] No System files found (files extending System)
-[WARN] MEMORY.md not found (optional but recommended)
 ```
 
 失败项会在末尾汇总展示：

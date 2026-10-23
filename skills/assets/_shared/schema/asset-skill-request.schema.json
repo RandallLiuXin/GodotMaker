@@ -32,7 +32,6 @@
         "compact-prop-pack",
         "platform-strip",
         "scene-prop-set",
-        "screen-reference",
         "tileset"
       ]
     },
@@ -53,7 +52,7 @@
         "properties": {
           "role": {
             "type": "string",
-            "enum": ["canonical", "style", "screen"]
+            "enum": ["canonical", "style"]
           },
           "path": {
             "type": "string",

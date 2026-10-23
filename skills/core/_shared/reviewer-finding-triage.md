@@ -31,7 +31,7 @@ A mandatory citation must be ONE of:
 
 - A specific gotcha entry (e.g., `.claude/skills/gecs/gotchas.md` G7)
 - A specific Godot/ECS API doc reference
-- A prior `MEMORY.md` architecture decision or project constraint
+- A prior `STRUCTURE.md` architecture boundary, invariant, or constraint
 - A `PLAN.md` / `GAP.md` task that already covers the same issue (by task ID)
 
 The citation must actually support the decision — do not cite a document you
@@ -50,8 +50,9 @@ If you cannot satisfy the citation requirement for a critical/major finding,
 ## Persistence boundary
 
 Do not persist raw findings, REJECT/SKIP decisions, or their rationale in
-`MEMORY.md`. Reviewer output is runtime evidence, not durable project memory.
+project design documents. Reviewer output is runtime evidence, not a durable
+architecture contract.
 
 If a finding reveals a stable module boundary, ownership rule, dependency, or
 project constraint, record only that normalized architecture or constraint in
-`MEMORY.md`. Do not copy the finding or triage history into the entry.
+`STRUCTURE.md`. Do not copy the finding or triage history into the entry.

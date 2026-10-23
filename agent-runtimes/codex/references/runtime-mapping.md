@@ -51,8 +51,8 @@ to the current skill directory, not the project root. For example, inside
 `.agents/skills/gm-asset/references/asset-runtime-pipeline.md`.
 
 Project artifact paths are different: if a skill asks the stage to create or
-consume project assets such as `references/scene_<name>.png`, resolve those as
-project-root files. When the path is a Markdown support document mentioned by a
+consume project assets, resolve those as project-root files. When the path is a
+Markdown support document mentioned by a
 skill instruction, prefer skill-local resolution.
 
 ## Capability Mapping
@@ -76,6 +76,18 @@ skill instruction, prefer skill-local resolution.
 | `detect_worktree_state` | Inspect git state before delegation or finish: normal branch, linked worktree, already-isolated workspace, detached HEAD, or host-managed task checkout. Treat detached HEAD as a handoff constraint, not as a reason to create commits blindly. |
 | `create_or_use_isolated_workspace` | Prefer Codex-native isolated execution only if it carries `.agents/skills`, `.agents/agents`, `.agents/templates`, `.agents/godotmaker.yaml`, `.godotmaker/hooks`, and project files. If that cannot be guaranteed, use a git worktree fallback only when safe, or gate delegation. |
 | `finish_branch_or_handoff` | On a normal branch, follow the user's commit/push/PR instructions. In Codex App or detached-head environments, do not force branch operations; summarize changes and use the host application's handoff controls when required. |
+
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+Claude Code. Codex lifecycle hooks do not provide an equivalent write-tool or
+delegation preflight interception surface.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `prompt-level` | The active `$gm-*` skill must check its prerequisites before `spawn_agent`; Codex has no registered pre-dispatch hook for this gate. |
+| `delegated_write_boundaries` | `prompt-level` | Project-local role definitions constrain delegated writes. Codex does not forward `Write` or `Edit` events to `check_file_permissions.py`. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, Codex has no authoritative completion gate. |
 
 ## Delegated Roles
 
@@ -104,11 +116,6 @@ Codex must classify every delegated role before dispatch:
 Do not claim parallel worker execution unless Codex actually spawned isolated
 workers. If running a sequential fallback, say so in the report and preserve the
 same task state transitions.
-
-Delegated roles must not write the root `MEMORY.md` or files below the root
-`memory/` directory. Codex exposes no equivalent PreToolUse write gate here,
-so this is a prompt-level boundary carried by the role definition. Only the
-lead session may update stable architecture decisions and project constraints.
 
 ## Project Tool Status Overrides
 
