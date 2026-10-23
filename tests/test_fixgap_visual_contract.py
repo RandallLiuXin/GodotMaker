@@ -76,7 +76,10 @@ def test_screenshot_routes_reference_free_visual_checks_to_question_mode():
     section = screenshot.split("## Frame Sequence for VQA Question Mode", 1)[1]
     section = section.split("## Generate reference.png", 1)[0]
 
-    assert 'Skill(skill="visual-qa") "--question \\"' in section
+    assert "runtime's `invoke_supporting_skill` mapping" in section
+    assert '--question "Do these frames satisfy' in section
+    assert 'Skill(skill="visual-qa")' not in section
+    assert ".claude/skills/visual-qa" not in section
     assert "e2e/screenshots/scene_main/frame_*.png" in section
     assert "call `visual-qa` Question\nmode with `--question`" in section
     assert "feed reference + sequence" not in section

@@ -10,6 +10,8 @@ description: |
 
 # gdtoolkit — GDScript Lint & Format
 
+<!-- agent-operations: run_shell_command -->
+
 > **Currently disabled (v0.3.4+).** `gm-verify` no longer invokes
 > `gdlint` / `gdformat`, and `gm-build` / `gm-fixgap` have removed this
 > skill from their Available Skills tables. Reason: repeated
@@ -247,5 +249,8 @@ rule IDs, config syntax errors, or parse failures — consult the upstream repo 
 - **Formatter wiki**: https://github.com/Scony/godot-gdscript-toolkit/wiki/4.-Formatter
 - **Open issues**: https://github.com/Scony/godot-gdscript-toolkit/issues
 
-Use `WebFetch` to read the wiki pages or issue threads when you need details beyond
-what this skill covers.
+Use the runtime's `run_shell_command` mapping with an available HTTPS client,
+such as `curl --fail --location <url>`, to read a wiki page or issue thread when
+you need details beyond what this skill covers. If no HTTPS client or outbound
+network access is available, stop and report that limitation instead of
+inventing upstream guidance.

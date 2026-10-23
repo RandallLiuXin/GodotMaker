@@ -12,6 +12,8 @@ contract defines when an entry is required, its format, and allowed categories.
 
 ## Added
 
+- Added a canonical agent-operation contract with executable Claude Code, Codex, OpenCode, and Pi mappings, including runtime-neutral supporting-skill and visual QA handoffs (#226) — @RandallLiuXin.
+
 ## Changed
 
 - Pi delegation now resolves each published role's configured provider/model, with explicit dispatch overrides, into subprocess `--model` arguments while inheriting Pi's active model for generic Claude aliases; Codex and Pi document all seven role mappings (#225) — @RandallLiuXin.
