@@ -7,7 +7,7 @@
   "fixedPayload": {
     "hookSpecificOutput": {
       "hookEventName": "PreToolUse",
-      "additionalContext": "GM_INJECT_TOKEN=GM_INJECT_SENTINEL_4f2b9d"
+      "additionalContext": "GM_INJECT_MARKER=GM_INJECT_SENTINEL_4f2b9d"
     }
   },
   "interpretation": "The current task pre-hook adapter discards the hook result: it neither propagates the result nor mutates task arguments.",

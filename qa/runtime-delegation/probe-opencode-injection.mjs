@@ -36,7 +36,7 @@ function writeHooks(project) {
   writeFileSync(join(hooksDir, "check_stage_prerequisites.py"), [
     "import json, sys",
     "payload = json.load(sys.stdin)",
-    `print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': 'GM_INJECT_TOKEN=${sentinel}'}}))`,
+    `print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': 'GM_INJECT_MARKER=${sentinel}'}}))`,
     "",
   ].join("\n"), "utf8");
   writeFileSync(join(hooksDir, "log_agent_tool.py"), "import sys\nsys.exit(0)\n", "utf8");
@@ -78,7 +78,7 @@ const report = {
   runtime: "opencode",
   opencodeVersion: opencodeVersion(),
   prompt: fixedArgs.prompt,
-  fixedPayload: { hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: `GM_INJECT_TOKEN=${sentinel}` } },
+  fixedPayload: { hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: `GM_INJECT_MARKER=${sentinel}` } },
   interpretation: "The current task pre-hook adapter discards the hook result: it neither propagates the result nor mutates task arguments.",
   defectReproduced: runs.every((run) => run.passed),
   runs,
