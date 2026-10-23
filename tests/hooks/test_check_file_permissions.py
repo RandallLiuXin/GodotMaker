@@ -626,6 +626,27 @@ class TestSubagentInRole:
         assert not is_blocked(parsed)
 
     @pytest.mark.parametrize("path", [
+        ".godotmaker/asset-generation/work/hud/planning-request.json",
+        ".godotmaker/asset-generation/work/hud/theme_plan.json",
+        ".godotmaker/asset-generation/work/hud/source_sheet_plan.json",
+        ".godotmaker/asset-generation/work/hud/stylebox_plan.json",
+        ".godotmaker/asset-generation/work/hud/theme_recipe.json",
+        ".godotmaker\\asset-generation\\work\\hud\\stylebox_plan.json",
+    ])
+    def test_asset_producer_blocks_manager_owned_ui_planning_files(self, project_dir, path):
+        write_current_role("asset")
+        _, _, parsed = run_hook(HOOK, {
+            "tool_name": "Write",
+            "tool_input": {"file_path": path},
+            "agent_id": "asset-producer-1",
+            "agent_type": "asset-producer",
+        })
+        assert is_blocked(parsed), f"asset-producer must not rewrite UI planning file: {path}"
+        assert "manager-owned UI-kit planning files" in (
+            parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        )
+
+    @pytest.mark.parametrize("path", [
         "ASSETS.md",
         "PLAN.md",
         "project.godot",

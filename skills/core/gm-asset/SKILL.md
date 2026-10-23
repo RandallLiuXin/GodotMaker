@@ -155,14 +155,23 @@ Write plan artifacts under `.godotmaker/asset-generation/work/`.
 Use `references/asset-planner.md` for grouping, dependencies, batch rules, and
 plan artifact fields.
 
+For a `ui-kit` unit, complete the **UI-kit pre-dispatch planning** procedure in
+`references/asset-planner.md` first. The manager owns those planning artifacts,
+derives the complete `spec.styleboxes`, `spec.atlas_regions`, and Theme
+declaration from them, and only then writes the canonical request. Do not
+dispatch a producer with an incomplete UI-kit request and do not ask the
+producer to repair or fill one.
+
 For every production unit, write its complete generic Asset Skill request to
 `.godotmaker/asset-generation/<asset_id>-request.json`. Validate it with
 `python tools/asset_skill_contract_check.py --kind request <request-path>`
 before dispatch. This is the immutable canonical request owned by the manager:
 after dispatch, neither the producer nor the manager may replace or mutate it.
 The producer owns the matching
-`.godotmaker/asset-generation/<asset_id>-result.json` and all work products and
-reports beneath `.godotmaker/asset-generation/`.
+`.godotmaker/asset-generation/<asset_id>-result.json` and all post-dispatch work
+products and reports beneath `.godotmaker/asset-generation/`. The only
+pre-dispatch work-product exception is the manager-owned UI-kit planning set
+listed in `references/asset-planner.md`; the producer consumes it read-only.
 
 For every generated visual unit, apply Design Rule Selection and Reference
 Conflict Disposition from `references/asset-planner.md`: select the applicable
@@ -238,6 +247,9 @@ One production unit may return many outputs. Register all runtime outputs togeth
 
 ### Inputs
 - Canonical request: `.godotmaker/asset-generation/{asset_id}-request.json`
+- UI-kit pre-dispatch plans, when family is `ui-kit`:
+  `.godotmaker/asset-generation/work/{asset_id}/theme_plan.json`,
+  `source_sheet_plan.json`, `stylebox_plan.json`, and `theme_recipe.json`
 - ASSETS.md rows: {row ids or names}
 - Scene docs: SCENES.md sections or references
 
