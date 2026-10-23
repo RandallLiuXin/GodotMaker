@@ -18,7 +18,7 @@ GodotMaker/
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 ├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 ├── agent-runtimes/          runner 专属 reference、template、hook config 和 plugin adapter
-├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
+├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, TOC）
 ├── tests/                   ~320 个 hook 和工具的单元测试
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
 ├── shell/                   publish.sh / publish.ps1, report.sh / report.bat

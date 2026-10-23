@@ -23,6 +23,7 @@ from publish import (
     create_godotmaker_yaml,
     create_project_config,
     deploy_agent_instructions,
+    upgrade_legacy_project_contracts,
     render_agent_instructions,
     ensure_gitattributes,
     ensure_gitignore,
@@ -203,7 +204,9 @@ def _publish_claude_project(tmp_path, monkeypatch, before_publish=None):
     return target
 
 
-def _publish_opencode_project(tmp_path, monkeypatch, before_publish=None):
+def _publish_opencode_project(
+    tmp_path, monkeypatch, before_publish=None, level="FRESH"
+):
     from _version import SemVer
 
     target = tmp_path / "target"
@@ -219,7 +222,12 @@ def _publish_opencode_project(tmp_path, monkeypatch, before_publish=None):
     monkeypatch.setattr(
         publish,
         "check_version_upgrade",
-        lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)),
+        lambda *_args, **_kwargs: (
+            True,
+            level,
+            None if level == "FRESH" else SemVer(0, 2, 0),
+            SemVer(0, 3, 5),
+        ),
     )
     monkeypatch.setattr(publish, "register_codex_mcp",
                         lambda *_args, **_kwargs: True)
@@ -1827,6 +1835,79 @@ class TestOpenCodePublishParity:
         assert (target / "memory" / "system.md").read_text(encoding="utf-8") == "legacy detail\n"
         assert not (target / ".opencode" / "templates" / "MEMORY.md").exists()
         assert not (target / ".opencode" / "templates" / "memory_subsystem.md").exists()
+
+    @pytest.mark.parametrize("level", ["MINOR", "MAJOR"])
+    def test_upgrade_rewrites_generated_contracts_and_preserves_legacy_data(
+        self, tmp_path, monkeypatch, level
+    ):
+        legacy_index = "MEMORY" + ".md"
+        legacy_directory = "memory" + "/"
+
+        def seed_upgrade_project(target):
+            (target / "AGENTS.md").write_text(
+                "# AGENTS.md\n\n"
+                "Custom project guidance stays.\n\n"
+                f"- **Read `{legacy_index}` before dispatching a worker.** "
+                "It records stable architecture and project constraints across "
+                f"tags. Workers never write it or the root `{legacy_directory}` directory.\n"
+                f"- **`DESIGN.md`, `ASSETS.md`, and `{legacy_index}` accumulate "
+                "across tags.** Don't split per tag — append rows / entries; the "
+                "`Tag` column on each ASSETS row marks the introducing tag.\n"
+                "| Architecture decisions + project constraints (cross-tag) | "
+                f"`{legacy_index}` (index) |\n",
+                encoding="utf-8",
+            )
+            (target / "TOC.md").write_text(
+                "# Document Index\n\n"
+                f"- `{legacy_index}` — Stable architecture decisions and "
+                "project constraints\n"
+                f"- `{legacy_directory}` — Optional per-system architecture "
+                "and constraint details\n",
+                encoding="utf-8",
+            )
+            (target / legacy_index).write_text("legacy index\n", encoding="utf-8")
+            detail_dir = target / legacy_directory
+            detail_dir.mkdir()
+            (detail_dir / "system.md").write_text("legacy detail\n", encoding="utf-8")
+
+        target = _publish_opencode_project(
+            tmp_path,
+            monkeypatch,
+            before_publish=seed_upgrade_project,
+            level=level,
+        )
+
+        instructions = (target / "AGENTS.md").read_text(encoding="utf-8")
+        toc = (target / "TOC.md").read_text(encoding="utf-8")
+        assert "Custom project guidance stays." in instructions
+        assert legacy_index not in instructions
+        assert legacy_directory not in instructions
+        assert "Read `STRUCTURE.md` before dispatching a worker." in instructions
+        assert (
+            "Architecture ownership, dependencies, ordering, and invariants"
+            in instructions
+        )
+        assert legacy_index not in toc
+        assert legacy_directory not in toc
+        assert (target / legacy_index).read_text(encoding="utf-8") == "legacy index\n"
+        assert (target / legacy_directory / "system.md").read_text(
+            encoding="utf-8"
+        ) == "legacy detail\n"
+
+    def test_custom_lines_are_preserved_and_warned(self, tmp_path, capsys):
+        legacy_index = "MEMORY" + ".md"
+        instructions = tmp_path / "CLAUDE.md"
+        original = (
+            "# CLAUDE.md\r\n\r\n"
+            f"Custom workflow still mentions `{legacy_index}` here.\r\n"
+        )
+        instructions.write_bytes(original.encode("utf-8"))
+
+        upgrade_legacy_project_contracts(tmp_path)
+        upgrade_legacy_project_contracts(tmp_path)
+
+        assert instructions.read_bytes() == original.encode("utf-8")
+        assert "preserved for manual review" in capsys.readouterr().out
 
     def test_published_opencode_mapping_uses_opencode_paths(
         self, tmp_path, monkeypatch

@@ -18,7 +18,7 @@ GodotMaker/
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 ├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 ├── agent-runtimes/          Runner-specific references, templates, hook config, and plugin adapters
-├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC)
+├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, TOC)
 ├── tests/                   ~320 unit tests for hooks and tools
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
 ├── shell/                   publish.sh / publish.ps1, report.sh / report.bat

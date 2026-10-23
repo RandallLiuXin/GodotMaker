@@ -406,6 +406,134 @@ def render_agent_template_tree(root: Path, adapter: AgentPublishAdapter) -> None
         file.replace(file.with_name("agents.md.tmpl"))
 
 
+LEGACY_MEMORY_INDEX = "MEMORY" + ".md"
+LEGACY_MEMORY_DIRECTORY = "memory" + "/"
+
+LEGACY_ROOT_INSTRUCTION_LINES = {
+    (
+        f"- **Read `{LEGACY_MEMORY_INDEX}` before dispatching a worker.** "
+        "It records stable architecture and project constraints across tags. "
+        f"Workers never write it or the root `{LEGACY_MEMORY_DIRECTORY}` directory."
+    ): (
+        "- **Read `STRUCTURE.md` before dispatching a worker.** It owns "
+        "architecture boundaries, component ownership, dependencies, ordering "
+        "constraints, and stable invariants as of the end of the current tag."
+    ),
+    (
+        f"- **`DESIGN.md`, `ASSETS.md`, and `{LEGACY_MEMORY_INDEX}` accumulate "
+        "across tags.** Don't split per tag — append rows / entries; the `Tag` "
+        "column on each ASSETS row marks the introducing tag."
+    ): (
+        "- **`DESIGN.md` and `ASSETS.md` accumulate across tags.** Don't split "
+        "per tag — append rows / entries; the `Tag` column on each ASSETS row "
+        "marks the introducing tag."
+    ),
+    (
+        "| Architecture decisions + project constraints (cross-tag) | "
+        f"`{LEGACY_MEMORY_INDEX}` (index) |"
+    ): (
+        "| Architecture ownership, dependencies, ordering, and invariants | "
+        "`STRUCTURE.md` |"
+    ),
+}
+
+LEGACY_TOC_LINES = {
+    (
+        f"- `{LEGACY_MEMORY_INDEX}` — Stable architecture decisions and "
+        "project constraints"
+    ): None,
+    (
+        f"- `{LEGACY_MEMORY_DIRECTORY}` — Optional per-system architecture "
+        "and constraint details"
+    ): None,
+    (
+        "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `DESIGN.md`, "
+        f"`SCENES.md`, `{LEGACY_MEMORY_INDEX}` — frozen working docs "
+        "(ASSETS.md is cross-tag and stays at the root)"
+    ): (
+        "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `DESIGN.md`, "
+        "`SCENES.md` — frozen working docs (ASSETS.md is cross-tag and stays "
+        "at the root)"
+    ),
+    (
+        f"- `docs/tags/<Tag>/{LEGACY_MEMORY_DIRECTORY}` — the detailed "
+        f"architecture files {LEGACY_MEMORY_INDEX} indexes, frozen with it"
+    ): None,
+}
+
+
+def _rewrite_generated_lines(path: Path, replacements: dict[str, str | None]) -> bool:
+    """Rewrite exact generated lines while preserving custom text and EOLs."""
+    if not path.exists():
+        return False
+
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        original = handle.read()
+
+    rewritten_lines: list[str] = []
+    for line in original.splitlines(keepends=True):
+        body = line.rstrip("\r\n")
+        ending = line[len(body):]
+        replacement = replacements.get(body, body)
+        if replacement is not None:
+            rewritten_lines.append(replacement + ending)
+    rewritten = "".join(rewritten_lines)
+
+    if rewritten == original:
+        return False
+
+    tmp = path.with_name(path.name + ".contract-upgrade-tmp")
+    try:
+        with tmp.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(rewritten)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
+    return True
+
+
+def upgrade_legacy_project_contracts(target: Path) -> None:
+    """Retire generated legacy architecture guidance without touching its data.
+
+    Root instruction files are user-extensible, so only exact lines emitted by
+    the former templates are rewritten. Any other legacy-looking text is left
+    untouched and reported for manual review. The same narrow rule updates the
+    generated document index. This runs on every publish, including MAJOR
+    re-initialization where tracked migrations are intentionally baselined.
+    """
+    for filename in ("CLAUDE.md", "AGENTS.md"):
+        path = target / filename
+        if _rewrite_generated_lines(path, LEGACY_ROOT_INSTRUCTION_LINES):
+            print(f"Updated generated architecture guidance in {filename}")
+        if path.exists():
+            content = path.read_text(encoding="utf-8")
+            if (
+                LEGACY_MEMORY_INDEX in content
+                or LEGACY_MEMORY_DIRECTORY in content
+            ):
+                print(
+                    f"  WARNING: {filename} still contains custom legacy "
+                    "architecture references; preserved for manual review."
+                )
+
+    toc = target / "TOC.md"
+    if _rewrite_generated_lines(toc, LEGACY_TOC_LINES):
+        print("Updated generated architecture entries in TOC.md")
+    if toc.exists():
+        content = toc.read_text(encoding="utf-8")
+        if (
+            LEGACY_MEMORY_INDEX in content
+            or LEGACY_MEMORY_DIRECTORY in content
+        ):
+            print(
+                "  WARNING: TOC.md still contains custom legacy architecture "
+                "references; preserved for manual review."
+            )
+
+
 def publish_skills(repo_root: Path, skills_target: Path,
                    agent: str = AGENT_CLAUDE_CODE) -> int:
     """Flatten-copy skills/core/* and skills/reviewer/* to target.
@@ -810,6 +938,7 @@ def deploy_agent_hook_config(repo_root: Path, target: Path, agent: str, force: b
 
 def deploy_agent_instructions(repo_root: Path, target: Path, agent: str):
     """Deploy root agent instructions for the selected coding agent."""
+    upgrade_legacy_project_contracts(target)
     adapter = get_agent_adapter(agent)
     filename = adapter.root_instruction_filename
     dst = target / filename

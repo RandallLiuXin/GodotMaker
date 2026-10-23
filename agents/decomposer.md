@@ -163,12 +163,14 @@ Run this step only when `STRUCTURE.md` is in `Owned Files`, or when no `Work Pac
 If this is `architecture-package`, read finalized PLAN.md first. Use its task
 IDs, affected systems, component hints, current-tag mechanic IDs, and refactor
 tasks as the only cross-reference source; do not derive a different task map
-from GDD/ROADMAP.
+from GDD/ROADMAP. In subsequent mode, the finalized PLAN.md remains the source
+of current-tag task and mechanic mappings, while the previous tag's archived
+STRUCTURE.md is the source of durable architecture entries that must survive.
 
 STRUCTURE.md is **per-tag scope** — overwrite root from `.claude/templates/STRUCTURE.md` in both modes.
 
 - `**Tag:** {Current Tag}` header at the top.
-- Captures the structure as it exists at the END of this tag — i.e., previous tags' systems plus this tag's additions / refactors. Subsequent mode: read prior tags' archived STRUCTURE.md to know what already exists; carry forward Components / Systems that remain, add this tag's new ones, and explicitly mark refactored ones (e.g. `LevelUpCardPool — REPLACED in v0.3.0 by TalentTree`).
+- Captures the structure as it exists at the END of this tag — i.e., previous tags' systems plus this tag's additions / refactors. Subsequent mode: read the previous tag's archived STRUCTURE.md and carry forward Components / Systems that remain **and every still-valid entry under Architecture Ownership, Architecture Dependencies, Ordering Constraints, and Stable Invariants**. Add this tag's new entries, modify only entries whose architecture actually changes in this tag, and explicitly mark replaced systems (e.g. `LevelUpCardPool — REPLACED in v0.3.0 by TalentTree`). Never reset those four durable sections to template placeholders.
 
 Each Main Build task in PLAN.md must name its game mechanic function, player-facing outcome, affected systems/scenes/UI, integration point, and verify expectation.
 
