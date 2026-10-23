@@ -27,6 +27,7 @@ contract defines when an entry is required, its format, and allowed categories.
 ## Fixed
 
 - Aligned `/gm-evaluate` E2E generation with canonical `e2e/test_*.py` pytest files so generated tests are discovered by pytest and the project checker (#210) — @RandallLiuXin.
+- Stage completion events now validate through the runtime-neutral append tool before writing logs or evaluation archives, while runtime hooks only provide next-role guidance (#224) — @RandallLiuXin.
 
 ## Removed
 
