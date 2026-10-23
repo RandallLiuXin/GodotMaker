@@ -18,7 +18,8 @@ Claude Code 本身需要 Anthropic 账号并开通 API 访问（或已开通 Cla
 
 ### 我需要哪个版本的 Godot？
 
-Godot 4.5 或更高版本。GodotMaker 不支持 Godot 3.x 或 Godot 4.3 及以下版本。
+Godot 4.5 或更高版本。更早的 Godot 版本（包括 4.4 和全部 3.x 版本）不在官方
+支持基线内。
 
 ### 做一个游戏要多长时间？
 
@@ -52,7 +53,7 @@ Godot 4.5 或更高版本。GodotMaker 不支持 Godot 3.x 或 Godot 4.3 及以�
 
 ### `/gm-build` 内部做了什么？
 
-`/gm-build` 推进 `PLAN.md` 中的任务列表：先派 **Worker** 把所有任务做到 `completed`，然后跑一次 verify+review pass——**Verifier** 无头编译项目并运行测试，**Reviewer** 检查 Godot 特有的坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务加到 `PLAN.md`）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证，但原始 finding 和 triage 决策不写入 `MEMORY.md`。循环持续到没有任何 ACCEPT。如果 Worker 跑过了但 Verifier 或 Reviewer 没跑，`check_completion.py` Hook 会拒绝 `/gm-build` 结束。
+`/gm-build` 推进 `PLAN.md` 中的任务列表：先派 **Worker** 把所有任务做到 `completed`，然后跑一次 verify+review pass——**Verifier** 无头编译项目并运行测试，**Reviewer** 检查 Godot 特有的坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务加到 `PLAN.md`）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证，但原始 finding 和 triage 决策作为运行时证据保留，不写入项目设计文档。循环持续到没有任何 ACCEPT。如果 Worker 跑过了但 Verifier 或 Reviewer 没跑，`check_completion.py` Hook 会拒绝 `/gm-build` 结束。
 
 ### AI 为什么需要 git worktree？
 
@@ -68,11 +69,11 @@ AI 代码生成不是确定性的，游戏系统之间复杂的交互可能产�
 
 ### 我可以手动修改生成的代码吗？
 
-可以，你的修改会被保留。但要注意，如果你在新 tag 中再次运行 `/gm-build`，它可能会添加涉及同一文件的新任务——新的 Worker 输出可能会扩展或部分覆盖你的手动修改。建议手动修改保持在小范围内。只有长期架构决策或项目约束才记录到 `MEMORY.md`；功能需求应写入对应的设计文档。
+可以，你的修改会被保留。但要注意，如果你在新 tag 中再次运行 `/gm-build`，它可能会添加涉及同一文件的新任务——新的 Worker 输出可能会扩展或部分覆盖你的手动修改。建议手动修改保持在小范围内。持久的架构归属、依赖、顺序约束和不变量记录到 `STRUCTURE.md`；功能需求应写入对应的设计文档。
 
 ### 截图和测试结果在哪里？
 
-- 每个场景的视觉参考图（由 `/gm-asset` 生成）：`references/scene_<name>.png`
+- 用户显式提供的可选风格图或身份图：`references/`
 - 评估期间截取的运行时截图：`e2e/screenshots/`
 - 动画帧序列（每个场景一个子目录）：`e2e/screenshots/scene_<name>/frame_*.png`
 - 每轮评估归档的截图和判定：`.godotmaker/evaluation-runs/`
@@ -117,7 +118,7 @@ Hook 内置了防死锁限制。`check_completion.py` 最多允许连续拦截 5
 
 ### 我的评估分数很低，但游戏看起来没问题。
 
-评估器对照每个场景的参考图和 GDD 描述进行视觉 QA。如果 `/gm-asset` 没有生成 `references/scene_*.png` 文件，评估器就没有视觉参考来比对，会给出保守的低分。在重新评估前，先重新运行 asset 命令补全缺失的参考图。
+评估器会根据 `SCENES.md` / `ASSETS.md` 中可观察的要求和 `DESIGN.md` 中适用的规则检查场景截图。请查看 `.godotmaker/evaluation.json` 中逐条规则的 finding：如果书面设计合同没有表达预期，就修正合同；如果渲染结果违反合同，就修正场景。
 
 ### 我怎么回滚到旧版本的 GodotMaker？
 

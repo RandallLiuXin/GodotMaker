@@ -262,7 +262,6 @@ def scene_request() -> dict:
         subject_class="mixed",
         captures=["e2e/screenshots/scene_battle.png"],
         requirements=["Player sprite visible centre-left, facing right"],
-        references=["references/scene_battle.png"],
     )
 
 
@@ -372,8 +371,6 @@ def test_asset_families_classify_by_what_they_show():
     assert mapping["character-bundle"] == "character"
     assert mapping["fx-bundle"] == "effect"
     assert mapping["ui-kit"] == mapping["card-kit"] == "ui"
-    # A screen reference is a whole composed screen, world content plus UI.
-    assert mapping["screen-reference"] == "mixed"
     for family in ("background-map", "platform-strip", "tileset",
                    "scene-prop-set", "compact-prop-pack"):
         assert mapping[family] == "environment", family
@@ -407,17 +404,23 @@ def test_question_cites_document_rules_and_scene_requirements(scene_request):
     assert "verify these independently" in question
 
 
-def test_reference_is_provenance_only_and_never_a_similarity_gate(scene_request):
-    question = render_question(scene_request)
+def test_optional_user_reference_is_provenance_only_and_never_a_similarity_gate():
+    request = build_request(
+        DESIGN_MD,
+        subject_name="hero",
+        subject_class="character",
+        subject_kind="asset",
+        captures=["assets/generated/character-bundle/hero/hero.png"],
+        references=["references/hero_identity.png"],
+    )
+    question = render_question(request)
 
-    assert "references/scene_battle.png" in question
+    assert "references/hero_identity.png" in question
     assert "context only, never a criterion" in question
     assert "Do not judge overall similarity to any reference image" in question
 
 
-def test_same_style_different_composition_passes(scene_request):
-    """A capture that obeys every rule passes, however unlike the reference
-    its composition is. Composition is judged by rule d8, not by resemblance."""
+def test_scene_that_obeys_every_rule_passes(scene_request):
     result = grade(scene_request, _all_pass(scene_request))
 
     assert result["result"] == "pass"
@@ -991,11 +994,11 @@ def test_evaluate_records_rule_level_audit_in_evaluation_json():
     assert "vqa_calls" in evaluate
 
 
-def test_evaluate_does_not_gate_on_reference_similarity():
+def test_evaluate_uses_design_rules_without_a_scene_reference():
     evaluate = _read(EVALUATE_SKILL)
 
-    assert "Do not compare screenshots against" in evaluate
-    assert "provenance" in evaluate
+    assert "Judge them only against observable scene" in evaluate
+    assert "--reference references/scene_" not in evaluate
 
 
 # ---------------------------------------------------------------------------

@@ -32,6 +32,10 @@ from asset_source_generate import (
 
 VQA_PROVIDERS = {"native", "codex", "gemini", "openai"}
 
+MIN_PYTHON_VERSION = (3, 10)
+MIN_NODE_VERSION = (22,)
+MIN_GODOT_VERSION = (4, 5)
+
 
 class EnvCheck:
     def __init__(self):
@@ -159,10 +163,10 @@ def check_python(r: EnvCheck, config: dict[str, str] | None = None):
     print("\n--- Python ---")
     v = sys.version_info
     version = f"{v.major}.{v.minor}.{v.micro}"
-    if v >= (3, 9):
-        r.ok(f"Python {version} (>= 3.9)")
+    if (v.major, v.minor, v.micro) >= MIN_PYTHON_VERSION:
+        r.ok(f"Python {version} (>= 3.10)")
     else:
-        r.fail(f"Python {version} too old (>= 3.9 required)")
+        r.fail(f"Python {version} too old (>= 3.10 required)")
 
     config = config or {}
     packages = {"pillow": "PIL", "requests": "requests"}
@@ -335,10 +339,10 @@ def check_node(r: EnvCheck):
         r.fail("Node.js not found. Install: https://nodejs.org")
         return
 
-    if int(version.split(".")[0]) >= 18:
-        r.ok(f"Node.js {version} (>= 18)")
+    if parse_version(version) >= MIN_NODE_VERSION:
+        r.ok(f"Node.js {version} (>= 22)")
     else:
-        r.fail(f"Node.js {version} too old (>= 18 required)")
+        r.fail(f"Node.js {version} too old (>= 22 required)")
 
     if shutil.which("npx"):
         r.ok("npx available")
@@ -365,22 +369,25 @@ def check_godot(r: EnvCheck, project_dir: Path):
     configured = read_godot_path(project_dir)
     if configured:
         version = _get_version_from_path(configured)
-        if version and parse_version(version)[:2] >= (4, 4):
-            r.ok(f"Godot {version}, configured path: {configured}")
+        if version and parse_version(version) >= MIN_GODOT_VERSION:
+            r.ok(f"Godot {version} (>= 4.5), configured path: {configured}")
             return
         if version:
-            r.fail(f"Configured Godot {version} too old at {configured}")
+            r.fail(
+                f"Configured Godot {version} too old (>= 4.5 required) "
+                f"at {configured}"
+            )
             return
         r.fail(f"Configured Godot path does not run: {configured}")
         return
 
     for cmd in ("godot", "godot4"):
         version = get_version(cmd)
-        if version and parse_version(version)[:2] >= (4, 4):
-            r.ok(f"Godot {version}, command: {cmd}")
+        if version and parse_version(version) >= MIN_GODOT_VERSION:
+            r.ok(f"Godot {version} (>= 4.5), command: {cmd}")
             return
         elif version:
-            r.fail(f"Godot {version} too old (>= 4.4 required)")
+            r.fail(f"Godot {version} too old (>= 4.5 required)")
             return
 
     r.warn(

@@ -19,8 +19,6 @@ docs/tags/
     ├── STRUCTURE.md
     ├── DESIGN.md
     ├── SCENES.md
-    ├── MEMORY.md
-    ├── memory/               architecture files MEMORY.md indexes
     ├── evaluation-final.json
     └── evidence/
         ├── manifest.json     every archived file: path, category, bytes, SHA-256
@@ -32,10 +30,9 @@ The flat document paths (`PLAN.md`, `STRUCTURE.md`, `SCENES.md`, …) are
 unchanged from earlier releases, so anything that already reads
 `docs/tags/<Tag>/PLAN.md` keeps working.
 
-An archive mirrors the project as it stands when `archive` runs, deletions
-included: if `memory/` or `e2e/` is gone by the time the command runs, the
-previous run's copy is removed rather than carried forward into the new
-snapshot.
+An archive mirrors the project as it stands when `archive` runs. If `e2e/` is
+gone by the time the command runs, the previous run's evidence copy is removed
+rather than carried forward into the new snapshot.
 
 ## Reading an archive
 
@@ -51,13 +48,13 @@ snapshot.
 
 `SUMMARY.md` is a retrieval index, not a source of truth. It restates facts
 from `CHANGELOG.md`, `PLAN.md`, `evaluation-final.json` and `final_report.json`
-and nothing else — worker traces, exploration notes and `MEMORY.md` never
-reach it. When the summary and a canonical document disagree,
+and nothing else — worker traces and exploration notes never reach it. When
+the summary and a canonical document disagree,
 the canonical document wins.
 
-It links only what the archive actually holds. A project with no `memory/`
-directory, or a backfilled archive missing a canonical document, gets a summary
-without that pointer rather than one advertising a link that 404s.
+It links only what the archive actually holds. A backfilled archive missing a
+canonical document gets a summary without that pointer rather than one
+advertising a link that 404s.
 
 ## Immutability
 
@@ -126,7 +123,7 @@ itself — the seal landed, the index refresh after it did not. Re-running
 
 | Command | What it does |
 |---|---|
-| `python tools/seal_tag.py archive <Tag>` | Copies the working docs, the `memory/` subtree and `e2e/` evidence into `docs/tags/<Tag>/`, then link-checks the archived `MEMORY.md`. Writes an unsealed manifest. |
+| `python tools/seal_tag.py archive <Tag>` | Copies the working docs and `e2e/` evidence into `docs/tags/<Tag>/`. Writes an unsealed manifest. |
 | `python tools/seal_tag.py index <Tag>` | Generates `SUMMARY.md`, the tag `README.md`, the sealed manifest and the parent `docs/tags/README.md`. This is the step that seals the tag. |
 | `python tools/seal_tag.py backfill <Tag>` / `--all` | Retrofits `README.md`, `SUMMARY.md` and a manifest onto archives sealed by an older release. Already-sealed archives are skipped unless `--force`. |
 | `python tools/seal_tag.py reindex` | Regenerates `docs/tags/README.md` from the sealed archives on disk. Touches no archive. |
@@ -134,24 +131,7 @@ itself — the seal landed, the index refresh after it did not. Re-running
 | `python tools/seal_tag.py reset` | Truncates `.godotmaker/stage.jsonl` and deletes `metrics_current.jsonl`. |
 
 Exit codes: `0` success · `1` filesystem or runtime failure · `2` missing
-sources, unresolvable memory links, or bad usage · `3` the tag is already
-sealed.
-
-## Memory link checking
-
-`MEMORY.md` indexes detailed architecture and constraints under `memory/`. Archiving the index
-without those files would freeze a set of broken links, so `archive` copies
-`memory/` too and then verifies the archived `MEMORY.md`:
-
-- A `memory/…` link with no archived target, an absolute path, or a link that
-  escapes the archive directory **blocks the seal** (exit 2). Fix the root
-  `MEMORY.md`, or restore the missing file, and re-run.
-- A link to a live project file that is deliberately not archived
-  (`src/player.gd`, `assets/…`) is recorded in the manifest's `link_warnings`
-  and does not block.
-
-Links inside HTML comments and fenced code blocks are ignored, so the example
-entries shipped in the `MEMORY.md` template never block a first finalize.
+sources or bad usage · `3` the tag is already sealed.
 
 ## Backfilling older archives
 
@@ -164,10 +144,7 @@ python tools/seal_tag.py backfill --all
 ```
 
 Backfill only adds index files. It never rewrites a canonical document — it
-hashes them before and after and fails if any changed. It also does **not**
-copy today's `memory/` into a historical tag: that would inject present-day
-content into a past snapshot. The missing subtree is recorded as a manifest
-warning instead, and the tag README reports completeness as `partial`.
+hashes them before and after and fails if any changed.
 
 Archives that already carry a sealed manifest are skipped — re-indexing one
 would replace its recorded seal revision with whatever this run resolves. Pass

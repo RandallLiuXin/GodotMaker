@@ -35,8 +35,8 @@ matches.
 
 ### Visual Context
 - DESIGN.md is the project's visual specification authority.
-- Existing scene references and canonical asset references are visual
-  conditioning: they carry identity, palette, and continuity, and never
+- Explicitly supplied style and canonical images are visual conditioning: they
+  carry identity, palette, and continuity, and never
   outrank, extend, or replace a DESIGN.md rule.
 - DESIGN.md is the only visual document to read. An older visual file left
   beside it is closed history.

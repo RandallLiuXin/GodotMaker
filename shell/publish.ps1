@@ -4,7 +4,7 @@
 # On upgrade, compares VERSION against the target's .godotmaker/version:
 #   PATCH  -> auto-proceed
 #   MINOR  -> show changelog, prompt for confirmation
-#   MAJOR  -> strong warning, prompt for confirmation
+#   MAJOR  -> reject unless --force authorizes a clean re-initialization
 # Use -Force (or --force) to skip confirmation prompts and allow downgrades.
 #
 # Thin wrapper - all logic is in tools/publish.py.

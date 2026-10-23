@@ -318,7 +318,7 @@ class TestBuildPhase:
 class TestVerifyPhase:
     def test_verify_is_read_only_main(self, project_dir):
         write_current_role("verify")
-        for path in ["systems/x.gd", "PLAN.md", "MEMORY.md", "e2e/test.py"]:
+        for path in ["systems/x.gd", "PLAN.md", "ROADMAP.md", "e2e/test.py"]:
             _, parsed = run_hook("check_file_permissions.py",
                                  file_write_payload(path))
             assert is_blocked(parsed), f"verify must block {path}"

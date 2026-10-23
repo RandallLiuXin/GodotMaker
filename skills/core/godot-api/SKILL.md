@@ -10,6 +10,15 @@ description: |
 
 $ARGUMENTS
 
+<!-- agent-operations: read_skill_reference, run_shell_command -->
+
+## Skill-local paths
+
+Resolve every bundled path below relative to this skill's published directory,
+using the active runtime's `read_skill_reference` mapping. Call that resolved
+directory `<godot-api-skill-dir>`; do not assume a runtime-specific skill-root
+environment variable.
+
 ## Version detection
 
 Docs are stored per Godot version under `doc_api/{version}/` and `doc_api_csharp/{version}/`.
@@ -21,22 +30,22 @@ Determine the version to use:
 
 Bootstrap if docs for the target version are missing:
 ```bash
-bash ${CLAUDE_SKILL_DIR}/tools/ensure_doc_api.sh [version]
+bash "<godot-api-skill-dir>/tools/ensure_doc_api.sh" [version]
 ```
 
 ## How to answer
 
 **Language selection:** `doc_api/{version}/` contains GDScript docs. `doc_api_csharp/{version}/` contains C# docs. Default to GDScript unless the caller asks about C#.
 
-1. Read `${CLAUDE_SKILL_DIR}/doc_api/{version}/_common.md` — index of ~128 common classes
-   - For C#: `${CLAUDE_SKILL_DIR}/doc_api_csharp/{version}/_common.md`
+1. Read `<godot-api-skill-dir>/doc_api/{version}/_common.md` — index of ~128 common classes
+   - For C#: `<godot-api-skill-dir>/doc_api_csharp/{version}/_common.md`
 2. If the class isn't there, read `_other.md` in the same directory
-3. Read `${CLAUDE_SKILL_DIR}/doc_api/{version}/{ClassName}.md` for full API
-   - For C#: `${CLAUDE_SKILL_DIR}/doc_api_csharp/{version}/{ClassName}.md`
+3. Read `<godot-api-skill-dir>/doc_api/{version}/{ClassName}.md` for full API
+   - For C#: `<godot-api-skill-dir>/doc_api_csharp/{version}/{ClassName}.md`
 4. Return what the caller needs:
    - **Specific question** → relevant methods/signals with descriptions
    - **Full API request** → the entire class doc
 
-**C# syntax reference:** `${CLAUDE_SKILL_DIR}/csharp.md` — C# Godot syntax, patterns, and recipes.
+**C# syntax reference:** `<godot-api-skill-dir>/csharp.md` — C# Godot syntax, patterns, and recipes.
 
-**GDScript syntax reference:** `${CLAUDE_SKILL_DIR}/gdscript.md` — GDScript language spec, type system, patterns.
+**GDScript syntax reference:** `<godot-api-skill-dir>/gdscript.md` — GDScript language spec, type system, patterns.
