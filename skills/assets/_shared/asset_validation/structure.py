@@ -9,13 +9,13 @@ a fixed check.
 A family skill registers one validator for the artifact type it compiles,
 together with the structural facts its validator needs ``probe.gd`` to collect.
 The registry fails closed on an unregistered type: an artifact nobody can check
-must not reach ``ready`` just because no one wrote the check yet.
+must not reach ``generated`` just because no one wrote the check yet.
 
 The registry also owns whether those facts were actually collected. A check name
 ``probe.gd`` does not implement is rejected at registration, and a declared check
 the probe could not answer fails the level before the validator runs -- otherwise
 a validator that simply ignores ``request.probe.structure`` would return normally
-and carry the ladder to ``ready`` while the L3 details record that the check was
+and carry the ladder to ``generated`` while the L3 details record that the check was
 impossible.
 
 The shared layer ships exactly one validator, for the one artifact type it
@@ -216,7 +216,7 @@ class StructureValidatorRegistry:
 
         The registry, not the validator, owns this. A validator that never reads
         ``request.probe.structure`` -- or reads only part of it -- would otherwise
-        return normally and carry the whole ladder to ``ready`` while the probe
+        return normally and carry the whole ladder to ``generated`` while the probe
         result sitting in the L3 details says the check could not be performed.
         Making every validator repeat the guard would only mean every family gets
         one chance to forget it.

@@ -80,7 +80,7 @@ def test_skill_local_adapters_reject_a_legal_request_for_another_family(tmp_path
     request = {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."}
     for family in (
         "platform-strip", "character-bundle", "fx-bundle",
-        "compact-prop-pack", "scene-prop-set",
+        "compact-prop-pack", "scene-prop-set", "portrait",
     ):
         with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
             _source_adapter(family).compile_and_validate(
@@ -503,7 +503,7 @@ def test_background_records_the_bytes_a_passing_ladder_examined(monkeypatch, tmp
 
     The stable path is derived from `asset_id`, so a regeneration overwrites the
     exact PNG a passing result names. The record is what the entry builder
-    recomputes from disk before it writes `ready`.
+    recomputes from disk before it writes `generated`.
     """
     source = tmp_path / "assets/generated/background-map/sky/sky.png"
     source.parent.mkdir(parents=True)

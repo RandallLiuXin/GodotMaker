@@ -37,8 +37,6 @@ if str(_TOOLS_DIR) not in sys.path:
 from asset_output_paths import (  # noqa: E402
     LAYOUT_ARTIFACT_TYPES,
     PRODUCTION_FAMILIES,
-    REFERENCE_FAMILIES,
-    REFERENCE_LAYOUTS,
     SOURCE_LAYOUT_TYPES,
     AssetOutputPathError,
     assert_within_output_dir,
@@ -54,8 +52,6 @@ RuntimeContractError = AssetOutputPathError
 __all__ = [
     "LAYOUT_ARTIFACT_TYPES",
     "PRODUCTION_FAMILIES",
-    "REFERENCE_FAMILIES",
-    "REFERENCE_LAYOUTS",
     "SOURCE_LAYOUT_TYPES",
     "RuntimeContractError",
     "assert_within_output_dir",

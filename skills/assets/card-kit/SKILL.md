@@ -114,7 +114,7 @@ affected checks followed by the final full check.
 Only STOP for a missing/corrupt required input, unsupported pixel-art request,
 contradictory request, unavailable declared provider or required reference
 attachment, or unrecoverable environment/permission failure. A final result is
-ready only after every applicable L0-L4 check passes.
+complete only after every applicable L0-L4 check passes.
 
 ## Result and Handoff
 

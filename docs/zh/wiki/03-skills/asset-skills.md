@@ -9,17 +9,27 @@ Asset Skill 会把资产请求转换成已验证的 Godot runtime 资源。
 
 | Family | Variant | Godot artifact 类型 | 终态 |
 |---|---|---|---|
-| background-map | default | Texture2D | ready |
-| card-kit | default | AtlasTexture, StyleBoxTexture, Theme | ready |
-| character-bundle | default | SpriteFrames | ready |
-| compact-prop-pack | default | AtlasTexture | ready |
-| fx-bundle | static, animated | SpriteFrames, Texture2D | ready |
-| platform-strip | single, atlas | AtlasTexture, Texture2D | ready |
-| scene-prop-set | default | AtlasTexture | ready |
-| tileset | default | TileSet | ready |
-| ui-kit | default | AtlasTexture, StyleBoxTexture, Theme | ready |
+| background-map | default | Texture2D | generated |
+| card-kit | default | AtlasTexture, StyleBoxTexture, Theme | generated |
+| character-bundle | default | SpriteFrames | generated |
+| compact-prop-pack | default | AtlasTexture | generated |
+| fx-bundle | static, animated | SpriteFrames, Texture2D | generated |
+| platform-strip | single, atlas | AtlasTexture, Texture2D | generated |
+| portrait | default | Texture2D | generated |
+| scene-prop-set | default | AtlasTexture | generated |
+| tileset | default | TileSet | generated |
+| ui-kit | default | AtlasTexture, StyleBoxTexture, Theme | generated |
 
 各 family 只有在完整验证路径成功后，才会返回一个或多个原生 Godot artifact。
+
+每条 runtime `ASSETS.md` 行只能向前推进：从 `MISSING` 变为 `provided`（用户提供的文件）、
+`generated`（已登记的 family result）或 `deferred`。Source layout 只描述物理像素排列：
+`single`、`grid_sheet`、`region_atlas`、`tile_atlas` 或 `theme_recipe`。
+`reference` 输出（例如角色 identity anchor）是 runtime family 的证据，永远不会成为
+表格行或 layout。
+
+`portrait` 负责 UI 展示位中的角色立绘。它可以把角色的 identity anchor 作为可选的
+`canonical` reference 输入；`background-map` 仍只负责场景背景、地图和视差背景板。
 
 要直接从真值来源查看或校验同一份 inventory，请运行：
 
@@ -41,7 +51,7 @@ Runtime asset 按顺序通过以下层级。任一层失败，result 都不能�
 | L3 | 真实的 headless Godot 进程能够 import、加载并校验 artifact 类型。 |
 | L4 | 类型专属结构与声明的 recipe 一致，例如 SpriteFrames 动画、Theme 值、atlas region，或 TileSet source 与 terrain 数据。 |
 
-Runtime 输出只有在 L0-L4 全部通过后才会到达 `ready`。Provider 可用性与视觉质量属于独立证据：
+Runtime 输出只有在 L0-L4 全部通过后才会到达 `generated`。Provider 可用性与视觉质量属于独立证据：
 结构验证全绿，并不代表远程 provider 一定可用，也不代表其美术符合特定创作方向。
 
 ## 相关页面

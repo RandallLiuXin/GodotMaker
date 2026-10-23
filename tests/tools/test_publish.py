@@ -1154,6 +1154,7 @@ tileset = load_runner("published_tileset_validation", "tileset")
 ui_kit = load_runner("published_ui_kit_validation", "ui-kit")
 card_kit = load_runner("published_card_kit_validation", "card-kit")
 background_map = load_runner("published_background_map_validation", "background-map")
+portrait = load_runner("published_portrait_validation", "portrait")
 platform_strip = load_runner("published_platform_strip_validation", "platform-strip")
 character_bundle = load_runner("published_character_bundle_validation", "character-bundle")
 fx_bundle = load_runner("published_fx_bundle_validation", "fx-bundle")
@@ -1244,7 +1245,7 @@ background_result = {{
     "sources": [{{"path": "res://assets/generated/background-map/sky/sky.png", "layout": "single"}}],
     "previews": [], "validation": {{"passed": False}},
 }}
-for adapter in (platform_strip, character_bundle, fx_bundle, compact_prop_pack, scene_prop_set):
+for adapter in (platform_strip, character_bundle, fx_bundle, compact_prop_pack, scene_prop_set, portrait):
     try:
         adapter.compile_and_validate(background_request, background_result, project_root=target, godot_path="godot")
     except adapter.MissingFamilySkillError as exc:
@@ -1335,7 +1336,7 @@ missing = Path({str(missing)!r})
 for family in (
     "tileset", "ui-kit", "card-kit", "background-map", "platform-strip",
     "character-bundle", "fx-bundle", "compact-prop-pack",
-    "scene-prop-set",
+    "portrait", "scene-prop-set",
 ):
     runner = skills / family / "standalone_validation.py"
     spec = importlib.util.spec_from_file_location(

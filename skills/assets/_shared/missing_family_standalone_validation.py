@@ -46,6 +46,7 @@ class MissingFamilySkillError(Exception):
 _LEVELS = ("L0", "L1", "L2", "L3", "L4")
 _FAMILIES = {
     "background-map",
+    "portrait",
     "platform-strip",
     "character-bundle",
     "fx-bundle",
@@ -146,12 +147,13 @@ def _exact_keys(value: Any, keys: set[str], label: str) -> Mapping[str, Any]:
     return value
 
 
-def _check_background(
+def _check_single_texture(
     request: Mapping[str, Any], result: Mapping[str, Any]
 ) -> list[tuple[Mapping[str, Any], CompileRequest]]:
-    asset_id = request["asset_id"]
+    """Bind a one-image family to its stable ``single -> Texture2D`` output."""
+    family, asset_id = request["asset_type"], request["asset_id"]
     outputs = _runtime(result)
-    path = _stable_path("background-map", asset_id, asset_id, ".png")
+    path = _stable_path(family, asset_id, asset_id, ".png")
     if (
         len(outputs) != 1
         or outputs[0].get("name") != asset_id
@@ -159,18 +161,25 @@ def _check_background(
         or outputs[0].get("godot_type") != "Texture2D"
     ):
         raise MissingFamilySkillError(
-            "background-map needs exactly its stable Texture2D runtime output"
+            f"{family} needs exactly its stable Texture2D runtime output"
         )
     if result["sources"] != [{"path": path, "layout": "single"}]:
         raise MissingFamilySkillError(
-            "background-map result needs exactly its stable single source"
+            f"{family} result needs exactly its stable single source"
+        )
+    if family == "portrait" and len(result["outputs"]) != 1:
+        # A character identity anchor is a provider input carried in
+        # request.references; a portrait never re-delivers it as an output.
+        raise MissingFamilySkillError(
+            "portrait delivers only its Texture2D runtime output; an identity "
+            "anchor stays a request reference, not a result output"
         )
     output = outputs[0]
     return [
         (
             output,
             CompileRequest(
-                "background-map", asset_id, "single", path, "Texture2D", path, Path(".")
+                family, asset_id, "single", path, "Texture2D", path, Path(".")
             ),
         )
     ]
@@ -521,8 +530,8 @@ def _declarations(
     request: Mapping[str, Any], result: Mapping[str, Any]
 ) -> list[tuple[Mapping[str, Any], CompileRequest]]:
     family = request["asset_type"]
-    if family == "background-map":
-        return _check_background(request, result)
+    if family in {"background-map", "portrait"}:
+        return _check_single_texture(request, result)
     if family == "platform-strip":
         return _check_platform(request, result)
     if family in {"character-bundle", "fx-bundle"}:

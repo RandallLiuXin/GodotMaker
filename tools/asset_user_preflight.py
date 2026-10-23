@@ -14,12 +14,19 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from asset_family_registry import (
+    DEFERRED_STATUS,
+    MISSING_STATUS,
+    PROVIDED_STATUS,
+    TERMINAL_STATUS,
+)
+
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 AUDIO_SUFFIXES = {".wav", ".ogg", ".mp3"}
 SUPPORTED_SUFFIXES = IMAGE_SUFFIXES | AUDIO_SUFFIXES
-DONE_STATUSES = {"provided", "generated", "source_ready"}
-UNFILLED_STATUSES = {"missing", "pending", "deferred"}
+DONE_STATUSES = {PROVIDED_STATUS, TERMINAL_STATUS}
+UNFILLED_STATUSES = {MISSING_STATUS.lower(), DEFERRED_STATUS}
 ASSET_PATH_RE = re.compile(r"assets[/\\][^\s|,;)]+", re.IGNORECASE)
 
 

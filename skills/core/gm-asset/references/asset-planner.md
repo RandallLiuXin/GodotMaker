@@ -28,6 +28,12 @@ declaration.
    images, action sheets, source grids, and other provenance remain in the
    request, result, and reports; do not plan them as rows.
 8. Record `family=<asset_type>` in every planned row's Generation Params.
+9. Plan a character portrait for a UI display slot as its own `portrait`
+   unit. When the character has an identity anchor, such as the canonical
+   image in its `character-bundle` result, attach it as a `canonical`
+   reference. Never route a portrait to `background-map`, which owns scenic
+   backgrounds only, or add it to a `character-bundle`, whose one runtime
+   output is its `SpriteFrames`.
 
 ## Visual Authority
 
@@ -59,6 +65,7 @@ Select by asset type:
 | `compact-prop-pack` | yes | 1, 2, 3, 4, 5, 6, 7, 9 | no | yes |
 | `scene-prop-set` | yes | 1, 2, 3, 4, 5, 6, 7, 9 | no | yes |
 | `platform-strip` | yes | 1, 2, 3, 4, 5, 6, 7, 9 | no | yes |
+| `portrait` | yes | 1, 2, 3, 4, 5, 6, 7, 9 | no | yes |
 | `tileset` | yes | 1, 2, 3, 4, 5, 6, 7, 9 | no | yes |
 | `ui-kit` | yes | 1, 2, 3, 4, 5, 6, 8, 9 | yes | yes |
 | `card-kit` | yes | 1, 2, 3, 4, 5, 6, 8, 9 | yes | yes |

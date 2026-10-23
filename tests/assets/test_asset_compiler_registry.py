@@ -211,10 +211,11 @@ def test_registering_an_unknown_layout_is_rejected():
         _register(registry, "mosaic", "Texture2D")
 
 
-def test_registering_a_reference_layout_is_rejected():
+@pytest.mark.parametrize("layout", ["reference", "action_frames"])
+def test_registering_a_retired_layout_is_rejected(layout):
     registry = CompilerRegistry()
     with pytest.raises(CompilerError, match="compiles no Godot artifact"):
-        _register(registry, "reference", "Texture2D")
+        _register(registry, layout, "Texture2D")
 
 
 @pytest.mark.parametrize("version", [0, -1, True, 1.0, "1"])
@@ -277,7 +278,8 @@ def test_type_mismatch_fails_before_routing(project):
         ("production_family", "sprites", "production_family is not allowed"),
         ("production_family", "screen-reference", "not allowed"),
         ("source_layout_type", "mosaic", "source_layout_type is not allowed"),
-        ("source_layout_type", "reference", "compiles no Godot artifact"),
+        ("source_layout_type", "reference", "source_layout_type is not allowed"),
+        ("source_layout_type", "action_frames", "source_layout_type is not allowed"),
         ("artifact_type", "Resource", "must be one of"),
         ("asset_id", "", "asset_id must be a non-empty string"),
     ],

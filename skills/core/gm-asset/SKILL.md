@@ -100,6 +100,7 @@ Use `references/asset-planner.md` for production-unit selection.
 | `compact-prop-pack` | First-class `compact-prop-pack` Asset Skill |
 | `background-map` | First-class `background-map` Asset Skill |
 | `platform-strip` | First-class `platform-strip` Asset Skill |
+| `portrait` | First-class `portrait` Asset Skill |
 | `scene-prop-set` | First-class `scene-prop-set` Asset Skill |
 | `tileset` | First-class `tileset` Asset Skill |
 
@@ -187,6 +188,7 @@ there is no production-unit document left to substitute for one:
 | `character-bundle` | First-class Asset Skill: `character-bundle` |
 | `fx-bundle` | First-class Asset Skill: `fx-bundle` |
 | `platform-strip` | First-class Asset Skill: `platform-strip` |
+| `portrait` | First-class Asset Skill: `portrait` |
 | `ui-kit` | First-class Asset Skill: `ui-kit` |
 | `card-kit` | First-class Asset Skill: `card-kit` |
 | `scene-prop-set` | First-class Asset Skill: `scene-prop-set` |
@@ -202,7 +204,7 @@ Brief shape:
 {one concrete generated visual production unit}
 
 ### Production Contract
-- First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | ui-kit | card-kit | compact-prop-pack | scene-prop-set | tileset}
+- First-class Asset Skill: {background-map | character-bundle | fx-bundle | platform-strip | portrait | ui-kit | card-kit | compact-prop-pack | scene-prop-set | tileset}
 - Invoke that named Skill with one shared generic asset request. Every
   production unit is a first-class Skill; there is no production-unit document
   to read and no fallback contract for a family.

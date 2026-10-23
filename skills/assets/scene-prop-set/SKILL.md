@@ -157,8 +157,8 @@ sidecar evidence, never extra keys in the generic result.
    binds the request/result, L1 verifies atlas and metadata delivery, L2
    compiles, and L4 verifies every AtlasTexture's shared atlas path, exact
    region, and zero margin. Read diagnostics, repair source, parameters,
-   metadata, or artifacts, then repeat from the affected step. Return ready
-   only after all applicable layers pass; the first check failure is never the
+   metadata, or artifacts, then repeat from the affected step. Return a passing
+   result only after all applicable layers pass; the first check failure is never the
    final result unless it is a real STOP condition. This production loop does
    not perform private Eval L5/L6 grading.
 

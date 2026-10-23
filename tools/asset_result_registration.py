@@ -22,11 +22,22 @@ from asset_build_record import (
     assert_validated_artifact,
     read_validation_record,
 )
-from asset_skill_contract_check import AssetContractError, check_request, check_result
-from asset_family_registry import FamilyRegistryError, variant_for_request
+from asset_skill_contract_check import (
+    GODOT_TYPE_PATTERN,
+    AssetContractError,
+    check_request,
+    check_result,
+)
+from asset_family_registry import (
+    MISSING_STATUS,
+    PROVIDED_STATUS,
+    TERMINAL_STATUS,
+    FamilyRegistryError,
+    variant_for_request,
+)
 
 
-RUNTIME_STATUS = "generated"
+RUNTIME_STATUS = TERMINAL_STATUS
 RUNTIME_HEADERS = (
     "#",
     "Tag",
@@ -386,7 +397,7 @@ def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
     return declared
 
 
-_VALIDATION_RECORD_FAMILIES = frozenset({"background-map"})
+_VALIDATION_RECORD_FAMILIES = frozenset({"background-map", "portrait"})
 
 
 def _assert_validation_record_matches(
@@ -529,7 +540,7 @@ def register_result(
 
     for logical_id, output in outputs.items():
         index, cells = matches[logical_id]
-        if cells[columns["Status"]] not in {"MISSING", RUNTIME_STATUS}:
+        if cells[columns["Status"]] not in {MISSING_STATUS, RUNTIME_STATUS}:
             raise AssetResultRegistrationError(
                 f"ASSETS.md row {tag}/{logical_id} has non-promotable status "
                 f"{cells[columns['Status']]!r}"
@@ -595,12 +606,12 @@ def runtime_snapshot(assets_md: Path, *, tag: str, asset_ids: list[str]) -> list
         status = cells[columns["Status"]]
         runtime_type = cells[columns["Runtime Type"]]
         runtime_path = cells[columns["Runtime Path"]]
-        if status not in {RUNTIME_STATUS, "provided"}:
+        if status not in {RUNTIME_STATUS, PROVIDED_STATUS}:
             raise AssetResultRegistrationError(
                 f"ASSETS.md row {cells[columns['Tag']]}/{asset_id} is {status!r}; "
                 "expected generated or provided"
             )
-        if runtime_type in {"", "-", "reference"}:
+        if not GODOT_TYPE_PATTERN.fullmatch(runtime_type):
             raise AssetResultRegistrationError(f"ASSETS.md row {tag}/{asset_id} is not a runtime resource")
         _res_to_file(Path(assets_md).parent.resolve(), runtime_path)
         snapshots[asset_id] = {"asset_id": asset_id, "godot_artifact": {"type": runtime_type, "path": runtime_path}}

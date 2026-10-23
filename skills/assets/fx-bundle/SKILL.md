@@ -37,7 +37,7 @@ a production diagnostic: repair it and recheck it before deciding to stop.
 
 This is a standalone Skill. Do not require `/gm-asset`, tags, stage state,
 `ASSETS.md`, generated manifests, or worker registration. A caller may register
-the returned ready entry separately.
+the returned validated result separately.
 
 ## Request contract
 

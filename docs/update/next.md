@@ -12,8 +12,11 @@ contract defines when an entry is required, its format, and allowed categories.
 
 ## Added
 
+- Added a first-class `portrait` Asset Skill that generates and validates one character portrait `Texture2D` for a UI display slot, optionally conditioned on the character's identity anchor, so the `ASSETS.md` template no longer routes portraits through `background-map`.
+
 ## Changed
 
+- Runtime `ASSETS.md` rows now share one status vocabulary, `MISSING` to `provided`, `generated`, or `deferred`, and Asset Skill source layouts are limited to the physical `single`, `grid_sheet`, `region_atlas`, `tile_atlas`, and `theme_recipe` arrangements.
 - Publishing existing projects now refreshes GodotMaker-managed runtime hooks for Claude Code, Codex, OpenCode, and Pi while preserving unrelated user configuration and independent extensions (#212) — @RandallLiuXin.
 - Replaced the project `STYLE.md` visual seed with a plain-text `DESIGN.md` visual contract covering visual identity, nine image-style dimensions, UI visual language, and Do / Don't lists; existing projects migrate on publish, legacy text preserved verbatim.
 - `/gm-asset` now reviews every generated asset before registration and `/gm-evaluate` reviews every scene, both rule by rule against `DESIGN.md` instead of against reference-image similarity, reporting per-rule evidence, confidence, and severity, and blocking only on high-confidence violations of `Don't`, `MUST` / `MUST NOT`, or explicitly required rules.

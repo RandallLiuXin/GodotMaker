@@ -142,8 +142,8 @@ Never fabricate any of those records.
    per-slot visible content and transparent padding, no opaque magenta, native
    compilation, headless Godot loading, shared atlas path, exact regions, and
    zero margins. Read any diagnostic, repair the source, processing parameters,
-   metadata, or artifact, then re-run the applicable checks. Mark ready only
-   when every L0-L4 check passes.
+   metadata, or artifact, then re-run the applicable checks. Mark the result
+   complete only when every L0-L4 check passes.
 
 Use the existing deterministic tools first. You may use a temporary image
 tool, drawing command, SVG/canvas, script, or Godot drawing to diagnose or
@@ -170,6 +170,6 @@ diagnostics. Before returning, serialize the exact shared request/result pair to
 with `tools/asset_skill_contract_check.py --kind result`. Return that checked
 JSON byte-for-byte: `outputs` must be the complete array of one named
 `AtlasTexture` per logical prop, never a prose count or summary. A real STOP
-has no fake output or ready entry and states the actual blocking condition.
+has no fake output and states the actual blocking condition.
 
 See `samples/result/market-props.json` for the shared atlas/result shape.
