@@ -61,4 +61,4 @@ Required if a migration script is added or modified.
 - [ ] Code follows project conventions
 - [ ] ECS systems declare proper read/write metadata, if applicable
 - [ ] No hardcoded secrets or API keys
-- [ ] The [release-note entry contract](../CONTRIBUTING.md#release-note-entries) is satisfied
+- [ ] The [release-note entry contract](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries) is satisfied
