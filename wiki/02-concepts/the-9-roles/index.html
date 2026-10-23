@@ -3000,9 +3000,9 @@
 - Reads the current tag's MISSING rows from <code>ASSETS.md</code>
 - For assets you have already provided: dispatches an Analyst helper to inspect your image files and record what they contain
 - For assets that are still missing: generates them via an image generation API (Gemini or xAI, depending on your configuration)
-- For each entry in <code>SCENES.md</code>: generates a target reference image at <code>references/scene_&lt;name&gt;.png</code> from the scene description, art direction, and your provided art style
+- For every production unit: copies the applicable <code>DESIGN.md</code> rules into the generation brief and may attach user-provided style or identity images as optional conditioning
 - Updates <code>ASSETS.md</code> with the actual file paths and final status</p>
-<p><strong>What you get:</strong> Art files in <code>assets/</code>, scene reference images in <code>references/</code>, and resolved status on this tag's <code>ASSETS.md</code> rows. The scene references become the visual contract that <code>/gm-evaluate</code> later compares running screenshots against.</p>
+<p><strong>What you get:</strong> Runtime art files in <code>assets/</code> and resolved status on this tag's <code>ASSETS.md</code> rows. <code>DESIGN.md</code> remains the visual contract used by generation and evaluation.</p>
 <p><strong>Things to know:</strong> If a previous tag's asset is broken, raise it as a fix task in <code>/gm-fixgap</code>.</p>
 <hr />
 <h2 id="gm-build"><code>/gm-build</code><a class="headerlink" href="#gm-build" title="Permanent link">&para;</a></h2>
@@ -3038,7 +3038,7 @@
 - Maintains a single <code>e2e/</code> directory that always reflects the current game: writes new tests for this tag's Tag Mechanics, verifies inherited tests still exist, and prunes tests for mechanics PLAN's Main Build refactor tasks deliberately removed
 - Enforces the <strong>playable-closed-loop hard gate</strong>: headless boot + at least one mechanic E2E + at least one of {death, win, exit} ending exists
 - Runs the full <code>e2e/</code> suite — every test for every still-supported mechanic. A failing inherited mechanic is just as critical as a failing new one
-- Takes screenshots of each scene and compares them against reference images using a visual quality check
+- Takes screenshots of each scene and checks observable scene requirements plus the applicable <code>DESIGN.md</code> rules using visual QA
 - Produces a final verdict: approve or reject, with a list of specific problems if rejected</p>
 <p><strong>What you get:</strong> <code>.godotmaker/evaluation.json</code> (the full verdict, with per-mechanic PASS/FAIL records), latest screenshots in <code>e2e/screenshots/</code>, and archived evaluate-run evidence under <code>.godotmaker/evaluation-runs/</code>.</p>
 <p><strong>Things to know:</strong> The evaluator cannot write game code or touch <code>src/</code> — it is strictly read-only on game files. A rejection is not a failure; it is information. The problem list feeds directly into <code>/gm-fixgap</code>.</p>

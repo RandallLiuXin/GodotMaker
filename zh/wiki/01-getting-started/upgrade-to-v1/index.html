@@ -2854,11 +2854,11 @@ asset runtime 或 <code>tools/</code> 等受管理路径内的自定义文件不
   生产证据，不再是单独交给 worker 的运行时行。</li>
 <li><code>ui-kit</code>、<code>card-kit</code>、<code>compact-prop-pack</code> 等多输出 family 会原子注册所有声明的
   运行时输出。</li>
-<li>仅作参考的素材在 <code>source_ready</code> 结束，不能作为可加载资源交给 worker。</li>
+<li>runtime family 返回的 reference 输出只保留为生产证据；它们不会创建目录行或进入 worker handoff。</li>
 <li>生成素材通常位于 <code>assets/generated/&lt;asset-family&gt;/&lt;asset-id&gt;/</code>，且只有通过对应
   Asset Skill 验证后才能标记为 <code>generated</code>。</li>
-<li><code>generated</code> 和 <code>source_ready</code> 必须由 1.0 的 validated request/result 和原子注册链
-  写入，不能根据旧路径或旧证据手工恢复。</li>
+<li><code>generated</code> 必须由 1.0 的 validated request/result 和原子注册链写入，不能根据旧路径
+  或旧证据手工恢复。</li>
 </ul>
 <p>本地 Agent 还应核对 <code>GDD.md</code>、当前 tag 的 <code>PLAN.md</code>、<code>STRUCTURE.md</code>、
 <code>SCENES.md</code>、<code>DESIGN.md</code>、<code>ROADMAP.md</code>、现有 Godot 资源绑定、
@@ -2921,7 +2921,7 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
 <a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>    位于 `assets/generated/&lt;asset-family&gt;/&lt;asset-id&gt;/`。
 <a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>  * 角色玩法动画应通过 `character-bundle` 解析到 `SpriteFrames`；基准参考图与动作
 <a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>    源图是证据，不是额外运行时行。
-<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>  * 仅参考输出使用 `source_ready`，不能当作运行时资源。
+<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>  * reference 输出只保留为证据，不能当作运行时资源或目录行。
 <a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a>  * 不要把旧 manifest/stable-entry 指针保留成兼容层；找到场景和 worker 真正加载的
 <a id="__codelineno-1-58" name="__codelineno-1-58" href="#__codelineno-1-58"></a>    1.0 资源。
 <a id="__codelineno-1-59" name="__codelineno-1-59" href="#__codelineno-1-59"></a>- 输出一张审计表，包含：项目、当前状态、所需变化、证据、风险、建议动作。分开列出
@@ -2945,8 +2945,8 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
 <a id="__codelineno-1-77" name="__codelineno-1-77" href="#__codelineno-1-77"></a>- 让 `ASSETS.md` 的结构符合 1.0 Runtime Type / Runtime Path 表。保留有价值的
 <a id="__codelineno-1-78" name="__codelineno-1-78" href="#__codelineno-1-78"></a>  provenance，但应移除过时的 worker-facing 行或指针，而不是增加兼容读取层。若没有
 <a id="__codelineno-1-79" name="__codelineno-1-79" href="#__codelineno-1-79"></a>  有效的 1.0 证据链证明某项输出，应让它保持 `MISSING` 或 `deferred`。
-<a id="__codelineno-1-80" name="__codelineno-1-80" href="#__codelineno-1-80"></a>- 绝不能手改 Runtime Type、Runtime Path 或 Status 来绕过注册。`generated` 或
-<a id="__codelineno-1-81" name="__codelineno-1-81" href="#__codelineno-1-81"></a>  `source_ready` 必须拥有 validated v1.0 request 和匹配 result，并通过
+<a id="__codelineno-1-80" name="__codelineno-1-80" href="#__codelineno-1-80"></a>- 绝不能手改 Runtime Type、Runtime Path 或 Status 来绕过注册。`generated` 必须拥有
+<a id="__codelineno-1-81" name="__codelineno-1-81" href="#__codelineno-1-81"></a>  validated v1.0 request 和匹配 result，并通过
 <a id="__codelineno-1-82" name="__codelineno-1-82" href="#__codelineno-1-82"></a>  `tools/asset_result_registration.py` 校验声明的 Godot 类型与资源、原子注册整个
 <a id="__codelineno-1-83" name="__codelineno-1-83" href="#__codelineno-1-83"></a>  production unit；多输出 family 必须整组成功或整组失败。若旧证据无法重建这条链，
 <a id="__codelineno-1-84" name="__codelineno-1-84" href="#__codelineno-1-84"></a>  应报告 blocker，或请求重新运行对应 Asset Skill。

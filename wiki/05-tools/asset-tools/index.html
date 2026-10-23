@@ -2810,9 +2810,7 @@ extra, role-mismatched, or type-mismatched runtime outputs before it writes any
 row. Runtime files must be project-local, present, loadable by Godot, and match
 their declared type.</p>
 <p>Reference outputs returned by runtime families are validated source evidence,
-not catalog rows. Only reference-only families such as <code>screen-reference</code>
-register a <code>source_ready</code> row; their reference path is project-relative (for
-example <code>references/title_screen.png</code>) and never enters worker handoff.</p>
+not catalog rows. They never enter registration or worker handoff.</p>
 <h2 id="worker-snapshot">Worker snapshot<a class="headerlink" href="#worker-snapshot" title="Permanent link">&para;</a></h2>
 <p>Derive the minimal handoff directly from already-generated catalog rows:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>tools/asset_result_registration.py<span class="w"> </span>--assets-md<span class="w"> </span>ASSETS.md<span class="w"> </span>--tag<span class="w"> </span>&lt;tag&gt;<span class="w"> </span><span class="se">\</span>

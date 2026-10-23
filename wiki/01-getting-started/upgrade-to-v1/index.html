@@ -2862,14 +2862,14 @@ and <a href="../../05-tools/publish/">Publish</a> for command options.</p>
   separate worker-facing runtime rows.</li>
 <li>Multi-output families such as <code>ui-kit</code>, <code>card-kit</code>, and
   <code>compact-prop-pack</code> register every declared runtime output atomically.</li>
-<li>Reference-only assets finish at <code>source_ready</code>; they must not be presented to
-  workers as loadable runtime resources.</li>
+<li>Reference outputs from runtime families remain production evidence; they do
+  not create catalog rows or enter worker handoff.</li>
 <li>Generated assets normally live below
   <code>assets/generated/&lt;asset-family&gt;/&lt;asset-id&gt;/</code> and must pass the corresponding
   Asset Skill validation before a row is marked <code>generated</code>.</li>
-<li><code>generated</code> and <code>source_ready</code> are written through the 1.0 validated
-  request/result and atomic registration chain. They must not be restored by
-  hand from old paths or old evidence.</li>
+<li><code>generated</code> is written through the 1.0 validated request/result and atomic
+  registration chain. It must not be restored by hand from old paths or old
+  evidence.</li>
 </ul>
 <p>The local agent should also reconcile <code>GDD.md</code>, the current-tag <code>PLAN.md</code>,
 <code>STRUCTURE.md</code>, <code>SCENES.md</code>, <code>DESIGN.md</code>, <code>ROADMAP.md</code>, existing
@@ -2944,7 +2944,7 @@ game repository. Replace the two placeholders before starting.</p>
 <a id="__codelineno-1-64" name="__codelineno-1-64" href="#__codelineno-1-64"></a>  * Character gameplay animation should resolve through `character-bundle` to
 <a id="__codelineno-1-65" name="__codelineno-1-65" href="#__codelineno-1-65"></a>    `SpriteFrames`; canonical references and action source sheets are evidence,
 <a id="__codelineno-1-66" name="__codelineno-1-66" href="#__codelineno-1-66"></a>    not additional runtime rows.
-<a id="__codelineno-1-67" name="__codelineno-1-67" href="#__codelineno-1-67"></a>  * Reference-only outputs use `source_ready` and are not runtime resources.
+<a id="__codelineno-1-67" name="__codelineno-1-67" href="#__codelineno-1-67"></a>  * Reference outputs remain evidence and are not runtime resources or rows.
 <a id="__codelineno-1-68" name="__codelineno-1-68" href="#__codelineno-1-68"></a>  * Do not retain legacy manifest/stable-entry pointers as a compatibility
 <a id="__codelineno-1-69" name="__codelineno-1-69" href="#__codelineno-1-69"></a>    layer; identify the actual 1.0 resource that scenes and workers load.
 <a id="__codelineno-1-70" name="__codelineno-1-70" href="#__codelineno-1-70"></a>- Present an audit table with: item, current state, required change, evidence,
@@ -2972,7 +2972,7 @@ game repository. Replace the two placeholders before starting.</p>
 <a id="__codelineno-1-92" name="__codelineno-1-92" href="#__codelineno-1-92"></a>  rows or pointers rather than adding a compatibility reader. Leave an output
 <a id="__codelineno-1-93" name="__codelineno-1-93" href="#__codelineno-1-93"></a>  `MISSING` or `deferred` when no valid 1.0 evidence chain can prove it.
 <a id="__codelineno-1-94" name="__codelineno-1-94" href="#__codelineno-1-94"></a>- Never hand-edit Runtime Type, Runtime Path, or Status to bypass registration.
-<a id="__codelineno-1-95" name="__codelineno-1-95" href="#__codelineno-1-95"></a>  A `generated` or `source_ready` result requires a validated v1.0 request and
+<a id="__codelineno-1-95" name="__codelineno-1-95" href="#__codelineno-1-95"></a>  A `generated` result requires a validated v1.0 request and
 <a id="__codelineno-1-96" name="__codelineno-1-96" href="#__codelineno-1-96"></a>  matching result. Use `tools/asset_result_registration.py` to validate the
 <a id="__codelineno-1-97" name="__codelineno-1-97" href="#__codelineno-1-97"></a>  declared Godot types and resources and register the entire production unit
 <a id="__codelineno-1-98" name="__codelineno-1-98" href="#__codelineno-1-98"></a>  atomically; a multi-output family must succeed or fail as a group. If old

@@ -3438,7 +3438,7 @@
 <p>可以，你的修改会被保留。但要注意，如果你在新 tag 中再次运行 <code>/gm-build</code>，它可能会添加涉及同一文件的新任务——新的 Worker 输出可能会扩展或部分覆盖你的手动修改。建议手动修改保持在小范围内。持久的架构归属、依赖、顺序约束和不变量记录到 <code>STRUCTURE.md</code>；功能需求应写入对应的设计文档。</p>
 <h3 id="_11">截图和测试结果在哪里？<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
 <ul>
-<li>每个场景的视觉参考图（由 <code>/gm-asset</code> 生成）：<code>references/scene_&lt;name&gt;.png</code></li>
+<li>用户显式提供的可选风格图或身份图：<code>references/</code></li>
 <li>评估期间截取的运行时截图：<code>e2e/screenshots/</code></li>
 <li>动画帧序列（每个场景一个子目录）：<code>e2e/screenshots/scene_&lt;name&gt;/frame_*.png</code></li>
 <li>每轮评估归档的截图和判定：<code>.godotmaker/evaluation-runs/</code></li>
@@ -3464,7 +3464,7 @@
 <h3 id="worker-fatal-not-a-valid-object-name-head">Worker 启动时出现 "fatal: not a valid object name: HEAD"。<a class="headerlink" href="#worker-fatal-not-a-valid-object-name-head" title="Permanent link">&para;</a></h3>
 <p>这说明项目还没有 git 提交。<code>/gm-scaffold</code> 应该已经创建了一个。请通过 CLI 或手动命令重新运行 setup/scaffold，或手动创建初始提交：<code>git commit --allow-empty -m "init"</code>。</p>
 <h3 id="_17">我的评估分数很低，但游戏看起来没问题。<a class="headerlink" href="#_17" title="Permanent link">&para;</a></h3>
-<p>评估器对照每个场景的参考图和 GDD 描述进行视觉 QA。如果 <code>/gm-asset</code> 没有生成 <code>references/scene_*.png</code> 文件，评估器就没有视觉参考来比对，会给出保守的低分。在重新评估前，先重新运行 asset 命令补全缺失的参考图。</p>
+<p>评估器会根据 <code>SCENES.md</code> / <code>ASSETS.md</code> 中可观察的要求和 <code>DESIGN.md</code> 中适用的规则检查场景截图。请查看 <code>.godotmaker/evaluation.json</code> 中逐条规则的 finding：如果书面设计合同没有表达预期，就修正合同；如果渲染结果违反合同，就修正场景。</p>
 <h3 id="godotmaker">我怎么回滚到旧版本的 GodotMaker？<a class="headerlink" href="#godotmaker" title="Permanent link">&para;</a></h3>
 <p>在 GodotMaker 仓库中切换到旧版本标签，然后带 <code>--force</code> 重新发布：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>v0.1.0<span class="w">          </span><span class="c1"># 在 GodotMaker 仓库中执行</span>
