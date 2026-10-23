@@ -24,15 +24,15 @@ def test_triage_keeps_decisions_defaults_and_citation_gate():
     content = _content()
     for token in ["ACCEPT", "REJECT", "SKIP", "critical / major", "minor"]:
         assert token in content
-    for source in ["gotcha", "MEMORY.md", "PLAN.md", "GAP.md"]:
+    for source in ["gotcha", "STRUCTURE.md", "PLAN.md", "GAP.md"]:
         assert source in content
     assert "Required" in content
 
 
-def test_triage_does_not_persist_dynamic_findings_in_memory():
+def test_triage_keeps_dynamic_findings_out_of_project_contracts():
     content = _content()
     persistence_boundary = content.split("## Persistence boundary", maxsplit=1)
     assert len(persistence_boundary) == 2
-    assert "`MEMORY.md`" in persistence_boundary[1]
+    assert "`STRUCTURE.md`" in persistence_boundary[1]
     assert "REJECT/SKIP" in persistence_boundary[1]
     assert "Reviewer Triage Log" not in content

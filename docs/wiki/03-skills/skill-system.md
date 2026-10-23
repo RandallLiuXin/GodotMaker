@@ -1,6 +1,6 @@
 # Skill System
 
-In Claude Code, a "skill" is a bundle of instructions and reference documents that Claude loads for a specific job. Think of each skill as a specialist handbook: when Claude needs to do something — scaffold a project, write gameplay code, check for common bugs — it reaches for the matching skill and follows its guidance. GodotMaker's skills are organized into two layers.
+In Claude Code, a "skill" is a bundle of instructions and reference documents that Claude loads for a specific job. Think of each skill as a specialist handbook: when Claude needs to do something — scaffold a project, write gameplay code, check for common bugs — it reaches for the matching skill and follows its guidance. GodotMaker's skills are organized into core, reviewer, and asset layers.
 
 ## Layer 1 — Core skills
 
@@ -16,6 +16,13 @@ Reviewer skills are eight domain-specific checklists covering areas like physics
 
 For the full list and examples of what each reviewer catches, see [Reviewer skills](reviewer-skills.md).
 
+## Layer 3 — Asset skills
+
+Asset Skills own typed visual-production families. Runtime families must pass
+L0-L4 before their native Godot artifacts enter worker handoff; reference-only
+families stop at `source_ready`. See [Asset skills](asset-skills.md) for the
+registry-backed family and artifact matrix.
+
 ## How skills are deployed
 
 Skills live in this repository under `skills/core/`, `skills/reviewer/`, and `skills/assets/`. When you run `python tools/publish.py <project>`, every non-private skill directory is copied into `<project>/.claude/skills/` where Claude Code can find it automatically. When you run `python tools/publish.py --agent codex <project>`, publish writes the same skills into `<project>/.agents/skills/` and adds Codex runtime mapping references so Codex can interpret Claude-first surface vocabulary such as `.claude/...` paths and `/gm-*` commands. Asset `_shared` is not a skill: it is published to `<project>/.godotmaker/asset-runtime/` with the schemas, compiler registry, and L0-L4 validators that first-class Asset Skills import.
@@ -24,5 +31,6 @@ Reference documents that are used by more than one skill (such as the worker dis
 
 ## See also
 
-- [Core skills](core-skills.md) — the nine role commands and twelve supporting skills
+- [Core skills](core-skills.md) — pipeline, rescue, and supporting skills
+- [Asset skills](asset-skills.md) — public production families and L0-L4 validation
 - [Reviewer skills](reviewer-skills.md) — the eight domain-specific quality checkers

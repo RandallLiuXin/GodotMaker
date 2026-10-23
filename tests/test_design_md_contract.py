@@ -46,6 +46,8 @@ STYLE_MD = re.compile(r"\bSTYLE\.md\b", re.IGNORECASE)
 STYLE_MD_ALLOWED_FILES = {
     "migrations/20260521191628_add_style_md.py",
     "migrations/20260916120000_replace_style_with_design.py",
+    # Publish recognizes exact generated lines from supported legacy releases.
+    "tools/publish.py",
     "tests/tools/test_migration_add_style_md.py",
     "tests/tools/test_migration_replace_style_with_design.py",
     "tests/test_design_md_contract.py",
@@ -57,7 +59,10 @@ STYLE_MD_ALLOWED_FILES = {
     "tests/test_design_rule_visual_evaluation.py",
     "CHANGELOG.md",
 }
-STYLE_MD_ALLOWED_PREFIXES = ("docs/update/",)
+STYLE_MD_ALLOWED_PREFIXES = (
+    "docs/update/",
+    "tests/fixtures/project-contracts/",
+)
 
 
 def _template_text() -> str:

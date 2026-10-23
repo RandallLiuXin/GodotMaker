@@ -16,6 +16,7 @@ Usage:
     python tools/publish.py --force <target_godot_project_dir>
 """
 import argparse
+import copy
 import json
 import os
 import re
@@ -48,6 +49,11 @@ class VersionCheckResult(NamedTuple):
     level: str  # "FRESH" | "SAME" | "PATCH" | "MINOR" | "MAJOR" | "DOWNGRADE"
     target_ver: SemVer | None
     source_ver: SemVer | None
+
+
+class RuntimeSurfaceConflict(ValueError):
+    """Raised when a runtime hook config cannot be merged without data loss."""
+
 
 EXCLUDE_DIRS = {"__pycache__", "doc_source", ".workspace"}
 AGENT_CHOICES = (AGENT_CLAUDE_CODE, AGENT_CODEX, AGENT_OPENCODE, AGENT_PI)
@@ -95,6 +101,7 @@ AGENT_RUNTIME_EXTENSION_DIRS = {
 ASSET_RUNTIME_SOURCE = Path("skills") / "assets" / "_shared"
 ASSET_RUNTIME_TARGET = Path(".godotmaker") / "asset-runtime"
 ASSET_PROVIDER_REFERENCES_SOURCE = Path("skills") / "core" / "gm-asset" / "references" / "providers"
+RETIRED_SKILL_NAMES = ("screen-reference",)
 
 @dataclass(frozen=True)
 class AgentPublishAdapter:
@@ -368,6 +375,27 @@ def rmtree_force(path: Path):
         shutil.rmtree(path, onerror=_rmtree_handle_readonly)
 
 
+def remove_retired_framework_files(target: Path) -> list[Path]:
+    """Remove framework-owned skills retired from the public publish surface.
+
+    Incremental publishing replaces skills that still exist but intentionally
+    does not wipe a whole skill root. Without this bounded cleanup, removed
+    framework skills would remain callable forever. Project content such as
+    user-owned ``references/*.png`` is outside these exact targets and is never
+    touched.
+    """
+    removed: list[Path] = []
+    for adapter in AGENT_ADAPTERS.values():
+        skill_root = adapter.skill_dir(target)
+        for name in RETIRED_SKILL_NAMES:
+            retired = skill_root / name
+            if retired.is_dir():
+                rmtree_force(retired)
+                removed.append(retired)
+                print(f"  Removed retired framework skill {retired}")
+    return removed
+
+
 def copy_tree(src: Path, dst: Path):
     """Copy directory tree, overwriting destination. Excludes __pycache__ etc."""
     if dst.exists():
@@ -404,6 +432,163 @@ def render_agent_template_tree(root: Path, adapter: AgentPublishAdapter) -> None
         if rewritten != text:
             file.write_text(rewritten, encoding="utf-8")
         file.replace(file.with_name("agents.md.tmpl"))
+
+
+LEGACY_MEMORY_INDEX = "MEMORY.md"
+LEGACY_MEMORY_DIRECTORY = "memory/"
+
+CURRENT_STRUCTURE_READ_LINE = (
+    "- **Read `STRUCTURE.md` before dispatching a worker.** It owns "
+    "architecture boundaries, component ownership, dependencies, ordering "
+    "constraints, and stable invariants as of the end of the current tag."
+)
+CURRENT_ACCUMULATION_LINE = (
+    "- **`DESIGN.md` and `ASSETS.md` accumulate across tags.** Don't split "
+    "per tag — append rows / entries; the `Tag` column on each ASSETS row "
+    "marks the introducing tag."
+)
+CURRENT_STRUCTURE_ROUTE_LINE = (
+    "| Architecture ownership, dependencies, ordering, and invariants | "
+    "`STRUCTURE.md` |"
+)
+
+LEGACY_ROOT_INSTRUCTION_LINES = {
+    (
+        f"- **Read `{LEGACY_MEMORY_INDEX}` before dispatching a worker.** "
+        "Past mistakes are indexed there — workers will repeat them otherwise. "
+        f"`{LEGACY_MEMORY_INDEX}` accumulates across tags."
+    ): CURRENT_STRUCTURE_READ_LINE,
+    (
+        f"- **Read `{LEGACY_MEMORY_INDEX}` before dispatching a worker.** "
+        "It records stable architecture and project constraints across tags. "
+        f"Workers never write it or the root `{LEGACY_MEMORY_DIRECTORY}` directory."
+    ): CURRENT_STRUCTURE_READ_LINE,
+    (
+        f"- **`STYLE.md`, `ASSETS.md`, and `{LEGACY_MEMORY_INDEX}` accumulate "
+        "across tags.** Don't split per tag — append rows / entries; the `Tag` "
+        "column on each ASSETS row marks the introducing tag."
+    ): CURRENT_ACCUMULATION_LINE,
+    (
+        f"- **`DESIGN.md`, `ASSETS.md`, and `{LEGACY_MEMORY_INDEX}` accumulate "
+        "across tags.** Don't split per tag — append rows / entries; the `Tag` "
+        "column on each ASSETS row marks the introducing tag."
+    ): CURRENT_ACCUMULATION_LINE,
+    (
+        "| Past discoveries + gotchas (cross-tag) | "
+        f"`{LEGACY_MEMORY_INDEX}` (index) |"
+    ): CURRENT_STRUCTURE_ROUTE_LINE,
+    (
+        "| Architecture decisions + project constraints (cross-tag) | "
+        f"`{LEGACY_MEMORY_INDEX}` (index) |"
+    ): CURRENT_STRUCTURE_ROUTE_LINE,
+}
+
+LEGACY_TOC_LINES = {
+    f"- `{LEGACY_MEMORY_INDEX}` — Knowledge base index, append-only across tags": None,
+    (
+        f"- `{LEGACY_MEMORY_INDEX}` — Stable architecture decisions and "
+        "project constraints"
+    ): None,
+    f"- `{LEGACY_MEMORY_DIRECTORY}` — Per-system memory subsystem files": None,
+    (
+        f"- `{LEGACY_MEMORY_DIRECTORY}` — Optional per-system architecture "
+        "and constraint details"
+    ): None,
+    (
+        "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `STYLE.md`, "
+        f"`SCENES.md`, `{LEGACY_MEMORY_INDEX}` — frozen working docs "
+        "(ASSETS.md is cross-tag and stays at the root)"
+    ): (
+        "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `STYLE.md`, "
+        "`SCENES.md` — frozen working docs (ASSETS.md is cross-tag and stays "
+        "at the root)"
+    ),
+    (
+        "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `DESIGN.md`, "
+        f"`SCENES.md`, `{LEGACY_MEMORY_INDEX}` — frozen working docs "
+        "(ASSETS.md is cross-tag and stays at the root)"
+    ): (
+        "- `docs/tags/<Tag>/PLAN.md`, `STRUCTURE.md`, `DESIGN.md`, "
+        "`SCENES.md` — frozen working docs (ASSETS.md is cross-tag and stays "
+        "at the root)"
+    ),
+    (
+        f"- `docs/tags/<Tag>/{LEGACY_MEMORY_DIRECTORY}` — the detailed "
+        f"architecture files {LEGACY_MEMORY_INDEX} indexes, frozen with it"
+    ): None,
+}
+
+
+def _rewrite_generated_lines(path: Path, replacements: dict[str, str | None]) -> bool:
+    """Rewrite exact generated lines while preserving custom text and EOLs."""
+    if not path.exists():
+        return False
+
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        original = handle.read()
+
+    rewritten_lines: list[str] = []
+    for line in original.splitlines(keepends=True):
+        body = line.rstrip("\r\n")
+        ending = line[len(body):]
+        replacement = replacements.get(body, body)
+        if replacement is not None:
+            rewritten_lines.append(replacement + ending)
+    rewritten = "".join(rewritten_lines)
+
+    if rewritten == original:
+        return False
+
+    tmp = path.with_name(path.name + ".contract-upgrade-tmp")
+    try:
+        with tmp.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(rewritten)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
+    return True
+
+
+def upgrade_legacy_project_contracts(target: Path) -> None:
+    """Retire generated legacy architecture guidance without touching its data.
+
+    Root instruction files are user-extensible, so only exact lines emitted by
+    the former templates are rewritten. Any other legacy-looking text is left
+    untouched and reported for manual review. The same narrow rule updates the
+    generated document index. This runs on every publish, including MAJOR
+    re-initialization where tracked migrations are intentionally baselined.
+    """
+    for filename in ("CLAUDE.md", "AGENTS.md"):
+        path = target / filename
+        if _rewrite_generated_lines(path, LEGACY_ROOT_INSTRUCTION_LINES):
+            print(f"Updated generated architecture guidance in {filename}")
+        if path.exists():
+            content = path.read_text(encoding="utf-8")
+            if (
+                LEGACY_MEMORY_INDEX in content
+                or LEGACY_MEMORY_DIRECTORY in content
+            ):
+                print(
+                    f"  WARNING: {filename} still contains custom legacy "
+                    "architecture references; preserved for manual review."
+                )
+
+    toc = target / "TOC.md"
+    if _rewrite_generated_lines(toc, LEGACY_TOC_LINES):
+        print("Updated generated architecture entries in TOC.md")
+    if toc.exists():
+        content = toc.read_text(encoding="utf-8")
+        if (
+            LEGACY_MEMORY_INDEX in content
+            or LEGACY_MEMORY_DIRECTORY in content
+        ):
+            print(
+                "  WARNING: TOC.md still contains custom legacy architecture "
+                "references; preserved for manual review."
+            )
 
 
 def publish_skills(repo_root: Path, skills_target: Path,
@@ -761,7 +946,7 @@ def publish_agents(repo_root: Path, agents_target: Path,
 def publish_agent_plugins(repo_root: Path, target: Path,
                           agent: str = AGENT_CLAUDE_CODE,
                           force: bool = False) -> int:
-    """Publish selected-runtime plugin adapters, when the runtime uses them."""
+    """Publish framework-owned runtime files without removing user extensions."""
     adapter = get_agent_adapter(agent)
     plugins_target = adapter.plugins_dir(target)
     if plugins_target is None:
@@ -776,19 +961,135 @@ def publish_agent_plugins(repo_root: Path, target: Path,
     if not plugins_src.exists():
         return 0
 
-    if plugins_target.exists() and not force:
-        relative = plugins_target.relative_to(target)
-        print(f"{relative} already exists, skipping (use --force to overwrite)")
-        return 0
+    count = 0
+    for source_file in sorted(plugins_src.rglob("*")):
+        if not source_file.is_file():
+            continue
+        relative = source_file.relative_to(plugins_src)
+        destination = plugins_target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_file, destination)
+        count += 1
 
-    copy_tree(plugins_src, plugins_target)
-    count = len([p for p in plugins_target.rglob("*") if p.is_file()])
-    print(f"Published {agent} plugins/ ({count} files)")
+    print(f"Published {agent} runtime extension(s) ({count} files)")
     return count
 
 
+def _read_json_object(path: Path, role: str) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as e:
+        raise RuntimeSurfaceConflict(
+            f"{role} is not readable valid JSON: {path} ({e})"
+        ) from e
+    if not isinstance(value, dict):
+        raise RuntimeSurfaceConflict(
+            f"{role} must contain a JSON object: {path}"
+        )
+    return value
+
+
+def _is_framework_hook_command(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    command = value.get("command")
+    if not isinstance(command, str):
+        return False
+    return ".godotmaker/hooks/" in command.replace("\\", "/")
+
+
+def _validated_hook_events(config: dict, role: str) -> dict:
+    events = config.get("hooks", {})
+    if not isinstance(events, dict):
+        raise RuntimeSurfaceConflict(f"{role} 'hooks' value must be an object")
+
+    for event, entries in events.items():
+        if not isinstance(entries, list):
+            raise RuntimeSurfaceConflict(
+                f"{role} hook event {event!r} must contain a list"
+            )
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                raise RuntimeSurfaceConflict(
+                    f"{role} hook event {event!r} entry {index} must be an object"
+                )
+            if "hooks" in entry and not isinstance(entry["hooks"], list):
+                raise RuntimeSurfaceConflict(
+                    f"{role} hook event {event!r} entry {index} has a non-list "
+                    "'hooks' value"
+                )
+    return events
+
+
+def merge_agent_hook_config(framework: dict, existing: dict) -> dict:
+    """Refresh framework hooks while preserving user-owned JSON data.
+
+    A leaf command that invokes ``.godotmaker/hooks/`` is framework-owned.
+    All other top-level keys, hook events, matcher entries, and commands are
+    user-owned. Current framework entries run first, in source order, followed
+    by preserved custom entries in their existing order.
+    """
+    framework_events = _validated_hook_events(framework, "framework config")
+    existing_events = _validated_hook_events(existing, "existing config")
+    merged = copy.deepcopy(existing)
+    custom_events: dict[str, list] = {}
+
+    for event, entries in existing_events.items():
+        preserved = []
+        for entry in entries:
+            if "hooks" not in entry:
+                preserved.append(copy.deepcopy(entry))
+                continue
+
+            hooks = entry["hooks"]
+            custom_hooks = [
+                copy.deepcopy(hook)
+                for hook in hooks
+                if not _is_framework_hook_command(hook)
+            ]
+            removed_framework_hook = len(custom_hooks) != len(hooks)
+            if not removed_framework_hook:
+                preserved.append(copy.deepcopy(entry))
+            elif custom_hooks:
+                custom_entry = copy.deepcopy(entry)
+                custom_entry["hooks"] = custom_hooks
+                preserved.append(custom_entry)
+        if preserved:
+            custom_events[event] = preserved
+
+    merged_events: dict[str, list] = {}
+    for event, entries in framework_events.items():
+        merged_events[event] = copy.deepcopy(entries)
+        merged_events[event].extend(custom_events.pop(event, []))
+    for event, entries in custom_events.items():
+        merged_events[event] = entries
+    merged["hooks"] = merged_events
+    return merged
+
+
+def validate_agent_hook_config_update(
+    repo_root: Path, target: Path, agent: str, force: bool
+) -> None:
+    """Preflight a hook config update before publish changes the target."""
+    spec = AGENT_HOOK_CONFIGS.get(agent)
+    source_root = AGENT_RUNTIME_SOURCE_ROOTS.get(agent)
+    if spec is None or source_root is None:
+        return
+    source_relative, target_relative = spec
+    src = repo_root / source_root / source_relative
+    dst = target / target_relative
+    if not src.exists():
+        return
+
+    framework = _read_json_object(src, "framework hook config")
+    _validated_hook_events(framework, "framework config")
+    if dst.exists() and not force:
+        existing = _read_json_object(dst, "existing hook config")
+        merge_agent_hook_config(framework, existing)
+
+
 def deploy_agent_hook_config(repo_root: Path, target: Path, agent: str, force: bool):
-    """Deploy selected-agent hook config."""
+    """Deploy or merge the selected-agent hook config."""
     spec = AGENT_HOOK_CONFIGS.get(agent)
     source_root = AGENT_RUNTIME_SOURCE_ROOTS.get(agent)
     if spec is None or source_root is None:
@@ -804,11 +1105,22 @@ def deploy_agent_hook_config(repo_root: Path, target: Path, agent: str, force: b
         shutil.copy2(src, dst)
         print(f"Created {target_relative} (hooks enabled)")
     else:
-        print(f"{target_relative} already exists, skipping (use --force to overwrite)")
+        framework = _read_json_object(src, "framework hook config")
+        existing = _read_json_object(dst, "existing hook config")
+        merged = merge_agent_hook_config(framework, existing)
+        dst.write_text(
+            json.dumps(merged, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        print(
+            f"Updated {target_relative} "
+            "(framework hooks refreshed; custom entries preserved)"
+        )
 
 
 def deploy_agent_instructions(repo_root: Path, target: Path, agent: str):
     """Deploy root agent instructions for the selected coding agent."""
+    upgrade_legacy_project_contracts(target)
     adapter = get_agent_adapter(agent)
     filename = adapter.root_instruction_filename
     dst = target / filename
@@ -1436,9 +1748,22 @@ def main():
 
     agent = args.agent
     adapter = get_agent_adapter(agent)
+    try:
+        validate_agent_hook_config_update(
+            repo_root, target, agent, args.force
+        )
+    except RuntimeSurfaceConflict as e:
+        print(f"ERROR: runtime hook config conflict: {e}", file=sys.stderr)
+        print(
+            "Fix the existing JSON or re-run with --force to replace it.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     config_dir = adapter.project_config_dir(target)
     skills_target = adapter.skill_dir(target)
     config_file = config_dir / "godotmaker.yaml"
+
+    remove_retired_framework_files(target)
 
     # MAJOR upgrade with --force: clean all framework-managed content
     if level == "MAJOR" and args.force:
@@ -1455,10 +1780,6 @@ def main():
             if d.exists():
                 print(f"  Cleaning {d}")
                 rmtree_force(d)
-        plugins_dir = adapter.plugins_dir(target)
-        if plugins_dir is not None and plugins_dir.exists():
-            print(f"  Cleaning {plugins_dir}")
-            rmtree_force(plugins_dir)
         runtime_refs_dir = adapter.runtime_references_dir(target)
         if runtime_refs_dir is not None and runtime_refs_dir.exists():
             print(f"  Cleaning {runtime_refs_dir}")

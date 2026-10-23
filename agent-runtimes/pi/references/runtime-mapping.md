@@ -74,12 +74,6 @@ prohibit mutation, but that is not a hard sandbox boundary when `bash` is
 available. Treat their result as independent model judgment, not OS-enforced
 read-only execution.
 
-Delegated roles must not write the root `MEMORY.md` or files below the root
-`memory/` directory. Pi has no equivalent write-time hook, so the role
-definition and the delegate contract enforce this at prompt level, not as an
-OS sandbox. Only the lead session may update stable architecture decisions and
-project constraints.
-
 If the extension, trust, `pi` binary, `git HEAD`, or configured Godot executable
 is unavailable, stop before the dependent stage and state the missing setup.
 Pi's `--approve` trusts project resources only; it does not bypass an OS
@@ -87,6 +81,18 @@ sandbox or grant permissions beyond the Pi process.
 Pi child processes also inherit their parent environment and may read ancestor
 `AGENTS.md` files. Run delegation from a clean project environment and do not
 place workspace credentials in inherited environment variables.
+
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+Claude Code. Pi does not expose equivalent write-tool or delegation preflight
+hook forwarding.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `prompt-level` | The active `/skill:gm-*` instructions must check prerequisites before `godotmaker_delegate`; the Pi extension has no pre-dispatch hook for this gate. |
+| `delegated_write_boundaries` | `prompt-level` | Role definitions and delegate briefs constrain writes. Pi has no per-role filesystem permission model or write-time hook. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, Pi has no authoritative completion gate. |
 
 ## Capability boundaries
 

@@ -11,6 +11,7 @@ correct version for each addon:
 - Claude Code: `.claude/config/addon_versions.json`
 - Codex: `.agents/config/addon_versions.json`
 - OpenCode: `.opencode/config/addon_versions.json`
+- Pi: `.pi/config/addon_versions.json`
 
 The JSON maps Godot versions to compatible addon versions. You MUST use the
 exact tag specified.

@@ -18,8 +18,6 @@ docs/tags/
     ├── STRUCTURE.md
     ├── DESIGN.md
     ├── SCENES.md
-    ├── MEMORY.md
-    ├── memory/               MEMORY.md 索引的架构与约束详情
     ├── evaluation-final.json
     └── evidence/
         ├── manifest.json     每个归档文件的路径、类别、字节数、SHA-256
@@ -30,8 +28,8 @@ docs/tags/
 平铺的文档路径（`PLAN.md`、`STRUCTURE.md`、`SCENES.md` 等）与旧版本完全一致，
 所以任何已经在读 `docs/tags/<Tag>/PLAN.md` 的流程都不受影响。
 
-归档如实反映 `archive` 运行那一刻的项目状态，删除也算：如果此时 `memory/` 或
-`e2e/` 已经不存在，上一次运行留下的副本会被删除，而不是被带进新的快照。
+归档如实反映 `archive` 运行那一刻的项目状态。如果此时 `e2e/` 已经不存在，
+上一次运行留下的证据副本会被删除，而不是被带进新的快照。
 
 ## 怎么读归档
 
@@ -42,12 +40,12 @@ docs/tags/
 4. **canonical 文档和 `evidence/`** —— 内容完整但阅读成本高，只在摘要不够用时才打开。
 
 `SUMMARY.md` 是检索入口，不是新的事实来源。它只复述 `CHANGELOG.md`、`PLAN.md`、
-`evaluation-final.json` 和 `final_report.json` 中已确认的内容；Worker 的探索过程、
-完整 Trace 和 `MEMORY.md` 不会进入摘要。摘要与 canonical 文档冲突时，
+`evaluation-final.json` 和 `final_report.json` 中已确认的内容；Worker 的探索过程和
+完整 Trace 不会进入摘要。摘要与 canonical 文档冲突时，
 以 canonical 文档为准。
 
-摘要只链接归档里真实存在的内容。项目没有 `memory/` 目录、或回填的归档缺少某份
-canonical 文档时，摘要里不会出现对应条目，而不是留下一个必定 404 的链接。
+摘要只链接归档里真实存在的内容。回填的归档缺少某份 canonical 文档时，
+摘要里不会出现对应条目，而不是留下一个必定 404 的链接。
 
 ## 不可变语义
 
@@ -107,29 +105,15 @@ python tools/seal_tag.py reindex
 
 | 命令 | 作用 |
 |---|---|
-| `python tools/seal_tag.py archive <Tag>` | 把工作文档、`memory/` 子目录和 `e2e/` 证据复制到 `docs/tags/<Tag>/`，然后校验归档内 `MEMORY.md` 的链接。写入未封存的 manifest。 |
+| `python tools/seal_tag.py archive <Tag>` | 把工作文档和 `e2e/` 证据复制到 `docs/tags/<Tag>/`。写入未封存的 manifest。 |
 | `python tools/seal_tag.py index <Tag>` | 生成 `SUMMARY.md`、该 tag 的 `README.md`、已封存的 manifest 和父级 `docs/tags/README.md`。这一步才算封存。 |
 | `python tools/seal_tag.py backfill <Tag>` / `--all` | 给旧版本封存的归档补上 `README.md`、`SUMMARY.md` 和 manifest；已封存的归档默认跳过，需要 `--force` 才会重新索引。 |
 | `python tools/seal_tag.py reindex` | 根据磁盘上已封存的归档重新生成 `docs/tags/README.md`，不改动任何归档。 |
 | `python tools/seal_tag.py bundle <Tag>` | 输出 `/gm-finalize` 写 CHANGELOG 所需的 JSON。 |
 | `python tools/seal_tag.py reset` | 清空 `.godotmaker/stage.jsonl` 并删除 `metrics_current.jsonl`。 |
 
-退出码：`0` 成功 · `1` 文件系统或运行时失败 · `2` 缺少来源文件、归档内链接无法解析
-或用法错误 · `3` 该 tag 已封存。
-
-## MEMORY 链接校验
-
-`MEMORY.md` 通过 `memory/` 下的文件索引详细架构与约束。只归档索引而不归档这些文件，
-等于冻结了一组失效链接，所以 `archive` 会一并复制 `memory/`，然后校验归档内的
-`MEMORY.md`：
-
-- 指向 `memory/…` 但归档内没有对应文件、使用绝对路径、或越出归档目录的链接会
-  **阻止封存**（退出码 2）。修好根目录的 `MEMORY.md` 或补回缺失文件后重跑即可。
-- 指向本来就不归档的项目文件（`src/player.gd`、`assets/…`）的链接会记录到
-  manifest 的 `link_warnings`，不阻塞流程。
-
-HTML 注释和代码块中的链接会被忽略，因此 `MEMORY.md` 模板自带的示例条目不会
-让第一次 finalize 失败。
+退出码：`0` 成功 · `1` 文件系统或运行时失败 · `2` 缺少来源文件或用法错误 ·
+`3` 该 tag 已封存。
 
 ## 回填旧归档
 
@@ -141,9 +125,7 @@ python tools/seal_tag.py backfill --all
 ```
 
 回填只添加索引文件，绝不改写 canonical 文档——它会在前后分别计算这些文档的哈希，
-一旦发现变化就报错退出。它也**不会**把今天的 `memory/` 复制进历史 tag：那会把
-当下的内容注入过去的快照。缺失的子目录会被记录为 manifest warning，该 tag 的
-README 中完整性显示为 `partial`。
+一旦发现变化就报错退出。
 
 已经带有 sealed manifest 的归档会被跳过——重新索引会用本次运行解析出的 revision
 覆盖它原本记录的封存 revision。确实需要重新索引时加 `--force`。

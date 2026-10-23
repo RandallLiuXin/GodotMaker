@@ -27,6 +27,12 @@ If anything is missing, you'll see a list of failed checks and what to do about 
 - Core packages are installed: `requests`, `pillow`.
 - Provider packages are checked based on `.godotmaker/config.yaml`: `google-genai` for Gemini, `openai` for OpenAI, and `xai-sdk` for Grok image generation. Wan uses the standard-library HTTP client; its selected configuration also requires `DASHSCOPE_API_KEY` and an explicit `DASHSCOPE_REGION`.
 
+`pymatting` is conditional rather than a `check_env.py` preflight check. It is
+imported only when `tools/asset_sheet_process.py` processes a sheet with
+`--background magenta`. Install `tools/requirements.txt` before using that
+cleanup path; runs that do not request magenta-background removal do not import
+it.
+
 ### Godot E2E (Python package)
 
 - `[FAIL]` if the `godot-e2e` package is not installed for the Python that GodotMaker runs on.
@@ -54,14 +60,18 @@ This check covers the Python package. The `addons/godot_e2e/` addon inside your 
 
 ### Node.js
 
-- Node.js 18 or later is installed (needed to run `godot-mcp` via `npx`).
+- Node.js 22 or later is installed (needed to run `godotmaker-cli` and `godot-mcp` via `npx`).
 - `npx` is available on your PATH (it comes with Node.js).
 
 ### Godot
 
 - Godot 4.5 or later is reachable as `godot` or `godot4` on your PATH.
 
-If Godot is not on your PATH, this check shows a warning rather than a hard failure — you can still provide the full path to the executable when you run `publish.py`, and it will be saved in `.claude/godotmaker.yaml` for future use.
+If Godot is not on your PATH, this check shows a warning rather than a hard
+failure — you can still provide the full path to the executable when you run
+`publish.py`. It is saved in the selected runtime's `godotmaker.yaml`
+(`.claude/`, `.agents/`, `.opencode/`, or `.pi/`), and `check_env.py` resolves
+that path from the `agent` value in `.godotmaker/config.yaml`.
 
 ### Selected coding agent
 
@@ -71,6 +81,10 @@ If Godot is not on your PATH, this check shows a warning rather than a hard fail
 - OpenCode projects check that `opencode` is installed, the `.opencode`
   runtime tree and hook adapter are present, and the `godot` MCP server is
   configured.
+- Pi projects check that `pi` is installed and that the `.pi` skills, agents,
+  runtime mapping, config sidecar, and `godotmaker-runtime.ts` extension are
+  present. Because trust cannot be proven from the filesystem, the checker also
+  reminds you to start Pi with `--approve` or trust the project interactively.
 
 ### API keys
 
@@ -82,10 +96,10 @@ If Godot is not on your PATH, this check shows a warning rather than a hard fail
 
 API-backed selectors fail when the matching key is absent. `asset_image_model:
 native` passes for Codex and warns for Claude Code because the checker cannot
-prove a Claude-side native generation tool is available. OpenCode projects fail
-on `native` image generation or `native` VQA until you switch those fields to
-`codex` or an API-backed selector. `asset_image_model: codex` in a Claude Code
-or OpenCode project passes when the Codex CLI is on PATH.
+prove a Claude-side native generation tool is available. OpenCode and Pi
+projects fail on `native` image generation or `native` VQA until you switch
+those fields to `codex` or an API-backed selector. `asset_image_model: codex`
+passes when the Codex CLI is on PATH.
 
 The checker also verifies that the selected provider package can be imported, catching installation issues that version checks alone would miss.
 

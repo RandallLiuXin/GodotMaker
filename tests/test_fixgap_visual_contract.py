@@ -9,6 +9,7 @@ VERIFIER = REPO_ROOT / "agents" / "verifier.md"
 WORKER_DISPATCH = REPO_ROOT / "skills" / "core" / "_shared" / "worker-dispatch.md"
 VERIFIER_DISPATCH = REPO_ROOT / "skills" / "core" / "_shared" / "verifier-dispatch.md"
 SCREENSHOT = REPO_ROOT / "skills" / "core" / "screenshot" / "SKILL.md"
+EVALUATE = REPO_ROOT / "skills" / "core" / "gm-evaluate" / "SKILL.md"
 
 
 def _read(path: Path) -> str:
@@ -67,6 +68,20 @@ def test_fixgap_uses_screenshot_and_visual_qa_without_e2e_ownership():
     assert "reports/fixgap-visual/<task_id>/" in screenshot
     assert "reports/verifier-temp/" in screenshot
     assert ".godotmaker/scratch/fixgap-visual/<task_id>/" not in screenshot
+
+
+def test_screenshot_routes_reference_free_visual_checks_to_question_mode():
+    screenshot = _read(SCREENSHOT)
+    evaluate = _read(EVALUATE)
+    section = screenshot.split("## Frame Sequence for VQA Question Mode", 1)[1]
+    section = section.split("## Generate reference.png", 1)[0]
+
+    assert 'Skill(skill="visual-qa") "--question \\"' in section
+    assert "e2e/screenshots/scene_main/frame_*.png" in section
+    assert "call `visual-qa` Question\nmode with `--question`" in section
+    assert "feed reference + sequence" not in section
+    assert "call `visual-qa` Static mode" not in section
+    assert '§ "Frame Sequence for VQA Question Mode"' in evaluate
 
 
 def test_fixgap_preserves_visual_check_context_from_evaluation():

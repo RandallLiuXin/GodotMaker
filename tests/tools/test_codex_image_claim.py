@@ -129,45 +129,6 @@ def test_batch_claim_uses_planned_source_paths(tmp_path):
     assert json.loads(claim_report.read_text(encoding="utf-8"))["assets"][0]["asset_id"] == "A01"
 
 
-def test_batch_claim_supports_scene_reference_plan_shape(tmp_path):
-    anchor_source = tmp_path / "anchor.png"
-    parallel_source = tmp_path / "parallel.png"
-    make_png(anchor_source)
-    make_png(parallel_source)
-    plan = tmp_path / "scene-plan.json"
-    report = tmp_path / "scene-generated-paths.json"
-    write_json(
-        plan,
-        {
-            "anchor_item": {
-                "asset_id": "scene_main",
-                "source_path": ".godotmaker/asset-generation/sources/scene_main_source.png",
-            },
-            "parallel_items": [
-                {
-                    "asset_id": "scene_shop",
-                    "source_path": ".godotmaker/asset-generation/sources/scene_shop_source.png",
-                }
-            ],
-        },
-    )
-    write_json(
-        report,
-        {
-            "assets": [
-                {"asset_id": "scene_main", "generated_path": str(anchor_source)},
-                {"asset_id": "scene_shop", "generated_path": str(parallel_source)},
-            ]
-        },
-    )
-
-    result = claim_codex_image_batch(plan, report, project_root=tmp_path)
-
-    assert result["ok"] is True
-    assert (tmp_path / ".godotmaker/asset-generation/sources/scene_main_source.png").exists()
-    assert (tmp_path / ".godotmaker/asset-generation/sources/scene_shop_source.png").exists()
-
-
 def test_batch_claim_preserves_verified_codex_reference_provenance(tmp_path):
     source = tmp_path / "generated.png"
     reference = tmp_path / "style.png"

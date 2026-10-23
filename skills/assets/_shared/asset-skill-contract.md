@@ -80,7 +80,7 @@ not independently triggerable.
 | `provider` | no | string | Image provider hint: `native`, `codex`, `gemini`, `openai`, `wan` |
 | `spec` | no | object | Family-specific structured parameters; inner shape owned by each family skill |
 
-`references[].role` is one of `canonical`, `style`, `screen`. `references[].path`
+`references[].role` is one of `canonical`, `style`. `references[].path`
 is a non-empty string.
 
 ### Design rules and references
@@ -152,8 +152,9 @@ several actors). The request declares every logical output before production;
   a Godot ClassDB type name (`SpriteFrames`, `AtlasTexture`, `Theme`,
   `StyleBoxTexture`, `TileSet`, `Texture2D`, …); it is validated for shape, not
   against a closed list.
-- `reference` outputs are visual references such as a screen reference. They are
-  not handed to workers as runtime game assets and do not require a `godot_type`.
+- `reference` outputs are optional provenance such as a generated character
+  identity anchor. They are not handed to workers as runtime game assets, do
+  not create `ASSETS.md` rows, and do not require a `godot_type`.
 
 ### sources
 
@@ -161,8 +162,7 @@ Raw generated or claimed source images the outputs were compiled from. Each
 entry is `{ path, layout? }`. `layout` describes pixel organization and is one of
 `single`, `grid_sheet`, `region_atlas`, `action_frames`, `theme_recipe`,
 `tile_atlas`. `sources` may be empty only when the family contract has no raw
-source to preserve; a generated screen reference records its deterministic raw
-provider source.
+source to preserve.
 
 ### previews
 
@@ -180,5 +180,4 @@ must be `true` — a passed result may not report a failed level.
 `asset_type` is one of:
 
 `background-map`, `character-bundle`, `fx-bundle`, `ui-kit`, `card-kit`,
-`compact-prop-pack`, `platform-strip`, `scene-prop-set`, `screen-reference`,
-`tileset`.
+`compact-prop-pack`, `platform-strip`, `scene-prop-set`, `tileset`.

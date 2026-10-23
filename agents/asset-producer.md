@@ -70,9 +70,9 @@ You produce one assigned visual asset production unit for `/gm-asset`.
 1. Use the `DESIGN.md` rules the brief carries as the visual specification
    authority. Put them in the provider prompt as written; a design rule the
    brief lists but the prompt drops is an unfinished unit.
-2. Use visible scene references and canonical asset references as visual
-   conditioning attached alongside those rules — they carry identity, palette,
-   and continuity, and never outrank, extend, or replace a design rule.
+2. Use any explicitly supplied style or canonical images as visual conditioning
+   attached alongside those rules — they carry identity, palette, and
+   continuity, and never outrank, extend, or replace a design rule.
 3. Do not add a design rule the brief does not carry, do not summarize the
    carried rules into a second style description, and do not read `DESIGN.md`
    or any other project visual document yourself. The brief is the only style

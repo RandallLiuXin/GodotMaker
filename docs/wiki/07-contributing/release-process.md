@@ -22,23 +22,10 @@ For version scheme details and how `publish.py` handles upgrades in target proje
 
 ## The next.md workflow
 
-Contributors never edit `CHANGELOG.md` directly. Instead, every pull request adds at least one bullet to `docs/update/next.md` under the appropriate category:
-
-```markdown
-## Added
-- Brief description of the new thing (#123) — @author
-
-## Changed
-- What changed and why (#124) — @author
-
-## Fixed
-- What was broken (#125) — @author
-
-## Removed
-- What was deleted (#126) — @author
-```
-
-Use [Keep a Changelog](https://keepachangelog.com/) conventions for category names. If none of the four standard categories fits, add a new one.
+Contributors never edit `CHANGELOG.md` directly. The canonical
+[release-note entry contract](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries)
+defines when and how a pull request updates `docs/update/next.md`; this release
+page intentionally does not duplicate those rules.
 
 At release time, `next.md` is archived and a fresh copy is created. Contributors working on the next batch of changes immediately start adding to the new `next.md`. This means `CHANGELOG.md` is touched only once per release, by whoever cuts the release.
 
@@ -56,7 +43,7 @@ High-level checklist. Follow the canonical steps in
 3. **Update CHANGELOG.md.** Prepend a new section:
 
    ```markdown
-   ## [X.Y.Z] — YYYY-MM-DD
+   ## [X.Y.Z] - YYYY-MM-DD
 
    ### Added
    - (items from next.md)

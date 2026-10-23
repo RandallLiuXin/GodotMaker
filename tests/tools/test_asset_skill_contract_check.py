@@ -158,8 +158,7 @@ def test_multiple_runtime_outputs_are_counted():
 
 def test_reference_output_needs_no_godot_type_and_allows_project_path():
     data = valid_result()
-    data["asset_type"] = "screen-reference"
-    data["outputs"] = [{"role": "reference", "path": "references/scene_main.png"}]
+    data["outputs"] = [{"role": "reference", "path": "references/hero_identity.png"}]
     data["sources"] = []
     result = check_result(data)
     assert result["runtime_output_count"] == 0

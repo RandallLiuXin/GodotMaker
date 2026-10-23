@@ -120,7 +120,8 @@ MAJOR 版本变更意味着无法通过增量迁移处理的破坏性变更。`p
 
 全量重建会重新部署框架代码，并清除不兼容的当前状态：
 - 所选 runner 的 `skills/`、`agents/`、`config/`、`templates/`
-- `.godotmaker/hooks/`、`.godotmaker/stage_schemas.json`
+- `.godotmaker/hooks/`、`.godotmaker/asset-runtime/`、
+  `.godotmaker/stage_schemas.json`
 - 当前流水线状态：`.godotmaker/state.json`、`pipeline_state.json`、
   `stage.jsonl`、`current_role`、`evaluation.json`、`verify_report.json`、
   `final_report.json`
@@ -149,11 +150,10 @@ MAJOR 版本变更意味着无法通过增量迁移处理的破坏性变更。`p
 python tools/publish.py --force /path/to/my-game
 ```
 
-强制降级仍然调用 `run_migrations()`（保持路由一致性），但实际上是 no-op：
-`applied_migrations.json` 记录的是高版本应用过的全部迁移，而老版本磁盘上只有
-其中一个子集，所以 `pending = disk - applied` 恒为空。迁移不会"回滚"——
-要回滚 schema 变更需要显式的反向迁移脚本，本系统不提供。如果确实需要回滚某次
-schema 变更，请从 VCS 快照恢复目标项目。
+强制降级会沿用已有状态的正常路径并调用 `run_migrations()`。旧版 checkout 中凡是
+存在、但 ID 尚未记录在 `applied_migrations.json` 里的迁移脚本，仍会被执行；对于
+经过正常发布的高版本目标，这通常是 no-op。它绝不会反向撤销已应用的迁移。本系统
+不提供 down-migration 脚本；如果必须回滚 schema 变更，请从 VCS 快照恢复目标项目。
 
 ### 重新发布相同版本
 
@@ -189,6 +189,7 @@ schema 变更，请从 VCS 快照恢复目标项目。
 | 所选 runner 的 `skills/` | 所有技能（从 core + reviewer 展平） |
 | 所选 runner 的 `agents/` | 代理定义（worker、verifier、reviewer、analyst、asset-producer） |
 | `.godotmaker/hooks/` | 所有 Hook 脚本 |
+| `.godotmaker/asset-runtime/` | 共用素材 schema、编译器、验证器和 provider 参考文档 |
 | 所选 runner 的 `config/` | 配置文件 |
 | 所选 runner 的 `templates/` | 文档模板 |
 | `tools/` | Python 工具（check_project、check_env 等） |
