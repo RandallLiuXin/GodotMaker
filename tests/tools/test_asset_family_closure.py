@@ -30,7 +30,7 @@ CLOSED_ROUTES = {
     ("character-bundle", "default"), ("compact-prop-pack", "default"),
     ("fx-bundle", "static"), ("fx-bundle", "animated"),
     ("platform-strip", "single"), ("platform-strip", "atlas"),
-    ("scene-prop-set", "default"), ("screen-reference", "default"),
+    ("scene-prop-set", "default"),
     ("tileset", "default"), ("ui-kit", "default"),
 }
 
@@ -154,10 +154,7 @@ def _register_validated(tmp_path: Path, request: dict, result: dict) -> None:
         assets_md, result_path, tag=TAG, request_path=request_path, loader=lambda *_: None
     )
     assert registered["updated"] == names
-    if request["asset_type"] == "screen-reference":
-        assert "| reference |" in assets_md.read_text(encoding="utf-8")
-    else:
-        assert [entry["asset_id"] for entry in runtime_snapshot(assets_md, tag=TAG, asset_ids=names)] == names
+    assert [entry["asset_id"] for entry in runtime_snapshot(assets_md, tag=TAG, asset_ids=names)] == names
 
 
 def _passing_probe(structures: dict[str, dict]):
@@ -277,27 +274,6 @@ def test_background_route_uses_its_actual_standalone_result(monkeypatch, tmp_pat
         request, result, project_root=tmp_path, godot_path="fake"
     )
     assert validated["validation"]["passed"] is True
-    _register_validated(tmp_path, request, validated)
-
-
-def test_screen_reference_route_uses_its_actual_standalone_result(tmp_path):
-    from PIL import Image
-
-    request = {"asset_type": "screen-reference", "asset_id": "title", "brief": "A title scene."}
-    result = {
-        "asset_type": "screen-reference",
-        "outputs": [{"role": "reference", "name": "title", "path": "references/title.png"}],
-        "sources": [{"path": ".godotmaker/asset-generation/sources/title_source.png", "layout": "single"}],
-        "previews": [], "validation": {"passed": False},
-    }
-    for path in ("references/title.png", ".godotmaker/asset-generation/sources/title_source.png"):
-        target = tmp_path / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(target)
-    validated = _source_adapter("screen-reference").compile_and_validate(
-        request, result, project_root=tmp_path, godot_path="not-used"
-    )
-    assert validated["validation"] == {"passed": True, "levels": {"L0": True, "L1": True}}
     _register_validated(tmp_path, request, validated)
 
 

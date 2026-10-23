@@ -1,6 +1,9 @@
 # Testing
 
-GodotMaker has ~320 unit tests under `tests/`. They cover the 8 hook scripts, the publish and migration tools, check_project, and a smoke test for the end-to-end pipeline. Run the full suite with:
+Run the suite on the supported baseline: Python 3.10+, Node.js 22+, and Godot
+4.5+. Tests under `tests/` cover hooks, asset/runtime contracts, publish and
+migration tools, project checks, and the end-to-end pipeline. Run the full suite
+with:
 
 ```bash
 python -m pytest tests/ -x -q
@@ -14,28 +17,17 @@ The `-x` flag stops at the first failure. Drop it to see all failures at once. `
 
 ```
 tests/
-├── hooks/
-│   ├── helpers.py                        Shared utilities (see below)
-│   ├── test_check_completion.py
-│   ├── test_check_file_permissions.py
-│   ├── test_check_stage_prerequisites.py
-│   ├── test_check_worker_report.py
-│   ├── test_metrics.py
-│   ├── test_session_start.py
-│   └── test_stage_reminder.py
-├── tools/
-│   ├── conftest.py
-│   ├── test_addon_versions.py
-│   ├── test_check_classname.py
-│   ├── test_check_env.py
-│   ├── test_check_project.py
-│   ├── test_migrate.py
-│   ├── test_publish.py
-│   └── test_publish_shared.py
-└── test_pipeline_e2e.py                  End-to-end pipeline smoke test
+├── assets/                               Asset family and compiler contracts
+├── agent_runtimes/                       Runtime adapter contracts
+├── hooks/                                Hook behavior and shared helpers
+├── tools/                                CLI and publishing tests
+└── test_*.py                             Cross-layer and pipeline contracts
 ```
 
-`tests/hooks/` has one test file per hook, plus `helpers.py`. `tests/tools/` has one test file per tool. `test_pipeline_e2e.py` exercises the full publish → session start → role sequence at a coarse level.
+Test modules are grouped by the behavior they prove; they do not maintain a
+one-file-per-production-file mirror. Use `pytest --collect-only` or `rg --files
+tests` when you need the current inventory. `test_pipeline_e2e.py` exercises the
+publish → session start → role sequence at a coarse level.
 
 ---
 

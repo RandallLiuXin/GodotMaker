@@ -122,7 +122,6 @@ def test_real_seal_tag_output_satisfies_the_gate(project_dir):
         ("STRUCTURE.md", "# Structure\n"),
         ("DESIGN.md", "# Design\n"),
         ("SCENES.md", "# Scenes\n"),
-        ("MEMORY.md", "# Memory\n"),
     ):
         with open(name, "w", encoding="utf-8") as handle:
             handle.write(body)

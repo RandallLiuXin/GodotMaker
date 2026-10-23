@@ -62,15 +62,9 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 
 在流水线角色活跃期间，通用子代理会被阻止写入 `e2e/` 和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）。`asset-producer` 可以写入 `assets/`、`references/` 和 `.godotmaker/asset-generation/`。
 
-在 Runtime 支持的 Write/Edit Hook 路径上，所有子代理还会被阻止写入根
-`MEMORY.md` 和根 `memory/` 目录下的任何文件。相对路径、绝对路径、worktree
-路径和普通 `..` 写法会先规范化。这是工具 Hook 契约，不是文件系统沙箱；shell
-写入不在这个 Hook 的覆盖范围内。
-
 Runner 说明：这个子代理写入 gate 需要 runtime 提供 `agent_id`。OpenCode child
-session 不暴露该 payload，因此 OpenCode adapter 对 child 写入只运行无需身份的
-`memory` scope；其他角色所有权规则仍依赖 OpenCode 原生 edit permission。Codex
-和 Pi 没有等价的写入 Hook，其架构记录边界只在 prompt 层执行。
+session 不暴露该 payload，因此其角色所有权规则由 OpenCode 原生
+edit permission 执行。
 
 未设置角色时，表示当前没有活跃的 `/gm-*` 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。
 

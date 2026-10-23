@@ -43,9 +43,8 @@ Apply the resume gates in this order:
 
 Then read context:
 - `PLAN.md` → current tag's `**Tag:**` header + Tag Mechanics + Inherited Mechanics + Playable Unit + pending/in_progress/completed tasks (anything not `verified`)
-- `STRUCTURE.md` → architecture and build order (current tag scope: previous tags' systems already exist on disk and may be touched only when PLAN.md explicitly lists a refactor task for them)
+- `STRUCTURE.md` → architecture ownership, dependencies, ordering constraints, stable invariants, and build order (current tag scope: previous tags' systems already exist on disk and may be touched only when PLAN.md explicitly lists a refactor task for them)
 - `ASSETS.md` → the generated-runtime authority; for a visual task, derive each asset with `tools/asset_result_registration.py --snapshot`
-- `MEMORY.md` index + sub-files → stable architecture decisions and project constraints
 - `docs/tags/<prev_tag>/STRUCTURE.md` (only if PLAN.md has Inherited Mechanics or refactor tasks touching prior systems) → know what already exists before adding/refactoring. Read `docs/tags/<prev_tag>/SUMMARY.md` first — it is one screen and often answers the question without opening the full archive; `docs/tags/README.md` lists every sealed tag if you are not sure which one to open.
 
 ## Hard Rules
@@ -179,19 +178,12 @@ continuable, and do not consume the repair budget.
 - After parallel workers complete, merge branches and build-check
 - See `references/worker-dispatch.md` → Parallel Worker Dispatch for merge procedure
 
-## Architecture and Constraints Record
+## Architecture Contract
 
-```
-MEMORY.md              <- Architecture and constraints index
-memory/
-  {system_name}.md     <- Detailed system architecture and constraints
-```
-
-- Read MEMORY.md before dispatching workers.
-- Write only stable architecture decisions or project constraints. Do not
-  record task history, failures, gotchas, workarounds, reviewer triage, or
-  other dynamic learning.
-- Do not update MEMORY.md when no durable architecture or constraint changed.
+- Read `STRUCTURE.md` before dispatching workers.
+- Keep architecture ownership, dependencies, ordering constraints, and stable
+  invariants in `STRUCTURE.md`. Do not record task history, failures, gotchas,
+  workarounds, reviewer triage, or other dynamic learning there.
 - Where the runtime exposes SubagentStop lifecycle hooks (currently Claude
   Code and Codex), Worker failures become diagnostic `worker_error` events,
   not project rules or prompt context for the next dispatch.
@@ -217,7 +209,7 @@ Your context window is finite. Protect it:
 
 **Out of your context (delegate to workers):** Asset generation, system implementation code, test code, build/lint output, screenshot analysis.
 
-**When context gets large:** Summarize completed phases and reference documents by path. Do not use MEMORY.md as a context-recovery log.
+**When context gets large:** Summarize completed phases and reference documents by path. Do not turn project documents into context-recovery logs.
 
 ## When Done
 

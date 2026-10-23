@@ -9,6 +9,13 @@ description: |
 
 $ARGUMENTS
 
+<!-- agent-operations: inspect_images, read_project_config, read_skill_reference, run_shell_command -->
+
+Resolve bundled prompts, criteria, and scripts relative to this skill's
+published directory using the active runtime's `read_skill_reference` mapping.
+Call that resolved directory `<visual-qa-skill-dir>`; do not assume a
+runtime-specific skill-root environment variable.
+
 CRITICAL: Find acceptance-blocking problems. Do not rationalize defects that
 block the caller-provided Task Context.
 
@@ -69,7 +76,7 @@ If `.godotmaker/config.yaml` is missing, `vqa_model` is missing, or
 Runtime-native VQA means direct image inspection by the selected runtime
 provider. `native` uses the active agent runtime. `codex` uses Codex image
 inspection, including from a Claude Code orchestration when Codex is available.
-API-backed VQA runs `${CLAUDE_SKILL_DIR}/scripts/visual_qa.py` with
+API-backed VQA runs `<visual-qa-skill-dir>/scripts/visual_qa.py` with
 `--model <vqa_model>`.
 
 Do not silently switch providers except for the explicit `vqa_fallback_model`
@@ -95,14 +102,16 @@ model fails and `vqa_fallback_model` is `native` or `codex`.
 8. Append the debug log entry.
 
 For `native`, use the active agent runtime's image inspection. For `codex`, use
-Codex image inspection.
+the active runtime mapping's `inspect_images` invocation path. Non-Codex
+runtimes must use the mapped `codex exec` image-input path rather than pretending
+their own model inspected the files.
 
 ### Step 4B - API-Backed Execution
 
 Use this path when `vqa_model` is `gemini:<model>` or `openai:<model>`.
 
 Parse the arguments to construct the command. The script is at
-`${CLAUDE_SKILL_DIR}/scripts/visual_qa.py`.
+`<visual-qa-skill-dir>/scripts/visual_qa.py`.
 
 Detect the available Python command: run `python3 --version` and
 `python --version`, then use whichever succeeds. Cache the result for the
@@ -125,13 +134,13 @@ case "$VQA_MODEL" in
 esac
 
 # Static
-PYTHON ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py --log ${VQA_LOG:-.vqa.log} $MODEL_FLAG [--context "Goal: ... Requirements: ... Verify: ..."] reference.png screenshot.png
+PYTHON "<visual-qa-skill-dir>/scripts/visual_qa.py" --log ${VQA_LOG:-.vqa.log} $MODEL_FLAG [--context "Goal: ... Requirements: ... Verify: ..."] reference.png screenshot.png
 
 # Dynamic
-PYTHON ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py --log ${VQA_LOG:-.vqa.log} $MODEL_FLAG [--context "..."] reference.png frame1.png frame2.png ...
+PYTHON "<visual-qa-skill-dir>/scripts/visual_qa.py" --log ${VQA_LOG:-.vqa.log} $MODEL_FLAG [--context "..."] reference.png frame1.png frame2.png ...
 
 # Question
-PYTHON ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py --log ${VQA_LOG:-.vqa.log} $MODEL_FLAG --question "the question" screenshot.png [frame2.png ...]
+PYTHON "<visual-qa-skill-dir>/scripts/visual_qa.py" --log ${VQA_LOG:-.vqa.log} $MODEL_FLAG --question "the question" screenshot.png [frame2.png ...]
 ```
 
 Always pass `--log`. Use `.vqa.log` unless the caller provides a log path.

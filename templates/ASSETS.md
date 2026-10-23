@@ -12,9 +12,9 @@
 
 ## Visual Style Source
 
-The project visual contract lives in `DESIGN.md`. Generated scene references,
-character-bundle identity anchors, and manifest source relationships are the
-primary style anchors after they exist.
+The project visual contract lives in `DESIGN.md`. User-provided style or
+identity images and character-bundle identity anchors are optional provider
+conditioning and provenance; they do not replace that contract.
 
 ## Gameplay Actor Asset Rows
 
@@ -44,10 +44,8 @@ For current-tag gameplay actors:
      `Tag` is the tag that introduced the asset. A row is one logical asset.
      Runtime Type and Runtime Path are the sole worker handoff: they must name
      the final loadable Godot resource, never a source sheet, atlas, candidate,
-     report, or manifest pointer. Reference-only rows use Runtime Type
-     `reference`, complete as `source_ready`, and never enter a runtime snapshot.
-     Runtime-family source and reference outputs remain result evidence, not
-     additional rows. -->
+     report, or manifest pointer. Source and reference outputs remain result
+     evidence, not additional rows. -->
 
 | # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |
 |---|-----|------|------|------|-------------------|--------------|--------------|--------|
@@ -59,8 +57,8 @@ For current-tag gameplay actors:
 
 ## Visual Asset Contract
 
-<!-- Runtime contract for visible assets. Each gameplay-visible object, non-text
-     UI element, and scene reference should map to an ASSETS.md row or to
+<!-- Runtime contract for visible assets. Each gameplay-visible object and non-text
+     UI element should map to an ASSETS.md row or to
      `procedural`, `UI text`, or `not required this tag`.
      Use `asset_name / assets/...` for concrete asset bindings.
      `Runtime Size` uses concrete px, `% viewport height`, or both.

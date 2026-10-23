@@ -26,7 +26,10 @@ The canonical, full-detail changelog is maintained in the repository root:
 
 Pending changes for the next release are tracked in [`../../update/next.md`](../../update/next.md).
 
-Contributors: every pull request must add an entry to `next.md` under the appropriate category (`Added`, `Changed`, `Fixed`, `Removed`) before merging. At release time, `next.md` is archived as `docs/update/vX.Y.Z.md` and a blank copy replaces it.
+Contributors follow the canonical
+[release-note entry contract](https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries).
+At release time, `next.md` is archived as `docs/update/vX.Y.Z.md` and a blank
+copy replaces it.
 
 ---
 

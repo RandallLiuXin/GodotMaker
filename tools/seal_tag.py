@@ -11,8 +11,8 @@ deterministic subcommands so the SKILL can stay short and the agent
 stays in LLM-judgment work.
 
 Subcommands:
-    archive <Tag>   Step 4 — copy per-tag docs, the memory/ subtree and
-                    evidence into docs/tags/<Tag>/ and write a provisional
+    archive <Tag>   Step 4 — copy per-tag docs and evidence into
+                    docs/tags/<Tag>/ and write a provisional
                     manifest (`sealed: false`)
     index <Tag>     Step 6b — generate docs/tags/<Tag>/SUMMARY.md, the tag
                     README, the sealed manifest and the parent
@@ -77,8 +77,7 @@ Exit codes:
     1   runtime failure — missing project state (.godotmaker/ absent) OR
         an fs failure mid-operation (copy / write / read / unlink raises
         OSError, JSON output raises UnicodeError, etc.)
-    2   archive source files missing, unresolvable archived memory links,
-        or bad CLI usage
+    2   archive source files missing or bad CLI usage
     3   the tag archive is already sealed — refused to overwrite it
         (pass --force to reseal deliberately)
 """
@@ -91,7 +90,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from urllib.parse import unquote
 
 
 # (source path relative to project root, destination filename under
@@ -103,14 +101,12 @@ ARCHIVE_MAP = [
     ("STRUCTURE.md",                    "STRUCTURE.md"),
     ("DESIGN.md",                       "DESIGN.md"),
     ("SCENES.md",                       "SCENES.md"),
-    ("MEMORY.md",                       "MEMORY.md"),
     (".godotmaker/evaluation.json",     "evaluation-final.json"),
 ]
 
 EVIDENCE_DIR = "evidence"
 E2E_DIR = "e2e"
 SCREENSHOTS_DIR = "e2e/screenshots"
-MEMORY_DIR = "memory"
 MANIFEST_RELPATH = f"{EVIDENCE_DIR}/manifest.json"
 
 MANIFEST_SCHEMA_VERSION = 1
@@ -147,7 +143,6 @@ ARCHIVE_FILE_ROLES = {
     "STRUCTURE.md":          ("ECS component/system layout for this tag", "`STRUCTURE.md`"),
     "DESIGN.md":             ("Project visual contract as of this tag", "`DESIGN.md`"),
     "SCENES.md":             ("Scene inventory for this tag", "`SCENES.md`"),
-    "MEMORY.md":             ("Architecture and constraints frozen at seal time", "`MEMORY.md`"),
     "evaluation-final.json": ("Final evaluator verdict for this tag", "`.godotmaker/evaluation.json`"),
 }
 
@@ -173,8 +168,8 @@ def _copy_tree_optional(src: Path, dst: Path, ignore=None) -> int:
 
     The destination is cleared first even when the source is gone. An archive
     is a snapshot of the project as it stands now; leaving a previous run's
-    copy behind because `memory/` or `e2e/` was since deleted would let the
-    next manifest hash that stale content and seal it as part of this tag.
+    evidence behind because `e2e/` was since deleted would let the next
+    manifest hash that stale content and seal it as part of this tag.
     """
     if dst.exists():
         shutil.rmtree(dst)
@@ -244,8 +239,6 @@ def _sha256(path: Path) -> str:
 def _categorize(rel_posix: str) -> str:
     if rel_posix in INDEX_FILES:
         return "index"
-    if rel_posix.startswith(f"{MEMORY_DIR}/"):
-        return "memory"
     if rel_posix.startswith(f"{EVIDENCE_DIR}/screenshots/"):
         return "screenshot"
     if rel_posix.startswith(f"{EVIDENCE_DIR}/e2e/"):
@@ -286,7 +279,6 @@ def _build_manifest(
     sealed: bool,
     backfilled: bool = False,
     warnings: list[str] | None = None,
-    link_warnings: list[str] | None = None,
     source_revision: str | None = None,
     stage: str | None = None,
 ) -> dict:
@@ -312,9 +304,7 @@ def _build_manifest(
         "archive_path": f"docs/tags/{tag}/{EVIDENCE_DIR}/",
         "e2e_files": by_category.get("e2e", 0),
         "screenshots": by_category.get("screenshot", 0),
-        "memory_files": by_category.get("memory", 0),
         "warnings": list(warnings or []),
-        "link_warnings": list(link_warnings or []),
         "files": files,
     }
 
@@ -398,106 +388,11 @@ def _claim_archive(project_path: Path, dest_dir: Path, tag: str, *, stage: str) 
         sealed=False,
         backfilled=stage == STAGE_BACKFILLING,
         warnings=list(previous.get("warnings", [])),
-        link_warnings=list(previous.get("link_warnings", [])),
         stage=stage,
     ))
 
 
-# --------------------------------------------------------------- link checks
-
-
-_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^)]+?)\s*\)")
-_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-_FENCE_RE = re.compile(r"^```.*?^```", re.DOTALL | re.MULTILINE)
-_WINDOWS_ABS_RE = re.compile(r"^[a-zA-Z]:[\\/]")
-
-
-def _local_markdown_links(text: str) -> list[str]:
-    """Relative link targets in `text`, ignoring comments and code fences.
-
-    Template MEMORY.md ships its example `memory/*.md` entries inside an
-    HTML comment; treating those as real links would block every first
-    finalize, so commented and fenced regions are stripped first.
-    """
-    text = _HTML_COMMENT_RE.sub("", text)
-    text = _FENCE_RE.sub("", text)
-    targets: list[str] = []
-    for match in _LINK_RE.finditer(text):
-        target = match.group(1).strip()
-        if target.startswith("<") and target.endswith(">"):
-            target = target[1:-1].strip()
-        else:
-            # `[x](path "title")` — the title is not part of the target.
-            target = target.split()[0] if target.split() else ""
-        if not target or target.startswith(("http://", "https://", "mailto:", "#")):
-            continue
-        target = unquote(target.split("#", 1)[0])
-        if target:
-            targets.append(target)
-    return targets
-
-
-def _check_memory_links(dest_dir: Path) -> tuple[list[str], list[str]]:
-    """Validate the archived MEMORY.md's local links against the archive.
-
-    Returns `(errors, warnings)`:
-
-    - error — the link escapes the archive boundary, is absolute, or points
-      into `memory/` without a matching archived file. These block a seal:
-      a frozen index whose entries 404 is worse than no index.
-    - warning — the link points at a project path that is deliberately not
-      archived (`src/player.gd`, `assets/…`). MEMORY.md legitimately cites
-      source files, so these are recorded, not fatal.
-    """
-    errors: list[str] = []
-    warnings: list[str] = []
-    memory_md = dest_dir / "MEMORY.md"
-    if not memory_md.is_file():
-        return errors, warnings
-    try:
-        text = memory_md.read_text(encoding="utf-8", errors="replace")
-    except OSError as exc:
-        return [f"MEMORY.md unreadable in the archive: {exc}"], warnings
-
-    root = dest_dir.resolve()
-    for target in _local_markdown_links(text):
-        if target.startswith("/") or _WINDOWS_ABS_RE.match(target):
-            errors.append(f"MEMORY.md links to an absolute path `{target}` - archives must stay relocatable")
-            continue
-        resolved = (dest_dir / target).resolve()
-        try:
-            rel = resolved.relative_to(root)
-        except ValueError:
-            errors.append(f"MEMORY.md link `{target}` escapes the archive boundary")
-            continue
-        if resolved.exists():
-            continue
-        if rel.parts and rel.parts[0] == MEMORY_DIR:
-            errors.append(f"MEMORY.md links to `{target}`, which is missing from the archive")
-        else:
-            warnings.append(f"MEMORY.md links to `{target}`, which is outside the archive")
-    return errors, warnings
-
-
 # ------------------------------------------------------------------- archive
-
-
-def _archive_memory_tree(project_path: Path, dest_dir: Path) -> tuple[int, list[str]]:
-    """Freeze `memory/` next to the archived MEMORY.md.
-
-    Without this the archived index links to files that only exist in the
-    live project, so a sealed tag's MEMORY.md rots the moment the root
-    `memory/` moves on.
-    """
-    try:
-        count = _copy_tree_optional(
-            project_path / MEMORY_DIR,
-            dest_dir / MEMORY_DIR,
-            ignore=_ignore_junk(),
-        )
-    except OSError as exc:
-        return 0, [f"memory subtree archive skipped: {exc}"]
-    return count, []
 
 
 def _archive_evidence(project_path: Path, dest_dir: Path) -> list[str]:
@@ -557,8 +452,7 @@ def cmd_archive(project_path: Path, tag: str, force: bool = False) -> int:
         dest_dir.mkdir(parents=True, exist_ok=True)
         for src_rel, dst_name in ARCHIVE_MAP:
             shutil.copy2(project_path / src_rel, dest_dir / dst_name)
-        memory_files, warnings = _archive_memory_tree(project_path, dest_dir)
-        warnings += _archive_evidence(project_path, dest_dir)
+        warnings = _archive_evidence(project_path, dest_dir)
     except OSError as exc:
         # Mid-copy fs failure leaves a partial archive; surface that to the
         # caller instead of leaking a traceback.
@@ -569,30 +463,18 @@ def cmd_archive(project_path: Path, tag: str, force: bool = False) -> int:
         )
         return 1
 
-    link_errors, link_warnings = _check_memory_links(dest_dir)
-
     try:
         manifest = _build_manifest(
             project_path, tag, dest_dir,
-            sealed=False, warnings=warnings, link_warnings=link_warnings,
+            sealed=False, warnings=warnings,
         )
         _write_manifest(dest_dir, manifest)
     except OSError as exc:
         print(f"error: manifest write failed ({exc})", file=sys.stderr)
         return 1
 
-    if link_errors:
-        print(
-            f"error: docs/tags/{tag}/MEMORY.md has unresolvable archive links:\n"
-            + "\n".join(f"  - {e}" for e in link_errors)
-            + "\nThe archive is left in place but NOT sealed. Fix the root MEMORY.md "
-              "(or restore the missing memory/ files) and re-run `archive`.",
-            file=sys.stderr,
-        )
-        return 2
-
     print(
-        f"archived {len(ARCHIVE_MAP)} documents + {memory_files} memory file(s) to docs/tags/{tag}/ "
+        f"archived {len(ARCHIVE_MAP)} documents to docs/tags/{tag}/ "
         f"(evidence: {manifest['e2e_files']} e2e files, {manifest['screenshots']} screenshots). "
         f"Run `seal_tag.py index {tag}` after CHANGELOG.md exists to seal the archive."
     )
@@ -672,9 +554,8 @@ def _canonical_pointers(manifest: dict) -> list[str]:
     """The "Canonical documents" bullets, gated on what was actually archived.
 
     SUMMARY.md is the advertised retrieval entry point, so every link in it
-    must resolve. `backfill` deliberately never copies a `memory/` subtree into
-    a historical tag and tolerates missing canonical documents, and a project
-    without `memory/` archives none — so nothing here can be assumed present.
+    must resolve. `backfill` tolerates missing canonical documents, so nothing
+    here can be assumed present.
     """
     present = {entry["path"] for entry in manifest.get("files", [])}
     lines: list[str] = []
@@ -691,14 +572,6 @@ def _canonical_pointers(manifest: dict) -> list[str]:
     if architecture:
         lines.append(f"- {' · '.join(architecture)} — architecture, scenes, visual contract")
 
-    if "MEMORY.md" in present:
-        if manifest.get("memory_files"):
-            lines.append("- [MEMORY.md](MEMORY.md) + [memory/](memory/) — "
-                         "frozen architecture and constraint records")
-        else:
-            lines.append("- [MEMORY.md](MEMORY.md) — frozen architecture and constraints "
-                         "(no `memory/` subtree archived for this tag)")
-
     if "evaluation-final.json" in present:
         lines.append("- [evaluation-final.json](evaluation-final.json) — evaluator verdict")
     lines.append(f"- [{MANIFEST_RELPATH}]({MANIFEST_RELPATH}) — "
@@ -711,9 +584,9 @@ def _render_summary(project_path: Path, tag: str, dest_dir: Path, manifest: dict
 
     Inputs: the archived CHANGELOG.md, evaluation-final.json, PLAN.md, the
     archive manifest and — only when it belongs to this tag —
-    `.godotmaker/final_report.json`. Worker traces, exploration notes and
-    MEMORY.md are deliberately NOT read: SUMMARY is a retrieval index over
-    confirmed deliverables, not a second source of truth.
+    `.godotmaker/final_report.json`. Worker traces and exploration notes are
+    deliberately NOT read: SUMMARY is a retrieval index over confirmed
+    deliverables, not a second source of truth.
     """
     changelog = _parse_changelog(dest_dir / "CHANGELOG.md")
     evaluation = _read_json(dest_dir / "evaluation-final.json") or {}
@@ -780,14 +653,11 @@ def _render_summary(project_path: Path, tag: str, dest_dir: Path, manifest: dict
     return "\n".join(lines) + "\n"
 
 
-def _render_tag_readme(tag: str, manifest: dict, link_warnings: list[str]) -> str:
+def _render_tag_readme(tag: str, manifest: dict) -> str:
     # The index files are written in the same pass as this README, so they
     # count as present even though the manifest snapshot predates them —
     # otherwise a first seal and a `--force` reseal would render differently.
     present = {entry["path"] for entry in manifest.get("files", [])} | set(INDEX_FILES)
-    memory_count = manifest.get("memory_files", 0)
-    # Completeness is about what the archive holds. A MEMORY.md citation to a
-    # live source file (`src/player.gd`) is a note, not a gap.
     complete = not manifest.get("warnings") and all(
         name in present for name in ARCHIVE_FILE_ROLES
     )
@@ -815,11 +685,6 @@ def _render_tag_readme(tag: str, manifest: dict, link_warnings: list[str]) -> st
         if name not in present:
             continue
         lines.append(f"| [{name}]({name}) | {role} | {source} |")
-    if memory_count:
-        lines.append(
-            f"| [memory/](memory/) | Architecture files linked from MEMORY.md "
-            f"({memory_count} file(s)) | `memory/` |"
-        )
     if manifest.get("e2e_files") or manifest.get("screenshots"):
         lines.append(
             f"| [evidence/](evidence/) | E2E tests and screenshots captured at seal time "
@@ -834,8 +699,7 @@ def _render_tag_readme(tag: str, manifest: dict, link_warnings: list[str]) -> st
         "1. `SUMMARY.md` — one-screen answer to \"what shipped in this tag\".",
         "2. `CHANGELOG.md` / `PLAN.md` — the delivered mechanics and their task trail.",
         "3. `STRUCTURE.md`, `SCENES.md`, `DESIGN.md` — how it was built, if you need to touch it again.",
-        "4. `MEMORY.md` + `memory/` — architecture decisions and constraints at seal time.",
-        "5. `evidence/` — the proof, only when a claim above is in doubt.",
+        "4. `evidence/` — the proof, only when a claim above is in doubt.",
         "",
         "## Immutability",
         "",
@@ -844,10 +708,9 @@ def _render_tag_readme(tag: str, manifest: dict, link_warnings: list[str]) -> st
         "deliberate `--force` action, and retrofitting index files onto older archives "
         "goes through `tools/seal_tag.py backfill`, which never rewrites canonical documents.",
     ]
-    if manifest.get("warnings") or link_warnings:
+    if manifest.get("warnings"):
         lines += ["", "## Notes", ""]
         lines += [f"- {note}" for note in manifest.get("warnings", [])]
-        lines += [f"- {note}" for note in link_warnings]
     return "\n".join(lines) + "\n"
 
 
@@ -885,7 +748,7 @@ def _render_parent_readme(tags_root: Path, exclude: set[str] | None = None) -> s
         "# Tag archives",
         "",
         "One directory per sealed tag. Each is an immutable snapshot of the "
-        "working documents, memory and evidence as they stood when that tag "
+        "working documents and evidence as they stood when that tag "
         "shipped — the live documents live at the project root.",
         "",
         "| Tag | Released | Theme | Source revision | Summary |",
@@ -942,7 +805,6 @@ def _write_index_files(
     dest_dir: Path,
     *,
     backfilled: bool,
-    link_warnings: list[str],
     carried_warnings: list[str],
     source_revision: str | None = None,
 ) -> dict:
@@ -961,7 +823,7 @@ def _write_index_files(
         return _build_manifest(
             project_path, tag, dest_dir,
             sealed=True, backfilled=backfilled,
-            warnings=carried_warnings, link_warnings=link_warnings,
+            warnings=carried_warnings,
             source_revision=source_revision,
         )
 
@@ -972,7 +834,7 @@ def _write_index_files(
     )
     _atomic_write_text(
         dest_dir / "README.md",
-        _render_tag_readme(tag, provisional, link_warnings),
+        _render_tag_readme(tag, provisional),
     )
     return build()
 
@@ -998,16 +860,6 @@ def cmd_index(project_path: Path, tag: str, force: bool = False) -> int:
         )
         return 3
 
-    link_errors, link_warnings = _check_memory_links(dest_dir)
-    if link_errors:
-        print(
-            f"error: docs/tags/{tag}/MEMORY.md has unresolvable archive links:\n"
-            + "\n".join(f"  - {e}" for e in link_errors)
-            + "\nSeal aborted — the archive stays unsealed until the links resolve.",
-            file=sys.stderr,
-        )
-        return 2
-
     # Read the carried warnings before the seal is retired — a --force reseal
     # deletes the manifest they live in.
     previous = _read_manifest(dest_dir) or {}
@@ -1026,7 +878,6 @@ def cmd_index(project_path: Path, tag: str, force: bool = False) -> int:
         manifest = _write_index_files(
             project_path, tag, dest_dir,
             backfilled=False,
-            link_warnings=link_warnings,
             carried_warnings=list(previous.get("warnings", [])),
         )
         _write_manifest(dest_dir, manifest)
@@ -1104,10 +955,8 @@ def cmd_backfill(
 
     Deliberately separate from `archive` / `index`: normal finalize must
     never rewrite history. Canonical documents are read-only here — the
-    command verifies their bytes are unchanged before it returns, and it
-    does not copy today's `memory/` into a historical tag (that would inject
-    present-day content into a past snapshot). Missing memory links become
-    manifest warnings and a `partial` completeness note instead.
+    command verifies their bytes are unchanged before it returns and does not
+    copy current project content into a historical tag.
 
     Archives that already carry a sealed manifest are skipped unless
     `--force`: re-indexing them would replace their recorded seal revision
@@ -1169,22 +1018,16 @@ def cmd_backfill(
                 name: _sha256(dest_dir / name)
                 for name in canonical if (dest_dir / name).is_file()
             }
-            link_errors, link_warnings = _check_memory_links(dest_dir)
             gaps = [n for n in canonical if n not in before]
             carried = list(previous.get("warnings", []))
             if gaps:
                 carried.append(f"missing canonical document(s): {', '.join(gaps)}")
-            # A legacy archive has no memory/ subtree, so MEMORY.md's index
-            # links cannot resolve. Backfill records that instead of blocking:
-            # copying today's memory/ into a historical tag would rewrite it.
-            carried += link_errors
             # Repeated `--force` runs re-derive the same notes; keep one each,
             # in order, so the list does not grow on every pass.
             carried = list(dict.fromkeys(carried))
             manifest = _write_index_files(
                 project_path, dest_dir.name, dest_dir,
                 backfilled=True,
-                link_warnings=link_warnings,
                 carried_warnings=carried,
                 source_revision=_archived_tag_revision(project_path, dest_dir.name),
             )

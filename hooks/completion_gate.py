@@ -50,7 +50,6 @@ _TAG_ARCHIVE_FILES = (
     "STRUCTURE.md",
     "DESIGN.md",
     "SCENES.md",
-    "MEMORY.md",
     "evaluation-final.json",
     "CHANGELOG.md",
     "README.md",

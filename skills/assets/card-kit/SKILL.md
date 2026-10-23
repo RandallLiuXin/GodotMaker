@@ -28,7 +28,7 @@ generated catalogs. It produces and preserves the validated generic result;
 `references` is optional. When it is non-empty, each path is binding input:
 
 1. Verify that it is a readable image before generation.
-2. Preserve its `canonical`, `style`, or `screen` role in the prompt and trace.
+2. Preserve its `canonical` or `style` role in the prompt and trace.
 3. Attach its real image bytes through the declared provider path.
 4. STOP if that provider cannot attach every required reference.
 

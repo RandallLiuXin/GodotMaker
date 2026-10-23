@@ -52,6 +52,7 @@ nav:
   - Skills:
       - Skill System: wiki/03-skills/skill-system.md
       - Core Skills: wiki/03-skills/core-skills.md
+      - Asset Skills: wiki/03-skills/asset-skills.md
       - Reviewer Skills: wiki/03-skills/reviewer-skills.md
   - Troubleshooting:
       - Common Problems: wiki/04-troubleshooting/common-problems.md
@@ -66,6 +67,20 @@ nav:
       - Project Config: wiki/06-configuration/project-config.md
       - godotmaker.yaml: wiki/06-configuration/godotmaker-yaml.md
       - Addon Versions: wiki/06-configuration/addon-versions.md
+      - Provider Setup:
+          - Overview: wiki/06-configuration/providers/README.md
+          - Coding-agent runtimes:
+              - Claude Code: wiki/06-configuration/providers/agent-runtimes/claude-code.md
+              - Codex: wiki/06-configuration/providers/agent-runtimes/codex.md
+              - OpenCode: wiki/06-configuration/providers/agent-runtimes/opencode.md
+              - Pi: wiki/06-configuration/providers/agent-runtimes/pi.md
+          - Image and VQA providers:
+              - native: wiki/06-configuration/providers/image-vqa/native.md
+              - codex: wiki/06-configuration/providers/image-vqa/codex.md
+              - gemini: wiki/06-configuration/providers/image-vqa/gemini.md
+              - openai: wiki/06-configuration/providers/image-vqa/openai.md
+              - grok: wiki/06-configuration/providers/image-vqa/grok.md
+              - wan: wiki/06-configuration/providers/image-vqa/wan.md
   - Contributing:
       - Development Setup: wiki/07-contributing/development-setup.md
       - Codebase Guide: wiki/07-contributing/codebase-guide.md
@@ -157,6 +172,7 @@ plugins:
             Skills: 技能
             Skill System: 技能体系
             Core Skills: 核心技能
+            Asset Skills: Asset 技能
             Reviewer Skills: 评审技能
             Troubleshooting: 故障排查
             Common Problems: 常见问题
@@ -170,6 +186,10 @@ plugins:
             Project Config: 项目配置
             godotmaker.yaml: godotmaker.yaml
             Addon Versions: 插件版本
+            Provider Setup: Provider 配置
+            Overview: 概览
+            Coding-agent runtimes: Coding-agent runtime
+            Image and VQA providers: 图片与 VQA provider
             Contributing: 贡献指南
             Development Setup: 开发环境
             Codebase Guide: 代码导览

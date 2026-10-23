@@ -29,30 +29,18 @@ GodotMaker is licensed under the Business Source License 1.1 (see [LICENSE](LICE
 2. Follow the coding conventions below.
 3. Write or update tests for your changes.
 4. For performance-sensitive changes, run benchmarks and include the results in the PR description.
-5. Run the full validation pipeline locally:
-   ```bash
-   # Run tests
-   python -m pytest
-
-   # Run gdUnit4 for Godot project changes
-   godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd --add res://test/ --ignoreHeadlessMode
-
-   # Gitleaks (runs automatically via pre-commit hook)
-   gitleaks detect --source . --config .gitleaks.toml
-   ```
-6. Add a changelog entry to [`docs/update/next.md`](docs/update/next.md) describing your change. Rules:
-   - **One sentence per bullet.** If you can't fit it, your bullet is doing two things — split it.
-   - **Describe user-facing intent, not the investigation behind it.** No incident dates, no internal project / test names, no debugging narrative. Past `vX.Y.Z.md` archives are the format reference.
-   - **Use `(WIP)` only when the change itself is incomplete**. The prefix exists so the release-prep agent doesn't promote unfinished work into a tagged release — don't dilute it.
+5. Run the [local validation pipeline](#local-validation) before opening a PR.
+6. Follow the [release-note entry contract](#release-note-entries).
 7. Open a PR against `main` using the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
 ## Development Setup
 
 ### Prerequisites
 
-- Godot 4.x (with .NET support recommended)
 - Python 3.10+
-- .NET SDK 8.0+
+- Node.js 22+
+- Godot 4.5+
+- Git and Bash (use Git Bash on Windows for the repository hook scripts)
 - [gitleaks](https://github.com/gitleaks-io/gitleaks) (for secret scanning)
 
 ### Getting Started
@@ -61,15 +49,101 @@ GodotMaker is licensed under the Business Source License 1.1 (see [LICENSE](LICE
 git clone https://github.com/RandallLiuXin/GodotMaker.git
 cd GodotMaker
 
-# Install git hooks (gitleaks pre-commit)
+# Create and activate a virtual environment (recommended)
+python -m venv .venv
+source .venv/bin/activate
+
+# Install the Python dependencies used by CI and the documentation build
+python -m pip install pytest ruff==0.15.22 -r tools/requirements.txt
+python -m pip install mkdocs-material mkdocs-static-i18n
+
+# Install the repository hooks
 bash scripts/install-hooks.sh
-
-# Install development dependencies used by CI
-python -m pip install pytest ruff mkdocs mkdocs-material
-
-# Optional: install asset/API provider dependencies when working on tools/
-python -m pip install -r tools/requirements.txt
 ```
+
+Confirm the frozen minimum tool versions before validating:
+
+```bash
+python --version
+node --version
+godot --version
+gitleaks version
+```
+
+On Windows PowerShell, activate the virtual environment with
+`.\.venv\Scripts\Activate.ps1`; run `scripts/install-hooks.sh` from Git Bash.
+
+## Local Validation
+
+From a clean checkout with the development dependencies installed, run:
+
+```bash
+# Python lint and test gates
+ruff check .
+python -m pytest --tb=short
+
+# Documentation gates
+python tools/check_doc_i18n.py --base origin/main --head HEAD
+mkdocs build
+
+# Secret-scan gate
+gitleaks detect --source . --log-opts="origin/main..HEAD" --config .gitleaks.toml
+```
+
+Use `python tools/check_doc_i18n.py --staged` while preparing an uncommitted
+documentation change. `python -m pytest tests/ -q` is the concise equivalent
+used when a full-suite result is needed without CI's traceback formatting.
+
+### Git Hook Order
+
+`bash scripts/install-hooks.sh` installs the executable scripts under
+`scripts/` without changing their behavior:
+
+1. `pre-commit` runs Ruff on staged Python files when Ruff is installed.
+2. `pre-commit` runs `python tools/check_doc_i18n.py --staged`.
+3. `pre-commit` runs `gitleaks protect --staged` when Gitleaks is installed.
+4. `pre-push` runs `ruff check .`, then `python -m pytest --tb=short`, when
+   those tools are available.
+
+The hooks warn and skip optional local tools that are missing. CI does not
+skip its corresponding gates, so install every dependency listed above.
+
+### Pull Request CI Gates
+
+The executable definitions remain authoritative; this table records what a
+contributor should expect.
+
+| Workflow source | Gate | Executed validation |
+| --- | --- | --- |
+| `.github/workflows/ci.yml` | Doc i18n | Changed user-facing English docs include their Chinese mirrors. |
+| `.github/workflows/ci.yml` | Lint Python | Ruff 0.15.22 runs `ruff check .`. |
+| `.github/workflows/ci.yml` | Test Python | Python 3.12 runs `pytest --tb=short` on Ubuntu, Windows, and macOS. |
+| `.github/workflows/ci.yml` | Secret Scan | The Gitleaks action scans for secrets. |
+| `.github/workflows/docs.yml` | Build Docs | Documentation changes run `mkdocs build`. |
+
+The supported contributor baseline is Python 3.10+ even though CI currently
+executes the test matrix with Python 3.12.
+
+## Release-note Entries
+
+This section is the single complete source of truth for contributor rules for
+[`docs/update/next.md`](docs/update/next.md). Other templates and release docs
+must link here instead of copying these rules.
+
+A PR that changes user-facing behavior, release content, dependencies, or
+developer workflow must add a bullet under the appropriate heading in
+`docs/update/next.md`. A docs-only typo fix or maintenance-only PR with no
+release-note value may omit the entry. Contributors do not edit
+`CHANGELOG.md`; the release owner updates it during release preparation.
+
+- Write one sentence per bullet; split independent changes into separate bullets.
+- Describe user-facing intent, not incident dates, internal project or test names,
+  or debugging history.
+- Use `(WIP)` only when the shipped change itself is incomplete.
+- Use a Keep a Changelog category such as `Added`, `Changed`, `Fixed`, or
+  `Removed`; add another category only when none fits.
+- Follow the archived release-note format:
+  `- Brief description of the change (#PR_NUMBER) — @author.`
 
 ## Coding Conventions
 

@@ -14,7 +14,7 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 
 ### v0.2 — Skills
 
-- [x] `R-010` 13 core skills (orchestrator, godot-api, headless-build, gdunit-driver, gdtoolkit, gecs, game-planner, project-scaffold, visual-qa, screenshot, mcp-driver, godot-e2e, input-mapper)
+- [x] `R-010` Core skill infrastructure for pipeline roles and reusable Godot, ECS, build, test, and evaluation guidance
 - [x] `R-011` 8 reviewer skills (physics, animation, ui, tilemap, navigation, shader, audio, particles)
 - [x] `R-012` Capability skills (headless-build, gdunit-driver, godot-e2e, gdtoolkit, visual-qa)
 
@@ -22,7 +22,7 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 
 - [x] `R-020` Multi-agent orchestrator pipeline (game-planner → scaffold → generate → validate)
 - [x] `R-021` Stage gate validation with schema enforcement
-- [x] `R-022` Hook system (8 hooks: pre-commit, SubagentStop, worktree lifecycle, etc.)
+- [x] `R-022` Hook system for permissions, stage gates, lifecycle checks, workspace safety, and telemetry
 - [x] `R-023` Metrics and state tracking subsystem
 
 ### v0.4 — Polish
@@ -56,6 +56,11 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 - [x] `R-092` **Generated asset usage in gameplay** - Make build and fixgap hand final generated assets to workers, keep reviewer asset-use checks lightweight, and let evaluate judge scene-contract screenshots instead of asset-manifest internals.
 - [x] `R-087` **Character animation runtime integration** - Use generated character action assets in Godot runtime animation setup, including idle/move/attack/hit/death state mapping, AnimationPlayer or sprite-sheet wiring, and gameplay-facing animation triggers.
 
+### v1.0 — Runtime Assets and Authoring
+
+- [x] `R-050` **Phantom Camera guidance** — Ship an optional supporting skill for follow cameras, camera zones, transitions, shake, and cutscene-style camera moves without forcing the addon into every project.
+- [x] `R-100` **TileSet and TileMap support** — Generate fixed-profile terrain atlases and L0-L4-validated native `TileSet` resources, then let build workers own TileMap layers, cell placement, gameplay objects, triggers, camera limits, scene structure, and runtime verification.
+
 ## In Progress
 
 ### v0.x - Model and Runner Evaluation
@@ -64,7 +69,6 @@ This roadmap tracks what has shipped, what we are working on now, and where the 
 
 ### v0.x — Plugin Skills
 
-- [ ] `R-050` [Phantom Camera](https://github.com/ramokz/phantom-camera) — Camera management (inspired by Cinemachine)
 - [ ] `R-051` [Dialogic](https://github.com/dialogic-godot/dialogic) — Dialogue and visual novel system
 - [ ] `R-052` [Input Helper](https://github.com/nathanhoad/godot_input_helper) — Input device detection and icon mapping
 - [ ] `R-053` [Scene Manager](https://github.com/maktoobgar/scene_manager) — Scene transitions and organization
@@ -92,7 +96,6 @@ Items below are ideas under consideration — not committed to a timeline.
 - `R-093` **Map and stage art-to-runtime handoff** — Turn generated backgrounds, props, platforms, and scene references into map or stage runtime structure.
 - `R-094` **Interactive art generation workflow** — Add a future operator-facing workflow for reviewing generated sources, crop results, rejected variants, canonical choices, manifest mappings, and regenerate/replace/accept actions.
 - `R-086` **Common UI motion skill** — Add a focused skill for common game UI motion such as panel transitions, button feedback, popups, score changes, health/XP feedback, modal entrance/exit, and state-change emphasis.
-- `R-100` **TileMap support** — Terrain systems, tileset asset generation, and TileMap-based level design. Currently deferred; sprite-placement is the recommended terrain approach until this ships.
 - `R-101` **ECS framework migration** — Migrate tindercore (C++ GDExtension) from EnTT to flecs, then adopt tindercore as the ECS runtime replacing gecs.
 - `R-102` **Scene-markers skill** — Marker type → component composition mapping for ECS entity spawning.
 - `R-103` **System DAG checker CLI** — Static dependency analysis for ECS systems at build time.
