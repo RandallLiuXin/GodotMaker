@@ -6,7 +6,7 @@
 - Pi production delegation hang: **reproduced**. The one-shot process inherits an open stdin pipe, while Pi waits for stdin EOF before issuing a model request. This is independent of JSON output collection and does not require an RPC migration; closing or ignoring child stdin is sufficient.
 - OpenCode pre-tool hook result loss: **reproduced at the adapter boundary**. The current task branch discards the parsed hook result. The already-approved runtime-capability work owns this defect; this investigation does not create another implementation scope.
 
-No production runtime file was changed. A production Pi stdin fix requires explicit approval and a separately owned implementation scope.
+At the investigation baseline, no production runtime file was changed. After explicit approval on 2026-10-23, the production `runDelegate` spawn was updated to ignore child stdin while preserving piped stdout and stderr. The hang probe remains a bounded reproduction of the pre-fix production spawn shape.
 
 ## Fixed environment
 
@@ -32,7 +32,7 @@ node qa/runtime-delegation/probe-opencode-injection.mjs
 
 The Pi benchmark launches the installed CLI directly, fixes JSON mode, model, reasoning, prompt, and output sizes, and uses the same `stdout += chunk.toString()` accumulation operation as the production extension. It intentionally ignores stdin so it can isolate JSON collection performance; it does not mirror the complete production spawn configuration. Its fixed tool emits 64 KiB JSON event payloads. The collector records elapsed time, output growth at 25/50/75/100%, RSS, exit status, JSONL validity, exact event count, final-response integrity, and SHA-256.
 
-The Pi stdin probe uses the production one-shot flags and exactly mirrors `spawn(command, args, { cwd, shell: false, windowsHide: true })`, including its default open stdin pipe; provider, model, and reasoning are additionally pinned for repeatability. It runs two bounded 10-second production-shape attempts, then two controls that change only stdin to `ignore`.
+The Pi stdin probe uses the production one-shot flags and exactly mirrors the pre-fix `spawn(command, args, { cwd, shell: false, windowsHide: true })` call, including its default open stdin pipe; provider, model, and reasoning are additionally pinned for repeatability. It runs two bounded 10-second pre-fix attempts, then two controls that change only stdin to `ignore`.
 
 The OpenCode probe invokes the production adapter directly with a fixed temporary hook and fixed task arguments. It verifies that the task pre-hook path discards the parsed hook result. It does not start a model session, pass provider credentials, or claim that `additionalContext` must be injected into a child prompt; host routing semantics remain an integration concern for the owning runtime-capability work.
 
@@ -41,7 +41,7 @@ The OpenCode probe invokes the production adapter directly with a fixed temporar
 - Pi JSON collection: every run must exit `0` within 120 seconds without timeout; every JSONL line must parse; every fixed payload update must be present exactly once; final assistant text must be `GM_DONE`.
 - Collector RSS increase must remain below 6 times captured stdout bytes.
 - Same-size repeat elapsed spread must be at most `max(5 s, 50% of the faster run)`; peak-RSS spread must be at most `max(64 MiB, 50% of the lower peak)`.
-- Pi stdin hang: both production-shape runs must time out with zero stdout; both stdin-ignored controls must exit `0` and return `GM_DONE`.
+- Pi stdin hang: both pre-fix production-shape runs must time out with zero stdout; both stdin-ignored controls must exit `0` and return `GM_DONE`.
 - OpenCode adapter loss: both fixed boundary probes must leave task arguments unchanged and propagate no hook result.
 
 ## Pi JSON raw results
@@ -59,13 +59,13 @@ Increasing payload by 4x increased the observed payload-stream interval by about
 
 The installed Pi changelog records that version `0.84.0` removed cumulative `message` and `assistantMessageEvent.partial` fields from JSON/RPC `message_update` events because those fields caused quadratic output growth. The tested `0.84.2` stream contains delta events. The old upstream failure mode therefore does not establish a quadratic-growth defect in the current GodotMaker invocation.
 
-## Pi production hang results
+## Pi pre-fix production hang results
 
-The production extension does not specify `stdio`. Node therefore creates a writable child stdin pipe and leaves it open. Pi `0.84.2` calls `readPipedStdin()` in non-RPC modes and waits for that pipe's `end` event before making a model request.
+At the investigated baseline, the production extension did not specify `stdio`. Node therefore created a writable child stdin pipe and left it open. Pi `0.84.2` calls `readPipedStdin()` in non-RPC modes and waits for that pipe's `end` event before making a model request.
 
-The committed probe reproduces this with the production arguments and spawn shape. The expected evidence is two production-shape timeouts with zero stdout and two stdin-ignored controls that exit successfully with `GM_DONE`; the exact recorded results are in `pi-hang-measurements.json`.
+The committed probe reproduces this with the production arguments and pre-fix spawn shape. The expected evidence is two pre-fix timeouts with zero stdout and two stdin-ignored controls that exit successfully with `GM_DONE`; the exact recorded results are in `pi-hang-measurements.json`.
 
-RPC happens to bypass `readPipedStdin`, but RPC is not required to fix this failure. Either spawning with stdin ignored or immediately calling `child.stdin.end()` supplies the required EOF while retaining one-shot JSON mode. This investigation does not implement either production change.
+RPC happens to bypass `readPipedStdin`, but RPC is not required to fix this failure. Spawning with stdin ignored supplies the required EOF while retaining one-shot JSON mode; the subsequently approved remediation now uses that option in production.
 
 ## OpenCode adapter results
 
@@ -85,8 +85,8 @@ The unsafe live model path has been removed from the committed probe and from th
 ## Artifacts
 
 - `pi-measurements.json`: fixed JSON-collection measurements, growth samples, hashes, tolerances, and integrity counts.
-- `pi-hang-measurements.json`: direct output from the bounded production-spawn hang probe.
+- `pi-hang-measurements.json`: direct output from the bounded pre-fix production-spawn hang probe.
 - `opencode-measurements.json`: direct output from the repeated adapter-boundary probe.
 - `benchmark-pi-json.mjs` and `pi-fixed-payload.ts`: reproducible Pi JSON-collection benchmark.
-- `probe-pi-stdin-hang.mjs`: reproducible production-spawn stdin hang and stdin-ignored control.
+- `probe-pi-stdin-hang.mjs`: reproducible pre-fix production-spawn stdin hang and stdin-ignored control.
 - `probe-opencode-injection.mjs`: model-free OpenCode adapter-boundary reproduction.

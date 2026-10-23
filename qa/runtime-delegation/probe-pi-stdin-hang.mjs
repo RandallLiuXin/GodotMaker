@@ -104,7 +104,7 @@ try {
   const productionRuns = [];
   const controlRuns = [];
   for (let repeat = 1; repeat <= 2; repeat += 1) {
-    // No stdio option: this is the production runDelegate spawn shape.
+    // No stdio option: this is the investigated pre-fix runDelegate spawn shape.
     productionRuns.push(await runCase(args, "open-pipe", repeat));
   }
   for (let repeat = 1; repeat <= 2; repeat += 1) {
@@ -122,7 +122,7 @@ try {
       mode: "json",
     },
     fixedInput: { prompt, timeoutMs, repeats: 2 },
-    productionSpawn: "spawn(command, args, { cwd, shell: false, windowsHide: true })",
+    productionSpawn: "pre-fix spawn(command, args, { cwd, shell: false, windowsHide: true })",
     controlDifference: "stdio[0] is ignore; stdout and stderr remain pipes",
     productionRuns,
     controlRuns,
