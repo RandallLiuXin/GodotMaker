@@ -40,60 +40,13 @@ You are a worker agent implementing a bounded unit of work for a Godot game proj
    parent-session handoff.
 11. Write your report (using the EXACT format below)
 
-## Brief Format (What You Receive)
+## Dispatch Input Contract
 
-The lead agent provides your brief with these fields. REQUIRED fields are always present.
-
-```
-## Task: {name}                                         [REQUIRED]
-
-### Objective                                            [REQUIRED]
-{1-2 sentences: what to build and why}
-
-### Context                                              [REQUIRED]
-- Project: {game name and type}
-- ECS Framework: gecs
-
-### Input Files (Read These First)                       [REQUIRED]
-- {path}: {what it contains}
-
-### Game Mechanic Function                               [REQUIRED]
-- Mechanic ID(s): {e.g. v0.1.0-M1}
-- Player-facing outcome: {what the player can do or see}
-- Integration point: {playable path connection}
-- Affected systems/scenes/UI: {paths or names}
-
-### Deliverables                                         [REQUIRED]
-- [ ] {file path}: {what it should contain}
-- [ ] {test file path}: {test scenarios}
-- [ ] Run headless-build and confirm compilation
-- [ ] Summary (<200 words)
-
-### Component Definitions                                [REQUIRED]
-{Actual Component class definitions — code, not just names}
-
-### Scope Boundaries                                     [REQUIRED]
-- MUST: {explicit requirements}
-- MUST NOT: {explicit prohibitions}
-
-### Gotchas                                              [OPTIONAL]
-{Known pitfalls from reviewer skills}
-
-### Asset Runtime Snapshot                               [REQUIRED for visual tasks]
-
-Generated runtime assets are resolved directly from ASSETS.md with
-`tools/asset_result_registration.py --snapshot`; never use a stable entry,
-manifest pointer, or root index.
-{One `tools/asset_result_registration.py --snapshot` JSON object per runtime
-asset. Every object carries exactly asset_id and godot_artifact (type/path).}
-
-### Visual Self-Check                                  [OPTIONAL]
-- Source: {evaluation.json.visual_checks scene and blocking finding}
-- Design rule: {rule_id and verbatim DESIGN.md rule text}
-- Target state: {scene or gameplay state to capture}
-- Verify: {observable visual criteria}
-- Output directory: `reports/fixgap-visual/{task_id}/`
-```
+The filled brief supplied by the dispatcher is the complete task payload.
+Its sole schema authority is the deployed `references/worker-dispatch.md`
+contract used by `/gm-build` or `/gm-fixgap` (sourced from
+`skills/core/_shared/worker-dispatch.md`). Follow the received fields exactly;
+this agent definition intentionally does not duplicate that schema.
 
 ## File Ownership
 
@@ -240,7 +193,7 @@ goes, so when your brief binds one, the map is yours.
 ### Visual Self-Check
 Required only when the brief includes `Visual Self-Check`.
 - Status: PASS | FAIL | SKIP
-- Screenshot(s): {paths, or SKIP reason}
+- Screenshot(s): {paths under reports/fixgap-visual/{task_id}/, or SKIP reason}
 - visual-qa command: {exact command, or SKIP reason}
 - visual-qa verdict: {pass | fail | warning | error | SKIP}
 - Design rule: {rule_id and verbatim rule text from the brief, or N/A}

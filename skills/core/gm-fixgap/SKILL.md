@@ -24,7 +24,7 @@ You are fixing specific issues identified by the Evaluator. You read the evaluat
 
 Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"role": X, "ts": Y}`.
 
-- If **no event with `role == "evaluate"`** exists anywhere in the file OR `.godotmaker/evaluation.json` does not exist → STOP. Tell user to run `/gm-evaluate` first.
+- If **no event with `role == "evaluate"`** exists anywhere in the file, `.godotmaker/evaluation.json` does not exist, OR `.godotmaker/evaluation-runs/latest.json` does not exist → STOP. Tell user to run `/gm-evaluate` first.
 - If `evaluation.json` `result` is `"approve"` → STOP. Tell the user:
   > "The latest evaluation was already approved. Recommended next: /gm-accept.
   > If you need to redo this step or have other plans, just tell me."
@@ -47,6 +47,7 @@ Apply the remaining resume gates in this order:
 Then read context:
 - `GAP.md` (if present) → existing fix progress; find tasks not yet `verified`. If missing, Step 1 will generate it from `evaluation.json` (and `verify_report.json`).
 - `.godotmaker/evaluation.json` → the source of truth for product-layer issues to fix
+- `.godotmaker/evaluation-runs/latest.json` → the sole source of the evaluation run identity (`archive_path`, `stage_event_ts`, and `tag`); do not read run identity fields from `evaluation.json`
 - `.godotmaker/verify_report.json` → mechanical-layer failures from the most recent verify
 - `PLAN.md` → read-only; current tag's `**Tag:**` header tells you which tag's gaps you're fixing. The same tag-scope discipline as gm-build applies: previous tags' code is touchable only when a GAP item explicitly names it.
 - `STRUCTURE.md` → architecture ownership, dependencies, ordering constraints, and stable invariants (fixes need to respect existing system boundaries)
@@ -105,6 +106,15 @@ GAP.md may need tasks from two sources:
 
 1. **`.godotmaker/evaluation.json`** — product-layer issues found by the evaluator. Always processed.
 2. **`.godotmaker/verify_report.json`** — mechanical-layer failures from the most recent verify pass. Processed only when fresh.
+
+Before processing either source, read `.godotmaker/evaluation-runs/latest.json`.
+Its `archive_path` is the stable identity of the evaluation run. Require
+`role == "evaluate"`, a non-empty `archive_path`, `stage_event_ts`, and `tag`,
+and require `evaluation_json` to equal `<archive_path>/evaluation.json`. Use
+those manifest values to fill a newly generated GAP's provenance. Once a
+GAP.md exists, its own `Source Evaluation Run` `Archive path` is authoritative
+for archiving that GAP. Do not expect or read `iteration`, `ts`, or any other
+run-identity field from `.godotmaker/evaluation.json`.
 
 #### 1a. Pull issues from `evaluation.json`
 
@@ -176,10 +186,10 @@ Each task records its origin via a `Source: verify_report.json | evaluation.json
 #### 1c. Write or merge GAP.md
 
 **If `GAP.md` does not exist:**
-Generate it from `.claude/templates/GAP.md`. Within each letter list verify-source tasks first (so they get the lower numbers), then evaluation-source. All tasks start as `pending`. Record both source timestamps in the header — `Source Evaluation: <evaluation iteration / ts>` and (when applicable) `Source Verify: <verify_report ts>`.
+Generate it from `.claude/templates/GAP.md`. Within each letter list verify-source tasks first (so they get the lower numbers), then evaluation-source. All tasks start as `pending`. Fill `Source Evaluation Run` from `evaluation-runs/latest.json`: `Archive path`, `Stage event`, and `Tag`. Record `Result` from `evaluation.json`. When applicable, also record `Source Verify` from `verify_report.json.ts`.
 
 **If `GAP.md` already exists:**
-- `Source Evaluation` header differs from current `evaluation.json` → archive and generate a fresh one.
+- `Source Evaluation Run` `Archive path` differs from the current `evaluation-runs/latest.json.archive_path` → archive the stale GAP under the run id from its own header, then generate a fresh one from the current manifest. Never archive the stale GAP under the current `latest.json` run id.
 - Header matches AND 1b applies → **append** new verify-source tasks as `pending` rows with the next available number per letter; existing rows keep their numbers and statuses. Update the `Source Verify` header to the new ts.
 - Header matches AND 1b does not apply → resume (skip already-`verified` tasks).
 
@@ -252,8 +262,18 @@ review round added no ACCEPTED tasks.
 
 ### Step 5 — Archive GAP.md
 
-Move the completed `GAP.md` to `.godotmaker/gaps/<source-evaluation-iteration>/GAP.md`
-so the project root is clean for the next round.
+Read `Archive path` from the `Source Evaluation Run` header of the GAP.md being
+archived, normalize it, and take its final path segment as
+`<evaluation-run-id>`. Use `.godotmaker/gaps/<evaluation-run-id>/GAP.md` when
+that path does not exist. If it already exists, allocate the first free sibling
+directory by appending `-2`, `-3`, and so on to `<evaluation-run-id>`; never
+overwrite or replace an archived GAP. Move the GAP.md to the allocated path so
+stale and current GAPs remain bound to their own evaluation runs, repeated
+fixgap rounds for the same run remain distinct, and the project root is clean
+for the next round. For normal completion the header matches
+`evaluation-runs/latest.json.archive_path`; for stale replacement it
+intentionally does not. Do not derive the directory from the current
+`latest.json` or from `evaluation.json`.
 
 ## Retry Limits
 
