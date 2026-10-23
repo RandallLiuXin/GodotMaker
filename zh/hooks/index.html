@@ -3176,6 +3176,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#append_stage_eventpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        append_stage_event.py 完成门禁
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#check_stage_prerequisitespy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3423,6 +3434,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#append_stage_eventpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        append_stage_event.py 完成门禁
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#check_stage_prerequisitespy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3577,8 +3599,8 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 <td><code>stage_reminder.py</code></td>
 <td>PreToolUse</td>
 <td>Write|Edit</td>
-<td>是</td>
-<td>检测 <code>stage.jsonl</code> 追加操作，验证角色输出，注入下一角色提示</td>
+<td>否</td>
+<td>检测直接写入 <code>stage.jsonl</code> 的操作并注入下一角色提示</td>
 </tr>
 <tr>
 <td><code>check_stage_prerequisites.py</code></td>
@@ -3678,12 +3700,10 @@ edit permission 执行。</p>
 <p>同时为每次文件操作记录 <code>FILE_WRITE</code> / <code>FILE_EDIT</code> 指标事件。</p>
 <h3 id="stage_reminderpy">stage_reminder.py<a class="headerlink" href="#stage_reminderpy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> PreToolUse（Write|Edit）
-<strong>是否阻止：</strong> 是</p>
-<p>当 <code>/gm-*</code> 技能向 <code>.godotmaker/stage.jsonl</code> 追加角色完成事件时触发。每行格式为 <code>{"role": &lt;role&gt;, "ts": &lt;iso&gt;}</code>。</p>
-<ol>
-<li><strong>验证角色产出</strong> — 读取 <code>config/stage_schemas.json</code>（键为角色名，非阶段编号），检查 <code>files</code> 是否存在并运行 <code>checks</code> 中的程序化验证器。验证失败则阻止追加。</li>
-<li><strong>注入提示</strong> — 通过 <code>ROLE_NEXT</code> 表指向下一个角色的 <code>/gm-*</code> 指令。</li>
-</ol>
+<strong>是否阻止：</strong> 否</p>
+<p>当 runtime 能拦截直接的 Write/Edit 操作时，此 Hook 会识别角色完成事件，并通过 <code>ROLE_NEXT</code> 注入下一个 <code>/gm-*</code> 命令。它只提供 UX 提示。runtime-neutral 的 <code>tools/append_stage_event.py</code> 会在写入事件或 evaluation 归档之前强制执行完成校验。</p>
+<h3 id="append_stage_eventpy">append_stage_event.py 完成门禁<a class="headerlink" href="#append_stage_eventpy" title="Permanent link">&para;</a></h3>
+<p>append 工具会加载 <code>hooks/completion_gate.py</code>，根据 <code>config/stage_schemas.json</code> 验证角色的 <code>files</code> 和程序化 <code>checks</code>，再对 Worker 派发执行 diligence 检查。任何失败都会在文件系统副作用发生前以非零状态退出。</p>
 <p>程序化检查：</p>
 <table>
 <thead>
@@ -3700,18 +3720,30 @@ edit permission 执行。</p>
 <td><code>PLAN.md</code> 中每个任务行的状态为 <code>verified</code>（无 <code>pending</code> / <code>in_progress</code> / <code>completed</code>）</td>
 </tr>
 <tr>
-<td><code>gap_archived</code></td>
+<td><code>gap_archived_unless_handoff</code></td>
 <td><code>fixgap</code></td>
-<td><code>GAP.md</code> 已被移动到 <code>.godotmaker/gaps/&lt;iteration&gt;/GAP.md</code></td>
+<td>普通完成时已归档 <code>GAP.md</code>；evaluator handoff 可保留它</td>
+</tr>
+<tr>
+<td><code>evaluation_playable_unit</code></td>
+<td><code>evaluate</code></td>
+<td>evaluation 覆盖所有规范的 Playable Unit mechanic ID</td>
+</tr>
+<tr>
+<td><code>tag_archived</code></td>
+<td><code>finalize</code></td>
+<td>tag 归档完整、已封存且已建立索引</td>
 </tr>
 </tbody>
 </table>
 <p>角色产出 Schema 位于 <code>config/stage_schemas.json</code>。当前结构：
 - <code>scaffold</code> → <code>project.godot</code>
-- <code>gdd</code> → <code>GDD.md</code>、<code>PLAN.md</code>、<code>STRUCTURE.md</code>
-- <code>evaluate</code> → <code>.godotmaker/evaluation.json</code>
-- <code>finalize</code> → <code>.godotmaker/final_report.json</code>
-- <code>asset</code> / <code>verify</code> / <code>accept</code> 依赖各自 SKILL.md 中的 Resume Check。</p>
+- <code>gdd</code> → 完整的规划文档集
+- <code>build</code> → <code>PLAN.md</code> 中所有任务均已 verified
+- <code>verify</code> → <code>.godotmaker/verify_report.json</code>
+- <code>evaluate</code> → <code>.godotmaker/evaluation.json</code> 及 Playable Unit 覆盖
+- <code>fixgap</code> → 除 handoff 外均已归档 <code>GAP.md</code>
+- <code>finalize</code> → <code>.godotmaker/final_report.json</code> 及已封存的 tag 归档</p>
 <h3 id="check_stage_prerequisitespy">check_stage_prerequisites.py<a class="headerlink" href="#check_stage_prerequisitespy" title="Permanent link">&para;</a></h3>
 <p><strong>事件：</strong> PreToolUse（Agent）
 <strong>是否阻止：</strong> 是</p>
@@ -3938,7 +3970,7 @@ hook 完全没有校验的路径（force-allow，或没有活跃的流水线角�
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>PreToolUse(Write|Edit)
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  ├── check_file_permissions.py (从 current_role 读取每角色写规则)
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  └── stage_reminder.py (验证 stage.jsonl 追加，注入下一角色指针)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  └── stage_reminder.py (为直接写入注入下一角色提示)
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>PreToolUse(Agent)
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  └── check_stage_prerequisites.py (若前置角色未完成则阻止 build/fixgap)

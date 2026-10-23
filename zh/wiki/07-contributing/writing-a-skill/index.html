@@ -3718,7 +3718,7 @@
 <p>角色完成时，向 <code>.godotmaker/stage.jsonl</code> 追加一行：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="nt">"role"</span><span class="p">:</span><span class="w"> </span><span class="s2">"build"</span><span class="p">,</span><span class="w"> </span><span class="nt">"ts"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-04-27T12:00:00Z"</span><span class="p">}</span>
 </code></pre></div>
-<p><code>stage_reminder.py</code> hook 会拦截这次写入，验证必要输出是否存在，并注入下一个角色的指引。</p>
+<p><code>append_stage_event.py</code> 会在追加事件前验证必要输出。对于提供 Write/Edit hook 的 runtime，<code>stage_reminder.py</code> 只注入下一个角色的指引。</p>
 <h3 id="stage_schemasjson">必要输出与 stage_schemas.json<a class="headerlink" href="#stage_schemasjson" title="Permanent link">&para;</a></h3>
 <p><code>config/stage_schemas.json</code> 声明了每个角色在记录完成事件之前必须产生的内容。schema 以角色名为 key：</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
@@ -3738,7 +3738,7 @@
 </code></pre></div>
 <ul>
 <li><code>files</code> — 必须存在于磁盘上的路径（相对于项目根目录）。</li>
-<li><code>checks</code> — 由 <code>stage_reminder.py</code> 运行的程序化验证器名称。当前验证器：<code>plan_all_verified</code>（PLAN.md 中每个任务行的状态为 <code>verified</code>）和 <code>gap_archived</code>（<code>GAP.md</code> 已被移动到 <code>.godotmaker/gaps/&lt;n&gt;/</code>）。</li>
+<li><code>checks</code> — append 工具通过 <code>completion_gate.py</code> 运行的程序化验证器名称。当前验证器包括 <code>plan_all_verified</code> 和 <code>gap_archived_unless_handoff</code>。</li>
 </ul>
 <p>如果你新增了一个角色，在这里添加对应条目。如果角色没有可通过文件存在性验证的必要输出，可以省略条目或保留空对象。</p>
 <h3 id="_7">共享参考文档<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>

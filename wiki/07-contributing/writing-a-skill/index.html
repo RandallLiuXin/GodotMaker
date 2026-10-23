@@ -3718,7 +3718,9 @@
 <p>When a role finishes, it appends one line to <code>.godotmaker/stage.jsonl</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="nt">"role"</span><span class="p">:</span><span class="w"> </span><span class="s2">"build"</span><span class="p">,</span><span class="w"> </span><span class="nt">"ts"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-04-27T12:00:00Z"</span><span class="p">}</span>
 </code></pre></div>
-<p>The <code>stage_reminder.py</code> hook intercepts this write, validates required outputs, and injects a pointer to the next role.</p>
+<p><code>append_stage_event.py</code> validates required outputs before appending. On runtimes
+that expose direct Write/Edit hooks, <code>stage_reminder.py</code> only injects a pointer
+to the next role.</p>
 <h3 id="required-outputs-and-stage_schemasjson">Required outputs and stage_schemas.json<a class="headerlink" href="#required-outputs-and-stage_schemasjson" title="Permanent link">&para;</a></h3>
 <p><code>config/stage_schemas.json</code> declares what each role must produce before it can record a completion event. The schema is keyed by role name:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
@@ -3738,7 +3740,7 @@
 </code></pre></div>
 <ul>
 <li><code>files</code> — paths (relative to project root) that must exist on disk.</li>
-<li><code>checks</code> — names of programmatic validators run by <code>stage_reminder.py</code>. Current validators: <code>plan_all_verified</code> (every PLAN.md task row has status <code>verified</code>) and <code>gap_archived</code> (<code>GAP.md</code> has been moved to <code>.godotmaker/gaps/&lt;n&gt;/</code>).</li>
+<li><code>checks</code> — names of programmatic validators run by <code>completion_gate.py</code> from the append tool. Current validators include <code>plan_all_verified</code> and <code>gap_archived_unless_handoff</code>.</li>
 </ul>
 <p>If you add a new role, add a corresponding entry here. If your role has no required outputs that can be validated by file existence, omit the entry or leave the object empty.</p>
 <h3 id="shared-reference-docs">Shared reference docs<a class="headerlink" href="#shared-reference-docs" title="Permanent link">&para;</a></h3>

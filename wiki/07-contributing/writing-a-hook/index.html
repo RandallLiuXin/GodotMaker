@@ -3668,8 +3668,8 @@ Claude Code / Codex support only or provide an explicit OpenCode fallback.</p>
 <tr>
 <td><code>stage_reminder.py</code></td>
 <td>PreToolUse (Write|Edit)</td>
-<td>Yes</td>
-<td>Intercept <code>stage.jsonl</code> appends, validate role outputs, inject next-role pointer</td>
+<td>No</td>
+<td>Detect direct <code>stage.jsonl</code> writes and inject a next-role pointer</td>
 </tr>
 <tr>
 <td><code>check_stage_prerequisites.py</code></td>

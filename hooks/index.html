@@ -3176,6 +3176,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#append_stage_eventpy-completion-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        append_stage_event.py completion gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#check_stage_prerequisitespy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3423,6 +3434,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#append_stage_eventpy-completion-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        append_stage_event.py completion gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#check_stage_prerequisitespy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3579,8 +3601,8 @@ Claude-style lifecycle events.</p>
 <td><code>stage_reminder.py</code></td>
 <td>PreToolUse</td>
 <td>Write|Edit</td>
-<td>Yes</td>
-<td>Detect <code>stage.jsonl</code> appends, validate role outputs, inject next-role reminder</td>
+<td>No</td>
+<td>Detect direct <code>stage.jsonl</code> writes and inject a next-role reminder</td>
 </tr>
 <tr>
 <td><code>check_stage_prerequisites.py</code></td>
@@ -3689,16 +3711,16 @@ conversations in a GodotMaker project directory.</p>
 <p>Also records <code>FILE_WRITE</code> / <code>FILE_EDIT</code> metrics events for every file operation.</p>
 <h3 id="stage_reminderpy">stage_reminder.py<a class="headerlink" href="#stage_reminderpy" title="Permanent link">&para;</a></h3>
 <p><strong>Event:</strong> PreToolUse (Write|Edit)
-<strong>Blocks:</strong> Yes</p>
-<p>Triggers when a <code>/gm-*</code> skill appends a role-completion event to
-<code>.godotmaker/stage.jsonl</code>. Each line is <code>{"role": &lt;role&gt;, "ts": &lt;iso&gt;}</code>.</p>
-<ol>
-<li><strong>Validates role outputs</strong> — reads <code>config/stage_schemas.json</code> (keys are
-   role names, not stage numbers) and checks <code>files</code> existence + runs
-   <code>checks</code> programmatic validators. Blocks the append if validation fails.</li>
-<li><strong>Injects reminder</strong> — points to the next role's <code>/gm-*</code> command via
-   the <code>ROLE_NEXT</code> table.</li>
-</ol>
+<strong>Blocks:</strong> No</p>
+<p>When a runtime exposes direct Write/Edit interception, this hook recognizes a
+role-completion line and injects the next <code>/gm-*</code> command from <code>ROLE_NEXT</code>.
+It is a UX hint only. The runtime-neutral <code>tools/append_stage_event.py</code> command
+enforces completion before it writes an event or evaluation archive.</p>
+<h3 id="append_stage_eventpy-completion-gate">append_stage_event.py completion gate<a class="headerlink" href="#append_stage_eventpy-completion-gate" title="Permanent link">&para;</a></h3>
+<p>The append tool loads <code>hooks/completion_gate.py</code>, validates the role's <code>files</code>
+and programmatic <code>checks</code> from <code>config/stage_schemas.json</code>, then applies the
+worker-dispatch diligence check. Any failure exits non-zero before filesystem
+side effects.</p>
 <p>Programmatic checks:</p>
 <table>
 <thead>
@@ -3715,18 +3737,30 @@ conversations in a GodotMaker project directory.</p>
 <td>every <code>PLAN.md</code> task row has status <code>verified</code> (no <code>pending</code> / <code>in_progress</code> / <code>completed</code>)</td>
 </tr>
 <tr>
-<td><code>gap_archived</code></td>
+<td><code>gap_archived_unless_handoff</code></td>
 <td><code>fixgap</code></td>
-<td><code>GAP.md</code> has been moved to <code>.godotmaker/gaps/&lt;iteration&gt;/GAP.md</code></td>
+<td>ordinary completion archived <code>GAP.md</code>; evaluator handoff may keep it open</td>
+</tr>
+<tr>
+<td><code>evaluation_playable_unit</code></td>
+<td><code>evaluate</code></td>
+<td>evaluation covers every canonical Playable Unit mechanic ID</td>
+</tr>
+<tr>
+<td><code>tag_archived</code></td>
+<td><code>finalize</code></td>
+<td>the tag archive is complete, sealed, and indexed</td>
 </tr>
 </tbody>
 </table>
 <p>Role-output schema lives at <code>config/stage_schemas.json</code>. Current shape:
 - <code>scaffold</code> → <code>project.godot</code>
-- <code>gdd</code> → <code>GDD.md</code>, <code>PLAN.md</code>, <code>STRUCTURE.md</code>
-- <code>evaluate</code> → <code>.godotmaker/evaluation.json</code>
-- <code>finalize</code> → <code>.godotmaker/final_report.json</code>
-- <code>asset</code> / <code>verify</code> / <code>accept</code> rely on Resume Check inside their SKILL.md.</p>
+- <code>gdd</code> → the complete planning-document set
+- <code>build</code> → all <code>PLAN.md</code> tasks verified
+- <code>verify</code> → <code>.godotmaker/verify_report.json</code>
+- <code>evaluate</code> → <code>.godotmaker/evaluation.json</code> plus Playable Unit coverage
+- <code>fixgap</code> → <code>GAP.md</code> archived unless the event is an evaluator handoff
+- <code>finalize</code> → <code>.godotmaker/final_report.json</code> plus a sealed tag archive</p>
 <h3 id="check_stage_prerequisitespy">check_stage_prerequisites.py<a class="headerlink" href="#check_stage_prerequisitespy" title="Permanent link">&para;</a></h3>
 <p><strong>Event:</strong> PreToolUse (Agent)
 <strong>Blocks:</strong> Yes</p>
@@ -4005,7 +4039,7 @@ force-allow with a warning rather than re-block forever.</p>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>PreToolUse(Write|Edit)
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  ├── check_file_permissions.py (per-role write rules from current_role)
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  └── stage_reminder.py (validate stage.jsonl append, inject next-role pointer)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  └── stage_reminder.py (inject next-role pointer for direct writes)
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>PreToolUse(Agent)
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  └── check_stage_prerequisites.py (block build/fixgap if prereq role not done)

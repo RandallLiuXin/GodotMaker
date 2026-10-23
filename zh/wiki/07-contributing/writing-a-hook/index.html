@@ -3664,8 +3664,8 @@ Claude Code / Codex，或提供显式的 OpenCode fallback。</p>
 <tr>
 <td><code>stage_reminder.py</code></td>
 <td>PreToolUse (Write|Edit)</td>
-<td>是</td>
-<td>拦截 <code>stage.jsonl</code> 追加操作，验证角色输出，注入下一角色指引</td>
+<td>否</td>
+<td>检测直接的 <code>stage.jsonl</code> 写入并注入下一角色指引</td>
 </tr>
 <tr>
 <td><code>check_stage_prerequisites.py</code></td>

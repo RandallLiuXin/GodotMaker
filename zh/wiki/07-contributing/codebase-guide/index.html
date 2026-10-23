@@ -3732,7 +3732,12 @@ runtime 类型和路径行，并派生 worker snapshot。</p>
 <tr>
 <td><code>stage_reminder.py</code></td>
 <td>PreToolUse (Write|Edit)</td>
-<td>是</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>completion_gate.py</code></td>
+<td>由 <code>append_stage_event.py</code> 调用</td>
+<td>是，在追加前</td>
 </tr>
 <tr>
 <td><code>check_stage_prerequisites.py</code></td>
@@ -3781,7 +3786,7 @@ runtime 类型和路径行，并派生 worker snapshot。</p>
 </tr>
 <tr>
 <td><code>playability_contract.py</code></td>
-<td>由 stage_reminder.py 使用</td>
+<td>由 <code>completion_gate.py</code> 使用</td>
 <td>提供验证</td>
 </tr>
 </tbody>
@@ -3808,7 +3813,7 @@ Codex 使用 <code>agent-runtimes/&lt;agent&gt;/config/</code> 下的配置文�
 <tr>
 <td><code>config/stage_schemas.json</code></td>
 <td>角色完成了没？下一个角色启动前必须存在的产出文件清单。</td>
-<td>由 <code>stage_reminder.py</code>（完成校验）和 <code>check_stage_prerequisites.py</code>（worker 派发前置检查）读取。</td>
+<td>由 append 工具的 <code>completion_gate.py</code> 和 worker 派发前的 <code>check_stage_prerequisites.py</code> 读取。</td>
 </tr>
 <tr>
 <td><code>hooks/check_file_permissions.py</code></td>
@@ -4028,7 +4033,7 @@ validator 校验它。<code>skills/assets/_shared/</code> 包含发布到
 </tr>
 </tbody>
 </table>
-<p><code>stage_schemas.json</code> 是 <code>stage_reminder.py</code> 和 <code>check_stage_prerequisites.py</code> 都会读取的 schema。其 key 为角色名（<code>scaffold</code>、<code>gdd</code>、<code>build</code> 等），每个值包含可选的 <code>files</code> 数组（必须存在于磁盘上的路径）和可选的 <code>checks</code> 数组（程序化验证器名称）。完整 schema 说明见 <a href="../writing-a-skill/">编写技能</a>。</p>
+<p><code>stage_schemas.json</code> 是 <code>completion_gate.py</code> 和 <code>check_stage_prerequisites.py</code> 都会读取的 schema。其 key 为角色名（<code>scaffold</code>、<code>gdd</code>、<code>build</code> 等），每个值包含可选的 <code>files</code> 数组（必须存在于磁盘上的路径）和可选的 <code>checks</code> 数组（程序化验证器名称）。完整 schema 说明见 <a href="../writing-a-skill/">编写技能</a>。</p>
 <hr />
 <h2 id="templates">templates/<a class="headerlink" href="#templates" title="Permanent link">&para;</a></h2>
 <p>Markdown 文档模板，由 <code>publish.py</code> 部署到新游戏项目的所选 agent 模板目录下。角色技能在工作过程中填充这些模板。模板包括：<code>GDD.md</code>、<code>PLAN.md</code>、<code>STRUCTURE.md</code>、<code>SCENES.md</code>、<code>ASSETS.md</code>、<code>GAP.md</code>、<code>TOC.md</code>、<code>game-claude.md</code>。</p>

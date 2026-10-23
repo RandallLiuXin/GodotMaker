@@ -3733,7 +3733,12 @@ than a separately maintained count.</p>
 <tr>
 <td><code>stage_reminder.py</code></td>
 <td>PreToolUse (Write|Edit)</td>
-<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>completion_gate.py</code></td>
+<td>Called by <code>append_stage_event.py</code></td>
+<td>Yes, before append</td>
 </tr>
 <tr>
 <td><code>check_stage_prerequisites.py</code></td>
@@ -3782,7 +3787,7 @@ than a separately maintained count.</p>
 </tr>
 <tr>
 <td><code>playability_contract.py</code></td>
-<td>Used by stage_reminder.py</td>
+<td>Used by <code>completion_gate.py</code></td>
 <td>Provides validation</td>
 </tr>
 </tbody>
@@ -3811,7 +3816,7 @@ Worker handoffs. It deliberately does not interpret reports from other roles.</p
 <tr>
 <td><code>config/stage_schemas.json</code></td>
 <td>Did the role finish? Which output files must exist before the next role can start.</td>
-<td>Read by <code>stage_reminder.py</code> (validate completion) and <code>check_stage_prerequisites.py</code> (gate worker dispatch).</td>
+<td>Read by <code>completion_gate.py</code> from the append tool and by <code>check_stage_prerequisites.py</code> before worker dispatch.</td>
 </tr>
 <tr>
 <td><code>hooks/check_file_permissions.py</code></td>
@@ -4033,7 +4038,7 @@ published to <code>.godotmaker/asset-runtime/</code> rather than as an invokable
 </tr>
 </tbody>
 </table>
-<p><code>stage_schemas.json</code> is the schema that <code>stage_reminder.py</code> and <code>check_stage_prerequisites.py</code> both read. Its keys are role names (<code>scaffold</code>, <code>gdd</code>, <code>build</code>, etc.); each value has an optional <code>files</code> array (paths that must exist) and an optional <code>checks</code> array (programmatic validator names). See <a href="../writing-a-skill/">Writing a skill</a> for the full schema description.</p>
+<p><code>stage_schemas.json</code> is the schema that <code>completion_gate.py</code> and <code>check_stage_prerequisites.py</code> both read. Its keys are role names (<code>scaffold</code>, <code>gdd</code>, <code>build</code>, etc.); each value has an optional <code>files</code> array (paths that must exist) and an optional <code>checks</code> array (programmatic validator names). See <a href="../writing-a-skill/">Writing a skill</a> for the full schema description.</p>
 <hr />
 <h2 id="templates">templates/<a class="headerlink" href="#templates" title="Permanent link">&para;</a></h2>
 <p>Markdown document templates that <code>publish.py</code> deploys into new game projects under the selected agent template directory. The role skills fill these in during their work. Templates include: <code>GDD.md</code>, <code>PLAN.md</code>, <code>STRUCTURE.md</code>, <code>SCENES.md</code>, <code>ASSETS.md</code>, <code>GAP.md</code>, <code>TOC.md</code>, <code>game-claude.md</code>.</p>
