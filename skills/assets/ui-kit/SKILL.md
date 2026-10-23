@@ -25,7 +25,7 @@ contract.
 Accept the shared Asset Skill request schema at
 `.godotmaker/asset-runtime/schema/asset-skill-request.schema.json`; require
 `asset_type: ui-kit`, a pinned `provider` (`native`, `codex`, `gemini`,
-`openai`, or `wan`), and at least one readable image in `references`. Preserve every
+`openai`, `grok`, or `wan`), and at least one readable image in `references`. Preserve every
 reference `role`. Missing or unreadable references and pixel-art requests are
 input-gate STOP conditions.
 
@@ -79,7 +79,7 @@ manifests, stable entries, or worker dispatch state.
 2. Generate the deterministic source plan:
 
    ```powershell
-   python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --scheme .agents/skills/ui-kit/references/source-sheet-scheme.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
+   python tools/asset_ui_source_sheet_plan.py --request ASSET_REQUEST.json --rendering-medium "<theme_plan rendering_medium>" --out source_sheet_plan.json
    ```
 
    Both plan prompts carry the `brief` word for word — every selected design

@@ -22,8 +22,6 @@ from typing import Any
 from ._asset_paths import (
     LAYOUT_ARTIFACT_TYPES,
     PRODUCTION_FAMILIES,
-    REFERENCE_FAMILIES,
-    REFERENCE_LAYOUTS,
     SOURCE_LAYOUT_TYPES,
     RuntimeContractError,
     assert_within_output_dir,
@@ -106,21 +104,11 @@ class CompileRequest:
         family = require_text(self.production_family, "production_family")
         if family not in PRODUCTION_FAMILIES:
             raise CompilerError(f"production_family is not allowed: {family}")
-        if family in REFERENCE_FAMILIES:
-            raise CompilerError(
-                f"production_family {family} is reference-only and compiles no "
-                "Godot artifact"
-            )
         require_text(self.asset_id, "asset_id")
 
         layout = require_text(self.source_layout_type, "source_layout_type")
         if layout not in SOURCE_LAYOUT_TYPES:
             raise CompilerError(f"source_layout_type is not allowed: {layout}")
-        if layout in REFERENCE_LAYOUTS:
-            raise CompilerError(
-                "a reference source_layout is never handed to a worker as a "
-                "runtime game asset and compiles no Godot artifact"
-            )
 
         artifact_type = require_text(self.artifact_type, "artifact_type")
         allowed = LAYOUT_ARTIFACT_TYPES[layout]

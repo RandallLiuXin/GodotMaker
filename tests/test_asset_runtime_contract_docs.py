@@ -33,21 +33,21 @@ def test_asset_no_work_resume_path_appends_the_asset_stage_event():
     assert "python tools/append_stage_event.py asset" in completion
 
 
-def test_reference_only_assets_never_become_worker_runtime_inputs():
+def test_reference_outputs_never_become_worker_runtime_inputs():
     registration = _read("skills/core/gm-asset/references/asset-result-registration.md")
-    screen_reference = _read("skills/assets/screen-reference/SKILL.md")
     worker_dispatch = _read("skills/core/_shared/worker-dispatch.md")
-    assert "do not create a logical row" in registration
-    assert "must not enter worker runtime handoff" in screen_reference
-    assert "a reference-only asset" in worker_dispatch
+    assert "`reference` outputs are already-validated" in registration
+    assert "Only runtime outputs are registered" in registration
+    assert "optional provider-input images" in worker_dispatch
 
 
-def test_codex_screen_reference_claims_raw_image_before_final_validation():
+def test_codex_provider_claims_raw_image_before_final_validation():
     provider = _read("skills/core/gm-asset/references/providers/codex.md")
-    screen_reference = _read("skills/assets/screen-reference/SKILL.md")
 
     assert "The provider step owns generation and source handoff" in provider
     assert "Do not reject the raw provider image" in provider
     assert "claim it so the production unit can finalize and validate it" in provider
-    assert "--fit cover" in screen_reference
-    assert "Pixel-exact runtime sprite dimensions remain" in screen_reference
+
+
+def test_screen_reference_skill_is_retired():
+    assert not (ROOT / "skills/assets/screen-reference").exists()

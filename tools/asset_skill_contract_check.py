@@ -16,24 +16,19 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from asset_family_registry import FAMILY_NAMES
+from asset_family_registry import FAMILY_NAMES, SOURCE_LAYOUTS as _SOURCE_LAYOUTS
 from asset_output_paths import AssetOutputPathError, safe_identifier
+from asset_provider_registry import ASSET_IMAGE_PROVIDER_SET
 
 # The public families a request or result may name are exactly the first-class
 # Asset Skills the family registry declares.
 ASSET_TYPES = set(FAMILY_NAMES)
 
-REFERENCE_ROLES = {"canonical", "style", "screen"}
-PROVIDERS = {"native", "codex", "gemini", "openai", "wan"}
+REFERENCE_ROLES = {"canonical", "style"}
+PROVIDERS = ASSET_IMAGE_PROVIDER_SET
 OUTPUT_ROLES = {"runtime", "reference"}
-SOURCE_LAYOUTS = {
-    "single",
-    "grid_sheet",
-    "region_atlas",
-    "action_frames",
-    "theme_recipe",
-    "tile_atlas",
-}
+# A source layout is the physical pixel arrangement the family registry owns.
+SOURCE_LAYOUTS = set(_SOURCE_LAYOUTS)
 VALIDATION_LEVELS = {"L0", "L1", "L2", "L3", "L4", "L5"}
 
 ASSET_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")

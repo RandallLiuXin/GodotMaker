@@ -2,6 +2,7 @@
 .local-docs/
 
 # Python
+.venv/
 __pycache__/
 *.pyc
 *.egg-info/

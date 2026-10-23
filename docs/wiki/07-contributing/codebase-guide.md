@@ -10,16 +10,17 @@ This page gives a folder-by-folder tour of the GodotMaker repository, with enoug
 
 ```
 GodotMaker/
-├── hooks/                   8 hook scripts + hooks/metrics/ subsystem
-├── agents/                  sub-agent definitions (worker, verifier, reviewer, analyst, asset-producer, gdd-auditor)
+├── hooks/                   Pipeline enforcement and telemetry + hooks/metrics/
+├── agents/                  Sub-agent definitions
 ├── skills/
-│   ├── core/                Role skills + supporting skills + _shared/
-│   └── reviewer/            8 reviewer skills (gotchas.md + checklist.md each)
+│   ├── core/                Pipeline, rescue, and supporting skills + _shared/
+│   ├── assets/              First-class Asset Skills + shared L0-L4 runtime
+│   └── reviewer/            Domain reviewer skills
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 ├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 ├── agent-runtimes/          Runner-specific references, templates, hook config, and plugin adapters
-├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC)
-├── tests/                   ~320 unit tests for hooks and tools
+├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, TOC)
+├── tests/                   Hook, tool, asset, runtime, and pipeline tests
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
 ├── shell/                   publish.sh / publish.ps1, report.sh / report.bat
 ├── migrations/              Per-version-jump migration scripts
@@ -31,7 +32,9 @@ GodotMaker/
 
 ## hooks/
 
-Eight Python scripts enforcing pipeline rules. Each script reads a JSON payload from `sys.stdin`, decides whether to allow or block the action, and writes a JSON response to stdout (or exits 0 silently for a quiet allow).
+Python entry points enforce pipeline rules, record telemetry, or provide a
+shared validation contract. The table is tied to the files in `hooks/` rather
+than a separately maintained count.
 
 Scripts and the events they handle:
 
@@ -39,13 +42,18 @@ Scripts and the events they handle:
 |--------|-------|---------|
 | `session_start.py` | SessionStart | No |
 | `check_file_permissions.py` | PreToolUse (Write\|Edit) | Yes |
-| `stage_reminder.py` | PreToolUse (Write\|Edit) | Yes |
+| `stage_reminder.py` | PreToolUse (Write\|Edit) | No |
+| `completion_gate.py` | Called by `append_stage_event.py` | Yes, before append |
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | Yes |
 | `check_asset_access.py` | PreToolUse (Read) | Yes |
+| `log_agent_tool.py` | PreToolUse + PostToolUse (Agent\|Task) | No |
 | `log_subagent.py` | SubagentStart | No |
 | `on_subagent_stop.py` | SubagentStop | Delegates |
 | `check_worker_report.py` | Called by on_subagent_stop.py | Yes |
 | `check_completion.py` | Stop | Yes |
+| `check_clean_workspace.py` | Stop | Yes, once per dirty episode |
+| `log_compaction.py` | PreCompact | No |
+| `playability_contract.py` | Used by `completion_gate.py` | Provides validation |
 
 Hook registration (which script fires on which event) is runner-specific.
 Claude Code and Codex use config files under `agent-runtimes/<agent>/config/`;
@@ -68,7 +76,7 @@ Role permissions are expressed in three places. They overlap on purpose, but eac
 
 | Layer | What it controls | Source of truth |
 |-------|------------------|-----------------|
-| `config/stage_schemas.json` | Did the role finish? Which output files must exist before the next role can start. | Read by `stage_reminder.py` (validate completion) and `check_stage_prerequisites.py` (gate worker dispatch). |
+| `config/stage_schemas.json` | Did the role finish? Which output files must exist before the next role can start. | Read by `completion_gate.py` from the append tool and by `check_stage_prerequisites.py` before worker dispatch. |
 | `hooks/check_file_permissions.py` | What can the role write right now? Per-role write-scope whitelist enforced on every Write/Edit tool call. | Authoritative for runtime permissions. Schemas do **not** define write scope. |
 | `skills/core/gm-*/SKILL.md` "Permission" section | Human-readable mirror of the hook rule for the role's owner. | Should match the hook; if they drift, the hook wins at runtime — but a contributor reading the skill will be misled. |
 
@@ -87,6 +95,7 @@ Sub-agent definitions, one Markdown file per agent. Each file has YAML front-mat
 | `reviewer.md` | Reads code against `skills/reviewer/<domain>` checklists and reports issues | `/gm-build`, `/gm-fixgap` |
 | `analyst.md` | Analyses user-provided assets and produces a manifest | `/gm-asset` |
 | `asset-producer.md` | Produces one generated visual asset production unit | `/gm-asset` |
+| `decomposer.md` | Writes the current tag's plan, structure, scenes, design, TOC, and new asset rows | `/gm-gdd` |
 | `gdd-auditor.md` | Independently audits a draft GDD against a 9-category checklist and returns 5–8 follow-up questions per pass | `game-planner` (Rounds 6 + 7) |
 
 The dispatch protocols (call format and brief templates) live in `skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md` or in the owning role skill. `gdd-auditor` is invoked inline from `skills/core/game-planner/SKILL.md`.
@@ -114,7 +123,14 @@ Role skills and supporting skills, one directory per skill. Each directory conta
 
 **Role skills (9):** `gm-scaffold`, `gm-gdd`, `gm-asset`, `gm-build`, `gm-verify`, `gm-evaluate`, `gm-fixgap`, `gm-accept`, `gm-finalize`. These map 1:1 to the `/gm-*` slash commands. Each role skill writes its role name to `.godotmaker/current_role` as its first action, which is what `check_file_permissions.py` reads to enforce write rules.
 
-**Supporting skills (11):** `game-planner`, `project-scaffold`, `godot-api`, `gecs`, `input-mapper`, `headless-build`, `gdunit-driver`, `godot-e2e`, `visual-qa`, `screenshot`, `mcp-driver`. These are reference documents loaded by role skills — users do not invoke them directly.
+**Out-of-pipeline skill:** `gm-rescue` diagnoses a stuck pipeline without
+modifying game code.
+
+**Supporting skill directories:** `game-planner`, `project-scaffold`,
+`godot-api`, `gecs`, `input-mapper`, `headless-build`, `gdunit-driver`,
+`godot-e2e`, `visual-qa`, `screenshot`, `mcp-driver`, `phantom-camera`, and
+`gdtoolkit`. `gdtoolkit` remains shipped but is disabled pending the roadmap
+reevaluation; the other supporting skills are loaded by roles when needed.
 
 ### skills/core/_shared/
 
@@ -131,9 +147,21 @@ The manifest schema, add/remove flows, and debugging tips are in `docs/contribut
 
 ---
 
+## skills/assets/
+
+Every non-private directory is a public Asset Skill family. The authoritative
+family, variant, artifact-type, output-cardinality, and terminal-status matrix is
+`tools/asset_family_registry.py`; `python tools/asset_family_registry.py --check`
+verifies it against the shipped directories and standalone validators.
+`skills/assets/_shared/` contains the schemas, compilers, and L0-L4 validators
+published to `.godotmaker/asset-runtime/` rather than as an invokable Skill.
+
+---
+
 ## skills/reviewer/
 
-Eight reviewer skills, one per domain: `physics`, `animation`, `ui`, `tilemap`, `navigation`, `shader`, `audio`, `particles`.
+Reviewer domains are `physics`, `animation`, `ui`, `tilemap`, `navigation`,
+`shader`, `audio`, and `particles`.
 
 Each reviewer skill directory contains exactly three files:
 - `SKILL.md` — the reviewer prompt
@@ -180,16 +208,17 @@ When you run `python tools/publish.py <target>`:
 
 | File | What it controls |
 |------|-----------------|
+| `config.yaml.default` | Default per-project agent runtime, role models, visual QA model, and asset generation model |
 | `stage_schemas.json` | Per-role required outputs and programmatic checks (keys are role names) |
 | `addon_versions.json` | Pinned Godot addon versions per engine version |
 
-`stage_schemas.json` is the schema that `stage_reminder.py` and `check_stage_prerequisites.py` both read. Its keys are role names (`scaffold`, `gdd`, `build`, etc.); each value has an optional `files` array (paths that must exist) and an optional `checks` array (programmatic validator names). See [Writing a skill](writing-a-skill.md) for the full schema description.
+`stage_schemas.json` is the schema that `completion_gate.py` and `check_stage_prerequisites.py` both read. Its keys are role names (`scaffold`, `gdd`, `build`, etc.); each value has an optional `files` array (paths that must exist) and an optional `checks` array (programmatic validator names). See [Writing a skill](writing-a-skill.md) for the full schema description.
 
 ---
 
 ## templates/
 
-Markdown document templates that `publish.py` deploys into new game projects under the selected agent template directory. The role skills fill these in during their work. Templates include: `GDD.md`, `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `GAP.md`, `MEMORY.md`, `TOC.md`, `game-claude.md`.
+Markdown document templates that `publish.py` deploys into new game projects under the selected agent template directory. The role skills fill these in during their work. Templates include: `GDD.md`, `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `GAP.md`, `TOC.md`, `game-claude.md`.
 
 ---
 
@@ -199,26 +228,15 @@ The test suite, organized by what it covers.
 
 ```
 tests/
-├── hooks/
-│   ├── helpers.py                       Shared utilities: run_hook, is_blocked, write_completed_roles, ...
-│   ├── test_check_completion.py
-│   ├── test_check_file_permissions.py
-│   ├── test_check_stage_prerequisites.py
-│   ├── test_check_worker_report.py
-│   ├── test_metrics.py
-│   ├── test_session_start.py
-│   └── test_stage_reminder.py
-├── tools/
-│   ├── conftest.py
-│   ├── test_addon_versions.py
-│   ├── test_check_classname.py
-│   ├── test_check_env.py
-│   ├── test_check_project.py
-│   ├── test_migrate.py
-│   ├── test_publish.py
-│   └── test_publish_shared.py
-└── test_pipeline_e2e.py                 End-to-end pipeline smoke test
+├── assets/                               Asset family and compiler contracts
+├── agent_runtimes/                       Runtime adapter contracts
+├── hooks/                                Hook behavior and shared helpers
+├── tools/                                CLI and publishing tests
+└── test_*.py                             Cross-layer and pipeline contracts
 ```
+
+Use `pytest --collect-only` or `rg --files tests` for the current test inventory;
+this guide intentionally documents stable groupings instead of a file total.
 
 `pyproject.toml` adds `hooks/` to `pythonpath` so that `from metrics import ...` resolves in hook tests without installing anything. For writing new tests, see [Testing](testing.md).
 

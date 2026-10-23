@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Pre-commit hook: lint staged Python files + scan for secrets
+# Pre-commit hook: lint staged Python, check doc mirrors, then scan for secrets
 # Installed by scripts/install-hooks.sh
 #
-# Order: ruff first (fastest signal on the most common failure), then
-# gitleaks (secret scan). Both run only on staged content, so the hook
-# stays sub-second.
+# Order: ruff first (fastest signal on the most common failure), doc i18n
+# second, then gitleaks (secret scan). All checks inspect staged content.
 #
 # To skip in an emergency: git commit --no-verify
 

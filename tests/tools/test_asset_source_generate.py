@@ -13,6 +13,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
 import asset_source_generate as source_generate  # noqa: E402
+from asset_skill_contract_check import check_request  # noqa: E402
 
 
 def make_spec(tmp_path: Path, **overrides):
@@ -56,7 +57,7 @@ def write_refs(tmp_path: Path, count: int, size=(12, 10)) -> list[str]:
 
 
 def write_reference_inputs(tmp_path: Path, count: int) -> list[dict[str, str]]:
-    roles = ("canonical", "style", "screen")
+    roles = ("canonical", "style")
     return [
         {"role": roles[index % len(roles)], "path": path}
         for index, path in enumerate(write_refs(tmp_path, count))
@@ -106,6 +107,37 @@ def test_generate_source_writes_prompt_source_and_report(tmp_path, monkeypatch):
 
     report = json.loads((tmp_path / result["report_path"]).read_text(encoding="utf-8"))
     assert report["source_path"] == result["source_path"]
+
+
+def test_valid_grok_request_contract_reaches_generator_route(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    request = {
+        "asset_type": "background-map",
+        "asset_id": "grok-contract-smoke",
+        "brief": "A distant painted mountain range.",
+        "provider": "grok",
+    }
+    assert check_request(request)["ok"] is True
+
+    spec = source_generate.load_spec(
+        make_spec(
+            tmp_path,
+            asset_id=request["asset_id"],
+            model=f"{request['provider']}:grok-imagine-image",
+        )
+    )
+    routed = []
+
+    def fake_grok(spec_data, output, model_name):
+        routed.append((spec_data["asset_id"], model_name))
+        write_png(output)
+
+    monkeypatch.setattr(source_generate, "_generate_grok", fake_grok)
+
+    result = source_generate.generate_source(spec)
+
+    assert routed == [(request["asset_id"], "grok-imagine-image")]
+    assert result["provider"] == request["provider"]
 
 
 def test_generate_source_supports_openai_selector(tmp_path, monkeypatch):
@@ -498,7 +530,7 @@ def test_role_preserving_reference_inputs_are_attached_and_reported(tmp_path, mo
     refs = write_refs(tmp_path, 2)
     inputs = [
         {"role": "style", "path": refs[0]},
-        {"role": "screen", "path": refs[1]},
+        {"role": "canonical", "path": refs[1]},
     ]
     spec = source_generate.load_spec(
         make_spec(
@@ -520,7 +552,7 @@ def test_role_preserving_reference_inputs_are_attached_and_reported(tmp_path, mo
     result = source_generate.generate_source(spec)
 
     assert [item["role"] for item in result["reference_inputs"]] == [
-        "style", "screen"
+        "style", "canonical"
     ]
     assert result["provider_payload"] == {
         "operation": "images.edit",

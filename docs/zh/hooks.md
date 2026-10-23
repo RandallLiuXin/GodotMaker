@@ -21,7 +21,7 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 |------|------|--------|-----------|------|
 | `session_start.py` | SessionStart | — | 否 | 清除会话指标，重置状态 |
 | `check_file_permissions.py` | PreToolUse | Write\|Edit | 是 | 由 `.godotmaker/current_role` 驱动的角色与子代理写规则 |
-| `stage_reminder.py` | PreToolUse | Write\|Edit | 是 | 检测 `stage.jsonl` 追加操作，验证角色输出，注入下一角色提示 |
+| `stage_reminder.py` | PreToolUse | Write\|Edit | 否 | 检测直接写入 `stage.jsonl` 的操作并注入下一角色提示 |
 | `check_stage_prerequisites.py` | PreToolUse | Agent | 是 | Worker 派发前，验证前置角色已完成且其产出存在 |
 | `check_asset_access.py` | PreToolUse | Read | 是 | 在活跃角色期间，阻止主代理/root session 读取 `assets/` 中的图片文件 |
 | `log_subagent.py` | SubagentStart | — | 否 | Claude Code / Codex：记录子代理启动指标（角色检测、agent_id）。OpenCode 不发出这个生命周期 hook。 |
@@ -62,15 +62,9 @@ hook payload；OpenCode adapter 不会发出这类 Claude-style 生命周期事�
 
 在流水线角色活跃期间，通用子代理会被阻止写入 `e2e/` 和规划文档（`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` / `GAP.md`）。`asset-producer` 可以写入 `assets/`、`references/` 和 `.godotmaker/asset-generation/`。
 
-在 Runtime 支持的 Write/Edit Hook 路径上，所有子代理还会被阻止写入根
-`MEMORY.md` 和根 `memory/` 目录下的任何文件。相对路径、绝对路径、worktree
-路径和普通 `..` 写法会先规范化。这是工具 Hook 契约，不是文件系统沙箱；shell
-写入不在这个 Hook 的覆盖范围内。
-
 Runner 说明：这个子代理写入 gate 需要 runtime 提供 `agent_id`。OpenCode child
-session 不暴露该 payload，因此 OpenCode adapter 对 child 写入只运行无需身份的
-`memory` scope；其他角色所有权规则仍依赖 OpenCode 原生 edit permission。Codex
-和 Pi 没有等价的写入 Hook，其架构记录边界只在 prompt 层执行。
+session 不暴露该 payload，因此其角色所有权规则由 OpenCode 原生
+edit permission 执行。
 
 未设置角色时，表示当前没有活跃的 `/gm-*` 流水线角色。该 Hook 只记录文件操作，不阻止写入，因此用户可以在 GodotMaker 项目目录中正常开启普通 coding-agent 对话。
 
@@ -79,26 +73,31 @@ session 不暴露该 payload，因此 OpenCode adapter 对 child 写入只运行
 ### stage_reminder.py
 
 **事件：** PreToolUse（Write|Edit）
-**是否阻止：** 是
+**是否阻止：** 否
 
-当 `/gm-*` 技能向 `.godotmaker/stage.jsonl` 追加角色完成事件时触发。每行格式为 `{"role": <role>, "ts": <iso>}`。
+当 runtime 能拦截直接的 Write/Edit 操作时，此 Hook 会识别角色完成事件，并通过 `ROLE_NEXT` 注入下一个 `/gm-*` 命令。它只提供 UX 提示。runtime-neutral 的 `tools/append_stage_event.py` 会在写入事件或 evaluation 归档之前强制执行完成校验。
 
-1. **验证角色产出** — 读取 `config/stage_schemas.json`（键为角色名，非阶段编号），检查 `files` 是否存在并运行 `checks` 中的程序化验证器。验证失败则阻止追加。
-2. **注入提示** — 通过 `ROLE_NEXT` 表指向下一个角色的 `/gm-*` 指令。
+### append_stage_event.py 完成门禁
+
+append 工具会加载 `hooks/completion_gate.py`，根据 `config/stage_schemas.json` 验证角色的 `files` 和程序化 `checks`，再对 Worker 派发执行 diligence 检查。任何失败都会在文件系统副作用发生前以非零状态退出。
 
 程序化检查：
 
 | 检查 | 角色 | 断言内容 |
 |------|------|----------|
 | `plan_all_verified` | `build` | `PLAN.md` 中每个任务行的状态为 `verified`（无 `pending` / `in_progress` / `completed`） |
-| `gap_archived` | `fixgap` | `GAP.md` 已被移动到 `.godotmaker/gaps/<iteration>/GAP.md` |
+| `gap_archived_unless_handoff` | `fixgap` | 普通完成时已归档 `GAP.md`；evaluator handoff 可保留它 |
+| `evaluation_playable_unit` | `evaluate` | evaluation 覆盖所有规范的 Playable Unit mechanic ID |
+| `tag_archived` | `finalize` | tag 归档完整、已封存且已建立索引 |
 
 角色产出 Schema 位于 `config/stage_schemas.json`。当前结构：
 - `scaffold` → `project.godot`
-- `gdd` → `GDD.md`、`PLAN.md`、`STRUCTURE.md`
-- `evaluate` → `.godotmaker/evaluation.json`
-- `finalize` → `.godotmaker/final_report.json`
-- `asset` / `verify` / `accept` 依赖各自 SKILL.md 中的 Resume Check。
+- `gdd` → 完整的规划文档集
+- `build` → `PLAN.md` 中所有任务均已 verified
+- `verify` → `.godotmaker/verify_report.json`
+- `evaluate` → `.godotmaker/evaluation.json` 及 Playable Unit 覆盖
+- `fixgap` → 除 handoff 外均已归档 `GAP.md`
+- `finalize` → `.godotmaker/final_report.json` 及已封存的 tag 归档
 
 ### check_stage_prerequisites.py
 
@@ -291,7 +290,7 @@ SessionStart
 
 PreToolUse(Write|Edit)
   ├── check_file_permissions.py (从 current_role 读取每角色写规则)
-  └── stage_reminder.py (验证 stage.jsonl 追加，注入下一角色指针)
+  └── stage_reminder.py (为直接写入注入下一角色提示)
 
 PreToolUse(Agent)
   └── check_stage_prerequisites.py (若前置角色未完成则阻止 build/fixgap)

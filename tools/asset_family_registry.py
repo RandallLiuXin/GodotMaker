@@ -10,9 +10,11 @@ the request/result checker, the
 ``/gm-asset`` routing tables, ``references/asset-runtime-pipeline.md``, and a
 hand-maintained tuple in each test. Nothing tied those lists together, so a
 family could advertise a runtime delivery, validate it, and still have no
-adapter that reaches ``ready``, and the suite stayed green.
+adapter that reaches ``generated``, and the suite stayed green.
 
-This module is that single source of truth. The enums elsewhere derive from it.
+This module is that single source of truth for families, routes, ``ASSETS.md``
+row statuses, and physical source layouts. The enums elsewhere derive from it
+or are bound to it by consistency tests.
 ``tests/tools/test_asset_family_closure.py`` supplies its own representative
 deliveries and drives every declared route through registration to a worker
 snapshot.
@@ -40,17 +42,26 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-REGISTRY_VERSION = 2
+REGISTRY_VERSION = 3
 
 # Where a family's Skill and standalone validator live.
 SKILLS_ROOT = "skills/assets"
 
-# ``role`` separates a worker-consumable delivery from a reference-only one.
-RUNTIME_ROLE = "runtime"
-REFERENCE_ROLE = "reference"
+# Every family delivers worker-consumable runtime outputs, and every runtime
+# ``ASSETS.md`` row moves forward only, from ``MISSING`` to exactly one of
+# these: ``provided`` for a user-supplied file, the family's terminal status
+# after direct registration, or ``deferred`` for work this tag does not do.
+TERMINAL_STATUS = "generated"
+PROVIDED_STATUS = "provided"
+DEFERRED_STATUS = "deferred"
+MISSING_STATUS = "MISSING"
+ASSET_ROW_STATUSES = (MISSING_STATUS, PROVIDED_STATUS, TERMINAL_STATUS, DEFERRED_STATUS)
 
-# The completion state each role's work stops at.
-TERMINAL_STATUS = {RUNTIME_ROLE: "ready", REFERENCE_ROLE: "source_ready"}
+# The physical arrangement of a source image a compiler reads. A layout says
+# how pixels are laid out, never what an image is used for: a provider identity
+# anchor or provenance image is an ``outputs[].role: reference`` entry, not a
+# layout.
+SOURCE_LAYOUTS = ("single", "grid_sheet", "region_atlas", "tile_atlas", "theme_recipe")
 
 # The single request shape a family with no producer variants accepts.
 DEFAULT_VARIANT = "default"
@@ -77,7 +88,7 @@ class DeliveryVariant:
     variant: str
     #: The ``source_layout.type`` values this route's entries bind.
     entry_source_layouts: tuple[str, ...]
-    #: ``godot_artifact.type`` values its entries bind; empty for reference.
+    #: ``godot_artifact.type`` values its entries bind.
     artifact_types: tuple[str, ...]
     #: How many runtime outputs one validated delivery declares.
     runtime_outputs: str
@@ -86,20 +97,15 @@ class DeliveryVariant:
         label = f"variant {self.variant!r}"
         if not self.variant.strip():
             raise ValueError("a delivery variant needs a non-empty name")
-        if self.runtime_outputs not in ("none", "one", "many"):
+        if self.runtime_outputs not in ("one", "many"):
             raise ValueError(f"{label}: unknown runtime_outputs")
         if not self.entry_source_layouts:
             raise ValueError(f"{label}: a variant must name its source layout")
-
-    @property
-    def is_reference_only(self) -> bool:
-        return not self.artifact_types
-
-    @property
-    def terminal_status(self) -> str:
-        return TERMINAL_STATUS[
-            REFERENCE_ROLE if self.is_reference_only else RUNTIME_ROLE
-        ]
+        unknown = sorted(set(self.entry_source_layouts) - set(SOURCE_LAYOUTS))
+        if unknown:
+            raise ValueError(f"{label}: unknown source layout {', '.join(unknown)}")
+        if not self.artifact_types:
+            raise ValueError(f"{label}: a variant must name its Godot artifact type")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -107,7 +113,6 @@ class DeliveryVariant:
             "entry_source_layouts": list(self.entry_source_layouts),
             "artifact_types": list(self.artifact_types),
             "runtime_outputs": self.runtime_outputs,
-            "terminal_status": self.terminal_status,
         }
 
 
@@ -116,31 +121,18 @@ class FamilySpec:
     """One public first-class Asset Skill family and every shape it delivers."""
 
     family: str
-    role: str
     variants: tuple[DeliveryVariant, ...]
 
     def __post_init__(self) -> None:
-        if self.role not in (RUNTIME_ROLE, REFERENCE_ROLE):
-            raise ValueError(f"{self.family}: unknown role {self.role!r}")
         if not self.variants:
             raise ValueError(f"{self.family}: a family must declare a delivery")
         names = [item.variant for item in self.variants]
         if len(set(names)) != len(names):
             raise ValueError(f"{self.family}: duplicate variant name")
-        for item in self.variants:
-            if item.is_reference_only != (self.role == REFERENCE_ROLE):
-                raise ValueError(
-                    f"{self.family}: variant {item.variant!r} does not match the "
-                    f"family role {self.role!r}"
-                )
-
-    @property
-    def is_reference_only(self) -> bool:
-        return self.role == REFERENCE_ROLE
 
     @property
     def terminal_status(self) -> str:
-        return TERMINAL_STATUS[self.role]
+        return TERMINAL_STATUS
 
     @property
     def entry_source_layouts(self) -> tuple[str, ...]:
@@ -165,7 +157,6 @@ class FamilySpec:
     def to_dict(self) -> dict[str, Any]:
         return {
             "family": self.family,
-            "role": self.role,
             "terminal_status": self.terminal_status,
             "skill_dir": self.skill_dir,
             "variants": [item.to_dict() for item in self.variants],
@@ -175,7 +166,6 @@ class FamilySpec:
 _SPECS: tuple[FamilySpec, ...] = (
     FamilySpec(
         family="background-map",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant=DEFAULT_VARIANT,
@@ -187,7 +177,6 @@ _SPECS: tuple[FamilySpec, ...] = (
     ),
     FamilySpec(
         family="card-kit",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant=DEFAULT_VARIANT,
@@ -199,7 +188,6 @@ _SPECS: tuple[FamilySpec, ...] = (
     ),
     FamilySpec(
         family="character-bundle",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant=DEFAULT_VARIANT,
@@ -211,7 +199,6 @@ _SPECS: tuple[FamilySpec, ...] = (
     ),
     FamilySpec(
         family="compact-prop-pack",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant=DEFAULT_VARIANT,
@@ -223,7 +210,6 @@ _SPECS: tuple[FamilySpec, ...] = (
     ),
     FamilySpec(
         family="fx-bundle",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant="static",
@@ -241,7 +227,6 @@ _SPECS: tuple[FamilySpec, ...] = (
     ),
     FamilySpec(
         family="platform-strip",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant="single",
@@ -258,8 +243,18 @@ _SPECS: tuple[FamilySpec, ...] = (
         ),
     ),
     FamilySpec(
+        family="portrait",
+        variants=(
+            DeliveryVariant(
+                variant=DEFAULT_VARIANT,
+                entry_source_layouts=("single",),
+                artifact_types=("Texture2D",),
+                runtime_outputs="one",
+            ),
+        ),
+    ),
+    FamilySpec(
         family="scene-prop-set",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant=DEFAULT_VARIANT,
@@ -270,20 +265,7 @@ _SPECS: tuple[FamilySpec, ...] = (
         ),
     ),
     FamilySpec(
-        family="screen-reference",
-        role=REFERENCE_ROLE,
-        variants=(
-            DeliveryVariant(
-                variant=DEFAULT_VARIANT,
-                entry_source_layouts=("reference",),
-                artifact_types=(),
-                runtime_outputs="none",
-            ),
-        ),
-    ),
-    FamilySpec(
         family="tileset",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant=DEFAULT_VARIANT,
@@ -295,7 +277,6 @@ _SPECS: tuple[FamilySpec, ...] = (
     ),
     FamilySpec(
         family="ui-kit",
-        role=RUNTIME_ROLE,
         variants=(
             DeliveryVariant(
                 variant=DEFAULT_VARIANT,
@@ -311,10 +292,6 @@ FAMILIES: dict[str, FamilySpec] = {spec.family: spec for spec in _SPECS}
 
 # Frozen views the rest of the toolchain imports instead of re-declaring a list.
 FAMILY_NAMES: frozenset[str] = frozenset(FAMILIES)
-REFERENCE_FAMILY_NAMES: frozenset[str] = frozenset(
-    name for name, spec in FAMILIES.items() if spec.is_reference_only
-)
-RUNTIME_FAMILY_NAMES: frozenset[str] = frozenset(FAMILY_NAMES - REFERENCE_FAMILY_NAMES)
 
 
 class FamilyRegistryError(Exception):
@@ -353,17 +330,8 @@ def variant_for_request(request: dict[str, Any]) -> DeliveryVariant:
         ) from exc
 
 
-def families(*, role: str | None = None) -> list[FamilySpec]:
-    """Return the declared families, optionally filtered by role."""
-    return [
-        item
-        for item in FAMILIES.values()
-        if role is None or item.role == role
-    ]
-
-
-def routes(*, role: str | None = None) -> list[tuple[FamilySpec, DeliveryVariant]]:
-    """Return every ``(family, variant)`` pair, optionally filtered.
+def routes() -> list[tuple[FamilySpec, DeliveryVariant]]:
+    """Return every ``(family, variant)`` pair.
 
     Routes are the unit the closure test enumerates: a family with two request
     shapes has two independent registration chains, so each one must be proven
@@ -373,7 +341,6 @@ def routes(*, role: str | None = None) -> list[tuple[FamilySpec, DeliveryVariant
         (item, variant)
         for item in FAMILIES.values()
         for variant in item.variants
-        if role is None or item.role == role
     ]
 
 
@@ -381,6 +348,8 @@ def to_dict() -> dict[str, Any]:
     """Return the whole registry as plain JSON-serializable data."""
     return {
         "version": REGISTRY_VERSION,
+        "row_statuses": list(ASSET_ROW_STATUSES),
+        "source_layouts": list(SOURCE_LAYOUTS),
         "families": [item.to_dict() for item in FAMILIES.values()],
     }
 

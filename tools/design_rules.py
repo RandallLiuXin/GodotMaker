@@ -31,7 +31,7 @@ Usage:
         --capture e2e/screenshots/scene_battle.png \
         [--project-root .] \
         --requirement "Player sprite visible centered-left" \
-        [--reference references/scene_battle.png] \
+        [--reference references/hero_identity.png] \
         [--output .godotmaker/design-checks/scene_battle-request.json]
     python tools/design_rules.py grade --request <request.json> \
         --findings <findings.json> [--output <graded.json>]
@@ -76,6 +76,7 @@ SUBJECT_CLASSES = ("character", "environment", "effect", "ui", "mixed")
 # defaulted into the wrong rule set.
 ASSET_SUBJECT_CLASSES = {
     "character-bundle": "character",
+    "portrait": "character",
     "background-map": "environment",
     "platform-strip": "environment",
     "scene-prop-set": "environment",
@@ -84,8 +85,6 @@ ASSET_SUBJECT_CLASSES = {
     "fx-bundle": "effect",
     "ui-kit": "ui",
     "card-kit": "ui",
-    # A screen reference is a whole composed screen: world content and UI.
-    "screen-reference": "mixed",
 }
 
 # Rule group -> subject classes where the group is observable. A group absent

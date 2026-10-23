@@ -18,7 +18,7 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **Entity**（ECS）— 代表游戏世界中一个"事物"（玩家、敌人、子弹）的唯一数字 ID。实体本身没有数据或行为；只有通过附加在它身上的组件才有意义。另见：*ECS*、*Component*。
 
-**Evaluation** / **Evaluator** — 流水线第六个角色，由 `/gm-evaluate` 触发。独立评估当前 tag 是否兑现 `PLAN.md` 的承诺：强制可玩闭环硬门、跑 `e2e/` 套件、对场景截图与参考图做视觉比对。判定结果写入 `.godotmaker/evaluation.json`，输入下一角色 `/gm-fixgap`。另见：*Role*、*Tag*、*Visual QA*。
+**Evaluation** / **Evaluator** — 流水线第六个角色，由 `/gm-evaluate` 触发。独立评估当前 tag 是否兑现 `PLAN.md` 的承诺：强制可玩闭环硬门、跑 `e2e/` 套件，并根据可观察的场景要求和适用的 `DESIGN.md` 规则检查截图。判定结果写入 `.godotmaker/evaluation.json`，输入下一角色 `/gm-fixgap`。另见：*Role*、*Tag*、*Visual QA*。
 
 **Fixgap** / **GAP.md** — 第七个角色，由 `/gm-fixgap` 触发。读取评估报告，创建 `GAP.md` 列出 GDD 描述与游戏当前状态之间的每处差距，然后派发 Worker 逐一解决。修复完成后，`GAP.md` 会归档到 `.godotmaker/gaps/<n>/`。另见：*Role*、*Worker*。
 
@@ -30,9 +30,9 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **Milestone** — *Tag* 的旧称，用于 v0.3.0 之前的文档。当前规范术语是 *Tag*；"milestone" 仅残留在归档的 release notes 里（如 `docs/update/v0.2.x.md`）——目前活跃的 hooks、skills、templates 和 wiki 页面都不再使用这个词。
 
-**PLAN.md** — 由 `/gm-gdd` 生成、范围限定为 **当前 tag** 的任务列表。包含 Tag Mechanics（本 tag 要交付的 mechanic 列表）、Inherited Mechanics（先前 tag 已交付、本 tag 必须保持不破坏的 mechanic 列表）、风险任务、主体任务表，每项任务都有状态字段（`pending` / `in_progress` / `completed` / `verified`）。`/gm-build` 通过为每个任务派发 Worker 来逐一推进。Hook `stage_reminder.py` 会阻止 `/gm-build` 在所有任务都标记为 `verified` 之前结束。
+**PLAN.md** — 由 `/gm-gdd` 生成、范围限定为 **当前 tag** 的任务列表。包含 Tag Mechanics（本 tag 要交付的 mechanic 列表）、Inherited Mechanics（先前 tag 已交付、本 tag 必须保持不破坏的 mechanic 列表）、风险任务、主体任务表，每项任务都有状态字段（`pending` / `in_progress` / `completed` / `verified`）。`/gm-build` 通过为每个任务派发 Worker 来逐一推进。`append_stage_event.py` 完成门禁会拒绝在所有任务标记为 `verified` 之前记录 `/gm-build` 完成；`stage_reminder.py` 对直接写入只提供下一角色的 UX 提示。
 
-**Reviewer** — 一种子代理，以及一套 8 个专项技能（`physics`、`animation`、`ui`、`tilemap`、`navigation`、`shader`、`audio`、`particles`）。当 `PLAN.md` 中所有任务都 `completed` 且 Verifier 通过后，Reviewer 对代码进行检查，比对每个技能的 `gotchas.md` 和 `checklist.md` 中记录的 Godot 特有坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务追加到 `PLAN.md`）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证。原始 finding 和 triage 决策不写入 `MEMORY.md`。另见：*Sub-agent*、*Worker*、*Verifier*。
+**Reviewer** — 一种子代理，以及 `physics`、`animation`、`ui`、`tilemap`、`navigation`、`shader`、`audio`、`particles` 这些专项技能。当 `PLAN.md` 中所有任务都 `completed` 且 Verifier 通过后，Reviewer 对代码进行检查，比对每个技能的 `gotchas.md` 和 `checklist.md` 中记录的 Godot 特有坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务追加到 `PLAN.md`）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证。原始 finding 和 triage 决策作为运行时证据保留。另见：*Sub-agent*、*Worker*、*Verifier*。
 
 **Rescue** — 由 `/gm-rescue` 触发的主流程外诊断角色。当流水线卡住时调用（通常在多轮 `/gm-fixgap` 都没办法收敛之后）。检查 godotmaker 自身的 hooks、skills、config、templates，判断卡死是否由框架缺陷造成；只输出到聊天（不写文件、不改代码）。如果发现框架缺陷，会起草一份 GitHub issue 草稿供用户审阅后自行提交。隐私：草稿默认不包含项目路径、项目源码、GDD 内容。另见：*Tag*。
 
@@ -42,11 +42,11 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **SCENES.md** — 由 `/gm-gdd` 生成的规划文档，列出 **当前 tag** 需要新增或重做的 Godot 场景、包含的内容以及场景之间的关系。先前 tag 的场景描述保留在对应的 `docs/tags/<prev>/SCENES.md` 归档里。
 
-**Skill**（coding-agent 技能）— 一个给所选 coding agent 提供特定工作指令的 Markdown 文件（`SKILL.md`）。GodotMaker 提供 9 个流水线角色技能（Claude Code 使用 `/gm-*`，Codex 使用 `$gm-*`）、辅助技能以及 Reviewer 技能。技能会部署到所选 agent 的项目本地技能目录（Claude Code 为 `.claude/skills/`，Codex 为 `.agents/skills/`）。
+**Skill**（coding-agent 技能）— 一个给所选 coding agent 提供特定工作指令的 Markdown 文件（`SKILL.md`）。GodotMaker 提供流水线角色技能、主流程外的 `gm-rescue` 诊断、辅助技能、Reviewer 领域和 registry 声明的 Asset Skill family。技能会部署到所选 agent 的项目本地技能目录（Claude Code 为 `.claude/skills/`，Codex 为 `.agents/skills/`）；角色会按需加载辅助、Reviewer 和 Asset Skill。仓库目录与 `tools/asset_family_registry.py` 是 inventory 真值来源。
 
 **Stage vs Role** — "Stage"是 GodotMaker 早期对流水线步骤的称呼。流水线已被重新设计为基于角色的指令，没有中央协调器。"stage"这个词仍出现在部分文件名中（如 `stage_schemas.json`、`stage.jsonl`），但今后的规范术语是"role"。另见：*Role*。
 
-**stage.jsonl** — 位于 `.godotmaker/stage.jsonl` 的只追加日志文件。每当一个 `/gm-*` 角色成功完成时，它追加一行 JSON：`{"role": "<name>", "ts": "<iso-timestamp>", ...}`（部分事件还带额外字段：`tag`、`decision`、`conclusion`）。Hook 读取此文件决定下一步是否允许进行。`/gm-finalize` 在每个 tag 的最后会清空它。"jsonl"表示每行是一个独立的合法 JSON 对象。
+**stage.jsonl** — 位于 `.godotmaker/stage.jsonl` 的只追加日志文件。每当一个 `/gm-*` 角色成功完成时，它追加一行 JSON：`{"role": "<name>", "ts": "<iso-timestamp>", ...}`（部分事件还带额外字段：`tag`、`decision`、`conclusion`）。Hook 读取此文件来判断下一角色是否可以开始。`/gm-finalize` 在每个 tag 的最后会清空它。"jsonl"表示每行是一个独立的合法 JSON 对象。
 
 **STRUCTURE.md** — 由 `/gm-gdd` 生成、范围限定为 **当前 tag** 的架构文档：列出本 tag 结束时应有的全部 Components / Systems（含先前 tag 累积的 + 本 tag 新增的或 refactor 的）。
 
@@ -56,14 +56,14 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **Tag** — 一次完整的 `/gm-gdd` → `/gm-finalize` 流水线运行交付一个 **Tag**（采用 SemVer 命名：`v0.1.0`、`v0.2.0`、……）。`/gm-finalize` 完成后会把当前 tag 的工作文档归档到 `docs/tags/<Tag>/` 并在本地执行 `git tag <Tag>`。之后你可以用下一个 `/gm-gdd` 开启下一个 tag，或者就此停在这里。每个 tag 都交付一个最小可玩单元。另见：*ROADMAP.md*、*Tag 归档*。
 
-**Tag 归档** — 已封存的 `docs/tags/<Tag>/` 目录：该 tag 冻结的工作文档、`memory/` 子目录和 E2E 证据，外加自动生成的 `SUMMARY.md`、每 tag 的 `README.md`，以及记录每个归档文件字节数、SHA-256 和来源 revision 的 `evidence/manifest.json`。`docs/tags/README.md` 是所有已封存 tag 的索引。读归档要自上而下：先父级索引，再 `SUMMARY.md`，最后才是 canonical 文档。一旦封存即不可变，`/gm-finalize` 会拒绝改写。另见：*Tag*。
+**Tag 归档** — 已封存的 `docs/tags/<Tag>/` 目录：该 tag 冻结的工作文档和 E2E 证据，外加自动生成的 `SUMMARY.md`、每 tag 的 `README.md`，以及记录每个归档文件字节数、SHA-256 和来源 revision 的 `evidence/manifest.json`。`docs/tags/README.md` 是所有已封存 tag 的索引。读归档要自上而下：先父级索引，再 `SUMMARY.md`，最后才是 canonical 文档。一旦封存即不可变，`/gm-finalize` 会拒绝改写。另见：*Tag*。
 
 **TOC.md** — 由 `/gm-gdd` 生成的目录文档，列出所有规划文档及其位置。它提供每个 tag 开始时项目内容的快速概览。
 
 **Verifier** — 运行无头 Godot 构建和 Worker 编写的单元测试，然后报告是否通过的子代理。Verifier 还会执行"对抗性探测"——针对边界情况和错误处理的定向测试。如果验证失败，问题返回给 Worker。另见：*Sub-agent*、*Worker*、*Reviewer*。
 
-**Visual QA** / **VQA** — 将运行中的游戏截图对照书面标准逐条检查的过程。`/gm-evaluate` 使用 `visual-qa` 技能，并根据 `vqa_model` 配置选择 `native`、Gemini 或 OpenAI，逐条对照项目的 `DESIGN.md` 视觉合约以及场景自身的内容要求作出判断。`/gm-asset` 生成的参考图仅作为来源上下文，与它相像从来不是验收标准。另见：*Evaluation*、*DESIGN.md*。
+**Visual QA** / **VQA** — 将运行中的游戏截图对照书面标准逐条检查的过程。`/gm-evaluate` 使用 `visual-qa` 技能，并根据 `vqa_model` 配置选择 `native`、Gemini 或 OpenAI，逐条对照项目的 `DESIGN.md` 视觉合约以及场景自身的内容要求作出判断。另见：*Evaluation*、*DESIGN.md*。
 
-**Worker** — 实现一个游戏任务的子代理：编写 GDScript 代码、单元测试和端到端测试，然后返回一份结构化报告。报告只包含执行结果和失败证据，不再自动产生 Memory/Learning 条目；Worker 不能写根 `MEMORY.md` 或 `memory/`。Worker 在隔离的 git worktree 中运行。Worker 完成后，必须由 Verifier 和 Reviewer 先后完成验收，才会开始下一个任务。另见：*Sub-agent*、*Verifier*、*Reviewer*、*Worktree*。
+**Worker** — 实现一个游戏任务的子代理：编写 GDScript 代码和单元测试，然后返回一份包含执行结果和失败证据的结构化报告。Worker 在隔离的 git worktree 中运行。Worker 完成后，必须由 Verifier 和 Reviewer 先后完成验收，才会开始下一个任务。另见：*Sub-agent*、*Verifier*、*Reviewer*、*Worktree*。
 
 **Worktree** — 允许多个工作目录共享同一个仓库的 git 功能。GodotMaker 用 worktree 让并行子代理各自拥有独立的文件夹来写文件，互不冲突。Worktree 要求仓库至少有一个提交，这也是 `/gm-scaffold` 总是创建初始提交的原因。另见：*Sub-agent*。

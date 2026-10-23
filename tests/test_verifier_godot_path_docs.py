@@ -17,9 +17,10 @@ def test_verifier_dispatch_uses_configured_godot_path():
     assert '"<godot_path>" --headless --path .' in text
 
 
-def test_verifier_agent_examples_use_godot_path_placeholder():
+def test_verifier_agent_references_dispatch_and_examples_use_godot_path_placeholder():
     text = _text("agents/verifier.md")
-    assert "### Godot Path" in text
+    assert "references/verifier-dispatch.md" in text
+    assert "## Brief Format (What You Receive)" not in text
     assert "godot --headless" not in text
     assert '"<godot_path>" --headless --quit' in text
     assert '"<godot_path>" --headless --path .' in text

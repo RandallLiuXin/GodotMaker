@@ -26,7 +26,8 @@ In game development, especially early ideation and market validation stages, tea
 
 - GodotMaker currently targets 2D Godot games. 3D game generation is not supported.
 - The art pipeline is still alpha. It may need a follow-up coding-agent pass for atlas regions, animation setup, or asset binding.
-- Pixel art and TileMap support are planned but not currently supported.
+- Pixel art style is planned but not currently supported.
+- TileSet generation and TileMap authoring are supported; generated level layouts still require manual playtesting.
 - Level layout, puzzle content, and numeric balance still need human judgment and manual refinement.
 - Audio generation is not supported yet.
 - Very long automated runs are cost-sensitive, and rare projects may fail to converge after repeated build/fix/evaluate loops.

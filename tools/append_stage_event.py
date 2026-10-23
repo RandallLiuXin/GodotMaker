@@ -21,10 +21,13 @@ Exit codes:
     0  appended successfully
     1  .godotmaker/ directory does not exist under project root
     2  bad CLI usage (malformed extra arg)
+    3  completion validation failed before any archive or event write
 """
 import argparse
+import contextlib
 import datetime
 import json
+import os
 import re
 import shutil
 import sys
@@ -100,6 +103,45 @@ def _archive_evaluation_run(
     )
 
 
+@contextlib.contextmanager
+def _project_directory(project_path: Path):
+    previous = Path.cwd()
+    os.chdir(project_path)
+    try:
+        yield
+    finally:
+        os.chdir(previous)
+
+
+def _completion_failure(
+    project_path: Path,
+    event: dict[str, object],
+) -> dict | None:
+    """Run the published, side-effect-free completion gate for ``event``."""
+    hook_candidates = (
+        project_path / ".godotmaker" / "hooks",
+        Path(__file__).resolve().parent.parent / "hooks",
+    )
+    hook_dir = next((path for path in hook_candidates if path.is_dir()), None)
+    if hook_dir is None:
+        return {"reason": "Cannot validate completion: .godotmaker/hooks is missing"}
+
+    hook_dir_text = str(hook_dir)
+    sys.path.insert(0, hook_dir_text)
+    try:
+        with _project_directory(project_path):
+            from completion_gate import get_completion_failure
+
+            return get_completion_failure(event)
+    except (ImportError, OSError, ValueError) as exc:
+        return {"reason": f"Cannot validate completion: {exc}"}
+    finally:
+        try:
+            sys.path.remove(hook_dir_text)
+        except ValueError:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Append a stage event to .godotmaker/stage.jsonl",
@@ -143,13 +185,20 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         event[key] = value
 
-    project_path = Path(args.project_path) if args.project_path else Path.cwd()
+    project_path = (
+        Path(args.project_path).resolve() if args.project_path else Path.cwd().resolve()
+    )
     stage_dir = project_path / ".godotmaker"
     stage_path = stage_dir / "stage.jsonl"
 
     if not stage_dir.is_dir():
         print(f"error: {stage_dir} does not exist", file=sys.stderr)
         return 1
+
+    failure = _completion_failure(project_path, event)
+    if failure:
+        print(f"error: {failure['reason']}", file=sys.stderr)
+        return 3
 
     _archive_evaluation_run(project_path, event)
 

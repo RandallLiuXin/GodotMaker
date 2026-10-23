@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
-from agent_runtime import read_godot_path
+from agent_runtime import agent_skill_root, read_godot_path
 
 
 class ScenePropSetValidationError(Exception):
@@ -56,8 +56,8 @@ def _write_object(path: Path, value: dict[str, Any]) -> None:
 
 
 def _validator() -> Callable[..., dict[str, Any]]:
-    root = Path(__file__).resolve().parents[1]
-    source = root / "skills" / "assets" / "scene-prop-set" / "standalone_validation.py"
+    runtime_root = Path(__file__).resolve().parents[1]
+    source = agent_skill_root(runtime_root) / "scene-prop-set" / "standalone_validation.py"
     spec = importlib.util.spec_from_file_location("scene_prop_set_validation", source)
     if spec is None or spec.loader is None:
         raise ScenePropSetValidationError(f"Could not load scene-prop-set validator: {source}")

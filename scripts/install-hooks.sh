@@ -9,7 +9,7 @@ HOOKS_DIR="$REPO_ROOT/.git/hooks"
 
 echo "Installing git hooks..."
 
-# Install pre-commit hook (gitleaks)
+# Install pre-commit hook (staged Ruff + doc i18n + Gitleaks)
 PRECOMMIT_SRC="$REPO_ROOT/scripts/pre-commit"
 PRECOMMIT_DST="$HOOKS_DIR/pre-commit"
 
@@ -37,7 +37,7 @@ else
     echo "  Install: https://github.com/gitleaks-io/gitleaks#installing"
 fi
 
-# Install pre-push hook (CI-equivalent checks: ruff + pytest)
+# Install pre-push hook (CI-equivalent Ruff + Pytest checks)
 PREPUSH_SRC="$REPO_ROOT/scripts/pre-push"
 PREPUSH_DST="$HOOKS_DIR/pre-push"
 

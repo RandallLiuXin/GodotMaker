@@ -16,6 +16,7 @@ from asset_skill_contract_check import (
     check_result,
 )
 from asset_output_paths import AssetOutputPathError, generated_output_dir, safe_identifier
+from asset_provider_registry import ASSET_IMAGE_PROVIDER_SET, provider_choices
 from asset_ui_theme_recipe import UI_ICONS, UI_STYLEBOXES
 
 
@@ -29,7 +30,7 @@ _FAMILIES = {
         "states": {"normal", "hover", "pressed", "disabled", "selected", "locked"}
     },
 }
-_UI_PROVIDERS = {"native", "codex", "gemini", "openai", "wan"}
+_UI_PROVIDERS = ASSET_IMAGE_PROVIDER_SET
 _UI_REQUIRED_STATES = {"normal", "hover", "pressed", "disabled", "focus"}
 
 _PIXEL_ART_REQUEST = re.compile(r"\bpixel(?:[-\s]?art)\b", re.IGNORECASE)
@@ -326,7 +327,7 @@ def _ui_input_gate(request: Mapping[str, Any], issues: list[str]) -> None:
         issues.append("ui-kit requires at least one binding image reference")
     provider = request.get("provider")
     if provider not in _UI_PROVIDERS:
-        issues.append("ui-kit provider must be one of native, codex, gemini, openai, wan")
+        issues.append(f"ui-kit provider must be one of {provider_choices()}")
 
 
 def validate_ui_reference_inputs(request: Mapping[str, Any], project_root: Path) -> None:
@@ -337,7 +338,7 @@ def validate_ui_reference_inputs(request: Mapping[str, Any], project_root: Path)
     if not isinstance(references, list) or not references:
         raise UICardContractError("ui-kit requires at least one binding image reference")
     for index, reference in enumerate(references):
-        if not isinstance(reference, Mapping) or reference.get("role") not in {"canonical", "style", "screen"}:
+        if not isinstance(reference, Mapping) or reference.get("role") not in {"canonical", "style"}:
             raise UICardContractError(f"ui-kit reference[{index}] must preserve a supported role")
         raw_path = reference.get("path")
         if not isinstance(raw_path, str) or not raw_path.strip():

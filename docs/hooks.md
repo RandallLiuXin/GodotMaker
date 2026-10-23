@@ -23,7 +23,7 @@ Claude-style lifecycle events.
 |------|-------|---------|---------|---------|
 | `session_start.py` | SessionStart | — | No | Clear session metrics, reset state |
 | `check_file_permissions.py` | PreToolUse | Write\|Edit | Yes | Per-role write rules driven by `.godotmaker/current_role` |
-| `stage_reminder.py` | PreToolUse | Write\|Edit | Yes | Detect `stage.jsonl` appends, validate role outputs, inject next-role reminder |
+| `stage_reminder.py` | PreToolUse | Write\|Edit | No | Detect direct `stage.jsonl` writes and inject a next-role reminder |
 | `check_stage_prerequisites.py` | PreToolUse | Agent | Yes | Before worker dispatch, verify the prerequisite role completed and its outputs exist |
 | `check_asset_access.py` | PreToolUse | Read | Yes | During an active role, block the main/root agent from reading image files in `assets/` |
 | `log_subagent.py` | SubagentStart | — | No | Claude Code / Codex: record subagent start metrics (role detection, agent_id). OpenCode does not emit this lifecycle hook. |
@@ -71,18 +71,9 @@ and from planning docs (`PLAN.md` / `STRUCTURE.md` / `ASSETS.md` /
 `GAP.md`). `asset-producer` may write `assets/`, `references/`, and
 `.godotmaker/asset-generation/`.
 
-All subagents are also blocked, on supported Write/Edit hook paths, from the
-root `MEMORY.md` and every file below the root `memory/` directory. Relative,
-absolute, worktree, and ordinary `..` path forms are normalized. This is a
-tool-hook contract rather than a filesystem sandbox; shell writes are outside
-the hook.
-
-Runner note: this subagent write gate requires a runtime-provided `agent_id`.
-OpenCode child sessions do not expose that payload, so the OpenCode adapter
-runs only the identity-free `memory` scope for child writes and leaves all
-role-specific ownership rules to OpenCode-native edit permissions. Codex and
-Pi have no equivalent write hook; their architecture-record boundary is
-prompt-level.
+Runner note: the subagent write gate requires a runtime-provided `agent_id`.
+OpenCode child sessions do not expose that payload, so their role-specific
+ownership rules are enforced by OpenCode-native edit permissions.
 
 When no role is set, no `/gm-*` pipeline role is active. The hook records the
 file operation but does not block, so users can run ordinary coding-agent
@@ -93,30 +84,37 @@ Also records `FILE_WRITE` / `FILE_EDIT` metrics events for every file operation.
 ### stage_reminder.py
 
 **Event:** PreToolUse (Write|Edit)
-**Blocks:** Yes
+**Blocks:** No
 
-Triggers when a `/gm-*` skill appends a role-completion event to
-`.godotmaker/stage.jsonl`. Each line is `{"role": <role>, "ts": <iso>}`.
+When a runtime exposes direct Write/Edit interception, this hook recognizes a
+role-completion line and injects the next `/gm-*` command from `ROLE_NEXT`.
+It is a UX hint only. The runtime-neutral `tools/append_stage_event.py` command
+enforces completion before it writes an event or evaluation archive.
 
-1. **Validates role outputs** — reads `config/stage_schemas.json` (keys are
-   role names, not stage numbers) and checks `files` existence + runs
-   `checks` programmatic validators. Blocks the append if validation fails.
-2. **Injects reminder** — points to the next role's `/gm-*` command via
-   the `ROLE_NEXT` table.
+### append_stage_event.py completion gate
+
+The append tool loads `hooks/completion_gate.py`, validates the role's `files`
+and programmatic `checks` from `config/stage_schemas.json`, then applies the
+worker-dispatch diligence check. Any failure exits non-zero before filesystem
+side effects.
 
 Programmatic checks:
 
 | Check | Role | What it asserts |
 |-------|------|-----------------|
 | `plan_all_verified` | `build` | every `PLAN.md` task row has status `verified` (no `pending` / `in_progress` / `completed`) |
-| `gap_archived` | `fixgap` | `GAP.md` has been moved to `.godotmaker/gaps/<iteration>/GAP.md` |
+| `gap_archived_unless_handoff` | `fixgap` | ordinary completion archived `GAP.md`; evaluator handoff may keep it open |
+| `evaluation_playable_unit` | `evaluate` | evaluation covers every canonical Playable Unit mechanic ID |
+| `tag_archived` | `finalize` | the tag archive is complete, sealed, and indexed |
 
 Role-output schema lives at `config/stage_schemas.json`. Current shape:
 - `scaffold` → `project.godot`
-- `gdd` → `GDD.md`, `PLAN.md`, `STRUCTURE.md`
-- `evaluate` → `.godotmaker/evaluation.json`
-- `finalize` → `.godotmaker/final_report.json`
-- `asset` / `verify` / `accept` rely on Resume Check inside their SKILL.md.
+- `gdd` → the complete planning-document set
+- `build` → all `PLAN.md` tasks verified
+- `verify` → `.godotmaker/verify_report.json`
+- `evaluate` → `.godotmaker/evaluation.json` plus Playable Unit coverage
+- `fixgap` → `GAP.md` archived unless the event is an evaluator handoff
+- `finalize` → `.godotmaker/final_report.json` plus a sealed tag archive
 
 ### check_stage_prerequisites.py
 
@@ -201,7 +199,7 @@ the Worker sections that own them; missing data remains empty rather than
 being inferred from another role or arbitrary pasted output. Identical
 `(agent_id, error_fingerprint)` events are written once. A successful Worker
 writes no diagnostic, and diagnostics are never injected into later prompts
-or promoted automatically into project memory.
+or promoted automatically into project contracts.
 
 `worker_error` emission follows the existing `on_subagent_stop.py` support:
 Claude Code and Codex only. Because Codex exposes the generic `worker` agent
@@ -361,7 +359,7 @@ SessionStart
 
 PreToolUse(Write|Edit)
   ├── check_file_permissions.py (per-role write rules from current_role)
-  └── stage_reminder.py (validate stage.jsonl append, inject next-role pointer)
+  └── stage_reminder.py (inject next-role pointer for direct writes)
 
 PreToolUse(Agent)
   └── check_stage_prerequisites.py (block build/fixgap if prereq role not done)

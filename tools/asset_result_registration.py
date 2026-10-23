@@ -22,12 +22,22 @@ from asset_build_record import (
     assert_validated_artifact,
     read_validation_record,
 )
-from asset_skill_contract_check import AssetContractError, check_request, check_result
-from asset_family_registry import FamilyRegistryError, spec as family_spec, variant_for_request
+from asset_skill_contract_check import (
+    GODOT_TYPE_PATTERN,
+    AssetContractError,
+    check_request,
+    check_result,
+)
+from asset_family_registry import (
+    MISSING_STATUS,
+    PROVIDED_STATUS,
+    TERMINAL_STATUS,
+    FamilyRegistryError,
+    variant_for_request,
+)
 
 
-RUNTIME_STATUS = "generated"
-REFERENCE_STATUS = "source_ready"
+RUNTIME_STATUS = TERMINAL_STATUS
 RUNTIME_HEADERS = (
     "#",
     "Tag",
@@ -103,30 +113,6 @@ def _res_to_file(project_root: Path, resource_path: str) -> Path:
     return candidate
 
 
-def _reference_to_file(project_root: Path, reference_path: str) -> Path:
-    """Resolve a reference-only result path without treating it as ``res://``."""
-    if (
-        not isinstance(reference_path, str)
-        or not reference_path
-        or reference_path.startswith("res://")
-        or Path(reference_path).is_absolute()
-    ):
-        raise AssetResultRegistrationError(
-            "reference path must be a project-local relative path: "
-            f"{reference_path!r}"
-        )
-    candidate = (project_root / reference_path).resolve()
-    try:
-        candidate.relative_to(project_root.resolve())
-    except ValueError as exc:
-        raise AssetResultRegistrationError(
-            f"reference path resolves outside the project: {reference_path}"
-        ) from exc
-    if not candidate.is_file():
-        raise AssetResultRegistrationError(f"reference file is missing: {reference_path}")
-    return candidate
-
-
 def _runtime_path_belongs_to_request(
     runtime_path: str, *, family: str, asset_id: str
 ) -> bool:
@@ -151,17 +137,13 @@ def _assert_re_registration_owner(
 ) -> None:
     """Reject a completed logical row owned by a different production unit."""
     status = cells[columns["Status"]]
-    if status not in {RUNTIME_STATUS, REFERENCE_STATUS}:
+    if status != RUNTIME_STATUS:
         return
     family = request["asset_type"]
     asset_id = request["asset_id"]
-    params = cells[columns["Generation Params"]]
-    if status == RUNTIME_STATUS:
-        owns_row = _runtime_path_belongs_to_request(
-            cells[columns["Runtime Path"]], family=family, asset_id=asset_id
-        )
-    else:
-        owns_row = f"family={family}" in params and logical_id == asset_id
+    owns_row = _runtime_path_belongs_to_request(
+        cells[columns["Runtime Path"]], family=family, asset_id=asset_id
+    )
     if not owns_row:
         raise AssetResultRegistrationError(
             f"ASSETS.md row {tag}/{logical_id} is already owned by a different "
@@ -200,18 +182,12 @@ def _asset_outputs(
     if result["validation"].get("passed") is not True:
         raise AssetResultRegistrationError("Asset Skill result validation did not pass")
 
-    try:
-        reference_only = family_spec(result["asset_type"]).is_reference_only
-    except FamilyRegistryError as exc:
-        raise AssetResultRegistrationError(str(exc)) from exc
-
     # Runtime-family reference outputs are validated production evidence, not
-    # logical assets. Reference-only families (currently screen-reference)
-    # retain their reference output because it is the asset being registered.
+    # logical assets and never create ASSETS.md rows.
     outputs = [
         output
         for output in result["outputs"]
-        if output["role"] == "runtime" or reference_only
+        if output["role"] == "runtime"
     ]
     records: dict[str, dict[str, str]] = {}
     for output in outputs:
@@ -220,16 +196,12 @@ def _asset_outputs(
         )
         if logical_id in records:
             raise AssetResultRegistrationError(f"duplicate logical output: {logical_id}")
-        role = output["role"]
         path = output["path"]
-        if role == "runtime":
-            records[logical_id] = {
-                "role": role,
-                "type": output["godot_type"],
-                "path": path,
-            }
-        else:
-            records[logical_id] = {"role": role, "type": "reference", "path": path}
+        records[logical_id] = {
+            "role": "runtime",
+            "type": output["godot_type"],
+            "path": path,
+        }
     if not records:
         raise AssetResultRegistrationError("a passed Asset Skill result has no outputs")
     return records
@@ -397,8 +369,6 @@ def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
                     "role": "runtime", "type": next(iter(allowed_types))
                 }
             }
-        if output_cardinality == "none":
-            return {request["asset_id"]: {"role": "reference", "type": "reference"}}
         raise AssetResultRegistrationError(
             f"{family} request must declare every logical output in spec.outputs"
         )
@@ -420,16 +390,14 @@ def _declared_outputs(request: dict[str, Any]) -> dict[str, dict[str, str]]:
                     f"request.spec.outputs[{index}].godot_type is not allowed for {family}: {godot_type!r}"
                 )
             declared[name] = {"role": role, "type": godot_type}
-        elif role == "reference":
-            declared[name] = {"role": role, "type": "reference"}
         else:
             raise AssetResultRegistrationError(
-                f"request.spec.outputs[{index}].role must be runtime or reference"
+                f"request.spec.outputs[{index}].role must be runtime"
             )
     return declared
 
 
-_VALIDATION_RECORD_FAMILIES = frozenset({"background-map"})
+_VALIDATION_RECORD_FAMILIES = frozenset({"background-map", "portrait"})
 
 
 def _assert_validation_record_matches(
@@ -572,7 +540,7 @@ def register_result(
 
     for logical_id, output in outputs.items():
         index, cells = matches[logical_id]
-        if cells[columns["Status"]] not in {"MISSING", RUNTIME_STATUS, REFERENCE_STATUS}:
+        if cells[columns["Status"]] not in {MISSING_STATUS, RUNTIME_STATUS}:
             raise AssetResultRegistrationError(
                 f"ASSETS.md row {tag}/{logical_id} has non-promotable status "
                 f"{cells[columns['Status']]!r}"
@@ -580,18 +548,15 @@ def register_result(
         _assert_re_registration_owner(
             cells, columns, tag=tag, logical_id=logical_id, request=request
         )
-        if output["role"] == "runtime":
-            _res_to_file(project_root, output["path"])
-            if loader is not None:
-                loader(project_root, output["path"], output["type"])
-            elif godot_path is None:
-                raise AssetResultRegistrationError(
-                    "--godot-path is required to register runtime outputs"
-                )
-            else:
-                _godot_loader(godot_path, project_root, output["path"], output["type"])
+        _res_to_file(project_root, output["path"])
+        if loader is not None:
+            loader(project_root, output["path"], output["type"])
+        elif godot_path is None:
+            raise AssetResultRegistrationError(
+                "--godot-path is required to register runtime outputs"
+            )
         else:
-            _reference_to_file(project_root, output["path"])
+            _godot_loader(godot_path, project_root, output["path"], output["type"])
 
     rewritten = list(lines)
     updated: list[str] = []
@@ -599,9 +564,7 @@ def register_result(
         index, cells = matches[logical_id]
         cells[columns["Runtime Type"]] = output["type"]
         cells[columns["Runtime Path"]] = output["path"]
-        cells[columns["Status"]] = (
-            RUNTIME_STATUS if output["role"] == "runtime" else REFERENCE_STATUS
-        )
+        cells[columns["Status"]] = RUNTIME_STATUS
         rewritten[index] = _row(cells, _newline(lines[index], default_newline))
         updated.append(logical_id)
 
@@ -643,12 +606,12 @@ def runtime_snapshot(assets_md: Path, *, tag: str, asset_ids: list[str]) -> list
         status = cells[columns["Status"]]
         runtime_type = cells[columns["Runtime Type"]]
         runtime_path = cells[columns["Runtime Path"]]
-        if status not in {RUNTIME_STATUS, "provided"}:
+        if status not in {RUNTIME_STATUS, PROVIDED_STATUS}:
             raise AssetResultRegistrationError(
                 f"ASSETS.md row {cells[columns['Tag']]}/{asset_id} is {status!r}; "
                 "expected generated or provided"
             )
-        if runtime_type in {"", "-", "reference"}:
+        if not GODOT_TYPE_PATTERN.fullmatch(runtime_type):
             raise AssetResultRegistrationError(f"ASSETS.md row {tag}/{asset_id} is not a runtime resource")
         _res_to_file(Path(assets_md).parent.resolve(), runtime_path)
         snapshots[asset_id] = {"asset_id": asset_id, "godot_artifact": {"type": runtime_type, "path": runtime_path}}

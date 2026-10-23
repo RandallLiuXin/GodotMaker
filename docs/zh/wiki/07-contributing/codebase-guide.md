@@ -10,16 +10,17 @@ runtime 类型和路径行，并派生 worker snapshot。
 
 ```
 GodotMaker/
-├── hooks/                   8 个 hook 脚本 + hooks/metrics/ 子系统
-├── agents/                  子 Agent 定义（worker、verifier、reviewer、analyst、asset-producer、gdd-auditor）
+├── hooks/                   流水线规则与遥测 + hooks/metrics/ 子系统
+├── agents/                  子 Agent 定义
 ├── skills/
-│   ├── core/                角色技能 + 辅助技能 + _shared/
-│   └── reviewer/            8 个审查技能（各含 gotchas.md + checklist.md）
+│   ├── core/                流水线、rescue 与辅助技能 + _shared/
+│   ├── assets/              First-class Asset Skill + 共享 L0-L4 runtime
+│   └── reviewer/            领域审查技能
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 ├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 ├── agent-runtimes/          runner 专属 reference、template、hook config 和 plugin adapter
-├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC）
-├── tests/                   ~320 个 hook 和工具的单元测试
+├── templates/               文档模板（GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, TOC）
+├── tests/                   Hook、工具、asset、runtime 与流水线测试
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
 ├── shell/                   publish.sh / publish.ps1, report.sh / report.bat
 ├── migrations/              跨版本迁移脚本
@@ -31,7 +32,8 @@ GodotMaker/
 
 ## hooks/
 
-八个 Python 脚本，负责强制执行流水线规则。每个脚本从 `sys.stdin` 读取 JSON payload，决定是否允许或拦截该操作，然后将 JSON 响应写入 stdout（静默放行时直接 exit 0，不输出任何内容）。
+这些 Python 入口负责执行流水线规则、记录遥测，或提供共享验证合同。下表直接对应
+`hooks/` 中的文件，不另行维护容易漂移的总数。
 
 各脚本及其处理的事件：
 
@@ -39,13 +41,18 @@ GodotMaker/
 |--------|-------|---------|
 | `session_start.py` | SessionStart | 否 |
 | `check_file_permissions.py` | PreToolUse (Write\|Edit) | 是 |
-| `stage_reminder.py` | PreToolUse (Write\|Edit) | 是 |
+| `stage_reminder.py` | PreToolUse (Write\|Edit) | 否 |
+| `completion_gate.py` | 由 `append_stage_event.py` 调用 | 是，在追加前 |
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | 是 |
 | `check_asset_access.py` | PreToolUse (Read) | 是 |
+| `log_agent_tool.py` | PreToolUse + PostToolUse (Agent\|Task) | 否 |
 | `log_subagent.py` | SubagentStart | 否 |
 | `on_subagent_stop.py` | SubagentStop | 委托执行 |
 | `check_worker_report.py` | 由 on_subagent_stop.py 调用 | 是 |
 | `check_completion.py` | Stop | 是 |
+| `check_clean_workspace.py` | Stop | 每个 dirty episode 拦截一次 |
+| `log_compaction.py` | PreCompact | 否 |
+| `playability_contract.py` | 由 `completion_gate.py` 使用 | 提供验证 |
 
 Hook 注册关系（哪个脚本响应哪个事件）按 runner 区分。Claude Code 和
 Codex 使用 `agent-runtimes/<agent>/config/` 下的配置文件；OpenCode 使用
@@ -66,7 +73,7 @@ Codex 使用 `agent-runtimes/<agent>/config/` 下的配置文件；OpenCode 使�
 
 | 层 | 控制什么 | 真值来源 |
 |----|---------|---------|
-| `config/stage_schemas.json` | 角色完成了没？下一个角色启动前必须存在的产出文件清单。 | 由 `stage_reminder.py`（完成校验）和 `check_stage_prerequisites.py`（worker 派发前置检查）读取。 |
+| `config/stage_schemas.json` | 角色完成了没？下一个角色启动前必须存在的产出文件清单。 | 由 append 工具的 `completion_gate.py` 和 worker 派发前的 `check_stage_prerequisites.py` 读取。 |
 | `hooks/check_file_permissions.py` | 当前角色现在能写什么？每次 Write/Edit 工具调用都强制执行的 per-role 写权限白名单。 | 运行时权限的最终判定；schema 不定义写权限。 |
 | `skills/core/gm-*/SKILL.md` 的 "Permission" 段落 | 给该角色的执行者读的人类版镜像。 | 应当与 hook 一致；若漂移，运行时以 hook 为准 — 但读 SKILL 的贡献者会被误导。 |
 
@@ -85,6 +92,7 @@ Codex 使用 `agent-runtimes/<agent>/config/` 下的配置文件；OpenCode 使�
 | `reviewer.md` | 对照 `skills/reviewer/<domain>` 的 checklist 审查代码并报告问题 | `/gm-build`、`/gm-fixgap` |
 | `analyst.md` | 分析用户提供的资源并输出 manifest | `/gm-asset` |
 | `asset-producer.md` | 生成一个视觉资源生产单元 | `/gm-asset` |
+| `decomposer.md` | 编写当前 tag 的 plan、structure、scenes、design、TOC 与新增 asset 行 | `/gm-gdd` |
 | `gdd-auditor.md` | 独立审计 GDD 草稿，对照 9 类 checklist 每轮返回 5–8 个补问 | `game-planner`（Rounds 6 + 7） |
 
 派发协议（调用格式和 brief 模板）位于 `skills/core/_shared/{worker,verifier,reviewer,analyst}-dispatch.md` 或所属角色技能内。`gdd-auditor` 直接由 `skills/core/game-planner/SKILL.md` 内联调用。
@@ -112,7 +120,12 @@ Round 7 brief 中的 `Previously Asked` 字段是必填项，不是可选项。�
 
 **角色技能（9 个）：** `gm-scaffold`、`gm-gdd`、`gm-asset`、`gm-build`、`gm-verify`、`gm-evaluate`、`gm-fixgap`、`gm-accept`、`gm-finalize`。这些技能与 `/gm-*` 斜杠命令一一对应。每个角色技能的第一个动作是将角色名写入 `.godotmaker/current_role`，这正是 `check_file_permissions.py` 用来执行写入规则的依据。
 
-**辅助技能（11 个）：** `game-planner`、`project-scaffold`、`godot-api`、`gecs`、`input-mapper`、`headless-build`、`gdunit-driver`、`godot-e2e`、`visual-qa`、`screenshot`、`mcp-driver`。这些是由角色技能加载的参考文档，用户不会直接调用它们。
+**主流程外技能：** `gm-rescue` 用于诊断卡住的流水线，不修改游戏代码。
+
+**辅助技能目录：** `game-planner`、`project-scaffold`、`godot-api`、`gecs`、
+`input-mapper`、`headless-build`、`gdunit-driver`、`godot-e2e`、`visual-qa`、
+`screenshot`、`mcp-driver`、`phantom-camera` 和 `gdtoolkit`。`gdtoolkit` 仍随
+仓库提供，但在路线图重新评估前保持禁用；其他辅助技能由角色按需加载。
 
 ### skills/core/_shared/
 
@@ -129,9 +142,21 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 
 ---
 
+## skills/assets/
+
+每个非私有目录都是公开 Asset Skill family。权威的 family、variant、artifact 类型、
+输出基数与终态矩阵位于 `tools/asset_family_registry.py`；运行
+`python tools/asset_family_registry.py --check` 可对照已交付目录和 standalone
+validator 校验它。`skills/assets/_shared/` 包含发布到
+`.godotmaker/asset-runtime/` 的 schema、compiler 和 L0-L4 validator，本身不是
+可调用 Skill。
+
+---
+
 ## skills/reviewer/
 
-八个审查技能，每个领域一个：`physics`、`animation`、`ui`、`tilemap`、`navigation`、`shader`、`audio`、`particles`。
+Reviewer 领域包括 `physics`、`animation`、`ui`、`tilemap`、`navigation`、
+`shader`、`audio` 和 `particles`。
 
 每个审查技能目录包含恰好三个文件：
 - `SKILL.md` — 审查员 prompt
@@ -178,17 +203,17 @@ manifest 的 schema、添加/移除流程和调试技巧见 `docs/contributing/s
 
 | 文件 | 控制内容 |
 |------|-----------------|
-| `settings.json` | Hook 注册：哪些脚本响应哪些 Claude Code 事件 |
+| `config.yaml.default` | 每个项目默认的 agent runtime、角色模型、视觉 QA 模型和资产生成模型 |
 | `stage_schemas.json` | 每个角色的必要输出和程序化检查（key 为角色名） |
 | `addon_versions.json` | 按引擎版本锁定的 Godot 插件版本 |
 
-`stage_schemas.json` 是 `stage_reminder.py` 和 `check_stage_prerequisites.py` 都会读取的 schema。其 key 为角色名（`scaffold`、`gdd`、`build` 等），每个值包含可选的 `files` 数组（必须存在于磁盘上的路径）和可选的 `checks` 数组（程序化验证器名称）。完整 schema 说明见 [编写技能](writing-a-skill.md)。
+`stage_schemas.json` 是 `completion_gate.py` 和 `check_stage_prerequisites.py` 都会读取的 schema。其 key 为角色名（`scaffold`、`gdd`、`build` 等），每个值包含可选的 `files` 数组（必须存在于磁盘上的路径）和可选的 `checks` 数组（程序化验证器名称）。完整 schema 说明见 [编写技能](writing-a-skill.md)。
 
 ---
 
 ## templates/
 
-Markdown 文档模板，由 `publish.py` 部署到新游戏项目的所选 agent 模板目录下。角色技能在工作过程中填充这些模板。模板包括：`GDD.md`、`PLAN.md`、`STRUCTURE.md`、`SCENES.md`、`ASSETS.md`、`GAP.md`、`MEMORY.md`、`TOC.md`、`game-claude.md`。
+Markdown 文档模板，由 `publish.py` 部署到新游戏项目的所选 agent 模板目录下。角色技能在工作过程中填充这些模板。模板包括：`GDD.md`、`PLAN.md`、`STRUCTURE.md`、`SCENES.md`、`ASSETS.md`、`GAP.md`、`TOC.md`、`game-claude.md`。
 
 ---
 
@@ -198,26 +223,15 @@ Markdown 文档模板，由 `publish.py` 部署到新游戏项目的所选 agent
 
 ```
 tests/
-├── hooks/
-│   ├── helpers.py                       共享工具函数：run_hook, is_blocked, write_completed_roles, ...
-│   ├── test_check_completion.py
-│   ├── test_check_file_permissions.py
-│   ├── test_check_stage_prerequisites.py
-│   ├── test_check_worker_report.py
-│   ├── test_metrics.py
-│   ├── test_session_start.py
-│   └── test_stage_reminder.py
-├── tools/
-│   ├── conftest.py
-│   ├── test_addon_versions.py
-│   ├── test_check_classname.py
-│   ├── test_check_env.py
-│   ├── test_check_project.py
-│   ├── test_migrate.py
-│   ├── test_publish.py
-│   └── test_publish_shared.py
-└── test_pipeline_e2e.py                 端到端流水线冒烟测试
+├── assets/                               Asset family 与 compiler 合同
+├── agent_runtimes/                       Runtime adapter 合同
+├── hooks/                                Hook 行为与共享 helper
+├── tools/                                CLI 与发布测试
+└── test_*.py                             跨层与流水线合同
 ```
+
+请用 `pytest --collect-only` 或 `rg --files tests` 查看当前 test inventory；本指南只
+记录稳定分组，不维护文件总数。
 
 `pyproject.toml` 将 `hooks/` 加入 `pythonpath`，使 hook 测试中的 `from metrics import ...` 无需安装任何包即可解析。关于编写新测试，请参阅 [测试](testing.md)。
 

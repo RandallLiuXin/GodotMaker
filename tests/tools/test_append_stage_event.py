@@ -8,9 +8,11 @@ so the test catches drift.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -19,14 +21,20 @@ SCRIPT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "tools", "append_stage_event.py"
 )
+REPO_ROOT = os.path.dirname(os.path.dirname(SCRIPT))
+SCHEMA = os.path.join(REPO_ROOT, "config", "stage_schemas.json")
 
 ISO_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
 def run(project_dir: str, *args: str) -> tuple[str, str, int]:
     """Run append_stage_event.py and return (stdout, stderr, exit_code)."""
+    return run_script(SCRIPT, project_dir, *args)
+
+
+def run_script(script: str, project_dir: str, *args: str) -> tuple[str, str, int]:
     result = subprocess.run(
-        [sys.executable, SCRIPT, *args, "--project-path", project_dir],
+        [sys.executable, script, *args, "--project-path", project_dir],
         capture_output=True, text=True, timeout=10,
     )
     return result.stdout, result.stderr, result.returncode
@@ -44,6 +52,21 @@ def read_events(project_dir: str) -> list[dict]:
 def project_dir():
     with tempfile.TemporaryDirectory() as tmpdir:
         os.makedirs(os.path.join(tmpdir, ".godotmaker"))
+        with open(
+            os.path.join(tmpdir, ".godotmaker", "stage_schemas.json"),
+            "w",
+            encoding="utf-8",
+        ) as handle:
+            json.dump({}, handle)
+        yield tmpdir
+
+
+@pytest.fixture
+def gated_project_dir():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        stage_dir = os.path.join(tmpdir, ".godotmaker")
+        os.makedirs(stage_dir)
+        shutil.copy2(SCHEMA, os.path.join(stage_dir, "stage_schemas.json"))
         yield tmpdir
 
 
@@ -180,3 +203,147 @@ def test_malformed_extra_no_equals_exits_2(project_dir):
 def test_malformed_extra_empty_key_exits_2(project_dir):
     _, stderr, code = run(project_dir, "scaffold", "--=value")
     assert code == 2
+
+
+def test_invalid_evaluate_has_no_event_or_archive_side_effects(gated_project_dir):
+    _, stderr, code = run(gated_project_dir, "evaluate", "--tag=v0.1.0")
+
+    assert code == 3
+    assert "evaluation.json" in stderr
+    assert read_events(gated_project_dir) == []
+    assert not os.path.exists(
+        os.path.join(gated_project_dir, ".godotmaker", "evaluation-runs")
+    )
+
+
+def test_diligence_failure_has_no_event_side_effect(gated_project_dir):
+    with open(os.path.join(gated_project_dir, "PLAN.md"), "w", encoding="utf-8") as handle:
+        handle.write("| Task | Status |\n| work | verified |\n")
+    with open(
+        os.path.join(gated_project_dir, ".godotmaker", "metrics_current.jsonl"),
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        handle.write(json.dumps({
+            "event": "subagent_start",
+            "agent_id": "worker-1",
+            "role": "worker",
+        }) + "\n")
+
+    _, stderr, code = run(gated_project_dir, "build")
+
+    assert code == 3
+    assert "verifier" in stderr
+    assert "reviewer" in stderr
+    assert read_events(gated_project_dir) == []
+
+
+def test_non_worker_completion_ignores_malformed_metrics(gated_project_dir):
+    with open(
+        os.path.join(gated_project_dir, ".godotmaker", "verify_report.json"),
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        json.dump({"status": "passed"}, handle)
+    with open(
+        os.path.join(gated_project_dir, ".godotmaker", "metrics_current.jsonl"),
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        handle.write('{"event": "truncated')
+
+    _, stderr, code = run(gated_project_dir, "verify")
+
+    assert code == 0, stderr
+    assert [event["role"] for event in read_events(gated_project_dir)] == ["verify"]
+
+
+def test_worker_completion_names_malformed_metrics_without_side_effect(
+    gated_project_dir,
+):
+    with open(
+        os.path.join(gated_project_dir, "PLAN.md"), "w", encoding="utf-8"
+    ) as handle:
+        handle.write("| Task | Status |\n| work | verified |\n")
+    with open(
+        os.path.join(gated_project_dir, ".godotmaker", "metrics_current.jsonl"),
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        handle.write('{"event": "truncated')
+
+    _, stderr, code = run(gated_project_dir, "build")
+
+    assert code == 3
+    assert ".godotmaker/metrics_current.jsonl is not valid JSONL" in stderr
+    assert read_events(gated_project_dir) == []
+
+
+def test_ordinary_and_handoff_fixgap_each_append_once(gated_project_dir):
+    _, stderr, code = run(gated_project_dir, "fixgap")
+    assert code == 0, stderr
+
+    with open(os.path.join(gated_project_dir, "GAP.md"), "w", encoding="utf-8") as handle:
+        handle.write("# Evaluator-owned gap\n")
+    _, stderr, code = run(
+        gated_project_dir,
+        "fixgap",
+        "--outcome=handoff",
+        "--next_role=evaluate",
+    )
+    assert code == 0, stderr
+
+    events = read_events(gated_project_dir)
+    assert len(events) == 2
+    assert events[0]["role"] == "fixgap"
+    assert events[1]["outcome"] == "handoff"
+    assert events[1]["next_role"] == "evaluate"
+
+
+def test_codex_published_runtime_enforces_before_append():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, "project.godot"), "w", encoding="utf-8") as handle:
+            handle.write("[application]\nconfig/name=\"Gate smoke\"\n")
+        tools_dir = os.path.join(REPO_ROOT, "tools")
+        sys.path.insert(0, tools_dir)
+        try:
+            import publish
+
+            target = Path(tmpdir)
+            publish.create_project_config(target, publish.AGENT_CODEX)
+            publish.publish_directory(
+                Path(REPO_ROOT) / "hooks",
+                target / ".godotmaker" / "hooks",
+                "hooks/",
+            )
+            publish.publish_directory(
+                Path(REPO_ROOT) / "tools",
+                target / "tools",
+                "tools/",
+            )
+            publish.deploy_stage_schemas(Path(REPO_ROOT), target)
+        finally:
+            sys.path.pop(0)
+
+        published_script = os.path.join(tmpdir, "tools", "append_stage_event.py")
+        _, stderr, code = run_script(published_script, tmpdir, "evaluate", "--tag=v0.1.0")
+        assert code == 3
+        assert "evaluation.json" in stderr
+        assert read_events(tmpdir) == []
+        assert not os.path.exists(os.path.join(tmpdir, ".godotmaker", "evaluation-runs"))
+
+        _, stderr, code = run_script(published_script, tmpdir, "fixgap")
+        assert code == 0, stderr
+        with open(os.path.join(tmpdir, "GAP.md"), "w", encoding="utf-8") as handle:
+            handle.write("# Evaluator-owned gap\n")
+        _, stderr, code = run_script(
+            published_script,
+            tmpdir,
+            "fixgap",
+            "--outcome=handoff",
+            "--next_role=evaluate",
+        )
+        assert code == 0, stderr
+        events = read_events(tmpdir)
+        assert [event["role"] for event in events] == ["fixgap", "fixgap"]
+        assert events[1]["outcome"] == "handoff"

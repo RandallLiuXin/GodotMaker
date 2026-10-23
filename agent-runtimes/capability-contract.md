@@ -1,48 +1,54 @@
-# GodotMaker Agent Capability Contract
+# GodotMaker Agent Operation Contract
 
-This contract defines the runtime-independent capabilities required to run the
-GodotMaker pipeline. Runtime-specific references such as
-`agent-runtimes/<agent>/references/runtime-mapping.md` map these capabilities
-to the tools, permissions, and project-local surfaces available in a selected
-coding agent.
+This is the canonical runtime-independent operation contract for the published
+GodotMaker pipeline and its supporting skills. Runtime mappings under
+`agent-runtimes/<agent>/references/runtime-mapping.md` must contain every
+operation in this table exactly once.
 
-Every runtime mapping must classify each capability as one of:
+Each runtime mapping classifies an operation as exactly one of:
 
-- `native`: directly supported by the runtime.
-- `emulated`: supported by a documented fallback with equivalent user-visible
-  semantics.
-- `gated`: unsupported unless a precondition is satisfied; the agent must stop
-  with a clear handoff instead of silently degrading.
+- `native`: the runtime directly provides the invocation path.
+- `emulated`: GodotMaker provides a documented adapter or fallback with the
+  same user-visible result.
+- `gated`: the invocation path works only after a stated precondition; the
+  stage must stop before dependent work when the precondition is not met.
+- `unsupported`: no contract-compliant invocation path exists for that
+  runtime. A dependent stage must stop and name a supported alternative.
 
-## Required Capabilities
+## Canonical Operations
 
-| Capability | Contract |
+| Operation | Contract |
 |---|---|
-| `invoke_stage` | Run a GodotMaker stage entrypoint such as scaffold, gdd, asset, build, verify, evaluate, fixgap, accept, or finalize through the selected runtime's native invocation surface. |
-| `read_project_config` | Read the published project configuration to discover `godot_path`, project settings, and any selected-agent runtime roots before executing a stage. |
-| `read_skill_reference` | Resolve role-local references, templates, helper docs, and supporting skills from the published project-local framework tree. |
-| `dispatch_worker` | Delegate or otherwise isolate implementation work with enough context to follow role locks, file ownership, PLAN/GAP scope, hooks, and reporting rules. |
-| `dispatch_reviewer` | Delegate or run review against integrated work, preserving the reviewer report contract and triage rules. |
-| `dispatch_verifier` | Delegate or run verification checks, preserving the verifier report contract and failure-to-task conversion rules. |
-| `track_plan` | Maintain visible task/checklist state for multi-step work so the user can see active, pending, and completed framework work. |
-| `run_shell_command` | Execute local commands required by the framework and project, capture output honestly, and report skipped or failed commands explicitly. |
-| `access_godot_mcp` | Reach the Godot MCP server, or stop with a documented gate when MCP is required but unavailable. |
-| `apply_permission_policy` | Avoid expected framework commands deadlocking on interactive permission prompts; apply the selected runtime's sandbox, approval, or hook policy explicitly. |
-| `detect_worktree_state` | Detect whether execution is in a normal checkout, an isolated workspace, a linked worktree, or a detached-head/sandbox environment before branch or delegation decisions. |
-| `create_or_use_isolated_workspace` | Create, reuse, or deliberately avoid isolated workspaces while keeping project-local framework files available to delegated execution. |
-| `finish_branch_or_handoff` | Finish work through a branch, commit, push, PR, or host-application handoff that matches the current checkout and permission state. |
+| `invoke_stage` | Run a GodotMaker stage entrypoint such as scaffold, gdd, asset, build, verify, evaluate, fixgap, accept, or finalize through the selected runtime's stage invocation surface. |
+| `invoke_supporting_skill` | Load a published supporting skill in the current session without assuming another runtime's command syntax or tool name. |
+| `read_project_config` | Read the selected runtime's published project configuration to discover `godot_path`, project settings, and runtime roots before executing a dependent operation. |
+| `read_skill_reference` | Resolve references, templates, scripts, tools, and bundled docs relative to the active published skill directory. No skill may depend on a Claude-only skill-root token. |
+| `dispatch_worker` | Run an implementation worker with the required role definition, brief, file ownership, isolation, and report contract. |
+| `dispatch_reviewer` | Run independent review against integrated work while preserving the reviewer report and triage contract. |
+| `dispatch_verifier` | Run verification while preserving the verifier report and failure-to-task conversion contract. |
+| `dispatch_analyst` | Run image/audio asset inspection with the analyst role and its restricted input/output contract. |
+| `dispatch_asset_producer` | Run one generated-asset production unit with the asset-producer role and selected provider contract. |
+| `dispatch_decomposer` | Run GDD decomposition packages with the decomposer role and declared owned files. |
+| `dispatch_gdd_auditor` | Run an independent GDD audit pass with the gdd-auditor role and bounded question contract. |
+| `track_plan` | Maintain visible session task state for multi-step work, separate from project artifacts such as `PLAN.md` and `GAP.md`. |
+| `ask_user_question` | Ask an interactive question when possible, or use the documented non-interactive gate/fallback without inventing an answer. |
+| `classify_repair_attempt` | Apply `repair-attempt-accounting.md` to distinguish dispatch count from evidence-complete production repair attempts. |
+| `inspect_images` | Execute the selected VQA or analyst image-inspection route, including runtime-native, Codex-selected, or API-backed paths, and produce the required report/log. |
+| `generate_images` | Execute the selected image provider route and preserve the generated-path claim and provider report contracts. |
+| `run_shell_command` | Execute local framework/project commands with the correct working directory and report exit status, important output, skips, and failures honestly. |
+| `access_godot_mcp` | Reach the runtime's Godot inspection path, whether a registered MCP server or a documented equivalent adapter, and fail closed when it is unavailable. |
+| `apply_permission_policy` | Apply the selected runtime's permission, sandbox, trust, role-lock, and hook rules without deadlocking expected framework commands or bypassing denials. |
+| `forward_hook_context` | Preserve non-blocking hook `additionalContext` in the active session when that runtime installs a hook adapter; do not silently discard returned guidance. |
+| `detect_worktree_state` | Detect normal checkout, linked worktree, isolated host workspace, detached HEAD, or sandbox state before delegation and finish decisions. |
+| `create_or_use_isolated_workspace` | Create, reuse, or deliberately avoid isolation while ensuring published runtime resources are available to delegated work. |
+| `finish_branch_or_handoff` | Finish through the safe branch/commit/push/PR or host handoff path allowed by the current checkout and permission state. |
 
-## Runtime Mapping Requirements
+## Mapping Rules
 
-Runtime mappings must not treat one agent's file layout or tool names as the
-canonical contract. They must document:
+Every runtime mapping must use a three-column `Operation | Class | Invocation
+path` table. The operation column must equal this canonical set: no omissions,
+duplicates, or runtime-only operation names. Explanatory sections may add
+constraints, but may not silently change the table's classification or path.
 
-- how the runtime invokes GodotMaker stages;
-- where published project configuration and references are expected to live;
-- how delegation, review, and verification are performed or gated;
-- how planning, shell commands, MCP, hooks, permissions, and sandboxing work;
-- how normal checkouts, worktrees, detached heads, and host-managed task
-  environments affect finish behavior.
-
-If a capability is gated, the stage must stop before making changes that depend
-on that capability.
+When an operation is `gated` or `unsupported`, stop before making changes that
+depend on it and report the smallest setup change or handoff that can continue.

@@ -79,20 +79,21 @@ Build a single **expected-mechanics checklist** = (every `[<Tag>-MN]` from Tag M
 
 Build a **playable-unit checklist** from PLAN.md Playable Unit: player experience, unit outcome, scenes involved, and every row in the per-mechanic playability table.
 
-Key `playable_unit.rows` by mechanic id, for example `v0.1.0-M1`.
+Key `playable_unit.rows` by the canonical mechanic id without display brackets,
+for example `v0.1.0-M1` (not `[v0.1.0-M1]` and not a row name).
 
 ### Phase 2 — Maintain the e2e/ suite
 
-E2E tests live in a flat `e2e/` directory (no per-tag subdirectories). Each test file is named after the mechanic id it covers, e.g. `e2e/test_v0.1.0_M1_wasd_movement.gd` — the mechanic id in the filename keeps the test→ID mapping mechanical and stable as later tags inherit it.
+E2E tests live in a flat `e2e/` directory (no per-tag subdirectories). All evaluator-owned E2E tests are Python pytest modules with canonical `test_*.py` names. Never create or update `.gd` E2E tests. Each test file is named after the mechanic id it covers, e.g. `e2e/test_v0_1_0_M1_wasd_movement.py` — the mechanic id in the filename keeps the test→ID mapping mechanical and stable as later tags inherit it.
 
 1. Read `.claude/skills/godot-e2e/SKILL.md` for the API.
 2. Confirm `e2e/conftest.py` exists at the e2e root (created by gm-scaffold).
-3. **Add tests for new Tag Mechanics:** for each `[<Tag>-MN]` in PLAN.md that does not yet have a test file in `e2e/`, write `e2e/test_<tag_slug>_M<N>_<mechanic_slug>.gd` (or `.py`). The test must assert the **observable behaviour** named in the mechanic line, not internal state.
-4. **Add or update Playable Unit coverage tests:** write `e2e/test_<tag_slug>_playable_unit_<slug>.gd` (or `.py`) files until every Playable Unit table row is covered. Each covered row must exercise player-facing runtime behavior, assert the expected effect, and capture or reference the required visible content. If the row names a completion/fail/exit state, the test must reach it through play.
+3. **Add tests for new Tag Mechanics:** for each `[<Tag>-MN]` in PLAN.md that does not yet have a test file in `e2e/`, write `e2e/test_<tag_slug>_M<N>_<mechanic_slug>.py`. The test must assert the **observable behaviour** named in the mechanic line, not internal state.
+4. **Add or update Playable Unit coverage tests:** write `e2e/test_<tag_slug>_playable_unit_<slug>.py` files until every Playable Unit table row is covered. Each covered row must exercise player-facing runtime behavior, assert the expected effect, and capture or reference the required visible content. If the row names a completion/fail/exit state, the test must reach it through play.
 5. **Verify Inherited Mechanic tests still exist:** for each `[<prev>-MN]` in PLAN.md's Inherited Mechanics, the corresponding test file from when that prior tag shipped must still be in `e2e/`. If a file is missing (e.g. accidentally deleted), restore it by reading `docs/tags/<prev>/PLAN.md` and re-implementing the test.
-6. **Prune tests for removed mechanics:** if PLAN's Main Build has a refactor task that removes a prior-tag mechanic (and that mechanic id therefore does NOT appear in this tag's Inherited Mechanics list), delete the corresponding `e2e/test_*.gd` file. Removal is intentional, refactor task is the audit trail.
+6. **Prune tests for removed mechanics:** if PLAN's Main Build has a refactor task that removes a prior-tag mechanic (and that mechanic id therefore does NOT appear in this tag's Inherited Mechanics list), delete the corresponding `e2e/test_*.py` file. Removal is intentional, refactor task is the audit trail.
 7. **Add scene-transition tests** for new scenes added in this tag.
-8. Run the full suite: `godot-e2e e2e/ -v`
+8. Confirm pytest collection with `python -m pytest --collect-only e2e/ -q`, then run the full suite: `godot-e2e e2e/ -v`.
 9. Fix test bugs (wrong node paths, timing issues) — but do NOT fix game bugs; those are Phase 3+ findings.
 
 **E2E repair boundary:**
@@ -135,10 +136,10 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 6. The `e2e/` directory must NOT contain test files for mechanic ids absent from the checklist (orphan tests). Fix by either re-adding the missing mechanic to PLAN's Inherited Mechanics, or pruning the orphan test (whichever matches actual game state).
 
 **Visual cross-check (per scene listed in SCENES.md):**
-7. Capture screenshots under `e2e/screenshots/`. Use `game.screenshot("e2e/screenshots/scene_{name}.png")` for static scenes. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Dynamic Mode". Treat `e2e/screenshots/` as latest-run output only.
+7. Capture screenshots under `e2e/screenshots/`. Use `game.screenshot("e2e/screenshots/scene_{name}.png")` for static scenes. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Question Mode". Treat `e2e/screenshots/` as latest-run output only.
 8. Inspect the captured screenshots by dispatching a subagent to run the
-   `visual-qa` skill in Question mode. Do not compare screenshots against
-   `references/scene_{name}.png`.
+   `visual-qa` skill in Question mode. Judge them only against observable scene
+   requirements and the applicable rules selected from `DESIGN.md`.
 
    **Visual binding preflight.** Before calling visual-qa, check the scene's
    `Asset bindings` rows. Each non-`procedural` / non-`UI text` /
@@ -188,7 +189,6 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
      --subject {character|environment|ui|mixed} --name scene_{name} --kind scene \
      --capture e2e/screenshots/scene_{name}.png \
      --requirement "{one acceptance criterion or contract row}" \
-     --reference references/scene_{name}.png \
      --output .godotmaker/design-checks/scene_{name}-request.json
    ```
 
@@ -202,12 +202,6 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
    `not_applicable` with a reason rather than being dropped. Render the
    question text with `--question` and pass it verbatim as `--question` to
    visual-qa.
-
-   `--reference` is provenance context only. Do not ask whether the capture
-   resembles the reference: a different composition in the same visual language
-   is not a defect, and copying the reference's composition does not excuse a
-   rule violation. When a reference and `DESIGN.md` disagree, `DESIGN.md` wins
-   and the disagreement goes in `visual_checks.<scene>.notes`.
 
    **Grading design rule findings.** Transcribe the `Design Rule Findings`
    block visual-qa returned into
@@ -360,9 +354,9 @@ Write evaluation results to `.godotmaker/evaluation.json`:
   "playable_unit": {
     "result": "pass | fail",
     "rows": {
-      "<mechanic_id_or_row_name>": {
+      "<mechanic_id>": {
         "result": "pass | fail",
-        "test": "e2e/test_<tag_slug>_playable_unit_<slug>.gd",
+        "test": "e2e/test_<tag_slug>_playable_unit_<slug>.py",
         "evidence": [
           "<runtime behavior, assertion, screenshot, video frame, or log path>",
           "observed_gap: <observable state or behavior not proven by E2E>",

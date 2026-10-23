@@ -31,8 +31,8 @@
         "card-kit",
         "compact-prop-pack",
         "platform-strip",
+        "portrait",
         "scene-prop-set",
-        "screen-reference",
         "tileset"
       ]
     },
@@ -53,7 +53,7 @@
         "properties": {
           "role": {
             "type": "string",
-            "enum": ["canonical", "style", "screen"]
+            "enum": ["canonical", "style"]
           },
           "path": {
             "type": "string",
@@ -64,7 +64,7 @@
     },
     "provider": {
       "type": "string",
-      "enum": ["native", "codex", "gemini", "openai", "wan"]
+      "enum": ["native", "codex", "gemini", "openai", "grok", "wan"]
     },
     "spec": {
       "type": "object"

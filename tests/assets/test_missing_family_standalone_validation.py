@@ -79,8 +79,8 @@ def test_final_validation_mapping_preserves_string_fallback_notes():
 def test_skill_local_adapters_reject_a_legal_request_for_another_family(tmp_path):
     request = {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."}
     for family in (
-        "platform-strip", "screen-reference", "character-bundle", "fx-bundle",
-        "compact-prop-pack", "scene-prop-set",
+        "platform-strip", "character-bundle", "fx-bundle",
+        "compact-prop-pack", "scene-prop-set", "portrait",
     ):
         with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
             _source_adapter(family).compile_and_validate(
@@ -383,86 +383,6 @@ def test_platform_strip_splits_before_per_cell_finalization(tmp_path):
         assert not any(other in pixels for other_name, other in colors.items() if other_name != name)
 
 
-def test_screen_reference_completes_at_l1_without_invoking_runtime_ladder(tmp_path):
-    reference = tmp_path / "references" / "title.png"
-    reference.parent.mkdir()
-    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
-    raw_source = tmp_path / ".godotmaker/asset-generation/sources/title_source.png"
-    raw_source.parent.mkdir(parents=True)
-    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(raw_source)
-    result = compile_and_validate(
-        {
-            "asset_type": "screen-reference",
-            "asset_id": "title",
-            "brief": "A title scene.",
-        },
-        {
-            "asset_type": "screen-reference",
-            "outputs": [
-                {"role": "reference", "name": "title", "path": "references/title.png"}
-            ],
-            "sources": [
-                {
-                    "path": ".godotmaker/asset-generation/sources/title_source.png",
-                    "layout": "single",
-                }
-            ],
-            "previews": [],
-            "validation": {"passed": False},
-        },
-        project_root=tmp_path,
-        godot_path="not-used",
-    )
-    assert result["validation"] == {"passed": True, "levels": {"L0": True, "L1": True}}
-
-
-def _screen_reference_request() -> dict:
-    return {
-        "asset_type": "screen-reference",
-        "asset_id": "title",
-        "brief": "A title scene.",
-    }
-
-
-def _screen_reference_result() -> dict:
-    return {
-        "asset_type": "screen-reference",
-        "outputs": [
-            {"role": "reference", "name": "title", "path": "references/title.png"}
-        ],
-        "sources": [
-            {
-                "path": ".godotmaker/asset-generation/sources/title_source.png",
-                "layout": "single",
-            }
-        ],
-        "previews": [],
-        "validation": {"passed": True},
-    }
-
-
-def test_screen_reference_rejects_a_missing_deterministic_raw_source(tmp_path):
-    reference = tmp_path / "references" / "title.png"
-    reference.parent.mkdir()
-    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
-
-    actual = compile_and_validate(
-        _screen_reference_request(),
-        _screen_reference_result(),
-        project_root=tmp_path,
-        godot_path="not-used",
-    )
-
-    assert actual["validation"] == {
-        "passed": False,
-        "levels": {"L0": True, "L1": False},
-        "notes": (
-            "raw screen-reference source is not a non-empty file: "
-            ".godotmaker/asset-generation/sources/title_source.png"
-        ),
-    }
-
-
 def _png_chunk(kind: bytes, data: bytes) -> bytes:
     return (
         struct.pack(">I", len(data))
@@ -493,61 +413,6 @@ def _decompression_bomb_png() -> bytes:
             _png_chunk(b"IEND", b""),
         )
     )
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        pytest.param(
-            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02",
-            id="truncated-ihdr",
-        ),
-        pytest.param(b"not a png", id="non-png"),
-        pytest.param(_zero_width_png(), id="zero-width"),
-        pytest.param(_decompression_bomb_png(), id="decompression-bomb"),
-    ],
-)
-def test_screen_reference_rejects_undecodable_pngs(tmp_path, payload):
-    reference = tmp_path / "references" / "title.png"
-    reference.parent.mkdir()
-    reference.write_bytes(payload)
-
-    actual = compile_and_validate(
-        _screen_reference_request(),
-        _screen_reference_result(),
-        project_root=tmp_path,
-        godot_path="not-used",
-    )
-
-    assert actual["validation"] == {
-        "passed": False,
-        "levels": {"L0": True, "L1": False},
-        "notes": "reference image is not a decodable PNG: references/title.png",
-    }
-    assert str(tmp_path) not in actual["validation"]["notes"]
-
-
-def test_screen_reference_rejects_png_with_bad_idat_crc(tmp_path):
-    reference = tmp_path / "references" / "title.png"
-    reference.parent.mkdir()
-    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
-    payload = bytearray(reference.read_bytes())
-    idat = payload.index(b"IDAT")
-    payload[idat + 4] ^= 1
-    reference.write_bytes(payload)
-
-    actual = compile_and_validate(
-        _screen_reference_request(),
-        _screen_reference_result(),
-        project_root=tmp_path,
-        godot_path="not-used",
-    )
-
-    assert actual["validation"] == {
-        "passed": False,
-        "levels": {"L0": True, "L1": False},
-        "notes": "reference image is not a decodable PNG: references/title.png",
-    }
 
 
 @pytest.mark.parametrize(
@@ -638,7 +503,7 @@ def test_background_records_the_bytes_a_passing_ladder_examined(monkeypatch, tmp
 
     The stable path is derived from `asset_id`, so a regeneration overwrites the
     exact PNG a passing result names. The record is what the entry builder
-    recomputes from disk before it writes `ready`.
+    recomputes from disk before it writes `generated`.
     """
     source = tmp_path / "assets/generated/background-map/sky/sky.png"
     source.parent.mkdir(parents=True)

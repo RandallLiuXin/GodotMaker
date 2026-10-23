@@ -16,7 +16,6 @@ my-game/
 ├── DESIGN.md
 ├── ASSETS.md
 ├── TOC.md
-├── MEMORY.md
 ├── test/
 ├── e2e/
 ├── CLAUDE.md
@@ -52,7 +51,7 @@ These Markdown files are the "source of truth" the AI reads before making decisi
 
 **`PLAN.md`** — The task list. The AI tracks every implementation task here — what has been done, what is pending, what failed. You can read it to see progress. The AI updates it automatically; editing it yourself is not recommended.
 
-**`STRUCTURE.md`** — The technical architecture: which components and systems exist, what data each component holds, what each system does. Written by `/gm-gdd`, then updated by `/gm-build`. Reading it gives you the clearest picture of how the game code is organised.
+**`STRUCTURE.md`** — The authoritative technical architecture: subsystem ownership, dependencies, ordering constraints, stable invariants, components, and systems as of the end of the current tag. Written by `/gm-gdd`, then reconciled by `/gm-build` and `/gm-finalize`.
 
 **`SCENES.md`** — A description of every scene: what it contains and how the game objects in it map to ECS entities. Written by `/gm-gdd`; the workflow uses it as a blueprint when generating `.tscn` files.
 
@@ -61,8 +60,6 @@ These Markdown files are the "source of truth" the AI reads before making decisi
 **`ASSETS.md`** — A list of every asset the game needs: the logical name, the file path, and the generation settings used. Written and updated by `/gm-asset`. If you add your own art files, the workflow updates this list to include them.
 
 **`TOC.md`** — Table of contents for all the documents above. Generated automatically. Useful as a quick index if you're not sure which document to look at.
-
-**`MEMORY.md`** — The cross-tag record of stable architecture decisions and project constraints. It does not contain task history, runtime failures, gotchas, workarounds, reviewer triage, or other dynamic learning. Workers cannot write it.
 
 ---
 

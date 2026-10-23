@@ -1,0 +1,12 @@
+{
+  "asset_type": "portrait",
+  "asset_id": "player_portrait",
+  "brief": "Bust portrait of the player character for the 140x140 character-select slot, facing three-quarter left with a determined expression.\n\n## Visual Identity\nA hand-painted frontier adventure with warm dusk light.\n\n## Don't\n- Do not add text, frames, or UI chrome to character art.",
+  "references": [
+    {
+      "role": "canonical",
+      "path": "res://assets/generated/character-bundle/player_animation_runtime/player_animation_runtime_canonical.png"
+    }
+  ],
+  "provider": "codex"
+}

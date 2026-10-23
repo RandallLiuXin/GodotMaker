@@ -7,7 +7,7 @@ description: Generate and validate a fixed-viewport background, map base, or par
 
 Use this skill for a runtime background, map base, parallax plate, fixed battle
 background, title illustration, or other fixed-viewport scenic asset. Do not
-use it for scene references, actors, foreground props, UI, or collision-bearing
+use it for actors, foreground props, UI, or collision-bearing
 geometry. Background-map produces non-pixel-art scenic images only: do not
 request pixel art or use nearest-neighbor processing to imitate it.
 
@@ -36,7 +36,7 @@ blocker naming the reference role, its path, and the rule.
 
 With no references, generate from the brief alone. With one or more references,
 validate every declared local path is a readable image, preserve its
-`canonical`, `style`, or `screen` role, and send the actual image to the
+`canonical` or `style` role, and send the actual image to the
 selected provider. A textual path, a prompt-only description, or a silently
 omitted reference is a failure.
 
@@ -45,7 +45,7 @@ dispatch, while retaining the request path and role in provenance. Providers
 receive the resulting local image path as an attachment, never the literal
 `res://` text.
 
-Use exactly the declared `provider` (`native`, `codex`, `gemini`, `openai`, or `wan`).
+Use exactly the declared `provider` (`native`, `codex`, `gemini`, `openai`, `grok`, or `wan`).
 Do not substitute another provider. Read its provider document before source
 generation. If it cannot execute its declared image-attachment path for every
 reference, STOP with `validation.passed: false` and create no final runtime
@@ -93,7 +93,7 @@ existing real image.
 
 ## Produce
 
-1. Use the brief and actual style or screen references to establish the scene
+1. Use the brief and any actual style references to establish the scene
    role, viewpoint, target aspect, orientation, layer responsibility, and
    non-pixel-art style language.
 2. Generate a source image with no gameplay actors, pickups, hazards, UI,

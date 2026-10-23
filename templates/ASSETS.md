@@ -12,9 +12,9 @@
 
 ## Visual Style Source
 
-The project visual contract lives in `DESIGN.md`. Generated scene references,
-character-bundle identity anchors, and manifest source relationships are the
-primary style anchors after they exist.
+The project visual contract lives in `DESIGN.md`. User-provided style or
+identity images and character-bundle identity anchors are optional provider
+conditioning and provenance; they do not replace that contract.
 
 ## Gameplay Actor Asset Rows
 
@@ -29,8 +29,10 @@ For current-tag gameplay actors:
    production evidence, not Asset Table rows.
 3. Add portrait rows when a current-tag character appears in a
    large UI display slot.
-   Portrait rows use the supported `background-map` family and its runtime
-   path convention.
+   Portrait rows use the `portrait` family and its runtime path convention.
+   The character-bundle identity anchor is an optional `canonical` reference
+   for that portrait, not a row of its own. `background-map` stays scenic
+   backgrounds only.
 4. Bind gameplay runtime rows and UI display rows separately in the Visual
    Asset Contract.
 5. Set character-bundle action names from current-tag gameplay behavior and
@@ -44,23 +46,22 @@ For current-tag gameplay actors:
      `Tag` is the tag that introduced the asset. A row is one logical asset.
      Runtime Type and Runtime Path are the sole worker handoff: they must name
      the final loadable Godot resource, never a source sheet, atlas, candidate,
-     report, or manifest pointer. Reference-only rows use Runtime Type
-     `reference`, complete as `source_ready`, and never enter a runtime snapshot.
-     Runtime-family source and reference outputs remain result evidence, not
-     additional rows. -->
+     report, or manifest pointer. Source and reference outputs remain result
+     evidence, not additional rows.
+     Status moves forward only: MISSING -> provided | generated | deferred. -->
 
 | # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |
 |---|-----|------|------|------|-------------------|--------------|--------------|--------|
 | 1 | v0.1.0 | player_animation_runtime | animation | frame output | family=character-bundle; actions=from_current_tag_behavior | SpriteFrames | res://assets/generated/character-bundle/player_animation_runtime/player_animation_runtime.tres | MISSING |
-| 2 | v0.1.0 | player_portrait | portrait | 256x256 px | family=background-map; role=player; source=character-bundle identity anchor | Texture2D | res://assets/generated/background-map/player_portrait/player_portrait.png | MISSING |
+| 2 | v0.1.0 | player_portrait | portrait | 256x256 px | family=portrait; role=player; reference=character-bundle identity anchor | Texture2D | res://assets/generated/portrait/player_portrait/player_portrait.png | MISSING |
 | 3 | v0.1.0 | action_button | ui | 96x48 px | family=ui-kit; component=button | Theme | res://assets/generated/ui-kit/action_button/action_button.tres | MISSING |
 | 4 | v0.1.0 | background_sky | background | 1280x720 | family=background-map | Texture2D | res://assets/generated/background-map/background_sky/background_sky.png | MISSING |
 | ... | ... | ... | ... | ... | ... | ... | ... | ... |
 
 ## Visual Asset Contract
 
-<!-- Runtime contract for visible assets. Each gameplay-visible object, non-text
-     UI element, and scene reference should map to an ASSETS.md row or to
+<!-- Runtime contract for visible assets. Each gameplay-visible object and non-text
+     UI element should map to an ASSETS.md row or to
      `procedural`, `UI text`, or `not required this tag`.
      Use `asset_name / assets/...` for concrete asset bindings.
      `Runtime Size` uses concrete px, `% viewport height`, or both.
@@ -70,7 +71,7 @@ For current-tag gameplay actors:
 | Tag | Scene / Mechanic | Visible Object | Asset Row / Path | Runtime Size | Visual Role | Readability Requirement | Source |
 |-----|------------------|----------------|------------------|--------------|-------------|-------------------------|--------|
 | v0.1.0 | Gameplay / [v0.1.0-M1] | player character | player_animation_runtime / assets/generated/character-bundle/player_animation_runtime/player_animation_runtime.tres | 8% viewport height / 58px tall at 1280x720 | controllable player | readable silhouette and current-tag actions visible in frame sequences | derived from character-bundle identity anchor |
-| v0.1.0 | Character Select | player portrait | player_portrait / assets/generated/background-map/player_portrait/player_portrait.png | 140x140 px card slot | selectable character identity | readable in UI slots larger than gameplay runtime frames | derived from character-bundle identity anchor |
+| v0.1.0 | Character Select | player portrait | player_portrait / assets/generated/portrait/player_portrait/player_portrait.png | 140x140 px card slot | selectable character identity | readable in UI slots larger than gameplay runtime frames | derived from character-bundle identity anchor |
 | v0.1.0 | Main Menu | title text | UI text | viewport-relative | menu identity | readable at target resolution | procedural/UI |
 | v0.1.0 | HUD / [v0.1.0-M1] | action button | action_button / assets/generated/ui-kit/action_button/action_button.tres | 96x48 px target | HUD control | readable touch target at target resolution | derived from UI component sheet |
 
@@ -88,7 +89,7 @@ For current-tag gameplay actors:
 - **Loop:** per action metadata
 - **Curation report:** .godotmaker/asset-generation/curation/player_actions.json
 - **Selected candidate:** accepted character action sheet
-- **Curation state:** ready
+- **Curation state:** selected
 
 ### {animation_runtime_name} (tag: vX.Y.Z)
 - **Family:** character-bundle

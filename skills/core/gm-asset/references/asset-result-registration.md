@@ -13,12 +13,9 @@ Runtime Path must describe the final resource a worker loads. A PNG is valid
 for `Texture2D`; `AtlasTexture`, `SpriteFrames`, `Theme`,
 `StyleBoxTexture`, and `TileSet` must use their final native resource path.
 
-For runtime families, `reference` outputs are already-validated source or
-canonical evidence: they do not create a logical row, enter the registration
-comparison set, or appear in worker snapshots. A reference-only family such as
-`screen-reference` registers its one reference output with Runtime Type
-`reference` and Status `source_ready`; its path is a project-local relative
-path such as `references/title_screen.png`, not `res://`.
+`reference` outputs are already-validated source or canonical evidence: they do
+not create a logical row, enter the registration comparison set, or appear in
+worker snapshots. Only runtime outputs are registered in `ASSETS.md`.
 
 ## Atomic registration
 
@@ -37,7 +34,7 @@ The command fails before changing `ASSETS.md` if the declared and returned
 runtime logical output sets differ, a runtime output is duplicated or unknown,
 a path escapes the project or does not exist, or Godot cannot load a runtime
 resource as its stated type. Re-registering a completed row also requires the
-existing row's generated path (or reference metadata) to identify the same
+existing row's generated path to identify the same
 production unit; a different unit cannot overwrite it. It never writes only a
 subset of a multi-output production unit.
 

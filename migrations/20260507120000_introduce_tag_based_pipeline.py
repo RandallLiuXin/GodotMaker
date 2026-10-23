@@ -1,8 +1,8 @@
 """Migrate existing projects to the tag-based pipeline layout.
 
 Before: a project has a single root-level GDD.md + PLAN.md + STRUCTURE.md
-+ SCENES.md + ASSETS.md + MEMORY.md describing the entire game in one
-shot. /gm-build runs end-to-end against that single PLAN.
++ SCENES.md + ASSETS.md describing the entire game in one shot. /gm-build
+runs end-to-end against that single PLAN.
 
 After: ROADMAP.md splits the game into SemVer-tagged release tags; root
 docs are scoped to one tag at a time; finished tags are archived to
@@ -36,7 +36,7 @@ import re
 import shutil
 from pathlib import Path
 
-ROOT_DOCS = ("PLAN.md", "STRUCTURE.md", "SCENES.md", "MEMORY.md")
+ROOT_DOCS = ("PLAN.md", "STRUCTURE.md", "SCENES.md")
 INITIAL_TAG = "v0.1.0"
 ROADMAP_FILENAME = "ROADMAP.md"
 TAGS_DIR_REL = Path("docs") / "tags"
@@ -241,7 +241,7 @@ def _render_roadmap(project_name: str, bullets: list[str]) -> str:
 
 <!-- Working docs at the moment of migration were archived to
      docs/tags/v0.1.0/ as a snapshot. The root GDD/PLAN/STRUCTURE/
-     SCENES/ASSETS/MEMORY remain in place; /gm-gdd subsequent-mode
+     SCENES/ASSETS remain in place; /gm-gdd subsequent-mode
      picks them up as the in-progress v0.1.0 working set. -->
 
 {bullet_lines}

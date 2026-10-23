@@ -17,12 +17,14 @@ sys.path.insert(0, os.path.join(
 
 import publish
 import agent_runtime
+from asset_provider_registry import ASSET_IMAGE_PROVIDERS
 from project_config import DEFAULT_CONFIG_TEMPLATE, ProjectConfigResult
 from publish import (
     read_godot_path,
     create_godotmaker_yaml,
     create_project_config,
     deploy_agent_instructions,
+    upgrade_legacy_project_contracts,
     render_agent_instructions,
     ensure_gitattributes,
     ensure_gitignore,
@@ -41,6 +43,146 @@ from publish import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PUBLISHED_PROJECT_CONTRACT_FIXTURES = (
+    REPO_ROOT / "tests" / "fixtures" / "project-contracts"
+)
+
+
+def _run_bundled_asset_commands(
+    project_root: Path, tools_root: Path, skills_root: Path
+) -> None:
+    """Run commands that load bundled asset-skill resources.
+
+    The source planner must load its scheme and succeed. Validator L1 is
+    expected to fail because this smoke only supplies the handoff JSON; reaching
+    that diagnostic proves the commands found and executed their bundled family
+    resources rather than failing during resource discovery.
+    """
+    smoke = project_root / "validator-smoke"
+    smoke.mkdir(parents=True, exist_ok=True)
+
+    ui_request = smoke / "ui-request.json"
+    ui_result = smoke / "ui-result.json"
+    ui_request.write_text(
+        (skills_root / "ui-kit" / "fixtures" / "representative-request.json").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
+    ui_result.write_text(
+        (skills_root / "ui-kit" / "fixtures" / "representative-result.json").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
+    source_plan = smoke / "ui-source-plan.json"
+
+    scene_request = smoke / "scene-request.json"
+    scene_result = smoke / "scene-result.json"
+    scene_report = smoke / "scene-report.json"
+    scene_request.write_text(
+        json.dumps(
+            {
+                "asset_type": "scene-prop-set",
+                "asset_id": "market",
+                "brief": "Two scene props.",
+                "spec": {
+                    "version": 1,
+                    "atlas": {"width": 32, "height": 16},
+                    "slots": [
+                        {"name": "coin", "rect": [0, 0, 16, 16], "source": "coin.png"},
+                        {"name": "chest", "rect": [16, 0, 16, 16], "source": "chest.png"},
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    scene_result.write_text(
+        json.dumps(
+            {
+                "asset_type": "scene-prop-set",
+                "outputs": [
+                    {
+                        "role": "runtime",
+                        "name": name,
+                        "path": f"res://assets/generated/scene-prop-set/market/{name}.tres",
+                        "godot_type": "AtlasTexture",
+                    }
+                    for name in ("coin", "chest")
+                ],
+                "sources": [
+                    {
+                        "path": "res://assets/generated/scene-prop-set/market/market.png",
+                        "layout": "region_atlas",
+                    }
+                ],
+                "previews": [],
+                "validation": {"passed": False},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    ui = subprocess.run(
+        [
+            sys.executable,
+            str(tools_root / "asset_ui_card_validate.py"),
+            "--request", str(ui_request),
+            "--result", str(ui_result),
+            "--project-root", str(project_root),
+            "--godot-path", "godot",
+            "--allow-failure",
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert ui.returncode == 0, ui.stderr
+    ui_validation = json.loads(ui_result.read_text(encoding="utf-8"))["validation"]
+    assert ui_validation["levels"]["L0"] is True
+    assert ui_validation["levels"]["L1"] is False
+
+    planner = subprocess.run(
+        [
+            sys.executable,
+            str(tools_root / "asset_ui_source_sheet_plan.py"),
+            "--request", str(ui_request),
+            "--rendering-medium", "hand-painted fantasy illustration",
+            "--out", str(source_plan),
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert planner.returncode == 0, planner.stderr
+    planned = json.loads(source_plan.read_text(encoding="utf-8"))
+    assert planned["asset_type"] == "ui-kit"
+    assert len(planned["sheets"]) == 2
+
+    scene = subprocess.run(
+        [
+            sys.executable,
+            str(tools_root / "asset_scene_prop_set_validate.py"),
+            "--request", str(scene_request),
+            "--result", str(scene_result),
+            "--report", str(scene_report),
+            "--project-root", str(project_root),
+            "--godot-path", "godot",
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert scene.returncode == 1, scene.stderr
+    scene_validation = json.loads(scene_report.read_text(encoding="utf-8"))["validation"]
+    assert scene_validation["levels"]["L0"] is True
+    assert scene_validation["levels"]["L1"] is False
 
 
 PRIMARY_ROLE_SKILLS = [
@@ -54,6 +196,27 @@ PRIMARY_ROLE_SKILLS = [
     "gm-accept",
     "gm-finalize",
 ]
+
+def test_upgrade_removes_retired_screen_reference_skills_but_preserves_project_images(
+    tmp_path,
+):
+    expected = b"user-owned-image"
+    image = tmp_path / "references" / "scene_main.png"
+    image.parent.mkdir()
+    image.write_bytes(expected)
+    retired_dirs = []
+    for adapter in publish.AGENT_ADAPTERS.values():
+        retired = adapter.skill_dir(tmp_path) / "screen-reference"
+        retired.mkdir(parents=True)
+        (retired / "SKILL.md").write_text("framework-owned", encoding="utf-8")
+        retired_dirs.append(retired)
+
+    removed = publish.remove_retired_framework_files(tmp_path)
+
+    assert set(removed) == set(retired_dirs)
+    assert all(not path.exists() for path in retired_dirs)
+    assert image.read_bytes() == expected
+
 
 def _parse_simple_frontmatter(content: str) -> dict:
     lines = content.splitlines()
@@ -203,7 +366,9 @@ def _publish_claude_project(tmp_path, monkeypatch, before_publish=None):
     return target
 
 
-def _publish_opencode_project(tmp_path, monkeypatch, before_publish=None):
+def _publish_opencode_project(
+    tmp_path, monkeypatch, before_publish=None, level="FRESH"
+):
     from _version import SemVer
 
     target = tmp_path / "target"
@@ -219,7 +384,12 @@ def _publish_opencode_project(tmp_path, monkeypatch, before_publish=None):
     monkeypatch.setattr(
         publish,
         "check_version_upgrade",
-        lambda *_args, **_kwargs: (True, "FRESH", None, SemVer(0, 3, 5)),
+        lambda *_args, **_kwargs: (
+            True,
+            level,
+            None if level == "FRESH" else SemVer(0, 2, 0),
+            SemVer(0, 3, 5),
+        ),
     )
     monkeypatch.setattr(publish, "register_codex_mcp",
                         lambda *_args, **_kwargs: True)
@@ -1021,6 +1191,16 @@ class TestPublishSkills:
 
 
 class TestPublishedAssetRuntime:
+    def test_source_tree_asset_commands_resolve_bundled_skills(self, tmp_path):
+        project_root = tmp_path / "source-project"
+        project_root.mkdir()
+
+        _run_bundled_asset_commands(
+            project_root,
+            REPO_ROOT / "tools",
+            REPO_ROOT / "skills" / "assets",
+        )
+
     @pytest.mark.parametrize(
         "publish_project,skill_root",
         [
@@ -1069,15 +1249,16 @@ class TestPublishedAssetRuntime:
             assert references, f"{skill_name} must reference the published asset runtime"
             for reference in references:
                 if "<provider>" in reference:
-                    providers = ("native", "codex", "gemini", "openai", "wan")
                     assert all(
                         (target / reference.replace("<provider>", provider)).exists()
-                        for provider in providers
+                        for provider in ASSET_IMAGE_PROVIDERS
                     ), f"{skill_name} references missing published provider guides: {reference}"
                 else:
                     assert (target / reference).exists(), (
                         f"{skill_name} references a missing published runtime path: {reference}"
                     )
+            if skill_name == "ui-kit":
+                assert ".agents/skills/ui-kit/references/source-sheet-scheme.json" not in content
 
     @pytest.mark.parametrize("agent", publish.AGENT_CHOICES)
     def test_published_standalone_runners_import_and_validate_without_source_checkout(
@@ -1122,8 +1303,8 @@ tileset = load_runner("published_tileset_validation", "tileset")
 ui_kit = load_runner("published_ui_kit_validation", "ui-kit")
 card_kit = load_runner("published_card_kit_validation", "card-kit")
 background_map = load_runner("published_background_map_validation", "background-map")
+portrait = load_runner("published_portrait_validation", "portrait")
 platform_strip = load_runner("published_platform_strip_validation", "platform-strip")
-screen_reference = load_runner("published_screen_reference_validation", "screen-reference")
 character_bundle = load_runner("published_character_bundle_validation", "character-bundle")
 fx_bundle = load_runner("published_fx_bundle_validation", "fx-bundle")
 compact_prop_pack = load_runner("published_compact_prop_pack_validation", "compact-prop-pack")
@@ -1132,7 +1313,7 @@ assert callable(tileset.compile_and_validate)
 assert callable(ui_kit.compile_and_validate)
 assert callable(card_kit.compile_and_validate)
 assert all(callable(module.compile_and_validate) for module in (
-    background_map, platform_strip, screen_reference, character_bundle,
+    background_map, platform_strip, character_bundle,
     fx_bundle, compact_prop_pack, scene_prop_set,
 ))
 
@@ -1213,7 +1394,7 @@ background_result = {{
     "sources": [{{"path": "res://assets/generated/background-map/sky/sky.png", "layout": "single"}}],
     "previews": [], "validation": {{"passed": False}},
 }}
-for adapter in (platform_strip, screen_reference, character_bundle, fx_bundle, compact_prop_pack, scene_prop_set):
+for adapter in (platform_strip, character_bundle, fx_bundle, compact_prop_pack, scene_prop_set, portrait):
     try:
         adapter.compile_and_validate(background_request, background_result, project_root=target, godot_path="godot")
     except adapter.MissingFamilySkillError as exc:
@@ -1270,6 +1451,11 @@ for adapter, other in ((ui_kit, "card-kit"), (card_kit, "ui-kit")):
             env=environment,
         )
         assert completed.returncode == 0, completed.stderr
+        _run_bundled_asset_commands(
+            target,
+            target / "tools",
+            target / skill_root,
+        )
 
     @pytest.mark.parametrize(
         "missing_path,expected_message",
@@ -1303,8 +1489,8 @@ skills = Path({str(skills_target)!r})
 missing = Path({str(missing)!r})
 for family in (
     "tileset", "ui-kit", "card-kit", "background-map", "platform-strip",
-    "screen-reference", "character-bundle", "fx-bundle", "compact-prop-pack",
-    "scene-prop-set",
+    "character-bundle", "fx-bundle", "compact-prop-pack",
+    "portrait", "scene-prop-set",
 ):
     runner = skills / family / "standalone_validation.py"
     spec = importlib.util.spec_from_file_location(
@@ -1787,6 +1973,98 @@ class TestCodexPublishParity:
         assert deployed == source
         assert "PreToolUse" not in deployed["hooks"]
 
+    @pytest.mark.parametrize(
+        ("agent", "target_relative"),
+        [
+            (agent_runtime.AGENT_CLAUDE_CODE, Path(".claude/settings.json")),
+            (agent_runtime.AGENT_CODEX, Path(".codex/hooks.json")),
+        ],
+    )
+    def test_existing_hook_config_refreshes_framework_and_preserves_custom_data(
+        self, tmp_path, agent, target_relative
+    ):
+        target = tmp_path / "target"
+        hooks_file = target / target_relative
+        hooks_file.parent.mkdir(parents=True)
+        hooks_file.write_text(
+            json.dumps({
+                "permissions": {"allow": ["Bash(custom:*)"]},
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": (
+                                        "python .godotmaker/hooks/stale_hook.py"
+                                    ),
+                                },
+                                {
+                                    "type": "command",
+                                    "command": "python custom_session_hook.py",
+                                },
+                            ],
+                        },
+                    ],
+                    "UserPromptSubmit": [
+                        {
+                            "matcher": "custom",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "python custom_prompt_hook.py",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            }),
+            encoding="utf-8",
+        )
+
+        publish.deploy_agent_hook_config(
+            REPO_ROOT, target, agent, force=False
+        )
+
+        deployed = json.loads(hooks_file.read_text(encoding="utf-8"))
+        source_relative = publish.AGENT_HOOK_CONFIGS[agent][0]
+        framework = json.loads(
+            (
+                REPO_ROOT
+                / publish.AGENT_RUNTIME_SOURCE_ROOTS[agent]
+                / source_relative
+            ).read_text(encoding="utf-8")
+        )
+        assert deployed["permissions"] == {"allow": ["Bash(custom:*)"]}
+        for event, entries in framework["hooks"].items():
+            assert deployed["hooks"][event][:len(entries)] == entries
+
+        serialized = json.dumps(deployed)
+        assert "stale_hook.py" not in serialized
+        assert "custom_session_hook.py" in serialized
+        assert "custom_prompt_hook.py" in serialized
+
+    def test_hook_config_conflict_leaves_existing_file_unchanged(self, tmp_path):
+        target = tmp_path / "target"
+        settings_file = target / ".claude" / "settings.json"
+        settings_file.parent.mkdir(parents=True)
+        invalid = '{"hooks": ["not-an-event-map"]}\n'
+        settings_file.write_text(invalid, encoding="utf-8")
+
+        with pytest.raises(
+            publish.RuntimeSurfaceConflict,
+            match="'hooks' value must be an object",
+        ):
+            publish.deploy_agent_hook_config(
+                REPO_ROOT,
+                target,
+                agent_runtime.AGENT_CLAUDE_CODE,
+                force=False,
+            )
+
+        assert settings_file.read_text(encoding="utf-8") == invalid
+
 
 class TestOpenCodePublishParity:
     def test_opencode_publish_outputs_required_runtime_contract(
@@ -1802,12 +2080,106 @@ class TestOpenCodePublishParity:
         assert (target / ".opencode" / "agents" / "worker.md").exists()
         assert (target / ".opencode" / "references" / "runtime-mapping.md").exists()
         assert (target / ".opencode" / "templates" / "ROADMAP.md").exists()
+        assert not (target / ".opencode" / "templates" / "MEMORY.md").exists()
+        assert not (target / ".opencode" / "templates" / "memory_subsystem.md").exists()
         assert (target / ".opencode" / "config" / "config.yaml.default").exists()
         assert (target / ".opencode" / "godotmaker.yaml").exists()
         assert (target / "AGENTS.md").exists()
         assert not (target / "CLAUDE.md").exists()
         assert not (target / ".codex" / "hooks.json").exists()
         assert not (target / ".agents" / "skills").exists()
+
+    def test_publish_preserves_legacy_project_files_without_deploying_templates(
+        self, tmp_path, monkeypatch
+    ):
+        def seed_legacy_files(target):
+            (target / "MEMORY.md").write_text("legacy index\n", encoding="utf-8")
+            (target / "memory").mkdir()
+            (target / "memory" / "system.md").write_text("legacy detail\n", encoding="utf-8")
+
+        target = _publish_opencode_project(
+            tmp_path, monkeypatch, before_publish=seed_legacy_files
+        )
+
+        assert (target / "MEMORY.md").read_text(encoding="utf-8") == "legacy index\n"
+        assert (target / "memory" / "system.md").read_text(encoding="utf-8") == "legacy detail\n"
+        assert not (target / ".opencode" / "templates" / "MEMORY.md").exists()
+        assert not (target / ".opencode" / "templates" / "memory_subsystem.md").exists()
+
+    @pytest.mark.parametrize("source_version", ["v1.0.0", "v1.1.0"])
+    @pytest.mark.parametrize("level", ["MINOR", "MAJOR"])
+    def test_upgrade_rewrites_generated_contracts_and_preserves_legacy_data(
+        self, tmp_path, monkeypatch, capsys, level, source_version
+    ):
+        legacy_index = "MEMORY.md"
+        legacy_directory = "memory/"
+        fixture_root = PUBLISHED_PROJECT_CONTRACT_FIXTURES / source_version
+
+        def seed_upgrade_project(target):
+            # These fixtures are frozen verbatim from the published tag templates.
+            generated_instructions = (fixture_root / "CLAUDE.md").read_text(
+                encoding="utf-8"
+            )
+            (target / "CLAUDE.md").write_text(
+                generated_instructions,
+                encoding="utf-8",
+            )
+            (target / "AGENTS.md").write_text(
+                generated_instructions.replace("# CLAUDE.md", "# AGENTS.md", 1),
+                encoding="utf-8",
+            )
+            (target / "TOC.md").write_text(
+                (fixture_root / "TOC.md").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            (target / legacy_index).write_text("legacy index\n", encoding="utf-8")
+            detail_dir = target / legacy_directory
+            detail_dir.mkdir()
+            (detail_dir / "system.md").write_text("legacy detail\n", encoding="utf-8")
+
+        target = _publish_opencode_project(
+            tmp_path,
+            monkeypatch,
+            before_publish=seed_upgrade_project,
+            level=level,
+        )
+
+        toc = (target / "TOC.md").read_text(encoding="utf-8")
+        for filename in ("CLAUDE.md", "AGENTS.md"):
+            instructions = (target / filename).read_text(encoding="utf-8")
+            assert legacy_index not in instructions
+            assert legacy_directory not in instructions
+            assert "Read `STRUCTURE.md` before dispatching a worker." in instructions
+            assert "`DESIGN.md` and `ASSETS.md` accumulate across tags." in instructions
+            assert (
+                "Architecture ownership, dependencies, ordering, and invariants"
+                in instructions
+            )
+        assert legacy_index not in toc
+        assert legacy_directory not in toc
+        assert (target / legacy_index).read_text(encoding="utf-8") == "legacy index\n"
+        assert (target / legacy_directory / "system.md").read_text(
+            encoding="utf-8"
+        ) == "legacy detail\n"
+        assert (
+            "still contains custom legacy architecture references"
+            not in capsys.readouterr().out
+        )
+
+    def test_custom_lines_are_preserved_and_warned(self, tmp_path, capsys):
+        legacy_index = "MEMORY" + ".md"
+        instructions = tmp_path / "CLAUDE.md"
+        original = (
+            "# CLAUDE.md\r\n\r\n"
+            f"Custom workflow still mentions `{legacy_index}` here.\r\n"
+        )
+        instructions.write_bytes(original.encode("utf-8"))
+
+        upgrade_legacy_project_contracts(tmp_path)
+        upgrade_legacy_project_contracts(tmp_path)
+
+        assert instructions.read_bytes() == original.encode("utf-8")
+        assert "preserved for manual review" in capsys.readouterr().out
 
     def test_published_opencode_mapping_uses_opencode_paths(
         self, tmp_path, monkeypatch
@@ -1842,7 +2214,7 @@ class TestOpenCodePublishParity:
             target / ".opencode" / "agents" / "gdd-auditor.md"
         ).read_text(encoding="utf-8")
 
-        assert "Never write project memory" in worker
+        assert "Never write project memory" not in worker
         assert "### Memory Entry" not in worker
 
         worker_frontmatter = _parse_simple_frontmatter(worker)
@@ -1921,18 +2293,43 @@ class TestOpenCodePublishParity:
         assert not (target / ".claude" / "plugins").exists()
         assert not (target / ".agents" / "plugins").exists()
 
-    def test_publish_agent_plugins_preserves_existing_without_force(self, tmp_path):
-        repo = Path(__file__).resolve().parents[2]
+    @pytest.mark.parametrize(
+        ("agent", "managed_relative", "custom_relative", "expected_count"),
+        [
+            (
+                publish.AGENT_OPENCODE,
+                Path(".opencode/plugins/godotmaker-hooks.js"),
+                Path(".opencode/plugins/user-plugin.js"),
+                1,
+            ),
+            (
+                publish.AGENT_PI,
+                Path(".pi/extensions/godotmaker-runtime.ts"),
+                Path(".pi/extensions/user-extension.ts"),
+                2,
+            ),
+        ],
+    )
+    def test_existing_runtime_extension_is_refreshed_and_custom_file_preserved(
+        self, tmp_path, agent, managed_relative, custom_relative, expected_count
+    ):
         target = tmp_path / "target"
-        plugin = target / ".opencode" / "plugins" / "godotmaker-hooks.js"
-        plugin.parent.mkdir(parents=True)
-        plugin.write_text("custom\n", encoding="utf-8")
+        managed_file = target / managed_relative
+        custom_file = target / custom_relative
+        managed_file.parent.mkdir(parents=True)
+        managed_file.write_text("stale framework file\n", encoding="utf-8")
+        custom_file.write_text("user owned\n", encoding="utf-8")
 
-        assert publish_agent_plugins(repo, target, publish.AGENT_OPENCODE) == 0
-        assert plugin.read_text(encoding="utf-8") == "custom\n"
+        assert publish_agent_plugins(REPO_ROOT, target, agent) == expected_count
 
-        assert publish_agent_plugins(repo, target, publish.AGENT_OPENCODE, force=True) == 1
-        assert "GodotMakerHooks" in plugin.read_text(encoding="utf-8")
+        source_dir = (
+            REPO_ROOT
+            / publish.AGENT_RUNTIME_SOURCE_ROOTS[agent]
+            / publish.AGENT_RUNTIME_EXTENSION_DIRS[agent]
+        )
+        source_file = source_dir / managed_file.name
+        assert managed_file.read_bytes() == source_file.read_bytes()
+        assert custom_file.read_text(encoding="utf-8") == "user owned\n"
 
     def test_opencode_publish_updates_project_config_agent(
         self, tmp_path, monkeypatch

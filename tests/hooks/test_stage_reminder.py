@@ -1,16 +1,12 @@
-"""Tests for stage_reminder.py hook (role-based pipeline)."""
+"""Tests for the reminder-only stage_reminder.py hook."""
 import json
 import os
-import shutil
-import subprocess
-import sys
-import pytest
 import tempfile
-from .helpers import run_hook, is_blocked, cleanup_metrics
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SCHEMA_SRC = os.path.join(REPO_ROOT, "config", "stage_schemas.json")
-SEAL_TAG = os.path.join(REPO_ROOT, "tools", "seal_tag.py")
+import pytest
+
+from .helpers import cleanup_metrics, is_blocked, run_hook
+
 
 HOOK = "stage_reminder.py"
 
@@ -26,484 +22,127 @@ def project_dir():
     original = os.getcwd()
     with tempfile.TemporaryDirectory() as tmpdir:
         os.chdir(tmpdir)
-        # Always provide a schema so validation can run
         os.makedirs(".godotmaker", exist_ok=True)
-        shutil.copy(SCHEMA_SRC, ".godotmaker/stage_schemas.json")
         yield tmpdir
         os.chdir(original)
 
 
-def stage_jsonl(events: list[dict]) -> str:
-    """events is a list of {"role": X, "ts": Y} dicts."""
-    return "\n".join(json.dumps(e) for e in events) + "\n"
+def payload(event: dict, *, tool_name: str = "Write", windows_path: bool = False):
+    content_key = "content" if tool_name == "Write" else "new_string"
+    file_path = ".godotmaker\\stage.jsonl" if windows_path else ".godotmaker/stage.jsonl"
+    return {
+        "hook_event_name": "PreToolUse",
+        "tool_name": tool_name,
+        "tool_input": {
+            "file_path": file_path,
+            content_key: json.dumps(event) + "\n",
+        },
+    }
 
 
-def write_minimal_playable_unit_plan():
-    with open("PLAN.md", "w", encoding="utf-8") as f:
-        f.write("""# Game Plan
-
-**Tag:** v0.1.0
-
-## Playable Unit
-
-- **Player experience:** start a run
-- **Unit outcome:** exit reached through normal play
-- **Scenes involved:** Main
-
-| Mechanic | Player operation / content | Expected effect | Required visible content | Evidence |
-|----------|----------------------------|-----------------|--------------------------|----------|
-| [v0.1.0-M1] | Press Start | Gameplay scene opens | Player visible | e2e assertion |
-
-## Main Build
-""")
+def test_ignores_non_write_tool(project_dir):
+    _, code, parsed = run_hook(HOOK, {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Read",
+        "tool_input": {"file_path": ".godotmaker/stage.jsonl"},
+    })
+    assert code == 0
+    assert parsed is None
 
 
-def write_minimal_playable_unit_evaluation(result: str = "approve"):
-    os.makedirs("e2e", exist_ok=True)
-    with open("e2e/test_v0_1_0_playable_unit_start.py", "w", encoding="utf-8") as f:
-        f.write("def test_placeholder():\n    assert True\n")
-    with open(".godotmaker/evaluation.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "tag": "v0.1.0",
-            "result": result,
-            "playable_closed_loop": {
-                "builds_clean": True,
-                "boots_main_scene": True,
-                "playable_unit_coverage": True,
-                "completion_fail_or_exit_reached": True,
-            },
-            "playable_unit": {
-                "result": "pass",
-                "rows": {
-                    "v0.1.0-M1": {
-                        "result": "pass",
-                        "test": "e2e/test_v0_1_0_playable_unit_start.py",
-                        "evidence": ["e2e/screenshots/start.png"],
-                    },
-                },
-            },
-            "critical_issues": [],
-        }, f)
+def test_ignores_non_stage_file(project_dir):
+    _, code, parsed = run_hook(HOOK, {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Write",
+        "tool_input": {"file_path": "src/main.gd", "content": "extends Node"},
+    })
+    assert code == 0
+    assert parsed is None
 
 
-class TestNonStageWrites:
-    def test_ignores_non_write_tool(self, project_dir):
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Read",
-            "tool_input": {"file_path": ".godotmaker/stage.jsonl"},
-        })
-        assert code == 0
-        assert parsed is None
-
-    def test_ignores_non_stage_file(self, project_dir):
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {"file_path": "src/main.gd", "content": "extends Node"},
-        })
-        assert code == 0
-        assert parsed is None
-
-    def test_ignores_wrong_event(self, project_dir):
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "SubagentStop",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "gdd", "ts": "2026-01-01T00:00:00Z"}]),
-            },
-        })
-        assert code == 0
-        assert parsed is None
+@pytest.mark.parametrize(
+    "role,next_command",
+    [
+        ("scaffold", "/gm-gdd"),
+        ("gdd", "/gm-asset"),
+        ("asset", "/gm-build"),
+        ("build", "/gm-verify"),
+        ("verify", "/gm-evaluate"),
+        ("evaluate", "/gm-accept"),
+        ("fixgap", "/gm-verify"),
+        ("accept", "/gm-finalize"),
+    ],
+)
+def test_role_completion_reminds_next_command(project_dir, role, next_command):
+    _, code, parsed = run_hook(
+        HOOK,
+        payload({"role": role, "ts": "2026-01-01T00:00:00Z"}),
+    )
+    assert code == 0
+    assert not is_blocked(parsed)
+    assert next_command in parsed["hookSpecificOutput"]["additionalContext"]
 
 
-class TestRoleReminder:
-    def test_scaffold_complete_reminds_gdd(self, project_dir):
-        open("project.godot", "w").close()
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "scaffold", "ts": "2026-01-01T00:00:00Z"}]),
-            },
-        })
-        assert code == 0
-        assert parsed is not None
-        ctx = parsed["hookSpecificOutput"]["additionalContext"]
-        assert "/gm-gdd" in ctx
-        assert "scaffold" in ctx
-
-    def test_gdd_complete_reminds_asset(self, project_dir):
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
-            open(f, "w").close()
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "gdd", "ts": "2026-01-01T00:00:00Z"}]),
-            },
-        })
-        assert code == 0
-        assert parsed is not None
-        ctx = parsed["hookSpecificOutput"]["additionalContext"]
-        assert "/gm-asset" in ctx
-        assert "gdd" in ctx
-
-    def test_asset_complete_reminds_build(self, project_dir):
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "asset", "ts": "2026-01-01T00:30:00Z"}]),
-            },
-        })
-        assert code == 0
-        assert parsed is not None
-        ctx = parsed["hookSpecificOutput"]["additionalContext"]
-        assert "/gm-build" in ctx
-
-    def test_evaluate_complete_reminds_accept_or_fixgap(self, project_dir):
-        write_minimal_playable_unit_plan()
-        write_minimal_playable_unit_evaluation()
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([
-                    {"role": "gdd", "ts": "2026-01-01T00:00:00Z"},
-                    {"role": "evaluate", "ts": "2026-01-01T05:00:00Z"},
-                ]),
-            },
-        })
-        assert code == 0
-        ctx = parsed["hookSpecificOutput"]["additionalContext"]
-        assert "/gm-accept" in ctx and "/gm-fixgap" in ctx
-
-    def test_finalize_complete_no_reminder(self, project_dir):
-        with open(".godotmaker/final_report.json", "w") as f:
-            f.write('{"status": "completed"}')
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "finalize", "ts": "2026-01-01T07:00:00Z"}]),
-            },
-        })
-        assert code == 0
-        # No next role after finalize → no additionalContext
-        assert parsed is None or "additionalContext" not in parsed.get("hookSpecificOutput", {})
-
-    def test_windows_path(self, project_dir):
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
-            open(f, "w").close()
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": "D:\\Games\\MyGame\\.godotmaker\\stage.jsonl",
-                "content": stage_jsonl([{"role": "gdd", "ts": "2026-01-01T00:00:00Z"}]),
-            },
-        })
-        assert code == 0
-        assert parsed is not None
-        ctx = parsed["hookSpecificOutput"]["additionalContext"]
-        assert "/gm-asset" in ctx
-
-    def test_edit_tool_for_gdd_event_reminds_asset(self, project_dir):
-        for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
-            open(f, "w").close()
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Edit",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "old_string": '',
-                "new_string": '{"role": "gdd", "ts": "2026-01-01T00:00:00Z"}\n',
-            },
-        })
-        assert code == 0
-        assert parsed is not None
-        ctx = parsed["hookSpecificOutput"]["additionalContext"]
-        assert "/gm-asset" in ctx
+def test_missing_outputs_do_not_turn_reminder_into_enforcement(project_dir):
+    _, code, parsed = run_hook(
+        HOOK,
+        payload({"role": "gdd", "ts": "2026-01-01T00:00:00Z"}),
+    )
+    assert code == 0
+    assert not is_blocked(parsed)
+    assert "/gm-asset" in parsed["hookSpecificOutput"]["additionalContext"]
 
 
-class TestValidation:
-    def test_missing_required_files_blocked(self, project_dir):
-        # No GDD/PLAN/STRUCTURE files
-        _, _, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "gdd", "ts": "2026-01-01T00:00:00Z"}]),
-            },
-        })
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "GDD.md" in reason or "PLAN.md" in reason
-
-    def test_evaluate_blocks_when_playable_unit_contract_missing(self, project_dir):
-        with open(".godotmaker/evaluation.json", "w", encoding="utf-8") as f:
-            f.write('{"result": "approve"}')
-        _, _, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "evaluate", "ts": "2026-01-01T05:00:00Z"}]),
-            },
-        })
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "Playable Unit evaluation contract failed" in reason
-        assert "PLAN.md" in reason
-
-    def test_evaluate_blocks_when_playable_unit_row_uncovered(self, project_dir):
-        write_minimal_playable_unit_plan()
-        with open(".godotmaker/evaluation.json", "w", encoding="utf-8") as f:
-            json.dump({
-                "result": "approve",
-                "playable_closed_loop": {
-                    "playable_unit_coverage": True,
-                    "completion_fail_or_exit_reached": True,
-                },
-                "playable_unit": {"rows": {}},
-                "critical_issues": [],
-            }, f)
-        _, _, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "evaluate", "ts": "2026-01-01T05:00:00Z"}]),
-            },
-        })
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "v0.1.0-M1 missing" in reason
-
-    def test_build_blocked_when_plan_has_pending(self, project_dir):
-        with open("PLAN.md", "w") as f:
-            f.write("# Plan\n| 1 | move | pending |\n")
-        _, _, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "build", "ts": "2026-01-01T01:00:00Z"}]),
-            },
-        })
-        assert is_blocked(parsed)
-
-    def test_build_passes_when_plan_all_verified(self, project_dir):
-        with open("PLAN.md", "w") as f:
-            f.write("# Plan\n| 1 | move | verified |\n")
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "build", "ts": "2026-01-01T01:00:00Z"}]),
-            },
-        })
-        assert code == 0
-        # Should produce a reminder, not block
-        assert not is_blocked(parsed)
+def test_fixgap_handoff_uses_event_next_role(project_dir):
+    with open("GAP.md", "w", encoding="utf-8") as handle:
+        handle.write("# Evaluator-owned gap\n")
+    _, code, parsed = run_hook(
+        HOOK,
+        payload({
+            "role": "fixgap",
+            "ts": "2026-01-01T00:00:00Z",
+            "outcome": "handoff",
+            "next_role": "evaluate",
+        }),
+    )
+    assert code == 0
+    assert not is_blocked(parsed)
+    assert parsed["hookSpecificOutput"]["additionalContext"].endswith(
+        "Next: /gm-evaluate"
+    )
 
 
-class TestTagArchived:
-    """check_tag_archived runs at finalize completion. Reads PLAN.md's
-    `**Tag:**` header to know which docs/tags/<Tag>/ archive to verify.
-    """
-
-    REQUIRED_FILES = [
-        "GDD-snapshot.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "SCENES.md",
-        "MEMORY.md", "evaluation-final.json", "CHANGELOG.md",
-        "README.md", "SUMMARY.md",
-    ]
-
-    def _write_finalize_event(self) -> dict:
-        return {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": stage_jsonl([{"role": "finalize", "ts": "2026-05-07T12:00:00Z"}]),
-            },
-        }
-
-    def test_blocks_when_plan_md_missing(self, project_dir):
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "PLAN.md" in reason
-
-    def test_blocks_when_plan_lacks_tag_header(self, project_dir):
-        with open("PLAN.md", "w", encoding="utf-8") as f:
-            f.write("# Plan\nno tag header here\n")
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "Tag" in reason
-
-    def test_blocks_when_tag_directory_missing(self, project_dir):
-        with open("PLAN.md", "w", encoding="utf-8") as f:
-            f.write("# Plan\n\n**Tag:** v0.3.0\n")
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "docs/tags/v0.3.0/" in reason
-
-    def test_blocks_when_archive_files_missing(self, project_dir):
-        with open("PLAN.md", "w", encoding="utf-8") as f:
-            f.write("# Plan\n\n**Tag:** v0.1.0\n")
-        os.makedirs(os.path.join("docs", "tags", "v0.1.0"), exist_ok=True)
-        # Create only some files
-        for f in ["GDD-snapshot.md", "PLAN.md"]:
-            open(os.path.join("docs", "tags", "v0.1.0", f), "w").close()
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        # Should list missing files
-        assert "STRUCTURE.md" in reason or "evaluation-final.json" in reason
-
-    def _sealed_archive(self, tag="v0.1.0", manifest='{"sealed": true}',
-                        parent_index="| [v0.1.0](v0.1.0/) | ... |\n"):
-        """Lay out a sealed archive the way `seal_tag.py index` leaves it."""
-        with open("PLAN.md", "w", encoding="utf-8") as f:
-            f.write(f"# Plan\n\n**Tag:** {tag}\n")
-        archive = os.path.join("docs", "tags", tag)
-        os.makedirs(os.path.join(archive, "evidence"), exist_ok=True)
-        for name in self.REQUIRED_FILES:
-            open(os.path.join(archive, name), "w").close()
-        if manifest is not None:
-            with open(os.path.join(archive, "evidence", "manifest.json"), "w",
-                      encoding="utf-8") as f:
-                f.write(manifest)
-        if parent_index is not None:
-            with open(os.path.join("docs", "tags", "README.md"), "w",
-                      encoding="utf-8") as f:
-                f.write(parent_index)
-        # finalize schema also requires final_report.json
-        with open(".godotmaker/final_report.json", "w") as f:
-            f.write('{"status": "tag_sealed"}')
-        return archive
-
-    def test_passes_when_archive_complete(self, project_dir):
-        self._sealed_archive()
-        _, code, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert code == 0
-        assert not is_blocked(parsed)
-
-    def test_blocks_when_manifest_missing(self, project_dir):
-        """File presence is not a seal. Without evidence/manifest.json the
-        archive is a partial finalize that never ran `seal_tag.py index`."""
-        self._sealed_archive(manifest=None)
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "manifest.json" in reason
-        assert "seal_tag.py index" in reason
-
-    def test_blocks_when_manifest_is_not_sealed(self, project_dir):
-        self._sealed_archive(manifest='{"sealed": false}')
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        assert "sealed" in parsed["hookSpecificOutput"]["permissionDecisionReason"]
-
-    def test_blocks_when_manifest_is_corrupt(self, project_dir):
-        self._sealed_archive(manifest="{not json")
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "manifest.json" in reason
-
-    def test_blocks_when_parent_index_missing(self, project_dir):
-        self._sealed_archive(parent_index=None)
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "docs/tags/README.md" in reason
-        # The tag is sealed here, so `index` would exit 3 — point at reindex.
-        assert "seal_tag.py reindex" in reason
-
-    def test_blocks_when_parent_index_does_not_list_the_tag(self, project_dir):
-        self._sealed_archive(parent_index="# Tag archives\n\n| [v0.0.9](v0.0.9/) | ... |\n")
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "does not list v0.1.0" in reason
-        assert "seal_tag.py reindex" in reason
-
-    def test_real_seal_tag_output_satisfies_the_gate(self, project_dir):
-        """End-to-end: what `seal_tag.py archive|index` actually writes must
-        pass this gate, and the same archive before `index` must not. Without
-        this the two sides can drift apart silently."""
-        for name, body in (
-            ("GDD.md", "# GDD\n"),
-            ("PLAN.md", "# Plan\n\n**Tag:** v0.1.0\n"),
-            ("STRUCTURE.md", "# Structure\n"),
-            ("DESIGN.md", "# Design\n"),
-            ("SCENES.md", "# Scenes\n"),
-            ("MEMORY.md", "# Memory\n"),
-        ):
-            with open(name, "w", encoding="utf-8") as f:
-                f.write(body)
-        with open(os.path.join(".godotmaker", "evaluation.json"), "w", encoding="utf-8") as f:
-            f.write('{"result": "approve", "minor_issues": []}')
-        with open(os.path.join(".godotmaker", "final_report.json"), "w", encoding="utf-8") as f:
-            f.write('{"status": "tag_sealed"}')
-
-        assert subprocess.run(
-            [sys.executable, SEAL_TAG, "--project-path", ".", "archive", "v0.1.0"],
-            capture_output=True, text=True, timeout=30,
-        ).returncode == 0
-        with open(os.path.join("docs", "tags", "v0.1.0", "CHANGELOG.md"), "w",
-                  encoding="utf-8") as f:
-            f.write("# Changelog\n\n**Released:** 2026-01-01\n**Theme:** Foundation\n")
-
-        # Archived but not yet indexed - the gate must still block.
-        _, _, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert is_blocked(parsed)
-
-        r = subprocess.run(
-            [sys.executable, SEAL_TAG, "--project-path", ".", "index", "v0.1.0"],
-            capture_output=True, text=True, timeout=30,
-        )
-        assert r.returncode == 0, r.stderr
-        _, code, parsed = run_hook(HOOK, self._write_finalize_event())
-        assert code == 0
-        assert not is_blocked(parsed), parsed
+def test_finalize_has_no_next_role(project_dir):
+    _, code, parsed = run_hook(
+        HOOK,
+        payload({"role": "finalize", "ts": "2026-01-01T00:00:00Z"}),
+    )
+    assert code == 0
+    assert parsed is None
 
 
-class TestEdgeCases:
-    def test_invalid_json_content(self, project_dir):
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": "not json",
-            },
-        })
-        assert code == 0
-        assert parsed is None
+@pytest.mark.parametrize("tool_name,windows_path", [("Edit", False), ("Write", True)])
+def test_edit_and_windows_paths_are_supported(project_dir, tool_name, windows_path):
+    _, code, parsed = run_hook(
+        HOOK,
+        payload(
+            {"role": "gdd", "ts": "2026-01-01T00:00:00Z"},
+            tool_name=tool_name,
+            windows_path=windows_path,
+        ),
+    )
+    assert code == 0
+    assert "/gm-asset" in parsed["hookSpecificOutput"]["additionalContext"]
 
-    def test_lines_without_role_or_ts_ignored(self, project_dir):
-        """JSONL lines that lack role/ts fields should be skipped (no reminder)."""
-        _, code, parsed = run_hook(HOOK, {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "Write",
-            "tool_input": {
-                "file_path": ".godotmaker/stage.jsonl",
-                "content": '{"other_field": 1}\n{"only_role": "setup"}\n',
-            },
-        })
-        assert code == 0
-        assert parsed is None
+
+def test_invalid_json_is_ignored(project_dir):
+    _, code, parsed = run_hook(HOOK, {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": ".godotmaker/stage.jsonl",
+            "content": "not json",
+        },
+    })
+    assert code == 0
+    assert parsed is None

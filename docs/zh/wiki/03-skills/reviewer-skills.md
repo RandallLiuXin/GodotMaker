@@ -29,7 +29,7 @@ Reviewer 子 Agent 读取这三个文件，并生成一份结构化报告，用�
 
 ## Reviewer 发现问题后怎么办
 
-主 Agent 对每个 finding 做 triage，三选一：ACCEPT（追加新任务到 `PLAN.md`，由下一批 Worker 修复）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。不确定时默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT 或 SKIP 必须附引证（gotcha 条目、API 文档、过往架构决策或项目约束、现有任务 ID）。minor 不需要引证。原始 finding 和 triage 决策不写入 `MEMORY.md`。
+主 Agent 对每个 finding 做 triage，三选一：ACCEPT（追加新任务到 `PLAN.md`，由下一批 Worker 修复）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。不确定时默认值：critical/major → ACCEPT；minor → SKIP。critical/major 的 REJECT 或 SKIP 必须附引证（gotcha 条目、API 文档、`STRUCTURE.md` 中的架构规则、现有任务 ID）。minor 不需要引证。原始 finding 和 triage 决策是运行时证据，不写入项目设计文档。
 
 循环持续到上一次 review 没有任何 ACCEPT 为止。
 

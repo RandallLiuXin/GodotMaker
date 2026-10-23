@@ -1,6 +1,8 @@
 # 测试
 
-GodotMaker 在 `tests/` 下有约 320 个单元测试，覆盖 8 个 hook 脚本、publish 和迁移工具、check_project，以及一个端到端流水线冒烟测试。用以下命令运行完整测试套件：
+请在官方支持基线 Python 3.10+、Node.js 22+ 和 Godot 4.5+ 上运行测试。
+`tests/` 覆盖 hook、asset/runtime 合同、publish 与迁移工具、项目检查和端到端
+流水线。用以下命令运行完整测试套件：
 
 ```bash
 python -m pytest tests/ -x -q
@@ -14,28 +16,16 @@ python -m pytest tests/ -x -q
 
 ```
 tests/
-├── hooks/
-│   ├── helpers.py                        共享工具函数（见下文）
-│   ├── test_check_completion.py
-│   ├── test_check_file_permissions.py
-│   ├── test_check_stage_prerequisites.py
-│   ├── test_check_worker_report.py
-│   ├── test_metrics.py
-│   ├── test_session_start.py
-│   └── test_stage_reminder.py
-├── tools/
-│   ├── conftest.py
-│   ├── test_addon_versions.py
-│   ├── test_check_classname.py
-│   ├── test_check_env.py
-│   ├── test_check_project.py
-│   ├── test_migrate.py
-│   ├── test_publish.py
-│   └── test_publish_shared.py
-└── test_pipeline_e2e.py                  端到端流水线冒烟测试
+├── assets/                               Asset family 与 compiler 合同
+├── agent_runtimes/                       Runtime adapter 合同
+├── hooks/                                Hook 行为与共享 helper
+├── tools/                                CLI 与发布测试
+└── test_*.py                             跨层与流水线合同
 ```
 
-`tests/hooks/` 下每个 hook 对应一个测试文件，外加 `helpers.py`。`tests/tools/` 下每个工具对应一个测试文件。`test_pipeline_e2e.py` 在较粗的粒度上验证完整的发布 → 会话启动 → 角色执行序列。
+测试模块按所证明的行为分组，不维护生产文件与测试文件一一对应的镜像。需要当前
+inventory 时，请使用 `pytest --collect-only` 或 `rg --files tests`。
+`test_pipeline_e2e.py` 在较粗粒度上验证发布 → 会话启动 → 角色执行序列。
 
 ---
 

@@ -49,8 +49,6 @@ from asset_compiler import (  # noqa: E402
 from asset_compiler.registry import is_same_file  # noqa: E402
 from asset_output_paths import (  # noqa: E402
     LAYOUT_ARTIFACT_TYPES,
-    REFERENCE_FAMILIES,
-    REFERENCE_LAYOUTS,
     AssetOutputPathError,
     assert_within_output_dir,
     check_output_path,
@@ -61,8 +59,6 @@ RuntimeContractError = AssetOutputPathError
 
 __all__ = [
     "LAYOUT_ARTIFACT_TYPES",
-    "REFERENCE_FAMILIES",
-    "REFERENCE_LAYOUTS",
     "CompileReceipt",
     "CompilerError",
     "CompilerRegistry",
