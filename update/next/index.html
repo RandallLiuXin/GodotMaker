@@ -3362,6 +3362,7 @@ contract defines when an entry is required, its format, and allowed categories.<
 </ul>
 <h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
 <ul>
+<li>Aligned generated GAP provenance and archives with evaluation-run manifests (including collision-free repeated repair rounds), centralized worker, reviewer, and verifier dispatch schemas, and resolved SCENES viewport examples from the project contract (#221) — @RandallLiuXin.</li>
 <li>Publishing existing projects now refreshes GodotMaker-managed runtime hooks for Claude Code, Codex, OpenCode, and Pi while preserving unrelated user configuration and independent extensions (#212) — @RandallLiuXin.</li>
 <li>Replaced the project <code>STYLE.md</code> visual seed with a plain-text <code>DESIGN.md</code> visual contract covering visual identity, nine image-style dimensions, UI visual language, and Do / Don't lists; existing projects migrate on publish, legacy text preserved verbatim.</li>
 <li><code>/gm-asset</code> now reviews every generated asset before registration and <code>/gm-evaluate</code> reviews every scene, both rule by rule against <code>DESIGN.md</code> instead of against reference-image similarity, reporting per-rule evidence, confidence, and severity, and blocking only on high-confidence violations of <code>Don't</code>, <code>MUST</code> / <code>MUST NOT</code>, or explicitly required rules.</li>
