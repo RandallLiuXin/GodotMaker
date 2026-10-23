@@ -40,7 +40,7 @@ python tools/asset_source_generate.py --spec <spec.json>
 ## Reference Images
 
 Put the required local reference, when present, in `reference_inputs` as
-`{ "role": "canonical|style|screen", "path": "<local image path>" }`. Use
+`{ "role": "canonical|style", "path": "<local image path>" }`. Use
 only an image listed by the production-unit brief or selected by the manager.
 The tool validates that the input is readable, sends its actual bytes to Grok,
 and records role/path/hash provenance in its report.
