@@ -168,12 +168,18 @@ def test_parallel_gdd_and_asset_workflows_write_to_shared_main_tree(tmp_path: Pa
           {{ role: "asset-producer", task: "WRITE:assets/unit-a/icon.txt=a", writePaths: ["assets/unit-a"] }},
           {{ role: "asset-producer", task: "WRITE:assets/unit-b/icon.txt=b", writePaths: ["assets/unit-b"] }},
         ]);
-        const overlap = await delegate.execute("test", {{ requests: [
-          {{ role: "decomposer", task: "unused", writePaths: ["assets/unit-a"] }},
-          {{ role: "asset-producer", task: "unused", writePaths: ["assets/unit-a/icon.txt"] }},
-        ] }}, undefined, undefined, {{ cwd }});
-        if (!overlap.isError || !overlap.content[0].text.includes("write scopes overlap")) {{
-          throw new Error("overlapping shared writes were not rejected");
+        for (const [left, right] of [
+          ["assets/unit-a", "assets/unit-a/icon.txt"],
+          ["assets/generated/sprite/", "assets/generated/sprite/hero/"],
+          ["./", "PLAN.md"],
+        ]) {{
+          const overlap = await delegate.execute("test", {{ requests: [
+            {{ role: "decomposer", task: "unused", writePaths: [left] }},
+            {{ role: "asset-producer", task: "unused", writePaths: [right] }},
+          ] }}, undefined, undefined, {{ cwd }});
+          if (!overlap.isError || !overlap.content[0].text.includes("write scopes overlap")) {{
+            throw new Error(`overlapping shared writes were not rejected: ${{left}} / ${{right}}`);
+          }}
         }}
         console.log("ok");
         """

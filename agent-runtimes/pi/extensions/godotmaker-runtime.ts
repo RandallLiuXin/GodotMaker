@@ -63,7 +63,9 @@ function normalizeWritePath(value: string): string {
   if (!candidate || candidate.startsWith("/") || /^[A-Za-z]:\//.test(candidate)) {
     throw new Error(`Write scopes must be project-relative paths: ${value}`);
   }
-  const normalized = path.posix.normalize(candidate).replace(/^\.\//, "");
+  const normalized = path.posix.normalize(candidate)
+    .replace(/^\.\//, "")
+    .replace(/\/+$/, "") || ".";
   if (normalized === ".." || normalized.startsWith("../")) {
     throw new Error(`Write scopes must stay inside the project: ${value}`);
   }
