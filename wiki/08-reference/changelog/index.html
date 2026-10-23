@@ -3357,7 +3357,10 @@
 <hr />
 <h2 id="whats-coming-next">What's coming next<a class="headerlink" href="#whats-coming-next" title="Permanent link">&para;</a></h2>
 <p>Pending changes for the next release are tracked in <a href="../../../update/next/"><code>../../update/next.md</code></a>.</p>
-<p>Contributors: every pull request must add an entry to <code>next.md</code> under the appropriate category (<code>Added</code>, <code>Changed</code>, <code>Fixed</code>, <code>Removed</code>) before merging. At release time, <code>next.md</code> is archived as <code>docs/update/vX.Y.Z.md</code> and a blank copy replaces it.</p>
+<p>Contributors follow the canonical
+<a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries">release-note entry contract</a>.
+At release time, <code>next.md</code> is archived as <code>docs/update/vX.Y.Z.md</code> and a blank
+copy replaces it.</p>
 <hr />
 <h2 id="migration-scripts">Migration scripts<a class="headerlink" href="#migration-scripts" title="Permanent link">&para;</a></h2>
 <p>When an upgrade requires rewriting files in an existing target project, a migration script handles the transition automatically. Migration scripts live under <code>migrations/</code> in the GodotMaker repository, named by UTC timestamp (e.g., <code>migrations/20260429100000_fix_state_path.py</code>). Each target project tracks which scripts it has applied in <code>.godotmaker/applied_migrations.json</code>; on every upgrade <code>tools/publish.py</code> applies the diff in chronological order. The mechanism is decoupled from the product's MAJOR.MINOR.PATCH version — any non-MAJOR upgrade may carry migrations. (MAJOR upgrades skip migrations and use <code>--force</code> clean re-init, then re-baseline.)</p>

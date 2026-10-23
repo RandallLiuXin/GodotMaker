@@ -3361,20 +3361,10 @@ this page summarises it. The canonical checklist is
 <p><code>publish.py</code> auto-proceeds on PATCH, prompts for confirmation on MINOR, and requires <code>--force</code> on MAJOR. Migration scripts under <code>migrations/</code> (timestamped, decoupled from version) are applied on any non-MAJOR upgrade — see <a href="../../../versioning/"><code>../../versioning.md</code></a> for the full policy.</p>
 <hr />
 <h2 id="the-nextmd-workflow">The next.md workflow<a class="headerlink" href="#the-nextmd-workflow" title="Permanent link">&para;</a></h2>
-<p>Contributors never edit <code>CHANGELOG.md</code> directly. Instead, every pull request adds at least one bullet to <code>docs/update/next.md</code> under the appropriate category:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gu">## Added</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">-</span><span class="w"> </span>Brief description of the new thing (#123) — <span class="ni">@author</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="gu">## Changed</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">-</span><span class="w"> </span>What changed and why (#124) — <span class="ni">@author</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="gu">## Fixed</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="k">-</span><span class="w"> </span>What was broken (#125) — <span class="ni">@author</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="gu">## Removed</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="k">-</span><span class="w"> </span>What was deleted (#126) — <span class="ni">@author</span>
-</code></pre></div>
-<p>Use <a href="https://keepachangelog.com/">Keep a Changelog</a> conventions for category names. If none of the four standard categories fits, add a new one.</p>
+<p>Contributors never edit <code>CHANGELOG.md</code> directly. The canonical
+<a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries">release-note entry contract</a>
+defines when and how a pull request updates <code>docs/update/next.md</code>; this release
+page intentionally does not duplicate those rules.</p>
 <p>At release time, <code>next.md</code> is archived and a fresh copy is created. Contributors working on the next batch of changes immediately start adding to the new <code>next.md</code>. This means <code>CHANGELOG.md</code> is touched only once per release, by whoever cuts the release.</p>
 <hr />
 <h2 id="cutting-a-release">Cutting a release<a class="headerlink" href="#cutting-a-release" title="Permanent link">&para;</a></h2>
@@ -3391,13 +3381,13 @@ this page summarises it. The canonical checklist is
 <p><strong>Update CHANGELOG.md.</strong> Prepend a new section:</p>
 </li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="gu">## [X.Y.Z] — YYYY-MM-DD</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="gu">### Added</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">-</span><span class="w"> </span>(items from next.md)
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="gu">### Changed / Fixed / Removed</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">-</span><span class="w"> </span>...
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gu">## [X.Y.Z] - YYYY-MM-DD</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gu">### Added</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">-</span><span class="w"> </span>(items from next.md)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="gu">### Changed / Fixed / Removed</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="k">-</span><span class="w"> </span>...
 </code></pre></div>
 <ol>
 <li>
@@ -3417,11 +3407,11 @@ this page summarises it. The canonical checklist is
 <p><strong>Create a release-preparation PR.</strong></p>
 </li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>switch<span class="w"> </span>-c<span class="w"> </span>release/vX.Y.Z
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>add<span class="w"> </span>&lt;reviewed-release-files&gt;
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: prepare release vX.Y.Z"</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>release/vX.Y.Z
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>gh<span class="w"> </span>pr<span class="w"> </span>create<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>--head<span class="w"> </span>release/vX.Y.Z
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>switch<span class="w"> </span>-c<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>git<span class="w"> </span>add<span class="w"> </span>&lt;reviewed-release-files&gt;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: prepare release vX.Y.Z"</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>gh<span class="w"> </span>pr<span class="w"> </span>create<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>--head<span class="w"> </span>release/vX.Y.Z
 </code></pre></div>
 <p>A maintainer merges this PR only after CI and review. Creating the PR does
    not authorize the release agent to merge it.</p>
@@ -3431,9 +3421,9 @@ this page summarises it. The canonical checklist is
 <p>After the release-preparation PR is merged, fetch <code>main</code>, verify that
    <code>origin/main</code> points at the merged release commit, and tag that remote
    tracking ref explicitly:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div>
 <ol>
 <li><strong>Verify the GitHub Release.</strong> Confirm that the release exists and its
@@ -3442,8 +3432,8 @@ this page summarises it. The canonical checklist is
 <hr />
 <h2 id="migrations">Migrations<a class="headerlink" href="#migrations" title="Permanent link">&para;</a></h2>
 <p>Releases may ship migration scripts that automatically fix compatibility issues in existing game projects. Scripts live directly under <code>migrations/</code>, named by UTC timestamp:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>migrations/20260429100000_fix_state_path.py
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>migrations/20260430153000_rename_metrics_field.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>migrations/20260429100000_fix_state_path.py
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>migrations/20260430153000_rename_metrics_field.py
 </code></pre></div>
 <p><code>tools/migrate.py</code> reads each target's <code>.godotmaker/applied_migrations.json</code> and applies the diff in chronological order. If a script fails, the chain aborts and publish exits with an error; already-successful scripts keep their entries in <code>applied_migrations.json</code>, so a re-run picks up where it left off.</p>
 <p>MAJOR upgrades skip migrations entirely and use <code>--force</code> for clean re-initialisation; the migration tracker is reset and re-baselined after re-deploy. The timestamp series is monotonic and global — old scripts stay on disk as historical record and are baselined as already-applied for any fresh install or post-MAJOR re-init.</p>

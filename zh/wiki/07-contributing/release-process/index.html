@@ -3360,20 +3360,9 @@
 <p><code>publish.py</code> 在 PATCH 升级时自动继续，在 MINOR 升级时弹出确认提示，在 MAJOR 升级时要求 <code>--force</code>。<code>migrations/</code> 下的迁移脚本（按时间戳命名，与版本号解耦）会在任何非 MAJOR 升级时执行——完整策略见 <a href="../../../versioning/"><code>../../versioning.md</code></a>。</p>
 <hr />
 <h2 id="nextmd">next.md 工作流<a class="headerlink" href="#nextmd" title="Permanent link">&para;</a></h2>
-<p>贡献者从不直接编辑 <code>CHANGELOG.md</code>。每个 Pull Request 都需要在 <code>docs/update/next.md</code> 的适当分类下至少添加一条记录：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gu">## Added</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">-</span><span class="w"> </span>新增内容的简要说明 (#123) — <span class="ni">@author</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="gu">## Changed</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">-</span><span class="w"> </span>发生了什么变化以及原因 (#124) — <span class="ni">@author</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="gu">## Fixed</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="k">-</span><span class="w"> </span>修复了什么问题 (#125) — <span class="ni">@author</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="gu">## Removed</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="k">-</span><span class="w"> </span>删除了什么内容 (#126) — <span class="ni">@author</span>
-</code></pre></div>
-<p>分类名称遵循 <a href="https://keepachangelog.com/">Keep a Changelog</a> 规范。如果四个标准分类都不合适，可以新增一个。</p>
+<p>贡献者从不直接编辑 <code>CHANGELOG.md</code>。规范的
+<a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries">发布说明条目合同</a>
+定义 Pull Request 何时以及如何更新 <code>docs/update/next.md</code>；本发布页面不会重复这些规则。</p>
 <p>发版时，<code>next.md</code> 会被归档，并从模板创建新的空 <code>next.md</code>。贡献者立即开始向新的 <code>next.md</code> 添加下一批变更记录。这意味着 <code>CHANGELOG.md</code> 每次发版只由负责发版的人修改一次。</p>
 <hr />
 <h2 id="_3">执行发版<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
@@ -3390,13 +3379,13 @@
 <p><strong>更新 CHANGELOG.md。</strong> 在文件开头插入新章节：</p>
 </li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="gu">## [X.Y.Z] — YYYY-MM-DD</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="gu">### Added</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">-</span><span class="w"> </span>（来自 next.md 的条目）
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="gu">### Changed / Fixed / Removed</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">-</span><span class="w"> </span>...
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gu">## [X.Y.Z] - YYYY-MM-DD</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gu">### Added</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">-</span><span class="w"> </span>（来自 next.md 的条目）
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="gu">### Changed / Fixed / Removed</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="k">-</span><span class="w"> </span>...
 </code></pre></div>
 <ol>
 <li>
@@ -3412,20 +3401,20 @@
 <p><strong>创建发布准备 PR。</strong></p>
 </li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>switch<span class="w"> </span>-c<span class="w"> </span>release/vX.Y.Z
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>add<span class="w"> </span>&lt;reviewed-release-files&gt;
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: prepare release vX.Y.Z"</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>release/vX.Y.Z
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>gh<span class="w"> </span>pr<span class="w"> </span>create<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>--head<span class="w"> </span>release/vX.Y.Z
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>switch<span class="w"> </span>-c<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>git<span class="w"> </span>add<span class="w"> </span>&lt;reviewed-release-files&gt;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: prepare release vX.Y.Z"</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>release/vX.Y.Z
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>gh<span class="w"> </span>pr<span class="w"> </span>create<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>--head<span class="w"> </span>release/vX.Y.Z
 </code></pre></div>
 <p>维护者只在 CI 与 review 通过后合并该 PR。创建 PR 不代表发布 agent 获得了合并授权。</p>
 <ol>
 <li><strong>获得单独的发布授权后，为已 fetch 的 <code>main</code> 打标签。</strong></li>
 </ol>
 <p>发布准备 PR 合并后，fetch <code>main</code>，确认 <code>origin/main</code> 指向已合并的发布提交，然后明确为该远端跟踪引用打标签：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>tag<span class="w"> </span>vX.Y.Z<span class="w"> </span>origin/main
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>vX.Y.Z
 </code></pre></div>
 <ol>
 <li><strong>验证 GitHub Release。</strong> 确认 Release 已创建，且发布说明与 <code>CHANGELOG.md</code> 一致。</li>
@@ -3433,8 +3422,8 @@
 <hr />
 <h2 id="_4">迁移脚本<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <p>发版时可以附带迁移脚本，自动修复现有游戏项目中的兼容性问题。脚本直接放在 <code>migrations/</code> 下，按 UTC 时间戳命名：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>migrations/20260429100000_fix_state_path.py
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>migrations/20260430153000_rename_metrics_field.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>migrations/20260429100000_fix_state_path.py
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>migrations/20260430153000_rename_metrics_field.py
 </code></pre></div>
 <p><code>tools/migrate.py</code> 读取每个目标项目的 <code>.godotmaker/applied_migrations.json</code>，按时间序应用差集。某个脚本失败时迁移链中止，publish 以错误退出；已成功的脚本仍保留在 <code>applied_migrations.json</code> 里，重新运行 publish 时从断点继续。</p>
 <p>MAJOR 升级完全跳过迁移，改用 <code>--force</code> 干净重装；迁移追踪器会被重置并在重新部署后重新建立 baseline。时间戳序列本身是单调全局的——旧脚本作为历史记录留在磁盘上，新装项目或 MAJOR 重装时会被 baseline 为已应用。</p>

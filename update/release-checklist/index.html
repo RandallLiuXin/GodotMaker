@@ -3308,7 +3308,9 @@
 <h2 id="release-preparation">Release preparation<a class="headerlink" href="#release-preparation" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Finalize <code>docs/update/next.md</code></strong></li>
-<li>Review all entries, fix typos, group by category</li>
+<li>Review all entries against the canonical
+     <a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries">release-note entry contract</a>,
+     fix typos, and group them by category</li>
 <li>Rename <code>next.md</code> to <code>vX.Y.Z.md</code> (e.g., <code>v0.5.0.md</code>) as a permanent archive</li>
 <li>
 <p>Create a new empty <code>next.md</code> by copying <code>next.template.md</code>
@@ -3354,7 +3356,7 @@
 </li>
 <li><strong><code>VERSION</code></strong> — single-line file at the repo root, content is the bare <code>X.Y.Z</code> (no leading <code>v</code>, no trailing newline issues). This is the <strong>source-of-truth</strong> <code>tools/publish.py</code> reads (<code>read_source_version()</code> in <code>tools/publish.py</code>) and writes into target projects' <code>.godotmaker/version</code>. Forgetting this bump causes downstream consumers (<code>godotmaker-cli</code>, <code>publish.py</code> upgrade detection) to see <code>installed_version != target_version</code> on every run, triggering an infinite "framework upgrade X.Y.Z-1 → X.Y.Z" loop that never converges.</li>
 <li><code>pyproject.toml</code> — update <code>version = "X.Y.Z"</code>. Python package metadata only; not consumed by the publish pipeline, but kept in sync so PyPI/SDK consumers see the same number.</li>
-<li><code>CHANGELOG.md</code> — add a new <code>## [X.Y.Z] — YYYY-MM-DD</code> section with entries from the archived <code>next.md</code></li>
+<li><code>CHANGELOG.md</code> — add a new <code>## [X.Y.Z] - YYYY-MM-DD</code> section with entries from the archived <code>next.md</code></li>
 <li>
 <p><strong><code>LICENSE</code> Change Date</strong> — in the <code>Change Date</code> field, pin this release's concrete Change Date: the calendar date equal to this release's publication date plus four years (a release published 2026-06-01 records <code>2030-06-01</code>). BUSL treats <code>Change Date</code> as a license parameter, so the tagged release's <code>LICENSE</code> should contain only the concrete value, followed directly by <code>Change License</code>.
      <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Change Date:

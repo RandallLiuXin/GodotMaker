@@ -3406,48 +3406,47 @@
 <h1 id="development-setup">Development Setup<a class="headerlink" href="#development-setup" title="Permanent link">&para;</a></h1>
 <p>This page gets you from a fresh clone to a running test suite, and walks through the loops you will repeat while working on GodotMaker.</p>
 <h2 id="get-the-source">Get the source<a class="headerlink" href="#get-the-source" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/RandallLiuXin/GodotMaker.git
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>GodotMaker
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>tools/requirements.txt
-</code></pre></div>
-<p>The supported development baseline is <strong>Python 3.10+</strong>, <strong>Node.js 22+</strong>, and
-<strong>Godot 4.5+</strong>. Put Node.js and Godot on your <code>PATH</code>, then run this to confirm
-everything is in place before you start:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>tools/check_env.py
+<p>The canonical <a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#development-setup">contributor setup and validation contract</a>
+defines the supported tool versions, development dependencies, Git hooks, and
+clean-checkout validation commands. The supported baseline is <strong>Python 3.10+</strong>,
+<strong>Node.js 22+</strong>, and <strong>Godot 4.5+</strong>; the contract remains authoritative for the
+full setup. Complete that setup first. You can then run the framework-specific
+environment diagnostic when your change exercises a published Godot project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/check_env.py
 </code></pre></div>
 <h2 id="project-structure-at-a-glance">Project structure at a glance<a class="headerlink" href="#project-structure-at-a-glance" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>GodotMaker/
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── hooks/          Pipeline enforcement and telemetry hooks + hooks/metrics/
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── agents/         Sub-agent definitions
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>├── skills/
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│   ├── core/       Pipeline, rescue, and supporting skills + _shared/ references
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│   ├── assets/     First-class Asset Skills + shared L0-L4 runtime
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>│   └── reviewer/   Domain reviewer skills
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── tools/          CLI tools: publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>├── agent-runtimes/ runner-specific references, templates, and hook config
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>├── templates/      Document templates deployed into generated game projects
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├── tests/          Hook, tool, asset, runtime, and pipeline tests
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>├── docs/           Wiki, contributing guides, versioning reference, hooks reference
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>├── shell/          publish.sh / publish.ps1, report.sh / report.bat
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>├── migrations/     Per-version-jump migration scripts
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>├── VERSION         Semantic version (MAJOR.MINOR.PATCH) — source of truth
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>└── CHANGELOG.md    Per-release change notes
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>GodotMaker/
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── hooks/          Pipeline enforcement and telemetry hooks + hooks/metrics/
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>├── agents/         Sub-agent definitions
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>├── skills/
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│   ├── core/       Pipeline, rescue, and supporting skills + _shared/ references
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│   ├── assets/     First-class Asset Skills + shared L0-L4 runtime
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│   └── reviewer/   Domain reviewer skills
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>├── tools/          CLI tools: publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>├── agent-runtimes/ runner-specific references, templates, and hook config
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>├── templates/      Document templates deployed into generated game projects
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>├── tests/          Hook, tool, asset, runtime, and pipeline tests
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>├── docs/           Wiki, contributing guides, versioning reference, hooks reference
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>├── shell/          publish.sh / publish.ps1, report.sh / report.bat
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>├── migrations/     Per-version-jump migration scripts
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>├── VERSION         Semantic version (MAJOR.MINOR.PATCH) — source of truth
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>└── CHANGELOG.md    Per-release change notes
 </code></pre></div>
 <p>One sentence per folder: <code>hooks/</code> is the enforcement layer; <code>skills/</code> is the AI instruction layer; <code>tools/</code> contains the Python scripts contributors and users run directly; <code>config/</code> drives both; <code>tests/</code> keeps all of it honest.</p>
 <h2 id="common-development-loops">Common development loops<a class="headerlink" href="#common-development-loops" title="Permanent link">&para;</a></h2>
 <h3 id="running-the-test-suite">Running the test suite<a class="headerlink" href="#running-the-test-suite" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-x<span class="w"> </span>-q
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-x<span class="w"> </span>-q
 </code></pre></div>
 <p>The <code>-x</code> flag stops at the first failure. Drop it to see all failures at once.
 The suite covers hooks, publish, project checks, migrations, asset/runtime
 contracts, and the end-to-end pipeline; use test collection rather than a
 hand-maintained total when you need the current inventory.</p>
 <p>To run a single file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/hooks/test_check_worker_report.py<span class="w"> </span>-x<span class="w"> </span>-q
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/hooks/test_check_worker_report.py<span class="w"> </span>-x<span class="w"> </span>-q
 </code></pre></div>
 <p>To run by test name:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-k<span class="w"> </span><span class="s2">"test_blocks_missing_sections"</span><span class="w"> </span>-x<span class="w"> </span>-q
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-k<span class="w"> </span><span class="s2">"test_blocks_missing_sections"</span><span class="w"> </span>-x<span class="w"> </span>-q
 </code></pre></div>
 <h3 id="trying-a-change-in-a-real-project">Trying a change in a real project<a class="headerlink" href="#trying-a-change-in-a-real-project" title="Permanent link">&para;</a></h3>
 <p>When you want to verify your change end-to-end:</p>
@@ -3455,7 +3454,7 @@ hand-maintained total when you need the current inventory.</p>
 <li>Pick a Godot project folder (or create a scratch folder).</li>
 <li>Push your current working tree into it:</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-test-game
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-test-game
 </code></pre></div>
 <ol>
 <li>Open the project folder in Claude Code and exercise the relevant <code>/gm-*</code> command.</li>
@@ -3465,7 +3464,10 @@ hand-maintained total when you need the current inventory.</p>
 <h3 id="linting">Linting<a class="headerlink" href="#linting" title="Permanent link">&para;</a></h3>
 <p>No formatter is enforced by the repo. Match the style of the file you are editing: 4-space indent, double quotes for strings in Python, blank line between top-level definitions.</p>
 <h2 id="branching">Branching<a class="headerlink" href="#branching" title="Permanent link">&para;</a></h2>
-<p><code>main</code> is the trunk; all pull requests land here. Keep changes small and open a PR early rather than accumulating a large branch. Every PR must add at least one entry to <code>docs/update/next.md</code> under the appropriate category. See <a href="../release-process/">Release process</a> for the full workflow.</p>
+<p><code>main</code> is the trunk; all pull requests land here. Keep changes small and open a
+PR early rather than accumulating a large branch. Follow the canonical
+<a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries">release-note entry contract</a>
+and see <a href="../release-process/">Release process</a> for the release-owner workflow.</p>
 
 
 

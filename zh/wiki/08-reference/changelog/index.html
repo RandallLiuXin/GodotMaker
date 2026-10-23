@@ -3357,7 +3357,9 @@
 <hr />
 <h2 id="_2">下一版本计划<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <p>下一个版本的待处理变更在 <a href="../../../update/next/"><code>../../update/next.md</code></a> 中追踪。</p>
-<p>贡献者须知：每个 Pull Request 合并前，必须在 <code>next.md</code> 的对应分类下（<code>Added</code>、<code>Changed</code>、<code>Fixed</code>、<code>Removed</code>）添加一条记录。发布时，<code>next.md</code> 会归档为 <code>docs/update/vX.Y.Z.md</code>，并以空白版本替换。</p>
+<p>贡献者请遵循规范的
+<a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries">发布说明条目合同</a>。
+发布时，<code>next.md</code> 会归档为 <code>docs/update/vX.Y.Z.md</code>，并以空白版本替换。</p>
 <hr />
 <h2 id="_3">迁移脚本<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
 <p>当升级需要在现有目标项目里改写文件时，迁移脚本会自动处理过渡。迁移脚本存放在 GodotMaker 仓库的 <code>migrations/</code> 目录下，按 UTC 时间戳命名（如 <code>migrations/20260429100000_fix_state_path.py</code>）。每个目标项目在 <code>.godotmaker/applied_migrations.json</code> 里追踪已应用过哪些；每次升级时 <code>tools/publish.py</code> 按时间序应用差集。整套机制与产品 MAJOR.MINOR.PATCH 完全解耦——任何非 MAJOR 升级都可以携带迁移。（MAJOR 升级跳过迁移，改用 <code>--force</code> 干净重装后重新 baseline。）</p>

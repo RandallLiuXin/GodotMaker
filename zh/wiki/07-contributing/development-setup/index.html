@@ -3406,46 +3406,42 @@
 <h1 id="_1">开发环境搭建<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
 <p>本页面帮你从零克隆仓库到跑通测试套件，并介绍你在开发 GodotMaker 过程中会反复用到的操作流程。</p>
 <h2 id="_2">获取源码<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/RandallLiuXin/GodotMaker.git
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>GodotMaker
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>tools/requirements.txt
-</code></pre></div>
-<p>官方开发基线是 <strong>Python 3.10+</strong>、<strong>Node.js 22+</strong> 和 <strong>Godot 4.5+</strong>。
-请将 Node.js 与 Godot 加入 <code>PATH</code>，开始之前运行以下命令确认环境就绪：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>tools/check_env.py
+<p>规范的<a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#development-setup">贡献者搭建与验证合同</a>
+定义支持的工具版本、开发依赖、Git hook 以及 clean checkout 验证命令。支持基线为 <strong>Python 3.10+</strong>、<strong>Node.js 22+</strong> 和 <strong>Godot 4.5+</strong>；完整搭建步骤仍以该合同为准。请先完成该合同中的搭建步骤。若改动会运行已发布到 Godot 项目的框架，再执行框架专用环境诊断：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/check_env.py
 </code></pre></div>
 <h2 id="_3">仓库结构速览<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>GodotMaker/
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── hooks/          流水线规则与遥测 hook + hooks/metrics/ 子系统
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── agents/         子 Agent 定义
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>├── skills/
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│   ├── core/       流水线、rescue 与辅助技能 + _shared/ 共享参考文档
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│   ├── assets/     First-class Asset Skill + 共享 L0-L4 runtime
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>│   └── reviewer/   领域审查技能
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── tools/          CLI 工具：publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>├── agent-runtimes/ runner 专属 reference、template 和 hook config
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>├── templates/      部署到生成的游戏项目中的文档模板
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├── tests/          Hook、工具、asset、runtime 与流水线测试
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>├── docs/           Wiki、贡献指南、版本参考、hooks 参考
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>├── shell/          publish.sh / publish.ps1, report.sh / report.bat
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>├── migrations/     跨版本迁移脚本
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>├── VERSION         语义版本号 (MAJOR.MINOR.PATCH)——唯一真实来源
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>└── CHANGELOG.md    每次发版的变更说明
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>GodotMaker/
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── hooks/          流水线规则与遥测 hook + hooks/metrics/ 子系统
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>├── agents/         子 Agent 定义
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>├── skills/
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│   ├── core/       流水线、rescue 与辅助技能 + _shared/ 共享参考文档
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│   ├── assets/     First-class Asset Skill + 共享 L0-L4 runtime
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│   └── reviewer/   领域审查技能
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>├── tools/          CLI 工具：publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>├── config/         config.yaml.default, stage_schemas.json, addon_versions.json
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>├── agent-runtimes/ runner 专属 reference、template 和 hook config
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>├── templates/      部署到生成的游戏项目中的文档模板
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>├── tests/          Hook、工具、asset、runtime 与流水线测试
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>├── docs/           Wiki、贡献指南、版本参考、hooks 参考
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>├── shell/          publish.sh / publish.ps1, report.sh / report.bat
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>├── migrations/     跨版本迁移脚本
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>├── VERSION         语义版本号 (MAJOR.MINOR.PATCH)——唯一真实来源
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>└── CHANGELOG.md    每次发版的变更说明
 </code></pre></div>
 <p>一句话概括每个目录的职责：<code>hooks/</code> 是规则执行层；<code>skills/</code> 是 AI 指令层；<code>tools/</code> 包含贡献者和用户直接运行的 Python 脚本；<code>config/</code> 同时驱动前两者；<code>tests/</code> 保证一切都正确运转。</p>
 <h2 id="_4">常见开发流程<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
 <h3 id="_5">运行测试套件<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-x<span class="w"> </span>-q
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-x<span class="w"> </span>-q
 </code></pre></div>
 <p><code>-x</code> 参数在第一次失败时立即停止。去掉它可以一次看到所有失败。测试套件覆盖
 hook、publish、项目检查、迁移、asset/runtime 合同和端到端流水线；需要当前
 inventory 时请以测试收集结果为准，不维护容易漂移的裸总数。</p>
 <p>运行单个文件：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/hooks/test_check_worker_report.py<span class="w"> </span>-x<span class="w"> </span>-q
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/hooks/test_check_worker_report.py<span class="w"> </span>-x<span class="w"> </span>-q
 </code></pre></div>
 <p>按测试名称运行：</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-k<span class="w"> </span><span class="s2">"test_blocks_missing_sections"</span><span class="w"> </span>-x<span class="w"> </span>-q
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-k<span class="w"> </span><span class="s2">"test_blocks_missing_sections"</span><span class="w"> </span>-x<span class="w"> </span>-q
 </code></pre></div>
 <h3 id="_6">在真实项目中验证改动<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
 <p>如果你想端到端地验证某项改动：</p>
@@ -3453,7 +3449,7 @@ inventory 时请以测试收集结果为准，不维护容易漂移的裸总数�
 <li>找一个 Godot 项目目录（或新建一个临时目录）。</li>
 <li>将当前工作树推送进去：</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-test-game
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>/path/to/my-test-game
 </code></pre></div>
 <ol>
 <li>在 Claude Code 中打开该项目目录，执行相关的 <code>/gm-*</code> 命令。</li>
@@ -3463,7 +3459,9 @@ inventory 时请以测试收集结果为准，不维护容易漂移的裸总数�
 <h3 id="_7">代码风格<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
 <p>仓库没有强制执行代码格式化工具。请保持与你正在编辑的文件一致的风格：Python 中使用 4 空格缩进、字符串用双引号、顶层定义之间空一行。</p>
 <h2 id="_8">分支策略<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
-<p><code>main</code> 是主干分支，所有 Pull Request 都合并到这里。保持改动精简，尽早开 PR，不要在本地积累大型分支。每个 PR 都必须在 <code>docs/update/next.md</code> 的适当分类下至少添加一条记录。完整工作流程见 <a href="../release-process/">发版流程</a>。</p>
+<p><code>main</code> 是主干分支，所有 Pull Request 都合并到这里。保持改动精简，尽早开 PR，不要在本地积累大型分支。请遵循规范的
+<a href="https://github.com/RandallLiuXin/GodotMaker/blob/main/CONTRIBUTING.md#release-note-entries">发布说明条目合同</a>，
+并参阅 <a href="../release-process/">发版流程</a>了解发布负责人工作流。</p>
 
 
 
