@@ -17,8 +17,8 @@ def test_resume_check_defines_a_verify_freshness_boundary():
     resume = _resume_check()
 
     assert "**latest state-changing event**" in resume
-    assert "whose `role` is `fixgap` unless it is\n  an evaluator-owned handoff" in resume
-    assert "A bare `fixgap` event" in resume
+    assert "whose `role` is `build` or `fixgap`" in resume
+    assert "an evaluator-owned handoff are state-changing" in resume
     assert "**fresh successful verify**" in resume
     assert "appears later in file order" in resume
     assert "appends a verify event only on PASS" in resume
@@ -39,7 +39,7 @@ def test_resume_check_pins_fresh_and_stale_event_sequences():
         assert row in resume
 
 
-def test_evaluator_owned_handoff_requires_freshness_and_survives_reverify():
+def test_evaluator_owned_handoff_requires_its_own_fresh_verify():
     resume = _resume_check()
 
     handoff_definition = resume.index("**evaluator-owned handoff**")
@@ -54,21 +54,24 @@ def test_evaluator_owned_handoff_requires_freshness_and_survives_reverify():
     assert handoff_definition < other_outcome < freshness
     assert freshness < freshness_gate < handoff_branch < repeated_evaluate
     assert "**pending evaluator handoff**" in resume
-    assert "appears after the latest state-changing event" in resume
-    assert "not followed\n  by any event with `role == \"evaluate\"`" in resume
-    assert "A verify event appended after the\n  handoff does not consume it" in resume
+    assert "latest state-changing\n  event is itself an evaluator-owned handoff" in resume
+    assert "no later event has\n  `role == \"evaluate\"`" in resume
+    assert "A verify event appended after the handoff does not\n  consume it" in resume
+    assert "which is not included as a trailing event in the history" in resume
 
     expected_rows = {
+        "| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e)` "
+        "| STOP: run `/gm-verify` |",
         "| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e) "
-        "→ evaluate` | proceed through the handoff branch |",
+        "→ verify` | proceed through the handoff branch |",
         "| `build → verify → evaluate → fixgap → "
-        "fixgap(handoff=evaluator_owned_e2e) → evaluate` | STOP: run "
+        "fixgap(handoff=evaluator_owned_e2e)` | STOP: run "
         "`/gm-verify` |",
         "| `build → verify → evaluate → fixgap → "
-        "fixgap(handoff=evaluator_owned_e2e) → verify → evaluate` | proceed "
+        "fixgap(handoff=evaluator_owned_e2e) → verify` | proceed "
         "through the handoff branch |",
         "| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e) "
-        "→ evaluate → evaluate` | STOP: evaluate already ran |",
+        "→ verify → evaluate` | STOP: evaluate already ran |",
     }
 
     for row in expected_rows:

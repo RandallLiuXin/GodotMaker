@@ -19,6 +19,10 @@ def test_fixgap_handoff_uses_the_fixed_stage_event_contract():
     assert "--reason=evaluator_owned_e2e" in fixgap
     assert "do not archive GAP.md" in fixgap
     assert "non-`verified`" in fixgap
+    assert (
+        "FixGap handed off E2E evidence. Recommended next: /gm-verify, then "
+        "/gm-evaluate."
+    ) in fixgap
 
 
 def test_evaluate_consumes_only_the_evaluator_owned_handoff():
@@ -27,5 +31,24 @@ def test_evaluate_consumes_only_the_evaluator_owned_handoff():
     assert 'outcome == "handoff"' in evaluate
     assert 'next_role == "evaluate"' in evaluate
     assert 'reason == "evaluator_owned_e2e"' in evaluate
+    assert "an evaluator-owned handoff are state-changing" in evaluate
+    assert (
+        "latest state-changing\n  event is itself an evaluator-owned handoff"
+        in evaluate
+    )
+    assert "If there is no fresh successful verify" in evaluate
     assert "repair the `e2e/` scenario/assertion/capture timing" in evaluate
     assert "Ask the user to run\n  `/gm-fixgap`." in evaluate
+
+
+def test_evaluate_routes_handoff_only_after_a_later_verify():
+    evaluate = _read(EVALUATE)
+
+    assert (
+        "| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e)` | "
+        "STOP: run `/gm-verify` |"
+    ) in evaluate
+    assert (
+        "| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e) → "
+        "verify` | proceed through the handoff branch |"
+    ) in evaluate

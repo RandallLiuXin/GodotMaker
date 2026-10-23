@@ -36,18 +36,18 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
   evaluator-owned handoff → STOP. Ask the user to run
   `/gm-fixgap`.
 - Define the **latest state-changing event** as the last event in
-  file order whose `role` is `build`, or whose `role` is `fixgap` unless it is
-  an evaluator-owned handoff. A bare `fixgap` event
-  (one without `outcome`) is state-changing. Define a
+  file order whose `role` is `build` or `fixgap`. Both a bare `fixgap` event
+  (one without `outcome`) and an evaluator-owned handoff are state-changing.
+  Define a
   **fresh successful verify** as an event with `role == "verify"` that
   appears later in file order than that latest state-changing event.
   `gm-verify` appends a verify event only on PASS, so a failed verify run cannot
   satisfy this prerequisite.
-- Define a **pending evaluator handoff** as the most recent evaluator-owned
-  handoff that appears after the latest state-changing event and is not followed
-  by any event with `role == "evaluate"`. A verify event appended after the
-  handoff does not consume it; after freshness passes, evaluate must still
-  follow the handoff repair path.
+- Define a **pending evaluator handoff** as one where the latest state-changing
+  event is itself an evaluator-owned handoff and no later event has
+  `role == "evaluate"`. A verify event appended after the handoff does not
+  consume it; after freshness passes, evaluate must still follow the handoff
+  repair path.
 - If there is no state-changing event → STOP. Tell the user to run
   `/gm-build` first.
 - If there is no fresh successful verify → STOP. Tell the user to run
@@ -62,7 +62,9 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
   > If you need to redo this step or have other plans, just tell me."
 - Otherwise → proceed (evaluate is naturally re-invoked after each verify pass).
 
-Sequence examples below are ordered from oldest to newest:
+Sequence examples below list the existing `stage.jsonl` history from oldest to
+newest. The resume result is for the `/gm-evaluate` invocation being checked,
+which is not included as a trailing event in the history.
 
 | Events | Resume result |
 |---|---|
@@ -70,10 +72,11 @@ Sequence examples below are ordered from oldest to newest:
 | `verify → build` | STOP: run `/gm-verify` |
 | `build → verify → fixgap` | STOP: run `/gm-verify` |
 | `build → verify → fixgap → verify` | proceed |
-| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e) → evaluate` | proceed through the handoff branch |
-| `build → verify → evaluate → fixgap → fixgap(handoff=evaluator_owned_e2e) → evaluate` | STOP: run `/gm-verify` |
-| `build → verify → evaluate → fixgap → fixgap(handoff=evaluator_owned_e2e) → verify → evaluate` | proceed through the handoff branch |
-| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e) → evaluate → evaluate` | STOP: evaluate already ran |
+| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e)` | STOP: run `/gm-verify` |
+| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e) → verify` | proceed through the handoff branch |
+| `build → verify → evaluate → fixgap → fixgap(handoff=evaluator_owned_e2e)` | STOP: run `/gm-verify` |
+| `build → verify → evaluate → fixgap → fixgap(handoff=evaluator_owned_e2e) → verify` | proceed through the handoff branch |
+| `build → verify → evaluate → fixgap(handoff=evaluator_owned_e2e) → verify → evaluate` | STOP: evaluate already ran |
 
 ## Resolve `godot` binary
 

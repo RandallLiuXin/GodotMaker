@@ -341,7 +341,7 @@ an E2E assertion, scenario, capture, or capture-timing defect.
    ```
 
 4. Commit with `git add -A && git commit -m "chore(fixgap): evaluator handoff <Tag>"`.
-5. Inform the user: `FixGap handed off E2E evidence to /gm-evaluate.`
+5. Inform the user: `FixGap handed off E2E evidence. Recommended next: /gm-verify, then /gm-evaluate.`
 
 ### Ordinary completion
 
