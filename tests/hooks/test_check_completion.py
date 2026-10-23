@@ -3,6 +3,9 @@ import json
 import os
 import pytest
 import tempfile
+from pathlib import Path
+
+from hooks.check_completion import get_diligence_failure
 from .helpers import (
     run_hook, is_blocked, cleanup_metrics,
     write_current_role, write_metrics,
@@ -160,6 +163,28 @@ class TestFixgapDiligence:
         })
         assert code == 0
         assert not is_blocked(parsed)
+
+
+def test_pre_append_diligence_failure_has_no_stage_or_archive_side_effects(
+        project_dir):
+    stage_path = Path(".godotmaker/stage.jsonl")
+    archive_path = Path(".godotmaker/evaluation-runs/existing/manifest.json")
+    archive_path.parent.mkdir(parents=True)
+    stage_path.write_text('{"role": "evaluate", "ts": "before"}\n', encoding="utf-8")
+    archive_path.write_text('{"stage_event_ts": "before"}\n', encoding="utf-8")
+    stage_before = stage_path.read_bytes()
+    archive_before = archive_path.read_bytes()
+
+    failure = get_diligence_failure("fixgap", [
+        {"event": "subagent_start", "agent_id": "w1", "role": "worker"},
+    ])
+
+    assert failure is not None
+    assert failure["decision"] == "block"
+    assert failure["role"] == "fixgap"
+    assert failure["issues"]
+    assert stage_path.read_bytes() == stage_before
+    assert archive_path.read_bytes() == archive_before
 
 
 class TestAntiDeadloop:

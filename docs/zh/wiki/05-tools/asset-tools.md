@@ -25,9 +25,8 @@ request 决定 runtime 输出集合。`scene-prop-set` 和 `compact-prop-pack` �
 runtime 输出。runtime 文件还必须位于项目内、确实存在、能被 Godot 加载，且实际
 类型匹配声明。
 
-runtime family 返回的 reference 输出是已验证的源证据，不是目录行。只有
-`screen-reference` 等 reference-only family 会登记 `source_ready` 行；其路径为
-项目相对路径（例如 `references/title_screen.png`），不会进入 worker runtime handoff。
+runtime family 返回的 reference 输出是已验证的源证据，不是目录行。它们不会进入
+注册流程或 worker runtime handoff。
 
 ## 读取 worker snapshot
 

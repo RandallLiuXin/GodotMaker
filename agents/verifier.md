@@ -64,7 +64,7 @@ You MAY write ephemeral test scripts under `reports/verifier-temp/` when inline 
 {Specific files, systems, or interactions to stress-test}
 
 ### Visual Verification                                  [OPTIONAL]
-- Reference: {references/scene_name.png}
+- Design rule: {rule_id and verbatim DESIGN.md rule text}
 - Screenshot(s): {evaluator captures or temp capture path}
 - Verify: {observable visual criteria}
 - Worker self-check result: {pass | fail | warning | error | missing}

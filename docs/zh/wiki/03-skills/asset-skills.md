@@ -1,6 +1,6 @@
 # Asset 技能
 
-Asset Skill 会把资产请求转换成已验证的 Godot runtime 资源，或已验证的视觉参考。
+Asset Skill 会把资产请求转换成已验证的 Godot runtime 资源。
 `/gm-asset` 选择 family，各 family 负责自己的 request 结构、source 处理、输出路径和
 验证。权威 inventory 位于 `tools/asset_family_registry.py`；本页是该 registry 的
 公开镜像。
@@ -16,13 +16,10 @@ Asset Skill 会把资产请求转换成已验证的 Godot runtime 资源，或�
 | fx-bundle | static, animated | SpriteFrames, Texture2D | ready |
 | platform-strip | single, atlas | AtlasTexture, Texture2D | ready |
 | scene-prop-set | default | AtlasTexture | ready |
-| screen-reference | default | — | source_ready |
 | tileset | default | TileSet | ready |
 | ui-kit | default | AtlasTexture, StyleBoxTexture, Theme | ready |
 
-`screen-reference` 被刻意设计成 reference-only。它可以指导后续实现，但绝不会进入
-worker runtime snapshot。其他 family 只有在完整验证路径成功后，才会返回一个或多个
-原生 Godot artifact。
+各 family 只有在完整验证路径成功后，才会返回一个或多个原生 Godot artifact。
 
 要直接从真值来源查看或校验同一份 inventory，请运行：
 
@@ -44,8 +41,7 @@ Runtime asset 按顺序通过以下层级。任一层失败，result 都不能�
 | L3 | 真实的 headless Godot 进程能够 import、加载并校验 artifact 类型。 |
 | L4 | 类型专属结构与声明的 recipe 一致，例如 SpriteFrames 动画、Theme 值、atlas region，或 TileSet source 与 terrain 数据。 |
 
-Reference-only 输出完成适用的 source 检查后，以 `source_ready` 登记。Runtime 输出只有
-在 L0-L4 全部通过后才会到达 `ready`。Provider 可用性与视觉质量属于独立证据：
+Runtime 输出只有在 L0-L4 全部通过后才会到达 `ready`。Provider 可用性与视觉质量属于独立证据：
 结构验证全绿，并不代表远程 provider 一定可用，也不代表其美术符合特定创作方向。
 
 ## 相关页面

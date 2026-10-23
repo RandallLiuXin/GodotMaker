@@ -52,10 +52,10 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 - Reads the current tag's MISSING rows from `ASSETS.md`
 - For assets you have already provided: dispatches an Analyst helper to inspect your image files and record what they contain
 - For assets that are still missing: generates them via an image generation API (Gemini or xAI, depending on your configuration)
-- For each entry in `SCENES.md`: generates a target reference image at `references/scene_<name>.png` from the scene description, art direction, and your provided art style
+- For every production unit: copies the applicable `DESIGN.md` rules into the generation brief and may attach user-provided style or identity images as optional conditioning
 - Updates `ASSETS.md` with the actual file paths and final status
 
-**What you get:** Art files in `assets/`, scene reference images in `references/`, and resolved status on this tag's `ASSETS.md` rows. The scene references become the visual contract that `/gm-evaluate` later compares running screenshots against.
+**What you get:** Runtime art files in `assets/` and resolved status on this tag's `ASSETS.md` rows. `DESIGN.md` remains the visual contract used by generation and evaluation.
 
 **Things to know:** If a previous tag's asset is broken, raise it as a fix task in `/gm-fixgap`.
 
@@ -70,15 +70,15 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 **What happens behind the scenes:**
 - On resume, reads `.godotmaker/verify_report.json` if a fresh failure report exists from the previous `/gm-verify`, and translates each per-check failure into a `pending` task in the current tag's `PLAN.md` before continuing
 - Reads the current tag's `PLAN.md` to find pending tasks, starting with the riskiest ones
-- Dispatches Workers (up to 3 in parallel) — each Worker implements one game system and its unit tests, then reports execution results and failure evidence. Workers do not write Memory/Learning entries; on runtimes with SubagentStop lifecycle hooks (currently Claude Code and Codex), unsuccessful handoffs produce bounded `worker_error` diagnostics instead
+- Dispatches Workers (up to 3 in parallel) — each Worker implements one game system and its unit tests, then reports execution results and failure evidence. Workers do not edit `STRUCTURE.md` directly; the main agent records accepted durable architecture changes there. On runtimes with SubagentStop lifecycle hooks (currently Claude Code and Codex), unsuccessful handoffs produce bounded `worker_error` diagnostics instead
 - Once every task in `PLAN.md` is `completed`, dispatches a Verifier (compiles headlessly, runs unit tests) and then a Reviewer (domain knowledge about Godot pitfalls — physics, UI, animation, etc.) — one verify+review pass per cycle iteration, not per worker
-- For each reviewer finding the main agent picks one of three options: ACCEPT (add a new fix task to `PLAN.md`), REJECT (the finding is wrong), or SKIP (the finding is real but not worth fixing now). Defaults: critical/major → ACCEPT; minor → SKIP. REJECT/SKIP for critical/major requires a mandatory citation (gotcha entry, API doc, architecture decision, project constraint, or task ID). Raw findings and triage decisions are not written to `MEMORY.md`
+- For each reviewer finding the main agent picks one of three options: ACCEPT (add a new fix task to `PLAN.md`), REJECT (the finding is wrong), or SKIP (the finding is real but not worth fixing now). Defaults: critical/major → ACCEPT; minor → SKIP. REJECT/SKIP for critical/major requires a mandatory citation (gotcha entry, API doc, `STRUCTURE.md` architecture rule, or task ID). Raw findings and triage decisions remain runtime evidence
 - If any findings were ACCEPTED, the cycle loops back to dispatching Workers
 - The build ends only when every task in `PLAN.md` is `verified` and the last review round added zero ACCEPTED tasks
 
 **What you get:** Game code in `src/`, scenes in `scenes/`, unit tests in `test/` — all scoped to this tag's additions / refactors.
 
-**Things to know:** You cannot write game code yourself while in this step — the permission system blocks it. The main agent coordinates; Workers do the actual writing and cannot write root `MEMORY.md` or `memory/`. Workers may touch files outside the current tag's scope only when `PLAN.md` has an explicit refactor task naming those files; "cleanup detours" are not allowed. If the same task fails three times, the build stops and asks you what to do.
+**Things to know:** You cannot write game code yourself while in this step — the permission system blocks it. The main agent coordinates and Workers do the actual writing. Workers may touch files outside the current tag's scope only when `PLAN.md` has an explicit refactor task naming those files; "cleanup detours" are not allowed. If the same task fails three times, the build stops and asks you what to do.
 
 ---
 
@@ -111,7 +111,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 - Maintains a single `e2e/` directory that always reflects the current game: writes new tests for this tag's Tag Mechanics, verifies inherited tests still exist, and prunes tests for mechanics PLAN's Main Build refactor tasks deliberately removed
 - Enforces the **playable-closed-loop hard gate**: headless boot + at least one mechanic E2E + at least one of {death, win, exit} ending exists
 - Runs the full `e2e/` suite — every test for every still-supported mechanic. A failing inherited mechanic is just as critical as a failing new one
-- Takes screenshots of each scene and compares them against reference images using a visual quality check
+- Takes screenshots of each scene and checks observable scene requirements plus the applicable `DESIGN.md` rules using visual QA
 - Produces a final verdict: approve or reject, with a list of specific problems if rejected
 
 **What you get:** `.godotmaker/evaluation.json` (the full verdict, with per-mechanic PASS/FAIL records), latest screenshots in `e2e/screenshots/`, and archived evaluate-run evidence under `.godotmaker/evaluation-runs/`.
@@ -164,7 +164,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 **What happens behind the scenes:**
 - Verifies the project still builds clean and `evaluation.json` says `approve`
 - Reconciles `PLAN.md`, `STRUCTURE.md`, and scene docs against the final code so archived names match the systems and components that actually shipped
-- Copies the current `GDD.md`/`PLAN.md`/`STRUCTURE.md`/`SCENES.md`/`MEMORY.md` (full snapshots), the `memory/` subtree and `evaluation.json` into `docs/tags/<Tag>/`
+- Copies the current `GDD.md`/`PLAN.md`/`STRUCTURE.md`/`DESIGN.md`/`SCENES.md` snapshots and `evaluation.json` into `docs/tags/<Tag>/`
 - Generates `docs/tags/<Tag>/CHANGELOG.md` summarising delivered mechanics, added systems, and any cross-tag refactors
 - Seals the archive: writes `SUMMARY.md`, the tag `README.md`, the parent `docs/tags/README.md` index, and an `evidence/manifest.json` listing every archived file with its size, SHA-256 and source revision
 - Runs `git tag <Tag>` locally (does not push)
@@ -185,7 +185,7 @@ The pipeline runs **per tag** (SemVer: v0.1.0, v0.2.0, …). One full pass throu
 **When to run it:** Only when the pipeline is stuck — typically after several `/gm-fixgap` rounds fail to converge, or when you suspect a framework bug rather than a game-code bug.
 
 **What happens behind the scenes:**
-- Reads the runtime artifacts (`.godotmaker/current_role`, `stage.jsonl`, `evaluation.json`, recent `traces/`, `metrics.jsonl`) and the per-tag working docs (`PLAN.md`, `GAP.md` if present, `MEMORY.md`)
+- Reads the runtime artifacts (`.godotmaker/current_role`, `stage.jsonl`, `evaluation.json`, recent `traces/`, `metrics.jsonl`) and the per-tag working docs (`PLAN.md`, `GAP.md` if present, `STRUCTURE.md`)
 - Walks the godotmaker layers (hooks → SKILL.md → config → templates → shared refs → tools) looking for a defect that matches the symptom
 - Outputs a diagnosis to chat — never modifies game code, never writes files (the only mutations are setting `.godotmaker/current_role` to `rescue` and appending one rescue event to `stage.jsonl`)
 - If a godotmaker defect is found: drafts a GitHub issue text you can review and post upstream

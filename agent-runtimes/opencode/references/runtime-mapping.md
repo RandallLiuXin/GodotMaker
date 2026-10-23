@@ -41,8 +41,7 @@ to the current skill directory, not the project root. For example, inside
 `.opencode/skills/gm-asset/references/asset-runtime-pipeline.md`.
 
 Project artifact paths are different: if a skill asks the stage to create or
-consume project assets such as `references/scene_<name>.png`, resolve those as
-project-root files.
+consume project assets, resolve those as project-root files.
 
 ## Dot-Directory File Checks
 
@@ -87,10 +86,7 @@ work. Otherwise stop and report the missing capability before editing files.
   missing, stop with a setup handoff.
 - Root-stage hooks remain active through `.opencode/plugins/godotmaker-hooks.js`.
 - Child-session edit boundaries are governed by `.opencode/agents/*.md`
-  `permission` frontmatter, not by Claude-style `agent_id` hook payloads. For
-  the architecture record, the plugin invokes the identity-free `memory` scope of
-  `check_file_permissions.py`, blocking child writes to root `MEMORY.md` and
-  the root `memory/` directory.
+  `permission` frontmatter, not by Claude-style `agent_id` hook payloads.
 - OpenCode child sessions do not provide the `agent_id` payload required by
   GodotMaker's Python subagent read/write gates. Treat unsupported child-session
   gates as degraded instead of claiming Claude Code hook parity.

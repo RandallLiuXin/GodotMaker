@@ -25,9 +25,7 @@ row. Runtime files must be project-local, present, loadable by Godot, and match
 their declared type.
 
 Reference outputs returned by runtime families are validated source evidence,
-not catalog rows. Only reference-only families such as `screen-reference`
-register a `source_ready` row; their reference path is project-relative (for
-example `references/title_screen.png`) and never enters worker handoff.
+not catalog rows. They never enter registration or worker handoff.
 
 ## Worker snapshot
 

@@ -19,7 +19,7 @@ GodotMaker/
 ├── tools/                   publish.py, check_env.py, check_project.py, asset_*.py, migrate.py
 ├── config/                  config.yaml.default, stage_schemas.json, addon_versions.json
 ├── agent-runtimes/          Runner-specific references, templates, hook config, and plugin adapters
-├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, MEMORY, TOC)
+├── templates/               Document templates (GDD, PLAN, STRUCTURE, SCENES, ASSETS, GAP, TOC)
 ├── tests/                   Hook, tool, asset, runtime, and pipeline tests
 ├── docs/                    versioning.md, hooks.md, wiki/, update/, contributing/, reference/
 ├── shell/                   publish.sh / publish.ps1, report.sh / report.bat
@@ -216,7 +216,7 @@ When you run `python tools/publish.py <target>`:
 
 ## templates/
 
-Markdown document templates that `publish.py` deploys into new game projects under the selected agent template directory. The role skills fill these in during their work. Templates include: `GDD.md`, `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `GAP.md`, `MEMORY.md`, `TOC.md`, `game-claude.md`.
+Markdown document templates that `publish.py` deploys into new game projects under the selected agent template directory. The role skills fill these in during their work. Templates include: `GDD.md`, `PLAN.md`, `STRUCTURE.md`, `SCENES.md`, `ASSETS.md`, `GAP.md`, `TOC.md`, `game-claude.md`.
 
 ---
 

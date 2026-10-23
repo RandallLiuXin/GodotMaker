@@ -275,7 +275,7 @@ def test_type_mismatch_fails_before_routing(project):
     "field,value,message",
     [
         ("production_family", "sprites", "production_family is not allowed"),
-        ("production_family", "screen-reference", "reference-only"),
+        ("production_family", "screen-reference", "not allowed"),
         ("source_layout_type", "mosaic", "source_layout_type is not allowed"),
         ("source_layout_type", "reference", "compiles no Godot artifact"),
         ("artifact_type", "Resource", "must be one of"),

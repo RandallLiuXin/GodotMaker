@@ -51,8 +51,8 @@ to the current skill directory, not the project root. For example, inside
 `.agents/skills/gm-asset/references/asset-runtime-pipeline.md`.
 
 Project artifact paths are different: if a skill asks the stage to create or
-consume project assets such as `references/scene_<name>.png`, resolve those as
-project-root files. When the path is a Markdown support document mentioned by a
+consume project assets, resolve those as project-root files. When the path is a
+Markdown support document mentioned by a
 skill instruction, prefer skill-local resolution.
 
 ## Capability Mapping
@@ -104,11 +104,6 @@ Codex must classify every delegated role before dispatch:
 Do not claim parallel worker execution unless Codex actually spawned isolated
 workers. If running a sequential fallback, say so in the report and preserve the
 same task state transitions.
-
-Delegated roles must not write the root `MEMORY.md` or files below the root
-`memory/` directory. Codex exposes no equivalent PreToolUse write gate here,
-so this is a prompt-level boundary carried by the role definition. Only the
-lead session may update stable architecture decisions and project constraints.
 
 ## Project Tool Status Overrides
 

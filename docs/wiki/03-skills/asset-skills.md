@@ -1,7 +1,7 @@
 # Asset Skills
 
-Asset Skills turn an asset request into either a validated Godot runtime
-resource or a validated visual reference. `/gm-asset` selects a family and the
+Asset Skills turn an asset request into a validated Godot runtime resource.
+`/gm-asset` selects a family and the
 selected family owns its request shape, source processing, output paths, and
 validation. The authoritative inventory is
 `tools/asset_family_registry.py`; this page mirrors that registry.
@@ -17,14 +17,11 @@ validation. The authoritative inventory is
 | fx-bundle | static, animated | SpriteFrames, Texture2D | ready |
 | platform-strip | single, atlas | AtlasTexture, Texture2D | ready |
 | scene-prop-set | default | AtlasTexture | ready |
-| screen-reference | default | — | source_ready |
 | tileset | default | TileSet | ready |
 | ui-kit | default | AtlasTexture, StyleBoxTexture, Theme | ready |
 
-`screen-reference` is intentionally reference-only. It can guide a later
-implementation, but it never enters the worker runtime snapshot. Every other
-family returns one or more native Godot artifacts after its complete validation
-path succeeds.
+Each family returns one or more native Godot artifacts after its complete
+validation path succeeds.
 
 To inspect or verify the same inventory directly from the source of truth, run:
 
@@ -46,8 +43,7 @@ result from being registered in `ASSETS.md` or handed to a worker.
 | L3 | A real headless Godot process can import, load, and type-check the artifact. |
 | L4 | Type-specific structure matches the declared recipe, such as SpriteFrames animations, Theme values, atlas regions, or TileSet sources and terrain data. |
 
-Reference-only output stops after its applicable source checks and is recorded
-as `source_ready`. Runtime output reaches `ready` only after L0-L4 pass. Provider
+Runtime output reaches `ready` only after L0-L4 pass. Provider
 availability and visual quality are separate evidence: a green structural
 ladder does not claim that a remote provider was available or that its art met a
 particular creative direction.

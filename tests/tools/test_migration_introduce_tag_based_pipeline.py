@@ -107,7 +107,7 @@ class TestMigration:
         assert (archive / "PLAN.md").is_file()
         assert (archive / "STRUCTURE.md").is_file()
         assert (archive / "SCENES.md").is_file()
-        assert (archive / "MEMORY.md").is_file()
+        assert not (archive / "MEMORY.md").exists()
         # ASSETS.md is cross-tag; not archived
         assert not (archive / "ASSETS.md").exists()
 
@@ -249,7 +249,7 @@ class TestMigration:
         archive = tmp_path / "docs" / "tags" / "v0.1.0"
         assert (archive / "GDD-snapshot.md").is_file()
         assert (archive / "PLAN.md").is_file()
-        # SCENES/ASSETS/STRUCTURE/MEMORY were skipped — not in archive
+        # SCENES/ASSETS/STRUCTURE were skipped — not in archive
         assert not (archive / "STRUCTURE.md").is_file()
 
 
