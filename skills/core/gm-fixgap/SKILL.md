@@ -28,6 +28,17 @@ Read `.godotmaker/stage.jsonl` (treat as empty if missing) — each line is `{"r
 - If `evaluation.json` `result` is `"approve"` → STOP. Tell the user:
   > "The latest evaluation was already approved. Recommended next: /gm-accept.
   > If you need to redo this step or have other plans, just tell me."
+
+Read `.godotmaker/verify_report.json` if it exists.
+
+Define **pending verify feedback** as:
+- `.godotmaker/verify_report.json` exists.
+- Its top-level `result` is `"fail"`.
+- Its `ts` is later than the latest `role == "fixgap"` event in `stage.jsonl`, or there is no prior fixgap event.
+
+Apply the remaining resume gates in this order:
+
+- If pending verify feedback exists → proceed, even if the last event is `fixgap` and `GAP.md` is not at project root.
 - If the **last event** has `role == "fixgap"` AND `GAP.md` is not at project root (already archived) → STOP. Tell the user:
   > "Fixgap already completed for the latest evaluation at {timestamp}. Recommended next: /gm-verify.
   > If you need to redo this step or have other plans, just tell me."
