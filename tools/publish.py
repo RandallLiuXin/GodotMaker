@@ -903,7 +903,6 @@ def render_pi_agent_role_text(text: str, role_name: str) -> str:
     updated = list(frontmatter or [])
     if frontmatter is None:
         body = text
-    updated = _frontmatter_without_key(updated, "model")
     rendered = "---\n" + "\n".join(updated) + "\n---\n" + body
     replacements = {
         ".claude/skills": ".pi/skills",

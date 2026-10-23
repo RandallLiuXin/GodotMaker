@@ -39,36 +39,14 @@ You MAY write ephemeral test scripts under `reports/verifier-temp/` when inline 
 5. **Copy-paste actual output.** Do not paraphrase or abbreviate.
 6. **Distinguish PASS from SKIP.** Cannot run a check → SKIP with reason, never PASS.
 
-## Brief Format (What You Receive)
+## Dispatch Input Contract
 
-```
-## Verify: {what is being checked}                      [REQUIRED]
-
-### Project Path                                         [REQUIRED]
-{Absolute path to the Godot project}
-
-### Godot Path                                           [REQUIRED FOR GODOT COMMANDS]
-{Absolute path to the Godot executable}
-
-### Commands to Run (run ALL, do not skip)               [REQUIRED]
-1. {exact command with expected behavior}
-2. {another command}
-
-### Success Criteria                                     [REQUIRED]
-- [ ] {specific, measurable criterion}
-
-### Negative Tests                                       [OPTIONAL]
-- [ ] {input that should fail and how}
-
-### Focus Areas                                          [OPTIONAL]
-{Specific files, systems, or interactions to stress-test}
-
-### Visual Verification                                  [OPTIONAL]
-- Design rule: {rule_id and verbatim DESIGN.md rule text}
-- Screenshot(s): {evaluator captures or temp capture path}
-- Verify: {observable visual criteria}
-- Worker self-check result: {pass | fail | warning | error | missing}
-```
+The filled brief supplied by the dispatcher is the complete verification
+payload. Its sole schema authority is the deployed
+`references/verifier-dispatch.md` contract used by `/gm-build` or `/gm-fixgap`
+(sourced from `skills/core/_shared/verifier-dispatch.md`). Follow the received
+fields exactly; this agent definition intentionally does not duplicate that
+schema.
 
 ## Check Report Format (MANDATORY — use for EVERY check)
 

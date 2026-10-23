@@ -17,13 +17,17 @@ Push is NOT required, only a local commit.
 **Discovered:** 3 failures across 3-game testing. Workaround was falling
 back to sequential execution, but the root fix is simply committing first.
 
-## AskUserQuestion for User Confirmations
+## Runtime-Mapped Questions for User Confirmations
 
 **What:** Role skills that need a human decision (`/gm-scaffold` for project
 parameters, `/gm-gdd` for GDD approval, `/gm-asset` for art-direction confirmation,
-`/gm-accept` for the final go/no-go) must use the AskUserQuestion tool, not
-plain-text prompts.
+`/gm-accept` for the final go/no-go) must use the runtime mapping's
+`ask_user_question` operation, not assume Claude Code's `AskUserQuestion` tool.
+Claude Code maps it to `AskUserQuestion`, Codex to `request_user_input` or a
+gated normal question, OpenCode to `question`, and Pi to its documented prompt
+fallback.
 
 **Why:** Plain-text questions are easy to miss or ignore mid-session.
-AskUserQuestion creates a structured interaction that reliably pauses the
-session for user response, so the role doesn't drift into assumptions.
+The mapped operation uses a structured interaction when the runtime provides
+one and otherwise stops at an explicit question or non-interactive gate, so the
+role does not drift into assumptions.

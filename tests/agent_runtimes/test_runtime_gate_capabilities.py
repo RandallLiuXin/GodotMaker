@@ -40,9 +40,23 @@ def _mapping(runtime: str) -> str:
     ).read_text(encoding="utf-8")
 
 
+def _enforcement_matrix(runtime: str) -> str:
+    mapping = _mapping(runtime)
+    section = re.search(
+        r"^## Enforcement Class Matrix\s*$\n(?P<body>.*?)(?=^## |\Z)",
+        mapping,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    assert section, f"{runtime} is missing its Enforcement Class Matrix"
+    return section["body"]
+
+
 def test_runtime_gate_matrix_declares_real_enforcement_classes():
     for runtime in RUNTIMES:
-        rows = {match["gate"]: match["class"] for match in ROW.finditer(_mapping(runtime))}
+        rows = {
+            match["gate"]: match["class"]
+            for match in ROW.finditer(_enforcement_matrix(runtime))
+        }
         assert rows == EXPECTED[runtime], runtime
 
 
