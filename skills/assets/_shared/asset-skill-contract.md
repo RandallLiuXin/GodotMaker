@@ -77,7 +77,7 @@ not independently triggerable.
 | `asset_id` | yes | string | Stable logical id, `^[a-z0-9][a-z0-9_-]*$` |
 | `brief` | yes | string | Non-empty natural-language description of the asset to produce |
 | `references` | no | array | Visible reference images; each `{ role, path }` |
-| `provider` | no | string | Image provider hint: `native`, `codex`, `gemini`, `openai`, `wan` |
+| `provider` | no | string | Image provider hint: `native`, `codex`, `gemini`, `openai`, `grok`, `wan` |
 | `spec` | no | object | Family-specific structured parameters; inner shape owned by each family skill |
 
 `references[].role` is one of `canonical`, `style`. `references[].path`
@@ -152,17 +152,18 @@ several actors). The request declares every logical output before production;
   a Godot ClassDB type name (`SpriteFrames`, `AtlasTexture`, `Theme`,
   `StyleBoxTexture`, `TileSet`, `Texture2D`, …); it is validated for shape, not
   against a closed list.
-- `reference` outputs are optional provenance such as a generated character
-  identity anchor. They are not handed to workers as runtime game assets, do
-  not create `ASSETS.md` rows, and do not require a `godot_type`.
+- `reference` outputs are optional identity or provenance evidence for a
+  runtime family, such as a generated character identity anchor. They are not
+  handed to workers as runtime game assets, do not create `ASSETS.md` rows,
+  have no completion status of their own, and do not require a `godot_type`.
 
 ### sources
 
 Raw generated or claimed source images the outputs were compiled from. Each
-entry is `{ path, layout? }`. `layout` describes pixel organization and is one of
-`single`, `grid_sheet`, `region_atlas`, `action_frames`, `theme_recipe`,
-`tile_atlas`. `sources` may be empty only when the family contract has no raw
-source to preserve.
+entry is `{ path, layout? }`. `layout` describes the physical pixel
+arrangement only, never what an image is used for, and is one of `single`,
+`grid_sheet`, `region_atlas`, `tile_atlas`, `theme_recipe`. `sources` may be
+empty only when the family contract has no raw source to preserve.
 
 ### previews
 
@@ -180,4 +181,4 @@ must be `true` — a passed result may not report a failed level.
 `asset_type` is one of:
 
 `background-map`, `character-bundle`, `fx-bundle`, `ui-kit`, `card-kit`,
-`compact-prop-pack`, `platform-strip`, `scene-prop-set`, `tileset`.
+`compact-prop-pack`, `platform-strip`, `portrait`, `scene-prop-set`, `tileset`.

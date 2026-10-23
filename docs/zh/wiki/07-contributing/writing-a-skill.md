@@ -103,7 +103,7 @@ Write the role name to .godotmaker/current_role.
 {"role": "build", "ts": "2026-04-27T12:00:00Z"}
 ```
 
-`stage_reminder.py` hook 会拦截这次写入，验证必要输出是否存在，并注入下一个角色的指引。
+`append_stage_event.py` 会在追加事件前验证必要输出。对于提供 Write/Edit hook 的 runtime，`stage_reminder.py` 只注入下一个角色的指引。
 
 ### 必要输出与 stage_schemas.json
 
@@ -127,7 +127,7 @@ Write the role name to .godotmaker/current_role.
 ```
 
 - `files` — 必须存在于磁盘上的路径（相对于项目根目录）。
-- `checks` — 由 `stage_reminder.py` 运行的程序化验证器名称。当前验证器：`plan_all_verified`（PLAN.md 中每个任务行的状态为 `verified`）和 `gap_archived`（`GAP.md` 已被移动到 `.godotmaker/gaps/<n>/`）。
+- `checks` — append 工具通过 `completion_gate.py` 运行的程序化验证器名称。当前验证器包括 `plan_all_verified` 和 `gap_archived_unless_handoff`。
 
 如果你新增了一个角色，在这里添加对应条目。如果角色没有可通过文件存在性验证的必要输出，可以省略条目或保留空对象。
 

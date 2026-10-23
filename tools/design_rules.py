@@ -76,6 +76,7 @@ SUBJECT_CLASSES = ("character", "environment", "effect", "ui", "mixed")
 # defaulted into the wrong rule set.
 ASSET_SUBJECT_CLASSES = {
     "character-bundle": "character",
+    "portrait": "character",
     "background-map": "environment",
     "platform-strip": "environment",
     "scene-prop-set": "environment",

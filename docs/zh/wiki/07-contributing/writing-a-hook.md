@@ -112,7 +112,7 @@ Claude Code / Codex，或提供显式的 OpenCode fallback。
 |--------|-------|---------|---------|
 | `session_start.py` | SessionStart | 否 | 清空会话 metrics 和状态，将 GodotMaker 版本注入上下文 |
 | `check_file_permissions.py` | PreToolUse (Write\|Edit) | 是 | 根据 `.godotmaker/current_role` 强制执行每个角色的写入规则 |
-| `stage_reminder.py` | PreToolUse (Write\|Edit) | 是 | 拦截 `stage.jsonl` 追加操作，验证角色输出，注入下一角色指引 |
+| `stage_reminder.py` | PreToolUse (Write\|Edit) | 否 | 检测直接的 `stage.jsonl` 写入并注入下一角色指引 |
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | 是 | 前置角色未完成时，阻止 `build` / `fixgap` 分发 worker |
 | `check_asset_access.py` | PreToolUse (Read) | 是 | 阻止主 Agent 直接读取 `assets/` 中的图片文件（强制使用分析师子 Agent） |
 | `log_subagent.py` | SubagentStart | 否 | 记录子 Agent 启动及角色信息；由 `on_subagent_stop.py` 再次调用以记录停止 metrics |

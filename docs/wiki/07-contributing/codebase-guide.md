@@ -42,7 +42,8 @@ Scripts and the events they handle:
 |--------|-------|---------|
 | `session_start.py` | SessionStart | No |
 | `check_file_permissions.py` | PreToolUse (Write\|Edit) | Yes |
-| `stage_reminder.py` | PreToolUse (Write\|Edit) | Yes |
+| `stage_reminder.py` | PreToolUse (Write\|Edit) | No |
+| `completion_gate.py` | Called by `append_stage_event.py` | Yes, before append |
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | Yes |
 | `check_asset_access.py` | PreToolUse (Read) | Yes |
 | `log_agent_tool.py` | PreToolUse + PostToolUse (Agent\|Task) | No |
@@ -52,7 +53,7 @@ Scripts and the events they handle:
 | `check_completion.py` | Stop | Yes |
 | `check_clean_workspace.py` | Stop | Yes, once per dirty episode |
 | `log_compaction.py` | PreCompact | No |
-| `playability_contract.py` | Used by stage_reminder.py | Provides validation |
+| `playability_contract.py` | Used by `completion_gate.py` | Provides validation |
 
 Hook registration (which script fires on which event) is runner-specific.
 Claude Code and Codex use config files under `agent-runtimes/<agent>/config/`;
@@ -75,7 +76,7 @@ Role permissions are expressed in three places. They overlap on purpose, but eac
 
 | Layer | What it controls | Source of truth |
 |-------|------------------|-----------------|
-| `config/stage_schemas.json` | Did the role finish? Which output files must exist before the next role can start. | Read by `stage_reminder.py` (validate completion) and `check_stage_prerequisites.py` (gate worker dispatch). |
+| `config/stage_schemas.json` | Did the role finish? Which output files must exist before the next role can start. | Read by `completion_gate.py` from the append tool and by `check_stage_prerequisites.py` before worker dispatch. |
 | `hooks/check_file_permissions.py` | What can the role write right now? Per-role write-scope whitelist enforced on every Write/Edit tool call. | Authoritative for runtime permissions. Schemas do **not** define write scope. |
 | `skills/core/gm-*/SKILL.md` "Permission" section | Human-readable mirror of the hook rule for the role's owner. | Should match the hook; if they drift, the hook wins at runtime — but a contributor reading the skill will be misled. |
 
@@ -211,7 +212,7 @@ When you run `python tools/publish.py <target>`:
 | `stage_schemas.json` | Per-role required outputs and programmatic checks (keys are role names) |
 | `addon_versions.json` | Pinned Godot addon versions per engine version |
 
-`stage_schemas.json` is the schema that `stage_reminder.py` and `check_stage_prerequisites.py` both read. Its keys are role names (`scaffold`, `gdd`, `build`, etc.); each value has an optional `files` array (paths that must exist) and an optional `checks` array (programmatic validator names). See [Writing a skill](writing-a-skill.md) for the full schema description.
+`stage_schemas.json` is the schema that `completion_gate.py` and `check_stage_prerequisites.py` both read. Its keys are role names (`scaffold`, `gdd`, `build`, etc.); each value has an optional `files` array (paths that must exist) and an optional `checks` array (programmatic validator names). See [Writing a skill](writing-a-skill.md) for the full schema description.
 
 ---
 

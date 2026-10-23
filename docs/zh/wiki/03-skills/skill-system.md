@@ -18,9 +18,9 @@ Reviewer（审查员）技能是八个专项领域清单，覆盖物理、UI、�
 
 ## 第三层 — Asset 技能
 
-Asset Skill 负责有类型的视觉生产 family。Runtime family 必须通过 L0-L4，原生
-Godot artifact 才能进入 worker handoff；reference-only family 停在
-`source_ready`。Registry 驱动的 family 与 artifact 矩阵见
+Asset Skill 负责有类型的视觉生产 family。每个 family 都是 runtime family：
+必须通过 L0-L4，原生 Godot artifact 才会登记为 `generated` 并进入 worker
+handoff。Registry 驱动的 family 与 artifact 矩阵见
 [Asset 技能](asset-skills.md)。
 
 ## 技能是如何部署的

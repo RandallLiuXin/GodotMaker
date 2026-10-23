@@ -31,7 +31,7 @@ complete object list from the written brief. With references, every path must be
 a readable image, every declared role must be preserved, and the actual images
 must be supplied to the pinned provider. A path mentioned only in prompt text is
 not reference use. If the selected provider cannot attach a required image,
-return STOP. Never silently change `native`, `codex`, `gemini`, `openai`, or `wan` to
+return STOP. Never silently change `native`, `codex`, `gemini`, `openai`, `grok`, or `wan` to
 another provider. For Codex, call image generation with
 `referenced_image_paths` containing every readable local reference image.
 
@@ -157,8 +157,8 @@ sidecar evidence, never extra keys in the generic result.
    binds the request/result, L1 verifies atlas and metadata delivery, L2
    compiles, and L4 verifies every AtlasTexture's shared atlas path, exact
    region, and zero margin. Read diagnostics, repair source, parameters,
-   metadata, or artifacts, then repeat from the affected step. Return ready
-   only after all applicable layers pass; the first check failure is never the
+   metadata, or artifacts, then repeat from the affected step. Return a passing
+   result only after all applicable layers pass; the first check failure is never the
    final result unless it is a real STOP condition. This production loop does
    not perform private Eval L5/L6 grading.
 

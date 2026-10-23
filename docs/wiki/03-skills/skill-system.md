@@ -18,10 +18,10 @@ For the full list and examples of what each reviewer catches, see [Reviewer skil
 
 ## Layer 3 — Asset skills
 
-Asset Skills own typed visual-production families. Runtime families must pass
-L0-L4 before their native Godot artifacts enter worker handoff; reference-only
-families stop at `source_ready`. See [Asset skills](asset-skills.md) for the
-registry-backed family and artifact matrix.
+Asset Skills own typed visual-production families. Every family is a runtime
+family: it must pass L0-L4 before its native Godot artifacts are registered as
+`generated` and enter worker handoff. See [Asset skills](asset-skills.md) for
+the registry-backed family and artifact matrix.
 
 ## How skills are deployed
 

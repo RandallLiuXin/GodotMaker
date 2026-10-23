@@ -12,6 +12,8 @@ and the hooks that police it.
 import json
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
 
 import pytest
@@ -26,6 +28,7 @@ from tests.hooks.helpers import (
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEMA_SRC = os.path.join(REPO_ROOT, "config", "stage_schemas.json")
+APPEND_STAGE_EVENT = os.path.join(REPO_ROOT, "tools", "append_stage_event.py")
 
 
 # ---------------------------------------------------------------------------
@@ -36,6 +39,15 @@ def run_hook(script: str, payload: dict) -> tuple[int, dict | None]:
     """Run a hook script against the current working directory."""
     _, code, parsed = _run_hook(script, payload)
     return code, parsed
+
+
+def run_append(role: str, *extras: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, APPEND_STAGE_EVENT, role, *extras, "--project-path", os.getcwd()],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -182,10 +194,9 @@ def scaffold_done():
 
 class TestScaffoldPhase:
     def test_scaffold_completion_requires_project_godot(self, project_dir):
-        """stage_reminder blocks scaffold completion until project.godot exists."""
-        code, parsed = run_hook("stage_reminder.py",
-                                write_stage_payload({"scaffold": "2026-01-01T00:00:00Z"}))
-        assert is_blocked(parsed)
+        result = run_append("scaffold")
+        assert result.returncode == 3
+        assert "project.godot" in result.stderr
 
     def test_scaffold_completion_succeeds_with_project_godot(self, project_dir):
         scaffold_done()
@@ -206,9 +217,9 @@ class TestGDDPhase:
         assert is_blocked(parsed)
 
     def test_gdd_completion_requires_files(self, project_dir):
-        code, parsed = run_hook("stage_reminder.py",
-                                write_stage_payload({"gdd": "2026-01-01T01:00:00Z"}))
-        assert is_blocked(parsed)
+        result = run_append("gdd", "--tag=v0.1.0")
+        assert result.returncode == 3
+        assert "GDD.md" in result.stderr
 
     def test_gdd_completion_succeeds_with_files(self, project_dir):
         for f in ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]:
@@ -296,9 +307,9 @@ class TestBuildPhase:
         self.gdd_complete()
         with open("PLAN.md", "w") as f:
             f.write("# Plan\n| 1 | move | pending |\n")
-        _, parsed = run_hook("stage_reminder.py",
-                             write_stage_payload({"build": "2026-01-01T02:00:00Z"}))
-        assert is_blocked(parsed)
+        result = run_append("build")
+        assert result.returncode == 3
+        assert "pending" in result.stderr
 
     def test_build_completion_succeeds_when_all_verified(self, project_dir):
         self.gdd_complete()
@@ -346,15 +357,14 @@ class TestVerifyPhase:
         assert not is_blocked(parsed)
 
     def test_verify_completion_blocks_without_report(self, project_dir):
-        """stage_reminder must block the verify completion event when
-        .godotmaker/verify_report.json is missing — that file is the
+        """The append gate blocks verify completion when the report is missing.
+
+        .godotmaker/verify_report.json is the
         feedback channel /gm-build and /gm-fixgap consume to know
         what failed last verify."""
-        _, parsed = run_hook("stage_reminder.py",
-                             write_stage_payload({"verify": "2026-01-01T03:00:00Z"}))
-        assert is_blocked(parsed)
-        assert "verify_report.json" in parsed.get(
-            "hookSpecificOutput", {}).get("permissionDecisionReason", "")
+        result = run_append("verify")
+        assert result.returncode == 3
+        assert "verify_report.json" in result.stderr
 
     def test_verify_completion_succeeds_with_report(self, project_dir):
         with open(".godotmaker/verify_report.json", "w", encoding="utf-8") as f:
@@ -392,9 +402,9 @@ class TestEvaluatePhase:
         assert not is_blocked(parsed)
 
     def test_evaluate_completion_requires_evaluation_json(self, project_dir):
-        _, parsed = run_hook("stage_reminder.py",
-                             write_stage_payload({"evaluate": "2026-01-01T05:00:00Z"}))
-        assert is_blocked(parsed)
+        result = run_append("evaluate", "--tag=v0.1.0")
+        assert result.returncode == 3
+        assert "evaluation.json" in result.stderr
 
     def test_evaluate_completion_reminds_both_branches(self, project_dir):
         _write_minimal_playable_unit_plan_and_evaluation()
@@ -473,9 +483,9 @@ class TestClosurePhase:
         assert "/gm-finalize" in ctx
 
     def test_finalize_completion_requires_report(self, project_dir):
-        _, parsed = run_hook("stage_reminder.py",
-                             write_stage_payload({"finalize": "2026-01-01T08:00:00Z"}))
-        assert is_blocked(parsed)
+        result = run_append("finalize", "--tag=v0.1.0")
+        assert result.returncode == 3
+        assert "final_report.json" in result.stderr
 
     def test_finalize_completion_succeeds_with_report(self, project_dir):
         with open(".godotmaker/final_report.json", "w") as f:

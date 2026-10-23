@@ -34,10 +34,10 @@ generated catalogs. It produces and preserves the validated generic result;
 
 A prompt-only filename, silent omission, or provider substitution is not
 reference use. Use only the requested provider (`native`, `codex`, `gemini`,
-`openai`, or `wan`). For Codex, call `image_gen` with the real
+`openai`, `grok`, or `wan`). For Codex, call `image_gen` with the real
 `referenced_image_paths` when any are present. Record provider, model identity
 when exposed, coding model, reasoning, attachment paths/roles, and provider
-call identity. For `openai`, `gemini`, and `wan`, use `tools/asset_source_generate.py`
+call identity. For `openai`, `gemini`, `grok`, and `wan`, use `tools/asset_source_generate.py`
 with `reference_inputs`; it records hashes and attachment provenance.
 
 ## Production Loop
@@ -114,7 +114,7 @@ affected checks followed by the final full check.
 Only STOP for a missing/corrupt required input, unsupported pixel-art request,
 contradictory request, unavailable declared provider or required reference
 attachment, or unrecoverable environment/permission failure. A final result is
-ready only after every applicable L0-L4 check passes.
+complete only after every applicable L0-L4 check passes.
 
 ## Result and Handoff
 

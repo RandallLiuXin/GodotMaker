@@ -29,6 +29,7 @@ from asset_source_generate import (
     WAN_PRO_MODEL,
     wan_endpoint_from_config,
 )
+from asset_provider_registry import ASSET_IMAGE_PROVIDER_SET, MODEL_SELECTOR_TOKENS
 
 VQA_PROVIDERS = {"native", "codex", "gemini", "openai"}
 
@@ -101,7 +102,7 @@ def split_model_selector(selector: str, default_provider: str) -> tuple[str, str
     if ":" in raw:
         provider, model = raw.split(":", 1)
         return provider.strip(), model.strip()
-    if raw in {"native", "codex", "gemini", "openai", "grok", "wan", "none"}:
+    if raw in MODEL_SELECTOR_TOKENS:
         return raw, raw
     if raw:
         return default_provider, raw
@@ -559,7 +560,7 @@ def check_runtime_model_provider(
                 r.fail(
                     f"native image generation is unsupported for {agent}; "
                     "set asset_image_model to codex, gemini:<model>, "
-                    "openai:<model>, or grok:<model>"
+                    "openai:<model>, grok:<model>, or wan:<model>"
                 )
             else:
                 r.fail(
@@ -606,6 +607,14 @@ def check_api_keys(
         config.get("vqa_model") or "native", "gemini"
     )
     required = {image_provider, vqa_provider}
+
+    if image_provider not in ASSET_IMAGE_PROVIDER_SET:
+        r.fail(
+            f"asset_image_model provider {image_provider!r} is unsupported; "
+            "use native, codex, gemini:<model>, openai:<model>, "
+            "grok:<model>, or wan:<model>"
+        )
+        required.discard(image_provider)
 
     if vqa_provider not in VQA_PROVIDERS:
         r.fail(

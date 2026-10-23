@@ -6,6 +6,7 @@ implementation of the same rules. These tests assert the two agree and that the
 `_shared/` contract material is shaped correctly.
 """
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from asset_skill_contract_check import (  # noqa: E402
     SOURCE_LAYOUTS,
     VALIDATION_LEVELS,
 )
+from asset_provider_registry import ASSET_IMAGE_PROVIDERS  # noqa: E402
 
 
 def _read_json(path: Path):
@@ -78,6 +80,71 @@ def test_schema_enums_match_validator_constants():
     assert set(rprops["outputs"]["items"]["properties"]["role"]["enum"]) == OUTPUT_ROLES
     assert set(rprops["sources"]["items"]["properties"]["layout"]["enum"]) == SOURCE_LAYOUTS
     assert set(rprops["validation"]["properties"]["levels"]["properties"]) == VALIDATION_LEVELS
+
+
+def test_every_provider_contract_surface_matches_canonical_registry():
+    expected = set(ASSET_IMAGE_PROVIDERS)
+    request_schema = _read_json(SCHEMA_DIR / "asset-skill-request.schema.json")
+    tileset_schema = _read_json(
+        REPO_ROOT / "skills" / "assets" / "tileset" / "schema" / "request.schema.json"
+    )
+    provider_docs = {
+        path.stem
+        for path in (
+            REPO_ROOT / "skills" / "core" / "gm-asset" / "references" / "providers"
+        ).glob("*.md")
+    }
+    gm_asset = (REPO_ROOT / "skills" / "core" / "gm-asset" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    provider_section = gm_asset.split("## Provider Selection", 1)[1].split(
+        "## Asset Producer Model", 1
+    )[0]
+    routed = {
+        match.group(1)
+        for match in re.finditer(
+            r"^\| `([a-z]+)(?::<model>)?`", provider_section, re.MULTILINE
+        )
+    }
+    config = (REPO_ROOT / "config" / "config.yaml.default").read_text(encoding="utf-8")
+    asset_config_section = config.split("# Asset image generation model.", 1)[1].split(
+        "asset_image_model:", 1
+    )[0]
+    configured = {
+        match.group(1)
+        for match in re.finditer(
+            r"^# - ([a-z]+)(?::<model>)?:", asset_config_section, re.MULTILINE
+        )
+    }
+
+    assert set(PROVIDERS) == expected
+    assert set(request_schema["properties"]["provider"]["enum"]) == expected
+    assert set(tileset_schema["properties"]["provider"]["enum"]) == expected
+    assert provider_docs == expected
+    assert routed == expected
+    assert configured == expected
+
+
+@pytest.mark.parametrize("provider", ASSET_IMAGE_PROVIDERS)
+def test_every_asset_family_selector_accepts_canonical_provider(provider):
+    from asset_skill_contract_check import check_request
+
+    request = {
+        "asset_type": "background-map",
+        "asset_id": "provider-contract",
+        "brief": "A contract smoke-test image.",
+        "provider": provider,
+    }
+
+    assert check_request(request)["ok"] is True
+
+
+@pytest.mark.parametrize("skill_name", sorted(ASSET_TYPES))
+def test_family_provider_dispatch_docs_name_every_canonical_provider(skill_name):
+    content = (REPO_ROOT / "skills" / "assets" / skill_name / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    assert all(f"`{provider}`" in content for provider in ASSET_IMAGE_PROVIDERS)
 
 
 def test_samples_validate_against_declarative_schema():

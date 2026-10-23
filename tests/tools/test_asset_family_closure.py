@@ -30,7 +30,7 @@ CLOSED_ROUTES = {
     ("character-bundle", "default"), ("compact-prop-pack", "default"),
     ("fx-bundle", "static"), ("fx-bundle", "animated"),
     ("platform-strip", "single"), ("platform-strip", "atlas"),
-    ("scene-prop-set", "default"),
+    ("portrait", "default"), ("scene-prop-set", "default"),
     ("tileset", "default"), ("ui-kit", "default"),
 }
 
@@ -109,12 +109,12 @@ def _platform(kind: str) -> tuple[dict, dict]:
     )
 
 
-def _background() -> tuple[dict, dict]:
+def _single_texture(family: str) -> tuple[dict, dict]:
     asset_id = "sunset"
-    path = f"res://assets/generated/background-map/{asset_id}/{asset_id}.png"
+    path = f"res://assets/generated/{family}/{asset_id}/{asset_id}.png"
     return (
-        {"asset_type": "background-map", "asset_id": asset_id, "brief": "A quiet sunset background."},
-        {"asset_type": "background-map", "outputs": [{"role": "runtime", "name": asset_id, "path": path, "godot_type": "Texture2D"}], "sources": [{"path": path, "layout": "single"}], "previews": [], "validation": {"passed": True, "levels": {level: True for level in ("L0", "L1", "L2", "L3", "L4")}}},
+        {"asset_type": family, "asset_id": asset_id, "brief": "A quiet sunset image."},
+        {"asset_type": family, "outputs": [{"role": "runtime", "name": asset_id, "path": path, "godot_type": "Texture2D"}], "sources": [{"path": path, "layout": "single"}], "previews": [], "validation": {"passed": True, "levels": {level: True for level in ("L0", "L1", "L2", "L3", "L4")}}},
     )
 
 
@@ -258,10 +258,11 @@ def test_platform_routes_use_their_actual_standalone_result(monkeypatch, tmp_pat
     _register_validated(tmp_path, request, validated)
 
 
-def test_background_route_uses_its_actual_standalone_result(monkeypatch, tmp_path):
+@pytest.mark.parametrize("family", ["background-map", "portrait"])
+def test_single_texture_routes_use_their_actual_standalone_result(monkeypatch, tmp_path, family):
     from PIL import Image
 
-    request, result = _background()
+    request, result = _single_texture(family)
     artifact = tmp_path / result["outputs"][0]["path"].removeprefix("res://")
     artifact.parent.mkdir(parents=True)
     Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(artifact)
@@ -270,7 +271,7 @@ def test_background_route_uses_its_actual_standalone_result(monkeypatch, tmp_pat
         "GodotProbe",
         _passing_probe({result["outputs"][0]["path"]: {"texture2d": {"width": 2, "height": 3}}}),
     )
-    validated = _source_adapter("background-map").compile_and_validate(
+    validated = _source_adapter(family).compile_and_validate(
         request, result, project_root=tmp_path, godot_path="fake"
     )
     assert validated["validation"]["passed"] is True

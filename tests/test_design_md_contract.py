@@ -193,14 +193,14 @@ def test_file_permission_hook_guards_design_md():
     assert "style.md" not in check_file_permissions.PLANNING_DOCS
 
 
-def test_stage_reminder_expects_design_md_in_the_tag_archive():
+def test_completion_gate_expects_design_md_in_the_tag_archive():
     sys.path.insert(0, str(REPO_ROOT / "hooks"))
     try:
-        import stage_reminder  # noqa: PLC0415
+        import completion_gate  # noqa: PLC0415
     finally:
         sys.path.pop(0)
-    assert "DESIGN.md" in stage_reminder._TAG_ARCHIVE_FILES
-    assert "STYLE.md" not in stage_reminder._TAG_ARCHIVE_FILES
+    assert "DESIGN.md" in completion_gate._TAG_ARCHIVE_FILES
+    assert "STYLE.md" not in completion_gate._TAG_ARCHIVE_FILES
 
 
 def test_seal_tag_archives_design_md():

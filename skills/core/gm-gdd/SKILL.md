@@ -271,11 +271,11 @@ The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the c
 
 **Cross-session backstop — what each hook actually does:**
 
-- `stage_reminder.py` fires the moment you write `{"role": "gdd", ...}` to `.godotmaker/stage.jsonl`. It validates that the files declared in the `gdd` schema (`config/stage_schemas.json` → `gdd.files`) exist; if any are missing, it surfaces that to the lead before the gdd phase is considered done.
+- `append_stage_event.py` validates that the files declared in the `gdd` schema (`config/stage_schemas.json` → `gdd.files`) exist before it appends the completion event. `stage_reminder.py` is only a runtime-specific next-role hint.
 - `check_stage_prerequisites.py` fires when `/gm-build` (or `/gm-fixgap`) dispatches a worker — it re-validates the same schema. **It does NOT gate `/gm-asset`** (asset is not in `WORKER_DISPATCH_ROLES`); the asset phase relies on its own SKILL.md Resume Check instead.
 - `check_completion.py` does NOT validate `gdd` at all — it only enforces worker-dispatch roles. Don't rely on it here.
 
-So a partial 1c can still slip past `/gm-asset` if you skip the `stage_reminder` warning. The fallback above (lead takes over to fill missing files) is the primary safety net; the hooks are catch-up checks at later stages.
+The append command therefore prevents a partial 1c from being recorded as complete. The fallback above remains the way to fill any missing files before retrying the command.
 
 ## Available Skills & Subagents
 

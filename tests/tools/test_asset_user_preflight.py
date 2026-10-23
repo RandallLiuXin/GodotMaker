@@ -1,6 +1,8 @@
 from pathlib import Path
 import sys
 
+import pytest
+
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
@@ -127,17 +129,32 @@ def test_audio_only_candidates_do_not_require_analyst(tmp_path: Path):
     assert result["needs_analyst"] is False
 
 
-def test_source_ready_rows_are_already_consumed(tmp_path: Path):
-    (tmp_path / "ASSETS.md").write_text(
+def _single_row_project(root: Path, status: str) -> None:
+    (root / "ASSETS.md").write_text(
         "| ID | Tag | Name | Type | Size | Params | File Path | Status |\n"
         "|---|---|---|---|---|---|---|---|\n"
-        "| 1 | v0.1.0 | title | reference | - | - | assets/title.png | source_ready |\n",
+        f"| 1 | v0.1.0 | title | portrait | - | - | assets/title.png | {status} |\n",
         encoding="utf-8",
     )
-    (tmp_path / "assets").mkdir()
-    (tmp_path / "assets" / "title.png").write_bytes(b"image")
+    (root / "assets").mkdir()
+    (root / "assets" / "title.png").write_bytes(b"image")
+
+
+@pytest.mark.parametrize("status", ["generated", "provided"])
+def test_completed_rows_are_already_consumed(tmp_path: Path, status: str):
+    _single_row_project(tmp_path, status)
 
     result = find_user_asset_candidates(tmp_path)
 
     assert result["candidate_count"] == 0
     assert result["consumed_paths"] == ["assets/title.png"]
+
+
+@pytest.mark.parametrize("status", ["ready", "source_ready"])
+def test_retired_statuses_do_not_mark_a_file_consumed(tmp_path: Path, status: str):
+    _single_row_project(tmp_path, status)
+
+    result = find_user_asset_candidates(tmp_path)
+
+    assert result["consumed_paths"] == []
+    assert [item["path"] for item in result["candidates"]] == ["assets/title.png"]

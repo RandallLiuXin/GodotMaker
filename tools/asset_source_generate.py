@@ -18,6 +18,11 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from asset_image_finalize import ImageFinalizeError, finalize_image_asset
+from asset_provider_registry import (
+    API_IMAGE_PROVIDERS,
+    MODEL_SELECTOR_TOKENS,
+    RUNTIME_IMAGE_PROVIDERS,
+)
 
 
 class SourceGenerateError(Exception):
@@ -107,7 +112,7 @@ def _split_model_selector(selector: str, *, default_provider: str,
         model = model.strip()
         if provider and model:
             return provider, model
-    if raw in {"gemini", "openai", "grok", "wan", "native", "codex", "none"}:
+    if raw in MODEL_SELECTOR_TOKENS:
         defaults = {
             "gemini": GEMINI_MODEL,
             "openai": OPENAI_MODEL,
@@ -740,9 +745,9 @@ def generate_source(spec: dict) -> dict[str, object]:
         default_provider="gemini",
         default_model=GEMINI_MODEL,
     )
-    if backend in {"native", "codex"}:
+    if backend in RUNTIME_IMAGE_PROVIDERS:
         raise SourceGenerateError(f"Model selector {backend!r} is runtime-native")
-    if backend not in {"gemini", "openai", "grok", "wan"}:
+    if backend not in API_IMAGE_PROVIDERS:
         raise SourceGenerateError(
             f"Invalid API-backed image model selector: {selector!r}"
         )

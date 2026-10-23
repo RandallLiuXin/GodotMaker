@@ -30,7 +30,7 @@ GodotMaker 文档和斜线指令输出中常见术语的定义。
 
 **Milestone** — *Tag* 的旧称，用于 v0.3.0 之前的文档。当前规范术语是 *Tag*；"milestone" 仅残留在归档的 release notes 里（如 `docs/update/v0.2.x.md`）——目前活跃的 hooks、skills、templates 和 wiki 页面都不再使用这个词。
 
-**PLAN.md** — 由 `/gm-gdd` 生成、范围限定为 **当前 tag** 的任务列表。包含 Tag Mechanics（本 tag 要交付的 mechanic 列表）、Inherited Mechanics（先前 tag 已交付、本 tag 必须保持不破坏的 mechanic 列表）、风险任务、主体任务表，每项任务都有状态字段（`pending` / `in_progress` / `completed` / `verified`）。`/gm-build` 通过为每个任务派发 Worker 来逐一推进。Hook `stage_reminder.py` 会阻止 `/gm-build` 在所有任务都标记为 `verified` 之前结束。
+**PLAN.md** — 由 `/gm-gdd` 生成、范围限定为 **当前 tag** 的任务列表。包含 Tag Mechanics（本 tag 要交付的 mechanic 列表）、Inherited Mechanics（先前 tag 已交付、本 tag 必须保持不破坏的 mechanic 列表）、风险任务、主体任务表，每项任务都有状态字段（`pending` / `in_progress` / `completed` / `verified`）。`/gm-build` 通过为每个任务派发 Worker 来逐一推进。`append_stage_event.py` 完成门禁会拒绝在所有任务标记为 `verified` 之前记录 `/gm-build` 完成；`stage_reminder.py` 对直接写入只提供下一角色的 UX 提示。
 
 **Reviewer** — 一种子代理，以及 `physics`、`animation`、`ui`、`tilemap`、`navigation`、`shader`、`audio`、`particles` 这些专项技能。当 `PLAN.md` 中所有任务都 `completed` 且 Verifier 通过后，Reviewer 对代码进行检查，比对每个技能的 `gotchas.md` 和 `checklist.md` 中记录的 Godot 特有坑。主 Agent 对每个 finding 做 triage，三选一：ACCEPT（作为新任务追加到 `PLAN.md`）、REJECT（finding 是误报）或 SKIP（finding 是对的但暂时不修）。critical/major 的 REJECT/SKIP 必须附引证。原始 finding 和 triage 决策作为运行时证据保留。另见：*Sub-agent*、*Worker*、*Verifier*。
 

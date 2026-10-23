@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from asset_family_registry import FAMILY_NAMES, REFERENCE_FAMILY_NAMES
+from asset_family_registry import FAMILY_NAMES, SOURCE_LAYOUTS
 
 GENERATED_ROOT = "assets/generated"
 WORK_ROOT = ".godotmaker/asset-generation/work"
@@ -22,6 +22,7 @@ _RESERVED_DEVICE_NAMES = {
 }
 
 # Pixel layouts are checked at compile time, independently of registration.
+# Every registry source layout compiles to at least one Godot artifact type.
 LAYOUT_ARTIFACT_TYPES = {
     "single": ("Texture2D", "StyleBoxTexture"),
     "grid_sheet": ("SpriteFrames",),
@@ -29,10 +30,8 @@ LAYOUT_ARTIFACT_TYPES = {
     "theme_recipe": ("Theme",),
     "tile_atlas": ("TileSet",),
 }
-REFERENCE_LAYOUTS = {"reference"}
-SOURCE_LAYOUT_TYPES = set(LAYOUT_ARTIFACT_TYPES) | REFERENCE_LAYOUTS
+SOURCE_LAYOUT_TYPES = set(SOURCE_LAYOUTS)
 PRODUCTION_FAMILIES = set(FAMILY_NAMES)
-REFERENCE_FAMILIES = set(REFERENCE_FAMILY_NAMES)
 
 
 class AssetOutputPathError(Exception):

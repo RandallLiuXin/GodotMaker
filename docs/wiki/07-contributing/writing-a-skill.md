@@ -103,7 +103,9 @@ When a role finishes, it appends one line to `.godotmaker/stage.jsonl`:
 {"role": "build", "ts": "2026-04-27T12:00:00Z"}
 ```
 
-The `stage_reminder.py` hook intercepts this write, validates required outputs, and injects a pointer to the next role.
+`append_stage_event.py` validates required outputs before appending. On runtimes
+that expose direct Write/Edit hooks, `stage_reminder.py` only injects a pointer
+to the next role.
 
 ### Required outputs and stage_schemas.json
 
@@ -127,7 +129,7 @@ The `stage_reminder.py` hook intercepts this write, validates required outputs, 
 ```
 
 - `files` — paths (relative to project root) that must exist on disk.
-- `checks` — names of programmatic validators run by `stage_reminder.py`. Current validators: `plan_all_verified` (every PLAN.md task row has status `verified`) and `gap_archived` (`GAP.md` has been moved to `.godotmaker/gaps/<n>/`).
+- `checks` — names of programmatic validators run by `completion_gate.py` from the append tool. Current validators include `plan_all_verified` and `gap_archived_unless_handoff`.
 
 If you add a new role, add a corresponding entry here. If your role has no required outputs that can be validated by file existence, omit the entry or leave the object empty.
 

@@ -41,7 +41,8 @@ GodotMaker/
 |--------|-------|---------|
 | `session_start.py` | SessionStart | 否 |
 | `check_file_permissions.py` | PreToolUse (Write\|Edit) | 是 |
-| `stage_reminder.py` | PreToolUse (Write\|Edit) | 是 |
+| `stage_reminder.py` | PreToolUse (Write\|Edit) | 否 |
+| `completion_gate.py` | 由 `append_stage_event.py` 调用 | 是，在追加前 |
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | 是 |
 | `check_asset_access.py` | PreToolUse (Read) | 是 |
 | `log_agent_tool.py` | PreToolUse + PostToolUse (Agent\|Task) | 否 |
@@ -51,7 +52,7 @@ GodotMaker/
 | `check_completion.py` | Stop | 是 |
 | `check_clean_workspace.py` | Stop | 每个 dirty episode 拦截一次 |
 | `log_compaction.py` | PreCompact | 否 |
-| `playability_contract.py` | 由 stage_reminder.py 使用 | 提供验证 |
+| `playability_contract.py` | 由 `completion_gate.py` 使用 | 提供验证 |
 
 Hook 注册关系（哪个脚本响应哪个事件）按 runner 区分。Claude Code 和
 Codex 使用 `agent-runtimes/<agent>/config/` 下的配置文件；OpenCode 使用
@@ -72,7 +73,7 @@ Codex 使用 `agent-runtimes/<agent>/config/` 下的配置文件；OpenCode 使�
 
 | 层 | 控制什么 | 真值来源 |
 |----|---------|---------|
-| `config/stage_schemas.json` | 角色完成了没？下一个角色启动前必须存在的产出文件清单。 | 由 `stage_reminder.py`（完成校验）和 `check_stage_prerequisites.py`（worker 派发前置检查）读取。 |
+| `config/stage_schemas.json` | 角色完成了没？下一个角色启动前必须存在的产出文件清单。 | 由 append 工具的 `completion_gate.py` 和 worker 派发前的 `check_stage_prerequisites.py` 读取。 |
 | `hooks/check_file_permissions.py` | 当前角色现在能写什么？每次 Write/Edit 工具调用都强制执行的 per-role 写权限白名单。 | 运行时权限的最终判定；schema 不定义写权限。 |
 | `skills/core/gm-*/SKILL.md` 的 "Permission" 段落 | 给该角色的执行者读的人类版镜像。 | 应当与 hook 一致；若漂移，运行时以 hook 为准 — 但读 SKILL 的贡献者会被误导。 |
 
@@ -206,7 +207,7 @@ Reviewer 领域包括 `physics`、`animation`、`ui`、`tilemap`、`navigation`�
 | `stage_schemas.json` | 每个角色的必要输出和程序化检查（key 为角色名） |
 | `addon_versions.json` | 按引擎版本锁定的 Godot 插件版本 |
 
-`stage_schemas.json` 是 `stage_reminder.py` 和 `check_stage_prerequisites.py` 都会读取的 schema。其 key 为角色名（`scaffold`、`gdd`、`build` 等），每个值包含可选的 `files` 数组（必须存在于磁盘上的路径）和可选的 `checks` 数组（程序化验证器名称）。完整 schema 说明见 [编写技能](writing-a-skill.md)。
+`stage_schemas.json` 是 `completion_gate.py` 和 `check_stage_prerequisites.py` 都会读取的 schema。其 key 为角色名（`scaffold`、`gdd`、`build` 等），每个值包含可选的 `files` 数组（必须存在于磁盘上的路径）和可选的 `checks` 数组（程序化验证器名称）。完整 schema 说明见 [编写技能](writing-a-skill.md)。
 
 ---
 

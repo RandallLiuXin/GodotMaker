@@ -17,6 +17,7 @@
         "card-kit",
         "compact-prop-pack",
         "platform-strip",
+        "portrait",
         "scene-prop-set",
         "tileset"
       ]
@@ -77,9 +78,8 @@
               "single",
               "grid_sheet",
               "region_atlas",
-              "action_frames",
-              "theme_recipe",
-              "tile_atlas"
+              "tile_atlas",
+              "theme_recipe"
             ]
           }
         }

@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: validate role completion outputs and remind of next role.
+"""PreToolUse hook: remind the active runtime of the next pipeline role.
 
 When a gm-* skill appends to .godotmaker/stage.jsonl (recording role completion),
-this hook:
-  1. VALIDATES that the completed role's required outputs exist. Blocks if not.
-  2. Injects an additionalContext reminder pointing to the next role's command.
+this runtime-specific hook injects an additionalContext reminder pointing to
+the next role's command. Completion enforcement belongs to
+tools/append_stage_event.py so every runtime passes through the same gate.
 """
 import json
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from metrics import (
-    record_event, EventType, PIPELINE_ROLES,
-    load_stage_schemas, validate_schema_files,
-    get_current_tag,
-)
-from playability_contract import check_evaluation_playable_unit_complete
+from metrics import PIPELINE_ROLES
 
 ROLE_NEXT = {
     "scaffold": "/gm-gdd",
@@ -39,143 +33,6 @@ if set(ROLE_NEXT) != set(PIPELINE_ROLES):
         f"ROLE_NEXT keys {sorted(ROLE_NEXT)} must equal "
         f"PIPELINE_ROLES {sorted(PIPELINE_ROLES)}"
     )
-
-
-# ---------------------------------------------------------------------------
-# Programmatic check functions
-# ---------------------------------------------------------------------------
-
-def check_plan_all_verified(_event: dict | None = None) -> str | None:
-    """Build role: PLAN.md must have all tasks marked `verified`."""
-    return _check_task_table_all_verified("PLAN.md")
-
-
-def check_gap_archived(event: dict | None = None) -> str | None:
-    """Fixgap role: GAP.md must be archived (moved out of project root).
-
-    An evaluator handoff deliberately leaves GAP.md at the project root so
-    evaluate can continue the same gap cycle. Ordinary fixgap completion
-    archives the completed GAP.md to
-    `.godotmaker/gaps/<iteration>/GAP.md`. If GAP.md is still at root
-    when the fixgap event is recorded, the role skipped the archive.
-    """
-    if event and event.get("outcome") == "handoff":
-        return None
-    if os.path.isfile("GAP.md"):
-        return ("GAP.md is still at project root — it must be archived to "
-                ".godotmaker/gaps/<iteration>/GAP.md before completing fixgap.")
-    return None
-
-
-def check_evaluation_playable_unit(_event: dict | None = None) -> str | None:
-    """Evaluate role: evaluation.json must cover every PLAN Playable Unit row."""
-    issues = check_evaluation_playable_unit_complete()
-    if issues:
-        return "Playable Unit evaluation contract failed:\n" + "\n".join(
-            f"  - {issue}" for issue in issues
-        )
-    return None
-
-
-_TAG_ARCHIVE_FILES = (
-    "GDD-snapshot.md",
-    "PLAN.md",
-    "STRUCTURE.md",
-    "DESIGN.md",
-    "SCENES.md",
-    "evaluation-final.json",
-    "CHANGELOG.md",
-    # Written by `tools/seal_tag.py index`, which is also what marks the
-    # archive sealed. Their absence means finalize never ran the seal step.
-    "README.md",
-    "SUMMARY.md",
-)
-
-
-_SEAL_HINT = "run `python tools/seal_tag.py index {tag}` to seal the archive"
-_REINDEX_HINT = "run `python tools/seal_tag.py reindex` to rebuild it"
-
-
-def check_tag_archived(_event: dict | None = None) -> str | None:
-    """Finalize role: docs/tags/<Tag>/ must contain a full, SEALED archive of
-    the just-finalized tag. The current tag is read from PLAN.md's `**Tag:**`
-    header (still scoped to the tag being finalized at this point).
-
-    File presence alone is not enough. `evidence/manifest.json` with
-    `"sealed": true` is the single seal marker `tools/seal_tag.py` commits
-    last, and the parent index is refreshed before that commit — so checking
-    both is what distinguishes a finished seal from a half-written archive
-    that happens to have leftover README/SUMMARY files.
-    """
-    tag = get_current_tag()
-    if not tag:
-        return ("PLAN.md missing or has no `**Tag:** vX.Y.Z` header — finalize "
-                "needs this to know which docs/tags/<Tag>/ directory to verify.")
-    archive = os.path.join("docs", "tags", tag)
-    if not os.path.isdir(archive):
-        return f"docs/tags/{tag}/ not created — finalize must archive the tag's working docs there."
-    missing = [f for f in _TAG_ARCHIVE_FILES if not os.path.isfile(os.path.join(archive, f))]
-    if missing:
-        return (f"docs/tags/{tag}/ missing required files: {', '.join(missing)}")
-
-    manifest_path = os.path.join(archive, "evidence", "manifest.json")
-    if not os.path.isfile(manifest_path):
-        return (f"docs/tags/{tag}/evidence/manifest.json not found — the archive was "
-                f"never sealed; {_SEAL_HINT.format(tag=tag)}.")
-    try:
-        with open(manifest_path, encoding="utf-8") as handle:
-            manifest = json.load(handle)
-    except (OSError, ValueError) as exc:
-        return (f"docs/tags/{tag}/evidence/manifest.json is unreadable or not valid "
-                f"JSON ({exc}) — {_SEAL_HINT.format(tag=tag)}.")
-    if not isinstance(manifest, dict) or manifest.get("sealed") is not True:
-        return (f"docs/tags/{tag}/evidence/manifest.json does not say `\"sealed\": true` — "
-                f"the archive is a partial finalize; {_SEAL_HINT.format(tag=tag)}.")
-
-    # Past this point the tag IS sealed, so the fix for a stale parent index is
-    # `reindex`, not `index` — the latter would just exit 3 on a sealed tag.
-    parent_index = os.path.join("docs", "tags", "README.md")
-    if not os.path.isfile(parent_index):
-        return (f"docs/tags/README.md not found — {tag} is sealed but the parent tag "
-                f"index was never written; {_REINDEX_HINT}.")
-    try:
-        with open(parent_index, encoding="utf-8", errors="replace") as handle:
-            parent_text = handle.read()
-    except OSError as exc:
-        return f"docs/tags/README.md is unreadable ({exc})."
-    if f"({tag}/)" not in parent_text:
-        return (f"docs/tags/README.md does not list {tag} — the parent index is stale; "
-                f"{_REINDEX_HINT}.")
-    return None
-
-
-def _check_task_table_all_verified(path: str) -> str | None:
-    """Shared: a task table at `path` must have no non-verified tasks."""
-    if not os.path.isfile(path):
-        return f"{path} not found"
-    with open(path, encoding="utf-8", errors="replace") as f:
-        content = f.read()
-    pending = re.findall(r"\|\s*pending\s*\|", content, re.IGNORECASE)
-    in_progress = re.findall(r"\|\s*in_progress\s*\|", content, re.IGNORECASE)
-    completed = re.findall(r"\|\s*completed\s*\|", content, re.IGNORECASE)
-    leftover = []
-    if pending:
-        leftover.append(f"{len(pending)} pending")
-    if in_progress:
-        leftover.append(f"{len(in_progress)} in_progress")
-    if completed:
-        leftover.append(f"{len(completed)} completed (not yet verified)")
-    if leftover:
-        return f"{path} has tasks not yet verified: {', '.join(leftover)}"
-    return None
-
-
-PROGRAMMATIC_CHECKS = {
-    "plan_all_verified": check_plan_all_verified,
-    "evaluation_playable_unit": check_evaluation_playable_unit,
-    "gap_archived_unless_handoff": check_gap_archived,
-    "tag_archived": check_tag_archived,
-}
 
 
 # ---------------------------------------------------------------------------
@@ -261,38 +118,6 @@ def main():
     if not completed_event:
         sys.exit(0)
     completed_role = completed_event["role"]
-
-    # -----------------------------------------------------------------------
-    # Validate role outputs before allowing completion
-    # -----------------------------------------------------------------------
-    schemas = load_stage_schemas()
-    if schemas:
-        role_schema = schemas.get(completed_role, {})
-        issues = validate_schema_files(role_schema)
-
-        for check_name in role_schema.get("checks", []):
-            check_fn = PROGRAMMATIC_CHECKS.get(check_name)
-            if check_fn:
-                result = check_fn(completed_event)
-                if result:
-                    issues.append(result)
-
-        if issues:
-            reason = (
-                f"Cannot mark role '{completed_role}' as complete — validation failed:\n"
-                + "\n".join(f"  - {i}" for i in issues)
-            )
-            record_event(EventType.GATE_CHECK, gate=f"role_{completed_role}",
-                         result="fail", issues=issues)
-            print(json.dumps({"hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": reason,
-            }}))
-            sys.exit(0)
-
-    record_event(EventType.GATE_CHECK, gate=f"role_{completed_role}",
-                 result="complete")
 
     reminder = get_next_role_reminder(completed_role, completed_event)
     if reminder:

@@ -660,6 +660,22 @@ class TestCheckFunctions:
 
         assert not any("XAI_API_KEY" in f for f in r.failed)
 
+    @patch.dict(os.environ, {}, clear=True)
+    def test_unknown_asset_image_provider_is_rejected(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "unknown:model",
+                "vqa_model": "native",
+            },
+            agent="codex",
+        )
+
+        assert any("asset_image_model provider 'unknown' is unsupported" in f for f in r.failed)
+
     def test_python_checks_xai_sdk_for_grok_image(self, monkeypatch):
         from check_env import check_python
 
