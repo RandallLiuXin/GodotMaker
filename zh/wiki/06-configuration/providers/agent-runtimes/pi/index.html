@@ -1546,6 +1546,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pi
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1562,6 +1580,36 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#smoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        可复现的本地 smoke 记录
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -3174,6 +3222,25 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#smoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        可复现的本地 smoke 记录
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -3201,11 +3268,20 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/publish.py<span class="w"> </span>--agent<span class="w"> </span>pi<span class="w"> </span>/path/to/my-game
 </code></pre></div>
 <ol>
-<li>在项目目录运行 <code>pi --approve</code>，再使用 Pi 的技能语法调用角色，例如 <code>/skill:gm-scaffold</code>。</li>
+<li>在项目目录运行 <code>pi --approve</code>，再使用 Pi 的技能语法调用角色，例如 <code>/skill:gm-scaffold</code> 或 <code>/skill:gm-build</code>。</li>
 </ol>
 <p>Pi 使用 <code>.pi/skills</code>、<code>.pi/agents</code>、<code>.pi/templates</code>、<code>.pi/references</code> 和 <code>.pi/godotmaker.yaml</code>。<code>--approve</code> 仅信任本次运行的项目资源，并不绕过 sandbox 或系统权限。</p>
 <p>Pi 没有内建 MCP 或 <code>Agent</code> 工具。GodotMaker 发布 <code>.pi/extensions/godotmaker-runtime.ts</code>，用它提供 Godot 调试循环，以及真实隔离的 worker/verifier/reviewer/decomposer Pi 子进程。worker 默认使用 Git worktree，并返回待合并分支。委派前必须提交 <code>.pi/</code>、<code>.godotmaker/config.yaml</code> 与 hooks、<code>tools/</code>、<code>AGENTS.md</code>；扩展会检查每个 worktree 是否携带这些资源，缺失时 fail closed。缺扩展、信任、Git HEAD 或 Godot 可执行文件时，依赖阶段也会明确停止。Pi 不提供角色级硬文件权限；reviewer/verifier 的禁止修改是角色约束，不是 sandbox。Pi 子进程还会继承父环境和祖先 <code>AGENTS.md</code>，请在干净的项目环境中运行，避免继承 workspace 凭据。</p>
 <p>Pi 不支持 GodotMaker runtime-native 生图或 VQA；请把 <code>asset_image_model</code> 和 <code>vqa_model</code> 配置为 <code>codex</code> 或 API 后端。</p>
+<h2 id="smoke">可复现的本地 smoke 记录<a class="headerlink" href="#smoke" title="Permanent link">&para;</a></h2>
+<p>已在 Windows 和 Pi <code>0.84.1</code> 上验证：</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">pi</span> <span class="p">-</span><span class="n">-version</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">python</span> <span class="n">tools</span><span class="p">/</span><span class="n">publish</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="n">-agent</span> <span class="n">pi</span> <span class="p">-</span><span class="n">-force</span> <span class="p">-</span><span class="n">-no-config-review</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">pi</span> <span class="p">-</span><span class="n">-approve</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c"># 然后输入：/skill:gm-scaffold</span>
+</code></pre></div>
+<p>publish 命令是幂等的。真实模型调用仍需主动选择：上面的 smoke 会验证 Pi 安装、
+受信任项目资源发现以及已发布的技能/扩展布局，但不会向模型提供方发送任务。</p>
 
 
 

@@ -3336,6 +3336,63 @@ not catalog rows. They never enter registration or worker handoff.</p>
 curation, and family validation helpers remain available to create and verify
 the actual files. Their output evidence belongs in Skill reports; registration
 is always the single result-to-<code>ASSETS.md</code> command above.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>asset_source_generate.py</code></td>
+<td>Calls an image provider from a JSON spec and creates source images with provenance records.</td>
+</tr>
+<tr>
+<td><code>asset_layout_guide.py</code></td>
+<td>Creates slot, label, and safe-margin reference images for fixed-grid source images.</td>
+</tr>
+<tr>
+<td><code>asset_image_finalize.py</code></td>
+<td>Checks transparency, bounds, proportions, and the final file for a single image.</td>
+</tr>
+<tr>
+<td><code>asset_sheet_process.py</code></td>
+<td>Removes backgrounds, slices sheets, extracts candidates, and reports on UI, icon, and prop sheets.</td>
+</tr>
+<tr>
+<td><code>asset_action_process.py</code></td>
+<td>Processes character or animated-effect action sheets into frames, transparent sheets, and animation reports.</td>
+</tr>
+<tr>
+<td><code>asset_curation_select.py</code></td>
+<td>Selects candidates from curation reports and writes them to final asset paths.</td>
+</tr>
+<tr>
+<td><code>asset_atlas_assemble.py</code></td>
+<td>Assembles fixed-layout PNG atlases and region metadata from explicit slot rectangles.</td>
+</tr>
+<tr>
+<td><code>asset_ui_source_sheet_plan.py</code> / <code>asset_ui_stylebox_plan.py</code></td>
+<td>Produces deterministic plans for UI component sheets and StyleBoxTexture compilation.</td>
+</tr>
+<tr>
+<td><code>asset_tileset_profile.py</code></td>
+<td>Generates TileSet profiles, atlas guidance, and native TileSet compilation recipes.</td>
+</tr>
+<tr>
+<td><code>asset_family_registry.py</code></td>
+<td>Prints or checks the public Asset Skill family, variant, output-type, and cardinality contracts.</td>
+</tr>
+</tbody>
+</table>
+<p>Run the common structural check with:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/asset_family_registry.py<span class="w"> </span>--check
+</code></pre></div>
+<p>In most cases, do not chain these tools manually. Let <code>/gm-asset</code> orchestrate
+them according to <code>ASSETS.md</code>, the request, and the Skill contract. Run them
+directly to diagnose one source, test a fixed grid, inspect slicing output, or
+reproduce a registration failure.</p>
 
 
 
