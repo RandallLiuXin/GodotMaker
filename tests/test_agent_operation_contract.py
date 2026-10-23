@@ -58,13 +58,24 @@ def published_skill_docs() -> list[Path]:
     return docs
 
 
+def operation_mapping_rows(path: Path) -> list[tuple[str, str, str]]:
+    text = path.read_text(encoding="utf-8")
+    section = re.search(
+        r"^## Operation Mapping\s*$\n(?P<body>.*?)(?=^## |\Z)",
+        text,
+        flags=re.IGNORECASE | re.MULTILINE | re.DOTALL,
+    )
+    assert section, f"{path} is missing its Operation Mapping section"
+    return MAPPING_ROW.findall(section["body"])
+
+
 def test_each_runtime_maps_every_canonical_operation_once():
     canonical = contract_operations()
     assert canonical
     assert not [name for name, count in Counter(canonical).items() if count != 1]
 
     for runtime, path in MAPPINGS.items():
-        rows = MAPPING_ROW.findall(path.read_text(encoding="utf-8"))
+        rows = operation_mapping_rows(path)
         names = [name for name, _classification, _invocation in rows]
         assert not [
             name for name, count in Counter(names).items() if count != 1
@@ -134,7 +145,7 @@ def test_published_skill_operation_surfaces_exist_in_canonical_contract():
 def test_agent_driven_supporting_skill_invocation_is_executable(
     runtime: str, skill_path: str, user_entrypoint: str
 ):
-    rows = MAPPING_ROW.findall(MAPPINGS[runtime].read_text(encoding="utf-8"))
+    rows = operation_mapping_rows(MAPPINGS[runtime])
     operations = {
         name: (classification, invocation)
         for name, classification, invocation in rows

@@ -41,8 +41,7 @@ to the current skill directory, not the project root. For example, inside
 `.opencode/skills/gm-asset/references/asset-runtime-pipeline.md`.
 
 Project artifact paths are different: if a skill asks the stage to create or
-consume project assets such as `references/scene_<name>.png`, resolve those as
-project-root files.
+consume project assets, resolve those as project-root files.
 
 ## Operation Mapping
 
@@ -109,16 +108,24 @@ If OpenCode subagent execution is unavailable, use a sequential fallback only
 when the current stage explicitly allows the lead session to perform that role's
 work. Otherwise stop and report the missing capability before editing files.
 
+## Enforcement Class Matrix
+
+The class records where a gate is enforced; it does not imply hook parity with
+Claude Code.
+
+| Gate | Class | Invocation or authority |
+|---|---|---|
+| `worker_dispatch_prerequisites` | `native` | `.opencode/plugins/godotmaker-hooks.js` invokes `check_stage_prerequisites.py` before the OpenCode `task` tool executes. |
+| `delegated_write_boundaries` | `native` | OpenCode agent `permission` frontmatter provides the write boundary; the plugin additionally applies the identity-free `memory` scope. Identity-dependent Python subagent gates remain unsupported. |
+| `stage_completion` | `tool-owned` | WOR-464 owns making `tools/append_stage_event.py` the portable authority. Until that lands, `stage_reminder.py` is only a non-authoritative write-time reminder. |
+
 ## Runtime Boundaries
 
 - Use the configured OpenCode `godot` MCP server for Godot operations. If it is
   missing, stop with a setup handoff.
 - Root-stage hooks remain active through `.opencode/plugins/godotmaker-hooks.js`.
 - Child-session edit boundaries are governed by `.opencode/agents/*.md`
-  `permission` frontmatter, not by Claude-style `agent_id` hook payloads. For
-  the architecture record, the plugin invokes the identity-free `memory` scope of
-  `check_file_permissions.py`, blocking child writes to root `MEMORY.md` and
-  the root `memory/` directory.
+  `permission` frontmatter, not by Claude-style `agent_id` hook payloads.
 - OpenCode child sessions do not provide the `agent_id` payload required by
   GodotMaker's Python subagent read/write gates. Treat unsupported child-session
   gates as degraded instead of claiming Claude Code hook parity.

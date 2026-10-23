@@ -62,7 +62,7 @@ This intake is NOT a confirmation gate. Keep `AskUserQuestion` for explicit GDD 
 2. **You CANNOT write to `assets/`.** Assets are produced in `/gm-asset`.
 3. **Use AskUserQuestion for confirmation.** GDD must be explicitly confirmed by the user before generating ROADMAP / per-tag artifacts. ROADMAP must be explicitly confirmed before any artifact is written.
 4. **MUST NOT skip the ROADMAP confirmation gate** — see Sub-stages below. Initial mode WITHOUT a confirmed ROADMAP cannot proceed to artifact generation; subsequent mode with a roadmap edit WITHOUT re-confirmation cannot proceed either.
-5. **Subsequent mode does NOT append tag-N sections to STRUCTURE/SCENES.** It **overwrites** those root files with the current tag's scope. Prior tags' versions live in `docs/tags/<prev_tag>/`. The cross-tag accumulating files are `GDD.md`, `ROADMAP.md`, `DESIGN.md`, `ASSETS.md`, and `MEMORY.md`.
+5. **Subsequent mode does NOT append tag-N sections to STRUCTURE/SCENES.** It **overwrites** those root files with end-of-current-tag snapshots. Prior tags' versions live in `docs/tags/<prev_tag>/`. When rewriting STRUCTURE.md, carry forward every still-valid entry under Architecture Ownership, Architecture Dependencies, Ordering Constraints, and Stable Invariants from the previous tag archive, and modify only entries this tag actually changes. The cross-tag accumulating files are `GDD.md`, `ROADMAP.md`, `DESIGN.md`, and `ASSETS.md`.
 6. **GDD design changes that contradict shipped tags MUST be reflected as PLAN refactor tasks.** When subsequent-mode interview reveals that a prior tag's behaviour now needs to change, the GDD update marks the old behaviour as `(superseded by ...)` rather than deleting it, AND the new PLAN.md gains an explicit refactor / removal task in the Main Build section.
 
 ## Sub-stages
@@ -233,11 +233,12 @@ them into the new PLAN.md's Inherited Mechanics section verbatim}
 {exact list of files this decomposer may write}
 ```
 
-The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the current tag's scope. For `DESIGN.md` it writes the project visual contract in initial mode; in subsequent mode it rewrites only the sections whose visual direction this tag confirmably changes and leaves the rest untouched. For `ASSETS.md` it operates differently: in **initial mode** it writes the skeleton; in **subsequent mode** it APPENDS new rows for assets this tag introduces (with `Tag = <current tag>`) and never modifies prior-tag rows. It does NOT touch `GDD.md`, `ROADMAP.md`, `MEMORY.md`, or any `docs/tags/` archive. It returns a short report; do NOT relay raw decomposer output to the user — run the gate first.
+The decomposer overwrites root `PLAN.md`, `STRUCTURE.md`, `SCENES.md` with the current tag's scope. In subsequent mode, the STRUCTURE.md rewrite must use the previous tag's archived STRUCTURE.md as the source for still-valid Architecture Ownership, Architecture Dependencies, Ordering Constraints, and Stable Invariants entries; it must carry them forward and modify only entries this tag actually changes. For `DESIGN.md` it writes the project visual contract in initial mode; in subsequent mode it rewrites only the sections whose visual direction this tag confirmably changes and leaves the rest untouched. For `ASSETS.md` it operates differently: in **initial mode** it writes the skeleton; in **subsequent mode** it APPENDS new rows for assets this tag introduces (with `Tag = <current tag>`) and never modifies prior-tag rows. It does NOT touch `GDD.md`, `ROADMAP.md`, or any `docs/tags/` archive. It returns a short report; do NOT relay raw decomposer output to the user — run the gate first.
 
 **Gate 1c-B:**
 - [ ] Phase B packages used the finalized PLAN.md as the source of task IDs, mechanic IDs, affected files, asset mappings, and verify expectations
-- [ ] `STRUCTURE.md` exists with `**Tag:**` header, scoped to this tag's additions / refactors
+- [ ] `STRUCTURE.md` exists with `**Tag:**` header and describes the end-of-tag architecture, including this tag's additions / refactors
+- [ ] Subsequent mode only: STRUCTURE.md carries forward every still-valid Architecture Ownership, Architecture Dependencies, Ordering Constraints, and Stable Invariants entry from the previous tag archive; only entries this tag actually changes are modified, and none of the four sections has been reset to template placeholders
 - [ ] `SCENES.md` exists with `**Tag:**` header, scoped to this tag
 - [ ] `DESIGN.md` exists with Visual Identity, the nine numbered image-style
       dimensions, UI Visual Language, Do, and Don't

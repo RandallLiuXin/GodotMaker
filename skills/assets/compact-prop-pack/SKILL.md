@@ -71,7 +71,7 @@ Honor the request's provider exactly. Never silently switch among `native`,
 - With no `references`, generate the one source sheet from the brief and
   declared item list.
 - With references, validate every path is readable before generation, preserve
-  its `canonical`, `style`, or `screen` role in the trace, and pass each real
+  its `canonical` or `style` role in the trace, and pass each real
   image as provider image input. Passing a path only in text is not attachment.
 - For `codex`, call the image provider with the actual reference files through
   `referenced_image_paths`; omit that parameter only when there are no

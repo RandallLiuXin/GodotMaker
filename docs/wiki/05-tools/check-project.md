@@ -55,7 +55,6 @@ check.
 ```
 [PASS] project.godot exists
 [FAIL] No System files found (files extending System)
-[WARN] MEMORY.md not found (optional but recommended)
 ```
 
 Failed checks are summarized at the end:

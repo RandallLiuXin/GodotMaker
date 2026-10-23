@@ -73,10 +73,11 @@ def check_evaluation_playable_unit_complete(
     if not isinstance(row_results, dict):
         issues.append('evaluation.json field "playable_unit.rows" must be an object')
         row_results = {}
+    normalized_row_results = _normalize_row_results(row_results)
 
     row_failure_seen = False
     for row in rows:
-        row_value = _get_row_result(row_results, row)
+        row_value = _get_row_result(normalized_row_results, row)
         if row_value is None:
             issues.append(
                 f"Playable Unit row {row.key} missing from evaluation.json playable_unit.rows"
@@ -112,7 +113,7 @@ def check_evaluation_playable_unit_complete(
                 "approve requires playable_closed_loop.completion_fail_or_exit_reached == true"
             )
         for row in rows:
-            row_value = _get_row_result(row_results, row)
+            row_value = _get_row_result(normalized_row_results, row)
             if isinstance(row_value, dict) and row_value.get("result") != "pass":
                 issues.append(f"approve requires Playable Unit row {row.key} to pass")
 
@@ -219,6 +220,18 @@ def _is_separator_row(cells: list[str]) -> bool:
 
 def _get_row_result(row_results: dict[str, Any], row: PlayableUnitRow) -> Any:
     return row_results.get(row.key)
+
+
+def _normalize_row_results(row_results: dict[str, Any]) -> dict[str, Any]:
+    """Key evaluation rows by the same canonical mechanic IDs as PLAN rows."""
+    normalized: dict[str, Any] = {}
+    for raw_key, value in row_results.items():
+        if not isinstance(raw_key, str):
+            continue
+        key = normalize_row_key(raw_key)
+        if key:
+            normalized[key] = value
+    return normalized
 
 
 def _read_text(path: str) -> str:

@@ -52,14 +52,14 @@ asset runtime 或 `tools/` 等受管理路径内的自定义文件不会被保�
   生产证据，不再是单独交给 worker 的运行时行。
 - `ui-kit`、`card-kit`、`compact-prop-pack` 等多输出 family 会原子注册所有声明的
   运行时输出。
-- 仅作参考的素材在 `source_ready` 结束，不能作为可加载资源交给 worker。
+- runtime family 返回的 reference 输出只保留为生产证据；它们不会创建目录行或进入 worker handoff。
 - 生成素材通常位于 `assets/generated/<asset-family>/<asset-id>/`，且只有通过对应
   Asset Skill 验证后才能标记为 `generated`。
-- `generated` 和 `source_ready` 必须由 1.0 的 validated request/result 和原子注册链
-  写入，不能根据旧路径或旧证据手工恢复。
+- `generated` 必须由 1.0 的 validated request/result 和原子注册链写入，不能根据旧路径
+  或旧证据手工恢复。
 
 本地 Agent 还应核对 `GDD.md`、当前 tag 的 `PLAN.md`、`STRUCTURE.md`、
-`SCENES.md`、`DESIGN.md`、`MEMORY.md`、`ROADMAP.md`、现有 Godot 资源绑定、
+`SCENES.md`、`DESIGN.md`、`ROADMAP.md`、现有 Godot 资源绑定、
 addons 和自定义 runtime 配置。并非每个工作区都需要修改所有项目；磁盘上的真实
 游戏才是判断依据。
 
@@ -112,7 +112,7 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
   `check_project.py`：有效 MCP 状态可能存于仓库之外。还要注明 Claude Code 与 Codex
   publish 会先移除旧 entry 再添加新 entry，因此 add 失败后可能没有任何注册。
 - 存在时读取 `GDD.md`、`PLAN.md`、`ASSETS.md`、`STRUCTURE.md`、`SCENES.md`、
-  `DESIGN.md`、`MEMORY.md` 和 `ROADMAP.md`。
+  `DESIGN.md` 和 `ROADMAP.md`。
 - 检查 `project.godot`、addons、场景、脚本、资源路径、生成资产，以及
   `.godotmaker/` 中保留的历史证据。
 - 将现有项目文档与 v1.0.0 模板作只读比较。
@@ -123,7 +123,7 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
     位于 `assets/generated/<asset-family>/<asset-id>/`。
   * 角色玩法动画应通过 `character-bundle` 解析到 `SpriteFrames`；基准参考图与动作
     源图是证据，不是额外运行时行。
-  * 仅参考输出使用 `source_ready`，不能当作运行时资源。
+  * reference 输出只保留为证据，不能当作运行时资源或目录行。
   * 不要把旧 manifest/stable-entry 指针保留成兼容层；找到场景和 worker 真正加载的
     1.0 资源。
 - 输出一张审计表，包含：项目、当前状态、所需变化、证据、风险、建议动作。分开列出
@@ -147,14 +147,14 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
 - 让 `ASSETS.md` 的结构符合 1.0 Runtime Type / Runtime Path 表。保留有价值的
   provenance，但应移除过时的 worker-facing 行或指针，而不是增加兼容读取层。若没有
   有效的 1.0 证据链证明某项输出，应让它保持 `MISSING` 或 `deferred`。
-- 绝不能手改 Runtime Type、Runtime Path 或 Status 来绕过注册。`generated` 或
-  `source_ready` 必须拥有 validated v1.0 request 和匹配 result，并通过
+- 绝不能手改 Runtime Type、Runtime Path 或 Status 来绕过注册。`generated` 必须拥有
+  validated v1.0 request 和匹配 result，并通过
   `tools/asset_result_registration.py` 校验声明的 Godot 类型与资源、原子注册整个
   production unit；多输出 family 必须整组成功或整组失败。若旧证据无法重建这条链，
   应报告 blocker，或请求重新运行对应 Asset Skill。
 - 当场景或脚本仍指向已废弃资产输出时，更新资源绑定。若验证过的确定性转换足够，
   不要只为了改路径就重新生成已接受的美术素材。
-- 让 GDD、当前 tag 计划、结构、场景、风格、路线图和记忆文档与真实游戏一致。
+- 让 GDD、当前 tag 计划、结构、场景、风格和路线图文档与真实游戏一致。
   如果通过 `/gm-gdd` 或其他流水线阶段重新生成会改变产品意图，先提出方案并等待批准。
 - Provider 凭证缺失或模型不可用属于 blocker，不能以此为理由伪造生成资产或验证证据。
 
@@ -174,6 +174,10 @@ addons 和自定义 runtime 配置。并非每个工作区都需要修改所有�
 ```
 
 ## 预期交接标准
+
+升级后，遗留的根 `MEMORY.md` 和 `memory/` 文件归项目自行所有。GodotMaker
+会保持它们不变，但不再读取、校验、发布或归档。将仍有效的架构归属、依赖、
+顺序约束和稳定不变量迁入 `STRUCTURE.md`；不要迁移任务历史、日志或评审 finding。
 
 干净重新初始化成功，只能证明 1.0 框架已安全部署。只有本地 Agent 同时证明项目自有
 契约与现有游戏一致，而且游戏仍能构建和运行，升级才算完成。最终报告中应把这两个

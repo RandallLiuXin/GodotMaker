@@ -56,7 +56,7 @@ def write_refs(tmp_path: Path, count: int, size=(12, 10)) -> list[str]:
 
 
 def write_reference_inputs(tmp_path: Path, count: int) -> list[dict[str, str]]:
-    roles = ("canonical", "style", "screen")
+    roles = ("canonical", "style")
     return [
         {"role": roles[index % len(roles)], "path": path}
         for index, path in enumerate(write_refs(tmp_path, count))
@@ -498,7 +498,7 @@ def test_role_preserving_reference_inputs_are_attached_and_reported(tmp_path, mo
     refs = write_refs(tmp_path, 2)
     inputs = [
         {"role": "style", "path": refs[0]},
-        {"role": "screen", "path": refs[1]},
+        {"role": "canonical", "path": refs[1]},
     ]
     spec = source_generate.load_spec(
         make_spec(
@@ -520,7 +520,7 @@ def test_role_preserving_reference_inputs_are_attached_and_reported(tmp_path, mo
     result = source_generate.generate_source(spec)
 
     assert [item["role"] for item in result["reference_inputs"]] == [
-        "style", "screen"
+        "style", "canonical"
     ]
     assert result["provider_payload"] == {
         "operation": "images.edit",

@@ -91,7 +91,7 @@ WAN_REGIONS = {
     },
 }
 WAN_SIZE_PIXELS = {"1K": 1024, "2K": 2048, "4K": 4096}
-REFERENCE_ROLES = {"canonical", "style", "screen"}
+REFERENCE_ROLES = {"canonical", "style"}
 
 
 def _split_model_selector(selector: str, *, default_provider: str,

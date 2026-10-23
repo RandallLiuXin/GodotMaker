@@ -12,7 +12,13 @@ Framework developers and manual-mode users can still create the same file with `
 
 **`pipeline.model`** - optional `godotmaker-cli` model override for automated build/evaluate stages. The GodotMaker framework preserves this value in `.godotmaker/config.yaml` but does not consume it directly; use a model ID supported by the selected agent runtime, as documented by `godotmaker-cli` / GodotMakerApp.
 
-**`agent`** — selected coding-agent runtime, such as `claude-code`, `codex`, or `opencode`.
+**`agent`** — selected coding-agent runtime: `claude-code`, `codex`, `opencode`,
+or `pi`.
+
+**`reasoning_effort`** — optional reasoning-level override for the selected
+coding-agent runtime. Leave it unset to inherit the agent or user default.
+Common tested values are `low`, `medium`, `high`, and `xhigh`; other values are
+valid only when the selected runtime accepts them.
 
 **`worker_model`** — which Claude model writes game code. Defaults to `sonnet`; set it to `opus` for games that need heavier implementation reasoning.
 
@@ -39,6 +45,9 @@ agent: claude-code
 # pipeline:
 #   model: <agent-model-id>
 
+# Optional reasoning-level override for the selected runtime.
+# reasoning_effort: high
+
 vqa_model: native
 vqa_fallback_model: native
 
@@ -61,9 +70,9 @@ The template uses native image inspection and native image generation by default
 
 For Codex projects, `asset_image_model: native` maps to Codex native image generation when the host exposes that capability. For Claude Code projects, `native` requires a Claude-side native image tool. If no native path is available, `/gm-asset` must stop and ask you to configure a supported provider or switch to an API-backed selector.
 
-For OpenCode projects, `native` image generation and `native` VQA are not used.
-Set `asset_image_model` and `vqa_model` to `codex` or an API-backed
-selector before running the full pipeline.
+For OpenCode and Pi projects, `native` image generation and `native` VQA are
+not supported. Set `asset_image_model` and `vqa_model` to `codex` or an
+API-backed selector before running the full pipeline.
 
 For a Claude Code project that should use Codex image generation:
 
@@ -119,6 +128,7 @@ Launch-time `--agent` still wins for that run:
 godotmaker-cli --agent claude-code
 godotmaker-cli --agent codex
 godotmaker-cli --agent opencode
+godotmaker-cli --agent pi
 ```
 
 To use Codex image generation:
@@ -160,7 +170,8 @@ The next `/gm-*` command picks up the new value. A command already running will 
 
 GodotMaker registers hook scripts through the selected runner surface:
 `.claude/settings.json` for Claude Code, `.codex/hooks.json` for Codex, and
-`.opencode/plugins/godotmaker-hooks.js` for OpenCode. These files are
-framework-managed; running `python tools/publish.py --force <project>`
-republishes the selected runner's hook surface if hooks stop firing after an
-upgrade.
+`.opencode/plugins/godotmaker-hooks.js` for OpenCode. Pi uses the runtime bridge
+at `.pi/extensions/godotmaker-runtime.ts` instead of a hook config file. These
+files are framework-managed; running `python tools/publish.py --force <project>`
+republishes the selected runner's hook or extension surface if it stops working
+after an upgrade.
