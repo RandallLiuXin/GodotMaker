@@ -41,11 +41,13 @@ Pi has no built-in MCP or `Agent` tool. GodotMaker publishes
   run the normal build/verify gates.
 
 The extension owns one role policy table. When dispatch omits `model`, it reads
-the role's key from `.godotmaker/config.yaml`, falling back to `sonnet`. An
+the role's key from `.godotmaker/config.yaml`, falling back to `inherit`. An
 explicit non-empty `model` on the dispatch request takes precedence. The
-special explicit value `inherit` suppresses `--model`, so the child inherits
-Pi's active model. Every other resolved value is passed as
-`--model <resolved-model>` to the Pi subprocess.
+cross-runtime Claude aliases `haiku`, `sonnet`, and `opus`, plus the explicit
+value `inherit`, suppress `--model` so the child inherits Pi's active provider
+and model. Use Pi's full provider/model selector to choose a different model;
+every such resolved value is passed as `--model <resolved-model>` to the Pi
+subprocess.
 
 | GodotMaker role | Model policy key | Pi delegation and isolation |
 |---|---|---|

@@ -103,20 +103,66 @@ def test_pi_runtime_bridge_fails_closed_for_missing_dependencies():
     assert "piInvocation(buildDelegateArgs(" in text
 
 
-def test_pi_launcher_uses_configured_role_model_in_default_argv(tmp_path):
+def test_pi_launcher_uses_configured_provider_model_in_default_argv(tmp_path):
     config = tmp_path / ".godotmaker" / "config.yaml"
     config.parent.mkdir()
-    config.write_text("worker_model: haiku\n", encoding="utf-8")
+    config.write_text("worker_model: deepseek/deepseek-v4-flash\n", encoding="utf-8")
 
     result = _run_delegate_policy(tmp_path, "worker")
 
-    assert result["model"] == "haiku"
+    assert result["model"] == "deepseek/deepseek-v4-flash"
     assert result["args"] == [
         "--approve", "--mode", "json", "--no-session",
-        "--model", "haiku", "-p",
+        "--model", "deepseek/deepseek-v4-flash", "-p",
         "--append-system-prompt", "role.md",
         "GodotMaker role: worker\n\nTask:\ntest task",
     ]
+
+
+def test_pi_launcher_strips_yaml_inline_comment_from_configured_model(tmp_path):
+    config = tmp_path / ".godotmaker" / "config.yaml"
+    config.parent.mkdir()
+    config.write_text(
+        "worker_model: deepseek/deepseek-v4-flash # preferred\n",
+        encoding="utf-8",
+    )
+
+    result = _run_delegate_policy(tmp_path, "worker")
+
+    assert result["model"] == "deepseek/deepseek-v4-flash"
+    assert result["args"][4:6] == ["--model", "deepseek/deepseek-v4-flash"]
+
+
+def test_pi_launcher_strips_yaml_comment_from_claude_alias(tmp_path):
+    config = tmp_path / ".godotmaker" / "config.yaml"
+    config.parent.mkdir()
+    config.write_text("worker_model: opus # heavier\n", encoding="utf-8")
+
+    result = _run_delegate_policy(tmp_path, "worker")
+
+    assert result["model"] is None
+    assert "--model" not in result["args"]
+
+
+def test_pi_launcher_inherits_for_template_claude_aliases(tmp_path):
+    config = tmp_path / ".godotmaker" / "config.yaml"
+    config.parent.mkdir()
+    config.write_text(
+        (REPO_ROOT / "config" / "config.yaml.default").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    for role in _run_delegate_policy(tmp_path, "worker")["roles"]:
+        result = _run_delegate_policy(tmp_path, role)
+        assert result["model"] is None
+        assert "--model" not in result["args"]
+
+
+def test_pi_launcher_inherits_when_config_is_missing(tmp_path):
+    result = _run_delegate_policy(tmp_path, "worker")
+
+    assert result["model"] is None
+    assert "--model" not in result["args"]
 
 
 def test_pi_launcher_explicit_model_overrides_role_policy_argv(tmp_path):
@@ -141,6 +187,14 @@ def test_pi_launcher_explicit_inherit_suppresses_configured_model(tmp_path):
     assert result["model"] is None
     assert "--model" not in result["args"]
     assert "sonnet" not in result["args"]
+
+
+def test_pi_launcher_explicit_claude_alias_inherits_active_model(tmp_path):
+    for alias in ("haiku", "sonnet", "opus"):
+        result = _run_delegate_policy(tmp_path, "worker", alias)
+
+        assert result["model"] is None
+        assert "--model" not in result["args"]
 
 
 def test_codex_and_pi_role_tables_match_all_published_agents(tmp_path):
