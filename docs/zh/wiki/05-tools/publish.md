@@ -116,8 +116,12 @@ framework-owned 部分，不会继续保留旧 surface：
 不要在 framework-owned plugin 或 extension 文件内定制；下次发布会替换它。
 请把用户逻辑放在独立 plugin/extension 文件或自定义 JSON hook 条目中。
 
-- **降级：**仍然需要 `--force`。它会部署旧 checkout 的框架 surface，并完整替换
-  所选 JSON hook config 或 adapter；不会反向执行迁移或回退项目状态。
+- **降级：**仍然需要 `--force`，并运行 checkout 出来的目标 GodotMaker 版本中的
+  发布器。降级到早于本文 ownership-aware 行为的版本时，旧发布器会完整替换
+  JSON hook config，并删除后重建整个 `.opencode/plugins/` 或 `.pi/extensions/`
+  目录；独立 plugin/extension 文件及自定义 JSON hook 条目都会被删除。降级前请
+  提交或备份这些文件和条目，或者在降级后从 VCS 恢复目标项目。`--force` 不会
+  反向执行迁移或回退项目状态。
 - **回滚：**`--force` 不是完整回滚。请从 VCS 恢复目标项目，checkout 匹配的
   GodotMaker 版本，然后重新发布。
 - **冲突：**如果已有 Claude/Codex 文件不是有效 JSON，或其 `hooks` schema

@@ -134,9 +134,14 @@ Do not customize a framework-owned plugin or extension file; the next publish
 will replace it. Put user logic in a separate plugin/extension file or a custom
 JSON hook entry.
 
-- **Downgrade:** still requires `--force`. It deploys the framework surface from
-  the older checkout and replaces the complete selected JSON hook config or
-  adapter. It does not reverse migrations or project state.
+- **Downgrade:** still requires `--force` and runs the publisher from the
+  GodotMaker version you checked out. When downgrading to a version from before
+  the ownership-aware behavior documented here, the older publisher replaces
+  the complete JSON hook config and removes and recreates the entire
+  `.opencode/plugins/` or `.pi/extensions/` directory. This deletes independent
+  plugin/extension files as well as custom JSON hook entries. Commit or back up
+  those files and entries before downgrading, or restore the target project from
+  VCS afterward. `--force` does not reverse migrations or project state.
 - **Rollback:** `--force` is not a complete rollback. Restore the target project
   from VCS, check out the matching GodotMaker version, and publish again.
 - **Conflict:** if an existing Claude/Codex file is invalid JSON or its `hooks`
