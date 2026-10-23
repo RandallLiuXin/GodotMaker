@@ -60,7 +60,7 @@ skill instruction, prefer skill-local resolution.
 | Operation | Class | Invocation path |
 |---|---|---|
 | `invoke_stage` | `native` | Invoke the matching published `$gm-*` skill; map shared `/gm-*` vocabulary before execution. |
-| `invoke_supporting_skill` | `native` | Invoke the published supporting skill as `$<skill-name>` in the current session. |
+| `invoke_supporting_skill` | `emulated` | Read `.agents/skills/<skill-name>/SKILL.md` with the filesystem read tool, follow it in the current session, and pass the caller's arguments as task context. `$<skill-name>` is a user-side entrypoint only. |
 | `read_project_config` | `native` | Read `.agents/godotmaker.yaml` after applying the shared path mapping. |
 | `read_skill_reference` | `native` | Resolve from `.agents/skills/<skill>/`; skill-local `references/`, `scripts/`, `tools/`, and docs stay relative to that directory. |
 | `dispatch_worker` | `gated` | Use `spawn_agent(agent_type="worker", message=...)` and explicitly load `.agents/agents/worker.md`; gate if spawning or required context is unavailable. |

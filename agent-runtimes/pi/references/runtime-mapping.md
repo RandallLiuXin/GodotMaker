@@ -31,7 +31,7 @@ the `.pi` sidecar from `.godotmaker/config.yaml`.
 | Operation | Class | Invocation path |
 |---|---|---|
 | `invoke_stage` | `native` | Invoke the published stage as `/skill:gm-<role>`. |
-| `invoke_supporting_skill` | `native` | Invoke a published supporting skill as `/skill:<skill-name>`. |
+| `invoke_supporting_skill` | `emulated` | Read `.pi/skills/<skill-name>/SKILL.md` with Pi's `read` tool, follow it in the current session, and pass the caller's arguments as task context. `/skill:<skill-name>` is a user-side entrypoint only and may be disabled. |
 | `read_project_config` | `native` | Read `.pi/godotmaker.yaml`, or use `python tools/agent_runtime.py <key>` for selected-runtime lookup. |
 | `read_skill_reference` | `native` | Resolve `references/`, `scripts/`, `tools/`, and bundled docs from `.pi/skills/<skill>/`. |
 | `dispatch_worker` | `emulated` | Call `godotmaker_delegate` with `role: "worker"`; worktree isolation is the default. |

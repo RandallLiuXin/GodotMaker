@@ -48,6 +48,16 @@ def contract_operations() -> list[str]:
     )]
 
 
+def published_skill_docs() -> list[Path]:
+    docs: list[Path] = []
+    for layer in ("core", "reviewer", "assets"):
+        layer_dir = REPO_ROOT / "skills" / layer
+        for skill_dir in layer_dir.iterdir():
+            if skill_dir.is_dir() and not skill_dir.name.startswith("_"):
+                docs.extend(skill_dir.glob("**/*.md"))
+    return docs
+
+
 def test_each_runtime_maps_every_canonical_operation_once():
     canonical = contract_operations()
     assert canonical
@@ -72,7 +82,7 @@ def test_each_runtime_maps_every_canonical_operation_once():
 
 def test_published_skill_operation_surfaces_exist_in_canonical_contract():
     canonical = set(contract_operations())
-    skill_docs = list((REPO_ROOT / "skills" / "core").glob("**/*.md"))
+    skill_docs = published_skill_docs()
     text = "\n".join(path.read_text(encoding="utf-8") for path in skill_docs)
     discovered: set[str] = set()
 
@@ -101,6 +111,7 @@ def test_published_skill_operation_surfaces_exist_in_canonical_contract():
         "vqa_model": "inspect_images",
         "godot-mcp": "access_godot_mcp",
         'isolation: "worktree"': "create_or_use_isolated_workspace",
+        "WebFetch": "fetch_web_content",
     }
     for token, operation in surface_tokens.items():
         if token in text:
@@ -111,6 +122,30 @@ def test_published_skill_operation_surfaces_exist_in_canonical_contract():
         "published skills use operations missing from the canonical matrix: "
         f"{sorted(discovered - canonical)}"
     )
+
+
+@pytest.mark.parametrize(
+    ("runtime", "skill_path", "user_entrypoint"),
+    [
+        ("codex", ".agents/skills/<skill-name>/SKILL.md", "$<skill-name>"),
+        ("pi", ".pi/skills/<skill-name>/SKILL.md", "/skill:<skill-name>"),
+    ],
+)
+def test_agent_driven_supporting_skill_invocation_is_executable(
+    runtime: str, skill_path: str, user_entrypoint: str
+):
+    rows = MAPPING_ROW.findall(MAPPINGS[runtime].read_text(encoding="utf-8"))
+    operations = {
+        name: (classification, invocation)
+        for name, classification, invocation in rows
+    }
+    classification, invocation = operations["invoke_supporting_skill"]
+
+    assert classification == "emulated"
+    assert skill_path in invocation
+    assert "task context" in invocation
+    assert user_entrypoint in invocation
+    assert "user-side entrypoint" in invocation
 
 
 @pytest.mark.parametrize(
