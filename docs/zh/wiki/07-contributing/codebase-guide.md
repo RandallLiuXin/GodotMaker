@@ -39,7 +39,7 @@ GodotMaker/
 |--------|-------|---------|
 | `session_start.py` | SessionStart | 否 |
 | `check_file_permissions.py` | PreToolUse (Write\|Edit) | 是 |
-| `stage_reminder.py` | PreToolUse (Write\|Edit) | 是 |
+| `stage_reminder.py` | PreToolUse (Write\|Edit) | 否 |
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | 是 |
 | `check_asset_access.py` | PreToolUse (Read) | 是 |
 | `log_subagent.py` | SubagentStart | 否 |

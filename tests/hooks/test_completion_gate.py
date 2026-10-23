@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -11,6 +12,7 @@ import pytest
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HOOKS_DIR = os.path.join(REPO_ROOT, "hooks")
 SCHEMA_SRC = os.path.join(REPO_ROOT, "config", "stage_schemas.json")
+SEAL_TAG = os.path.join(REPO_ROOT, "tools", "seal_tag.py")
 if HOOKS_DIR not in sys.path:
     sys.path.insert(0, HOOKS_DIR)
 
@@ -54,6 +56,31 @@ def test_build_programmatic_check_blocks_pending_plan(project_dir):
     assert "1 pending" in result["reason"]
 
 
+def test_non_worker_role_ignores_malformed_metrics(project_dir):
+    with open("project.godot", "w", encoding="utf-8") as handle:
+        handle.write("[application]\n")
+    with open(
+        ".godotmaker/metrics_current.jsonl", "w", encoding="utf-8"
+    ) as handle:
+        handle.write('{"event": "truncated')
+
+    assert failure("scaffold") is None
+
+
+def test_worker_role_reports_malformed_metrics_path(project_dir):
+    with open("PLAN.md", "w", encoding="utf-8") as handle:
+        handle.write("| Task | Status |\n| movement | verified |\n")
+    with open(
+        ".godotmaker/metrics_current.jsonl", "w", encoding="utf-8"
+    ) as handle:
+        handle.write('{"event": "truncated')
+
+    result = failure("build")
+
+    assert result is not None
+    assert ".godotmaker/metrics_current.jsonl is not valid JSONL" in result["reason"]
+
+
 def test_fixgap_handoff_preserves_open_gap(project_dir):
     with open("GAP.md", "w", encoding="utf-8") as handle:
         handle.write("# Evaluator-owned gap\n")
@@ -85,6 +112,55 @@ def test_complete_sealed_tag_passes_finalize_gate(project_dir):
         json.dump({"status": "tag_sealed"}, handle)
 
     assert failure("finalize", tag=tag) is None
+
+
+def test_real_seal_tag_output_satisfies_the_gate(project_dir):
+    """Real archive/index output and the gate must not drift apart."""
+    for name, body in (
+        ("GDD.md", "# GDD\n"),
+        ("PLAN.md", "# Plan\n\n**Tag:** v0.1.0\n"),
+        ("STRUCTURE.md", "# Structure\n"),
+        ("DESIGN.md", "# Design\n"),
+        ("SCENES.md", "# Scenes\n"),
+        ("MEMORY.md", "# Memory\n"),
+    ):
+        with open(name, "w", encoding="utf-8") as handle:
+            handle.write(body)
+    with open(
+        ".godotmaker/evaluation.json", "w", encoding="utf-8"
+    ) as handle:
+        json.dump({"result": "approve", "minor_issues": []}, handle)
+    with open(
+        ".godotmaker/final_report.json", "w", encoding="utf-8"
+    ) as handle:
+        json.dump({"status": "tag_sealed"}, handle)
+
+    archive = subprocess.run(
+        [sys.executable, SEAL_TAG, "--project-path", ".", "archive", "v0.1.0"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert archive.returncode == 0, archive.stderr
+    with open(
+        os.path.join("docs", "tags", "v0.1.0", "CHANGELOG.md"),
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        handle.write(
+            "# Changelog\n\n**Released:** 2026-01-01\n**Theme:** Foundation\n"
+        )
+
+    assert failure("finalize", tag="v0.1.0") is not None
+
+    index = subprocess.run(
+        [sys.executable, SEAL_TAG, "--project-path", ".", "index", "v0.1.0"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert index.returncode == 0, index.stderr
+    assert failure("finalize", tag="v0.1.0") is None
 
 
 @pytest.mark.parametrize(

@@ -238,6 +238,47 @@ def test_diligence_failure_has_no_event_side_effect(gated_project_dir):
     assert read_events(gated_project_dir) == []
 
 
+def test_non_worker_completion_ignores_malformed_metrics(gated_project_dir):
+    with open(
+        os.path.join(gated_project_dir, ".godotmaker", "verify_report.json"),
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        json.dump({"status": "passed"}, handle)
+    with open(
+        os.path.join(gated_project_dir, ".godotmaker", "metrics_current.jsonl"),
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        handle.write('{"event": "truncated')
+
+    _, stderr, code = run(gated_project_dir, "verify")
+
+    assert code == 0, stderr
+    assert [event["role"] for event in read_events(gated_project_dir)] == ["verify"]
+
+
+def test_worker_completion_names_malformed_metrics_without_side_effect(
+    gated_project_dir,
+):
+    with open(
+        os.path.join(gated_project_dir, "PLAN.md"), "w", encoding="utf-8"
+    ) as handle:
+        handle.write("| Task | Status |\n| work | verified |\n")
+    with open(
+        os.path.join(gated_project_dir, ".godotmaker", "metrics_current.jsonl"),
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        handle.write('{"event": "truncated')
+
+    _, stderr, code = run(gated_project_dir, "build")
+
+    assert code == 3
+    assert ".godotmaker/metrics_current.jsonl is not valid JSONL" in stderr
+    assert read_events(gated_project_dir) == []
+
+
 def test_ordinary_and_handoff_fixgap_each_append_once(gated_project_dir):
     _, stderr, code = run(gated_project_dir, "fixgap")
     assert code == 0, stderr

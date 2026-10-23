@@ -51,7 +51,7 @@ Three things at every session start:
 ### check_file_permissions.py
 
 **Event:** PreToolUse (Write|Edit)
-**Blocks:** No
+**Blocks:** Yes
 
 Reads `.godotmaker/current_role` (written as the first action of each `/gm-*`
 skill) and applies that role's write rules. Per-role summary:
@@ -93,7 +93,7 @@ Also records `FILE_WRITE` / `FILE_EDIT` metrics events for every file operation.
 ### stage_reminder.py
 
 **Event:** PreToolUse (Write|Edit)
-**Blocks:** Yes
+**Blocks:** No
 
 When a runtime exposes direct Write/Edit interception, this hook recognizes a
 role-completion line and injects the next `/gm-*` command from `ROLE_NEXT`.

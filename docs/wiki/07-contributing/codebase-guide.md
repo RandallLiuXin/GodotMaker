@@ -39,7 +39,7 @@ Scripts and the events they handle:
 |--------|-------|---------|
 | `session_start.py` | SessionStart | No |
 | `check_file_permissions.py` | PreToolUse (Write\|Edit) | Yes |
-| `stage_reminder.py` | PreToolUse (Write\|Edit) | Yes |
+| `stage_reminder.py` | PreToolUse (Write\|Edit) | No |
 | `check_stage_prerequisites.py` | PreToolUse (Agent) | Yes |
 | `check_asset_access.py` | PreToolUse (Read) | Yes |
 | `log_subagent.py` | SubagentStart | No |

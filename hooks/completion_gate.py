@@ -11,7 +11,12 @@ import os
 import re
 
 from check_completion import get_diligence_failure
-from metrics import load_stage_schemas, read_current_events, validate_schema_files
+from metrics import (
+    WORKER_DISPATCH_ROLES,
+    load_stage_schemas,
+    read_current_events,
+    validate_schema_files,
+)
 from playability_contract import check_evaluation_playable_unit_complete
 
 
@@ -161,9 +166,18 @@ def get_completion_failure(event: dict[str, object]) -> dict | None:
                 if result:
                     issues.append(result)
 
-    diligence = get_diligence_failure(role, read_current_events())
-    if diligence:
-        issues.extend(diligence["issues"])
+    if role in WORKER_DISPATCH_ROLES:
+        try:
+            current_events = read_current_events()
+        except ValueError as exc:
+            issues.append(
+                ".godotmaker/metrics_current.jsonl is not valid JSONL "
+                f"({exc})"
+            )
+        else:
+            diligence = get_diligence_failure(role, current_events)
+            if diligence:
+                issues.extend(diligence["issues"])
 
     if not issues:
         return None
