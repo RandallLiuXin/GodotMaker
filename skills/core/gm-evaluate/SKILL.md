@@ -135,7 +135,7 @@ All of these must pass for `result == "approve"`. Failure of any is a `critical_
 6. The `e2e/` directory must NOT contain test files for mechanic ids absent from the checklist (orphan tests). Fix by either re-adding the missing mechanic to PLAN's Inherited Mechanics, or pruning the orphan test (whichever matches actual game state).
 
 **Visual cross-check (per scene listed in SCENES.md):**
-7. Capture screenshots under `e2e/screenshots/`. Use `game.screenshot("e2e/screenshots/scene_{name}.png")` for static scenes. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Dynamic Mode". Treat `e2e/screenshots/` as latest-run output only.
+7. Capture screenshots under `e2e/screenshots/`. Use `game.screenshot("e2e/screenshots/scene_{name}.png")` for static scenes. For scenes with motion/animation, capture a frame sequence per `.claude/skills/screenshot/SKILL.md` § "Frame Sequence for VQA Question Mode". Treat `e2e/screenshots/` as latest-run output only.
 8. Inspect the captured screenshots by dispatching a subagent to run the
    `visual-qa` skill in Question mode. Judge them only against observable scene
    requirements and the applicable rules selected from `DESIGN.md`.
