@@ -37,7 +37,8 @@ GodotMaker turns a game idea into a playable Godot 4 prototype. The normal path 
 
 - GodotMaker currently targets 2D Godot games. 3D game generation is not supported.
 - The art pipeline is still alpha and may need follow-up repair for atlas regions, animation setup, or asset binding.
-- Pixel art and TileMap support are planned but not currently supported.
+- Pixel art style is planned but not currently supported.
+- TileSet generation and TileMap authoring are supported; generated level layouts still require manual playtesting.
 - Level layout, puzzle content, and numeric balance still need human judgment and manual refinement.
 - Audio generation is not supported yet.
 - Very long automated runs are cost-sensitive, and rare projects may fail to converge after repeated build/fix/evaluate loops.

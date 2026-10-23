@@ -161,3 +161,31 @@ def test_delivered_camera_and_tileset_capabilities_are_public():
     assert "- [x] `R-100` **TileSet and TileMap support**" in roadmap
     assert "L0-L4-validated native `TileSet`" in readme
     assert "TileMap is not currently supported" not in readme
+
+    public_home_pages = {
+        "docs/index.md": (
+            "TileSet generation and TileMap authoring are supported",
+            "not currently supported",
+        ),
+        "docs/wiki/Home.md": (
+            "TileSet generation and TileMap authoring are supported",
+            "not currently supported",
+        ),
+        "docs/zh/index.md": (
+            "已支持生成 TileSet 和编写 TileMap",
+            "暂不支持",
+        ),
+        "docs/zh/wiki/Home.md": (
+            "已支持生成 TileSet 和编写 TileMap",
+            "暂不支持",
+        ),
+    }
+    for relative, (supported, unsupported_marker) in public_home_pages.items():
+        text = _read(relative)
+        assert supported in text, (
+            f"{relative} is missing the delivered TileMap capability"
+        )
+        assert not any(
+            "TileMap" in line and unsupported_marker in line
+            for line in text.splitlines()
+        ), f"{relative} still claims TileMap is unsupported"
