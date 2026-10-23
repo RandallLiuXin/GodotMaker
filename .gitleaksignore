@@ -1,0 +1,3 @@
+# Fixed non-secret sentinel used by the runtime delegation QA probe.
+a9f6393a489e7ddf3293cf33f9f1cd5438d8d3fa:qa/runtime-delegation/REPORT.md:generic-api-key:40
+a9f6393a489e7ddf3293cf33f9f1cd5438d8d3fa:qa/runtime-delegation/opencode-measurements.json:generic-api-key:16
