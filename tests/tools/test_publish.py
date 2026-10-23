@@ -47,14 +47,15 @@ PUBLISHED_PROJECT_CONTRACT_FIXTURES = (
 )
 
 
-def _run_asset_validator_commands(
+def _run_bundled_asset_commands(
     project_root: Path, tools_root: Path, skills_root: Path
 ) -> None:
-    """Run both validator CLIs against missing-source handoffs.
+    """Run commands that load bundled asset-skill resources.
 
-    L1 is expected to fail because this smoke only supplies the handoff JSON.
-    Reaching that diagnostic proves the command found and executed its bundled
-    family validator rather than failing during resource discovery.
+    The source planner must load its scheme and succeed. Validator L1 is
+    expected to fail because this smoke only supplies the handoff JSON; reaching
+    that diagnostic proves the commands found and executed their bundled family
+    resources rather than failing during resource discovery.
     """
     smoke = project_root / "validator-smoke"
     smoke.mkdir(parents=True, exist_ok=True)
@@ -73,6 +74,7 @@ def _run_asset_validator_commands(
         ),
         encoding="utf-8",
     )
+    source_plan = smoke / "ui-source-plan.json"
 
     scene_request = smoke / "scene-request.json"
     scene_result = smoke / "scene-result.json"
@@ -142,6 +144,24 @@ def _run_asset_validator_commands(
     ui_validation = json.loads(ui_result.read_text(encoding="utf-8"))["validation"]
     assert ui_validation["levels"]["L0"] is True
     assert ui_validation["levels"]["L1"] is False
+
+    planner = subprocess.run(
+        [
+            sys.executable,
+            str(tools_root / "asset_ui_source_sheet_plan.py"),
+            "--request", str(ui_request),
+            "--rendering-medium", "hand-painted fantasy illustration",
+            "--out", str(source_plan),
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert planner.returncode == 0, planner.stderr
+    planned = json.loads(source_plan.read_text(encoding="utf-8"))
+    assert planned["asset_type"] == "ui-kit"
+    assert len(planned["sheets"]) == 2
 
     scene = subprocess.run(
         [
@@ -1170,11 +1190,11 @@ class TestPublishSkills:
 
 
 class TestPublishedAssetRuntime:
-    def test_source_tree_validator_commands_resolve_bundled_skills(self, tmp_path):
+    def test_source_tree_asset_commands_resolve_bundled_skills(self, tmp_path):
         project_root = tmp_path / "source-project"
         project_root.mkdir()
 
-        _run_asset_validator_commands(
+        _run_bundled_asset_commands(
             project_root,
             REPO_ROOT / "tools",
             REPO_ROOT / "skills" / "assets",
@@ -1237,6 +1257,8 @@ class TestPublishedAssetRuntime:
                     assert (target / reference).exists(), (
                         f"{skill_name} references a missing published runtime path: {reference}"
                     )
+            if skill_name == "ui-kit":
+                assert ".agents/skills/ui-kit/references/source-sheet-scheme.json" not in content
 
     @pytest.mark.parametrize("agent", publish.AGENT_CHOICES)
     def test_published_standalone_runners_import_and_validate_without_source_checkout(
@@ -1428,7 +1450,7 @@ for adapter, other in ((ui_kit, "card-kit"), (card_kit, "ui-kit")):
             env=environment,
         )
         assert completed.returncode == 0, completed.stderr
-        _run_asset_validator_commands(
+        _run_bundled_asset_commands(
             target,
             target / "tools",
             target / skill_root,

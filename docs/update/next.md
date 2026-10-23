@@ -26,6 +26,7 @@ contract defines when an entry is required, its format, and allowed categories.
 ## Fixed
 
 - Aligned `/gm-evaluate` E2E generation with canonical `e2e/test_*.py` pytest files so generated tests are discovered by pytest and the project checker (#210) — @RandallLiuXin.
+- Made asset validators and the UI source-sheet planner resolve bundled skill resources across source, Claude Code, Codex, OpenCode, and Pi layouts (#215) — @RandallLiuXin.
 
 ## Removed
 
